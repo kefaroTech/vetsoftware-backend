@@ -2,6 +2,7 @@ package com.vetsoftware.app.infrastructure.web;
 
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
+import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +16,7 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class})
+    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class, MembershipNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

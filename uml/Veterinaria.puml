@@ -53,6 +53,12 @@ enum EmployeeStatus {
   INACTIVE
 }
 
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+}
+
 ' =========================
 ' Classes
 ' =========================
@@ -102,6 +108,7 @@ class Permission {
 
 class Membership {
   -name
+  -status:MembershipStatus
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -370,6 +377,8 @@ Consultation --> Animal
 Consultation --> ConsultationType
 
 Company --> Membership
+
+Membership --> MembershipStatus
 
 Vaccination --> Animal
 Vaccination --> VaccinationType
