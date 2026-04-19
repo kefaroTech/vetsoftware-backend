@@ -61,6 +61,7 @@ class Company {
   -identifier: String
   -address: String
   -contactNumber: String
+  -membership: Membership
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -72,9 +73,8 @@ class Module {
   -createdBy: Employee
 }
 
-class CompanyModule {
-  -status: CompanyModuleStatus
-  -company: Company
+class MembershipModule {
+  -membership: Membership
   -module: Module
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -96,6 +96,12 @@ class Permission {
   -code: String
   -company: Company
   -module: Module
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Membership {
+  -name
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -363,6 +369,8 @@ Breed --> Specie
 Consultation --> Animal
 Consultation --> ConsultationType
 
+Company --> Membership
+
 Vaccination --> Animal
 Vaccination --> VaccinationType
 
@@ -392,8 +400,8 @@ Owner --> Company
 Employee --> Company
 Employee --> EmployeeStatus
 
-CompanyModule --> Company
-CompanyModule --> Module
+MembershipModule --> Membership
+MembershipModule --> Module
 
 Permission --> Company
 Permission --> Module
