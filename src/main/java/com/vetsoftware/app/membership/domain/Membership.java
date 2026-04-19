@@ -7,9 +7,8 @@ public class Membership {
     private String name;
     private MembershipStatus status;
     private final LocalDateTime createdDate;
-    private final Long createdBy;
 
-    public Membership(Long id, String name, MembershipStatus status, LocalDateTime createdDate, Long createdBy) {
+    public Membership(Long id, String name, MembershipStatus status, LocalDateTime createdDate) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (status == null) throw new IllegalArgumentException("status is required");
@@ -17,11 +16,10 @@ public class Membership {
         this.name = name;
         this.status = status;
         this.createdDate = createdDate;
-        this.createdBy = createdBy;
     }
 
-    public static Membership create(String name, MembershipStatus status, Long createdBy) {
-        return new Membership(null, name, status, LocalDateTime.now(), createdBy);
+    public static Membership create(String name, MembershipStatus status) {
+        return new Membership(null, name, status, LocalDateTime.now());
     }
 
     public void update(String name, MembershipStatus status) {
@@ -36,5 +34,4 @@ public class Membership {
     public String getName() { return name; }
     public MembershipStatus getStatus() { return status; }
     public LocalDateTime getCreatedDate() { return createdDate; }
-    public Long getCreatedBy() { return createdBy; }
 }

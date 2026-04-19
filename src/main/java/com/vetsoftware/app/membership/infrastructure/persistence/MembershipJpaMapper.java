@@ -1,6 +1,7 @@
 package com.vetsoftware.app.membership.infrastructure.persistence;
 
 import com.vetsoftware.app.membership.domain.Membership;
+import com.vetsoftware.app.membership.domain.MembershipStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -9,9 +10,8 @@ public class MembershipJpaMapper {
         MembershipJpaEntity entity = new MembershipJpaEntity();
         entity.setId(membership.getId());
         entity.setName(membership.getName());
-        entity.setStatus(membership.getStatus());
+        entity.setStatus(membership.getStatus().name());
         entity.setCreatedDate(membership.getCreatedDate());
-        entity.setCreatedBy(membership.getCreatedBy());
         return entity;
     }
 
@@ -19,9 +19,8 @@ public class MembershipJpaMapper {
         return new Membership(
             entity.getId(),
             entity.getName(),
-            entity.getStatus(),
-            entity.getCreatedDate(),
-            entity.getCreatedBy()
+            MembershipStatus.valueOf(entity.getStatus()),
+            entity.getCreatedDate()
         );
     }
 }

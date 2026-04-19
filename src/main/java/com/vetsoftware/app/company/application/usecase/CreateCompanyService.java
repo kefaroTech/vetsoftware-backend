@@ -20,8 +20,7 @@ public class CreateCompanyService implements CreateCompanyUseCase {
     @Override
     public CompanyDto execute(CreateCompanyCommand command) {
         Company company = Company.create(
-            command.name(), command.identifier(), command.address(),
-            command.contactNumber(), command.createdBy()
+            command.name(), command.identifier(), command.address(), command.contactNumber()
         );
         return CompanyDto.from(repository.save(company));
     }

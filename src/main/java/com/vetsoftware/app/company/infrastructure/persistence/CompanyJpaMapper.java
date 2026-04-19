@@ -13,7 +13,6 @@ public class CompanyJpaMapper {
         entity.setAddress(company.getAddress());
         entity.setContactNumber(company.getContactNumber());
         entity.setCreatedDate(company.getCreatedDate());
-        entity.setCreatedBy(company.getCreatedBy());
         return entity;
     }
 
@@ -24,8 +23,7 @@ public class CompanyJpaMapper {
             entity.getIdentifier(),
             entity.getAddress(),
             entity.getContactNumber(),
-            entity.getCreatedDate(),
-            entity.getCreatedBy()
+            entity.getCreatedDate()
         );
     }
 }

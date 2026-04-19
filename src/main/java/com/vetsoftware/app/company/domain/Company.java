@@ -9,10 +9,9 @@ public class Company {
     private String address;
     private String contactNumber;
     private final LocalDateTime createdDate;
-    private final Long createdBy;
 
     public Company(Long id, String name, String identifier, String address,
-                   String contactNumber, LocalDateTime createdDate, Long createdBy) {
+                   String contactNumber, LocalDateTime createdDate) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (identifier == null || identifier.isBlank()) throw new IllegalArgumentException("identifier is required");
@@ -23,11 +22,10 @@ public class Company {
         this.address = address;
         this.contactNumber = contactNumber;
         this.createdDate = createdDate;
-        this.createdBy = createdBy;
     }
 
-    public static Company create(String name, String identifier, String address, String contactNumber, Long createdBy) {
-        return new Company(null, name, identifier, address, contactNumber, LocalDateTime.now(), createdBy);
+    public static Company create(String name, String identifier, String address, String contactNumber) {
+        return new Company(null, name, identifier, address, contactNumber, LocalDateTime.now());
     }
 
     public void update(String name, String identifier, String address, String contactNumber) {
@@ -47,5 +45,4 @@ public class Company {
     public String getAddress() { return address; }
     public String getContactNumber() { return contactNumber; }
     public LocalDateTime getCreatedDate() { return createdDate; }
-    public Long getCreatedBy() { return createdBy; }
 }

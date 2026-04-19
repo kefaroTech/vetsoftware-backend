@@ -38,7 +38,7 @@ public class CompanyController {
     @ResponseStatus(HttpStatus.CREATED)
     public CompanyResponse create(@RequestBody CreateCompanyRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber(), request.createdBy())
+            new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber())
         ));
     }
 
@@ -67,6 +67,6 @@ public class CompanyController {
 
     private CompanyResponse toResponse(CompanyDto dto) {
         return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
-            dto.contactNumber(), dto.createdDate(), dto.createdBy());
+            dto.contactNumber(), dto.createdDate());
     }
 }

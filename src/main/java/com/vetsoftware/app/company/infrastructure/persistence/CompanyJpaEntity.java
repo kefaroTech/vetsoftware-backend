@@ -25,9 +25,6 @@ public class CompanyJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    @Column(name = "created_by")
-    private Long createdBy;
-
     protected CompanyJpaEntity() {}
 
     public Long getId() { return id; }
@@ -42,6 +39,4 @@ public class CompanyJpaEntity {
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public Long getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
 }

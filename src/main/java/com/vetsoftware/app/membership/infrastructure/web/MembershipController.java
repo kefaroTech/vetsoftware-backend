@@ -38,7 +38,7 @@ public class MembershipController {
     @ResponseStatus(HttpStatus.CREATED)
     public MembershipResponse create(@RequestBody CreateMembershipRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateMembershipCommand(request.name(), request.status(), request.createdBy())
+            new CreateMembershipCommand(request.name(), request.status())
         ));
     }
 
@@ -66,6 +66,6 @@ public class MembershipController {
     }
 
     private MembershipResponse toResponse(MembershipDto dto) {
-        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.createdDate(), dto.createdBy());
+        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.createdDate());
     }
 }

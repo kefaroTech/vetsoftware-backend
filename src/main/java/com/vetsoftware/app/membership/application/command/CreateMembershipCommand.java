@@ -1,3 +1,3 @@
 package com.vetsoftware.app.membership.application.command;
 
-public record CreateMembershipCommand(String name, String status, Long createdBy) {}
+public record CreateMembershipCommand(String name, String status) {}
