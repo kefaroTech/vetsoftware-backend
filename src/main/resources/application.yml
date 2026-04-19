@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/vetsoftware_db
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:secret}
+    username: ${DB_USERNAME:cronos}
+    password: ${DB_PASSWORD:cronos2026*}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
