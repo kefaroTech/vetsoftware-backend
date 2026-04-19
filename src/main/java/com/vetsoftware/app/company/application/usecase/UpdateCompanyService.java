@@ -6,9 +6,11 @@ import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import com.vetsoftware.app.company.domain.Company;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "company.update")
 @Service
 public class UpdateCompanyService implements UpdateCompanyUseCase {
     private final CompanyRepository repository;

@@ -18,24 +18,37 @@ MySQL en `src/main/resources/application.yml`:
 - `ddl-auto: update` — Hibernate gestiona el schema automáticamente
 - Credenciales deben usar variables de entorno: `${DB_USERNAME:root}`
 
-## Package structure
+## Package structure — Vertical Slicing (una feature por paquete raíz)
+
+Cada entidad de negocio vive en su propio paquete raíz completamente auto-contenido.
+**Nada se comparte entre features** — ni clases de dominio, ni ports, ni infraestructura.
 
 ```
 com.<company>.<project>/
-├── domain/
-├── application/
-│   ├── command/        ← input data objects (records, uno por caso de uso de escritura)
-│   ├── dto/            ← output data objects (records, compartidos entre casos de uso)
-│   ├── port/
-│   │   ├── in/         ← SOLO interfaces de casos de uso (contratos de entrada)
-│   │   └── out/        ← SOLO interfaces de puertos de salida (e.g. repositorio)
-│   └── usecase/        ← implementaciones de servicios, una clase por caso de uso
+├── <feature>/                  ← un paquete por entidad (company, employee, animal…)
+│   ├── domain/                 ← entidad, value objects, excepción de dominio
+│   ├── application/
+│   │   ├── command/            ← records de entrada por caso de uso de escritura
+│   │   ├── dto/                ← records de salida compartidos dentro de la feature
+│   │   ├── port/
+│   │   │   ├── in/             ← SOLO interfaces de casos de uso
+│   │   │   └── out/            ← SOLO interfaces de repositorio
+│   │   └── usecase/            ← un service por caso de uso
+│   └── infrastructure/
+│       ├── persistence/        ← XxxJpaEntity, XxxJpaMapper, XxxJpaRepository, JpaXxxRepository
+│       └── web/
+│           ├── request/        ← DTOs de entrada REST
+│           └── response/       ← DTOs de salida REST
 └── infrastructure/
-    ├── persistence/    ← entidades JPA, mapper, adaptador de repositorio
     └── web/
-        ├── request/    ← DTOs de entrada REST
-        └── response/   ← DTOs de salida REST
+        └── GlobalExceptionHandler.java   ← único archivo compartido entre features
 ```
+
+### Regla de vertical slicing — nunca romper esto
+
+- ❌ No crear capas horizontales top-level (`domain/`, `application/`, `infrastructure/` compartidas)
+- ❌ No importar clases de dominio de otra feature (p.ej. `company.domain.Company` desde `employee`)
+- ✅ Si dos features necesitan comunicarse, usar IDs primitivos (`Long companyId`) o un puerto explícito
 
 ## Architecture: Hexagonal (Ports & Adapters)
 
@@ -48,6 +61,27 @@ infrastructure → application → domain
 - `domain`: cero imports de Spring, cero imports de infrastructure
 - `application`: cero imports de infrastructure
 - `infrastructure`: puede importar de `application` y `domain`
+
+### IDs de entidad — siempre Long autogenerado por la BD
+
+- El ID de toda entidad de dominio es `Long id` (nullable para entidades nuevas antes de persistir).
+- En la entidad JPA: `@Id @GeneratedValue(strategy = GenerationType.IDENTITY)` → BIGINT AUTO_INCREMENT.
+- **Nunca** usar UUID, String, ni ningún otro tipo como ID.
+- El repositorio devuelve la entidad persistida tras el `save()` para capturar el ID generado.
+- En Liquibase: columna `id BIGINT AUTO_INCREMENT PRIMARY KEY`.
+
+```java
+// ✅ Correcto
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+
+// ❌ Incorrecto
+@Id
+private String id;           // String
+private UUID id;             // UUID
+@GeneratedValue(strategy = GenerationType.UUID)
+```
 
 ### Capa domain
 
@@ -131,6 +165,9 @@ private final AnimalRepository repository = new AnimalRepository() {
 
 ## Anti-patterns — nunca hacer esto
 
+- ❌ Crear capas horizontales compartidas top-level (`domain/`, `application/`, `infrastructure/` fuera de una feature)
+- ❌ Importar clases de dominio de otra feature (`employee` importando `company.domain.Company`)
+- ❌ Usar UUID, String u otro tipo como ID de entidad (siempre `Long` autogenerado por la BD)
 - ❌ Ports de entrada importando clases de `infrastructure` (rompe la dirección de dependencias)
 - ❌ El controller llamando a `Animal.create(...)` directamente (lógica de dominio en infra)
 - ❌ Pasar entidades de dominio (`Animal`) como parámetro de un use case (usar commands)
@@ -144,13 +181,17 @@ private final AnimalRepository repository = new AnimalRepository() {
 
 ## How to add a new entity
 
-1. `domain/` — `XxxId`, `Xxx` (con validaciones en constructor), `XxxNotFoundException`
-2. `application/command/` — `CreateXxxCommand`, `UpdateXxxCommand`
-3. `application/dto/` — `XxxDto` con `from(Xxx)`
-4. `application/port/in/` — una interfaz por caso de uso
-5. `application/port/out/` — `XxxRepository`
-6. `application/usecase/` — un service por caso de uso
-7. `infrastructure/persistence/` — `XxxJpaEntity`, `XxxJpaMapper`, `XxxJpaRepository`, `JpaXxxRepository`
-8. `infrastructure/web/` — `XxxController`, actualizar `GlobalExceptionHandler`
-9. `infrastructure/web/request/` — `CreateXxxRequest`, `UpdateXxxRequest`
-10. `infrastructure/web/response/` — `XxxResponse`
+Toda entidad nueva vive en su propio paquete feature `com.<company>.<project>.<feature>/`.
+
+1. `<feature>/domain/` — `XxxId`, `Xxx` (con validaciones en constructor, ID como `Long`), `XxxNotFoundException`
+2. `<feature>/application/command/` — `CreateXxxCommand`, `UpdateXxxCommand`
+3. `<feature>/application/dto/` — `XxxDto` con `from(Xxx)`
+4. `<feature>/application/port/in/` — una interfaz por caso de uso
+5. `<feature>/application/port/out/` — `XxxRepository`
+6. `<feature>/application/usecase/` — un service por caso de uso
+7. `<feature>/infrastructure/persistence/` — `XxxJpaEntity` (con `@GeneratedValue(IDENTITY)`), `XxxJpaMapper`, `XxxJpaRepository`, `JpaXxxRepository`
+8. `<feature>/infrastructure/web/` — `XxxController`
+9. `<feature>/infrastructure/web/request/` — `CreateXxxRequest`, `UpdateXxxRequest`
+10. `<feature>/infrastructure/web/response/` — `XxxResponse`
+11. `infrastructure/web/GlobalExceptionHandler` — añadir `XxxNotFoundException` al handler 404
+12. `db/changelog/migrations/` — nuevo changeset Liquibase con `id BIGINT AUTO_INCREMENT PRIMARY KEY`

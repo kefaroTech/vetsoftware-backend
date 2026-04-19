@@ -4,8 +4,10 @@ import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "employee.list")
 @Service
 public class ListEmployeesService implements ListEmployeesUseCase {
     private final EmployeeRepository repository;

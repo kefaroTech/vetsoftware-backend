@@ -4,8 +4,10 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "company.find")
 @Service
 public class FindCompanyService implements FindCompanyUseCase {
     private final CompanyRepository repository;

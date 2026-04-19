@@ -7,9 +7,11 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeStatus;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "employee.update")
 @Service
 public class UpdateEmployeeService implements UpdateEmployeeUseCase {
     private final EmployeeRepository repository;

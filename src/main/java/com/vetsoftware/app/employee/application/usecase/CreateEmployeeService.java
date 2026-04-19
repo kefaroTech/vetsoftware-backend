@@ -6,8 +6,10 @@ import com.vetsoftware.app.employee.application.port.in.CreateEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeStatus;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "employee.create")
 @Service
 public class CreateEmployeeService implements CreateEmployeeUseCase {
     private final EmployeeRepository repository;

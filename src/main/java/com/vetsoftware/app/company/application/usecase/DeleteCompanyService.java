@@ -3,9 +3,11 @@ package com.vetsoftware.app.company.application.usecase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "company.delete")
 @Service
 public class DeleteCompanyService implements DeleteCompanyUseCase {
     private final CompanyRepository repository;

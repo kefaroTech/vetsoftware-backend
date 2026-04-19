@@ -4,8 +4,10 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "company.list")
 @Service
 public class ListCompaniesService implements ListCompaniesUseCase {
     private final CompanyRepository repository;
