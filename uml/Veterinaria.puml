@@ -1,0 +1,411 @@
+@startuml
+
+' =========================
+' Enums
+' =========================
+enum HospitalizationType {
+  OUTPATIENT
+  HOSPITALIZATION
+}
+
+enum ReasonLeaving {
+  MEDICAL_DISCHARGE
+  HOME_TREATMENT
+  TRANSFER
+  TUTOR_WISH
+  ADMIN
+  DEATH
+  EUTHANASIA
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum WeightType {
+  GRAMS
+  POUNDS
+  KILOGRAMS
+}
+
+enum AnimalType {
+  SERVICE
+  SUPPORT
+  NONE
+}
+
+enum ReproductiveState {
+  STERILIZED
+  NO_STERILIZED
+  UNKNOWN
+}
+
+enum DewormingType {
+  INTERNAL
+  EXTERNAL
+  MIX
+  OTHER
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+' =========================
+' Classes
+' =========================
+class Company {
+  -name: String
+  -identifier: String
+  -address: String
+  -contactNumber: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Module {
+  -name: String
+  -code: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class CompanyModule {
+  -status: CompanyModuleStatus
+  -company: Company
+  -module: Module
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Employee {
+  -employeeCode: String
+  -hashPassword: String
+  -name: String
+  -email: String
+  -status: EmployeeStatus
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Permission {
+  -name: String
+  -code: String
+  -company: Company
+  -module: Module
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Role {
+  -name: String
+  -code: String
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class RolePermission {
+  -role: Role
+  -permission: Permission
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class EmployeeRole {
+  -employee: Employee
+  -role: Role
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class State {
+  -id: Long
+  -name: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class City {
+  -id: Long
+  -name: String
+  -state: State
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Owner {
+  -id: Long
+  -name: String
+  -email: String
+  -document: String
+  -address: String
+  -phone: String
+  -city: City
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Specie {
+  -id: Long
+  -name: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Breed {
+  -id: Long
+  -name: String
+  -specie: Specie
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Animal {
+  -id: Long
+  -name: String
+  -code: String
+  -specie: Specie
+  -gender: Gender
+  -color: Color
+  -bod: LocalDate
+  -weight: Integer
+  -weightType: WeightType
+  -size: Integer
+  -reproductiveState: ReproductiveState
+  -breed: Breed
+  -owner: Owner
+  -deceased: Boolean
+  -deceasedDate: LocalDate
+  -animalType: AnimalType
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class VaccinationType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Vaccination {
+  -date: LocalDate
+  -type: VaccinationType
+  -notes: String
+  -nextVaccination: LocalDate
+  -animal: Animal
+  -lot: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class ConsultationType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Consultation {
+  -date: LocalDate
+  -type: ConsultationType
+  -anamnesis: String
+  -diagnosis: String
+  -therapeuticPlan: String
+  -diagnosisPlan: String
+  -nextControl: LocalDate
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Hospitalization {
+  -date: LocalDate
+  -startDate: LocalDate
+  -endDate: LocalDate
+  -type: HospitalizationType
+  -reasonLeaving: ReasonLeaving
+  -reason: String
+  -observations: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class SurgeryType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Surgery {
+  -date: LocalDate
+  -surgeryType: SurgeryType
+  -description: String
+  -medicament: String
+  -observations: String
+  -complications: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class TestType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class LaboratoryTest {
+  -date: LocalDate
+  -type: TestType
+  -quantity: Integer
+  -diagnosis: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Prescription {
+  -date: LocalDate
+  -diagnosis: String
+  -observations: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Medicament {
+  -name: String
+  -presentation: String
+  -quantity: Double
+  -posology: Posology
+  -prescription: Prescription
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Deworming {
+  -date: LocalDate
+  -lastDeworming: LocalDate
+  -type: DewormingType
+  -product: String
+  -dosage: String
+  -nextControl: LocalDate
+  -observations: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class DiagnosticImagingType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class DiagnosticImaging {
+  -date: LocalDate
+  -type: DiagnosticImagingType
+  -clinicalSigns: String
+  -diagnosis: String
+  -studyType: String
+  -observations: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class SpaType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Spa {
+  -date: LocalDate
+  -observations: String
+  -type: SpaType
+  -reason: String
+  -details: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+' =========================
+' Relationships
+' =========================
+Owner "0..*" --> "1" City
+City --> State
+
+Animal --> Specie
+Animal --> Gender
+Animal --> WeightType
+Animal --> ReproductiveState
+Animal --> Breed
+Animal --> Owner
+Animal --> AnimalType
+Animal --> Company
+
+Breed --> Specie
+
+Consultation --> Animal
+Consultation --> ConsultationType
+
+Vaccination --> Animal
+Vaccination --> VaccinationType
+
+Prescription --> Animal
+Prescription --> Medicament
+
+Deworming --> Animal
+Deworming --> DewormingType
+
+Hospitalization --> Animal
+Hospitalization --> HospitalizationType
+Hospitalization --> ReasonLeaving
+
+Surgery --> Animal
+Surgery --> SurgeryType
+
+LaboratoryTest --> Animal
+LaboratoryTest --> TestType
+
+DiagnosticImaging --> Animal
+DiagnosticImaging --> DiagnosticImagingType
+
+Spa --> Animal
+Spa --> SpaType
+
+Owner --> Company
+Employee --> Company
+Employee --> EmployeeStatus
+
+CompanyModule --> Company
+CompanyModule --> Module
+
+Permission --> Company
+Permission --> Module
+
+Role --> Company
+
+RolePermission --> Role
+RolePermission --> Permission
+
+EmployeeRole --> Employee
+EmployeeRole --> Role
+
+@enduml
+
+
