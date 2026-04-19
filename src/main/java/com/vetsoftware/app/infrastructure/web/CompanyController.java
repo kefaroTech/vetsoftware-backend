@@ -8,7 +8,6 @@ import com.vetsoftware.app.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.application.port.in.UpdateCompanyUseCase;
-import com.vetsoftware.app.domain.CompanyId;
 import com.vetsoftware.app.infrastructure.web.request.CreateCompanyRequest;
 import com.vetsoftware.app.infrastructure.web.request.UpdateCompanyRequest;
 import com.vetsoftware.app.infrastructure.web.response.CompanyResponse;
@@ -49,12 +48,12 @@ public class CompanyController {
     }
 
     @GetMapping("/{id}")
-    public CompanyResponse findById(@PathVariable String id) {
-        return toResponse(findUseCase.findById(CompanyId.of(id)));
+    public CompanyResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable String id, @RequestBody UpdateCompanyRequest request) {
+    public CompanyResponse update(@PathVariable Long id, @RequestBody UpdateCompanyRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(), request.contactNumber())
         ));
@@ -62,8 +61,8 @@ public class CompanyController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable String id) {
-        deleteUseCase.execute(CompanyId.of(id));
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private CompanyResponse toResponse(CompanyDto dto) {

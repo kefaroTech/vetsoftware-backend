@@ -1,6 +1,7 @@
 package com.vetsoftware.app.infrastructure.web;
 
 import com.vetsoftware.app.domain.CompanyNotFoundException;
+import com.vetsoftware.app.domain.EmployeeNotFoundException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -9,9 +10,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(CompanyNotFoundException.class)
+    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(CompanyNotFoundException ex) {
+    public Map<String, String> handleNotFound(RuntimeException ex) {
         return Map.of("error", ex.getMessage());
     }
 

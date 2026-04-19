@@ -2,4 +2,4 @@ package com.vetsoftware.app.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Long> {}
+public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, Long> {}

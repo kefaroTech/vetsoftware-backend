@@ -2,7 +2,6 @@ package com.vetsoftware.app.infrastructure.persistence;
 
 import com.vetsoftware.app.application.port.out.CompanyRepository;
 import com.vetsoftware.app.domain.Company;
-import com.vetsoftware.app.domain.CompanyId;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -18,13 +17,13 @@ public class JpaCompanyRepository implements CompanyRepository {
     }
 
     @Override
-    public void save(Company company) {
-        jpaRepository.save(mapper.toJpa(company));
+    public Company save(Company company) {
+        return mapper.toDomain(jpaRepository.save(mapper.toJpa(company)));
     }
 
     @Override
-    public Optional<Company> findById(CompanyId id) {
-        return jpaRepository.findById(id.value()).map(mapper::toDomain);
+    public Optional<Company> findById(Long id) {
+        return jpaRepository.findById(id).map(mapper::toDomain);
     }
 
     @Override
@@ -33,7 +32,7 @@ public class JpaCompanyRepository implements CompanyRepository {
     }
 
     @Override
-    public void delete(CompanyId id) {
-        jpaRepository.deleteById(id.value());
+    public void delete(Long id) {
+        jpaRepository.deleteById(id);
     }
 }

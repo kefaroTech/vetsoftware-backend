@@ -3,16 +3,16 @@ package com.vetsoftware.app.domain;
 import java.time.LocalDateTime;
 
 public class Company {
-    private final CompanyId id;
+    private Long id;
     private String name;
     private String identifier;
     private String address;
     private String contactNumber;
     private final LocalDateTime createdDate;
-    private final String createdBy;
+    private final Long createdBy;
 
-    public Company(CompanyId id, String name, String identifier, String address,
-                   String contactNumber, LocalDateTime createdDate, String createdBy) {
+    public Company(Long id, String name, String identifier, String address,
+                   String contactNumber, LocalDateTime createdDate, Long createdBy) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (identifier == null || identifier.isBlank()) throw new IllegalArgumentException("identifier is required");
@@ -26,8 +26,8 @@ public class Company {
         this.createdBy = createdBy;
     }
 
-    public static Company create(String name, String identifier, String address, String contactNumber, String createdBy) {
-        return new Company(CompanyId.generate(), name, identifier, address, contactNumber, LocalDateTime.now(), createdBy);
+    public static Company create(String name, String identifier, String address, String contactNumber, Long createdBy) {
+        return new Company(null, name, identifier, address, contactNumber, LocalDateTime.now(), createdBy);
     }
 
     public void update(String name, String identifier, String address, String contactNumber) {
@@ -41,11 +41,11 @@ public class Company {
         this.contactNumber = contactNumber;
     }
 
-    public CompanyId getId() { return id; }
+    public Long getId() { return id; }
     public String getName() { return name; }
     public String getIdentifier() { return identifier; }
     public String getAddress() { return address; }
     public String getContactNumber() { return contactNumber; }
     public LocalDateTime getCreatedDate() { return createdDate; }
-    public String getCreatedBy() { return createdBy; }
+    public Long getCreatedBy() { return createdBy; }
 }

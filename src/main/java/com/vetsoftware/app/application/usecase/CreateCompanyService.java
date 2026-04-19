@@ -21,7 +21,6 @@ public class CreateCompanyService implements CreateCompanyUseCase {
             command.name(), command.identifier(), command.address(),
             command.contactNumber(), command.createdBy()
         );
-        repository.save(company);
-        return CompanyDto.from(company);
+        return CompanyDto.from(repository.save(company));
     }
 }

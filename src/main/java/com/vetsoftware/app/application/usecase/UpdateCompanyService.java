@@ -5,7 +5,6 @@ import com.vetsoftware.app.application.dto.CompanyDto;
 import com.vetsoftware.app.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.application.port.out.CompanyRepository;
 import com.vetsoftware.app.domain.Company;
-import com.vetsoftware.app.domain.CompanyId;
 import com.vetsoftware.app.domain.CompanyNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +20,9 @@ public class UpdateCompanyService implements UpdateCompanyUseCase {
     @Override
     @Transactional
     public CompanyDto execute(UpdateCompanyCommand command) {
-        Company company = repository.findById(CompanyId.of(command.id()))
+        Company company = repository.findById(command.id())
             .orElseThrow(() -> new CompanyNotFoundException(command.id()));
         company.update(command.name(), command.identifier(), command.address(), command.contactNumber());
-        repository.save(company);
-        return CompanyDto.from(company);
+        return CompanyDto.from(repository.save(company));
     }
 }

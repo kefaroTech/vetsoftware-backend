@@ -3,7 +3,6 @@ package com.vetsoftware.app.application.usecase;
 import com.vetsoftware.app.application.dto.CompanyDto;
 import com.vetsoftware.app.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.application.port.out.CompanyRepository;
-import com.vetsoftware.app.domain.CompanyId;
 import com.vetsoftware.app.domain.CompanyNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +15,9 @@ public class FindCompanyService implements FindCompanyUseCase {
     }
 
     @Override
-    public CompanyDto findById(CompanyId id) {
+    public CompanyDto findById(Long id) {
         return repository.findById(id)
             .map(CompanyDto::from)
-            .orElseThrow(() -> new CompanyNotFoundException(id.value()));
+            .orElseThrow(() -> new CompanyNotFoundException(id));
     }
 }

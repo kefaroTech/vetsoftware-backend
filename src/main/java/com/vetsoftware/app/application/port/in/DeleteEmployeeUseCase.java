@@ -1,5 +1,5 @@
 package com.vetsoftware.app.application.port.in;
 
-public interface DeleteCompanyUseCase {
+public interface DeleteEmployeeUseCase {
     void execute(Long id);
 }
