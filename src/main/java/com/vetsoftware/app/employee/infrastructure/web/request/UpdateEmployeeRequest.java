@@ -1,0 +1,3 @@
+package com.vetsoftware.app.employee.infrastructure.web.request;
+
+public record UpdateEmployeeRequest(String employeeCode, String name, String email, String status) {}

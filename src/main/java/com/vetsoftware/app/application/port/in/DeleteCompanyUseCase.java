@@ -1,5 +1,0 @@
-package com.vetsoftware.app.application.port.in;
-
-public interface DeleteCompanyUseCase {
-    void execute(Long id);
-}
