@@ -15,5 +15,6 @@
     <include file="db/changelog/migrations/010_create_system_permissions.xml"/>
     <include file="db/changelog/migrations/011_create_system_user_permissions.xml"/>
     <include file="db/changelog/migrations/012_insert_superadmin.xml"/>
+    <include file="db/changelog/migrations/013_alter_membership_modules_created_date_default.xml"/>
 
 </databaseChangeLog>

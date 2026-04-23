@@ -22,6 +22,7 @@
 
     <!-- Reducir ruido de frameworks -->
     <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR"/>
     <logger name="org.springframework" level="WARN"/>
     <logger name="liquibase" level="WARN"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
