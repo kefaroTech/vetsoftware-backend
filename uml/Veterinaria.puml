@@ -77,6 +77,13 @@ class Module {
   -createdDate: LocalDateTime
 }
 
+class SubModule {
+  -name: String
+  -code: String
+  -module: Module
+  -createdDate: LocalDateTime
+}
+
 class MembershipModule {
   -membership: Membership
   -module: Module
@@ -100,7 +107,13 @@ class Permission {
   -company: Company
   -module: Module
   -createdDate: LocalDateTime
-  -createdBy: Employee
+}
+
+class BasePermission {
+  -name: String
+  -code: String
+  -subModule: SubModule
+  -createdDate: LocalDateTime
 }
 
 class Membership {
@@ -432,6 +445,8 @@ MembershipModule --> Module
 
 Permission --> Company
 Permission --> Module
+BasePermission --> SubModule
+SubModule --> Module
 
 Role --> Company
 

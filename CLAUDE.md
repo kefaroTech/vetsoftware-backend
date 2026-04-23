@@ -108,6 +108,7 @@ private UUID id;             // UUID
 - Constructor injection en todos los services. Sin `@Autowired`.
 - `@Transactional` en cualquier método que ejecute más de una operación de repositorio (e.g. `update` hace `findById` + `save`).
 - `DeleteXxxService` debe verificar que la entidad existe antes de borrar y lanzar `XxxNotFoundException` si no.
+- **FK a otra feature → outbound port de validación**: si una entidad tiene una FK a otra feature, el service valida la existencia a través de un outbound port (`YyyValidationPort` en `port/out/`), cuya implementación vive en `infrastructure/persistence/`. El repositorio usa `getReferenceById()` sin validar. Nunca lanzar `IllegalArgumentException` por FK no encontrada desde el repositorio.
 
 ### Capa infrastructure
 
@@ -178,6 +179,7 @@ private final AnimalRepository repository = new AnimalRepository() {
 - ❌ Nombrar el adaptador de repositorio con el motor de BD (`MySqlAnimalRepository` en lugar de `JpaAnimalRepository`)
 - ❌ Mezclar commands y DTOs en un mismo package (`model/` — usar `command/` y `dto/` separados)
 - ❌ Usar `SearchXxxUseCase` para listar todos sin filtros (usar `ListXxxsUseCase`)
+- ❌ Validar existencia de FK en el repositorio con `findById().orElseThrow()` — esa lógica va en el service via `YyyValidationPort`
 
 ## How to add a new entity
 
@@ -187,7 +189,7 @@ Toda entidad nueva vive en su propio paquete feature `com.<company>.<project>.<f
 2. `<feature>/application/command/` — `CreateXxxCommand`, `UpdateXxxCommand`
 3. `<feature>/application/dto/` — `XxxDto` con `from(Xxx)`
 4. `<feature>/application/port/in/` — una interfaz por caso de uso
-5. `<feature>/application/port/out/` — `XxxRepository`
+5. `<feature>/application/port/out/` — `XxxRepository` (+ `YyyValidationPort` por cada FK a otra feature)
 6. `<feature>/application/usecase/` — un service por caso de uso
 7. `<feature>/infrastructure/persistence/` — `XxxJpaEntity` (con `@GeneratedValue(IDENTITY)`), `XxxJpaMapper`, `XxxJpaRepository`, `JpaXxxRepository`
 8. `<feature>/infrastructure/web/` — `XxxController`

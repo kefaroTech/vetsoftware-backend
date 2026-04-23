@@ -5,7 +5,9 @@ import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
+import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +22,7 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class, MembershipNotFoundException.class, ModuleNotFoundException.class})
+    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class, MembershipNotFoundException.class, ModuleNotFoundException.class, SubModuleNotFoundException.class, BasePermissionNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
