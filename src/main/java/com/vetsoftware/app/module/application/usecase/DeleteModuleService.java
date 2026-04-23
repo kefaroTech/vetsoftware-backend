@@ -1,5 +1,6 @@
 package com.vetsoftware.app.module.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.port.in.DeleteModuleUseCase;
 import com.vetsoftware.app.module.application.port.out.ModuleRepository;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
@@ -18,7 +19,7 @@ public class DeleteModuleService implements DeleteModuleUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
+    public void execute(Long id, AuthContext auth) {
         repository.findById(id).orElseThrow(() -> new ModuleNotFoundException(id));
         repository.delete(id);
     }

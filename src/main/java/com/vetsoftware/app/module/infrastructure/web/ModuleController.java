@@ -1,5 +1,6 @@
 package com.vetsoftware.app.module.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.command.CreateModuleCommand;
 import com.vetsoftware.app.module.application.command.UpdateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
@@ -36,29 +37,33 @@ public class ModuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ModuleResponse create(@RequestBody CreateModuleRequest request) {
-        return toResponse(createUseCase.execute(new CreateModuleCommand(request.name(), request.code())));
+    public ModuleResponse create(@RequestBody CreateModuleRequest request,
+                                 @RequestAttribute AuthContext authContext) {
+        return toResponse(createUseCase.execute(new CreateModuleCommand(request.name(), request.code()), authContext));
     }
 
     @GetMapping
-    public List<ModuleResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public List<ModuleResponse> listAll(@RequestAttribute AuthContext authContext) {
+        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public ModuleResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+    public ModuleResponse findById(@PathVariable Long id,
+                                   @RequestAttribute AuthContext authContext) {
+        return toResponse(findUseCase.findById(id, authContext));
     }
 
     @PutMapping("/{id}")
-    public ModuleResponse update(@PathVariable Long id, @RequestBody UpdateModuleRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code())));
+    public ModuleResponse update(@PathVariable Long id, @RequestBody UpdateModuleRequest request,
+                                 @RequestAttribute AuthContext authContext) {
+        return toResponse(updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code()), authContext));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+    public void delete(@PathVariable Long id,
+                       @RequestAttribute AuthContext authContext) {
+        deleteUseCase.execute(id, authContext);
     }
 
     private ModuleResponse toResponse(ModuleDto dto) {

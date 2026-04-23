@@ -1,5 +1,6 @@
 package com.vetsoftware.app.module.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.command.CreateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
 import com.vetsoftware.app.module.application.port.in.CreateModuleUseCase;
@@ -18,7 +19,7 @@ public class CreateModuleService implements CreateModuleUseCase {
     }
 
     @Override
-    public ModuleDto execute(CreateModuleCommand command) {
+    public ModuleDto execute(CreateModuleCommand command, AuthContext auth) {
         return ModuleDto.from(repository.save(Module.create(command.name(), command.code())));
     }
 }

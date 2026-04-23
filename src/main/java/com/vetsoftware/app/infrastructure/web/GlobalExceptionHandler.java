@@ -1,5 +1,6 @@
 package com.vetsoftware.app.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
@@ -21,6 +22,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, String> handleForbidden(UnauthorizedException ex) {
+        log.warn("Forbidden: {}", ex.getMessage());
         return Map.of("error", ex.getMessage());
     }
 
