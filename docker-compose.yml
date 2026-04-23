@@ -83,8 +83,23 @@ services:
       - prometheus
       - loki
 
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: vetsoftware_sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - vetsoftware_sonarqube_data:/opt/sonarqube/data
+      - vetsoftware_sonarqube_extensions:/opt/sonarqube/extensions
+      - vetsoftware_sonarqube_logs:/opt/sonarqube/logs
+
 volumes:
   vetsoftware_redis_data:
   vetsoftware_mysql_data:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
+  vetsoftware_sonarqube_data:
+  vetsoftware_sonarqube_extensions:
+  vetsoftware_sonarqube_logs:

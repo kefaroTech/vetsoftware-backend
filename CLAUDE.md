@@ -9,6 +9,7 @@ mvn clean package          # build
 mvn spring-boot:run        # run
 mvn test                   # all tests
 mvn test -Dtest=ClassName  # single test class
+mvn clean verify sonar:sonar -Dsonar.login=<token>   # análisis de código (SonarQube 9.9 LTS en localhost:9000)
 ```
 
 ## Configuration
