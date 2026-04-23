@@ -5,6 +5,6 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 
 public interface FindCompanyUseCase {
-    @RequiresPermission({"admin.all","company.find"})
+    @RequiresPermission({"admin.all","company.read"})
     CompanyDto findById(Long id, AuthContext auth);
 }
