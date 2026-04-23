@@ -4,7 +4,7 @@ import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaRepository
 import com.vetsoftware.app.submodule.application.port.out.ModuleValidationPort;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("submoduleJpaModuleValidationPort")
 public class JpaModuleValidationPort implements ModuleValidationPort {
     private final ModuleJpaRepository moduleJpaRepository;
 

@@ -6,7 +6,7 @@ import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaRepository
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("membershipJpaModuleValidationPort")
 public class JpaModuleValidationPort implements ModuleValidationPort {
     private final ModuleJpaRepository moduleJpaRepository;
 
