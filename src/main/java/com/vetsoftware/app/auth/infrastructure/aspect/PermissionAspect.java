@@ -26,7 +26,7 @@ public class PermissionAspect {
                 .filter(AuthContext.class::isInstance)
                 .map(AuthContext.class::cast)
                 .findFirst()
-                .ifPresent(auth -> auth.requirePermission(annotation.value()));
+                .ifPresent(auth -> auth.requireAnyPermission(annotation.value()));
     }
 
     private RequiresPermission findAnnotation(Method method, Class<?> targetClass) {

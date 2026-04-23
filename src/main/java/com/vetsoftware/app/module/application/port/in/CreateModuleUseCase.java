@@ -6,6 +6,6 @@ import com.vetsoftware.app.module.application.command.CreateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
 
 public interface CreateModuleUseCase {
-    @RequiresPermission("module.create")
+    @RequiresPermission({"admin.all"})
     ModuleDto execute(CreateModuleCommand command, AuthContext auth);
 }

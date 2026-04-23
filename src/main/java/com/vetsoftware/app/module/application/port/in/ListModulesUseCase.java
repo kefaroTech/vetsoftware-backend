@@ -6,6 +6,6 @@ import com.vetsoftware.app.module.application.dto.ModuleDto;
 import java.util.List;
 
 public interface ListModulesUseCase {
-    @RequiresPermission("module.list")
+    @RequiresPermission({"admin.all"})
     List<ModuleDto> listAll(AuthContext auth);
 }

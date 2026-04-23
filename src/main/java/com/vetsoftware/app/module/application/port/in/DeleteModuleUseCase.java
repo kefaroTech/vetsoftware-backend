@@ -4,6 +4,6 @@ import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 
 public interface DeleteModuleUseCase {
-    @RequiresPermission("module.delete")
+    @RequiresPermission({"admin.all"})
     void execute(Long id, AuthContext auth);
 }

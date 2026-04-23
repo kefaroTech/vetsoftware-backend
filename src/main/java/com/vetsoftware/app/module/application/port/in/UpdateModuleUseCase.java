@@ -6,6 +6,6 @@ import com.vetsoftware.app.module.application.command.UpdateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
 
 public interface UpdateModuleUseCase {
-    @RequiresPermission("module.update")
+    @RequiresPermission({"admin.all"})
     ModuleDto execute(UpdateModuleCommand command, AuthContext auth);
 }
