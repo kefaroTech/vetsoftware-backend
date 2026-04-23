@@ -1,8 +1,11 @@
 package com.vetsoftware.app.company.application.port.in;
 
+import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 
 public interface CreateCompanyUseCase {
-    CompanyDto execute(CreateCompanyCommand command);
+    @RequiresPermission("admin.all")
+    CompanyDto execute(CreateCompanyCommand command, AuthContext auth);
 }

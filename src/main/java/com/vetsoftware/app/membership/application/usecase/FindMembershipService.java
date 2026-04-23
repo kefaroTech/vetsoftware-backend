@@ -1,5 +1,6 @@
 package com.vetsoftware.app.membership.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import com.vetsoftware.app.membership.application.port.in.FindMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.out.MembershipRepository;
@@ -17,7 +18,7 @@ public class FindMembershipService implements FindMembershipUseCase {
     }
 
     @Override
-    public MembershipDto findById(Long id) {
+    public MembershipDto findById(Long id, AuthContext auth) {
         return repository.findById(id)
             .map(MembershipDto::from)
             .orElseThrow(() -> new MembershipNotFoundException(id));

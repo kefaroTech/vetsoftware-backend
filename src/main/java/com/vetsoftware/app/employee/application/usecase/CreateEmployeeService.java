@@ -1,5 +1,6 @@
 package com.vetsoftware.app.employee.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.command.CreateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.CreateEmployeeUseCase;
@@ -19,7 +20,7 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
     }
 
     @Override
-    public EmployeeDto execute(CreateEmployeeCommand command) {
+    public EmployeeDto execute(CreateEmployeeCommand command, AuthContext auth) {
         EmployeeStatus status = EmployeeStatus.valueOf(command.status().toUpperCase());
         Employee employee = Employee.create(
             command.employeeCode(), command.password(), command.name(), command.email(),

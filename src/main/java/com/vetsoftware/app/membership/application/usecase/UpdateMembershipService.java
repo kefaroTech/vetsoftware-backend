@@ -1,5 +1,6 @@
 package com.vetsoftware.app.membership.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membership.application.command.UpdateMembershipCommand;
 import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import com.vetsoftware.app.membership.application.port.in.UpdateMembershipUseCase;
@@ -22,7 +23,7 @@ public class UpdateMembershipService implements UpdateMembershipUseCase {
 
     @Override
     @Transactional
-    public MembershipDto execute(UpdateMembershipCommand command) {
+    public MembershipDto execute(UpdateMembershipCommand command, AuthContext auth) {
         Membership membership = repository.findById(command.id())
             .orElseThrow(() -> new MembershipNotFoundException(command.id()));
         MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());

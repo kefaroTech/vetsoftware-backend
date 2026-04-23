@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
@@ -36,33 +37,37 @@ public class CompanyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompanyResponse create(@RequestBody CreateCompanyRequest request) {
+    public CompanyResponse create(@RequestBody CreateCompanyRequest request,
+                                  @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
-            new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber())
+            new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber()),
+            authContext
         ));
     }
 
     @GetMapping
-    public List<CompanyResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public List<CompanyResponse> listAll(@RequestAttribute AuthContext authContext) {
+        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public CompanyResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+    public CompanyResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
+        return toResponse(findUseCase.findById(id, authContext));
     }
 
     @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable Long id, @RequestBody UpdateCompanyRequest request) {
+    public CompanyResponse update(@PathVariable Long id, @RequestBody UpdateCompanyRequest request,
+                                  @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
-            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(), request.contactNumber())
+            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(), request.contactNumber()),
+            authContext
         ));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
+        deleteUseCase.execute(id, authContext);
     }
 
     private CompanyResponse toResponse(CompanyDto dto) {

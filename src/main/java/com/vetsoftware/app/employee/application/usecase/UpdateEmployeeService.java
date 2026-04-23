@@ -1,5 +1,6 @@
 package com.vetsoftware.app.employee.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
@@ -22,7 +23,7 @@ public class UpdateEmployeeService implements UpdateEmployeeUseCase {
 
     @Override
     @Transactional
-    public EmployeeDto execute(UpdateEmployeeCommand command) {
+    public EmployeeDto execute(UpdateEmployeeCommand command, AuthContext auth) {
         Employee employee = repository.findById(command.id())
             .orElseThrow(() -> new EmployeeNotFoundException(command.id()));
         EmployeeStatus status = EmployeeStatus.valueOf(command.status().toUpperCase());

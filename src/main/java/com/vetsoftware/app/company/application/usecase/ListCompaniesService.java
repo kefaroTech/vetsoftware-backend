@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
@@ -17,7 +18,7 @@ public class ListCompaniesService implements ListCompaniesUseCase {
     }
 
     @Override
-    public List<CompanyDto> listAll() {
+    public List<CompanyDto> listAll(AuthContext auth) {
         return repository.findAll().stream().map(CompanyDto::from).toList();
     }
 }

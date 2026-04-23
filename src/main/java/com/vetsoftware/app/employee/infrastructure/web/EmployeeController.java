@@ -1,5 +1,6 @@
 package com.vetsoftware.app.employee.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.command.CreateEmployeeCommand;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
@@ -36,34 +37,38 @@ public class EmployeeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmployeeResponse create(@RequestBody CreateEmployeeRequest request) {
+    public EmployeeResponse create(@RequestBody CreateEmployeeRequest request,
+                                   @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.status(), request.companyId(), request.createdBy())
+                request.email(), request.status(), request.companyId(), request.createdBy()),
+            authContext
         ));
     }
 
     @GetMapping
-    public List<EmployeeResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public List<EmployeeResponse> listAll(@RequestAttribute AuthContext authContext) {
+        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public EmployeeResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+    public EmployeeResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
+        return toResponse(findUseCase.findById(id, authContext));
     }
 
     @PutMapping("/{id}")
-    public EmployeeResponse update(@PathVariable Long id, @RequestBody UpdateEmployeeRequest request) {
+    public EmployeeResponse update(@PathVariable Long id, @RequestBody UpdateEmployeeRequest request,
+                                   @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
-            new UpdateEmployeeCommand(id, request.employeeCode(), request.name(), request.email(), request.status())
+            new UpdateEmployeeCommand(id, request.employeeCode(), request.name(), request.email(), request.status()),
+            authContext
         ));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
+        deleteUseCase.execute(id, authContext);
     }
 
     private EmployeeResponse toResponse(EmployeeDto dto) {

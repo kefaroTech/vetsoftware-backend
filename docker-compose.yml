@@ -1,4 +1,13 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: vetsoftware_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - vetsoftware_redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+
   mysql:
     image: mysql:8.0
     container_name: vetsoftware_mysql
@@ -75,6 +84,7 @@ services:
       - loki
 
 volumes:
+  vetsoftware_redis_data:
   vetsoftware_mysql_data:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:

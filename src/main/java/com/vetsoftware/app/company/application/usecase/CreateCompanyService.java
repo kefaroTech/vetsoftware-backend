@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
@@ -18,7 +19,7 @@ public class CreateCompanyService implements CreateCompanyUseCase {
     }
 
     @Override
-    public CompanyDto execute(CreateCompanyCommand command) {
+    public CompanyDto execute(CreateCompanyCommand command, AuthContext auth) {
         Company company = Company.create(
             command.name(), command.identifier(), command.address(), command.contactNumber()
         );

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
@@ -18,7 +19,7 @@ public class DeleteCompanyService implements DeleteCompanyUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
+    public void execute(Long id, AuthContext auth) {
         repository.findById(id).orElseThrow(() -> new CompanyNotFoundException(id));
         repository.delete(id);
     }

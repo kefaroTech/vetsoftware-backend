@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
@@ -17,7 +18,7 @@ public class FindCompanyService implements FindCompanyUseCase {
     }
 
     @Override
-    public CompanyDto findById(Long id) {
+    public CompanyDto findById(Long id, AuthContext auth) {
         return repository.findById(id)
             .map(CompanyDto::from)
             .orElseThrow(() -> new CompanyNotFoundException(id));
