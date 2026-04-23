@@ -75,7 +75,6 @@ class Module {
   -name: String
   -code: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
 }
 
 class MembershipModule {
@@ -166,6 +165,27 @@ class Specie {
   -name: String
   -createdDate: LocalDateTime
   -createdBy: Employee
+}
+
+class SystemUser {
+  -id: Long
+  -code: String
+  -hashPassword: String
+  -createdDate: LocalDateTime
+}
+
+class SystemUserPermission {
+  -id: Long
+  -systemPermission: SystemPermission
+  -systemUser: SystemUser
+  -createdDate: LocalDateTime
+}
+
+class SystemPermission {
+  -id: Long
+  -name: String
+  -code: String
+  -createdDate: LocalDateTime
 }
 
 class Breed {
@@ -420,6 +440,9 @@ RolePermission --> Permission
 
 EmployeeRole --> Employee
 EmployeeRole --> Role
+
+SystemUserPermission --> SystemUser
+SystemUserPermission --> SystemPermission
 
 @enduml
 
