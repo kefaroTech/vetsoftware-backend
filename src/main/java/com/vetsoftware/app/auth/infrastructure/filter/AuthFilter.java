@@ -5,11 +5,13 @@ import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
+import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -24,21 +26,30 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private final ResolveAuthContextUseCase resolveAuthContextUseCase;
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
+    private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final RequestMappingHandlerMapping handlerMapping;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
                       ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
+                      JwtProvider jwtProvider,
                       ObjectMapper objectMapper,
                       @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
+        this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
         this.handlerMapping = handlerMapping;
     }
 
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/swagger-ui", "/v3/api-docs", "/swagger-resources", "/webjars", "/actuator"
+    );
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) return true;
         try {
             Object handler = handlerMapping.getHandler(request).getHandler();
             return handler instanceof HandlerMethod method
@@ -83,15 +94,17 @@ public class AuthFilter extends OncePerRequestFilter {
     }
 
     private String extractType(String token) {
-        // TODO: reemplazar con extracción desde JWT cuando se implemente
-        return null;
+        try {
+            return jwtProvider.extractType(token);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Long extractId(String token) {
-        // TODO: reemplazar con extracción desde JWT cuando se implemente
         try {
-            return Long.parseLong(token);
-        } catch (NumberFormatException e) {
+            return jwtProvider.extractId(token);
+        } catch (Exception e) {
             return null;
         }
     }

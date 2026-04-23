@@ -1,5 +1,6 @@
 package com.vetsoftware.app.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
@@ -22,6 +23,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Map<String, String> handleUnauthorized(InvalidCredentialsException ex) {
+        log.warn("Unauthorized: {}", ex.getMessage());
         return Map.of("error", ex.getMessage());
     }
 
