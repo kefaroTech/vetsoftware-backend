@@ -6,6 +6,6 @@ import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 
 public interface UpdateEmployeeUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all","employee.update"})
     EmployeeDto execute(UpdateEmployeeCommand command, AuthContext auth);
 }

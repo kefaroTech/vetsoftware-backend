@@ -5,7 +5,12 @@
       "Bash(docker compose *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Read(//c/Users/orlan/OneDrive/Documentos/Proyectos/**)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npm init *)",
+      "Bash(npx husky *)"
     ]
   }
 }

@@ -6,6 +6,6 @@ import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import java.util.List;
 
 public interface ListEmployeesUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all","employee.find"})
     List<EmployeeDto> listAll(AuthContext auth);
 }

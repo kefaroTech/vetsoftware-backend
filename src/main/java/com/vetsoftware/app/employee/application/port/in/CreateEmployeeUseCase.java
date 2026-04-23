@@ -6,6 +6,6 @@ import com.vetsoftware.app.employee.application.command.CreateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 
 public interface CreateEmployeeUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all","employee.create"})
     EmployeeDto execute(CreateEmployeeCommand command, AuthContext auth);
 }

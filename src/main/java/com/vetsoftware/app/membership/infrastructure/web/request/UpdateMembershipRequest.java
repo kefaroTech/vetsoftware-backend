@@ -1,3 +1,5 @@
 package com.vetsoftware.app.membership.infrastructure.web.request;
 
-public record UpdateMembershipRequest(String name, String status) {}
+import java.util.List;
+
+public record UpdateMembershipRequest(String name, String status, List<Long> moduleIds) {}

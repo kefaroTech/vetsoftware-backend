@@ -6,6 +6,6 @@ import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 
 public interface UpdateCompanyUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all", "company.update"})
     CompanyDto execute(UpdateCompanyCommand command, AuthContext auth);
 }

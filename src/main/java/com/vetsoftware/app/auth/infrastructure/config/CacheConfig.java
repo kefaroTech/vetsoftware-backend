@@ -1,5 +1,9 @@
 package com.vetsoftware.app.auth.infrastructure.config;
 
+import io.lettuce.core.resource.ClientResources;
+import io.lettuce.core.resource.DefaultClientResources;
+import io.lettuce.core.tracing.MicrometerTracing;
+import io.micrometer.observation.ObservationRegistry;
 import java.time.Duration;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +15,13 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 @Configuration
 @EnableCaching
 public class CacheConfig {
+
+    @Bean(destroyMethod = "shutdown")
+    public ClientResources clientResources(ObservationRegistry observationRegistry) {
+        return DefaultClientResources.builder()
+            .tracing(new MicrometerTracing(observationRegistry, "Redis"))
+            .build();
+    }
 
     @Bean
     public RedisCacheConfiguration defaultCacheConfig() {

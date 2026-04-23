@@ -6,6 +6,6 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import java.util.List;
 
 public interface ListCompaniesUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all","company.find"})
     List<CompanyDto> listAll(AuthContext auth);
 }

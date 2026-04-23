@@ -5,6 +5,7 @@ import com.vetsoftware.app.membership.application.command.UpdateMembershipComman
 import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import com.vetsoftware.app.membership.application.port.in.UpdateMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.out.MembershipRepository;
+import com.vetsoftware.app.membership.application.port.out.ModuleValidationPort;
 import com.vetsoftware.app.membership.domain.Membership;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipStatus;
@@ -16,18 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UpdateMembershipService implements UpdateMembershipUseCase {
     private final MembershipRepository repository;
+    private final ModuleValidationPort moduleValidationPort;
 
-    public UpdateMembershipService(MembershipRepository repository) {
+    public UpdateMembershipService(MembershipRepository repository, ModuleValidationPort moduleValidationPort) {
         this.repository = repository;
+        this.moduleValidationPort = moduleValidationPort;
     }
 
     @Override
     @Transactional
     public MembershipDto execute(UpdateMembershipCommand command, AuthContext auth) {
+        moduleValidationPort.validateAllExist(command.moduleIds());
         Membership membership = repository.findById(command.id())
             .orElseThrow(() -> new MembershipNotFoundException(command.id()));
         MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
-        membership.update(command.name(), status);
+        membership.update(command.name(), status, command.moduleIds());
         return MembershipDto.from(repository.save(membership));
     }
 }

@@ -28,6 +28,10 @@ application-local.properties
 *.project
 .settings/
 
+# Node (husky / commitlint)
+node_modules/
+package-lock.json
+
 # OS
 .DS_Store
 Thumbs.db

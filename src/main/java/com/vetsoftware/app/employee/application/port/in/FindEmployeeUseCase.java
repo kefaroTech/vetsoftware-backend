@@ -5,6 +5,6 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 
 public interface FindEmployeeUseCase {
-    @RequiresPermission("admin.all")
+    @RequiresPermission({"admin.all","employee.find"})
     EmployeeDto findById(Long id, AuthContext auth);
 }
