@@ -84,7 +84,7 @@ class SubModule {
   -createdDate: LocalDateTime
 }
 
-class MembershipModule {
+class MembershipSubModule {
   -membership: Membership
   -subModule: SubModule
   -createdDate: LocalDateTime
@@ -440,8 +440,8 @@ Owner --> Company
 Employee --> Company
 Employee --> EmployeeStatus
 
-MembershipModule --> Membership
-MembershipModule --> SubModule
+MembershipSubModule --> Membership
+MembershipSubModule --> SubModule
 
 Permission --> Company
 Permission --> SubModule
