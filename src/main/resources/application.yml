@@ -1,6 +1,9 @@
 spring:
   application:
     name: vetsoftware
+  mvc:
+    problemdetails:
+      enabled: true
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:3306/vetsoftware_db
     username: ${DB_USERNAME:cronos}
