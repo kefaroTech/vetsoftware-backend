@@ -1,0 +1,24 @@
+package com.vetsoftware.app.baserole.application.usecase;
+
+import com.vetsoftware.app.auth.application.dto.AuthContext;
+import com.vetsoftware.app.baserole.application.dto.BaseRoleDto;
+import com.vetsoftware.app.baserole.application.port.in.ListBaseRolesUseCase;
+import com.vetsoftware.app.baserole.application.port.out.BaseRoleRepository;
+import io.micrometer.observation.annotation.Observed;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Observed(name = "baserole.list")
+@Service
+public class ListBaseRolesService implements ListBaseRolesUseCase {
+    private final BaseRoleRepository repository;
+
+    public ListBaseRolesService(BaseRoleRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<BaseRoleDto> listAll(AuthContext auth) {
+        return repository.findAll().stream().map(BaseRoleDto::from).toList();
+    }
+}

@@ -3,19 +3,16 @@
 ' =========================
 ' Enums
 ' =========================
-enum HospitalizationType {
-  OUTPATIENT
-  HOSPITALIZATION
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
 }
 
-enum ReasonLeaving {
-  MEDICAL_DISCHARGE
-  HOME_TREATMENT
-  TRANSFER
-  TUTOR_WISH
-  ADMIN
-  DEATH
-  EUTHANASIA
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
 }
 
 enum Gender {
@@ -41,6 +38,21 @@ enum ReproductiveState {
   UNKNOWN
 }
 
+enum HospitalizationType {
+  OUTPATIENT
+  HOSPITALIZATION
+}
+
+enum ReasonLeaving {
+  MEDICAL_DISCHARGE
+  HOME_TREATMENT
+  TRANSFER
+  TUTOR_WISH
+  ADMIN
+  DEATH
+  EUTHANASIA
+}
+
 enum DewormingType {
   INTERNAL
   EXTERNAL
@@ -48,27 +60,37 @@ enum DewormingType {
   OTHER
 }
 
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum MembershipStatus {
-  ACTIVE
-  INACTIVE
-  DEPRECATED
-}
-
 ' =========================
-' Classes
+' System / Auth
 ' =========================
-class Company {
-  -name: String
-  -identifier: String
-  -address: String
-  -contactNumber: String
-  -membership: Membership
+
+class SystemUser {
+  -code: String
+  -hashPassword: String
   -createdDate: LocalDateTime
+}
+
+class SystemPermission {
+  -name: String
+  -code: String
+  -createdDate: LocalDateTime
+}
+
+class SystemUserPermission {
+  -systemUser: SystemUser
+  -systemPermission: SystemPermission
+  -createdDate: LocalDateTime
+}
+
+' =========================
+' Membership / Modules
+' =========================
+
+class Membership {
+  -name: String
+  -status: MembershipStatus
+  -createdDate: LocalDateTime
+  -createdBy: Employee
 }
 
 class Module {
@@ -90,12 +112,51 @@ class MembershipSubModule {
   -createdDate: LocalDateTime
 }
 
+class BasePermission {
+  -name: String
+  -code: String
+  -subModule: SubModule
+  -createdDate: LocalDateTime
+}
+
+' =========================
+' Company / Employee
+' =========================
+
+class Company {
+  -name: String
+  -identifier: String
+  -address: String
+  -contactNumber: String
+  -membership: Membership
+  -createdDate: LocalDateTime
+}
+
 class Employee {
   -employeeCode: String
   -hashPassword: String
   -name: String
   -email: String
   -status: EmployeeStatus
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+' =========================
+' Authorization
+' =========================
+
+class BaseRole {
+  -name: String
+  -code: String
+  -mandatory: Boolean
+  -createdDate: LocalDateTime
+}
+
+class Role {
+  -name: String
+  -code: String
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -109,33 +170,17 @@ class Permission {
   -createdDate: LocalDateTime
 }
 
-class BasePermission {
-  -name: String
-  -code: String
-  -subModule: SubModule
-  -createdDate: LocalDateTime
-}
-
-class Membership {
-  -name
-  -status:MembershipStatus
-  -createdDate: LocalDateTime
-  -createdBy: Employee
-}
-
-class Role {
-  -name: String
-  -code: String
-  -company: Company
-  -createdDate: LocalDateTime
-  -createdBy: Employee
-}
-
 class RolePermission {
   -role: Role
   -permission: Permission
   -createdDate: LocalDateTime
   -createdBy: Employee
+}
+
+class BaseRolePermission {
+  -baseRole: BaseRole
+  -basePermission: BasePermission
+  -createdDate: LocalDateTime
 }
 
 class EmployeeRole {
@@ -145,23 +190,28 @@ class EmployeeRole {
   -createdBy: Employee
 }
 
+' =========================
+' Location
+' =========================
+
 class State {
-  -id: Long
   -name: String
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
 class City {
-  -id: Long
   -name: String
   -state: State
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
+' =========================
+' Owner / Animal
+' =========================
+
 class Owner {
-  -id: Long
   -name: String
   -email: String
   -document: String
@@ -174,35 +224,12 @@ class Owner {
 }
 
 class Specie {
-  -id: Long
   -name: String
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
-class SystemUser {
-  -id: Long
-  -code: String
-  -hashPassword: String
-  -createdDate: LocalDateTime
-}
-
-class SystemUserPermission {
-  -id: Long
-  -systemPermission: SystemPermission
-  -systemUser: SystemUser
-  -createdDate: LocalDateTime
-}
-
-class SystemPermission {
-  -id: Long
-  -name: String
-  -code: String
-  -createdDate: LocalDateTime
-}
-
 class Breed {
-  -id: Long
   -name: String
   -specie: Specie
   -createdDate: LocalDateTime
@@ -210,44 +237,29 @@ class Breed {
 }
 
 class Animal {
-  -id: Long
   -name: String
   -code: String
   -specie: Specie
+  -breed: Breed
+  -owner: Owner
   -gender: Gender
+  -weightType: WeightType
+  -animalType: AnimalType
+  -reproductiveState: ReproductiveState
   -color: Color
   -bod: LocalDate
   -weight: Integer
-  -weightType: WeightType
   -size: Integer
-  -reproductiveState: ReproductiveState
-  -breed: Breed
-  -owner: Owner
   -deceased: Boolean
   -deceasedDate: LocalDate
-  -animalType: AnimalType
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
-class VaccinationType {
-  -name: String
-  -description: String
-  -createdDate: LocalDateTime
-  -createdBy: Employee
-}
-
-class Vaccination {
-  -date: LocalDate
-  -type: VaccinationType
-  -notes: String
-  -nextVaccination: LocalDate
-  -animal: Animal
-  -lot: String
-  -createdDate: LocalDateTime
-  -createdBy: Employee
-}
+' =========================
+' Medical Records
+' =========================
 
 class ConsultationType {
   -name: String
@@ -269,14 +281,19 @@ class Consultation {
   -createdBy: Employee
 }
 
-class Hospitalization {
+class VaccinationType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Vaccination {
   -date: LocalDate
-  -startDate: LocalDate
-  -endDate: LocalDate
-  -type: HospitalizationType
-  -reasonLeaving: ReasonLeaving
-  -reason: String
-  -observations: String
+  -type: VaccinationType
+  -lot: String
+  -notes: String
+  -nextVaccination: LocalDate
   -animal: Animal
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -296,6 +313,19 @@ class Surgery {
   -medicament: String
   -observations: String
   -complications: String
+  -animal: Animal
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
+class Hospitalization {
+  -date: LocalDate
+  -startDate: LocalDate
+  -endDate: LocalDate
+  -type: HospitalizationType
+  -reasonLeaving: ReasonLeaving
+  -reason: String
+  -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -361,8 +391,8 @@ class DiagnosticImaging {
   -date: LocalDate
   -type: DiagnosticImagingType
   -clinicalSigns: String
-  -diagnosis: String
   -studyType: String
+  -diagnosis: String
   -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
@@ -378,10 +408,10 @@ class SpaType {
 
 class Spa {
   -date: LocalDate
-  -observations: String
   -type: SpaType
   -reason: String
   -details: String
+  -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -390,75 +420,69 @@ class Spa {
 ' =========================
 ' Relationships
 ' =========================
-Owner "0..*" --> "1" City
-City --> State
 
-Animal --> Specie
-Animal --> Gender
-Animal --> WeightType
-Animal --> ReproductiveState
-Animal --> Breed
-Animal --> Owner
-Animal --> AnimalType
-Animal --> Company
-
-Breed --> Specie
-
-Consultation --> Animal
-Consultation --> ConsultationType
-
-Company --> Membership
-
-Membership --> MembershipStatus
-
-Vaccination --> Animal
-Vaccination --> VaccinationType
-
-Prescription --> Animal
-Prescription --> Medicament
-
-Deworming --> Animal
-Deworming --> DewormingType
-
-Hospitalization --> Animal
-Hospitalization --> HospitalizationType
-Hospitalization --> ReasonLeaving
-
-Surgery --> Animal
-Surgery --> SurgeryType
-
-LaboratoryTest --> Animal
-LaboratoryTest --> TestType
-
-DiagnosticImaging --> Animal
-DiagnosticImaging --> DiagnosticImagingType
-
-Spa --> Animal
-Spa --> SpaType
-
-Owner --> Company
-Employee --> Company
-Employee --> EmployeeStatus
-
-MembershipSubModule --> Membership
-MembershipSubModule --> SubModule
-
-Permission --> Company
-Permission --> SubModule
-BasePermission --> SubModule
-SubModule --> Module
-
-Role --> Company
-
-RolePermission --> Role
-RolePermission --> Permission
-
-EmployeeRole --> Employee
-EmployeeRole --> Role
-
+' System / Auth
 SystemUserPermission --> SystemUser
 SystemUserPermission --> SystemPermission
 
+' Membership / Modules
+Membership          --> MembershipStatus
+MembershipSubModule --> Membership
+MembershipSubModule --> SubModule
+SubModule           --> Module
+BasePermission      --> SubModule
+
+' Company / Employee
+Company  --> Membership
+Employee --> Company
+Employee --> EmployeeStatus
+
+' Authorization
+Role               --> Company
+Permission         --> Company
+Permission         --> SubModule
+RolePermission     --> Role
+RolePermission     --> Permission
+BaseRolePermission --> BaseRole
+BaseRolePermission --> BasePermission
+EmployeeRole       --> Employee
+EmployeeRole       --> Role
+
+' Location
+City         --> State
+Owner "0..*" --> "1" City
+
+' Owner / Animal
+Owner  --> Company
+Breed  --> Specie
+Animal --> Specie
+Animal --> Breed
+Animal --> Owner
+Animal --> Company
+Animal --> Gender
+Animal --> WeightType
+Animal --> AnimalType
+Animal --> ReproductiveState
+
+' Medical Records
+Consultation      --> Animal
+Consultation      --> ConsultationType
+Vaccination       --> Animal
+Vaccination       --> VaccinationType
+Surgery           --> Animal
+Surgery           --> SurgeryType
+Hospitalization   --> Animal
+Hospitalization   --> HospitalizationType
+Hospitalization   --> ReasonLeaving
+LaboratoryTest    --> Animal
+LaboratoryTest    --> TestType
+Prescription      --> Animal
+Prescription      --> Medicament
+Deworming         --> Animal
+Deworming         --> DewormingType
+DiagnosticImaging --> Animal
+DiagnosticImaging --> DiagnosticImagingType
+Spa               --> Animal
+Spa               --> SpaType
+
 @enduml
-
-
