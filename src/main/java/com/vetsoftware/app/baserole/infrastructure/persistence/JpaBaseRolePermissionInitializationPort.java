@@ -25,6 +25,7 @@ public class JpaBaseRolePermissionInitializationPort implements BaseRolePermissi
     public void initializeForAllBasePermissions(Long baseRoleId) {
         var baseRole = baseRoleJpaRepository.getReferenceById(baseRoleId);
         var entities = basePermissionJpaRepository.findAll().stream()
+            .filter(bp -> !baseRolePermissionJpaRepository.existsByBaseRoleIdAndBasePermissionId(baseRoleId, bp.getId()))
             .map(bp -> {
                 var entity = new BaseRolePermissionJpaEntity();
                 entity.setBaseRole(baseRole);

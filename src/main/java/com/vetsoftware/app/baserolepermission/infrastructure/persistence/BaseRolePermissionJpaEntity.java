@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "base_role_permissions")
+@Table(name = "base_role_permissions", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_base_role_permissions", columnNames = {"base_role_id", "base_permission_id"})
+})
 public class BaseRolePermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

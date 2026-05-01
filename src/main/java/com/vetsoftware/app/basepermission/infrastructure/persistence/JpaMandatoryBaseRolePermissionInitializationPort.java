@@ -25,6 +25,7 @@ public class JpaMandatoryBaseRolePermissionInitializationPort implements Mandato
     public void initializeForMandatoryBaseRoles(Long basePermissionId) {
         var basePermission = basePermissionJpaRepository.getReferenceById(basePermissionId);
         var entities = baseRoleJpaRepository.findByMandatoryTrue().stream()
+            .filter(br -> !baseRolePermissionJpaRepository.existsByBaseRoleIdAndBasePermissionId(br.getId(), basePermissionId))
             .map(br -> {
                 var entity = new BaseRolePermissionJpaEntity();
                 entity.setBaseRole(br);
