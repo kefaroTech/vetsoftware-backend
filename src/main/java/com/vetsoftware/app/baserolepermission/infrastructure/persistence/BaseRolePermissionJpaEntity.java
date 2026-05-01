@@ -23,7 +23,7 @@ public class BaseRolePermissionJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    protected BaseRolePermissionJpaEntity() {}
+    public BaseRolePermissionJpaEntity() {}
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
