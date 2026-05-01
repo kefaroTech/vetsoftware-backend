@@ -7,6 +7,7 @@ import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
+import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
@@ -25,7 +26,7 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class, MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class, ModuleNotFoundException.class, PermissionNotFoundException.class, SubModuleNotFoundException.class, BasePermissionNotFoundException.class, BaseRoleNotFoundException.class})
+    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class, MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class, ModuleNotFoundException.class, PermissionNotFoundException.class, SubModuleNotFoundException.class, BasePermissionNotFoundException.class, BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

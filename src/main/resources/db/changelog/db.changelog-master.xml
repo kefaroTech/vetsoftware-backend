@@ -22,5 +22,6 @@
     <include file="db/changelog/migrations/017_create_permissions.xml"/>
     <include file="db/changelog/migrations/018_rename_membership_modules_to_membership_sub_modules.xml"/>
     <include file="db/changelog/migrations/019_create_base_roles.xml"/>
+    <include file="db/changelog/migrations/020_create_base_role_permissions.xml"/>
 
 </databaseChangeLog>
