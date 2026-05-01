@@ -2,8 +2,6 @@ package com.vetsoftware.app.membership.infrastructure.persistence;
 
 import com.vetsoftware.app.membership.application.port.out.MembershipRepository;
 import com.vetsoftware.app.membership.domain.Membership;
-import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaEntity;
-import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -12,19 +10,15 @@ import org.springframework.stereotype.Repository;
 public class JpaMembershipRepository implements MembershipRepository {
     private final MembershipJpaRepository jpaRepository;
     private final MembershipJpaMapper mapper;
-    private final ModuleJpaRepository moduleJpaRepository;
 
-    public JpaMembershipRepository(MembershipJpaRepository jpaRepository, MembershipJpaMapper mapper,
-                                   ModuleJpaRepository moduleJpaRepository) {
+    public JpaMembershipRepository(MembershipJpaRepository jpaRepository, MembershipJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
-        this.moduleJpaRepository = moduleJpaRepository;
     }
 
     @Override
     public Membership save(Membership membership) {
-        List<ModuleJpaEntity> modules = moduleJpaRepository.findAllById(membership.getModuleIds());
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(membership, modules)));
+        return mapper.toDomain(jpaRepository.save(mapper.toJpa(membership)));
     }
 
     @Override

@@ -40,7 +40,7 @@ public class MembershipController {
     public MembershipResponse create(@RequestBody CreateMembershipRequest request,
                                      @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
-            new CreateMembershipCommand(request.name(), request.status(), request.moduleIds()),
+            new CreateMembershipCommand(request.name(), request.status()),
             authContext
         ));
     }
@@ -59,7 +59,7 @@ public class MembershipController {
     public MembershipResponse update(@PathVariable Long id, @RequestBody UpdateMembershipRequest request,
                                      @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
-            new UpdateMembershipCommand(id, request.name(), request.status(), request.moduleIds()),
+            new UpdateMembershipCommand(id, request.name(), request.status()),
             authContext
         ));
     }
@@ -71,6 +71,6 @@ public class MembershipController {
     }
 
     private MembershipResponse toResponse(MembershipDto dto) {
-        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.createdDate(), dto.moduleIds());
+        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.createdDate());
     }
 }

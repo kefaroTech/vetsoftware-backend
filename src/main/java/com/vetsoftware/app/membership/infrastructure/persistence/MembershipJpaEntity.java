@@ -1,10 +1,7 @@
 package com.vetsoftware.app.membership.infrastructure.persistence;
 
-import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "memberships")
@@ -22,14 +19,6 @@ public class MembershipJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "membership_modules",
-        joinColumns = @JoinColumn(name = "membership_id"),
-        inverseJoinColumns = @JoinColumn(name = "module_id")
-    )
-    private List<ModuleJpaEntity> modules = new ArrayList<>();
-
     protected MembershipJpaEntity() {}
 
     public Long getId() { return id; }
@@ -40,6 +29,4 @@ public class MembershipJpaEntity {
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public List<ModuleJpaEntity> getModules() { return modules; }
-    public void setModules(List<ModuleJpaEntity> modules) { this.modules = modules; }
 }
