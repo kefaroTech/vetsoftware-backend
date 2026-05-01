@@ -1,3 +1,8 @@
 package com.vetsoftware.app.membershipsubmodule.infrastructure.web.request;
 
-public record UpdateMembershipSubModuleRequest(Long membershipId, Long subModuleId) {}
+import jakarta.validation.constraints.NotNull;
+
+public record UpdateMembershipSubModuleRequest(
+        @NotNull Long membershipId,
+        @NotNull Long subModuleId
+) {}

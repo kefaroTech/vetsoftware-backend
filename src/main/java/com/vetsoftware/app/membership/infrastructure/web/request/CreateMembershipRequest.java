@@ -1,3 +1,9 @@
 package com.vetsoftware.app.membership.infrastructure.web.request;
 
-public record CreateMembershipRequest(String name, String status) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record CreateMembershipRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank String status
+) {}

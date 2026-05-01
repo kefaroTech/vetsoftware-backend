@@ -12,6 +12,7 @@ import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.request.UpdateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.response.CompanyResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class CompanyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompanyResponse create(@RequestBody CreateCompanyRequest request,
+    public CompanyResponse create(@Valid @RequestBody CreateCompanyRequest request,
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber()),
@@ -56,7 +57,7 @@ public class CompanyController {
     }
 
     @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable Long id, @RequestBody UpdateCompanyRequest request,
+    public CompanyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCompanyRequest request,
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(), request.contactNumber()),

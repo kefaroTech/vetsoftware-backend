@@ -12,6 +12,7 @@ import com.vetsoftware.app.module.application.port.in.UpdateModuleUseCase;
 import com.vetsoftware.app.module.infrastructure.web.request.CreateModuleRequest;
 import com.vetsoftware.app.module.infrastructure.web.request.UpdateModuleRequest;
 import com.vetsoftware.app.module.infrastructure.web.response.ModuleResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class ModuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ModuleResponse create(@RequestBody CreateModuleRequest request,
+    public ModuleResponse create(@Valid @RequestBody CreateModuleRequest request,
                                  @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(new CreateModuleCommand(request.name(), request.code()), authContext));
     }
@@ -54,7 +55,7 @@ public class ModuleController {
     }
 
     @PutMapping("/{id}")
-    public ModuleResponse update(@PathVariable Long id, @RequestBody UpdateModuleRequest request,
+    public ModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateModuleRequest request,
                                  @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code()), authContext));
     }

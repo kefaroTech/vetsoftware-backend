@@ -12,6 +12,7 @@ import com.vetsoftware.app.membership.application.port.in.UpdateMembershipUseCas
 import com.vetsoftware.app.membership.infrastructure.web.request.CreateMembershipRequest;
 import com.vetsoftware.app.membership.infrastructure.web.request.UpdateMembershipRequest;
 import com.vetsoftware.app.membership.infrastructure.web.response.MembershipResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class MembershipController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MembershipResponse create(@RequestBody CreateMembershipRequest request,
+    public MembershipResponse create(@Valid @RequestBody CreateMembershipRequest request,
                                      @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateMembershipCommand(request.name(), request.status()),
@@ -56,7 +57,7 @@ public class MembershipController {
     }
 
     @PutMapping("/{id}")
-    public MembershipResponse update(@PathVariable Long id, @RequestBody UpdateMembershipRequest request,
+    public MembershipResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMembershipRequest request,
                                      @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateMembershipCommand(id, request.name(), request.status()),

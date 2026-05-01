@@ -12,6 +12,7 @@ import com.vetsoftware.app.baserolepermission.application.port.in.UpdateBaseRole
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.CreateBaseRolePermissionRequest;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.UpdateBaseRolePermissionRequest;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.response.BaseRolePermissionResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,7 @@ public class BaseRolePermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BaseRolePermissionResponse create(@RequestBody CreateBaseRolePermissionRequest request,
+    public BaseRolePermissionResponse create(@Valid @RequestBody CreateBaseRolePermissionRequest request,
                                               @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateBaseRolePermissionCommand(request.baseRoleId(), request.basePermissionId()), authContext));
@@ -58,7 +59,7 @@ public class BaseRolePermissionController {
 
     @PutMapping("/{id}")
     public BaseRolePermissionResponse update(@PathVariable Long id,
-                                              @RequestBody UpdateBaseRolePermissionRequest request,
+                                              @Valid @RequestBody UpdateBaseRolePermissionRequest request,
                                               @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateBaseRolePermissionCommand(id, request.baseRoleId(), request.basePermissionId()), authContext));

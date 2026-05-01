@@ -12,6 +12,7 @@ import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCas
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
 import com.vetsoftware.app.permission.infrastructure.web.request.UpdatePermissionRequest;
 import com.vetsoftware.app.permission.infrastructure.web.response.PermissionResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,7 @@ public class PermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PermissionResponse create(@RequestBody CreatePermissionRequest request,
+    public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request,
                                       @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreatePermissionCommand(request.name(), request.code(), request.companyId(), request.subModuleId()),
@@ -59,7 +60,7 @@ public class PermissionController {
 
     @PutMapping("/{id}")
     public PermissionResponse update(@PathVariable Long id,
-                                      @RequestBody UpdatePermissionRequest request,
+                                      @Valid @RequestBody UpdatePermissionRequest request,
                                       @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdatePermissionCommand(id, request.name(), request.code(), request.companyId(), request.subModuleId()),

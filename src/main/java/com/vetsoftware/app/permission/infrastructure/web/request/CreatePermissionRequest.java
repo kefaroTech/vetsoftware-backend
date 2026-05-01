@@ -1,3 +1,12 @@
 package com.vetsoftware.app.permission.infrastructure.web.request;
 
-public record CreatePermissionRequest(String name, String code, Long companyId, Long subModuleId) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public record CreatePermissionRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code,
+        @NotNull Long companyId,
+        @NotNull Long subModuleId
+) {}

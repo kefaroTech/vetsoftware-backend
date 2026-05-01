@@ -12,6 +12,7 @@ import com.vetsoftware.app.baserole.application.port.in.UpdateBaseRoleUseCase;
 import com.vetsoftware.app.baserole.infrastructure.web.request.CreateBaseRoleRequest;
 import com.vetsoftware.app.baserole.infrastructure.web.request.UpdateBaseRoleRequest;
 import com.vetsoftware.app.baserole.infrastructure.web.response.BaseRoleResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,7 @@ public class BaseRoleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BaseRoleResponse create(@RequestBody CreateBaseRoleRequest request,
+    public BaseRoleResponse create(@Valid @RequestBody CreateBaseRoleRequest request,
                                     @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateBaseRoleCommand(request.name(), request.code(), request.mandatory()), authContext));
@@ -58,7 +59,7 @@ public class BaseRoleController {
 
     @PutMapping("/{id}")
     public BaseRoleResponse update(@PathVariable Long id,
-                                    @RequestBody UpdateBaseRoleRequest request,
+                                    @Valid @RequestBody UpdateBaseRoleRequest request,
                                     @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateBaseRoleCommand(id, request.name(), request.code(), request.mandatory()), authContext));

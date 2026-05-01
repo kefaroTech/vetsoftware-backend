@@ -1,3 +1,11 @@
 package com.vetsoftware.app.submodule.infrastructure.web.request;
 
-public record CreateSubModuleRequest(String name, String code, Long moduleId) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public record CreateSubModuleRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code,
+        @NotNull Long moduleId
+) {}

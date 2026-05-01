@@ -1,3 +1,11 @@
 package com.vetsoftware.app.basepermission.infrastructure.web.request;
 
-public record UpdateBasePermissionRequest(String name, String code, Long subModuleId) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public record UpdateBasePermissionRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code,
+        @NotNull Long subModuleId
+) {}

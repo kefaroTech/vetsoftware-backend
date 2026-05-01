@@ -9,6 +9,7 @@ import com.vetsoftware.app.auth.application.port.in.LoginSystemUserUseCase;
 import com.vetsoftware.app.auth.infrastructure.web.request.LoginEmployeeRequest;
 import com.vetsoftware.app.auth.infrastructure.web.request.LoginSystemUserRequest;
 import com.vetsoftware.app.auth.infrastructure.web.response.TokenResponse;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,7 +27,7 @@ public class AuthController {
 
     @PostMapping("/login/employee")
     @PublicEndpoint
-    public TokenResponse loginEmployee(@RequestBody LoginEmployeeRequest request) {
+    public TokenResponse loginEmployee(@Valid @RequestBody LoginEmployeeRequest request) {
         TokenDto dto = loginEmployeeUseCase.execute(
                 new LoginEmployeeCommand(request.employeeCode(), request.password())
         );
@@ -35,7 +36,7 @@ public class AuthController {
 
     @PostMapping("/login/system")
     @PublicEndpoint
-    public TokenResponse loginSystemUser(@RequestBody LoginSystemUserRequest request) {
+    public TokenResponse loginSystemUser(@Valid @RequestBody LoginSystemUserRequest request) {
         TokenDto dto = loginSystemUserUseCase.execute(
                 new LoginSystemUserCommand(request.code(), request.password())
         );

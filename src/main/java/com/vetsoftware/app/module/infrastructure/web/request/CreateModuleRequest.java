@@ -1,3 +1,9 @@
 package com.vetsoftware.app.module.infrastructure.web.request;
 
-public record CreateModuleRequest(String name, String code) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record CreateModuleRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code
+) {}

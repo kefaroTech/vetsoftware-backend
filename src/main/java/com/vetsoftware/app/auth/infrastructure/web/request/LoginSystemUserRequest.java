@@ -1,3 +1,8 @@
 package com.vetsoftware.app.auth.infrastructure.web.request;
 
-public record LoginSystemUserRequest(String code, String password) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginSystemUserRequest(
+        @NotBlank String code,
+        @NotBlank String password
+) {}

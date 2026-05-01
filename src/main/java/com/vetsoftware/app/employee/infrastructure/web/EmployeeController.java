@@ -12,6 +12,7 @@ import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.UpdateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class EmployeeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmployeeResponse create(@RequestBody CreateEmployeeRequest request,
+    public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request,
                                    @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateEmployeeCommand(request.employeeCode(), request.password(), request.name(),
@@ -57,7 +58,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    public EmployeeResponse update(@PathVariable Long id, @RequestBody UpdateEmployeeRequest request,
+    public EmployeeResponse update(@PathVariable Long id, @Valid @RequestBody UpdateEmployeeRequest request,
                                    @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateEmployeeCommand(id, request.employeeCode(), request.name(), request.email(), request.status()),

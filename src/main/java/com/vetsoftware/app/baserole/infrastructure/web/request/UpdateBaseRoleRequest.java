@@ -1,3 +1,11 @@
 package com.vetsoftware.app.baserole.infrastructure.web.request;
 
-public record UpdateBaseRoleRequest(String name, String code, Boolean mandatory) {}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public record UpdateBaseRoleRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code,
+        @NotNull Boolean mandatory
+) {}
