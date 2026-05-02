@@ -18,7 +18,9 @@
       "PowerShell(.\\\\mvnw.cmd clean package -DskipTests 2>&1 | Select-Object -Last 30)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Java\\\\jdk-21\"; & \"C:\\\\Program Files\\\\Apache\\\\maven\\\\bin\\\\mvn.cmd\" clean package -DskipTests 2>&1 | Select-Object -Last 20)",
       "Bash(mvn -q -DskipTests compile)",
-      "PowerShell(mvn *)"
+      "PowerShell(mvn *)",
+      "Bash(curl *)",
+      "Bash(unzip -l target/vetsoftware-1.0.0.jar)"
     ]
   }
 }
