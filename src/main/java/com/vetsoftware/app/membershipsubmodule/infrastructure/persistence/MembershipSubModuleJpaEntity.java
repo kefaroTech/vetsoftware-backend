@@ -12,11 +12,11 @@ public class MembershipSubModuleJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "membership_id", nullable = false)
     private MembershipJpaEntity membership;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sub_module_id", nullable = false)
     private SubModuleJpaEntity subModule;
 

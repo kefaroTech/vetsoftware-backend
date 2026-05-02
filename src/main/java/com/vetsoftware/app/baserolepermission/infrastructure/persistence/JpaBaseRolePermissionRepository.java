@@ -1,6 +1,8 @@
 package com.vetsoftware.app.baserolepermission.infrastructure.persistence;
 
+import com.vetsoftware.app.basepermission.infrastructure.persistence.BasePermissionJpaEntity;
 import com.vetsoftware.app.basepermission.infrastructure.persistence.BasePermissionJpaRepository;
+import com.vetsoftware.app.baserole.infrastructure.persistence.BaseRoleJpaEntity;
 import com.vetsoftware.app.baserole.infrastructure.persistence.BaseRoleJpaRepository;
 import com.vetsoftware.app.baserolepermission.application.port.out.BaseRolePermissionRepository;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermission;
@@ -27,9 +29,10 @@ public class JpaBaseRolePermissionRepository implements BaseRolePermissionReposi
 
     @Override
     public BaseRolePermission save(BaseRolePermission baseRolePermission) {
-        var baseRole = baseRoleJpaRepository.getReferenceById(baseRolePermission.getBaseRoleId());
-        var basePermission = basePermissionJpaRepository.getReferenceById(baseRolePermission.getBasePermissionId());
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(baseRolePermission, baseRole, basePermission)));
+        BaseRoleJpaEntity baseRole = baseRoleJpaRepository.getReferenceById(baseRolePermission.getBaseRole().id());
+        BasePermissionJpaEntity basePermission = basePermissionJpaRepository.getReferenceById(baseRolePermission.getBasePermission().id());
+        BaseRolePermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(baseRolePermission, baseRole, basePermission));
+        return mapper.toDomain(saved, baseRolePermission.getBaseRole(), baseRolePermission.getBasePermission());
     }
 
     @Override

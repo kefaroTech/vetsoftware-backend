@@ -3,7 +3,9 @@ package com.vetsoftware.app.permission.infrastructure.web;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.permission.application.command.CreatePermissionCommand;
 import com.vetsoftware.app.permission.application.command.UpdatePermissionCommand;
+import com.vetsoftware.app.permission.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.permission.application.dto.PermissionDto;
+import com.vetsoftware.app.permission.application.dto.SubModuleSummaryDto;
 import com.vetsoftware.app.permission.application.port.in.CreatePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.DeletePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.FindPermissionUseCase;
@@ -11,7 +13,9 @@ import com.vetsoftware.app.permission.application.port.in.ListPermissionsUseCase
 import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCase;
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
 import com.vetsoftware.app.permission.infrastructure.web.request.UpdatePermissionRequest;
+import com.vetsoftware.app.permission.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.permission.infrastructure.web.response.PermissionResponse;
+import com.vetsoftware.app.permission.infrastructure.web.response.SubModuleSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -74,6 +78,13 @@ public class PermissionController {
     }
 
     private PermissionResponse toResponse(PermissionDto dto) {
-        return new PermissionResponse(dto.id(), dto.name(), dto.code(), dto.companyId(), dto.subModuleId(), dto.createdDate());
+        CompanySummaryDto c = dto.company();
+        SubModuleSummaryDto sm = dto.subModule();
+        return new PermissionResponse(
+            dto.id(), dto.name(), dto.code(),
+            new CompanySummary(c.id(), c.name(), c.identifier()),
+            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
+            dto.createdDate()
+        );
     }
 }

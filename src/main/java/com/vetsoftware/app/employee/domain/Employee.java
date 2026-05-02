@@ -9,12 +9,12 @@ public class Employee {
     private String name;
     private String email;
     private EmployeeStatus status;
-    private final Long companyId;
+    private final CompanyRef company;
     private final LocalDateTime createdDate;
     private final Long createdBy;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
-                    EmployeeStatus status, Long companyId, LocalDateTime createdDate, Long createdBy) {
+                    EmployeeStatus status, CompanyRef company, LocalDateTime createdDate, Long createdBy) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -23,22 +23,22 @@ public class Employee {
         if (email == null || email.isBlank()) throw new IllegalArgumentException("email is required");
         if (email.length() > 100) throw new IllegalArgumentException("email must be 100 chars or less");
         if (status == null) throw new IllegalArgumentException("status is required");
-        if (companyId == null) throw new IllegalArgumentException("companyId is required");
+        if (company == null) throw new IllegalArgumentException("company is required");
         this.id = id;
         this.employeeCode = employeeCode;
         this.hashPassword = hashPassword;
         this.name = name;
         this.email = email;
         this.status = status;
-        this.companyId = companyId;
+        this.company = company;
         this.createdDate = createdDate;
         this.createdBy = createdBy;
     }
 
     public static Employee create(String employeeCode, String hashPassword, String name, String email,
-                                  EmployeeStatus status, Long companyId, Long createdBy) {
+                                  EmployeeStatus status, CompanyRef company, Long createdBy) {
         return new Employee(null, employeeCode, hashPassword, name, email,
-            status, companyId, LocalDateTime.now(), createdBy);
+            status, company, LocalDateTime.now(), createdBy);
     }
 
     public void update(String employeeCode, String name, String email, EmployeeStatus status) {
@@ -61,7 +61,7 @@ public class Employee {
     public String getName() { return name; }
     public String getEmail() { return email; }
     public EmployeeStatus getStatus() { return status; }
-    public Long getCompanyId() { return companyId; }
+    public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public Long getCreatedBy() { return createdBy; }
 }

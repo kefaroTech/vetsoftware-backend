@@ -24,8 +24,9 @@ public class JpaBasePermissionRepository implements BasePermissionRepository {
 
     @Override
     public BasePermission save(BasePermission basePermission) {
-        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(basePermission.getSubModuleId());
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(basePermission, subModule)));
+        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(basePermission.getSubModule().id());
+        BasePermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(basePermission, subModule));
+        return mapper.toDomain(saved, basePermission.getSubModule());
     }
 
     @Override

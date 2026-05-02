@@ -3,6 +3,7 @@ package com.vetsoftware.app.employee.infrastructure.web;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.command.CreateEmployeeCommand;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
+import com.vetsoftware.app.employee.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.CreateEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
@@ -11,6 +12,7 @@ import com.vetsoftware.app.employee.application.port.in.ListEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.UpdateEmployeeRequest;
+import com.vetsoftware.app.employee.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -73,7 +75,10 @@ public class EmployeeController {
     }
 
     private EmployeeResponse toResponse(EmployeeDto dto) {
+        CompanySummaryDto c = dto.company();
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),
-            dto.status(), dto.companyId(), dto.createdDate(), dto.createdBy());
+            dto.status(),
+            new CompanySummary(c.id(), c.name(), c.identifier()),
+            dto.createdDate(), dto.createdBy());
     }
 }

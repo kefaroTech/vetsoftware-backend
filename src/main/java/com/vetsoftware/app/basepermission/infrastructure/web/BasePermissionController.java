@@ -4,6 +4,7 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.command.CreateBasePermissionCommand;
 import com.vetsoftware.app.basepermission.application.command.UpdateBasePermissionCommand;
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
+import com.vetsoftware.app.basepermission.application.dto.SubModuleSummaryDto;
 import com.vetsoftware.app.basepermission.application.port.in.CreateBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.in.DeleteBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.in.FindBasePermissionUseCase;
@@ -12,6 +13,7 @@ import com.vetsoftware.app.basepermission.application.port.in.UpdateBasePermissi
 import com.vetsoftware.app.basepermission.infrastructure.web.request.CreateBasePermissionRequest;
 import com.vetsoftware.app.basepermission.infrastructure.web.request.UpdateBasePermissionRequest;
 import com.vetsoftware.app.basepermission.infrastructure.web.response.BasePermissionResponse;
+import com.vetsoftware.app.basepermission.infrastructure.web.response.SubModuleSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -73,6 +75,11 @@ public class BasePermissionController {
     }
 
     private BasePermissionResponse toResponse(BasePermissionDto dto) {
-        return new BasePermissionResponse(dto.id(), dto.name(), dto.code(), dto.subModuleId(), dto.createdDate());
+        SubModuleSummaryDto sm = dto.subModule();
+        return new BasePermissionResponse(
+            dto.id(), dto.name(), dto.code(),
+            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
+            dto.createdDate()
+        );
     }
 }

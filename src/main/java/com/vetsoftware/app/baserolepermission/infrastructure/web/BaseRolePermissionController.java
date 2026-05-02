@@ -3,7 +3,9 @@ package com.vetsoftware.app.baserolepermission.infrastructure.web;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.CreateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.command.UpdateBaseRolePermissionCommand;
+import com.vetsoftware.app.baserolepermission.application.dto.BasePermissionSummaryDto;
 import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermissionDto;
+import com.vetsoftware.app.baserolepermission.application.dto.BaseRoleSummaryDto;
 import com.vetsoftware.app.baserolepermission.application.port.in.CreateBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.application.port.in.DeleteBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.application.port.in.FindBaseRolePermissionUseCase;
@@ -11,7 +13,9 @@ import com.vetsoftware.app.baserolepermission.application.port.in.ListBaseRolePe
 import com.vetsoftware.app.baserolepermission.application.port.in.UpdateBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.CreateBaseRolePermissionRequest;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.UpdateBaseRolePermissionRequest;
+import com.vetsoftware.app.baserolepermission.infrastructure.web.response.BasePermissionSummary;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.response.BaseRolePermissionResponse;
+import com.vetsoftware.app.baserolepermission.infrastructure.web.response.BaseRoleSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -72,6 +76,13 @@ public class BaseRolePermissionController {
     }
 
     private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {
-        return new BaseRolePermissionResponse(dto.id(), dto.baseRoleId(), dto.basePermissionId(), dto.createdDate());
+        BaseRoleSummaryDto br = dto.baseRole();
+        BasePermissionSummaryDto bp = dto.basePermission();
+        return new BaseRolePermissionResponse(
+            dto.id(),
+            new BaseRoleSummary(br.id(), br.name(), br.code()),
+            new BasePermissionSummary(bp.id(), bp.name(), bp.code()),
+            dto.createdDate()
+        );
     }
 }

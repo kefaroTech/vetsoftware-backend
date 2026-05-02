@@ -1,6 +1,7 @@
 package com.vetsoftware.app.basepermission.infrastructure.persistence;
 
 import com.vetsoftware.app.basepermission.domain.BasePermission;
+import com.vetsoftware.app.basepermission.domain.SubModuleRef;
 import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaEntity;
 import org.springframework.stereotype.Component;
 
@@ -18,11 +19,16 @@ public class BasePermissionJpaMapper {
     }
 
     public BasePermission toDomain(BasePermissionJpaEntity entity) {
+        SubModuleJpaEntity sm = entity.getSubModule();
+        return toDomain(entity, new SubModuleRef(sm.getId(), sm.getName(), sm.getCode()));
+    }
+
+    public BasePermission toDomain(BasePermissionJpaEntity entity, SubModuleRef subModuleRef) {
         return new BasePermission(
             entity.getId(),
             entity.getName(),
             entity.getCode(),
-            entity.getSubModule().getId(),
+            subModuleRef,
             entity.getCreatedDate()
         );
     }

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.employee.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -25,8 +26,9 @@ public class EmployeeJpaEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private CompanyJpaEntity company;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -48,8 +50,8 @@ public class EmployeeJpaEntity {
     public void setEmail(String email) { this.email = email; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public Long getCompanyId() { return companyId; }
-    public void setCompanyId(Long companyId) { this.companyId = companyId; }
+    public CompanyJpaEntity getCompany() { return company; }
+    public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public Long getCreatedBy() { return createdBy; }

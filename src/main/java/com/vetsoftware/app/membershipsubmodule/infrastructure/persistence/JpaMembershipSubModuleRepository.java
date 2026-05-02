@@ -1,8 +1,10 @@
 package com.vetsoftware.app.membershipsubmodule.infrastructure.persistence;
 
+import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
 import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaRepository;
 import com.vetsoftware.app.membershipsubmodule.application.port.out.MembershipSubModuleRepository;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModule;
+import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaEntity;
 import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaRepository;
 import java.util.List;
 import java.util.Optional;
@@ -27,9 +29,10 @@ public class JpaMembershipSubModuleRepository implements MembershipSubModuleRepo
 
     @Override
     public MembershipSubModule save(MembershipSubModule membershipSubModule) {
-        var membership = membershipJpaRepository.getReferenceById(membershipSubModule.getMembershipId());
-        var subModule = subModuleJpaRepository.getReferenceById(membershipSubModule.getSubModuleId());
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(membershipSubModule, membership, subModule)));
+        MembershipJpaEntity membership = membershipJpaRepository.getReferenceById(membershipSubModule.getMembership().id());
+        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(membershipSubModule.getSubModule().id());
+        MembershipSubModuleJpaEntity saved = jpaRepository.save(mapper.toJpa(membershipSubModule, membership, subModule));
+        return mapper.toDomain(saved, membershipSubModule.getMembership(), membershipSubModule.getSubModule());
     }
 
     @Override

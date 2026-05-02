@@ -14,11 +14,11 @@ public class BaseRolePermissionJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "base_role_id", nullable = false)
     private BaseRoleJpaEntity baseRole;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "base_permission_id", nullable = false)
     private BasePermissionJpaEntity basePermission;
 

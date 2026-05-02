@@ -4,32 +4,32 @@ import java.time.LocalDateTime;
 
 public class BaseRolePermission {
     private Long id;
-    private Long baseRoleId;
-    private Long basePermissionId;
+    private BaseRoleRef baseRole;
+    private BasePermissionRef basePermission;
     private final LocalDateTime createdDate;
 
-    public BaseRolePermission(Long id, Long baseRoleId, Long basePermissionId, LocalDateTime createdDate) {
-        if (baseRoleId == null) throw new IllegalArgumentException("baseRoleId is required");
-        if (basePermissionId == null) throw new IllegalArgumentException("basePermissionId is required");
+    public BaseRolePermission(Long id, BaseRoleRef baseRole, BasePermissionRef basePermission, LocalDateTime createdDate) {
+        if (baseRole == null) throw new IllegalArgumentException("baseRole is required");
+        if (basePermission == null) throw new IllegalArgumentException("basePermission is required");
         this.id = id;
-        this.baseRoleId = baseRoleId;
-        this.basePermissionId = basePermissionId;
+        this.baseRole = baseRole;
+        this.basePermission = basePermission;
         this.createdDate = createdDate;
     }
 
-    public static BaseRolePermission create(Long baseRoleId, Long basePermissionId) {
-        return new BaseRolePermission(null, baseRoleId, basePermissionId, LocalDateTime.now());
+    public static BaseRolePermission create(BaseRoleRef baseRole, BasePermissionRef basePermission) {
+        return new BaseRolePermission(null, baseRole, basePermission, LocalDateTime.now());
     }
 
-    public void update(Long baseRoleId, Long basePermissionId) {
-        if (baseRoleId == null) throw new IllegalArgumentException("baseRoleId is required");
-        if (basePermissionId == null) throw new IllegalArgumentException("basePermissionId is required");
-        this.baseRoleId = baseRoleId;
-        this.basePermissionId = basePermissionId;
+    public void update(BaseRoleRef baseRole, BasePermissionRef basePermission) {
+        if (baseRole == null) throw new IllegalArgumentException("baseRole is required");
+        if (basePermission == null) throw new IllegalArgumentException("basePermission is required");
+        this.baseRole = baseRole;
+        this.basePermission = basePermission;
     }
 
     public Long getId() { return id; }
-    public Long getBaseRoleId() { return baseRoleId; }
-    public Long getBasePermissionId() { return basePermissionId; }
+    public BaseRoleRef getBaseRole() { return baseRole; }
+    public BasePermissionRef getBasePermission() { return basePermission; }
     public LocalDateTime getCreatedDate() { return createdDate; }
 }

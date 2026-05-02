@@ -4,7 +4,8 @@ import com.vetsoftware.app.employee.domain.Employee;
 import java.time.LocalDateTime;
 
 public record EmployeeDto(Long id, String employeeCode, String name, String email,
-                          String status, Long companyId, LocalDateTime createdDate, Long createdBy) {
+                          String status, CompanySummaryDto company,
+                          LocalDateTime createdDate, Long createdBy) {
     public static EmployeeDto from(Employee employee) {
         return new EmployeeDto(
             employee.getId(),
@@ -12,7 +13,7 @@ public record EmployeeDto(Long id, String employeeCode, String name, String emai
             employee.getName(),
             employee.getEmail(),
             employee.getStatus().name(),
-            employee.getCompanyId(),
+            CompanySummaryDto.from(employee.getCompany()),
             employee.getCreatedDate(),
             employee.getCreatedBy()
         );

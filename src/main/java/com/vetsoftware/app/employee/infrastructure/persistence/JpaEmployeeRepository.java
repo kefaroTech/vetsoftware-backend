@@ -1,5 +1,7 @@
 package com.vetsoftware.app.employee.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import java.util.List;
@@ -10,15 +12,21 @@ import org.springframework.stereotype.Repository;
 public class JpaEmployeeRepository implements EmployeeRepository {
     private final EmployeeJpaRepository jpaRepository;
     private final EmployeeJpaMapper mapper;
+    private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaEmployeeRepository(EmployeeJpaRepository jpaRepository, EmployeeJpaMapper mapper) {
+    public JpaEmployeeRepository(EmployeeJpaRepository jpaRepository,
+                                  EmployeeJpaMapper mapper,
+                                  CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
+        this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
     public Employee save(Employee employee) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(employee)));
+        CompanyJpaEntity company = companyJpaRepository.getReferenceById(employee.getCompany().id());
+        EmployeeJpaEntity saved = jpaRepository.save(mapper.toJpa(employee, company));
+        return mapper.toDomain(saved, employee.getCompany());
     }
 
     @Override

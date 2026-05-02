@@ -4,6 +4,8 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.command.CreateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.command.UpdateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
+import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSummaryDto;
+import com.vetsoftware.app.membershipsubmodule.application.dto.SubModuleSummaryDto;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.CreateMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.DeleteMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.FindMembershipSubModuleUseCase;
@@ -12,6 +14,8 @@ import com.vetsoftware.app.membershipsubmodule.application.port.in.UpdateMembers
 import com.vetsoftware.app.membershipsubmodule.infrastructure.web.request.CreateMembershipSubModuleRequest;
 import com.vetsoftware.app.membershipsubmodule.infrastructure.web.request.UpdateMembershipSubModuleRequest;
 import com.vetsoftware.app.membershipsubmodule.infrastructure.web.response.MembershipSubModuleResponse;
+import com.vetsoftware.app.membershipsubmodule.infrastructure.web.response.MembershipSummary;
+import com.vetsoftware.app.membershipsubmodule.infrastructure.web.response.SubModuleSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -72,6 +76,13 @@ public class MembershipSubModuleController {
     }
 
     private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {
-        return new MembershipSubModuleResponse(dto.id(), dto.membershipId(), dto.subModuleId(), dto.createdDate());
+        MembershipSummaryDto m = dto.membership();
+        SubModuleSummaryDto sm = dto.subModule();
+        return new MembershipSubModuleResponse(
+            dto.id(),
+            new MembershipSummary(m.id(), m.name()),
+            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
+            dto.createdDate()
+        );
     }
 }

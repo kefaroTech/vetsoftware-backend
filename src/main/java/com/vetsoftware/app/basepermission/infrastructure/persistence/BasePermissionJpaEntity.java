@@ -17,7 +17,7 @@ public class BasePermissionJpaEntity {
     @Column(nullable = false, length = 50)
     private String code;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sub_module_id", nullable = false)
     private SubModuleJpaEntity subModule;
 

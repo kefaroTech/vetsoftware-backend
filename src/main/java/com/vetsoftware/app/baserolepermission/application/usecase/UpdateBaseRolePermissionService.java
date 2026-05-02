@@ -4,11 +4,13 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.UpdateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermissionDto;
 import com.vetsoftware.app.baserolepermission.application.port.in.UpdateBaseRolePermissionUseCase;
-import com.vetsoftware.app.baserolepermission.application.port.out.BasePermissionValidationPort;
+import com.vetsoftware.app.baserolepermission.application.port.out.BasePermissionQueryPort;
 import com.vetsoftware.app.baserolepermission.application.port.out.BaseRolePermissionRepository;
-import com.vetsoftware.app.baserolepermission.application.port.out.BaseRoleValidationPort;
+import com.vetsoftware.app.baserolepermission.application.port.out.BaseRoleQueryPort;
+import com.vetsoftware.app.baserolepermission.domain.BasePermissionRef;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermission;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
+import com.vetsoftware.app.baserolepermission.domain.BaseRoleRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UpdateBaseRolePermissionService implements UpdateBaseRolePermissionUseCase {
     private final BaseRolePermissionRepository repository;
-    private final BaseRoleValidationPort baseRoleValidationPort;
-    private final BasePermissionValidationPort basePermissionValidationPort;
+    private final BaseRoleQueryPort baseRoleQueryPort;
+    private final BasePermissionQueryPort basePermissionQueryPort;
 
     public UpdateBaseRolePermissionService(BaseRolePermissionRepository repository,
-                                            BaseRoleValidationPort baseRoleValidationPort,
-                                            BasePermissionValidationPort basePermissionValidationPort) {
+                                            BaseRoleQueryPort baseRoleQueryPort,
+                                            BasePermissionQueryPort basePermissionQueryPort) {
         this.repository = repository;
-        this.baseRoleValidationPort = baseRoleValidationPort;
-        this.basePermissionValidationPort = basePermissionValidationPort;
+        this.baseRoleQueryPort = baseRoleQueryPort;
+        this.basePermissionQueryPort = basePermissionQueryPort;
     }
 
     @Override
@@ -33,9 +35,11 @@ public class UpdateBaseRolePermissionService implements UpdateBaseRolePermission
     public BaseRolePermissionDto execute(UpdateBaseRolePermissionCommand command, AuthContext auth) {
         BaseRolePermission baseRolePermission = repository.findById(command.id())
             .orElseThrow(() -> new BaseRolePermissionNotFoundException(command.id()));
-        baseRoleValidationPort.validateExists(command.baseRoleId());
-        basePermissionValidationPort.validateExists(command.basePermissionId());
-        baseRolePermission.update(command.baseRoleId(), command.basePermissionId());
+        BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())
+            .orElseThrow(() -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
+        BasePermissionRef basePermission = basePermissionQueryPort.findById(command.basePermissionId())
+            .orElseThrow(() -> new IllegalArgumentException("BasePermission not found: " + command.basePermissionId()));
+        baseRolePermission.update(baseRole, basePermission);
         return BaseRolePermissionDto.from(repository.save(baseRolePermission));
     }
 }

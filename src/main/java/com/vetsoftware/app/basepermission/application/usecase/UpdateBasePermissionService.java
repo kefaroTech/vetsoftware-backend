@@ -5,9 +5,10 @@ import com.vetsoftware.app.basepermission.application.command.UpdateBasePermissi
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import com.vetsoftware.app.basepermission.application.port.in.UpdateBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.out.BasePermissionRepository;
-import com.vetsoftware.app.basepermission.application.port.out.SubModuleValidationPort;
+import com.vetsoftware.app.basepermission.application.port.out.SubModuleQueryPort;
 import com.vetsoftware.app.basepermission.domain.BasePermission;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
+import com.vetsoftware.app.basepermission.domain.SubModuleRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,12 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UpdateBasePermissionService implements UpdateBasePermissionUseCase {
     private final BasePermissionRepository repository;
-    private final SubModuleValidationPort subModuleValidationPort;
+    private final SubModuleQueryPort subModuleQueryPort;
 
     public UpdateBasePermissionService(BasePermissionRepository repository,
-                                       SubModuleValidationPort subModuleValidationPort) {
+                                       SubModuleQueryPort subModuleQueryPort) {
         this.repository = repository;
-        this.subModuleValidationPort = subModuleValidationPort;
+        this.subModuleQueryPort = subModuleQueryPort;
     }
 
     @Override
@@ -29,8 +30,9 @@ public class UpdateBasePermissionService implements UpdateBasePermissionUseCase 
     public BasePermissionDto execute(UpdateBasePermissionCommand command, AuthContext auth) {
         BasePermission basePermission = repository.findById(command.id())
             .orElseThrow(() -> new BasePermissionNotFoundException(command.id()));
-        subModuleValidationPort.validateExists(command.subModuleId());
-        basePermission.update(command.name(), command.code(), command.subModuleId());
+        SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
+            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+        basePermission.update(command.name(), command.code(), subModule);
         return BasePermissionDto.from(repository.save(basePermission));
     }
 }

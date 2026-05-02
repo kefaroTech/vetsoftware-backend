@@ -18,11 +18,11 @@ public class PermissionJpaEntity {
     @Column(nullable = false, length = 50)
     private String code;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sub_module_id", nullable = false)
     private SubModuleJpaEntity subModule;
 
