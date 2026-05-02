@@ -3,6 +3,7 @@ package com.vetsoftware.app.submodule.infrastructure.web;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.command.CreateSubModuleCommand;
 import com.vetsoftware.app.submodule.application.command.UpdateSubModuleCommand;
+import com.vetsoftware.app.submodule.application.dto.ModuleSummaryDto;
 import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import com.vetsoftware.app.submodule.application.port.in.CreateSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.in.DeleteSubModuleUseCase;
@@ -11,6 +12,7 @@ import com.vetsoftware.app.submodule.application.port.in.ListSubModulesUseCase;
 import com.vetsoftware.app.submodule.application.port.in.UpdateSubModuleUseCase;
 import com.vetsoftware.app.submodule.infrastructure.web.request.CreateSubModuleRequest;
 import com.vetsoftware.app.submodule.infrastructure.web.request.UpdateSubModuleRequest;
+import com.vetsoftware.app.submodule.infrastructure.web.response.ModuleSummary;
 import com.vetsoftware.app.submodule.infrastructure.web.response.SubModuleResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -70,6 +72,11 @@ public class SubModuleController {
     }
 
     private SubModuleResponse toResponse(SubModuleDto dto) {
-        return new SubModuleResponse(dto.id(), dto.name(), dto.code(), dto.moduleId(), dto.createdDate());
+        ModuleSummaryDto m = dto.module();
+        return new SubModuleResponse(
+            dto.id(), dto.name(), dto.code(),
+            new ModuleSummary(m.id(), m.name(), m.code()),
+            dto.createdDate()
+        );
     }
 }

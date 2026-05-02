@@ -1,6 +1,7 @@
 package com.vetsoftware.app.submodule.infrastructure.persistence;
 
 import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaEntity;
+import com.vetsoftware.app.submodule.domain.ModuleRef;
 import com.vetsoftware.app.submodule.domain.SubModule;
 import org.springframework.stereotype.Component;
 
@@ -18,11 +19,16 @@ public class SubModuleJpaMapper {
     }
 
     public SubModule toDomain(SubModuleJpaEntity entity) {
+        ModuleJpaEntity m = entity.getModule();
+        return toDomain(entity, new ModuleRef(m.getId(), m.getName(), m.getCode()));
+    }
+
+    public SubModule toDomain(SubModuleJpaEntity entity, ModuleRef ref) {
         return new SubModule(
             entity.getId(),
             entity.getName(),
             entity.getCode(),
-            entity.getModule().getId(),
+            ref,
             entity.getCreatedDate()
         );
     }

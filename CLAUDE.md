@@ -49,7 +49,9 @@ com.<company>.<project>/
 
 - ❌ No crear capas horizontales top-level (`domain/`, `application/`, `infrastructure/` compartidas)
 - ❌ No importar clases de dominio de otra feature (p.ej. `company.domain.Company` desde `employee`)
-- ✅ Si dos features necesitan comunicarse, usar IDs primitivos (`Long companyId`) o un puerto explícito
+- ❌ No importar DTOs de aplicación ni Responses de otra feature
+- ✅ Si dos features necesitan comunicarse, usar IDs primitivos (`Long companyId`), un companion VO propio (`XxxRef`), o un puerto explícito
+- ✅ Excepción acotada: `<feature>/infrastructure/persistence/` puede importar `otraFeature.infrastructure.persistence.XxxJpaEntity` y `XxxJpaRepository` para asociaciones JPA (`@ManyToOne`) — ver sección "Cross-feature references"
 
 ## Architecture: Hexagonal (Ports & Adapters)
 
@@ -109,7 +111,7 @@ private UUID id;             // UUID
 - Constructor injection en todos los services. Sin `@Autowired`.
 - `@Transactional` en cualquier método que ejecute más de una operación de repositorio (e.g. `update` hace `findById` + `save`).
 - `DeleteXxxService` debe verificar que la entidad existe antes de borrar y lanzar `XxxNotFoundException` si no.
-- **FK a otra feature → outbound port de validación**: si una entidad tiene una FK a otra feature, el service valida la existencia a través de un outbound port (`YyyValidationPort` en `port/out/`), cuya implementación vive en `infrastructure/persistence/`. El repositorio usa `getReferenceById()` sin validar. Nunca lanzar `IllegalArgumentException` por FK no encontrada desde el repositorio.
+- **FK a otra feature → companion VO + `YyyQueryPort`**: si una entidad tiene una FK a otra feature, NO uses la entidad de dominio externa. El dominio guarda un companion VO (`YyyRef`) propio de esta feature. El service carga el VO vía un outbound port (`YyyQueryPort` en `port/out/`) que devuelve `Optional<YyyRef>` — esto valida y trae los datos en una sola query. El repositorio usa `getReferenceById()` sin validar. Nunca lanzar `IllegalArgumentException` por FK no encontrada desde el repositorio. Ver sección **Cross-feature references** para el patrón completo.
 
 ### Capa infrastructure
 
@@ -125,19 +127,166 @@ private UUID id;             // UUID
 - `XxxJpaMapper` es el único lugar que conoce tanto el modelo de dominio como la entidad JPA.
 - `XxxJpaEntity` tiene constructor vacío explícito: `protected XxxJpaEntity() {}`.
 
+## Cross-feature references — patrón canónico
+
+Cuando una entidad tiene una FK a otra feature y necesitas **datos** del agregado externo (no solo el ID), aplica este patrón en lugar de importar la entidad de dominio de la otra feature.
+
+### Capas y representaciones
+
+| Capa | Tipo | Responsabilidad |
+|---|---|---|
+| `<feature>/domain/` | `YyyRef` (record con invariantes) | Companion VO — campos del agregado externo que esta feature necesita |
+| `<feature>/application/dto/` | `YyySummaryDto` (opcional) | DTO sin invariantes para outputs; si no quieres separación estricta, reusa `YyyRef` |
+| `<feature>/application/port/out/` | `YyyQueryPort` | Outbound port: `Optional<YyyRef> findById(Long id)` |
+| `<feature>/infrastructure/persistence/` | `JpaYyyQueryPort` | Adapter; consulta `YyyJpaRepository` de la otra feature |
+| `<feature>/infrastructure/persistence/` | `@ManyToOne(LAZY) YyyJpaEntity` en `XxxJpaEntity` | Asociación JPA viva — único cruce de vertical slicing permitido |
+| `<feature>/infrastructure/web/response/` | `YyySummary` | Forma del JSON expuesto |
+
+### Componentes — ejemplo `submodule` referenciando `module`
+
+**1. Companion VO en domain** — invariantes propias de esta feature:
+
+```java
+// submodule/domain/ModuleRef.java
+public record ModuleRef(Long id, String name, String code) {
+    public ModuleRef {
+        if (id == null) throw new IllegalArgumentException("module id is required");
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("module name is required");
+        if (code == null || code.isBlank()) throw new IllegalArgumentException("module code is required");
+    }
+}
+```
+
+**2. Entidad de dominio** — tiene la VO directamente, no `Long moduleId` colgando:
+
+```java
+public class SubModule {
+    private ModuleRef module;   // ✅ companion VO
+}
+```
+
+**3. Outbound port + adapter** — el adapter es el ÚNICO archivo que conoce la otra feature:
+
+```java
+public interface ModuleQueryPort {
+    Optional<ModuleRef> findById(Long moduleId);
+}
+
+@Component
+public class JpaModuleQueryPort implements ModuleQueryPort {
+    private final ModuleJpaRepository moduleJpaRepository;   // ← cruce permitido
+    @Override
+    public Optional<ModuleRef> findById(Long moduleId) {
+        return moduleJpaRepository.findById(moduleId)
+            .map(e -> new ModuleRef(e.getId(), e.getName(), e.getCode()));
+    }
+}
+```
+
+**4. JPA Entity con `@ManyToOne LAZY`** — Hibernate gestiona FK y JOINs:
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "module_id", nullable = false)
+private ModuleJpaEntity module;
+```
+
+**5. `@EntityGraph` en el Spring Data repo** — obligatorio para evitar N+1 con LAZY:
+
+```java
+public interface SubModuleJpaRepository extends JpaRepository<SubModuleJpaEntity, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = "module")
+    List<SubModuleJpaEntity> findAll();
+
+    @Override
+    @EntityGraph(attributePaths = "module")
+    Optional<SubModuleJpaEntity> findById(Long id);
+}
+```
+
+**6. Mapper con dos overloads** — uno para reads (extrae VO desde el `@ManyToOne` ya hidratado), otro para writes (reusa la VO precargada para no disparar el proxy):
+
+```java
+@Component
+public class SubModuleJpaMapper {
+    public SubModuleJpaEntity toJpa(SubModule subModule, ModuleJpaEntity module) { ... }
+
+    // Read path — el @EntityGraph ya hidrató entity.getModule()
+    public SubModule toDomain(SubModuleJpaEntity entity) {
+        ModuleJpaEntity m = entity.getModule();
+        return toDomain(entity, new ModuleRef(m.getId(), m.getName(), m.getCode()));
+    }
+
+    // Write path — reusa el ref precargado, evita inicializar el proxy de getReferenceById
+    public SubModule toDomain(SubModuleJpaEntity entity, ModuleRef ref) { ... }
+}
+```
+
+**7. `JpaXxxRepository.save`** — `getReferenceById` (proxy sin SELECT) + reusa la VO:
+
+```java
+@Override
+public SubModule save(SubModule subModule) {
+    ModuleJpaEntity module = moduleJpaRepository.getReferenceById(subModule.getModule().id());
+    SubModuleJpaEntity saved = jpaRepository.save(mapper.toJpa(subModule, module));
+    return mapper.toDomain(saved, subModule.getModule());   // ← reusa el ref
+}
+```
+
+**8. Service de escritura** — carga la VO antes de construir la entidad:
+
+```java
+public SubModuleDto execute(CreateSubModuleCommand command, AuthContext auth) {
+    ModuleRef module = moduleQueryPort.findById(command.moduleId())
+        .orElseThrow(() -> new IllegalArgumentException("Module not found: " + command.moduleId()));
+    SubModule subModule = SubModule.create(command.name(), command.code(), module);
+    return SubModuleDto.from(repository.save(subModule));
+}
+```
+
+### Costo de SQL del patrón
+
+| Operación | Queries |
+|---|---|
+| `listAll` | 1 (JOIN FETCH gracias al `@EntityGraph`) |
+| `findById` | 1 (idem) |
+| `create` | 1 SELECT (carga VO) + 1 INSERT |
+| `update` | 1 SELECT submodule (con JOIN) + 1 SELECT modules (carga VO) + 1 UPDATE |
+| `delete` | 1 SELECT (con JOIN) + 1 DELETE |
+
+### Reglas no negociables
+
+- ❌ El `domain` de una feature **nunca** importa el `domain` de otra feature.
+- ❌ El `application` **nunca** importa nada de otra feature.
+- ❌ El `web/response` **nunca** importa Responses de otra feature (`SubModuleResponse` no incluye `ModuleResponse`).
+- ✅ Solo `infrastructure/persistence/` puede importar `otraFeature.infrastructure.persistence.XxxJpaEntity` y `XxxJpaRepository`.
+- ✅ El `YyyQueryPort` reemplaza al antiguo `YyyValidationPort` cuando necesitas datos. Si solo validas existencia (no usas los campos), un `YyyValidationPort` con `void validateExists(Long)` sigue siendo válido.
+
+### Cuándo NO usar este patrón
+
+- **No necesitas datos del agregado externo, solo el ID** → usa `Long moduleId` en el dominio + `YyyValidationPort` para validar en escritura.
+- **Las dos entidades son realmente el mismo agregado** (e.g. `Order` y `OrderItem`) → entonces no son features separadas; ponlas en el mismo paquete.
+
 ## Naming conventions
 
 | Elemento | Convención | Ejemplo |
 |---|---|---|
 | Entidad de dominio | `PascalCase` sustantivo | `Animal` |
 | Value object | `PascalCase` + tipo | `AnimalId` |
+| Companion VO (FK a otra feature) | entidad externa + `Ref` | `ModuleRef` (en `submodule.domain`) |
 | Excepción de dominio | `PascalCase` + `Exception` | `AnimalNotFoundException` |
 | Puerto de entrada (CRUD) | verbo + entidad + `UseCase` | `CreateAnimalUseCase` |
 | Puerto de entrada (lista) | `List` + entidad plural + `UseCase` | `ListAnimalsUseCase` |
 | Método de lista | `listAll()` | — |
 | Puerto de salida | entidad + `Repository` | `AnimalRepository` |
+| Puerto de salida (FK con datos) | entidad externa + `QueryPort` | `ModuleQueryPort` (en `submodule.application.port.out`) |
+| Puerto de salida (FK solo validar) | entidad externa + `ValidationPort` | `ModuleValidationPort` |
+| Adapter de QueryPort | `Jpa` + entidad externa + `QueryPort` | `JpaModuleQueryPort` |
 | Command | verbo + entidad + `Command` | `CreateAnimalCommand` |
 | DTO de aplicación | entidad + `Dto` | `AnimalDto` |
+| DTO de aplicación (companion) | entidad externa + `SummaryDto` | `ModuleSummaryDto` |
 | Service (CRUD) | verbo + entidad + `Service` | `CreateAnimalService` |
 | Service (lista) | `List` + entidad plural + `Service` | `ListAnimalsService` |
 | Entidad JPA | entidad + `JpaEntity` | `AnimalJpaEntity` |
@@ -147,6 +296,7 @@ private UUID id;             // UUID
 | Controller REST | entidad + `Controller` | `AnimalController` |
 | Request REST | verbo + entidad + `Request` | `CreateAnimalRequest` |
 | Response REST | entidad + `Response` | `AnimalResponse` |
+| Response REST (companion) | entidad externa + `Summary` | `ModuleSummary` (en `submodule.infrastructure.web.response`) |
 
 ## Testing conventions
 
@@ -180,21 +330,25 @@ private final AnimalRepository repository = new AnimalRepository() {
 - ❌ Nombrar el adaptador de repositorio con el motor de BD (`MySqlAnimalRepository` en lugar de `JpaAnimalRepository`)
 - ❌ Mezclar commands y DTOs en un mismo package (`model/` — usar `command/` y `dto/` separados)
 - ❌ Usar `SearchXxxUseCase` para listar todos sin filtros (usar `ListXxxsUseCase`)
-- ❌ Validar existencia de FK en el repositorio con `findById().orElseThrow()` — esa lógica va en el service via `YyyValidationPort`
+- ❌ Validar existencia de FK en el repositorio con `findById().orElseThrow()` — esa lógica va en el service via `YyyQueryPort` (o `YyyValidationPort` si solo validas)
+- ❌ Importar la entidad de dominio de otra feature en el dominio propio (`submodule.domain.SubModule` con un `module.domain.Module` colgado) — usar companion VO `YyyRef`
+- ❌ Importar Responses o DTOs de aplicación de otra feature (`SubModuleResponse` con `ModuleResponse` adentro) — definir un companion local (`ModuleSummary`)
+- ❌ `@ManyToOne` cross-feature SIN `@EntityGraph` en `findAll`/`findById` — produce N+1
+- ❌ En el mapper, leer `entity.getModule().getName()` después de `getReferenceById` en `save` — dispara una query de hidratación; reusa el `Ref` precargado vía el overload `toDomain(entity, ref)`
 
 ## How to add a new entity
 
 Toda entidad nueva vive en su propio paquete feature `com.<company>.<project>.<feature>/`.
 
-1. `<feature>/domain/` — `XxxId`, `Xxx` (con validaciones en constructor, ID como `Long`), `XxxNotFoundException`
+1. `<feature>/domain/` — `XxxId`, `Xxx` (con validaciones en constructor, ID como `Long`), `XxxNotFoundException`. **Por cada FK con datos a otra feature**: añadir `YyyRef` (companion VO).
 2. `<feature>/application/command/` — `CreateXxxCommand`, `UpdateXxxCommand`
-3. `<feature>/application/dto/` — `XxxDto` con `from(Xxx)`
+3. `<feature>/application/dto/` — `XxxDto` con `from(Xxx)`. **Opcional**: `YyySummaryDto` por cada companion VO si quieres separación estricta app↔domain.
 4. `<feature>/application/port/in/` — una interfaz por caso de uso
-5. `<feature>/application/port/out/` — `XxxRepository` (+ `YyyValidationPort` por cada FK a otra feature)
+5. `<feature>/application/port/out/` — `XxxRepository` (+ `YyyQueryPort` por cada FK con datos, o `YyyValidationPort` si solo validas existencia)
 6. `<feature>/application/usecase/` — un service por caso de uso
-7. `<feature>/infrastructure/persistence/` — `XxxJpaEntity` (con `@GeneratedValue(IDENTITY)`), `XxxJpaMapper`, `XxxJpaRepository`, `JpaXxxRepository`
+7. `<feature>/infrastructure/persistence/` — `XxxJpaEntity` (con `@GeneratedValue(IDENTITY)`; `@ManyToOne(LAZY) YyyJpaEntity` por cada FK), `XxxJpaMapper` (con dos `toDomain` overloads cuando hay FKs), `XxxJpaRepository` (con `@EntityGraph` en `findAll`/`findById` cuando hay FKs), `JpaXxxRepository` (+ `JpaYyyQueryPort` por cada FK)
 8. `<feature>/infrastructure/web/` — `XxxController`
 9. `<feature>/infrastructure/web/request/` — `CreateXxxRequest`, `UpdateXxxRequest`
-10. `<feature>/infrastructure/web/response/` — `XxxResponse`
+10. `<feature>/infrastructure/web/response/` — `XxxResponse` (+ `YyySummary` por cada FK con datos en la response)
 11. `infrastructure/web/GlobalExceptionHandler` — añadir `XxxNotFoundException` al handler 404
 12. `db/changelog/migrations/` — nuevo changeset Liquibase con `id BIGINT AUTO_INCREMENT PRIMARY KEY`

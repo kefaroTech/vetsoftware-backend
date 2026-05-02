@@ -24,8 +24,9 @@ public class JpaSubModuleRepository implements SubModuleRepository {
 
     @Override
     public SubModule save(SubModule subModule) {
-        ModuleJpaEntity module = moduleJpaRepository.getReferenceById(subModule.getModuleId());
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(subModule, module)));
+        ModuleJpaEntity module = moduleJpaRepository.getReferenceById(subModule.getModule().id());
+        SubModuleJpaEntity saved = jpaRepository.save(mapper.toJpa(subModule, module));
+        return mapper.toDomain(saved, subModule.getModule());
     }
 
     @Override

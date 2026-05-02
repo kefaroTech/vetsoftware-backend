@@ -17,7 +17,7 @@ public class SubModuleJpaEntity {
     @Column(nullable = false, length = 50)
     private String code;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id", nullable = false)
     private ModuleJpaEntity module;
 
