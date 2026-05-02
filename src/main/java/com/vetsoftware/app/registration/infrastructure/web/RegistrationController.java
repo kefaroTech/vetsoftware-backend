@@ -30,7 +30,6 @@ public class RegistrationController {
             request.companyAddress(),
             request.companyContactNumber(),
             request.cityId(),
-            request.employeeCode(),
             request.employeeName(),
             request.employeeEmail(),
             request.password()

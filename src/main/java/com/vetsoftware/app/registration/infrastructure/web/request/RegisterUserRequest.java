@@ -11,7 +11,6 @@ public record RegisterUserRequest(
     @Size(max = 200) String companyAddress,
     @Size(max = 30) String companyContactNumber,
     @NotNull Long cityId,
-    @NotBlank @Size(max = 50) String employeeCode,
     @NotBlank @Size(max = 100) String employeeName,
     @NotBlank @Email @Size(max = 100) String employeeEmail,
     @NotBlank @Size(min = 8, max = 100) String password

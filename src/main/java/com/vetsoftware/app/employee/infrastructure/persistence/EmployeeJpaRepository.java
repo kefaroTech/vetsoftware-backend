@@ -14,4 +14,6 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @Override
     @EntityGraph(attributePaths = "company")
     Optional<EmployeeJpaEntity> findById(Long id);
+
+    boolean existsByEmployeeCode(String employeeCode);
 }

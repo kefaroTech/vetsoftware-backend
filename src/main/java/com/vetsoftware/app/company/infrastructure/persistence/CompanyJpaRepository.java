@@ -14,4 +14,6 @@ public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Lo
     @Override
     @EntityGraph(attributePaths = "city")
     Optional<CompanyJpaEntity> findById(Long id);
+
+    boolean existsByIdentifier(String identifier);
 }

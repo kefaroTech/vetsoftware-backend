@@ -6,7 +6,6 @@ public record RegisterUserCommand(
     String companyAddress,
     String companyContactNumber,
     Long cityId,
-    String employeeCode,
     String employeeName,
     String employeeEmail,
     String rawPassword
