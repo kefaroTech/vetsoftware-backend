@@ -4,7 +4,8 @@ import com.vetsoftware.app.company.domain.Company;
 import java.time.LocalDateTime;
 
 public record CompanyDto(Long id, String name, String identifier, String address,
-                         String contactNumber, CitySummaryDto city, LocalDateTime createdDate) {
+                         String contactNumber, CitySummaryDto city,
+                         MembershipSummaryDto membership, LocalDateTime createdDate) {
     public static CompanyDto from(Company company) {
         return new CompanyDto(
             company.getId(),
@@ -13,6 +14,7 @@ public record CompanyDto(Long id, String name, String identifier, String address
             company.getAddress(),
             company.getContactNumber(),
             CitySummaryDto.from(company.getCity()),
+            MembershipSummaryDto.from(company.getMembership()),
             company.getCreatedDate()
         );
     }

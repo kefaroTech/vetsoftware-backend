@@ -6,8 +6,10 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CityQueryPort;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
+import com.vetsoftware.app.company.application.port.out.MembershipQueryPort;
 import com.vetsoftware.app.company.domain.CityRef;
 import com.vetsoftware.app.company.domain.Company;
+import com.vetsoftware.app.company.domain.MembershipRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -16,18 +18,25 @@ import org.springframework.stereotype.Service;
 public class CreateCompanyService implements CreateCompanyUseCase {
     private final CompanyRepository repository;
     private final CityQueryPort cityQueryPort;
+    private final MembershipQueryPort membershipQueryPort;
 
-    public CreateCompanyService(CompanyRepository repository, CityQueryPort cityQueryPort) {
+    public CreateCompanyService(CompanyRepository repository,
+                                CityQueryPort cityQueryPort,
+                                MembershipQueryPort membershipQueryPort) {
         this.repository = repository;
         this.cityQueryPort = cityQueryPort;
+        this.membershipQueryPort = membershipQueryPort;
     }
 
     @Override
     public CompanyDto execute(CreateCompanyCommand command, AuthContext auth) {
         CityRef city = cityQueryPort.findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
+        MembershipRef membership = membershipQueryPort.findById(command.membershipId())
+            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
         Company company = Company.create(
-            command.name(), command.identifier(), command.address(), command.contactNumber(), city
+            command.name(), command.identifier(), command.address(), command.contactNumber(),
+            city, membership
         );
         return CompanyDto.from(repository.save(company));
     }

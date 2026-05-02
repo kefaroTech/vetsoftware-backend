@@ -22,9 +22,9 @@ public class CreateCompanyAdapter implements CompanyCreator {
 
     @Override
     public CompanyResult create(String name, String identifier, String address,
-                                String contactNumber, Long cityId) {
+                                String contactNumber, Long cityId, Long membershipId) {
         CompanyDto dto = createCompanyUseCase.execute(
-            new CreateCompanyCommand(name, identifier, address, contactNumber, cityId),
+            new CreateCompanyCommand(name, identifier, address, contactNumber, cityId, membershipId),
             SYSTEM_CONTEXT
         );
         return new CompanyResult(dto.id(), dto.name(), dto.identifier());

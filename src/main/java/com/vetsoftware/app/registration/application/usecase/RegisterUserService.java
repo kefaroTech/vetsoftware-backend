@@ -8,6 +8,7 @@ import com.vetsoftware.app.registration.application.port.in.RegisterUserUseCase;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
 import com.vetsoftware.app.registration.application.port.out.CompanyIdentifierChecker;
+import com.vetsoftware.app.registration.application.port.out.DefaultMembershipProvider;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.EmployeeResult;
@@ -34,6 +35,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final MandatoryBaseRoleProvider mandatoryBaseRoleProvider;
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
+    private final DefaultMembershipProvider defaultMembershipProvider;
 
     public RegisterUserService(CompanyCreator companyCreator,
                                EmployeeCreator employeeCreator,
@@ -43,7 +45,8 @@ public class RegisterUserService implements RegisterUserUseCase {
                                TokenGenerator tokenGenerator,
                                MandatoryBaseRoleProvider mandatoryBaseRoleProvider,
                                RoleCreator roleCreator,
-                               EmployeeRoleAssigner employeeRoleAssigner) {
+                               EmployeeRoleAssigner employeeRoleAssigner,
+                               DefaultMembershipProvider defaultMembershipProvider) {
         this.companyCreator = companyCreator;
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
@@ -53,6 +56,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.mandatoryBaseRoleProvider = mandatoryBaseRoleProvider;
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
+        this.defaultMembershipProvider = defaultMembershipProvider;
     }
 
     @Override
@@ -65,12 +69,14 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         String hashed = passwordHasher.hash(command.rawPassword());
 
+        Long membershipId = defaultMembershipProvider.getDefaultMembershipId();
         CompanyResult company = companyCreator.create(
                 command.companyName(),
                 command.companyIdentifier(),
                 command.companyAddress(),
                 command.companyContactNumber(),
-                command.cityId()
+                command.cityId(),
+                membershipId
         );
 
         String employeeCode = generateUniqueEmployeeCode(command.companyName(), command.employeeName());

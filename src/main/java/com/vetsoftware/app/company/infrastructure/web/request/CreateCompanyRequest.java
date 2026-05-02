@@ -9,5 +9,6 @@ public record CreateCompanyRequest(
         @NotBlank @Size(max = 50) String identifier,
         @Size(max = 255) String address,
         @Size(max = 30) String contactNumber,
-        @NotNull Long cityId
+        @NotNull Long cityId,
+        @NotNull Long membershipId
 ) {}

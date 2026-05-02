@@ -8,11 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = "city")
+    @EntityGraph(attributePaths = {"city", "membership"})
     List<CompanyJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = "city")
+    @EntityGraph(attributePaths = {"city", "membership"})
     Optional<CompanyJpaEntity> findById(Long id);
 
     boolean existsByIdentifier(String identifier);

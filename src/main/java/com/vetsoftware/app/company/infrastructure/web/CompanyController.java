@@ -5,6 +5,7 @@ import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
+import com.vetsoftware.app.company.application.dto.MembershipSummaryDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyReque
 import com.vetsoftware.app.company.infrastructure.web.request.UpdateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.response.CitySummary;
 import com.vetsoftware.app.company.infrastructure.web.response.CompanyResponse;
+import com.vetsoftware.app.company.infrastructure.web.response.MembershipSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -44,7 +46,7 @@ public class CompanyController {
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateCompanyCommand(request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId()),
+                request.contactNumber(), request.cityId(), request.membershipId()),
             authContext
         ));
     }
@@ -64,7 +66,7 @@ public class CompanyController {
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
             new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId()),
+                request.contactNumber(), request.cityId(), request.membershipId()),
             authContext
         ));
     }
@@ -77,7 +79,11 @@ public class CompanyController {
 
     private CompanyResponse toResponse(CompanyDto dto) {
         CitySummaryDto c = dto.city();
+        MembershipSummaryDto m = dto.membership();
         return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
-            dto.contactNumber(), new CitySummary(c.id(), c.name()), dto.createdDate());
+            dto.contactNumber(),
+            new CitySummary(c.id(), c.name()),
+            new MembershipSummary(m.id(), m.name(), m.status()),
+            dto.createdDate());
     }
 }
