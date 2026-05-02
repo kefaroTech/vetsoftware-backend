@@ -1,0 +1,12 @@
+package com.vetsoftware.app.registration.application.command;
+
+public record RegisterUserCommand(
+    String companyName,
+    String companyIdentifier,
+    String companyAddress,
+    String companyContactNumber,
+    String employeeCode,
+    String employeeName,
+    String employeeEmail,
+    String rawPassword
+) {}

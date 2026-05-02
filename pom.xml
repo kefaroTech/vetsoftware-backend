@@ -92,6 +92,12 @@
             <version>8.10.1</version>
         </dependency>
 
+        <!-- Password hashing (BCrypt) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- API documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>
