@@ -40,6 +40,11 @@ public class JpaCityRepository implements CityRepository {
     }
 
     @Override
+    public List<City> findByStateId(Long stateId) {
+        return jpaRepository.findAllByState_Id(stateId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

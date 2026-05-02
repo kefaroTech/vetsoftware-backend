@@ -40,6 +40,11 @@ public class JpaStateRepository implements StateRepository {
     }
 
     @Override
+    public List<State> findByCountryId(Long countryId) {
+        return jpaRepository.findAllByCountry_Id(countryId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

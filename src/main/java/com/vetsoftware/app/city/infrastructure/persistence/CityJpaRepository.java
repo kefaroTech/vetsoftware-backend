@@ -14,4 +14,7 @@ public interface CityJpaRepository extends JpaRepository<CityJpaEntity, Long> {
     @Override
     @EntityGraph(attributePaths = "state")
     Optional<CityJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "state")
+    List<CityJpaEntity> findAllByState_Id(Long stateId);
 }

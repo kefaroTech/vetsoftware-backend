@@ -14,4 +14,7 @@ public interface StateJpaRepository extends JpaRepository<StateJpaEntity, Long> 
     @Override
     @EntityGraph(attributePaths = "country")
     Optional<StateJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "country")
+    List<StateJpaEntity> findAllByCountry_Id(Long countryId);
 }
