@@ -4,27 +4,26 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="017_create_permissions" author="orlando">
-        <preConditions onFail="MARK_RAN">
-            <not><tableExists tableName="permissions"/></not>
-        </preConditions>
-        <createTable tableName="permissions">
+    <changeSet id="014_create_companies" author="orlando">
+        <createTable tableName="companies">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="code" type="VARCHAR(50)">
-                <constraints nullable="false"/>
+            <column name="identifier" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
             </column>
-            <column name="company_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_permissions_company"
-                             references="companies(id)"/>
+            <column name="address" type="VARCHAR(255)"/>
+            <column name="contact_number" type="VARCHAR(20)"/>
+            <column name="city_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_companies_city"
+                             references="cities(id)"/>
             </column>
-            <column name="sub_module_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_permissions_sub_module"
-                             references="sub_modules(id)"/>
+            <column name="membership_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_companies_membership"
+                             references="memberships(id)"/>
             </column>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>

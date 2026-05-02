@@ -4,26 +4,18 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="033_create_employee_roles" author="orlando">
-        <createTable tableName="employee_roles">
+    <changeSet id="011_create_countries" author="orlando">
+        <createTable tableName="countries">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="employee_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_employee_roles_employee"
-                             references="employees(id)"/>
-            </column>
-            <column name="role_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_employee_roles_role"
-                             references="roles(id)"/>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
             </column>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addUniqueConstraint tableName="employee_roles"
-                             columnNames="employee_id, role_id"
-                             constraintName="uq_employee_roles"/>
     </changeSet>
 
 </databaseChangeLog>

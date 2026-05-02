@@ -4,8 +4,8 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="010_create_system_permissions" author="orlando">
-        <createTable tableName="system_permissions">
+    <changeSet id="002_create_modules" author="orlando">
+        <createTable tableName="modules">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -13,9 +13,9 @@
                 <constraints nullable="false"/>
             </column>
             <column name="code" type="VARCHAR(50)">
-                <constraints nullable="false" unique="true"/>
+                <constraints nullable="false"/>
             </column>
-            <column name="created_date" type="DATETIME">
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>

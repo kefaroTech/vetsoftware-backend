@@ -4,8 +4,11 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="018_rename_membership_modules_to_membership_sub_modules" author="orlando">
-        <renameTable oldTableName="membership_modules" newTableName="membership_sub_modules"/>
+    <changeSet id="021_seed_module_consultation" author="orlando">
+        <insert tableName="modules">
+            <column name="name" value="Consultation"/>
+            <column name="code" value="CONSULTATION"/>
+        </insert>
     </changeSet>
 
 </databaseChangeLog>

@@ -4,18 +4,18 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="003_create_memberships" author="orlando">
-        <createTable tableName="memberships">
+    <changeSet id="009_create_system_permissions" author="orlando">
+        <createTable tableName="system_permissions">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="status" type="VARCHAR(20)">
-                <constraints nullable="false"/>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
             </column>
-            <column name="created_date" type="DATETIME">
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>

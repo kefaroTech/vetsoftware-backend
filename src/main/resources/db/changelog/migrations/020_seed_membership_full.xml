@@ -4,13 +4,11 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="028_alter_companies_add_city" author="orlando">
-        <addColumn tableName="companies">
-            <column name="city_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_companies_city"
-                             references="cities(id)"/>
-            </column>
-        </addColumn>
+    <changeSet id="020_seed_membership_full" author="orlando">
+        <insert tableName="memberships">
+            <column name="name" value="FULL"/>
+            <column name="status" value="ACTIVE"/>
+        </insert>
     </changeSet>
 
 </databaseChangeLog>

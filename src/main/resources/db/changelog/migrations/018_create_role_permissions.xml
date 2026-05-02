@@ -4,25 +4,26 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="026_create_states" author="orlando">
-        <createTable tableName="states">
+    <changeSet id="018_create_role_permissions" author="orlando">
+        <createTable tableName="role_permissions">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="name" type="VARCHAR(100)">
-                <constraints nullable="false"/>
+            <column name="role_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_role_permissions_role"
+                             references="roles(id)"/>
             </column>
-            <column name="country_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_states_country"
-                             references="countries(id)"/>
+            <column name="permission_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_role_permissions_permission"
+                             references="permissions(id)"/>
             </column>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addUniqueConstraint tableName="states"
-                             columnNames="country_id, name"
-                             constraintName="uq_states_country_name"/>
+        <addUniqueConstraint tableName="role_permissions"
+                             columnNames="role_id, permission_id"
+                             constraintName="uq_role_permissions"/>
     </changeSet>
 
 </databaseChangeLog>

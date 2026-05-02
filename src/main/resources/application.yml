@@ -12,7 +12,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+    properties:
+      hibernate:
+        type:
+          preferred_boolean_jdbc_type: TINYINT
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
   data:
