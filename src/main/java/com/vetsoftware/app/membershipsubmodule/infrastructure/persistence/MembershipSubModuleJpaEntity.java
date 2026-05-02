@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "membership_sub_modules")
+@Table(name = "membership_sub_modules", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_membership_sub_modules", columnNames = {"membership_id", "sub_module_id"})
+})
 public class MembershipSubModuleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
