@@ -11,6 +11,11 @@ import com.vetsoftware.app.registration.application.port.out.CompanyIdentifierCh
 import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.EmployeeResult;
+import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
+import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRoleProvider;
+import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRoleProvider.BaseRoleData;
+import com.vetsoftware.app.registration.application.port.out.RoleCreator;
+import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,19 +31,28 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final EmployeeCodeChecker employeeCodeChecker;
     private final PasswordHasher passwordHasher;
     private final TokenGenerator tokenGenerator;
+    private final MandatoryBaseRoleProvider mandatoryBaseRoleProvider;
+    private final RoleCreator roleCreator;
+    private final EmployeeRoleAssigner employeeRoleAssigner;
 
     public RegisterUserService(CompanyCreator companyCreator,
                                EmployeeCreator employeeCreator,
                                CompanyIdentifierChecker companyIdentifierChecker,
                                EmployeeCodeChecker employeeCodeChecker,
                                PasswordHasher passwordHasher,
-                               TokenGenerator tokenGenerator) {
+                               TokenGenerator tokenGenerator,
+                               MandatoryBaseRoleProvider mandatoryBaseRoleProvider,
+                               RoleCreator roleCreator,
+                               EmployeeRoleAssigner employeeRoleAssigner) {
         this.companyCreator = companyCreator;
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
         this.employeeCodeChecker = employeeCodeChecker;
         this.passwordHasher = passwordHasher;
         this.tokenGenerator = tokenGenerator;
+        this.mandatoryBaseRoleProvider = mandatoryBaseRoleProvider;
+        this.roleCreator = roleCreator;
+        this.employeeRoleAssigner = employeeRoleAssigner;
     }
 
     @Override
@@ -46,27 +60,32 @@ public class RegisterUserService implements RegisterUserUseCase {
     public RegistrationDto execute(RegisterUserCommand command) {
         if (companyIdentifierChecker.exists(command.companyIdentifier())) {
             throw new IllegalArgumentException(
-                "Company identifier already in use: " + command.companyIdentifier());
+                    "Company identifier already in use: " + command.companyIdentifier());
         }
 
         String hashed = passwordHasher.hash(command.rawPassword());
 
         CompanyResult company = companyCreator.create(
-            command.companyName(),
-            command.companyIdentifier(),
-            command.companyAddress(),
-            command.companyContactNumber(),
-            command.cityId()
+                command.companyName(),
+                command.companyIdentifier(),
+                command.companyAddress(),
+                command.companyContactNumber(),
+                command.cityId()
         );
 
         String employeeCode = generateUniqueEmployeeCode(command.companyName(), command.employeeName());
         EmployeeResult employee = employeeCreator.create(
-            employeeCode,
-            hashed,
-            command.employeeName(),
-            command.employeeEmail(),
-            company.id()
+                employeeCode,
+                hashed,
+                command.employeeName(),
+                command.employeeEmail(),
+                company.id()
         );
+
+        for (BaseRoleData baseRole : mandatoryBaseRoleProvider.findMandatory()) {
+            RoleResult role = roleCreator.create(baseRole.name(), baseRole.code(), company.id());
+            employeeRoleAssigner.assign(employee.id(), role.id());
+        }
 
         String token = tokenGenerator.generate(employee.id(), "EMPLOYEE");
         return new RegistrationDto(company.id(), employee.id(), token, "EMPLOYEE");
@@ -80,7 +99,7 @@ public class RegisterUserService implements RegisterUserUseCase {
             if (!employeeCodeChecker.exists(candidate)) return candidate;
         }
         throw new IllegalStateException(
-            "Could not generate unique employee code after " + MAX_SUFFIX_ATTEMPTS + " attempts");
+                "Could not generate unique employee code after " + MAX_SUFFIX_ATTEMPTS + " attempts");
     }
 
     private static String withSuffix(String base, int n) {
