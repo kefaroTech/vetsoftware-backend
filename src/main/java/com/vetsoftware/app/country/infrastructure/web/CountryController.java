@@ -1,5 +1,6 @@
 package com.vetsoftware.app.country.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.command.CreateCountryCommand;
 import com.vetsoftware.app.country.application.command.UpdateCountryCommand;
@@ -14,12 +15,17 @@ import com.vetsoftware.app.country.infrastructure.web.request.UpdateCountryReque
 import com.vetsoftware.app.country.infrastructure.web.response.CountryResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/countries")
 public class CountryController {
+
+    private static final AuthContext PUBLIC_LIST_CONTEXT =
+        new AuthContext(null, Set.of("admin.all"));
+
     private final CreateCountryUseCase createUseCase;
     private final UpdateCountryUseCase updateUseCase;
     private final FindCountryUseCase findUseCase;
@@ -44,8 +50,9 @@ public class CountryController {
     }
 
     @GetMapping
-    public List<CountryResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    @PublicEndpoint
+    public List<CountryResponse> listAll() {
+        return listUseCase.listAll(PUBLIC_LIST_CONTEXT).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

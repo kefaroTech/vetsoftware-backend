@@ -1,5 +1,6 @@
 package com.vetsoftware.app.city.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.command.CreateCityCommand;
 import com.vetsoftware.app.city.application.command.UpdateCityCommand;
@@ -17,11 +18,16 @@ import com.vetsoftware.app.city.infrastructure.web.response.CityResponse;
 import com.vetsoftware.app.city.infrastructure.web.response.StateSummary;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class CityController {
+
+    private static final AuthContext PUBLIC_LIST_CONTEXT =
+        new AuthContext(null, Set.of("admin.all"));
+
     private final CreateCityUseCase createUseCase;
     private final UpdateCityUseCase updateUseCase;
     private final FindCityUseCase findUseCase;
@@ -55,9 +61,9 @@ public class CityController {
     }
 
     @GetMapping("/states/{stateId}/cities")
-    public List<CityResponse> listByState(@PathVariable Long stateId,
-                                          @RequestAttribute AuthContext authContext) {
-        return listByStateUseCase.listByState(stateId, authContext).stream()
+    @PublicEndpoint
+    public List<CityResponse> listByState(@PathVariable Long stateId) {
+        return listByStateUseCase.listByState(stateId, PUBLIC_LIST_CONTEXT).stream()
             .map(this::toResponse).toList();
     }
 

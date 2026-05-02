@@ -20,7 +20,7 @@ public class EmployeeJpaEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 100, unique = true)
+    @Column(nullable = false, length = 100)
     private String email;
 
     @Column(nullable = false, length = 20)
