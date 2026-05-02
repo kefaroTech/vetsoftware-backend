@@ -11,6 +11,5 @@ public record CreateEmployeeRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Email @Size(max = 100) String email,
         @NotBlank String status,
-        @NotNull Long companyId,
-        @NotNull Long createdBy
+        @NotNull Long companyId
 ) {}

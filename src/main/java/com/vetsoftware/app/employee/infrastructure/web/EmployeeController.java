@@ -44,7 +44,7 @@ public class EmployeeController {
                                    @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
             new CreateEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.status(), request.companyId(), request.createdBy()),
+                request.email(), request.status(), request.companyId()),
             authContext
         ));
     }
@@ -79,6 +79,6 @@ public class EmployeeController {
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),
             dto.status(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.createdBy());
+            dto.createdDate());
     }
 }

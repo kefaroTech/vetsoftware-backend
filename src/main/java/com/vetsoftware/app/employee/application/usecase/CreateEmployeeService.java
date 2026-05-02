@@ -30,7 +30,7 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         Employee employee = Employee.create(
             command.employeeCode(), command.password(), command.name(), command.email(),
-            status, company, command.createdBy()
+            status, company
         );
         return EmployeeDto.from(repository.save(employee));
     }

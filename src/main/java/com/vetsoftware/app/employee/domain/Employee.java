@@ -11,10 +11,9 @@ public class Employee {
     private EmployeeStatus status;
     private final CompanyRef company;
     private final LocalDateTime createdDate;
-    private final Long createdBy;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
-                    EmployeeStatus status, CompanyRef company, LocalDateTime createdDate, Long createdBy) {
+                    EmployeeStatus status, CompanyRef company, LocalDateTime createdDate) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -32,13 +31,12 @@ public class Employee {
         this.status = status;
         this.company = company;
         this.createdDate = createdDate;
-        this.createdBy = createdBy;
     }
 
     public static Employee create(String employeeCode, String hashPassword, String name, String email,
-                                  EmployeeStatus status, CompanyRef company, Long createdBy) {
+                                  EmployeeStatus status, CompanyRef company) {
         return new Employee(null, employeeCode, hashPassword, name, email,
-            status, company, LocalDateTime.now(), createdBy);
+            status, company, LocalDateTime.now());
     }
 
     public void update(String employeeCode, String name, String email, EmployeeStatus status) {
@@ -63,5 +61,4 @@ public class Employee {
     public EmployeeStatus getStatus() { return status; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
-    public Long getCreatedBy() { return createdBy; }
 }

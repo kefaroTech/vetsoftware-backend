@@ -18,7 +18,6 @@ public class EmployeeJpaMapper {
         entity.setStatus(employee.getStatus().name());
         entity.setCompany(company);
         entity.setCreatedDate(employee.getCreatedDate());
-        entity.setCreatedBy(employee.getCreatedBy());
         return entity;
     }
 
@@ -36,8 +35,7 @@ public class EmployeeJpaMapper {
             entity.getEmail(),
             EmployeeStatus.valueOf(entity.getStatus()),
             companyRef,
-            entity.getCreatedDate(),
-            entity.getCreatedBy()
+            entity.getCreatedDate()
         );
     }
 }

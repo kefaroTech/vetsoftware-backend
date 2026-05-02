@@ -140,7 +140,6 @@ class Employee {
   -status: EmployeeStatus
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
 }
 
 ' =========================

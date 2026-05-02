@@ -20,7 +20,8 @@
       "Bash(mvn -q -DskipTests compile)",
       "PowerShell(mvn *)",
       "Bash(curl *)",
-      "Bash(unzip -l target/vetsoftware-1.0.0.jar)"
+      "Bash(unzip -l target/vetsoftware-1.0.0.jar)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }

@@ -33,9 +33,6 @@ public class EmployeeJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    @Column(name = "created_by")
-    private Long createdBy;
-
     protected EmployeeJpaEntity() {}
 
     public Long getId() { return id; }
@@ -54,6 +51,4 @@ public class EmployeeJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public Long getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
 }
