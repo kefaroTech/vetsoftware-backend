@@ -32,5 +32,8 @@
     <include file="db/changelog/migrations/028_alter_companies_add_city.xml"/>
     <include file="db/changelog/migrations/029_seed_americas_geography.xml"/>
     <include file="db/changelog/migrations/030_drop_employees_email_unique.xml"/>
+    <include file="db/changelog/migrations/031_create_roles.xml"/>
+    <include file="db/changelog/migrations/032_create_role_permissions.xml"/>
+    <include file="db/changelog/migrations/033_create_employee_roles.xml"/>
 
 </databaseChangeLog>

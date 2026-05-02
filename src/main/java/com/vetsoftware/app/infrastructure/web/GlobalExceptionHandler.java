@@ -9,10 +9,13 @@ import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
+import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.role.domain.RoleNotFoundException;
+import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import java.util.List;
@@ -39,7 +42,8 @@ public class GlobalExceptionHandler {
             SubModuleNotFoundException.class, BasePermissionNotFoundException.class,
             BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class,
             CountryNotFoundException.class, StateNotFoundException.class,
-            CityNotFoundException.class
+            CityNotFoundException.class, RoleNotFoundException.class,
+            RolePermissionNotFoundException.class, EmployeeRoleNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

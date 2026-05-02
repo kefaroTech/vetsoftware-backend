@@ -16,4 +16,6 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     Optional<EmployeeJpaEntity> findById(Long id);
 
     boolean existsByEmployeeCode(String employeeCode);
+
+    Optional<EmployeeJpaEntity> findByEmployeeCodeAndStatus(String employeeCode, String status);
 }
