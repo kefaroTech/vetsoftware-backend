@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.infrastructure.persistence;
 
 import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsRepository;
+import com.vetsoftware.app.systemuser.infrastructure.persistence.SystemUserJpaRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 

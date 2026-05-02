@@ -14,4 +14,7 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     @Override
     @EntityGraph(attributePaths = {"role", "permission"})
     Optional<RolePermissionJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "permission")
+    List<RolePermissionJpaEntity> findByRoleIdIn(List<Long> roleIds);
 }

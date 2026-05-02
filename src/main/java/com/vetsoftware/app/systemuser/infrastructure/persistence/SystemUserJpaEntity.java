@@ -1,4 +1,4 @@
-package com.vetsoftware.app.auth.infrastructure.persistence;
+package com.vetsoftware.app.systemuser.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -22,7 +22,11 @@ public class SystemUserJpaEntity {
     protected SystemUserJpaEntity() {}
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
     public String getHashPassword() { return hashPassword; }
+    public void setHashPassword(String hashPassword) { this.hashPassword = hashPassword; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }

@@ -1,4 +1,4 @@
-package com.vetsoftware.app.auth.infrastructure.persistence;
+package com.vetsoftware.app.systemuser.infrastructure.persistence;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -18,6 +18,9 @@ import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
+import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
+import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
+import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -43,7 +46,9 @@ public class GlobalExceptionHandler {
             BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class,
             CountryNotFoundException.class, StateNotFoundException.class,
             CityNotFoundException.class, RoleNotFoundException.class,
-            RolePermissionNotFoundException.class, EmployeeRoleNotFoundException.class
+            RolePermissionNotFoundException.class, EmployeeRoleNotFoundException.class,
+            SystemUserNotFoundException.class, SystemPermissionNotFoundException.class,
+            SystemUserPermissionNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

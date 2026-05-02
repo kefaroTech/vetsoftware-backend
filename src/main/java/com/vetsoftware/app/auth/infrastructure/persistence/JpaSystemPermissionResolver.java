@@ -1,8 +1,9 @@
 package com.vetsoftware.app.auth.infrastructure.persistence;
 
 import com.vetsoftware.app.auth.application.port.out.SystemPermissionResolver;
-import java.util.HashSet;
+import com.vetsoftware.app.systemuserpermission.infrastructure.persistence.SystemUserPermissionJpaRepository;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Repository;
@@ -20,8 +21,9 @@ public class JpaSystemPermissionResolver implements SystemPermissionResolver {
     @Cacheable(value = "system-user-permissions", key = "#systemUserId")
     @Override
     public Set<String> resolveFor(Long systemUserId) {
-        return new HashSet<>(
-                systemUserPermissionJpaRepository.findPermissionCodesBySystemUserId(systemUserId));
+        return systemUserPermissionJpaRepository.findBySystemUserId(systemUserId).stream()
+                .map(e -> e.getSystemPermission().getCode())
+                .collect(Collectors.toSet());
     }
 
     @CacheEvict(value = "system-user-permissions", key = "#systemUserId")
