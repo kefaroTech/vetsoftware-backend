@@ -3,6 +3,7 @@ package com.vetsoftware.app.company.infrastructure.web;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
+import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
@@ -11,6 +12,7 @@ import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.request.UpdateCompanyRequest;
+import com.vetsoftware.app.company.infrastructure.web.response.CitySummary;
 import com.vetsoftware.app.company.infrastructure.web.response.CompanyResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,7 +43,8 @@ public class CompanyController {
     public CompanyResponse create(@Valid @RequestBody CreateCompanyRequest request,
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(createUseCase.execute(
-            new CreateCompanyCommand(request.name(), request.identifier(), request.address(), request.contactNumber()),
+            new CreateCompanyCommand(request.name(), request.identifier(), request.address(),
+                request.contactNumber(), request.cityId()),
             authContext
         ));
     }
@@ -60,7 +63,8 @@ public class CompanyController {
     public CompanyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCompanyRequest request,
                                   @RequestAttribute AuthContext authContext) {
         return toResponse(updateUseCase.execute(
-            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(), request.contactNumber()),
+            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(),
+                request.contactNumber(), request.cityId()),
             authContext
         ));
     }
@@ -72,7 +76,8 @@ public class CompanyController {
     }
 
     private CompanyResponse toResponse(CompanyDto dto) {
+        CitySummaryDto c = dto.city();
         return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
-            dto.contactNumber(), dto.createdDate());
+            dto.contactNumber(), new CitySummary(c.id(), c.name()), dto.createdDate());
     }
 }

@@ -21,7 +21,8 @@
       "PowerShell(mvn *)",
       "Bash(curl *)",
       "Bash(unzip -l target/vetsoftware-1.0.0.jar)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

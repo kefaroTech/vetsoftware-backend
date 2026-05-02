@@ -29,6 +29,7 @@ public class RegistrationController {
             request.companyIdentifier(),
             request.companyAddress(),
             request.companyContactNumber(),
+            request.cityId(),
             request.employeeCode(),
             request.employeeName(),
             request.employeeEmail(),

@@ -26,5 +26,10 @@
     <include file="db/changelog/migrations/021_add_unique_base_role_permissions.xml"/>
     <include file="db/changelog/migrations/022_add_unique_membership_sub_modules.xml"/>
     <include file="db/changelog/migrations/023_drop_employees_created_by.xml"/>
+    <include file="db/changelog/migrations/025_create_countries.xml"/>
+    <include file="db/changelog/migrations/026_create_states.xml"/>
+    <include file="db/changelog/migrations/027_create_cities.xml"/>
+    <include file="db/changelog/migrations/028_alter_companies_add_city.xml"/>
+    <include file="db/changelog/migrations/029_seed_americas_geography.xml"/>
 
 </databaseChangeLog>

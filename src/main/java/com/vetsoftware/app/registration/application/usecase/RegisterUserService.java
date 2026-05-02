@@ -39,7 +39,8 @@ public class RegisterUserService implements RegisterUserUseCase {
             command.companyName(),
             command.companyIdentifier(),
             command.companyAddress(),
-            command.companyContactNumber()
+            command.companyContactNumber(),
+            command.cityId()
         );
 
         EmployeeResult employee = employeeCreator.create(

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="029_seed_americas_geography" author="orlando" runOnChange="false">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM countries WHERE name IN ('Argentina', 'Brazil', 'Mexico', 'United States')
+            </sqlCheck>
+        </preConditions>
+        <sqlFile path="db/changelog/migrations/029_seed_americas_geography.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="true"
+                 stripComments="true"
+                 endDelimiter=";"
+                 encoding="UTF-8"/>
+    </changeSet>
+
+</databaseChangeLog>

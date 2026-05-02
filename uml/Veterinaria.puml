@@ -127,6 +127,7 @@ class Company {
   -name: String
   -identifier: String
   -address: String
+  -city: City
   -contactNumber: String
   -membership: Membership
   -createdDate: LocalDateTime
@@ -193,17 +194,21 @@ class EmployeeRole {
 ' Location
 ' =========================
 
-class State {
+class Country {
   -name: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
+}
+
+class State {
+  -name: String
+  -country: Country
+  -createdDate: LocalDateTime
 }
 
 class City {
   -name: String
   -state: State
   -createdDate: LocalDateTime
-  -createdBy: Employee
 }
 
 ' =========================
@@ -433,6 +438,7 @@ BasePermission      --> SubModule
 
 ' Company / Employee
 Company  --> Membership
+Company  --> City
 Employee --> Company
 Employee --> EmployeeStatus
 
@@ -449,6 +455,7 @@ EmployeeRole       --> Role
 
 ' Location
 City         --> State
+State         --> Country
 Owner "0..*" --> "1" City
 
 ' Owner / Animal

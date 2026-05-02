@@ -5,12 +5,15 @@ import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
+import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +37,9 @@ public class GlobalExceptionHandler {
             MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class,
             ModuleNotFoundException.class, PermissionNotFoundException.class,
             SubModuleNotFoundException.class, BasePermissionNotFoundException.class,
-            BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class
+            BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class,
+            CountryNotFoundException.class, StateNotFoundException.class,
+            CityNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.infrastructure.persistence;
 
+import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -22,6 +23,10 @@ public class CompanyJpaEntity {
     @Column(name = "contact_number", length = 20)
     private String contactNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id", nullable = false)
+    private CityJpaEntity city;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -37,6 +42,8 @@ public class CompanyJpaEntity {
     public void setAddress(String address) { this.address = address; }
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+    public CityJpaEntity getCity() { return city; }
+    public void setCity(CityJpaEntity city) { this.city = city; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }

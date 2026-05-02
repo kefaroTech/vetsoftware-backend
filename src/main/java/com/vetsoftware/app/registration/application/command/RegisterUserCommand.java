@@ -5,6 +5,7 @@ public record RegisterUserCommand(
     String companyIdentifier,
     String companyAddress,
     String companyContactNumber,
+    Long cityId,
     String employeeCode,
     String employeeName,
     String employeeEmail,
