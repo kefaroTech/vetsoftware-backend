@@ -37,5 +37,8 @@
     <include file="db/changelog/migrations/031_create_animals.xml"/>
     <include file="db/changelog/migrations/032_create_consultation_types.xml"/>
     <include file="db/changelog/migrations/033_create_consultations.xml"/>
+    <include file="db/changelog/migrations/034_create_vaccination_types.xml"/>
+    <include file="db/changelog/migrations/035_create_vaccinations.xml"/>
+    <include file="db/changelog/migrations/036_create_hospitalizations.xml"/>
 
 </databaseChangeLog>

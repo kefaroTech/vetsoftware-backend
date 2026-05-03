@@ -1,0 +1,93 @@
+package com.vetsoftware.app.hospitalization.infrastructure.web;
+
+import com.vetsoftware.app.hospitalization.application.command.CreateHospitalizationCommand;
+import com.vetsoftware.app.hospitalization.application.command.UpdateHospitalizationCommand;
+import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
+import com.vetsoftware.app.hospitalization.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
+import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
+import com.vetsoftware.app.hospitalization.infrastructure.web.request.CreateHospitalizationRequest;
+import com.vetsoftware.app.hospitalization.infrastructure.web.request.UpdateHospitalizationRequest;
+import com.vetsoftware.app.hospitalization.infrastructure.web.response.AnimalSummary;
+import com.vetsoftware.app.hospitalization.infrastructure.web.response.CompanySummary;
+import com.vetsoftware.app.hospitalization.infrastructure.web.response.HospitalizationResponse;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/hospitalizations")
+public class HospitalizationController {
+    private final CreateHospitalizationUseCase createUseCase;
+    private final UpdateHospitalizationUseCase updateUseCase;
+    private final FindHospitalizationUseCase findUseCase;
+    private final ListHospitalizationsUseCase listUseCase;
+    private final DeleteHospitalizationUseCase deleteUseCase;
+
+    public HospitalizationController(CreateHospitalizationUseCase createUseCase,
+                                     UpdateHospitalizationUseCase updateUseCase,
+                                     FindHospitalizationUseCase findUseCase,
+                                     ListHospitalizationsUseCase listUseCase,
+                                     DeleteHospitalizationUseCase deleteUseCase) {
+        this.createUseCase = createUseCase;
+        this.updateUseCase = updateUseCase;
+        this.findUseCase = findUseCase;
+        this.listUseCase = listUseCase;
+        this.deleteUseCase = deleteUseCase;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public HospitalizationResponse create(@Valid @RequestBody CreateHospitalizationRequest request) {
+        return toResponse(createUseCase.execute(
+            new CreateHospitalizationCommand(
+                request.date(), request.startDate(), request.endDate(),
+                request.type(), request.reasonLeaving(),
+                request.reason(), request.observations(),
+                request.animalId(), request.companyId())));
+    }
+
+    @GetMapping
+    public List<HospitalizationResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/{id}")
+    public HospitalizationResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public HospitalizationResponse update(@PathVariable Long id,
+                                          @Valid @RequestBody UpdateHospitalizationRequest request) {
+        return toResponse(updateUseCase.execute(
+            new UpdateHospitalizationCommand(
+                id, request.date(), request.startDate(), request.endDate(),
+                request.type(), request.reasonLeaving(),
+                request.reason(), request.observations(),
+                request.animalId(), request.companyId())));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
+    }
+
+    private HospitalizationResponse toResponse(HospitalizationDto dto) {
+        AnimalSummaryDto a = dto.animal();
+        CompanySummaryDto c = dto.company();
+        return new HospitalizationResponse(
+            dto.id(), dto.date(), dto.startDate(), dto.endDate(),
+            dto.type(), dto.reasonLeaving(),
+            dto.reason(), dto.observations(),
+            new AnimalSummary(a.id(), a.name(), a.code()),
+            new CompanySummary(c.id(), c.name(), c.identifier()),
+            dto.createdDate());
+    }
+}

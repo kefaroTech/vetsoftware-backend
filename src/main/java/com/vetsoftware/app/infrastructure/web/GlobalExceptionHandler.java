@@ -13,6 +13,7 @@ import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundExcep
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
+import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
@@ -26,6 +27,8 @@ import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
+import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -58,7 +61,9 @@ public class GlobalExceptionHandler {
             SystemUserPermissionNotFoundException.class,
             SpecieNotFoundException.class, BreedNotFoundException.class,
             OwnerNotFoundException.class, AnimalNotFoundException.class,
-            ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class
+            ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
+            VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
+            HospitalizationNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

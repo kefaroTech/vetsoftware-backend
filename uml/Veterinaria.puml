@@ -302,6 +302,7 @@ class Vaccination {
   -nextVaccination: LocalDate
   -animal: Animal
   -createdDate: LocalDateTime
+  -company: Company
   -createdBy: Employee
 }
 
@@ -334,6 +335,7 @@ class Hospitalization {
   -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
+  -company: Company
   -createdBy: Employee
 }
 
@@ -477,10 +479,12 @@ Consultation      --> Animal
 Consultation      --> Company
 Consultation      --> ConsultationType
 Vaccination       --> Animal
+Vaccination       --> Company
 Vaccination       --> VaccinationType
 Surgery           --> Animal
 Surgery           --> SurgeryType
 Hospitalization   --> Animal
+Hospitalization   --> Company
 Hospitalization   --> HospitalizationType
 Hospitalization   --> ReasonLeaving
 LaboratoryTest    --> Animal
