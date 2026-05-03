@@ -1,6 +1,5 @@
 package com.vetsoftware.app.basepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.command.UpdateBasePermissionCommand;
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import com.vetsoftware.app.basepermission.application.port.in.UpdateBasePermissionUseCase;
@@ -27,7 +26,7 @@ public class UpdateBasePermissionService implements UpdateBasePermissionUseCase 
 
     @Override
     @Transactional
-    public BasePermissionDto execute(UpdateBasePermissionCommand command, AuthContext auth) {
+    public BasePermissionDto execute(UpdateBasePermissionCommand command) {
         BasePermission basePermission = repository.findById(command.id())
             .orElseThrow(() -> new BasePermissionNotFoundException(command.id()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())

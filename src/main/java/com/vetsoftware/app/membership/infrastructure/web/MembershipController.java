@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membership.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membership.application.command.CreateMembershipCommand;
 import com.vetsoftware.app.membership.application.command.UpdateMembershipCommand;
 import com.vetsoftware.app.membership.application.dto.MembershipDto;
@@ -38,37 +37,33 @@ public class MembershipController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MembershipResponse create(@Valid @RequestBody CreateMembershipRequest request,
-                                     @RequestAttribute AuthContext authContext) {
+    public MembershipResponse create(@Valid @RequestBody CreateMembershipRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateMembershipCommand(request.name(), request.status(), request.mandatory()),
-            authContext
+            new CreateMembershipCommand(request.name(), request.status(), request.mandatory())
         ));
     }
 
     @GetMapping
-    public List<MembershipResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<MembershipResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public MembershipResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public MembershipResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public MembershipResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMembershipRequest request,
-                                     @RequestAttribute AuthContext authContext) {
+    public MembershipResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMembershipRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateMembershipCommand(id, request.name(), request.status(), request.mandatory()),
-            authContext
+            new UpdateMembershipCommand(id, request.name(), request.status(), request.mandatory())
         ));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private MembershipResponse toResponse(MembershipDto dto) {

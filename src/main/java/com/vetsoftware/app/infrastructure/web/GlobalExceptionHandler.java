@@ -2,7 +2,6 @@ package com.vetsoftware.app.infrastructure.web;
 
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
-import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
@@ -33,6 +32,8 @@ import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -67,10 +68,16 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
     }
 
-    @ExceptionHandler(UnauthorizedException.class)
-    public ProblemDetail handleForbidden(UnauthorizedException ex) {
-        log.warn("Forbidden: {}", ex.getMessage());
-        return problem(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return problem(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return problem(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication required");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -1,11 +1,10 @@
 package com.vetsoftware.app.employee.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateEmployeeUseCase {
-    @RequiresPermission({"admin.all","employee.update"})
-    EmployeeDto execute(UpdateEmployeeCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('employee.update') or hasRole('SYSTEM')")
+    EmployeeDto execute(UpdateEmployeeCommand command);
 }

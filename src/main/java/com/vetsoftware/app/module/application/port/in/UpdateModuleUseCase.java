@@ -1,11 +1,10 @@
 package com.vetsoftware.app.module.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.command.UpdateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateModuleUseCase {
-    @RequiresPermission({"admin.all"})
-    ModuleDto execute(UpdateModuleCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    ModuleDto execute(UpdateModuleCommand command);
 }

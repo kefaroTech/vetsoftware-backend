@@ -14,7 +14,6 @@ import com.vetsoftware.app.animal.domain.BreedRef;
 import com.vetsoftware.app.animal.domain.CompanyRef;
 import com.vetsoftware.app.animal.domain.OwnerRef;
 import com.vetsoftware.app.animal.domain.SpecieRef;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +41,7 @@ public class UpdateAnimalService implements UpdateAnimalUseCase {
 
     @Override
     @Transactional
-    public AnimalDto execute(UpdateAnimalCommand command, AuthContext auth) {
+    public AnimalDto execute(UpdateAnimalCommand command) {
         Animal animal = repository.findById(command.id())
             .orElseThrow(() -> new AnimalNotFoundException(command.id()));
         SpecieRef specie = specieQueryPort.findById(command.specieId())

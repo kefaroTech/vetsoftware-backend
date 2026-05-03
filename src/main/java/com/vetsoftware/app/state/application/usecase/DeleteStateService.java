@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.port.in.DeleteStateUseCase;
 import com.vetsoftware.app.state.application.port.out.StateRepository;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteStateService implements DeleteStateUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new StateNotFoundException(id));
         repository.delete(id);
     }

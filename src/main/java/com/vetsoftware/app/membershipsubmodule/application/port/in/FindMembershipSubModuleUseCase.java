@@ -1,10 +1,9 @@
 package com.vetsoftware.app.membershipsubmodule.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindMembershipSubModuleUseCase {
-    @RequiresPermission("admin.all")
-    MembershipSubModuleDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    MembershipSubModuleDto findById(Long id);
 }

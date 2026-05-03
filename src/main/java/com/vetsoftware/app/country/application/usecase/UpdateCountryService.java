@@ -1,6 +1,5 @@
 package com.vetsoftware.app.country.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.command.UpdateCountryCommand;
 import com.vetsoftware.app.country.application.dto.CountryDto;
 import com.vetsoftware.app.country.application.port.in.UpdateCountryUseCase;
@@ -22,7 +21,7 @@ public class UpdateCountryService implements UpdateCountryUseCase {
 
     @Override
     @Transactional
-    public CountryDto execute(UpdateCountryCommand command, AuthContext auth) {
+    public CountryDto execute(UpdateCountryCommand command) {
         Country country = repository.findById(command.id())
                 .orElseThrow(() -> new CountryNotFoundException(command.id()));
         country.update(command.name());

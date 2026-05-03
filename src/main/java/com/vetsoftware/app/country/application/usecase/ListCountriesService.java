@@ -1,6 +1,5 @@
 package com.vetsoftware.app.country.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.dto.CountryDto;
 import com.vetsoftware.app.country.application.port.in.ListCountriesUseCase;
 import com.vetsoftware.app.country.application.port.out.CountryRepository;
@@ -18,7 +17,7 @@ public class ListCountriesService implements ListCountriesUseCase {
     }
 
     @Override
-    public List<CountryDto> listAll(AuthContext auth) {
+    public List<CountryDto> listAll() {
         return repository.findAll().stream().map(CountryDto::from).toList();
     }
 }

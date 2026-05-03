@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuserpermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.command.CreateSystemUserPermissionCommand;
 import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermissionDto;
 import com.vetsoftware.app.systemuserpermission.application.port.in.CreateSystemUserPermissionUseCase;
@@ -29,7 +28,7 @@ public class CreateSystemUserPermissionService implements CreateSystemUserPermis
     }
 
     @Override
-    public SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command, AuthContext auth) {
+    public SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command) {
         SystemUserRef systemUser = systemUserQueryPort.findById(command.systemUserId())
             .orElseThrow(() -> new IllegalArgumentException("SystemUser not found: " + command.systemUserId()));
         SystemPermissionRef systemPermission = systemPermissionQueryPort.findById(command.systemPermissionId())

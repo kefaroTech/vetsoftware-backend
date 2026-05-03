@@ -1,8 +1,6 @@
 package com.vetsoftware.app.state.infrastructure.web;
 
 import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
-import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.state.application.command.CreateStateCommand;
 import com.vetsoftware.app.state.application.command.UpdateStateCommand;
 import com.vetsoftware.app.state.application.dto.CountrySummaryDto;
@@ -46,40 +44,38 @@ public class StateController {
 
     @PostMapping("/states")
     @ResponseStatus(HttpStatus.CREATED)
-    public StateResponse create(@Valid @RequestBody CreateStateRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public StateResponse create(@Valid @RequestBody CreateStateRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateStateCommand(request.name(), request.countryId()), authContext));
+            new CreateStateCommand(request.name(), request.countryId())));
     }
 
     @GetMapping("/states")
-    public List<StateResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<StateResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/countries/{countryId}/states")
     @PublicEndpoint
     public List<StateResponse> listByCountry(@PathVariable Long countryId) {
-        return listByCountryUseCase.listByCountry(countryId, SystemContext.INSTANCE).stream()
+        return listByCountryUseCase.listByCountry(countryId).stream()
             .map(this::toResponse).toList();
     }
 
     @GetMapping("/states/{id}")
-    public StateResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public StateResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/states/{id}")
-    public StateResponse update(@PathVariable Long id, @Valid @RequestBody UpdateStateRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public StateResponse update(@PathVariable Long id, @Valid @RequestBody UpdateStateRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateStateCommand(id, request.name(), request.countryId()), authContext));
+            new UpdateStateCommand(id, request.name(), request.countryId())));
     }
 
     @DeleteMapping("/states/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private StateResponse toResponse(StateDto dto) {

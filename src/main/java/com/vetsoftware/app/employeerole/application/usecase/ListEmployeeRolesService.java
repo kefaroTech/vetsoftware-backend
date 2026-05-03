@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.ListEmployeeRolesUseCase;
 import com.vetsoftware.app.employeerole.application.port.out.EmployeeRoleRepository;
@@ -18,7 +17,7 @@ public class ListEmployeeRolesService implements ListEmployeeRolesUseCase {
     }
 
     @Override
-    public List<EmployeeRoleDto> listAll(AuthContext auth) {
+    public List<EmployeeRoleDto> listAll() {
         return repository.findAll().stream().map(EmployeeRoleDto::from).toList();
     }
 }

@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.CreateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermissionDto;
 import com.vetsoftware.app.baserolepermission.application.port.in.CreateBaseRolePermissionUseCase;
@@ -29,7 +28,7 @@ public class CreateBaseRolePermissionService implements CreateBaseRolePermission
     }
 
     @Override
-    public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command, AuthContext auth) {
+    public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command) {
         BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())
             .orElseThrow(() -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
         BasePermissionRef basePermission = basePermissionQueryPort.findById(command.basePermissionId())

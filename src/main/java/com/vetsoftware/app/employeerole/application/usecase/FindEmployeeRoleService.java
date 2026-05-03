@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.FindEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.out.EmployeeRoleRepository;
@@ -18,7 +17,7 @@ public class FindEmployeeRoleService implements FindEmployeeRoleUseCase {
     }
 
     @Override
-    public EmployeeRoleDto findById(Long id, AuthContext auth) {
+    public EmployeeRoleDto findById(Long id) {
         return repository.findById(id)
             .map(EmployeeRoleDto::from)
             .orElseThrow(() -> new EmployeeRoleNotFoundException(id));

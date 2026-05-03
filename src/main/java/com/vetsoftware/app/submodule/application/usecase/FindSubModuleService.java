@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import com.vetsoftware.app.submodule.application.port.in.FindSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.out.SubModuleRepository;
@@ -18,7 +17,7 @@ public class FindSubModuleService implements FindSubModuleUseCase {
     }
 
     @Override
-    public SubModuleDto findById(Long id, AuthContext auth) {
+    public SubModuleDto findById(Long id) {
         return SubModuleDto.from(repository.findById(id)
             .orElseThrow(() -> new SubModuleNotFoundException(id)));
     }

@@ -1,11 +1,10 @@
 package com.vetsoftware.app.systemuser.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.dto.SystemUserDto;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSystemUsersUseCase {
-    @RequiresPermission("admin.all")
-    List<SystemUserDto> listAll(AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    List<SystemUserDto> listAll();
 }

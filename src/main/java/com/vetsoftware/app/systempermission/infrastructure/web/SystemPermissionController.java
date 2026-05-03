@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systempermission.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systempermission.application.command.CreateSystemPermissionCommand;
 import com.vetsoftware.app.systempermission.application.command.UpdateSystemPermissionCommand;
 import com.vetsoftware.app.systempermission.application.dto.SystemPermissionDto;
@@ -40,35 +39,32 @@ public class SystemPermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SystemPermissionResponse create(@Valid @RequestBody CreateSystemPermissionRequest request,
-                                           @RequestAttribute AuthContext authContext) {
+    public SystemPermissionResponse create(@Valid @RequestBody CreateSystemPermissionRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateSystemPermissionCommand(request.name(), request.code()), authContext));
+            new CreateSystemPermissionCommand(request.name(), request.code())));
     }
 
     @GetMapping
-    public List<SystemPermissionResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<SystemPermissionResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public SystemPermissionResponse findById(@PathVariable Long id,
-                                             @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public SystemPermissionResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public SystemPermissionResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateSystemPermissionRequest request,
-                                           @RequestAttribute AuthContext authContext) {
+                                           @Valid @RequestBody UpdateSystemPermissionRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateSystemPermissionCommand(id, request.name(), request.code()), authContext));
+            new UpdateSystemPermissionCommand(id, request.name(), request.code())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private SystemPermissionResponse toResponse(SystemPermissionDto dto) {

@@ -1,10 +1,9 @@
 package com.vetsoftware.app.employeerole.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindEmployeeRoleUseCase {
-    @RequiresPermission("admin.all")
-    EmployeeRoleDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    EmployeeRoleDto findById(Long id);
 }

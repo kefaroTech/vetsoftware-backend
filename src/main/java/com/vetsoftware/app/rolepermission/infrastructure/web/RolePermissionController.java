@@ -1,6 +1,5 @@
 package com.vetsoftware.app.rolepermission.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.rolepermission.application.command.CreateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.command.UpdateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.PermissionSummaryDto;
@@ -44,35 +43,32 @@ public class RolePermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public RolePermissionResponse create(@Valid @RequestBody CreateRolePermissionRequest request,
-                                         @RequestAttribute AuthContext authContext) {
+    public RolePermissionResponse create(@Valid @RequestBody CreateRolePermissionRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateRolePermissionCommand(request.roleId(), request.permissionId()), authContext));
+            new CreateRolePermissionCommand(request.roleId(), request.permissionId())));
     }
 
     @GetMapping
-    public List<RolePermissionResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<RolePermissionResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public RolePermissionResponse findById(@PathVariable Long id,
-                                           @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public RolePermissionResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public RolePermissionResponse update(@PathVariable Long id,
-                                         @Valid @RequestBody UpdateRolePermissionRequest request,
-                                         @RequestAttribute AuthContext authContext) {
+                                         @Valid @RequestBody UpdateRolePermissionRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateRolePermissionCommand(id, request.roleId(), request.permissionId()), authContext));
+            new UpdateRolePermissionCommand(id, request.roleId(), request.permissionId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private RolePermissionResponse toResponse(RolePermissionDto dto) {

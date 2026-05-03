@@ -1,10 +1,9 @@
 package com.vetsoftware.app.animal.application.port.in;
 
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindAnimalUseCase {
-    @RequiresPermission("admin.all")
-    AnimalDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    AnimalDto findById(Long id);
 }

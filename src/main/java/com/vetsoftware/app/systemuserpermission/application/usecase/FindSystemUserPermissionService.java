@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuserpermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermissionDto;
 import com.vetsoftware.app.systemuserpermission.application.port.in.FindSystemUserPermissionUseCase;
 import com.vetsoftware.app.systemuserpermission.application.port.out.SystemUserPermissionRepository;
@@ -18,7 +17,7 @@ public class FindSystemUserPermissionService implements FindSystemUserPermission
     }
 
     @Override
-    public SystemUserPermissionDto findById(Long id, AuthContext auth) {
+    public SystemUserPermissionDto findById(Long id) {
         return repository.findById(id)
             .map(SystemUserPermissionDto::from)
             .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));

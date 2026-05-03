@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.dto.CityDto;
 import com.vetsoftware.app.city.application.port.in.ListCitiesUseCase;
 import com.vetsoftware.app.city.application.port.out.CityRepository;
@@ -18,7 +17,7 @@ public class ListCitiesService implements ListCitiesUseCase {
     }
 
     @Override
-    public List<CityDto> listAll(AuthContext auth) {
+    public List<CityDto> listAll() {
         return repository.findAll().stream().map(CityDto::from).toList();
     }
 }

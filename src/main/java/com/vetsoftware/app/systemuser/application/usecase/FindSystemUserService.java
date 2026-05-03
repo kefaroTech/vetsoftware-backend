@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuser.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.dto.SystemUserDto;
 import com.vetsoftware.app.systemuser.application.port.in.FindSystemUserUseCase;
 import com.vetsoftware.app.systemuser.application.port.out.SystemUserRepository;
@@ -18,7 +17,7 @@ public class FindSystemUserService implements FindSystemUserUseCase {
     }
 
     @Override
-    public SystemUserDto findById(Long id, AuthContext auth) {
+    public SystemUserDto findById(Long id) {
         return repository.findById(id)
             .map(SystemUserDto::from)
             .orElseThrow(() -> new SystemUserNotFoundException(id));

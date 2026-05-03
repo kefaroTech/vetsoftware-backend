@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.dto.StateDto;
 import com.vetsoftware.app.state.application.port.in.ListStatesByCountryUseCase;
 import com.vetsoftware.app.state.application.port.out.StateRepository;
@@ -18,7 +17,7 @@ public class ListStatesByCountryService implements ListStatesByCountryUseCase {
     }
 
     @Override
-    public List<StateDto> listByCountry(Long countryId, AuthContext auth) {
+    public List<StateDto> listByCountry(Long countryId) {
         return repository.findByCountryId(countryId).stream().map(StateDto::from).toList();
     }
 }

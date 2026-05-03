@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membership.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membership.application.command.CreateMembershipCommand;
 import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import com.vetsoftware.app.membership.application.port.in.CreateMembershipUseCase;
@@ -20,7 +19,7 @@ public class CreateMembershipService implements CreateMembershipUseCase {
     }
 
     @Override
-    public MembershipDto execute(CreateMembershipCommand command, AuthContext auth) {
+    public MembershipDto execute(CreateMembershipCommand command) {
         MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
         Membership membership = Membership.create(command.name(), status, command.mandatory());
         return MembershipDto.from(repository.save(membership));

@@ -19,7 +19,6 @@ import com.vetsoftware.app.animal.infrastructure.web.response.BreedSummary;
 import com.vetsoftware.app.animal.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.animal.infrastructure.web.response.OwnerSummary;
 import com.vetsoftware.app.animal.infrastructure.web.response.SpecieSummary;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -46,47 +45,41 @@ public class AnimalController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public AnimalResponse create(@Valid @RequestBody CreateAnimalRequest request,
-                                 @RequestAttribute AuthContext authContext) {
+    public AnimalResponse create(@Valid @RequestBody CreateAnimalRequest request) {
         return toResponse(createUseCase.execute(
             new CreateAnimalCommand(
                 request.name(), request.code(), request.specieId(), request.breedId(),
                 request.ownerId(), request.gender(), request.weightType(), request.animalType(),
                 request.reproductiveState(), request.color(), request.bod(),
                 request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                request.companyId()),
-            authContext));
+                request.companyId())));
     }
 
     @GetMapping
-    public List<AnimalResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<AnimalResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public AnimalResponse findById(@PathVariable Long id,
-                                   @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public AnimalResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public AnimalResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAnimalRequest request,
-                                 @RequestAttribute AuthContext authContext) {
+    public AnimalResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAnimalRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateAnimalCommand(
                 id, request.name(), request.code(), request.specieId(), request.breedId(),
                 request.ownerId(), request.gender(), request.weightType(), request.animalType(),
                 request.reproductiveState(), request.color(), request.bod(),
                 request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                request.companyId()),
-            authContext));
+                request.companyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id,
-                       @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private AnimalResponse toResponse(AnimalDto dto) {

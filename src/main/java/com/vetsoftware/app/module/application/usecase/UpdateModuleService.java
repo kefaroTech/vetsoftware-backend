@@ -1,6 +1,5 @@
 package com.vetsoftware.app.module.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.command.UpdateModuleCommand;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
 import com.vetsoftware.app.module.application.port.in.UpdateModuleUseCase;
@@ -22,7 +21,7 @@ public class UpdateModuleService implements UpdateModuleUseCase {
 
     @Override
     @Transactional
-    public ModuleDto execute(UpdateModuleCommand command, AuthContext auth) {
+    public ModuleDto execute(UpdateModuleCommand command) {
         Module module = repository.findById(command.id())
                 .orElseThrow(() -> new ModuleNotFoundException(command.id()));
         module.update(command.name(), command.code());

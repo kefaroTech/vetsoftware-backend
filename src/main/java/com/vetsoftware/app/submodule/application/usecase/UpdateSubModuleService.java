@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.command.UpdateSubModuleCommand;
 import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import com.vetsoftware.app.submodule.application.port.in.UpdateSubModuleUseCase;
@@ -27,7 +26,7 @@ public class UpdateSubModuleService implements UpdateSubModuleUseCase {
 
     @Override
     @Transactional
-    public SubModuleDto execute(UpdateSubModuleCommand command, AuthContext auth) {
+    public SubModuleDto execute(UpdateSubModuleCommand command) {
         SubModule subModule = repository.findById(command.id())
             .orElseThrow(() -> new SubModuleNotFoundException(command.id()));
         ModuleRef module = moduleQueryPort.findById(command.moduleId())

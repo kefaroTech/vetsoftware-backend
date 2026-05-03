@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuser.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.command.UpdateSystemUserCommand;
 import com.vetsoftware.app.systemuser.application.dto.SystemUserDto;
 import com.vetsoftware.app.systemuser.application.port.in.UpdateSystemUserUseCase;
@@ -22,7 +21,7 @@ public class UpdateSystemUserService implements UpdateSystemUserUseCase {
 
     @Override
     @Transactional
-    public SystemUserDto execute(UpdateSystemUserCommand command, AuthContext auth) {
+    public SystemUserDto execute(UpdateSystemUserCommand command) {
         SystemUser systemUser = repository.findById(command.id())
             .orElseThrow(() -> new SystemUserNotFoundException(command.id()));
         systemUser.update(command.code());

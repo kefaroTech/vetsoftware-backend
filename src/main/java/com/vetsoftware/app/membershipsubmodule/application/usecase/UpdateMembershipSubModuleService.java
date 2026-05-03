@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membershipsubmodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.command.UpdateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.UpdateMembershipSubModuleUseCase;
@@ -32,7 +31,7 @@ public class UpdateMembershipSubModuleService implements UpdateMembershipSubModu
 
     @Override
     @Transactional
-    public MembershipSubModuleDto execute(UpdateMembershipSubModuleCommand command, AuthContext auth) {
+    public MembershipSubModuleDto execute(UpdateMembershipSubModuleCommand command) {
         MembershipSubModule membershipSubModule = repository.findById(command.id())
             .orElseThrow(() -> new MembershipSubModuleNotFoundException(command.id()));
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())

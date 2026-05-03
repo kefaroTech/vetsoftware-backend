@@ -1,6 +1,5 @@
 package com.vetsoftware.app.role.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.role.application.command.CreateRoleCommand;
 import com.vetsoftware.app.role.application.dto.RoleDto;
 import com.vetsoftware.app.role.application.port.in.CreateRoleUseCase;
@@ -23,7 +22,7 @@ public class CreateRoleService implements CreateRoleUseCase {
     }
 
     @Override
-    public RoleDto execute(CreateRoleCommand command, AuthContext auth) {
+    public RoleDto execute(CreateRoleCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         Role role = Role.create(command.name(), command.code(), company);

@@ -1,11 +1,10 @@
 package com.vetsoftware.app.baserolepermission.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.UpdateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermissionDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateBaseRolePermissionUseCase {
-    @RequiresPermission("admin.all")
-    BaseRolePermissionDto execute(UpdateBaseRolePermissionCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    BaseRolePermissionDto execute(UpdateBaseRolePermissionCommand command);
 }

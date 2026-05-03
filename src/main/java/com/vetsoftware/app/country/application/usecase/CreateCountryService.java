@@ -1,6 +1,5 @@
 package com.vetsoftware.app.country.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.command.CreateCountryCommand;
 import com.vetsoftware.app.country.application.dto.CountryDto;
 import com.vetsoftware.app.country.application.port.in.CreateCountryUseCase;
@@ -19,7 +18,7 @@ public class CreateCountryService implements CreateCountryUseCase {
     }
 
     @Override
-    public CountryDto execute(CreateCountryCommand command, AuthContext auth) {
+    public CountryDto execute(CreateCountryCommand command) {
         return CountryDto.from(repository.save(Country.create(command.name())));
     }
 }

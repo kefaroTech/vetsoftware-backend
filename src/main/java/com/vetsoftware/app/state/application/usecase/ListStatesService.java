@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.dto.StateDto;
 import com.vetsoftware.app.state.application.port.in.ListStatesUseCase;
 import com.vetsoftware.app.state.application.port.out.StateRepository;
@@ -18,7 +17,7 @@ public class ListStatesService implements ListStatesUseCase {
     }
 
     @Override
-    public List<StateDto> listAll(AuthContext auth) {
+    public List<StateDto> listAll() {
         return repository.findAll().stream().map(StateDto::from).toList();
     }
 }

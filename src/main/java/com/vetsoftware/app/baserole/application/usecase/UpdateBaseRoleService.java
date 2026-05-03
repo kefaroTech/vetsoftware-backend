@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserole.application.command.UpdateBaseRoleCommand;
 import com.vetsoftware.app.baserole.application.dto.BaseRoleDto;
 import com.vetsoftware.app.baserole.application.port.in.UpdateBaseRoleUseCase;
@@ -22,7 +21,7 @@ public class UpdateBaseRoleService implements UpdateBaseRoleUseCase {
 
     @Override
     @Transactional
-    public BaseRoleDto execute(UpdateBaseRoleCommand command, AuthContext auth) {
+    public BaseRoleDto execute(UpdateBaseRoleCommand command) {
         BaseRole baseRole = repository.findById(command.id())
             .orElseThrow(() -> new BaseRoleNotFoundException(command.id()));
         baseRole.update(command.name(), command.code(), command.mandatory());

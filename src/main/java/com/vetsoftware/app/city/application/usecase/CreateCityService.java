@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.command.CreateCityCommand;
 import com.vetsoftware.app.city.application.dto.CityDto;
 import com.vetsoftware.app.city.application.port.in.CreateCityUseCase;
@@ -23,7 +22,7 @@ public class CreateCityService implements CreateCityUseCase {
     }
 
     @Override
-    public CityDto execute(CreateCityCommand command, AuthContext auth) {
+    public CityDto execute(CreateCityCommand command) {
         StateRef state = stateQueryPort.findById(command.stateId())
             .orElseThrow(() -> new IllegalArgumentException("State not found: " + command.stateId()));
         City city = City.create(command.name(), state);

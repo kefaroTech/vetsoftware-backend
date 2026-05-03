@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
 import com.vetsoftware.app.breed.application.port.in.ListBreedsUseCase;
 import com.vetsoftware.app.breed.application.port.out.BreedRepository;
@@ -18,7 +17,7 @@ public class ListBreedsService implements ListBreedsUseCase {
     }
 
     @Override
-    public List<BreedDto> listAll(AuthContext auth) {
+    public List<BreedDto> listAll() {
         return repository.findAll().stream().map(BreedDto::from).toList();
     }
 }

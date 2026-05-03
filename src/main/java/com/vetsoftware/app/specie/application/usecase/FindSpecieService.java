@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import com.vetsoftware.app.specie.application.port.in.FindSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.out.SpecieRepository;
@@ -18,7 +17,7 @@ public class FindSpecieService implements FindSpecieUseCase {
     }
 
     @Override
-    public SpecieDto findById(Long id, AuthContext auth) {
+    public SpecieDto findById(Long id) {
         return SpecieDto.from(repository.findById(id)
                 .orElseThrow(() -> new SpecieNotFoundException(id)));
     }

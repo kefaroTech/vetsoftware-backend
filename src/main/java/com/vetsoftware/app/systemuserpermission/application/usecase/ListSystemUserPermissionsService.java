@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuserpermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermissionDto;
 import com.vetsoftware.app.systemuserpermission.application.port.in.ListSystemUserPermissionsUseCase;
 import com.vetsoftware.app.systemuserpermission.application.port.out.SystemUserPermissionRepository;
@@ -18,7 +17,7 @@ public class ListSystemUserPermissionsService implements ListSystemUserPermissio
     }
 
     @Override
-    public List<SystemUserPermissionDto> listAll(AuthContext auth) {
+    public List<SystemUserPermissionDto> listAll() {
         return repository.findAll().stream().map(SystemUserPermissionDto::from).toList();
     }
 }

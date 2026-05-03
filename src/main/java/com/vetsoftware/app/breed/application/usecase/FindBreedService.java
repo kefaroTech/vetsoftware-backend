@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
 import com.vetsoftware.app.breed.application.port.in.FindBreedUseCase;
 import com.vetsoftware.app.breed.application.port.out.BreedRepository;
@@ -18,7 +17,7 @@ public class FindBreedService implements FindBreedUseCase {
     }
 
     @Override
-    public BreedDto findById(Long id, AuthContext auth) {
+    public BreedDto findById(Long id) {
         return BreedDto.from(repository.findById(id)
             .orElseThrow(() -> new BreedNotFoundException(id)));
     }

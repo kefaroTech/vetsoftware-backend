@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.dto.CityDto;
 import com.vetsoftware.app.city.application.port.in.FindCityUseCase;
 import com.vetsoftware.app.city.application.port.out.CityRepository;
@@ -18,7 +17,7 @@ public class FindCityService implements FindCityUseCase {
     }
 
     @Override
-    public CityDto findById(Long id, AuthContext auth) {
+    public CityDto findById(Long id) {
         return repository.findById(id)
                 .map(CityDto::from)
                 .orElseThrow(() -> new CityNotFoundException(id));

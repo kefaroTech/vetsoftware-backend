@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.command.CreateBreedCommand;
 import com.vetsoftware.app.breed.application.command.UpdateBreedCommand;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
@@ -40,35 +39,31 @@ public class BreedController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BreedResponse create(@Valid @RequestBody CreateBreedRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public BreedResponse create(@Valid @RequestBody CreateBreedRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateBreedCommand(request.name(), request.specieId()), authContext));
+            new CreateBreedCommand(request.name(), request.specieId())));
     }
 
     @GetMapping
-    public List<BreedResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<BreedResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public BreedResponse findById(@PathVariable Long id,
-                                  @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public BreedResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public BreedResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBreedRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public BreedResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBreedRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateBreedCommand(id, request.name(), request.specieId()), authContext));
+            new UpdateBreedCommand(id, request.name(), request.specieId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id,
-                       @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private BreedResponse toResponse(BreedDto dto) {

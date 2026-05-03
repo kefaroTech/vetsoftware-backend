@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserolepermission.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.CreateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.command.UpdateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.dto.BasePermissionSummaryDto;
@@ -44,35 +43,32 @@ public class BaseRolePermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BaseRolePermissionResponse create(@Valid @RequestBody CreateBaseRolePermissionRequest request,
-                                              @RequestAttribute AuthContext authContext) {
+    public BaseRolePermissionResponse create(@Valid @RequestBody CreateBaseRolePermissionRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateBaseRolePermissionCommand(request.baseRoleId(), request.basePermissionId()), authContext));
+            new CreateBaseRolePermissionCommand(request.baseRoleId(), request.basePermissionId())));
     }
 
     @GetMapping
-    public List<BaseRolePermissionResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<BaseRolePermissionResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public BaseRolePermissionResponse findById(@PathVariable Long id,
-                                                @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public BaseRolePermissionResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public BaseRolePermissionResponse update(@PathVariable Long id,
-                                              @Valid @RequestBody UpdateBaseRolePermissionRequest request,
-                                              @RequestAttribute AuthContext authContext) {
+                                              @Valid @RequestBody UpdateBaseRolePermissionRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateBaseRolePermissionCommand(id, request.baseRoleId(), request.basePermissionId()), authContext));
+            new UpdateBaseRolePermissionCommand(id, request.baseRoleId(), request.basePermissionId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {

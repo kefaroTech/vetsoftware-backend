@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membership.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membership.application.port.in.DeleteMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.out.MembershipRepository;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteMembershipService implements DeleteMembershipUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new MembershipNotFoundException(id));
         repository.delete(id);
     }

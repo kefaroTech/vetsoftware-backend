@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuser.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.port.in.DeleteSystemUserUseCase;
 import com.vetsoftware.app.systemuser.application.port.out.SystemUserRepository;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteSystemUserService implements DeleteSystemUserUseCase {
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new SystemUserNotFoundException(id));
         repository.delete(id);
     }

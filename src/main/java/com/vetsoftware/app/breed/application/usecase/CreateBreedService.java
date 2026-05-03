@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.command.CreateBreedCommand;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
 import com.vetsoftware.app.breed.application.port.in.CreateBreedUseCase;
@@ -23,7 +22,7 @@ public class CreateBreedService implements CreateBreedUseCase {
     }
 
     @Override
-    public BreedDto execute(CreateBreedCommand command, AuthContext auth) {
+    public BreedDto execute(CreateBreedCommand command) {
         SpecieRef specie = specieQueryPort.findById(command.specieId())
             .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
         Breed breed = Breed.create(command.name(), specie);

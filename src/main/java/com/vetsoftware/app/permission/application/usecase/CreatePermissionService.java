@@ -1,6 +1,5 @@
 package com.vetsoftware.app.permission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.permission.application.command.CreatePermissionCommand;
 import com.vetsoftware.app.permission.application.dto.PermissionDto;
 import com.vetsoftware.app.permission.application.port.in.CreatePermissionUseCase;
@@ -29,7 +28,7 @@ public class CreatePermissionService implements CreatePermissionUseCase {
     }
 
     @Override
-    public PermissionDto execute(CreatePermissionCommand command, AuthContext auth) {
+    public PermissionDto execute(CreatePermissionCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())

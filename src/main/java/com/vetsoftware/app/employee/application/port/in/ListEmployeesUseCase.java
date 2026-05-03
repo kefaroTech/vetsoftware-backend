@@ -1,11 +1,11 @@
 package com.vetsoftware.app.employee.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.util.List;
 
 public interface ListEmployeesUseCase {
-    @RequiresPermission({"admin.all","employee.read"})
-    List<EmployeeDto> listAll(AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('employee.read') or hasRole('SYSTEM')")
+    List<EmployeeDto> listAll();
 }

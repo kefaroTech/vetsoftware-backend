@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import com.vetsoftware.app.specie.application.port.in.ListSpeciesUseCase;
 import com.vetsoftware.app.specie.application.port.out.SpecieRepository;
@@ -18,7 +17,7 @@ public class ListSpeciesService implements ListSpeciesUseCase {
     }
 
     @Override
-    public List<SpecieDto> listAll(AuthContext auth) {
+    public List<SpecieDto> listAll() {
         return repository.findAll().stream().map(SpecieDto::from).toList();
     }
 }

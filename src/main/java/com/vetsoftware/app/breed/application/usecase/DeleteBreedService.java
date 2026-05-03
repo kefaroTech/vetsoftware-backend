@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.port.in.DeleteBreedUseCase;
 import com.vetsoftware.app.breed.application.port.out.BreedRepository;
 import com.vetsoftware.app.breed.domain.BreedNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteBreedService implements DeleteBreedUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new BreedNotFoundException(id));
         repository.delete(id);
     }

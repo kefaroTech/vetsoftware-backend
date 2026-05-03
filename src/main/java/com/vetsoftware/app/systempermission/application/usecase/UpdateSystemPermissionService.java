@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systempermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systempermission.application.command.UpdateSystemPermissionCommand;
 import com.vetsoftware.app.systempermission.application.dto.SystemPermissionDto;
 import com.vetsoftware.app.systempermission.application.port.in.UpdateSystemPermissionUseCase;
@@ -22,7 +21,7 @@ public class UpdateSystemPermissionService implements UpdateSystemPermissionUseC
 
     @Override
     @Transactional
-    public SystemPermissionDto execute(UpdateSystemPermissionCommand command, AuthContext auth) {
+    public SystemPermissionDto execute(UpdateSystemPermissionCommand command) {
         SystemPermission systemPermission = repository.findById(command.id())
             .orElseThrow(() -> new SystemPermissionNotFoundException(command.id()));
         systemPermission.update(command.name(), command.code());

@@ -1,11 +1,10 @@
 package com.vetsoftware.app.state.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.command.UpdateStateCommand;
 import com.vetsoftware.app.state.application.dto.StateDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateStateUseCase {
-    @RequiresPermission({"admin.all"})
-    StateDto execute(UpdateStateCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    StateDto execute(UpdateStateCommand command);
 }

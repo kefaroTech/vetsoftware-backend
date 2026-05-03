@@ -1,6 +1,5 @@
 package com.vetsoftware.app.rolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.rolepermission.application.command.UpdateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
@@ -32,7 +31,7 @@ public class UpdateRolePermissionService implements UpdateRolePermissionUseCase 
 
     @Override
     @Transactional
-    public RolePermissionDto execute(UpdateRolePermissionCommand command, AuthContext auth) {
+    public RolePermissionDto execute(UpdateRolePermissionCommand command) {
         RolePermission rolePermission = repository.findById(command.id())
             .orElseThrow(() -> new RolePermissionNotFoundException(command.id()));
         RoleRef role = roleQueryPort.findById(command.roleId())

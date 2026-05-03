@@ -1,6 +1,5 @@
 package com.vetsoftware.app.permission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.permission.application.port.in.DeletePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.out.PermissionRepository;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
@@ -17,7 +16,7 @@ public class DeletePermissionService implements DeletePermissionUseCase {
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new PermissionNotFoundException(id));
         repository.delete(id);
     }

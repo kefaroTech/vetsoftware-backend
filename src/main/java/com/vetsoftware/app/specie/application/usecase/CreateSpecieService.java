@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.command.CreateSpecieCommand;
 import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import com.vetsoftware.app.specie.application.port.in.CreateSpecieUseCase;
@@ -19,7 +18,7 @@ public class CreateSpecieService implements CreateSpecieUseCase {
     }
 
     @Override
-    public SpecieDto execute(CreateSpecieCommand command, AuthContext auth) {
+    public SpecieDto execute(CreateSpecieCommand command) {
         return SpecieDto.from(repository.save(Specie.create(command.name())));
     }
 }

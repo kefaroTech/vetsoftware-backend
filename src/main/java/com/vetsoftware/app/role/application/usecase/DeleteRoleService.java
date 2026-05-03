@@ -1,6 +1,5 @@
 package com.vetsoftware.app.role.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.role.application.port.in.DeleteRoleUseCase;
 import com.vetsoftware.app.role.application.port.out.RoleRepository;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteRoleService implements DeleteRoleUseCase {
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new RoleNotFoundException(id));
         repository.delete(id);
     }

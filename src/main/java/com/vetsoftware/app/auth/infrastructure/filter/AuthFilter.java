@@ -3,6 +3,7 @@ package com.vetsoftware.app.auth.infrastructure.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
+import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
@@ -11,11 +12,16 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.method.HandlerMethod;
@@ -24,6 +30,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 @Component
 public class AuthFilter extends OncePerRequestFilter {
+
+    private static final String SYSTEM_ROLE = "ROLE_SYSTEM";
 
     private final ResolveAuthContextUseCase resolveAuthContextUseCase;
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
@@ -92,8 +100,24 @@ public class AuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        request.setAttribute("authContext", authContext);
-        filterChain.doFilter(request, response);
+        try {
+            SecurityContextHolder.getContext().setAuthentication(toAuthentication(authContext));
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private static UsernamePasswordAuthenticationToken toAuthentication(AuthContext authContext) {
+        List<GrantedAuthority> authorities = new ArrayList<>(
+            authContext.permissions().stream()
+                .<GrantedAuthority>map(SimpleGrantedAuthority::new)
+                .toList()
+        );
+        if (authContext instanceof SystemContext) {
+            authorities.add(new SimpleGrantedAuthority(SYSTEM_ROLE));
+        }
+        return new UsernamePasswordAuthenticationToken(authContext, null, authorities);
     }
 
     private String extractType(String token) {

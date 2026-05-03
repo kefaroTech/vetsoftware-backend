@@ -1,6 +1,5 @@
 package com.vetsoftware.app.company.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
@@ -29,7 +28,7 @@ public class CreateCompanyService implements CreateCompanyUseCase {
     }
 
     @Override
-    public CompanyDto execute(CreateCompanyCommand command, AuthContext auth) {
+    public CompanyDto execute(CreateCompanyCommand command) {
         CityRef city = cityQueryPort.findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())

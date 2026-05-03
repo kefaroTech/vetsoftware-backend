@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import com.vetsoftware.app.submodule.application.port.in.ListSubModulesUseCase;
 import com.vetsoftware.app.submodule.application.port.out.SubModuleRepository;
@@ -18,7 +17,7 @@ public class ListSubModulesService implements ListSubModulesUseCase {
     }
 
     @Override
-    public List<SubModuleDto> listAll(AuthContext auth) {
+    public List<SubModuleDto> listAll() {
         return repository.findAll().stream().map(SubModuleDto::from).toList();
     }
 }

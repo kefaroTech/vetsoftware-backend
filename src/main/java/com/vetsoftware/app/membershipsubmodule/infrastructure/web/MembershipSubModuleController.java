@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membershipsubmodule.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.command.CreateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.command.UpdateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
@@ -44,35 +43,32 @@ public class MembershipSubModuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MembershipSubModuleResponse create(@Valid @RequestBody CreateMembershipSubModuleRequest request,
-                                               @RequestAttribute AuthContext authContext) {
+    public MembershipSubModuleResponse create(@Valid @RequestBody CreateMembershipSubModuleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateMembershipSubModuleCommand(request.membershipId(), request.subModuleId()), authContext));
+            new CreateMembershipSubModuleCommand(request.membershipId(), request.subModuleId())));
     }
 
     @GetMapping
-    public List<MembershipSubModuleResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<MembershipSubModuleResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public MembershipSubModuleResponse findById(@PathVariable Long id,
-                                                 @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public MembershipSubModuleResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public MembershipSubModuleResponse update(@PathVariable Long id,
-                                               @Valid @RequestBody UpdateMembershipSubModuleRequest request,
-                                               @RequestAttribute AuthContext authContext) {
+                                               @Valid @RequestBody UpdateMembershipSubModuleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateMembershipSubModuleCommand(id, request.membershipId(), request.subModuleId()), authContext));
+            new UpdateMembershipSubModuleCommand(id, request.membershipId(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {

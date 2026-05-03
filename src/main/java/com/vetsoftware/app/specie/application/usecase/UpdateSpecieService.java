@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.command.UpdateSpecieCommand;
 import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import com.vetsoftware.app.specie.application.port.in.UpdateSpecieUseCase;
@@ -22,7 +21,7 @@ public class UpdateSpecieService implements UpdateSpecieUseCase {
 
     @Override
     @Transactional
-    public SpecieDto execute(UpdateSpecieCommand command, AuthContext auth) {
+    public SpecieDto execute(UpdateSpecieCommand command) {
         Specie specie = repository.findById(command.id())
                 .orElseThrow(() -> new SpecieNotFoundException(command.id()));
         specie.update(command.name());

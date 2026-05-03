@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuserpermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.port.in.DeleteSystemUserPermissionUseCase;
 import com.vetsoftware.app.systemuserpermission.application.port.out.SystemUserPermissionRepository;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteSystemUserPermissionService implements DeleteSystemUserPermis
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
         repository.delete(id);
     }

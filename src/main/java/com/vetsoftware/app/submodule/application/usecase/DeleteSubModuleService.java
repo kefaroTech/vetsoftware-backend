@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.port.in.DeleteSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.out.SubModuleRepository;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteSubModuleService implements DeleteSubModuleUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id));
         repository.delete(id);
     }

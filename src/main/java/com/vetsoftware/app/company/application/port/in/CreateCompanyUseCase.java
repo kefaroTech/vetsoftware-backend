@@ -1,11 +1,10 @@
 package com.vetsoftware.app.company.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateCompanyUseCase {
-    @RequiresPermission({"admin.all","company.create"})
-    CompanyDto execute(CreateCompanyCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('company.create') or hasRole('SYSTEM')")
+    CompanyDto execute(CreateCompanyCommand command);
 }

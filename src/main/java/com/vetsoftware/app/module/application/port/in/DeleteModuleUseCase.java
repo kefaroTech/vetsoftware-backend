@@ -1,9 +1,8 @@
 package com.vetsoftware.app.module.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteModuleUseCase {
-    @RequiresPermission({"admin.all"})
-    void execute(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    void execute(Long id);
 }

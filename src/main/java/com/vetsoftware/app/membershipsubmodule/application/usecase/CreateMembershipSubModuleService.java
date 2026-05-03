@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membershipsubmodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.command.CreateMembershipSubModuleCommand;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.CreateMembershipSubModuleUseCase;
@@ -29,7 +28,7 @@ public class CreateMembershipSubModuleService implements CreateMembershipSubModu
     }
 
     @Override
-    public MembershipSubModuleDto execute(CreateMembershipSubModuleCommand command, AuthContext auth) {
+    public MembershipSubModuleDto execute(CreateMembershipSubModuleCommand command) {
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())
             .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())

@@ -1,11 +1,10 @@
 package com.vetsoftware.app.membershipsubmodule.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListMembershipSubModulesUseCase {
-    @RequiresPermission("admin.all")
-    List<MembershipSubModuleDto> listAll(AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    List<MembershipSubModuleDto> listAll();
 }

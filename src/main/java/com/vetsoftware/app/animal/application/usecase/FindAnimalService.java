@@ -4,7 +4,6 @@ import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import com.vetsoftware.app.animal.application.port.in.FindAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +17,7 @@ public class FindAnimalService implements FindAnimalUseCase {
     }
 
     @Override
-    public AnimalDto findById(Long id, AuthContext auth) {
+    public AnimalDto findById(Long id) {
         return AnimalDto.from(repository.findById(id)
             .orElseThrow(() -> new AnimalNotFoundException(id)));
     }

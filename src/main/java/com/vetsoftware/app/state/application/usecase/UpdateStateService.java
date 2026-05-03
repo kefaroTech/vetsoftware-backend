@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.command.UpdateStateCommand;
 import com.vetsoftware.app.state.application.dto.StateDto;
 import com.vetsoftware.app.state.application.port.in.UpdateStateUseCase;
@@ -26,7 +25,7 @@ public class UpdateStateService implements UpdateStateUseCase {
 
     @Override
     @Transactional
-    public StateDto execute(UpdateStateCommand command, AuthContext auth) {
+    public StateDto execute(UpdateStateCommand command) {
         State state = repository.findById(command.id())
             .orElseThrow(() -> new StateNotFoundException(command.id()));
         CountryRef country = countryQueryPort.findById(command.countryId())

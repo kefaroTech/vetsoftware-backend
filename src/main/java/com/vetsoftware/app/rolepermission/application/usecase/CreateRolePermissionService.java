@@ -1,6 +1,5 @@
 package com.vetsoftware.app.rolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.rolepermission.application.command.CreateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import com.vetsoftware.app.rolepermission.application.port.in.CreateRolePermissionUseCase;
@@ -29,7 +28,7 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
     }
 
     @Override
-    public RolePermissionDto execute(CreateRolePermissionCommand command, AuthContext auth) {
+    public RolePermissionDto execute(CreateRolePermissionCommand command) {
         RoleRef role = roleQueryPort.findById(command.roleId())
             .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
         PermissionRef permission = permissionQueryPort.findById(command.permissionId())

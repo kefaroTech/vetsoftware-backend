@@ -1,8 +1,6 @@
 package com.vetsoftware.app.city.infrastructure.web;
 
 import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
-import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.city.application.command.CreateCityCommand;
 import com.vetsoftware.app.city.application.command.UpdateCityCommand;
 import com.vetsoftware.app.city.application.dto.CityDto;
@@ -46,40 +44,38 @@ public class CityController {
 
     @PostMapping("/cities")
     @ResponseStatus(HttpStatus.CREATED)
-    public CityResponse create(@Valid @RequestBody CreateCityRequest request,
-                               @RequestAttribute AuthContext authContext) {
+    public CityResponse create(@Valid @RequestBody CreateCityRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateCityCommand(request.name(), request.stateId()), authContext));
+            new CreateCityCommand(request.name(), request.stateId())));
     }
 
     @GetMapping("/cities")
-    public List<CityResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<CityResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/states/{stateId}/cities")
     @PublicEndpoint
     public List<CityResponse> listByState(@PathVariable Long stateId) {
-        return listByStateUseCase.listByState(stateId, SystemContext.INSTANCE).stream()
+        return listByStateUseCase.listByState(stateId).stream()
             .map(this::toResponse).toList();
     }
 
     @GetMapping("/cities/{id}")
-    public CityResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public CityResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/cities/{id}")
-    public CityResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCityRequest request,
-                               @RequestAttribute AuthContext authContext) {
+    public CityResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCityRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateCityCommand(id, request.name(), request.stateId()), authContext));
+            new UpdateCityCommand(id, request.name(), request.stateId())));
     }
 
     @DeleteMapping("/cities/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private CityResponse toResponse(CityDto dto) {

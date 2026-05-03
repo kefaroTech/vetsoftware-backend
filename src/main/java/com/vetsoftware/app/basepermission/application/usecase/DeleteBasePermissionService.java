@@ -1,6 +1,5 @@
 package com.vetsoftware.app.basepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.port.in.DeleteBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.out.BasePermissionRepository;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteBasePermissionService implements DeleteBasePermissionUseCase 
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new BasePermissionNotFoundException(id));
         repository.delete(id);
     }

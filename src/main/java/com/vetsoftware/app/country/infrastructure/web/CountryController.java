@@ -1,8 +1,6 @@
 package com.vetsoftware.app.country.infrastructure.web;
 
 import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
-import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.country.application.command.CreateCountryCommand;
 import com.vetsoftware.app.country.application.command.UpdateCountryCommand;
 import com.vetsoftware.app.country.application.dto.CountryDto;
@@ -41,32 +39,30 @@ public class CountryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CountryResponse create(@Valid @RequestBody CreateCountryRequest request,
-                                  @RequestAttribute AuthContext authContext) {
-        return toResponse(createUseCase.execute(new CreateCountryCommand(request.name()), authContext));
+    public CountryResponse create(@Valid @RequestBody CreateCountryRequest request) {
+        return toResponse(createUseCase.execute(new CreateCountryCommand(request.name())));
     }
 
     @GetMapping
     @PublicEndpoint
     public List<CountryResponse> listAll() {
-        return listUseCase.listAll(SystemContext.INSTANCE).stream().map(this::toResponse).toList();
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public CountryResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public CountryResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public CountryResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCountryRequest request,
-                                  @RequestAttribute AuthContext authContext) {
-        return toResponse(updateUseCase.execute(new UpdateCountryCommand(id, request.name()), authContext));
+    public CountryResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCountryRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateCountryCommand(id, request.name())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private CountryResponse toResponse(CountryDto dto) {

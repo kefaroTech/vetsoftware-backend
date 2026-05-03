@@ -1,11 +1,10 @@
 package com.vetsoftware.app.breed.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListBreedsUseCase {
-    @RequiresPermission("admin.all")
-    List<BreedDto> listAll(AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    List<BreedDto> listAll();
 }

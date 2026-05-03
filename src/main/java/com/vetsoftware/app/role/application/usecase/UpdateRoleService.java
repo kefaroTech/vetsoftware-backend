@@ -1,6 +1,5 @@
 package com.vetsoftware.app.role.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.role.application.command.UpdateRoleCommand;
 import com.vetsoftware.app.role.application.dto.RoleDto;
 import com.vetsoftware.app.role.application.port.in.UpdateRoleUseCase;
@@ -26,7 +25,7 @@ public class UpdateRoleService implements UpdateRoleUseCase {
 
     @Override
     @Transactional
-    public RoleDto execute(UpdateRoleCommand command, AuthContext auth) {
+    public RoleDto execute(UpdateRoleCommand command) {
         Role role = repository.findById(command.id())
             .orElseThrow(() -> new RoleNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())

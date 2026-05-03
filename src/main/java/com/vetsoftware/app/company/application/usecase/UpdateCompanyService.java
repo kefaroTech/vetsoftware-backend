@@ -1,6 +1,5 @@
 package com.vetsoftware.app.company.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
@@ -32,7 +31,7 @@ public class UpdateCompanyService implements UpdateCompanyUseCase {
 
     @Override
     @Transactional
-    public CompanyDto execute(UpdateCompanyCommand command, AuthContext auth) {
+    public CompanyDto execute(UpdateCompanyCommand command) {
         Company company = repository.findById(command.id())
             .orElseThrow(() -> new CompanyNotFoundException(command.id()));
         CityRef city = cityQueryPort.findById(command.cityId())

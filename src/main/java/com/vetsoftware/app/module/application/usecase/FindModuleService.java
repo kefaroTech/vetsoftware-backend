@@ -1,6 +1,5 @@
 package com.vetsoftware.app.module.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
 import com.vetsoftware.app.module.application.port.in.FindModuleUseCase;
 import com.vetsoftware.app.module.application.port.out.ModuleRepository;
@@ -18,7 +17,7 @@ public class FindModuleService implements FindModuleUseCase {
     }
 
     @Override
-    public ModuleDto findById(Long id, AuthContext auth) {
+    public ModuleDto findById(Long id) {
         return repository.findById(id)
                 .map(ModuleDto::from)
                 .orElseThrow(() -> new ModuleNotFoundException(id));

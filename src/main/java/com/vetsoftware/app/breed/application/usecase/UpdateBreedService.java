@@ -1,6 +1,5 @@
 package com.vetsoftware.app.breed.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.command.UpdateBreedCommand;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
 import com.vetsoftware.app.breed.application.port.in.UpdateBreedUseCase;
@@ -26,7 +25,7 @@ public class UpdateBreedService implements UpdateBreedUseCase {
 
     @Override
     @Transactional
-    public BreedDto execute(UpdateBreedCommand command, AuthContext auth) {
+    public BreedDto execute(UpdateBreedCommand command) {
         Breed breed = repository.findById(command.id())
             .orElseThrow(() -> new BreedNotFoundException(command.id()));
         SpecieRef specie = specieQueryPort.findById(command.specieId())

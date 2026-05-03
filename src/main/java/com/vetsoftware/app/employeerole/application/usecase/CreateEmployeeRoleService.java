@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.command.CreateEmployeeRoleCommand;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUseCase;
@@ -29,7 +28,7 @@ public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
     }
 
     @Override
-    public EmployeeRoleDto execute(CreateEmployeeRoleCommand command, AuthContext auth) {
+    public EmployeeRoleDto execute(CreateEmployeeRoleCommand command) {
         EmployeeRef employee = employeeQueryPort.findById(command.employeeId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
         RoleRef role = roleQueryPort.findById(command.roleId())

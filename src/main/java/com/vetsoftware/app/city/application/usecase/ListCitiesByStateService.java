@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.dto.CityDto;
 import com.vetsoftware.app.city.application.port.in.ListCitiesByStateUseCase;
 import com.vetsoftware.app.city.application.port.out.CityRepository;
@@ -18,7 +17,7 @@ public class ListCitiesByStateService implements ListCitiesByStateUseCase {
     }
 
     @Override
-    public List<CityDto> listByState(Long stateId, AuthContext auth) {
+    public List<CityDto> listByState(Long stateId) {
         return repository.findByStateId(stateId).stream().map(CityDto::from).toList();
     }
 }

@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.command.CreateEmployeeRoleCommand;
 import com.vetsoftware.app.employeerole.application.command.UpdateEmployeeRoleCommand;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
@@ -44,35 +43,32 @@ public class EmployeeRoleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmployeeRoleResponse create(@Valid @RequestBody CreateEmployeeRoleRequest request,
-                                       @RequestAttribute AuthContext authContext) {
+    public EmployeeRoleResponse create(@Valid @RequestBody CreateEmployeeRoleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateEmployeeRoleCommand(request.employeeId(), request.roleId()), authContext));
+            new CreateEmployeeRoleCommand(request.employeeId(), request.roleId())));
     }
 
     @GetMapping
-    public List<EmployeeRoleResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<EmployeeRoleResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public EmployeeRoleResponse findById(@PathVariable Long id,
-                                         @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public EmployeeRoleResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public EmployeeRoleResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdateEmployeeRoleRequest request,
-                                       @RequestAttribute AuthContext authContext) {
+                                       @Valid @RequestBody UpdateEmployeeRoleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateEmployeeRoleCommand(id, request.employeeId(), request.roleId()), authContext));
+            new UpdateEmployeeRoleCommand(id, request.employeeId(), request.roleId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private EmployeeRoleResponse toResponse(EmployeeRoleDto dto) {

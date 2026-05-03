@@ -1,11 +1,10 @@
 package com.vetsoftware.app.basepermission.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListBasePermissionsUseCase {
-    @RequiresPermission("admin.all")
-    List<BasePermissionDto> listAll(AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    List<BasePermissionDto> listAll();
 }

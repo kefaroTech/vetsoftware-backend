@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuser.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.dto.SystemUserDto;
 import com.vetsoftware.app.systemuser.application.port.in.ListSystemUsersUseCase;
 import com.vetsoftware.app.systemuser.application.port.out.SystemUserRepository;
@@ -18,7 +17,7 @@ public class ListSystemUsersService implements ListSystemUsersUseCase {
     }
 
     @Override
-    public List<SystemUserDto> listAll(AuthContext auth) {
+    public List<SystemUserDto> listAll() {
         return repository.findAll().stream().map(SystemUserDto::from).toList();
     }
 }

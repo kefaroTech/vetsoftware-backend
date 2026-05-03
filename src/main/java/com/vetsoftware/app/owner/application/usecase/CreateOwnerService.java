@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.command.CreateOwnerCommand;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
@@ -29,7 +28,7 @@ public class CreateOwnerService implements CreateOwnerUseCase {
     }
 
     @Override
-    public OwnerDto execute(CreateOwnerCommand command, AuthContext auth) {
+    public OwnerDto execute(CreateOwnerCommand command) {
         CityRef city = cityQueryPort.findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())

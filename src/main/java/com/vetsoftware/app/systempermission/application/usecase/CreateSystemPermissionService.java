@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systempermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systempermission.application.command.CreateSystemPermissionCommand;
 import com.vetsoftware.app.systempermission.application.dto.SystemPermissionDto;
 import com.vetsoftware.app.systempermission.application.port.in.CreateSystemPermissionUseCase;
@@ -19,7 +18,7 @@ public class CreateSystemPermissionService implements CreateSystemPermissionUseC
     }
 
     @Override
-    public SystemPermissionDto execute(CreateSystemPermissionCommand command, AuthContext auth) {
+    public SystemPermissionDto execute(CreateSystemPermissionCommand command) {
         SystemPermission systemPermission = SystemPermission.create(command.name(), command.code());
         return SystemPermissionDto.from(repository.save(systemPermission));
     }

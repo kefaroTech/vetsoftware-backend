@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.command.UpdateCityCommand;
 import com.vetsoftware.app.city.application.dto.CityDto;
 import com.vetsoftware.app.city.application.port.in.UpdateCityUseCase;
@@ -26,7 +25,7 @@ public class UpdateCityService implements UpdateCityUseCase {
 
     @Override
     @Transactional
-    public CityDto execute(UpdateCityCommand command, AuthContext auth) {
+    public CityDto execute(UpdateCityCommand command) {
         City city = repository.findById(command.id())
             .orElseThrow(() -> new CityNotFoundException(command.id()));
         StateRef state = stateQueryPort.findById(command.stateId())

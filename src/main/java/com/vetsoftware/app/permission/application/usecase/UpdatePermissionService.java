@@ -1,6 +1,5 @@
 package com.vetsoftware.app.permission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.permission.application.command.UpdatePermissionCommand;
 import com.vetsoftware.app.permission.application.dto.PermissionDto;
 import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCase;
@@ -32,7 +31,7 @@ public class UpdatePermissionService implements UpdatePermissionUseCase {
 
     @Override
     @Transactional
-    public PermissionDto execute(UpdatePermissionCommand command, AuthContext auth) {
+    public PermissionDto execute(UpdatePermissionCommand command) {
         Permission permission = repository.findById(command.id())
             .orElseThrow(() -> new PermissionNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())

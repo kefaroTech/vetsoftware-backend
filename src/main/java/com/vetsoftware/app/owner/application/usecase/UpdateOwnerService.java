@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import com.vetsoftware.app.owner.application.port.in.UpdateOwnerUseCase;
@@ -32,7 +31,7 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
 
     @Override
     @Transactional
-    public OwnerDto execute(UpdateOwnerCommand command, AuthContext auth) {
+    public OwnerDto execute(UpdateOwnerCommand command) {
         Owner owner = repository.findById(command.id())
             .orElseThrow(() -> new OwnerNotFoundException(command.id()));
         CityRef city = cityQueryPort.findById(command.cityId())

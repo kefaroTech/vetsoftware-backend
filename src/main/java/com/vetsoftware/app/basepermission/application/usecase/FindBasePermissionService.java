@@ -1,6 +1,5 @@
 package com.vetsoftware.app.basepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import com.vetsoftware.app.basepermission.application.port.in.FindBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.out.BasePermissionRepository;
@@ -18,7 +17,7 @@ public class FindBasePermissionService implements FindBasePermissionUseCase {
     }
 
     @Override
-    public BasePermissionDto findById(Long id, AuthContext auth) {
+    public BasePermissionDto findById(Long id) {
         return repository.findById(id)
             .map(BasePermissionDto::from)
             .orElseThrow(() -> new BasePermissionNotFoundException(id));

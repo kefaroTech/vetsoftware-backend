@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.command.CreateOwnerCommand;
 import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.dto.CitySummaryDto;
@@ -42,39 +41,33 @@ public class OwnerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request) {
         return toResponse(createUseCase.execute(
             new CreateOwnerCommand(request.name(), request.email(), request.document(),
-                request.address(), request.phone(), request.cityId(), request.companyId()),
-            authContext));
+                request.address(), request.phone(), request.cityId(), request.companyId())));
     }
 
     @GetMapping
-    public List<OwnerResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<OwnerResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public OwnerResponse findById(@PathVariable Long id,
-                                  @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public OwnerResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public OwnerResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOwnerRequest request,
-                                @RequestAttribute AuthContext authContext) {
+    public OwnerResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOwnerRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateOwnerCommand(id, request.name(), request.email(), request.document(),
-                request.address(), request.phone(), request.cityId(), request.companyId()),
-            authContext));
+                request.address(), request.phone(), request.cityId(), request.companyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id,
-                       @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private OwnerResponse toResponse(OwnerDto dto) {

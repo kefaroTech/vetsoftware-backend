@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.port.in.DeleteEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.out.EmployeeRoleRepository;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new EmployeeRoleNotFoundException(id));
         repository.delete(id);
     }

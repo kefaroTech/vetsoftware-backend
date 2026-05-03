@@ -13,7 +13,6 @@ import com.vetsoftware.app.animal.domain.BreedRef;
 import com.vetsoftware.app.animal.domain.CompanyRef;
 import com.vetsoftware.app.animal.domain.OwnerRef;
 import com.vetsoftware.app.animal.domain.SpecieRef;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +38,7 @@ public class CreateAnimalService implements CreateAnimalUseCase {
     }
 
     @Override
-    public AnimalDto execute(CreateAnimalCommand command, AuthContext auth) {
+    public AnimalDto execute(CreateAnimalCommand command) {
         SpecieRef specie = specieQueryPort.findById(command.specieId())
             .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
         BreedRef breed = breedQueryPort.findById(command.breedId())

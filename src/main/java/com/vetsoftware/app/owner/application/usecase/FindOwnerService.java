@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
@@ -18,7 +17,7 @@ public class FindOwnerService implements FindOwnerUseCase {
     }
 
     @Override
-    public OwnerDto findById(Long id, AuthContext auth) {
+    public OwnerDto findById(Long id) {
         return OwnerDto.from(repository.findById(id)
             .orElseThrow(() -> new OwnerNotFoundException(id)));
     }

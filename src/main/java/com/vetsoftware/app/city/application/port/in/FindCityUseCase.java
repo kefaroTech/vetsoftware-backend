@@ -1,10 +1,9 @@
 package com.vetsoftware.app.city.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.dto.CityDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindCityUseCase {
-    @RequiresPermission({"admin.all"})
-    CityDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    CityDto findById(Long id);
 }

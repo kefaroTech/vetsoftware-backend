@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserole.application.command.CreateBaseRoleCommand;
 import com.vetsoftware.app.baserole.application.dto.BaseRoleDto;
 import com.vetsoftware.app.baserole.application.port.in.CreateBaseRoleUseCase;
@@ -24,7 +23,7 @@ public class CreateBaseRoleService implements CreateBaseRoleUseCase {
 
     @Override
     @Transactional
-    public BaseRoleDto execute(CreateBaseRoleCommand command, AuthContext auth) {
+    public BaseRoleDto execute(CreateBaseRoleCommand command) {
         BaseRole baseRole = BaseRole.create(command.name(), command.code(), command.mandatory());
         BaseRoleDto baseRoleDtoResponse = BaseRoleDto.from(repository.save(baseRole));
         if(baseRole.getMandatory()){

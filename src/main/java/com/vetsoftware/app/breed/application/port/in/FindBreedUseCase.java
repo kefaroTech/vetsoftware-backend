@@ -1,10 +1,9 @@
 package com.vetsoftware.app.breed.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.breed.application.dto.BreedDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindBreedUseCase {
-    @RequiresPermission("admin.all")
-    BreedDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    BreedDto findById(Long id);
 }

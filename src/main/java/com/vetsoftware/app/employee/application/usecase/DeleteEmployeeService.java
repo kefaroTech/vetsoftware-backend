@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employee.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new EmployeeNotFoundException(id));
         repository.delete(id);
     }

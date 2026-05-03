@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.dto.StateDto;
 import com.vetsoftware.app.state.application.port.in.FindStateUseCase;
 import com.vetsoftware.app.state.application.port.out.StateRepository;
@@ -18,7 +17,7 @@ public class FindStateService implements FindStateUseCase {
     }
 
     @Override
-    public StateDto findById(Long id, AuthContext auth) {
+    public StateDto findById(Long id) {
         return repository.findById(id)
                 .map(StateDto::from)
                 .orElseThrow(() -> new StateNotFoundException(id));

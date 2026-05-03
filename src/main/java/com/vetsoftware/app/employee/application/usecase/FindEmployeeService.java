@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employee.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.FindEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
@@ -18,7 +17,7 @@ public class FindEmployeeService implements FindEmployeeUseCase {
     }
 
     @Override
-    public EmployeeDto findById(Long id, AuthContext auth) {
+    public EmployeeDto findById(Long id) {
         return repository.findById(id)
             .map(EmployeeDto::from)
             .orElseThrow(() -> new EmployeeNotFoundException(id));

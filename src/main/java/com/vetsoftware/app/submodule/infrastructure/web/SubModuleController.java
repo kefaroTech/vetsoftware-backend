@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.command.CreateSubModuleCommand;
 import com.vetsoftware.app.submodule.application.command.UpdateSubModuleCommand;
 import com.vetsoftware.app.submodule.application.dto.ModuleSummaryDto;
@@ -40,35 +39,31 @@ public class SubModuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SubModuleResponse create(@Valid @RequestBody CreateSubModuleRequest request,
-                                    @RequestAttribute AuthContext authContext) {
+    public SubModuleResponse create(@Valid @RequestBody CreateSubModuleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateSubModuleCommand(request.name(), request.code(), request.moduleId()), authContext));
+            new CreateSubModuleCommand(request.name(), request.code(), request.moduleId())));
     }
 
     @GetMapping
-    public List<SubModuleResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<SubModuleResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public SubModuleResponse findById(@PathVariable Long id,
-                                      @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public SubModuleResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public SubModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSubModuleRequest request,
-                                    @RequestAttribute AuthContext authContext) {
+    public SubModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSubModuleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateSubModuleCommand(id, request.name(), request.code(), request.moduleId()), authContext));
+            new UpdateSubModuleCommand(id, request.name(), request.code(), request.moduleId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id,
-                       @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private SubModuleResponse toResponse(SubModuleDto dto) {

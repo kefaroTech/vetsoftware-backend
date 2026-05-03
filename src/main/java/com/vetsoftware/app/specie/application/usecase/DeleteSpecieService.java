@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.port.in.DeleteSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.out.SpecieRepository;
 import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteSpecieService implements DeleteSpecieUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id));
         repository.delete(id);
     }

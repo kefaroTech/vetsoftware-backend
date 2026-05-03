@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membershipsubmodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.dto.MembershipSubModuleDto;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.FindMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.out.MembershipSubModuleRepository;
@@ -18,7 +17,7 @@ public class FindMembershipSubModuleService implements FindMembershipSubModuleUs
     }
 
     @Override
-    public MembershipSubModuleDto findById(Long id, AuthContext auth) {
+    public MembershipSubModuleDto findById(Long id) {
         return repository.findById(id)
             .map(MembershipSubModuleDto::from)
             .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));

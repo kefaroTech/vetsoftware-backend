@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.state.application.command.CreateStateCommand;
 import com.vetsoftware.app.state.application.dto.StateDto;
 import com.vetsoftware.app.state.application.port.in.CreateStateUseCase;
@@ -23,7 +22,7 @@ public class CreateStateService implements CreateStateUseCase {
     }
 
     @Override
-    public StateDto execute(CreateStateCommand command, AuthContext auth) {
+    public StateDto execute(CreateStateCommand command) {
         CountryRef country = countryQueryPort.findById(command.countryId())
             .orElseThrow(() -> new IllegalArgumentException("Country not found: " + command.countryId()));
         State state = State.create(command.name(), country);

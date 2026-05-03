@@ -1,6 +1,5 @@
 package com.vetsoftware.app.specie.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.specie.application.command.CreateSpecieCommand;
 import com.vetsoftware.app.specie.application.command.UpdateSpecieCommand;
 import com.vetsoftware.app.specie.application.dto.SpecieDto;
@@ -38,33 +37,29 @@ public class SpecieController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SpecieResponse create(@Valid @RequestBody CreateSpecieRequest request,
-                                 @RequestAttribute AuthContext authContext) {
-        return toResponse(createUseCase.execute(new CreateSpecieCommand(request.name()), authContext));
+    public SpecieResponse create(@Valid @RequestBody CreateSpecieRequest request) {
+        return toResponse(createUseCase.execute(new CreateSpecieCommand(request.name())));
     }
 
     @GetMapping
-    public List<SpecieResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<SpecieResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public SpecieResponse findById(@PathVariable Long id,
-                                   @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public SpecieResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
-    public SpecieResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSpecieRequest request,
-                                 @RequestAttribute AuthContext authContext) {
-        return toResponse(updateUseCase.execute(new UpdateSpecieCommand(id, request.name()), authContext));
+    public SpecieResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSpecieRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSpecieCommand(id, request.name())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id,
-                       @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private SpecieResponse toResponse(SpecieDto dto) {

@@ -1,6 +1,5 @@
 package com.vetsoftware.app.permission.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.permission.application.command.CreatePermissionCommand;
 import com.vetsoftware.app.permission.application.command.UpdatePermissionCommand;
 import com.vetsoftware.app.permission.application.dto.CompanySummaryDto;
@@ -44,37 +43,32 @@ public class PermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request,
-                                      @RequestAttribute AuthContext authContext) {
+    public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request) {
         return toResponse(createUseCase.execute(
-            new CreatePermissionCommand(request.name(), request.code(), request.companyId(), request.subModuleId()),
-            authContext));
+            new CreatePermissionCommand(request.name(), request.code(), request.companyId(), request.subModuleId())));
     }
 
     @GetMapping
-    public List<PermissionResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<PermissionResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public PermissionResponse findById(@PathVariable Long id,
-                                        @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public PermissionResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public PermissionResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdatePermissionRequest request,
-                                      @RequestAttribute AuthContext authContext) {
+                                      @Valid @RequestBody UpdatePermissionRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdatePermissionCommand(id, request.name(), request.code(), request.companyId(), request.subModuleId()),
-            authContext));
+            new UpdatePermissionCommand(id, request.name(), request.code(), request.companyId(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private PermissionResponse toResponse(PermissionDto dto) {

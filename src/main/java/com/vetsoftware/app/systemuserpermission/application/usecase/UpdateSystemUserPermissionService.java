@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuserpermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.command.UpdateSystemUserPermissionCommand;
 import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermissionDto;
 import com.vetsoftware.app.systemuserpermission.application.port.in.UpdateSystemUserPermissionUseCase;
@@ -32,7 +31,7 @@ public class UpdateSystemUserPermissionService implements UpdateSystemUserPermis
 
     @Override
     @Transactional
-    public SystemUserPermissionDto execute(UpdateSystemUserPermissionCommand command, AuthContext auth) {
+    public SystemUserPermissionDto execute(UpdateSystemUserPermissionCommand command) {
         SystemUserPermission systemUserPermission = repository.findById(command.id())
             .orElseThrow(() -> new SystemUserPermissionNotFoundException(command.id()));
         SystemUserRef systemUser = systemUserQueryPort.findById(command.systemUserId())

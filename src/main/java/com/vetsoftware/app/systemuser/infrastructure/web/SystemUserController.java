@@ -1,6 +1,5 @@
 package com.vetsoftware.app.systemuser.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuser.application.command.CreateSystemUserCommand;
 import com.vetsoftware.app.systemuser.application.command.UpdateSystemUserCommand;
 import com.vetsoftware.app.systemuser.application.dto.SystemUserDto;
@@ -40,34 +39,32 @@ public class SystemUserController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SystemUserResponse create(@Valid @RequestBody CreateSystemUserRequest request,
-                                     @RequestAttribute AuthContext authContext) {
+    public SystemUserResponse create(@Valid @RequestBody CreateSystemUserRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateSystemUserCommand(request.code(), request.password()), authContext));
+            new CreateSystemUserCommand(request.code(), request.password())));
     }
 
     @GetMapping
-    public List<SystemUserResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<SystemUserResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public SystemUserResponse findById(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public SystemUserResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public SystemUserResponse update(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateSystemUserRequest request,
-                                     @RequestAttribute AuthContext authContext) {
+                                     @Valid @RequestBody UpdateSystemUserRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateSystemUserCommand(id, request.code()), authContext));
+            new UpdateSystemUserCommand(id, request.code())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private SystemUserResponse toResponse(SystemUserDto dto) {

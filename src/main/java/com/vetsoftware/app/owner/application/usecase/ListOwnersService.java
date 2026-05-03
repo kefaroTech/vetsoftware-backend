@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import com.vetsoftware.app.owner.application.port.in.ListOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
@@ -18,7 +17,7 @@ public class ListOwnersService implements ListOwnersUseCase {
     }
 
     @Override
-    public List<OwnerDto> listAll(AuthContext auth) {
+    public List<OwnerDto> listAll() {
         return repository.findAll().stream().map(OwnerDto::from).toList();
     }
 }

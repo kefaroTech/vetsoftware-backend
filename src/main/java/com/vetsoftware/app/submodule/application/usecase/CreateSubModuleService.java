@@ -1,6 +1,5 @@
 package com.vetsoftware.app.submodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.submodule.application.command.CreateSubModuleCommand;
 import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import com.vetsoftware.app.submodule.application.port.in.CreateSubModuleUseCase;
@@ -24,7 +23,7 @@ public class CreateSubModuleService implements CreateSubModuleUseCase {
     }
 
     @Override
-    public SubModuleDto execute(CreateSubModuleCommand command, AuthContext auth) {
+    public SubModuleDto execute(CreateSubModuleCommand command) {
         ModuleRef module = moduleQueryPort.findById(command.moduleId())
             .orElseThrow(() -> new IllegalArgumentException("Module not found: " + command.moduleId()));
         SubModule subModule = SubModule.create(command.name(), command.code(), module);

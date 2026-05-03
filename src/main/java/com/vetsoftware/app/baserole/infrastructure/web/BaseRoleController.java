@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserole.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserole.application.command.CreateBaseRoleCommand;
 import com.vetsoftware.app.baserole.application.command.UpdateBaseRoleCommand;
 import com.vetsoftware.app.baserole.application.dto.BaseRoleDto;
@@ -40,35 +39,32 @@ public class BaseRoleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BaseRoleResponse create(@Valid @RequestBody CreateBaseRoleRequest request,
-                                    @RequestAttribute AuthContext authContext) {
+    public BaseRoleResponse create(@Valid @RequestBody CreateBaseRoleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateBaseRoleCommand(request.name(), request.code(), request.mandatory()), authContext));
+            new CreateBaseRoleCommand(request.name(), request.code(), request.mandatory())));
     }
 
     @GetMapping
-    public List<BaseRoleResponse> listAll(@RequestAttribute AuthContext authContext) {
-        return listUseCase.listAll(authContext).stream().map(this::toResponse).toList();
+    public List<BaseRoleResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
-    public BaseRoleResponse findById(@PathVariable Long id,
-                                      @RequestAttribute AuthContext authContext) {
-        return toResponse(findUseCase.findById(id, authContext));
+    public BaseRoleResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
     }
 
     @PutMapping("/{id}")
     public BaseRoleResponse update(@PathVariable Long id,
-                                    @Valid @RequestBody UpdateBaseRoleRequest request,
-                                    @RequestAttribute AuthContext authContext) {
+                                    @Valid @RequestBody UpdateBaseRoleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateBaseRoleCommand(id, request.name(), request.code(), request.mandatory()), authContext));
+            new UpdateBaseRoleCommand(id, request.name(), request.code(), request.mandatory())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, @RequestAttribute AuthContext authContext) {
-        deleteUseCase.execute(id, authContext);
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
     }
 
     private BaseRoleResponse toResponse(BaseRoleDto dto) {

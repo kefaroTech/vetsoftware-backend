@@ -1,6 +1,5 @@
 package com.vetsoftware.app.basepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.basepermission.application.command.CreateBasePermissionCommand;
 import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import com.vetsoftware.app.basepermission.application.port.in.CreateBasePermissionUseCase;
@@ -30,7 +29,7 @@ public class CreateBasePermissionService implements CreateBasePermissionUseCase 
 
     @Override
     @Transactional
-    public BasePermissionDto execute(CreateBasePermissionCommand command, AuthContext auth) {
+    public BasePermissionDto execute(CreateBasePermissionCommand command) {
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
             .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
         BasePermission basePermission = BasePermission.create(command.name(), command.code(), subModule);

@@ -1,6 +1,5 @@
 package com.vetsoftware.app.employeerole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.employeerole.application.command.UpdateEmployeeRoleCommand;
 import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.UpdateEmployeeRoleUseCase;
@@ -32,7 +31,7 @@ public class UpdateEmployeeRoleService implements UpdateEmployeeRoleUseCase {
 
     @Override
     @Transactional
-    public EmployeeRoleDto execute(UpdateEmployeeRoleCommand command, AuthContext auth) {
+    public EmployeeRoleDto execute(UpdateEmployeeRoleCommand command) {
         EmployeeRole employeeRole = repository.findById(command.id())
             .orElseThrow(() -> new EmployeeRoleNotFoundException(command.id()));
         EmployeeRef employee = employeeQueryPort.findById(command.employeeId())

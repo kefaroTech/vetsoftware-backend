@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.port.in.DeleteCityUseCase;
 import com.vetsoftware.app.city.application.port.out.CityRepository;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteCityService implements DeleteCityUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new CityNotFoundException(id));
         repository.delete(id);
     }

@@ -1,6 +1,5 @@
 package com.vetsoftware.app.membershipsubmodule.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.DeleteMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.out.MembershipSubModuleRepository;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteMembershipSubModuleService implements DeleteMembershipSubModu
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
         repository.delete(id);
     }

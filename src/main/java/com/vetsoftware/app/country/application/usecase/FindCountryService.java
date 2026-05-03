@@ -1,6 +1,5 @@
 package com.vetsoftware.app.country.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.dto.CountryDto;
 import com.vetsoftware.app.country.application.port.in.FindCountryUseCase;
 import com.vetsoftware.app.country.application.port.out.CountryRepository;
@@ -18,7 +17,7 @@ public class FindCountryService implements FindCountryUseCase {
     }
 
     @Override
-    public CountryDto findById(Long id, AuthContext auth) {
+    public CountryDto findById(Long id) {
         return repository.findById(id)
                 .map(CountryDto::from)
                 .orElseThrow(() -> new CountryNotFoundException(id));

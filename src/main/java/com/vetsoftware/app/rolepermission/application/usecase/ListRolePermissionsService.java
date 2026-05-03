@@ -1,6 +1,5 @@
 package com.vetsoftware.app.rolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsUseCase;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
@@ -18,7 +17,7 @@ public class ListRolePermissionsService implements ListRolePermissionsUseCase {
     }
 
     @Override
-    public List<RolePermissionDto> listAll(AuthContext auth) {
+    public List<RolePermissionDto> listAll() {
         return repository.findAll().stream().map(RolePermissionDto::from).toList();
     }
 }

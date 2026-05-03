@@ -1,9 +1,8 @@
 package com.vetsoftware.app.company.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteCompanyUseCase {
-    @RequiresPermission({"admin.all","company.delete"})
-    void execute(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('company.delete') or hasRole('SYSTEM')")
+    void execute(Long id);
 }

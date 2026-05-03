@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserole.application.port.in.DeleteBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.out.BaseRoleRepository;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteBaseRoleService implements DeleteBaseRoleUseCase {
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new BaseRoleNotFoundException(id));
         repository.delete(id);
     }

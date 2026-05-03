@@ -1,6 +1,5 @@
 package com.vetsoftware.app.country.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.port.in.DeleteCountryUseCase;
 import com.vetsoftware.app.country.application.port.out.CountryRepository;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteCountryService implements DeleteCountryUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new CountryNotFoundException(id));
         repository.delete(id);
     }

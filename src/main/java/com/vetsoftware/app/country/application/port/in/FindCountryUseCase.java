@@ -1,10 +1,9 @@
 package com.vetsoftware.app.country.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.country.application.dto.CountryDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindCountryUseCase {
-    @RequiresPermission({"admin.all"})
-    CountryDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    CountryDto findById(Long id);
 }

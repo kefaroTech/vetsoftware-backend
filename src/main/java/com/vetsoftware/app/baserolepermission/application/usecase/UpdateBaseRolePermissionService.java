@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserolepermission.application.command.UpdateBaseRolePermissionCommand;
 import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermissionDto;
 import com.vetsoftware.app.baserolepermission.application.port.in.UpdateBaseRolePermissionUseCase;
@@ -32,7 +31,7 @@ public class UpdateBaseRolePermissionService implements UpdateBaseRolePermission
 
     @Override
     @Transactional
-    public BaseRolePermissionDto execute(UpdateBaseRolePermissionCommand command, AuthContext auth) {
+    public BaseRolePermissionDto execute(UpdateBaseRolePermissionCommand command) {
         BaseRolePermission baseRolePermission = repository.findById(command.id())
             .orElseThrow(() -> new BaseRolePermissionNotFoundException(command.id()));
         BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())

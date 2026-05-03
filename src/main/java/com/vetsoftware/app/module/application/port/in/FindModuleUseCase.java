@@ -1,10 +1,9 @@
 package com.vetsoftware.app.module.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.module.application.dto.ModuleDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindModuleUseCase {
-    @RequiresPermission({"admin.all"})
-    ModuleDto findById(Long id, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    ModuleDto findById(Long id);
 }

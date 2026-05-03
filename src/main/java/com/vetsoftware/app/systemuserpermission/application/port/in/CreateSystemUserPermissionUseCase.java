@@ -1,11 +1,10 @@
 package com.vetsoftware.app.systemuserpermission.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.systemuserpermission.application.command.CreateSystemUserPermissionCommand;
 import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermissionDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateSystemUserPermissionUseCase {
-    @RequiresPermission("admin.all")
-    SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command);
 }

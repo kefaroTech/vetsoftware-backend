@@ -1,6 +1,5 @@
 package com.vetsoftware.app.rolepermission.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
@@ -17,7 +16,7 @@ public class DeleteRolePermissionService implements DeleteRolePermissionUseCase 
     }
 
     @Override
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new RolePermissionNotFoundException(id));
         repository.delete(id);
     }

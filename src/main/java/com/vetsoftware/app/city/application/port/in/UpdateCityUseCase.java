@@ -1,11 +1,10 @@
 package com.vetsoftware.app.city.application.port.in;
 
-import com.vetsoftware.app.auth.application.annotation.RequiresPermission;
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.city.application.command.UpdateCityCommand;
 import com.vetsoftware.app.city.application.dto.CityDto;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateCityUseCase {
-    @RequiresPermission({"admin.all"})
-    CityDto execute(UpdateCityCommand command, AuthContext auth);
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    CityDto execute(UpdateCityCommand command);
 }

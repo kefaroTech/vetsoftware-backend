@@ -1,6 +1,5 @@
 package com.vetsoftware.app.owner.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
@@ -19,7 +18,7 @@ public class DeleteOwnerService implements DeleteOwnerUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id, AuthContext auth) {
+    public void execute(Long id) {
         repository.findById(id).orElseThrow(() -> new OwnerNotFoundException(id));
         repository.delete(id);
     }

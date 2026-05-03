@@ -1,6 +1,5 @@
 package com.vetsoftware.app.baserole.application.usecase;
 
-import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.baserole.application.dto.BaseRoleDto;
 import com.vetsoftware.app.baserole.application.port.in.FindBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.out.BaseRoleRepository;
@@ -18,7 +17,7 @@ public class FindBaseRoleService implements FindBaseRoleUseCase {
     }
 
     @Override
-    public BaseRoleDto findById(Long id, AuthContext auth) {
+    public BaseRoleDto findById(Long id) {
         return repository.findById(id)
             .map(BaseRoleDto::from)
             .orElseThrow(() -> new BaseRoleNotFoundException(id));
