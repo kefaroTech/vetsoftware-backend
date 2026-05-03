@@ -353,6 +353,7 @@ class LaboratoryTest {
   -diagnosis: String
   -animal: Animal
   -createdDate: LocalDateTime
+  -company:Company
   -createdBy: Employee
 }
 
@@ -362,6 +363,7 @@ class Prescription {
   -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
+  -company:Company
   -createdBy: Employee
 }
 
@@ -385,6 +387,7 @@ class Deworming {
   -observations: String
   -animal: Animal
   -createdDate: LocalDateTime
+  -company:Company
   -createdBy: Employee
 }
 
@@ -488,10 +491,13 @@ Hospitalization   --> Company
 Hospitalization   --> HospitalizationType
 Hospitalization   --> ReasonLeaving
 LaboratoryTest    --> Animal
+LaboratoryTest    --> Company
 LaboratoryTest    --> TestType
 Prescription      --> Animal
+Prescription      --> Company
 Prescription      --> Medicament
 Deworming         --> Animal
+Deworming         --> Company
 Deworming         --> DewormingType
 DiagnosticImaging --> Animal
 DiagnosticImaging --> DiagnosticImagingType

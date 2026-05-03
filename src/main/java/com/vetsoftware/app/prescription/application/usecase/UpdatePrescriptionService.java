@@ -1,0 +1,45 @@
+package com.vetsoftware.app.prescription.application.usecase;
+
+import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
+import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
+import com.vetsoftware.app.prescription.application.port.in.UpdatePrescriptionUseCase;
+import com.vetsoftware.app.prescription.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.prescription.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.prescription.application.port.out.PrescriptionRepository;
+import com.vetsoftware.app.prescription.domain.AnimalRef;
+import com.vetsoftware.app.prescription.domain.CompanyRef;
+import com.vetsoftware.app.prescription.domain.Prescription;
+import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "prescription.update")
+@Service
+public class UpdatePrescriptionService implements UpdatePrescriptionUseCase {
+    private final PrescriptionRepository repository;
+    private final AnimalQueryPort animalQueryPort;
+    private final CompanyQueryPort companyQueryPort;
+
+    public UpdatePrescriptionService(PrescriptionRepository repository,
+                                     AnimalQueryPort animalQueryPort,
+                                     CompanyQueryPort companyQueryPort) {
+        this.repository = repository;
+        this.animalQueryPort = animalQueryPort;
+        this.companyQueryPort = companyQueryPort;
+    }
+
+    @Override
+    @Transactional
+    public PrescriptionDto execute(UpdatePrescriptionCommand command) {
+        Prescription prescription = repository.findById(command.id())
+            .orElseThrow(() -> new PrescriptionNotFoundException(command.id()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId())
+            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId())
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+
+        prescription.update(command.date(), command.diagnosis(), command.observations(), animal, company);
+        return PrescriptionDto.from(repository.save(prescription));
+    }
+}

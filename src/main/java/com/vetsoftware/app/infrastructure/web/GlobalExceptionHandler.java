@@ -11,14 +11,17 @@ import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
+import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
@@ -26,6 +29,7 @@ import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
+import com.vetsoftware.app.testtype.domain.TestTypeNotFoundException;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
@@ -63,7 +67,9 @@ public class GlobalExceptionHandler {
             OwnerNotFoundException.class, AnimalNotFoundException.class,
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
-            HospitalizationNotFoundException.class
+            HospitalizationNotFoundException.class,
+            TestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
+            PrescriptionNotFoundException.class, DewormingNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

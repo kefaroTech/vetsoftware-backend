@@ -8,5 +8,6 @@ public interface OwnerRepository {
     Owner save(Owner owner);
     Optional<Owner> findById(Long id);
     List<Owner> findAll();
+    List<Owner> searchByCompanyAndNameOrEmail(Long companyId, String query);
     void delete(Long id);
 }

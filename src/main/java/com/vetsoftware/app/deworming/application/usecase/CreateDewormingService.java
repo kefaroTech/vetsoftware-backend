@@ -1,0 +1,43 @@
+package com.vetsoftware.app.deworming.application.usecase;
+
+import com.vetsoftware.app.deworming.application.command.CreateDewormingCommand;
+import com.vetsoftware.app.deworming.application.dto.DewormingDto;
+import com.vetsoftware.app.deworming.application.port.in.CreateDewormingUseCase;
+import com.vetsoftware.app.deworming.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.deworming.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.deworming.application.port.out.DewormingRepository;
+import com.vetsoftware.app.deworming.domain.AnimalRef;
+import com.vetsoftware.app.deworming.domain.CompanyRef;
+import com.vetsoftware.app.deworming.domain.Deworming;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+
+@Observed(name = "deworming.create")
+@Service
+public class CreateDewormingService implements CreateDewormingUseCase {
+    private final DewormingRepository repository;
+    private final AnimalQueryPort animalQueryPort;
+    private final CompanyQueryPort companyQueryPort;
+
+    public CreateDewormingService(DewormingRepository repository,
+                                  AnimalQueryPort animalQueryPort,
+                                  CompanyQueryPort companyQueryPort) {
+        this.repository = repository;
+        this.animalQueryPort = animalQueryPort;
+        this.companyQueryPort = companyQueryPort;
+    }
+
+    @Override
+    public DewormingDto execute(CreateDewormingCommand command) {
+        AnimalRef animal = animalQueryPort.findById(command.animalId())
+            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId())
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+
+        Deworming deworming = Deworming.create(
+            command.date(), command.lastDeworming(), command.type(),
+            command.product(), command.dosage(), command.nextControl(),
+            command.observations(), animal, company);
+        return DewormingDto.from(repository.save(deworming));
+    }
+}

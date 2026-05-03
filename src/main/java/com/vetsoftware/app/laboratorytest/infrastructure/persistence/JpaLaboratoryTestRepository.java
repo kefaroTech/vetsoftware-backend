@@ -1,0 +1,60 @@
+package com.vetsoftware.app.laboratorytest.infrastructure.persistence;
+
+import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
+import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaRepository;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
+import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
+import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaEntity;
+import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaRepository;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
+    private final LaboratoryTestJpaRepository jpaRepository;
+    private final LaboratoryTestJpaMapper mapper;
+    private final TestTypeJpaRepository testTypeJpaRepository;
+    private final AnimalJpaRepository animalJpaRepository;
+    private final CompanyJpaRepository companyJpaRepository;
+
+    public JpaLaboratoryTestRepository(LaboratoryTestJpaRepository jpaRepository,
+                                       LaboratoryTestJpaMapper mapper,
+                                       TestTypeJpaRepository testTypeJpaRepository,
+                                       AnimalJpaRepository animalJpaRepository,
+                                       CompanyJpaRepository companyJpaRepository) {
+        this.jpaRepository = jpaRepository;
+        this.mapper = mapper;
+        this.testTypeJpaRepository = testTypeJpaRepository;
+        this.animalJpaRepository = animalJpaRepository;
+        this.companyJpaRepository = companyJpaRepository;
+    }
+
+    @Override
+    public LaboratoryTest save(LaboratoryTest laboratoryTest) {
+        TestTypeJpaEntity testType = testTypeJpaRepository.getReferenceById(laboratoryTest.getTestType().id());
+        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(laboratoryTest.getAnimal().id());
+        CompanyJpaEntity company = companyJpaRepository.getReferenceById(laboratoryTest.getCompany().id());
+        LaboratoryTestJpaEntity saved = jpaRepository.save(
+            mapper.toJpa(laboratoryTest, testType, animal, company));
+        return mapper.toDomain(saved, laboratoryTest.getTestType(),
+                                laboratoryTest.getAnimal(), laboratoryTest.getCompany());
+    }
+
+    @Override
+    public Optional<LaboratoryTest> findById(Long id) {
+        return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<LaboratoryTest> findAll() {
+        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public void delete(Long id) {
+        jpaRepository.deleteById(id);
+    }
+}

@@ -46,6 +46,12 @@ public class JpaOwnerRepository implements OwnerRepository {
     }
 
     @Override
+    public List<Owner> searchByCompanyAndNameOrEmail(Long companyId, String query) {
+        return jpaRepository.searchByCompanyAndNameOrEmail(companyId, query)
+            .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

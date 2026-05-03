@@ -1,0 +1,12 @@
+package com.vetsoftware.app.deworming.application.port.out;
+
+import com.vetsoftware.app.deworming.domain.Deworming;
+import java.util.List;
+import java.util.Optional;
+
+public interface DewormingRepository {
+    Deworming save(Deworming deworming);
+    Optional<Deworming> findById(Long id);
+    List<Deworming> findAll();
+    void delete(Long id);
+}

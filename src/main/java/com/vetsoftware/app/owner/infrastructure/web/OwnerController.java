@@ -1,5 +1,6 @@
 package com.vetsoftware.app.owner.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.owner.application.command.CreateOwnerCommand;
 import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.dto.CitySummaryDto;
@@ -9,6 +10,7 @@ import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.ListOwnersUseCase;
+import com.vetsoftware.app.owner.application.port.in.SearchOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.in.UpdateOwnerUseCase;
 import com.vetsoftware.app.owner.infrastructure.web.request.CreateOwnerRequest;
 import com.vetsoftware.app.owner.infrastructure.web.request.UpdateOwnerRequest;
@@ -27,16 +29,21 @@ public class OwnerController {
     private final UpdateOwnerUseCase updateUseCase;
     private final FindOwnerUseCase findUseCase;
     private final ListOwnersUseCase listUseCase;
+    private final SearchOwnersUseCase searchUseCase;
     private final DeleteOwnerUseCase deleteUseCase;
+    private final Authz authz;
 
     public OwnerController(CreateOwnerUseCase createUseCase, UpdateOwnerUseCase updateUseCase,
                            FindOwnerUseCase findUseCase, ListOwnersUseCase listUseCase,
-                           DeleteOwnerUseCase deleteUseCase) {
+                           SearchOwnersUseCase searchUseCase, DeleteOwnerUseCase deleteUseCase,
+                           Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,6 +57,12 @@ public class OwnerController {
     @GetMapping
     public List<OwnerResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/search")
+    public List<OwnerResponse> search(@RequestParam("q") String query) {
+        return searchUseCase.search(authz.currentCompanyId(), query)
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

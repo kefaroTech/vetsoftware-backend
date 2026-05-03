@@ -40,5 +40,9 @@
     <include file="db/changelog/migrations/034_create_vaccination_types.xml"/>
     <include file="db/changelog/migrations/035_create_vaccinations.xml"/>
     <include file="db/changelog/migrations/036_create_hospitalizations.xml"/>
+    <include file="db/changelog/migrations/037_create_test_types.xml"/>
+    <include file="db/changelog/migrations/038_create_laboratory_tests.xml"/>
+    <include file="db/changelog/migrations/039_create_prescriptions.xml"/>
+    <include file="db/changelog/migrations/040_create_dewormings.xml"/>
 
 </databaseChangeLog>
