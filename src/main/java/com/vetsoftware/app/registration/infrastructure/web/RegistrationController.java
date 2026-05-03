@@ -1,6 +1,5 @@
 package com.vetsoftware.app.registration.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.registration.application.command.RegisterUserCommand;
 import com.vetsoftware.app.registration.application.dto.RegistrationDto;
 import com.vetsoftware.app.registration.application.port.in.RegisterUserUseCase;
@@ -22,7 +21,6 @@ public class RegistrationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PublicEndpoint
     public RegistrationResponse register(@Valid @RequestBody RegisterUserRequest request) {
         RegistrationDto dto = registerUserUseCase.execute(new RegisterUserCommand(
             request.companyName(),

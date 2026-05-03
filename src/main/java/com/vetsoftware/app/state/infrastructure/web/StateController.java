@@ -1,6 +1,5 @@
 package com.vetsoftware.app.state.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.state.application.command.CreateStateCommand;
 import com.vetsoftware.app.state.application.command.UpdateStateCommand;
 import com.vetsoftware.app.state.application.dto.CountrySummaryDto;
@@ -55,7 +54,6 @@ public class StateController {
     }
 
     @GetMapping("/countries/{countryId}/states")
-    @PublicEndpoint
     public List<StateResponse> listByCountry(@PathVariable Long countryId) {
         return listByCountryUseCase.listByCountry(countryId).stream()
             .map(this::toResponse).toList();

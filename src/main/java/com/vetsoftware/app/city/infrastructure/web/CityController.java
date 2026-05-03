@@ -1,6 +1,5 @@
 package com.vetsoftware.app.city.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.city.application.command.CreateCityCommand;
 import com.vetsoftware.app.city.application.command.UpdateCityCommand;
 import com.vetsoftware.app.city.application.dto.CityDto;
@@ -55,7 +54,6 @@ public class CityController {
     }
 
     @GetMapping("/states/{stateId}/cities")
-    @PublicEndpoint
     public List<CityResponse> listByState(@PathVariable Long stateId) {
         return listByStateUseCase.listByState(stateId).stream()
             .map(this::toResponse).toList();

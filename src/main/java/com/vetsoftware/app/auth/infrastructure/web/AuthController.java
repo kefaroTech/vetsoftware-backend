@@ -1,6 +1,5 @@
 package com.vetsoftware.app.auth.infrastructure.web;
 
-import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.command.LoginEmployeeCommand;
 import com.vetsoftware.app.auth.application.command.LoginSystemUserCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
@@ -26,7 +25,6 @@ public class AuthController {
     }
 
     @PostMapping("/login/employee")
-    @PublicEndpoint
     public TokenResponse loginEmployee(@Valid @RequestBody LoginEmployeeRequest request) {
         TokenDto dto = loginEmployeeUseCase.execute(
                 new LoginEmployeeCommand(request.employeeCode(), request.password())
@@ -35,7 +33,6 @@ public class AuthController {
     }
 
     @PostMapping("/login/system")
-    @PublicEndpoint
     public TokenResponse loginSystemUser(@Valid @RequestBody LoginSystemUserRequest request) {
         TokenDto dto = loginSystemUserUseCase.execute(
                 new LoginSystemUserCommand(request.code(), request.password())

@@ -1,7 +1,6 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vetsoftware.app.auth.application.annotation.PublicEndpoint;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
@@ -15,7 +14,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,10 +21,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.HandlerExecutionChain;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @Component
 public class AuthFilter extends OncePerRequestFilter {
@@ -37,37 +33,42 @@ public class AuthFilter extends OncePerRequestFilter {
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
-    private final RequestMappingHandlerMapping handlerMapping;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
                       ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
                       JwtProvider jwtProvider,
-                      ObjectMapper objectMapper,
-                      @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
+                      ObjectMapper objectMapper) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
         this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
-        this.handlerMapping = handlerMapping;
     }
 
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/swagger-ui", "/v3/api-docs", "/swagger-resources", "/webjars", "/actuator"
+    private record PublicRoute(String method, String pattern) {}
+
+    private static final List<PublicRoute> PUBLIC_PATHS = List.of(
+            new PublicRoute("POST", "/auth/login/**"),
+            new PublicRoute("POST", "/register"),
+            new PublicRoute("GET",  "/countries"),
+            new PublicRoute("GET",  "/countries/{countryId}/states"),
+            new PublicRoute("GET",  "/states/{stateId}/cities"),
+            new PublicRoute(null,   "/swagger-ui/**"),
+            new PublicRoute(null,   "/v3/api-docs/**"),
+            new PublicRoute(null,   "/swagger-resources/**"),
+            new PublicRoute(null,   "/webjars/**"),
+            new PublicRoute(null,   "/actuator/**")
     );
+
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
-        String path = request.getRequestURI();
-        if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) return true;
-        try {
-            HandlerExecutionChain chain = handlerMapping.getHandler(request);
-            if (chain == null) return false;
-            return chain.getHandler() instanceof HandlerMethod method
-                    && method.hasMethodAnnotation(PublicEndpoint.class);
-        } catch (Exception e) {
-            return false;
-        }
+        String method = request.getMethod();
+        String path = request.getServletPath();
+        return PUBLIC_PATHS.stream().anyMatch(r ->
+                (r.method() == null || r.method().equalsIgnoreCase(method))
+                        && PATH_MATCHER.match(r.pattern(), path));
     }
 
     @Override
