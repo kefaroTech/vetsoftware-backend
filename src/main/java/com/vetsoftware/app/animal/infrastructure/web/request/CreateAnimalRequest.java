@@ -1,0 +1,31 @@
+package com.vetsoftware.app.animal.infrastructure.web.request;
+
+import com.vetsoftware.app.animal.domain.AnimalColor;
+import com.vetsoftware.app.animal.domain.AnimalType;
+import com.vetsoftware.app.animal.domain.Gender;
+import com.vetsoftware.app.animal.domain.ReproductiveState;
+import com.vetsoftware.app.animal.domain.WeightType;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
+
+public record CreateAnimalRequest(
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code,
+        @NotNull Long specieId,
+        @NotNull Long breedId,
+        @NotNull Long ownerId,
+        @NotNull Gender gender,
+        @NotNull WeightType weightType,
+        @NotNull AnimalType animalType,
+        @NotNull ReproductiveState reproductiveState,
+        @NotNull AnimalColor color,
+        LocalDate bod,
+        @PositiveOrZero Integer weight,
+        @PositiveOrZero Integer size,
+        boolean deceased,
+        LocalDate deceasedDate,
+        @NotNull Long companyId
+) {}

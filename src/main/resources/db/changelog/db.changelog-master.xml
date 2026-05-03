@@ -31,5 +31,9 @@
     <include file="db/changelog/migrations/025_add_unique_base_permissions_code.xml"/>
     <include file="db/changelog/migrations/026_add_mandatory_to_memberships.xml"/>
     <include file="db/changelog/migrations/027_add_unique_permissions_company_code.xml"/>
+    <include file="db/changelog/migrations/028_create_species.xml"/>
+    <include file="db/changelog/migrations/029_create_breeds.xml"/>
+    <include file="db/changelog/migrations/030_create_owners.xml"/>
+    <include file="db/changelog/migrations/031_create_animals.xml"/>
 
 </databaseChangeLog>

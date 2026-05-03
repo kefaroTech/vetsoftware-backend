@@ -1,10 +1,12 @@
 package com.vetsoftware.app.infrastructure.web;
 
+import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.exception.UnauthorizedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
+import com.vetsoftware.app.breed.domain.BreedNotFoundException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
@@ -13,9 +15,11 @@ import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
+import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
@@ -48,7 +52,9 @@ public class GlobalExceptionHandler {
             CityNotFoundException.class, RoleNotFoundException.class,
             RolePermissionNotFoundException.class, EmployeeRoleNotFoundException.class,
             SystemUserNotFoundException.class, SystemPermissionNotFoundException.class,
-            SystemUserPermissionNotFoundException.class
+            SystemUserPermissionNotFoundException.class,
+            SpecieNotFoundException.class, BreedNotFoundException.class,
+            OwnerNotFoundException.class, AnimalNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

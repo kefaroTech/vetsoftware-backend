@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @Component
@@ -52,8 +53,9 @@ public class AuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) return true;
         try {
-            Object handler = handlerMapping.getHandler(request).getHandler();
-            return handler instanceof HandlerMethod method
+            HandlerExecutionChain chain = handlerMapping.getHandler(request);
+            if (chain == null) return false;
+            return chain.getHandler() instanceof HandlerMethod method
                     && method.hasMethodAnnotation(PublicEndpoint.class);
         } catch (Exception e) {
             return false;
