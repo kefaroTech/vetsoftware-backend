@@ -7,39 +7,35 @@ import java.util.Arrays;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
 public class PermissionAspect {
 
-    @Before("execution(* com.vetsoftware.app..application.port.in.*.*(..))")
+    @Pointcut("execution(* com.vetsoftware.app..application.port.in.*.*(..))")
+    private void useCasePortInvocation() {}
+
+    @Before("useCasePortInvocation()")
     public void checkPermission(JoinPoint joinPoint) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
 
-        RequiresPermission annotation = findAnnotation(method, joinPoint.getTarget().getClass());
+        RequiresPermission annotation =
+            AnnotatedElementUtils.findMergedAnnotation(method, RequiresPermission.class);
         if (annotation == null) return;
 
-        Arrays.stream(joinPoint.getArgs())
-                .filter(AuthContext.class::isInstance)
-                .map(AuthContext.class::cast)
-                .findFirst()
-                .ifPresent(auth -> auth.requireAnyPermission(annotation.value()));
-    }
+        AuthContext auth = Arrays.stream(joinPoint.getArgs())
+            .filter(AuthContext.class::isInstance)
+            .map(AuthContext.class::cast)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "Method " + signature
+                    + " is annotated @RequiresPermission but has no AuthContext parameter"));
 
-    private RequiresPermission findAnnotation(Method method, Class<?> targetClass) {
-        RequiresPermission annotation = method.getAnnotation(RequiresPermission.class);
-        if (annotation != null) return annotation;
-
-        for (Class<?> iface : targetClass.getInterfaces()) {
-            try {
-                Method ifaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
-                annotation = ifaceMethod.getAnnotation(RequiresPermission.class);
-                if (annotation != null) return annotation;
-            } catch (NoSuchMethodException ignored) {}
-        }
-        return null;
+        auth.requireAnyPermission(annotation.value());
     }
 }

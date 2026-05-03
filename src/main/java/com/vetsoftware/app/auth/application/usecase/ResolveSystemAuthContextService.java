@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.application.usecase;
 
 import com.vetsoftware.app.auth.application.dto.AuthContext;
+import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.out.SystemPermissionResolver;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,6 @@ public class ResolveSystemAuthContextService implements ResolveSystemAuthContext
 
     @Override
     public AuthContext execute(Long systemUserId) {
-        return new AuthContext(systemUserId, null, permissionResolver.resolveFor(systemUserId));
+        return new SystemUserContext(systemUserId, permissionResolver.resolveFor(systemUserId));
     }
 }
