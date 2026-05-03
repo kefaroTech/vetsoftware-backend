@@ -8,6 +8,8 @@ import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundE
 import com.vetsoftware.app.breed.domain.BreedNotFoundException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
+import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
@@ -55,7 +57,8 @@ public class GlobalExceptionHandler {
             SystemUserNotFoundException.class, SystemPermissionNotFoundException.class,
             SystemUserPermissionNotFoundException.class,
             SpecieNotFoundException.class, BreedNotFoundException.class,
-            OwnerNotFoundException.class, AnimalNotFoundException.class
+            OwnerNotFoundException.class, AnimalNotFoundException.class,
+            ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

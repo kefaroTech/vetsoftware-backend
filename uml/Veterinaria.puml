@@ -282,6 +282,7 @@ class Consultation {
   -diagnosisPlan: String
   -nextControl: LocalDate
   -animal: Animal
+  -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -473,6 +474,7 @@ Animal --> ReproductiveState
 
 ' Medical Records
 Consultation      --> Animal
+Consultation      --> Company
 Consultation      --> ConsultationType
 Vaccination       --> Animal
 Vaccination       --> VaccinationType
