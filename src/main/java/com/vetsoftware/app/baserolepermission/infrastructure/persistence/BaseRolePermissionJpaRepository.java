@@ -15,4 +15,7 @@ public interface BaseRolePermissionJpaRepository extends JpaRepository<BaseRoleP
     @Override
     @EntityGraph(attributePaths = {"baseRole", "basePermission"})
     Optional<BaseRolePermissionJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"basePermission", "basePermission.subModule"})
+    List<BaseRolePermissionJpaEntity> findByBaseRoleId(Long baseRoleId);
 }

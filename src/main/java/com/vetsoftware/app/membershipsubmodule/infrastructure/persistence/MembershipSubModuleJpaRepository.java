@@ -14,4 +14,7 @@ public interface MembershipSubModuleJpaRepository extends JpaRepository<Membersh
     @Override
     @EntityGraph(attributePaths = {"membership", "subModule"})
     Optional<MembershipSubModuleJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "subModule")
+    List<MembershipSubModuleJpaEntity> findByMembershipId(Long membershipId);
 }

@@ -16,6 +16,9 @@ public class MembershipJpaEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
+    @Column(name = "mandatory", nullable = false)
+    private Boolean mandatory;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -27,6 +30,8 @@ public class MembershipJpaEntity {
     public void setName(String name) { this.name = name; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Boolean getMandatory() { return mandatory; }
+    public void setMandatory(Boolean mandatory) { this.mandatory = mandatory; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }

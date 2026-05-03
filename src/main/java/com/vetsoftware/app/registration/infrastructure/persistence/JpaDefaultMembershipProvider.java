@@ -8,9 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaDefaultMembershipProvider implements DefaultMembershipProvider {
 
-    private static final String DEFAULT_NAME = "FULL";
-    private static final String DEFAULT_STATUS = "ACTIVE";
-
     private final MembershipJpaRepository membershipJpaRepository;
 
     public JpaDefaultMembershipProvider(MembershipJpaRepository membershipJpaRepository) {
@@ -20,9 +17,9 @@ public class JpaDefaultMembershipProvider implements DefaultMembershipProvider {
     @Override
     public Long getDefaultMembershipId() {
         return membershipJpaRepository
-            .findFirstByNameAndStatus(DEFAULT_NAME, DEFAULT_STATUS)
+            .findFirstByMandatoryTrue()
             .map(MembershipJpaEntity::getId)
             .orElseThrow(() -> new IllegalStateException(
-                "Default membership not found: name=" + DEFAULT_NAME + ", status=" + DEFAULT_STATUS));
+                "No mandatory membership found. Mark one membership with mandatory=true."));
     }
 }

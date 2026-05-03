@@ -17,6 +17,7 @@ import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRolePr
 import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRoleProvider.BaseRoleData;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
+import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
     private final DefaultMembershipProvider defaultMembershipProvider;
+    private final RolePermissionInitializationPort rolePermissionInitializationPort;
 
     public RegisterUserService(CompanyCreator companyCreator,
                                EmployeeCreator employeeCreator,
@@ -46,7 +48,8 @@ public class RegisterUserService implements RegisterUserUseCase {
                                MandatoryBaseRoleProvider mandatoryBaseRoleProvider,
                                RoleCreator roleCreator,
                                EmployeeRoleAssigner employeeRoleAssigner,
-                               DefaultMembershipProvider defaultMembershipProvider) {
+                               DefaultMembershipProvider defaultMembershipProvider,
+                               RolePermissionInitializationPort rolePermissionInitializationPort) {
         this.companyCreator = companyCreator;
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
@@ -57,6 +60,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
         this.defaultMembershipProvider = defaultMembershipProvider;
+        this.rolePermissionInitializationPort = rolePermissionInitializationPort;
     }
 
     @Override
@@ -90,6 +94,7 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         for (BaseRoleData baseRole : mandatoryBaseRoleProvider.findMandatory()) {
             RoleResult role = roleCreator.create(baseRole.name(), baseRole.code(), company.id());
+            rolePermissionInitializationPort.initializeForRole(role.id(), company.id(), baseRole.id(), membershipId);
             employeeRoleAssigner.assign(employee.id(), role.id());
         }
 

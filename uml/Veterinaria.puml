@@ -90,6 +90,7 @@ class Membership {
   -name: String
   -status: MembershipStatus
   -createdDate: LocalDateTime
+  -mandatory: Boolean
   -createdBy: Employee
 }
 

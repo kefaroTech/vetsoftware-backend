@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "permissions")
+@Table(name = "permissions", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_permissions_company_code", columnNames = {"company_id", "code"})
+})
 public class PermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,7 +31,7 @@ public class PermissionJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    protected PermissionJpaEntity() {}
+    public PermissionJpaEntity() {}
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

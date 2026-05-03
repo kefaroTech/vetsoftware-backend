@@ -17,7 +17,7 @@ public class JpaMandatoryBaseRoleProvider implements MandatoryBaseRoleProvider {
     @Override
     public List<BaseRoleData> findMandatory() {
         return baseRoleJpaRepository.findByMandatoryTrue().stream()
-                .map(e -> new BaseRoleData(e.getName(), e.getCode()))
+                .map(e -> new BaseRoleData(e.getId(), e.getName(), e.getCode()))
                 .toList();
     }
 }

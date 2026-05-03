@@ -27,7 +27,7 @@ public class UpdateMembershipService implements UpdateMembershipUseCase {
         Membership membership = repository.findById(command.id())
             .orElseThrow(() -> new MembershipNotFoundException(command.id()));
         MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
-        membership.update(command.name(), status);
+        membership.update(command.name(), status, command.mandatory());
         return MembershipDto.from(repository.save(membership));
     }
 }

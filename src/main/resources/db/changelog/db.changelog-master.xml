@@ -23,9 +23,13 @@
     <include file="db/changelog/migrations/017_create_roles.xml"/>
     <include file="db/changelog/migrations/018_create_role_permissions.xml"/>
     <include file="db/changelog/migrations/019_create_employee_roles.xml"/>
-    <include file="db/changelog/migrations/020_seed_membership_full.xml"/>
-    <include file="db/changelog/migrations/021_seed_module_consultation.xml"/>
-    <include file="db/changelog/migrations/022_seed_superadmin.xml"/>
-    <include file="db/changelog/migrations/023_seed_americas_geography.xml"/>
+    <include file="db/changelog/migrations/020_seed_membership_basic.xml"/>
+    <include file="db/changelog/migrations/021_seed_superadmin.xml"/>
+    <include file="db/changelog/migrations/022_seed_americas_geography.xml"/>
+    <include file="db/changelog/migrations/023_add_unique_modules_code.xml"/>
+    <include file="db/changelog/migrations/024_add_unique_sub_modules_code.xml"/>
+    <include file="db/changelog/migrations/025_add_unique_base_permissions_code.xml"/>
+    <include file="db/changelog/migrations/026_add_mandatory_to_memberships.xml"/>
+    <include file="db/changelog/migrations/027_add_unique_permissions_company_code.xml"/>
 
 </databaseChangeLog>

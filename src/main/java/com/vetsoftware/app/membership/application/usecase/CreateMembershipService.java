@@ -22,7 +22,7 @@ public class CreateMembershipService implements CreateMembershipUseCase {
     @Override
     public MembershipDto execute(CreateMembershipCommand command, AuthContext auth) {
         MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
-        Membership membership = Membership.create(command.name(), status);
+        Membership membership = Membership.create(command.name(), status, command.mandatory());
         return MembershipDto.from(repository.save(membership));
     }
 }

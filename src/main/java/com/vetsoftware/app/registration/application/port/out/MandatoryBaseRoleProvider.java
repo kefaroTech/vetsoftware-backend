@@ -5,5 +5,5 @@ import java.util.List;
 public interface MandatoryBaseRoleProvider {
     List<BaseRoleData> findMandatory();
 
-    record BaseRoleData(String name, String code) {}
+    record BaseRoleData(Long id, String name, String code) {}
 }

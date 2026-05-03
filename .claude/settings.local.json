@@ -22,7 +22,10 @@
       "Bash(curl *)",
       "Bash(unzip -l target/vetsoftware-1.0.0.jar)",
       "Bash(Get-ChildItem *)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Csv -NoTypeInformation)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

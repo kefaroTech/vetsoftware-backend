@@ -4,13 +4,10 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="023_seed_americas_geography" author="orlando">
-        <sqlFile path="db/changelog/migrations/023_seed_americas_geography.sql"
-                 relativeToChangelogFile="false"
-                 splitStatements="true"
-                 stripComments="true"
-                 endDelimiter=";"
-                 encoding="UTF-8"/>
+    <changeSet id="023_add_unique_modules_code" author="orlando">
+        <addUniqueConstraint tableName="modules"
+                             columnNames="code"
+                             constraintName="uq_modules_code"/>
     </changeSet>
 
 </databaseChangeLog>

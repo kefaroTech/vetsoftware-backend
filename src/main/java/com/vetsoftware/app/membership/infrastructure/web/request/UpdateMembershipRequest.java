@@ -5,5 +5,6 @@ import jakarta.validation.constraints.Size;
 
 public record UpdateMembershipRequest(
         @NotBlank @Size(max = 100) String name,
-        @NotBlank String status
+        @NotBlank String status,
+        boolean mandatory
 ) {}

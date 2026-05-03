@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MembershipJpaRepository extends JpaRepository<MembershipJpaEntity, Long> {
 
-    Optional<MembershipJpaEntity> findFirstByNameAndStatus(String name, String status);
+    Optional<MembershipJpaEntity> findFirstByMandatoryTrue();
 }
