@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class CountryController {
 
     private static final AuthContext PUBLIC_LIST_CONTEXT =
-        new AuthContext(null, Set.of("admin.all"));
+        new AuthContext(null, null, Set.of("admin.all"));
 
     private final CreateCountryUseCase createUseCase;
     private final UpdateCountryUseCase updateUseCase;

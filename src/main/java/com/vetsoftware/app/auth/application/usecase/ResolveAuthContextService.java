@@ -15,7 +15,7 @@ public class ResolveAuthContextService implements ResolveAuthContextUseCase {
     }
 
     @Override
-    public AuthContext execute(Long employeeId) {
-        return new AuthContext(employeeId, permissionResolver.resolveFor(employeeId));
+    public AuthContext execute(Long employeeId, Long companyId) {
+        return new AuthContext(employeeId, companyId, permissionResolver.resolveFor(employeeId));
     }
 }

@@ -33,6 +33,6 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
 
-        return new TokenDto(tokenGenerator.generate(credentials.id(), "EMPLOYEE"), "EMPLOYEE");
+        return new TokenDto(tokenGenerator.generate(credentials.id(), "EMPLOYEE", credentials.companyId()), "EMPLOYEE");
     }
 }

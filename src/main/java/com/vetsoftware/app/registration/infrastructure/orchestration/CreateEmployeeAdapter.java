@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class CreateEmployeeAdapter implements EmployeeCreator {
 
     private static final AuthContext SYSTEM_CONTEXT =
-        new AuthContext(null, Set.of("admin.all"));
+        new AuthContext(null, null, Set.of("admin.all"));
 
     private static final String DEFAULT_STATUS = "ACTIVE";
 

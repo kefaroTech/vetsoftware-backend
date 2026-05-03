@@ -82,7 +82,7 @@ public class AuthFilter extends OncePerRequestFilter {
         }
 
         AuthContext authContext = switch (type) {
-            case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id);
+            case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, extractCompanyId(token));
             case "SYSTEM_USER" -> resolveSystemAuthContextUseCase.execute(id);
             default            -> null;
         };
@@ -107,6 +107,14 @@ public class AuthFilter extends OncePerRequestFilter {
     private Long extractId(String token) {
         try {
             return jwtProvider.extractId(token);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long extractCompanyId(String token) {
+        try {
+            return jwtProvider.extractCompanyId(token);
         } catch (Exception e) {
             return null;
         }

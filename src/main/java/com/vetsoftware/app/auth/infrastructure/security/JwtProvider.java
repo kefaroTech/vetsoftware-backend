@@ -24,15 +24,15 @@ public class JwtProvider implements TokenGenerator {
         this.expirationMinutes = expirationMinutes;
     }
 
-    public String generate(Long id, String type) {
+    public String generate(Long id, String type, Long companyId) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(id))
                 .claim("type", type)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)))
-                .signWith(secretKey)
-                .compact();
+                .expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)));
+        if (companyId != null) builder.claim("companyId", companyId);
+        return builder.signWith(secretKey).compact();
     }
 
     public Long extractId(String token) {
@@ -41,6 +41,10 @@ public class JwtProvider implements TokenGenerator {
 
     public String extractType(String token) {
         return parseClaims(token).get("type", String.class);
+    }
+
+    public Long extractCompanyId(String token) {
+        return parseClaims(token).get("companyId", Long.class);
     }
 
     private Claims parseClaims(String token) {

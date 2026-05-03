@@ -19,6 +19,6 @@ public class JpaEmployeeCredentialsRepository implements EmployeeCredentialsRepo
     @Override
     public Optional<EmployeeCredentials> findByCode(String employeeCode) {
         return employeeJpaRepository.findByEmployeeCodeAndStatus(employeeCode, ACTIVE_STATUS)
-                .map(e -> new EmployeeCredentials(e.getId(), e.getHashPassword()));
+                .map(e -> new EmployeeCredentials(e.getId(), e.getCompany().getId(), e.getHashPassword()));
     }
 }

@@ -16,6 +16,6 @@ public class ResolveSystemAuthContextService implements ResolveSystemAuthContext
 
     @Override
     public AuthContext execute(Long systemUserId) {
-        return new AuthContext(systemUserId, permissionResolver.resolveFor(systemUserId));
+        return new AuthContext(systemUserId, null, permissionResolver.resolveFor(systemUserId));
     }
 }

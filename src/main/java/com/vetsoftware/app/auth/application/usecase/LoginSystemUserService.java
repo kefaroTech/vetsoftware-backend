@@ -33,6 +33,6 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
 
-        return new TokenDto(tokenGenerator.generate(credentials.id(), "SYSTEM_USER"), "SYSTEM_USER");
+        return new TokenDto(tokenGenerator.generate(credentials.id(), "SYSTEM_USER", null), "SYSTEM_USER");
     }
 }

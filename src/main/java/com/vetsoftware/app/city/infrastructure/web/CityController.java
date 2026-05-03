@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class CityController {
 
     private static final AuthContext PUBLIC_LIST_CONTEXT =
-        new AuthContext(null, Set.of("admin.all"));
+        new AuthContext(null, null, Set.of("admin.all"));
 
     private final CreateCityUseCase createUseCase;
     private final UpdateCityUseCase updateUseCase;

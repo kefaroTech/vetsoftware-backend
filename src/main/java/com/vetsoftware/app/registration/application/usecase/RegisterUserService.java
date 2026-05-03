@@ -98,7 +98,7 @@ public class RegisterUserService implements RegisterUserUseCase {
             employeeRoleAssigner.assign(employee.id(), role.id());
         }
 
-        String token = tokenGenerator.generate(employee.id(), "EMPLOYEE");
+        String token = tokenGenerator.generate(employee.id(), "EMPLOYEE", company.id());
         return new RegistrationDto(company.id(), employee.id(), token, "EMPLOYEE");
     }
 

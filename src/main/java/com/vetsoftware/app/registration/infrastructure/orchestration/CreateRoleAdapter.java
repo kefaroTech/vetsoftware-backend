@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class CreateRoleAdapter implements RoleCreator {
 
     private static final AuthContext SYSTEM_CONTEXT =
-        new AuthContext(null, Set.of("admin.all"));
+        new AuthContext(null, null, Set.of("admin.all"));
 
     private final CreateRoleUseCase createRoleUseCase;
 
