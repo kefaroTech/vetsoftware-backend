@@ -8,5 +8,6 @@ public interface BreedRepository {
     Breed save(Breed breed);
     Optional<Breed> findById(Long id);
     List<Breed> findAll();
+    List<Breed> findBySpecieId(Long specieId);
     void delete(Long id);
 }

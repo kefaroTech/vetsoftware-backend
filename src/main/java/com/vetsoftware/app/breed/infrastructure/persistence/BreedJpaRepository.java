@@ -14,4 +14,7 @@ public interface BreedJpaRepository extends JpaRepository<BreedJpaEntity, Long> 
     @Override
     @EntityGraph(attributePaths = "specie")
     Optional<BreedJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "specie")
+    List<BreedJpaEntity> findAllBySpecie_Id(Long specieId);
 }

@@ -40,6 +40,11 @@ public class JpaBreedRepository implements BreedRepository {
     }
 
     @Override
+    public List<Breed> findBySpecieId(Long specieId) {
+        return jpaRepository.findAllBySpecie_Id(specieId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
