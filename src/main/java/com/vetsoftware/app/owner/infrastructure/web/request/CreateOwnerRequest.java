@@ -11,6 +11,5 @@ public record CreateOwnerRequest(
         @NotBlank @Size(max = 50) String document,
         @Size(max = 255) String address,
         @Size(max = 30) String phone,
-        @NotNull Long cityId,
-        @NotNull Long companyId
+        @NotNull Long cityId
 ) {}

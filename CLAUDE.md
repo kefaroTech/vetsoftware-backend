@@ -269,6 +269,72 @@ public SubModuleDto execute(CreateSubModuleCommand command, AuthContext auth) {
 - **No necesitas datos del agregado externo, solo el ID** → usa `Long moduleId` en el dominio + `YyyValidationPort` para validar en escritura.
 - **Las dos entidades son realmente el mismo agregado** (e.g. `Order` y `OrderItem`) → entonces no son features separadas; ponlas en el mismo paquete.
 
+## Autorización — `@PreAuthorize` y `Authz`
+
+Todo recurso scoped a una `Company` (multi-tenant) se protege con permisos + ownership. El frontend **nunca** elige el `companyId`: lo deriva el backend desde el `AuthContext` que el `AuthFilter` puso en `SecurityContextHolder` al validar el JWT.
+
+### Reglas no negociables
+
+- ❌ El request REST de un endpoint scoped al usuario **nunca** lleva `companyId` — un cliente malicioso podría suplantar otra empresa.
+- ✅ El controller obtiene `companyId` con `authz.currentCompanyId()` y lo inyecta en el command.
+- ✅ El `@PreAuthorize` del puerto de entrada **siempre** valida `@authz.isMyCompany(#command.companyId)` como defensa en profundidad — protege contra otros callers o bugs futuros que pasen un `companyId` distinto.
+- ✅ Endpoints globales para admin/SYSTEM que sí pueden elegir company van en otro caso de uso aparte; no se mezclan con los de employee.
+
+### Bean `Authz`
+
+`auth/infrastructure/security/Authz.java`, expuesto como `@authz`:
+
+- `isMyCompany(Long companyId)` — `true` si el principal es `EmployeeContext` y `companyId` coincide.
+- `currentCompanyId()` — devuelve el `companyId` del `EmployeeContext`; lanza `AccessDeniedException` si no hay contexto de empleado.
+
+### Patrón canónico — crear recurso scoped a la company del usuario
+
+**1. Request sin `companyId`:**
+```java
+public record CreateOwnerRequest(
+        @NotBlank String name, ..., @NotNull Long cityId
+) {}   // ← sin companyId
+```
+
+**2. Command con `companyId`** (el service lo necesita para llegar al dominio):
+```java
+public record CreateOwnerCommand(..., Long cityId, Long companyId) {}
+```
+
+**3. Controller inyecta `companyId` desde el contexto:**
+```java
+@PostMapping
+public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request) {
+    return toResponse(createUseCase.execute(
+        new CreateOwnerCommand(..., request.cityId(), authz.currentCompanyId())));
+}
+```
+
+**4. Use case con `@PreAuthorize` defensiva:**
+```java
+public interface CreateOwnerUseCase {
+    @PreAuthorize("hasAuthority('admin.all') or " +
+                  "(hasAuthority('owner.create') and @authz.isMyCompany(#command.companyId))")
+    OwnerDto execute(CreateOwnerCommand command);
+}
+```
+
+### SpEL en `@PreAuthorize` — referencias a parámetros
+
+- `#paramName` debe coincidir **exactamente** con el nombre del parámetro del método. Para `execute(CreateOwnerCommand command)` es `#command.companyId`, no `#id`.
+- Si referencias un parámetro inexistente, SpEL lo resuelve a `null` silenciosamente — `isMyCompany(null)` devuelve `false` y la regla siempre falla. Bug difícil de detectar; revísalo cada vez que renombres un parámetro o copies un `@PreAuthorize` entre métodos.
+
+### Rutas públicas
+
+Las rutas que no requieren JWT se declaran en `AuthFilter.PUBLIC_PATHS` como pares `(method, pattern)` con `AntPathMatcher` (e.g. `new PublicRoute("POST", "/auth/login/**")`). No usamos anotaciones por método (`@PublicEndpoint`) — eso requiere consultar el handler mapping desde un filter, lo cual es frágil con el `PathPatternParser` de Spring Boot 3.
+
+### Anti-patterns auth
+
+- ❌ Aceptar `companyId` en `XxxRequest` para recursos scoped al usuario
+- ❌ `@PreAuthorize("@authz.isMyCompany(#id)")` cuando el método es `execute(XxxCommand command)` — `#id` es `null`, regla siempre falsa
+- ❌ Mezclar lógica de admin global y employee-scoped en el mismo `UseCase`; separa en dos casos de uso
+- ❌ Validar ownership sólo en el controller (saltable desde otro caller); mantener siempre la regla en el `@PreAuthorize` del port
+
 ## Naming conventions
 
 | Elemento | Convención | Ejemplo |

@@ -51,7 +51,7 @@ public class OwnerController {
     public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request) {
         return toResponse(createUseCase.execute(
             new CreateOwnerCommand(request.name(), request.email(), request.document(),
-                request.address(), request.phone(), request.cityId(), request.companyId())));
+                request.address(), request.phone(), request.cityId(), authz.currentCompanyId())));
     }
 
     @GetMapping
