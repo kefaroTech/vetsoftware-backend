@@ -8,5 +8,6 @@ public interface AnimalRepository {
     Animal save(Animal animal);
     Optional<Animal> findById(Long id);
     List<Animal> findAll();
+    List<Animal> findByOwnerIdAndCompanyId(Long ownerId, Long companyId);
     void delete(Long id);
 }

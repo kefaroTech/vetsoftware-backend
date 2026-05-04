@@ -65,6 +65,12 @@ public class JpaAnimalRepository implements AnimalRepository {
     }
 
     @Override
+    public List<Animal> findByOwnerIdAndCompanyId(Long ownerId, Long companyId) {
+        return jpaRepository.findAllByOwner_IdAndCompany_Id(ownerId, companyId)
+            .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

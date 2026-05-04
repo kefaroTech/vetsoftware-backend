@@ -14,4 +14,7 @@ public interface AnimalJpaRepository extends JpaRepository<AnimalJpaEntity, Long
     @Override
     @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
     Optional<AnimalJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
+    List<AnimalJpaEntity> findAllByOwner_IdAndCompany_Id(Long ownerId, Long companyId);
 }

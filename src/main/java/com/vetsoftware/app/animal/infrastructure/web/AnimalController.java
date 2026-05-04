@@ -21,16 +21,19 @@ public class AnimalController {
     private final UpdateAnimalUseCase updateUseCase;
     private final FindAnimalUseCase findUseCase;
     private final ListAnimalsUseCase listUseCase;
+    private final ListAnimalsByOwnerUseCase listByOwnerUseCase;
     private final DeleteAnimalUseCase deleteUseCase;
     private final Authz authz;
 
     public AnimalController(CreateAnimalUseCase createUseCase, UpdateAnimalUseCase updateUseCase,
                             FindAnimalUseCase findUseCase, ListAnimalsUseCase listUseCase,
+                            ListAnimalsByOwnerUseCase listByOwnerUseCase,
                             DeleteAnimalUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByOwnerUseCase = listByOwnerUseCase;
         this.deleteUseCase = deleteUseCase;
         this.authz = authz;
     }
@@ -50,6 +53,12 @@ public class AnimalController {
     @GetMapping
     public List<AnimalResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-owner/{ownerId}")
+    public List<AnimalResponse> listByOwner(@PathVariable Long ownerId) {
+        return listByOwnerUseCase.listByOwner(ownerId, authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
