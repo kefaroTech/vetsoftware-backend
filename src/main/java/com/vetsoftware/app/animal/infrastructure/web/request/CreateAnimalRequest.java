@@ -1,6 +1,5 @@
 package com.vetsoftware.app.animal.infrastructure.web.request;
 
-import com.vetsoftware.app.animal.domain.AnimalColor;
 import com.vetsoftware.app.animal.domain.AnimalType;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
@@ -21,7 +20,7 @@ public record CreateAnimalRequest(
         @NotNull WeightType weightType,
         @NotNull AnimalType animalType,
         @NotNull ReproductiveState reproductiveState,
-        @NotNull AnimalColor color,
+        @NotNull Long colorId,
         LocalDate bod,
         @PositiveOrZero Integer weight,
         @PositiveOrZero Integer size,

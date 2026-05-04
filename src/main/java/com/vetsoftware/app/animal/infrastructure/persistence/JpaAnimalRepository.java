@@ -2,6 +2,8 @@ package com.vetsoftware.app.animal.infrastructure.persistence;
 
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import com.vetsoftware.app.animal.domain.Animal;
+import com.vetsoftware.app.animalcolor.infrastructure.persistence.AnimalColorJpaEntity;
+import com.vetsoftware.app.animalcolor.infrastructure.persistence.AnimalColorJpaRepository;
 import com.vetsoftware.app.breed.infrastructure.persistence.BreedJpaEntity;
 import com.vetsoftware.app.breed.infrastructure.persistence.BreedJpaRepository;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
@@ -22,19 +24,22 @@ public class JpaAnimalRepository implements AnimalRepository {
     private final BreedJpaRepository breedJpaRepository;
     private final OwnerJpaRepository ownerJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
+    private final AnimalColorJpaRepository animalColorJpaRepository;
 
     public JpaAnimalRepository(AnimalJpaRepository jpaRepository,
                                AnimalJpaMapper mapper,
                                SpecieJpaRepository specieJpaRepository,
                                BreedJpaRepository breedJpaRepository,
                                OwnerJpaRepository ownerJpaRepository,
-                               CompanyJpaRepository companyJpaRepository) {
+                               CompanyJpaRepository companyJpaRepository,
+                               AnimalColorJpaRepository animalColorJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.specieJpaRepository = specieJpaRepository;
         this.breedJpaRepository = breedJpaRepository;
         this.ownerJpaRepository = ownerJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
+        this.animalColorJpaRepository = animalColorJpaRepository;
     }
 
     @Override
@@ -43,9 +48,10 @@ public class JpaAnimalRepository implements AnimalRepository {
         BreedJpaEntity breed = breedJpaRepository.getReferenceById(animal.getBreed().id());
         OwnerJpaEntity owner = ownerJpaRepository.getReferenceById(animal.getOwner().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(animal.getCompany().id());
-        AnimalJpaEntity saved = jpaRepository.save(mapper.toJpa(animal, specie, breed, owner, company));
+        AnimalColorJpaEntity color = animalColorJpaRepository.getReferenceById(animal.getColor().id());
+        AnimalJpaEntity saved = jpaRepository.save(mapper.toJpa(animal, specie, breed, owner, company, color));
         return mapper.toDomain(saved, animal.getSpecie(), animal.getBreed(),
-                                animal.getOwner(), animal.getCompany());
+                                animal.getOwner(), animal.getCompany(), animal.getColor());
     }
 
     @Override

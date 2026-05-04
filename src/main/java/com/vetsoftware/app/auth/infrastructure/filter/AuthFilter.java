@@ -54,6 +54,7 @@ public class AuthFilter extends OncePerRequestFilter {
             new PublicRoute("GET",  "/states/{stateId}/cities"),
             new PublicRoute("GET",  "/species/{specieId}/breeds"),
             new PublicRoute("GET",  "/species"),
+            new PublicRoute("GET",  "/animal-colors"),
             new PublicRoute(null,   "/swagger-ui/**"),
             new PublicRoute(null,   "/v3/api-docs/**"),
             new PublicRoute(null,   "/swagger-resources/**"),

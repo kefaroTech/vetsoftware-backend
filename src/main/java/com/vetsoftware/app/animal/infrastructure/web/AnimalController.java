@@ -2,27 +2,17 @@ package com.vetsoftware.app.animal.infrastructure.web;
 
 import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
 import com.vetsoftware.app.animal.application.command.UpdateAnimalCommand;
-import com.vetsoftware.app.animal.application.dto.AnimalDto;
-import com.vetsoftware.app.animal.application.dto.BreedSummaryDto;
-import com.vetsoftware.app.animal.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.animal.application.dto.OwnerSummaryDto;
-import com.vetsoftware.app.animal.application.dto.SpecieSummaryDto;
-import com.vetsoftware.app.animal.application.port.in.CreateAnimalUseCase;
-import com.vetsoftware.app.animal.application.port.in.DeleteAnimalUseCase;
-import com.vetsoftware.app.animal.application.port.in.FindAnimalUseCase;
-import com.vetsoftware.app.animal.application.port.in.ListAnimalsUseCase;
-import com.vetsoftware.app.animal.application.port.in.UpdateAnimalUseCase;
+import com.vetsoftware.app.animal.application.dto.*;
+import com.vetsoftware.app.animal.application.port.in.*;
 import com.vetsoftware.app.animal.infrastructure.web.request.CreateAnimalRequest;
 import com.vetsoftware.app.animal.infrastructure.web.request.UpdateAnimalRequest;
-import com.vetsoftware.app.animal.infrastructure.web.response.AnimalResponse;
-import com.vetsoftware.app.animal.infrastructure.web.response.BreedSummary;
-import com.vetsoftware.app.animal.infrastructure.web.response.CompanySummary;
-import com.vetsoftware.app.animal.infrastructure.web.response.OwnerSummary;
-import com.vetsoftware.app.animal.infrastructure.web.response.SpecieSummary;
+import com.vetsoftware.app.animal.infrastructure.web.response.*;
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/animals")
@@ -32,27 +22,29 @@ public class AnimalController {
     private final FindAnimalUseCase findUseCase;
     private final ListAnimalsUseCase listUseCase;
     private final DeleteAnimalUseCase deleteUseCase;
+    private final Authz authz;
 
     public AnimalController(CreateAnimalUseCase createUseCase, UpdateAnimalUseCase updateUseCase,
                             FindAnimalUseCase findUseCase, ListAnimalsUseCase listUseCase,
-                            DeleteAnimalUseCase deleteUseCase) {
+                            DeleteAnimalUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AnimalResponse create(@Valid @RequestBody CreateAnimalRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateAnimalCommand(
-                request.name(), request.code(), request.specieId(), request.breedId(),
-                request.ownerId(), request.gender(), request.weightType(), request.animalType(),
-                request.reproductiveState(), request.color(), request.bod(),
-                request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                request.companyId())));
+                new CreateAnimalCommand(
+                        request.name(), request.code(), request.specieId(), request.breedId(),
+                        request.ownerId(), request.gender(), request.weightType(), request.animalType(),
+                        request.reproductiveState(), request.colorId(), request.bod(),
+                        request.weight(), request.size(), request.deceased(), request.deceasedDate(),
+                        authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -68,12 +60,12 @@ public class AnimalController {
     @PutMapping("/{id}")
     public AnimalResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAnimalRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateAnimalCommand(
-                id, request.name(), request.code(), request.specieId(), request.breedId(),
-                request.ownerId(), request.gender(), request.weightType(), request.animalType(),
-                request.reproductiveState(), request.color(), request.bod(),
-                request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                request.companyId())));
+                new UpdateAnimalCommand(
+                        id, request.name(), request.code(), request.specieId(), request.breedId(),
+                        request.ownerId(), request.gender(), request.weightType(), request.animalType(),
+                        request.reproductiveState(), request.colorId(), request.bod(),
+                        request.weight(), request.size(), request.deceased(), request.deceasedDate(),
+                        request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -87,16 +79,19 @@ public class AnimalController {
         BreedSummaryDto b = dto.breed();
         OwnerSummaryDto o = dto.owner();
         CompanySummaryDto c = dto.company();
+        AnimalColorSummaryDto co = dto.color();
         return new AnimalResponse(
-            dto.id(), dto.name(), dto.code(),
-            new SpecieSummary(s.id(), s.name()),
-            new BreedSummary(b.id(), b.name()),
-            new OwnerSummary(o.id(), o.name(), o.document()),
-            dto.gender(), dto.weightType(), dto.animalType(),
-            dto.reproductiveState(), dto.color(), dto.bod(),
-            dto.weight(), dto.size(), dto.deceased(), dto.deceasedDate(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate()
+                dto.id(), dto.name(), dto.code(),
+                new SpecieSummary(s.id(), s.name()),
+                new BreedSummary(b.id(), b.name()),
+                new OwnerSummary(o.id(), o.name(), o.document()),
+                dto.gender(), dto.weightType(), dto.animalType(),
+                dto.reproductiveState(),
+                new AnimalColorSummary(co.id(), co.name()),
+                dto.bod(),
+                dto.weight(), dto.size(), dto.deceased(), dto.deceasedDate(),
+                new CompanySummary(c.id(), c.name(), c.identifier()),
+                dto.createdDate()
         );
     }
 }

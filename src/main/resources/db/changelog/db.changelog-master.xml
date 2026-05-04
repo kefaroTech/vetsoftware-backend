@@ -44,5 +44,7 @@
     <include file="db/changelog/migrations/038_create_laboratory_tests.xml"/>
     <include file="db/changelog/migrations/039_create_prescriptions.xml"/>
     <include file="db/changelog/migrations/040_create_dewormings.xml"/>
+    <include file="db/changelog/migrations/041_create_animal_colors.xml"/>
+    <include file="db/changelog/migrations/042_alter_animals_color_to_fk.xml"/>
 
 </databaseChangeLog>

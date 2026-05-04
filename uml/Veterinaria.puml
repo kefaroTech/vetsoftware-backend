@@ -234,6 +234,12 @@ class Specie {
   -createdBy: Employee
 }
 
+class AnimalColor {
+  -name: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
 class Breed {
   -name: String
   -specie: Specie
@@ -251,7 +257,7 @@ class Animal {
   -weightType: WeightType
   -animalType: AnimalType
   -reproductiveState: ReproductiveState
-  -color: Color
+  -color: AnimalColor
   -bod: LocalDate
   -weight: Integer
   -size: Integer
@@ -469,6 +475,7 @@ Owner "0..*" --> "1" City
 Owner  --> Company
 Breed  --> Specie
 Animal --> Specie
+Animal --> AnimalColor
 Animal --> Breed
 Animal --> Owner
 Animal --> Company

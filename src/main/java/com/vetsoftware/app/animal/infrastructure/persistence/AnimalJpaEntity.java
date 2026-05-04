@@ -1,10 +1,10 @@
 package com.vetsoftware.app.animal.infrastructure.persistence;
 
-import com.vetsoftware.app.animal.domain.AnimalColor;
 import com.vetsoftware.app.animal.domain.AnimalType;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
 import com.vetsoftware.app.animal.domain.WeightType;
+import com.vetsoftware.app.animalcolor.infrastructure.persistence.AnimalColorJpaEntity;
 import com.vetsoftware.app.breed.infrastructure.persistence.BreedJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
@@ -56,9 +56,9 @@ public class AnimalJpaEntity {
     @Column(name = "reproductive_state", nullable = false, length = 20)
     private ReproductiveState reproductiveState;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private AnimalColor color;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_id", nullable = false)
+    private AnimalColorJpaEntity color;
 
     @Column(name = "bod")
     private LocalDate bod;
@@ -104,8 +104,8 @@ public class AnimalJpaEntity {
     public void setAnimalType(AnimalType animalType) { this.animalType = animalType; }
     public ReproductiveState getReproductiveState() { return reproductiveState; }
     public void setReproductiveState(ReproductiveState reproductiveState) { this.reproductiveState = reproductiveState; }
-    public AnimalColor getColor() { return color; }
-    public void setColor(AnimalColor color) { this.color = color; }
+    public AnimalColorJpaEntity getColor() { return color; }
+    public void setColor(AnimalColorJpaEntity color) { this.color = color; }
     public LocalDate getBod() { return bod; }
     public void setBod(LocalDate bod) { this.bod = bod; }
     public Integer getWeight() { return weight; }

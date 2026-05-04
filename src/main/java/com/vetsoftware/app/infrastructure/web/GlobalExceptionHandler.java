@@ -1,6 +1,7 @@
 package com.vetsoftware.app.infrastructure.web;
 
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
+import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
@@ -65,6 +66,7 @@ public class GlobalExceptionHandler {
             SystemUserPermissionNotFoundException.class,
             SpecieNotFoundException.class, BreedNotFoundException.class,
             OwnerNotFoundException.class, AnimalNotFoundException.class,
+            AnimalColorNotFoundException.class,
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,

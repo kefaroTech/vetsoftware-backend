@@ -14,7 +14,7 @@ public class Animal {
     private WeightType weightType;
     private AnimalType animalType;
     private ReproductiveState reproductiveState;
-    private AnimalColor color;
+    private AnimalColorRef color;
     private LocalDate bod;
     private Integer weight;
     private Integer size;
@@ -25,7 +25,7 @@ public class Animal {
 
     public Animal(Long id, String name, String code, SpecieRef specie, BreedRef breed,
                   OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
-                  ReproductiveState reproductiveState, AnimalColor color, LocalDate bod,
+                  ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod,
                   Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
                   CompanyRef company, LocalDateTime createdDate) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
@@ -53,7 +53,7 @@ public class Animal {
     public static Animal create(String name, String code, SpecieRef specie, BreedRef breed,
                                  OwnerRef owner, Gender gender, WeightType weightType,
                                  AnimalType animalType, ReproductiveState reproductiveState,
-                                 AnimalColor color, LocalDate bod, Integer weight, Integer size,
+                                 AnimalColorRef color, LocalDate bod, Integer weight, Integer size,
                                  boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         return new Animal(null, name, code, specie, breed, owner, gender, weightType, animalType,
                           reproductiveState, color, bod, weight, size, deceased, deceasedDate,
@@ -62,7 +62,7 @@ public class Animal {
 
     public void update(String name, String code, SpecieRef specie, BreedRef breed,
                        OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
-                       ReproductiveState reproductiveState, AnimalColor color, LocalDate bod,
+                       ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod,
                        Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
                        CompanyRef company) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
@@ -88,7 +88,7 @@ public class Animal {
     private static void validate(String name, String code, SpecieRef specie, BreedRef breed,
                                   OwnerRef owner, Gender gender, WeightType weightType,
                                   AnimalType animalType, ReproductiveState reproductiveState,
-                                  AnimalColor color, Integer weight, Integer size,
+                                  AnimalColorRef color, Integer weight, Integer size,
                                   boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
@@ -119,7 +119,7 @@ public class Animal {
     public WeightType getWeightType() { return weightType; }
     public AnimalType getAnimalType() { return animalType; }
     public ReproductiveState getReproductiveState() { return reproductiveState; }
-    public AnimalColor getColor() { return color; }
+    public AnimalColorRef getColor() { return color; }
     public LocalDate getBod() { return bod; }
     public Integer getWeight() { return weight; }
     public Integer getSize() { return size; }
