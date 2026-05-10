@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="055_add_company_to_vaccination_types" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="vaccination_types" columnName="company_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="vaccination_types">
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_vaccination_types_company"
+                             references="companies(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="055_add_general_to_vaccination_types" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="vaccination_types" columnName="general"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="vaccination_types">
+            <column name="general" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="055_backfill_vaccination_types_general" author="orlando">
+        <comment>Pre-existing rows had no company nor general flag; mark them as global (general=TRUE) so they remain valid under the new XOR rule.</comment>
+        <update tableName="vaccination_types">
+            <column name="general" valueBoolean="true"/>
+            <where>general = FALSE AND company_id IS NULL</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

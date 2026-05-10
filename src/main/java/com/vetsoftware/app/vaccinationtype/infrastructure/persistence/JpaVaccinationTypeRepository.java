@@ -1,5 +1,7 @@
 package com.vetsoftware.app.vaccinationtype.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.vaccinationtype.application.port.out.VaccinationTypeRepository;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationType;
 import java.util.List;
@@ -10,15 +12,22 @@ import org.springframework.stereotype.Repository;
 public class JpaVaccinationTypeRepository implements VaccinationTypeRepository {
     private final VaccinationTypeJpaRepository jpaRepository;
     private final VaccinationTypeJpaMapper mapper;
+    private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaVaccinationTypeRepository(VaccinationTypeJpaRepository jpaRepository, VaccinationTypeJpaMapper mapper) {
+    public JpaVaccinationTypeRepository(VaccinationTypeJpaRepository jpaRepository,
+                                        VaccinationTypeJpaMapper mapper,
+                                        CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
+        this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
     public VaccinationType save(VaccinationType vaccinationType) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(vaccinationType)));
+        CompanyJpaEntity company = vaccinationType.getCompany() == null ? null
+                : companyJpaRepository.getReferenceById(vaccinationType.getCompany().id());
+        VaccinationTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(vaccinationType, company));
+        return mapper.toDomain(saved, vaccinationType.getCompany());
     }
 
     @Override

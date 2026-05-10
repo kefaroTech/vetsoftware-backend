@@ -1,5 +1,7 @@
 package com.vetsoftware.app.diagnosticimagingtype.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.out.DiagnosticImagingTypeRepository;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingType;
 import java.util.List;
@@ -10,16 +12,22 @@ import org.springframework.stereotype.Repository;
 public class JpaDiagnosticImagingTypeRepository implements DiagnosticImagingTypeRepository {
     private final DiagnosticImagingTypeJpaRepository jpaRepository;
     private final DiagnosticImagingTypeJpaMapper mapper;
+    private final CompanyJpaRepository companyJpaRepository;
 
     public JpaDiagnosticImagingTypeRepository(DiagnosticImagingTypeJpaRepository jpaRepository,
-                                              DiagnosticImagingTypeJpaMapper mapper) {
+                                              DiagnosticImagingTypeJpaMapper mapper,
+                                              CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
+        this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
     public DiagnosticImagingType save(DiagnosticImagingType type) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(type)));
+        CompanyJpaEntity company = type.getCompany() == null ? null
+                : companyJpaRepository.getReferenceById(type.getCompany().id());
+        DiagnosticImagingTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(type, company));
+        return mapper.toDomain(saved, type.getCompany());
     }
 
     @Override

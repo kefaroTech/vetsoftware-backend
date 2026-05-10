@@ -2,6 +2,7 @@ package com.vetsoftware.app.diagnosticimagingtype.infrastructure.web;
 
 import com.vetsoftware.app.diagnosticimagingtype.application.command.CreateDiagnosticImagingTypeCommand;
 import com.vetsoftware.app.diagnosticimagingtype.application.command.UpdateDiagnosticImagingTypeCommand;
+import com.vetsoftware.app.diagnosticimagingtype.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.diagnosticimagingtype.application.dto.DiagnosticImagingTypeDto;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.CreateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.DeleteDiagnosticImagingTypeUseCase;
@@ -10,6 +11,7 @@ import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListDiagnos
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.UpdateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.CreateDiagnosticImagingTypeRequest;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.UpdateDiagnosticImagingTypeRequest;
+import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.response.DiagnosticImagingTypeResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,7 +43,8 @@ public class DiagnosticImagingTypeController {
     @ResponseStatus(HttpStatus.CREATED)
     public DiagnosticImagingTypeResponse create(@Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
         return toResponse(createUseCase.execute(
-                new CreateDiagnosticImagingTypeCommand(request.name(), request.description())));
+                new CreateDiagnosticImagingTypeCommand(request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @GetMapping
@@ -58,7 +61,8 @@ public class DiagnosticImagingTypeController {
     public DiagnosticImagingTypeResponse update(@PathVariable Long id,
                                                 @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateDiagnosticImagingTypeCommand(id, request.name(), request.description())));
+                new UpdateDiagnosticImagingTypeCommand(id, request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -68,6 +72,11 @@ public class DiagnosticImagingTypeController {
     }
 
     private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {
-        return new DiagnosticImagingTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+        CompanySummaryDto c = dto.company();
+        return new DiagnosticImagingTypeResponse(
+                dto.id(), dto.name(), dto.description(),
+                c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+                dto.general(),
+                dto.createdDate());
     }
 }

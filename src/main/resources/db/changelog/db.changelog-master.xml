@@ -58,5 +58,9 @@
     <include file="db/changelog/migrations/052_create_surgeries.xml"/>
     <include file="db/changelog/migrations/053_create_diagnostic_imaging_types.xml"/>
     <include file="db/changelog/migrations/054_create_diagnostic_imagings.xml"/>
+    <include file="db/changelog/migrations/055_alter_vaccination_types_add_company_and_general.xml"/>
+    <include file="db/changelog/migrations/056_alter_test_types_add_company_and_general.xml"/>
+    <include file="db/changelog/migrations/057_alter_surgery_types_add_company_and_general.xml"/>
+    <include file="db/changelog/migrations/058_alter_diagnostic_imaging_types_add_company_and_general.xml"/>
 
 </databaseChangeLog>

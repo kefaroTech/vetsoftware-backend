@@ -1,5 +1,6 @@
 package com.vetsoftware.app.surgerytype.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -16,6 +17,13 @@ public class SurgeryTypeJpaEntity {
     @Column(nullable = false, length = 500)
     private String description;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private CompanyJpaEntity company;
+
+    @Column(nullable = false)
+    private Boolean general;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -27,6 +35,10 @@ public class SurgeryTypeJpaEntity {
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public CompanyJpaEntity getCompany() { return company; }
+    public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public Boolean getGeneral() { return general; }
+    public void setGeneral(Boolean general) { this.general = general; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }

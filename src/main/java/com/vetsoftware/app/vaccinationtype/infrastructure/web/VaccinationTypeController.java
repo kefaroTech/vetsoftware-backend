@@ -2,6 +2,7 @@ package com.vetsoftware.app.vaccinationtype.infrastructure.web;
 
 import com.vetsoftware.app.vaccinationtype.application.command.CreateVaccinationTypeCommand;
 import com.vetsoftware.app.vaccinationtype.application.command.UpdateVaccinationTypeCommand;
+import com.vetsoftware.app.vaccinationtype.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.vaccinationtype.application.dto.VaccinationTypeDto;
 import com.vetsoftware.app.vaccinationtype.application.port.in.CreateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.DeleteVaccinationTypeUseCase;
@@ -10,6 +11,7 @@ import com.vetsoftware.app.vaccinationtype.application.port.in.ListVaccinationTy
 import com.vetsoftware.app.vaccinationtype.application.port.in.UpdateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.request.CreateVaccinationTypeRequest;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.request.UpdateVaccinationTypeRequest;
+import com.vetsoftware.app.vaccinationtype.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.response.VaccinationTypeResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,7 +43,8 @@ public class VaccinationTypeController {
     @ResponseStatus(HttpStatus.CREATED)
     public VaccinationTypeResponse create(@Valid @RequestBody CreateVaccinationTypeRequest request) {
         return toResponse(createUseCase.execute(
-                new CreateVaccinationTypeCommand(request.name(), request.description())));
+                new CreateVaccinationTypeCommand(request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @GetMapping
@@ -58,7 +61,8 @@ public class VaccinationTypeController {
     public VaccinationTypeResponse update(@PathVariable Long id,
                                           @Valid @RequestBody UpdateVaccinationTypeRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateVaccinationTypeCommand(id, request.name(), request.description())));
+                new UpdateVaccinationTypeCommand(id, request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -68,6 +72,11 @@ public class VaccinationTypeController {
     }
 
     private VaccinationTypeResponse toResponse(VaccinationTypeDto dto) {
-        return new VaccinationTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+        CompanySummaryDto c = dto.company();
+        return new VaccinationTypeResponse(
+                dto.id(), dto.name(), dto.description(),
+                c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+                dto.general(),
+                dto.createdDate());
     }
 }

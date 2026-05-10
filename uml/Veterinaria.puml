@@ -296,6 +296,8 @@ class Consultation {
 class VaccinationType {
   -name: String
   -description: String
+  -company: Company
+  -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -316,6 +318,8 @@ class Vaccination {
 class SurgeryType {
   -name: String
   -description: String
+  -company: Company
+  -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -352,6 +356,8 @@ class Hospitalization {
 class TestType {
   -name: String
   -description: String
+  -company: Company
+  -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -407,6 +413,8 @@ class Deworming {
 class DiagnosticImagingType {
   -name: String
   -description: String
+  -company: Company
+  -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -495,48 +503,52 @@ Animal        --> AnimalType
 Animal        --> ReproductiveState
 
 ' --- Medical Records ---
-Consultation      --> ConsultationType
-Consultation      --> Animal
-Consultation      --> Company
+Consultation          --> ConsultationType
+Consultation          --> Animal
+Consultation          --> Company
 
-Vaccination       --> VaccinationType
-Vaccination       --> Animal
-Vaccination       --> Company
-Vaccination       "0..*" --> "0..1" Consultation
+VaccinationType       "0..*" --> "0..1" Company
+Vaccination           --> VaccinationType
+Vaccination           --> Animal
+Vaccination           --> Company
+Vaccination           "0..*" --> "0..1" Consultation
 
-Surgery           --> SurgeryType
-Surgery           --> Animal
-Surgery           --> Company
-Surgery           "0..*" --> "0..1" Consultation
+SurgeryType           "0..*" --> "0..1" Company
+Surgery               --> SurgeryType
+Surgery               --> Animal
+Surgery               --> Company
+Surgery               "0..*" --> "0..1" Consultation
 
-Hospitalization   --> HospitalizationType
-Hospitalization   --> ReasonLeaving
-Hospitalization   --> Animal
-Hospitalization   --> Company
-Hospitalization   "0..*" --> "0..1" Consultation
+Hospitalization       --> HospitalizationType
+Hospitalization       --> ReasonLeaving
+Hospitalization       --> Animal
+Hospitalization       --> Company
+Hospitalization       "0..*" --> "0..1" Consultation
 
-LaboratoryTest    --> TestType
-LaboratoryTest    --> Animal
-LaboratoryTest    --> Company
-LaboratoryTest    "0..*" --> "0..1" Consultation
+TestType              "0..*" --> "0..1" Company
+LaboratoryTest        --> TestType
+LaboratoryTest        --> Animal
+LaboratoryTest        --> Company
+LaboratoryTest        "0..*" --> "0..1" Consultation
 
-Prescription      --> Animal
-Prescription      --> Company
-Prescription      --> Consultation
+Prescription          --> Animal
+Prescription          --> Company
+Prescription          --> Consultation
 MedicamentPrescription --> Prescription
 
-Deworming         --> DewormingType
-Deworming         --> Animal
-Deworming         --> Company
-Deworming         "0..*" --> "0..1" Consultation
+Deworming             --> DewormingType
+Deworming             --> Animal
+Deworming             --> Company
+Deworming             "0..*" --> "0..1" Consultation
 
-DiagnosticImaging --> DiagnosticImagingType
-DiagnosticImaging --> Animal
-DiagnosticImaging --> Company
-DiagnosticImaging "0..*" --> "0..1" Consultation
+DiagnosticImagingType "0..*" --> "0..1" Company
+DiagnosticImaging     --> DiagnosticImagingType
+DiagnosticImaging     --> Animal
+DiagnosticImaging     --> Company
+DiagnosticImaging     "0..*" --> "0..1" Consultation
 
-Spa               --> SpaType
-Spa               --> Animal
-Spa               --> Company
+Spa                   --> SpaType
+Spa                   --> Animal
+Spa                   --> Company
 
 @enduml

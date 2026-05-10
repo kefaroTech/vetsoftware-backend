@@ -2,6 +2,7 @@ package com.vetsoftware.app.surgerytype.infrastructure.web;
 
 import com.vetsoftware.app.surgerytype.application.command.CreateSurgeryTypeCommand;
 import com.vetsoftware.app.surgerytype.application.command.UpdateSurgeryTypeCommand;
+import com.vetsoftware.app.surgerytype.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.surgerytype.application.dto.SurgeryTypeDto;
 import com.vetsoftware.app.surgerytype.application.port.in.CreateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.DeleteSurgeryTypeUseCase;
@@ -10,6 +11,7 @@ import com.vetsoftware.app.surgerytype.application.port.in.ListSurgeryTypesUseCa
 import com.vetsoftware.app.surgerytype.application.port.in.UpdateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.infrastructure.web.request.CreateSurgeryTypeRequest;
 import com.vetsoftware.app.surgerytype.infrastructure.web.request.UpdateSurgeryTypeRequest;
+import com.vetsoftware.app.surgerytype.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.surgerytype.infrastructure.web.response.SurgeryTypeResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,7 +43,8 @@ public class SurgeryTypeController {
     @ResponseStatus(HttpStatus.CREATED)
     public SurgeryTypeResponse create(@Valid @RequestBody CreateSurgeryTypeRequest request) {
         return toResponse(createUseCase.execute(
-                new CreateSurgeryTypeCommand(request.name(), request.description())));
+                new CreateSurgeryTypeCommand(request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @GetMapping
@@ -58,7 +61,8 @@ public class SurgeryTypeController {
     public SurgeryTypeResponse update(@PathVariable Long id,
                                      @Valid @RequestBody UpdateSurgeryTypeRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateSurgeryTypeCommand(id, request.name(), request.description())));
+                new UpdateSurgeryTypeCommand(id, request.name(), request.description(),
+                        request.companyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -68,6 +72,11 @@ public class SurgeryTypeController {
     }
 
     private SurgeryTypeResponse toResponse(SurgeryTypeDto dto) {
-        return new SurgeryTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+        CompanySummaryDto c = dto.company();
+        return new SurgeryTypeResponse(
+                dto.id(), dto.name(), dto.description(),
+                c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+                dto.general(),
+                dto.createdDate());
     }
 }

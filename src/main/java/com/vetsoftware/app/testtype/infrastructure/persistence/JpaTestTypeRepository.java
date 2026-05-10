@@ -1,5 +1,7 @@
 package com.vetsoftware.app.testtype.infrastructure.persistence;
 
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.testtype.application.port.out.TestTypeRepository;
 import com.vetsoftware.app.testtype.domain.TestType;
 import java.util.List;
@@ -10,15 +12,22 @@ import org.springframework.stereotype.Repository;
 public class JpaTestTypeRepository implements TestTypeRepository {
     private final TestTypeJpaRepository jpaRepository;
     private final TestTypeJpaMapper mapper;
+    private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaTestTypeRepository(TestTypeJpaRepository jpaRepository, TestTypeJpaMapper mapper) {
+    public JpaTestTypeRepository(TestTypeJpaRepository jpaRepository,
+                                 TestTypeJpaMapper mapper,
+                                 CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
+        this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
     public TestType save(TestType testType) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(testType)));
+        CompanyJpaEntity company = testType.getCompany() == null ? null
+                : companyJpaRepository.getReferenceById(testType.getCompany().id());
+        TestTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(testType, company));
+        return mapper.toDomain(saved, testType.getCompany());
     }
 
     @Override

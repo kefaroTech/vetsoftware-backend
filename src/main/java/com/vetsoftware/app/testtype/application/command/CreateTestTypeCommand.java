@@ -1,3 +1,3 @@
 package com.vetsoftware.app.testtype.application.command;
 
-public record CreateTestTypeCommand(String name, String description) {}
+public record CreateTestTypeCommand(String name, String description, Long companyId, boolean general) {}
