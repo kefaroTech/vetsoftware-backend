@@ -8,5 +8,6 @@ public interface EmployeeRepository {
     Employee save(Employee employee);
     Optional<Employee> findById(Long id);
     List<Employee> findAll();
+    List<Employee> findAllByCompanyId(Long companyId);
     void delete(Long id);
 }

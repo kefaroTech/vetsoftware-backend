@@ -40,6 +40,11 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
+    public List<Employee> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

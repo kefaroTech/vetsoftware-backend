@@ -15,5 +15,9 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
     @EntityGraph(attributePaths = {"employee", "role"})
     Optional<EmployeeRoleJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = "role")
     List<EmployeeRoleJpaEntity> findByEmployeeId(Long employeeId);
+
+    @EntityGraph(attributePaths = "role")
+    List<EmployeeRoleJpaEntity> findByEmployeeIdIn(List<Long> employeeIds);
 }

@@ -1,12 +1,19 @@
 package com.vetsoftware.app.employee.application.dto;
 
 import com.vetsoftware.app.employee.domain.Employee;
+import com.vetsoftware.app.employee.domain.RoleSnapshot;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record EmployeeDto(Long id, String employeeCode, String name, String email,
                           String status, CompanySummaryDto company,
+                          List<RoleSummaryDto> roles,
                           LocalDateTime createdDate) {
     public static EmployeeDto from(Employee employee) {
+        return from(employee, List.of());
+    }
+
+    public static EmployeeDto from(Employee employee, List<RoleSnapshot> roles) {
         return new EmployeeDto(
             employee.getId(),
             employee.getEmployeeCode(),
@@ -14,6 +21,7 @@ public record EmployeeDto(Long id, String employeeCode, String name, String emai
             employee.getEmail(),
             employee.getStatus().name(),
             CompanySummaryDto.from(employee.getCompany()),
+            roles.stream().map(RoleSummaryDto::from).toList(),
             employee.getCreatedDate()
         );
     }
