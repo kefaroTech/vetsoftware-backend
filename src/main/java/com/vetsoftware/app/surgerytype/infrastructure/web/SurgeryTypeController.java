@@ -1,5 +1,6 @@
 package com.vetsoftware.app.surgerytype.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.surgerytype.application.command.CreateSurgeryTypeCommand;
 import com.vetsoftware.app.surgerytype.application.command.UpdateSurgeryTypeCommand;
 import com.vetsoftware.app.surgerytype.application.dto.CompanySummaryDto;
@@ -7,6 +8,7 @@ import com.vetsoftware.app.surgerytype.application.dto.SurgeryTypeDto;
 import com.vetsoftware.app.surgerytype.application.port.in.CreateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.DeleteSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.FindSurgeryTypeUseCase;
+import com.vetsoftware.app.surgerytype.application.port.in.ListAvailableSurgeryTypesUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.ListSurgeryTypesUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.UpdateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.infrastructure.web.request.CreateSurgeryTypeRequest;
@@ -25,18 +27,24 @@ public class SurgeryTypeController {
     private final UpdateSurgeryTypeUseCase updateUseCase;
     private final FindSurgeryTypeUseCase findUseCase;
     private final ListSurgeryTypesUseCase listUseCase;
+    private final ListAvailableSurgeryTypesUseCase listAvailableUseCase;
     private final DeleteSurgeryTypeUseCase deleteUseCase;
+    private final Authz authz;
 
     public SurgeryTypeController(CreateSurgeryTypeUseCase createUseCase,
                                  UpdateSurgeryTypeUseCase updateUseCase,
                                  FindSurgeryTypeUseCase findUseCase,
                                  ListSurgeryTypesUseCase listUseCase,
-                                 DeleteSurgeryTypeUseCase deleteUseCase) {
+                                 ListAvailableSurgeryTypesUseCase listAvailableUseCase,
+                                 DeleteSurgeryTypeUseCase deleteUseCase,
+                                 Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,6 +58,12 @@ public class SurgeryTypeController {
     @GetMapping
     public List<SurgeryTypeResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/available")
+    public List<SurgeryTypeResponse> listAvailable() {
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

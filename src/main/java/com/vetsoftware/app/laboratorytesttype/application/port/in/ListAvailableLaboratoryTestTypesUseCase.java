@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAvailableLaboratoryTestTypesUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('laboratory_test_type.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasAuthority('admin.all') or @authz.isMyCompany(#companyId)")
     List<LaboratoryTestTypeDto> listAvailable(Long companyId);
 }

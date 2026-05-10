@@ -14,4 +14,7 @@ public interface DiagnosticImagingTypeJpaRepository extends JpaRepository<Diagno
     @Override
     @EntityGraph(attributePaths = "company")
     Optional<DiagnosticImagingTypeJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "company")
+    List<DiagnosticImagingTypeJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 }

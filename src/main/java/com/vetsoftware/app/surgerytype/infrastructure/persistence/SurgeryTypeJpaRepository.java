@@ -14,4 +14,7 @@ public interface SurgeryTypeJpaRepository extends JpaRepository<SurgeryTypeJpaEn
     @Override
     @EntityGraph(attributePaths = "company")
     Optional<SurgeryTypeJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = "company")
+    List<SurgeryTypeJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 }

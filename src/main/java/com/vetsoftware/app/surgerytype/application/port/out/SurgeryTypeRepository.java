@@ -8,5 +8,6 @@ public interface SurgeryTypeRepository {
     SurgeryType save(SurgeryType surgeryType);
     Optional<SurgeryType> findById(Long id);
     List<SurgeryType> findAll();
+    List<SurgeryType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
 }

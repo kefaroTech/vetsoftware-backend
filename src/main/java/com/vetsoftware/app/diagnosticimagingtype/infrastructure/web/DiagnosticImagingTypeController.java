@@ -1,5 +1,6 @@
 package com.vetsoftware.app.diagnosticimagingtype.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.diagnosticimagingtype.application.command.CreateDiagnosticImagingTypeCommand;
 import com.vetsoftware.app.diagnosticimagingtype.application.command.UpdateDiagnosticImagingTypeCommand;
 import com.vetsoftware.app.diagnosticimagingtype.application.dto.CompanySummaryDto;
@@ -7,6 +8,7 @@ import com.vetsoftware.app.diagnosticimagingtype.application.dto.DiagnosticImagi
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.CreateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.DeleteDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.FindDiagnosticImagingTypeUseCase;
+import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListAvailableDiagnosticImagingTypesUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListDiagnosticImagingTypesUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.UpdateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.CreateDiagnosticImagingTypeRequest;
@@ -25,18 +27,24 @@ public class DiagnosticImagingTypeController {
     private final UpdateDiagnosticImagingTypeUseCase updateUseCase;
     private final FindDiagnosticImagingTypeUseCase findUseCase;
     private final ListDiagnosticImagingTypesUseCase listUseCase;
+    private final ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
     private final DeleteDiagnosticImagingTypeUseCase deleteUseCase;
+    private final Authz authz;
 
     public DiagnosticImagingTypeController(CreateDiagnosticImagingTypeUseCase createUseCase,
                                            UpdateDiagnosticImagingTypeUseCase updateUseCase,
                                            FindDiagnosticImagingTypeUseCase findUseCase,
                                            ListDiagnosticImagingTypesUseCase listUseCase,
-                                           DeleteDiagnosticImagingTypeUseCase deleteUseCase) {
+                                           ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
+                                           DeleteDiagnosticImagingTypeUseCase deleteUseCase,
+                                           Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,6 +58,12 @@ public class DiagnosticImagingTypeController {
     @GetMapping
     public List<DiagnosticImagingTypeResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/available")
+    public List<DiagnosticImagingTypeResponse> listAvailable() {
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

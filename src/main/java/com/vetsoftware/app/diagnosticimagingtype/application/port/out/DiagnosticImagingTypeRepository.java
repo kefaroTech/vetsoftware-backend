@@ -8,5 +8,6 @@ public interface DiagnosticImagingTypeRepository {
     DiagnosticImagingType save(DiagnosticImagingType type);
     Optional<DiagnosticImagingType> findById(Long id);
     List<DiagnosticImagingType> findAll();
+    List<DiagnosticImagingType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
 }

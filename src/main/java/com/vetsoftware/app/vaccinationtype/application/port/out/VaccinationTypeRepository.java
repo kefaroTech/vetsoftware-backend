@@ -8,5 +8,6 @@ public interface VaccinationTypeRepository {
     VaccinationType save(VaccinationType vaccinationType);
     Optional<VaccinationType> findById(Long id);
     List<VaccinationType> findAll();
+    List<VaccinationType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
 }

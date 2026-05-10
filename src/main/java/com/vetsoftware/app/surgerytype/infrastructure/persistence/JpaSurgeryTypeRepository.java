@@ -41,6 +41,12 @@ public class JpaSurgeryTypeRepository implements SurgeryTypeRepository {
     }
 
     @Override
+    public List<SurgeryType> findAllAvailableForCompany(Long companyId) {
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

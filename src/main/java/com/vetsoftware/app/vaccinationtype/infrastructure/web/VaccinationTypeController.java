@@ -1,5 +1,6 @@
 package com.vetsoftware.app.vaccinationtype.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.vaccinationtype.application.command.CreateVaccinationTypeCommand;
 import com.vetsoftware.app.vaccinationtype.application.command.UpdateVaccinationTypeCommand;
 import com.vetsoftware.app.vaccinationtype.application.dto.CompanySummaryDto;
@@ -7,6 +8,7 @@ import com.vetsoftware.app.vaccinationtype.application.dto.VaccinationTypeDto;
 import com.vetsoftware.app.vaccinationtype.application.port.in.CreateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.DeleteVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.FindVaccinationTypeUseCase;
+import com.vetsoftware.app.vaccinationtype.application.port.in.ListAvailableVaccinationTypesUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListVaccinationTypesUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.UpdateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.request.CreateVaccinationTypeRequest;
@@ -25,18 +27,24 @@ public class VaccinationTypeController {
     private final UpdateVaccinationTypeUseCase updateUseCase;
     private final FindVaccinationTypeUseCase findUseCase;
     private final ListVaccinationTypesUseCase listUseCase;
+    private final ListAvailableVaccinationTypesUseCase listAvailableUseCase;
     private final DeleteVaccinationTypeUseCase deleteUseCase;
+    private final Authz authz;
 
     public VaccinationTypeController(CreateVaccinationTypeUseCase createUseCase,
                                      UpdateVaccinationTypeUseCase updateUseCase,
                                      FindVaccinationTypeUseCase findUseCase,
                                      ListVaccinationTypesUseCase listUseCase,
-                                     DeleteVaccinationTypeUseCase deleteUseCase) {
+                                     ListAvailableVaccinationTypesUseCase listAvailableUseCase,
+                                     DeleteVaccinationTypeUseCase deleteUseCase,
+                                     Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,6 +58,12 @@ public class VaccinationTypeController {
     @GetMapping
     public List<VaccinationTypeResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/available")
+    public List<VaccinationTypeResponse> listAvailable() {
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
