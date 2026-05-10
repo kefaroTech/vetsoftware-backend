@@ -4,7 +4,29 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <changeSet id="047_alter_laboratory_tests_consultation_nullable" author="orlando">
+    <changeSet id="047_add_consultation_to_laboratory_tests" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="laboratory_tests" columnName="consultation_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="laboratory_tests">
+            <column name="consultation_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_laboratory_tests_consultation"
+                             references="consultations(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="047_drop_not_null_laboratory_tests_consultation" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="NO">
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'laboratory_tests'
+                  AND COLUMN_NAME = 'consultation_id'
+            </sqlCheck>
+        </preConditions>
         <dropNotNullConstraint tableName="laboratory_tests"
                                columnName="consultation_id"
                                columnDataType="BIGINT"/>
