@@ -4,6 +4,8 @@ import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaRepository;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
+import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
+import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.deworming.application.port.out.DewormingRepository;
 import com.vetsoftware.app.deworming.domain.Deworming;
 import java.util.List;
@@ -15,24 +17,31 @@ public class JpaDewormingRepository implements DewormingRepository {
     private final DewormingJpaRepository jpaRepository;
     private final DewormingJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
+    private final ConsultationJpaRepository consultationJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaDewormingRepository(DewormingJpaRepository jpaRepository,
                                   DewormingJpaMapper mapper,
                                   AnimalJpaRepository animalJpaRepository,
+                                  ConsultationJpaRepository consultationJpaRepository,
                                   CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
+        this.consultationJpaRepository = consultationJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
     public Deworming save(Deworming deworming) {
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(deworming.getAnimal().id());
+        ConsultationJpaEntity consultation = deworming.getConsultation() == null ? null
+            : consultationJpaRepository.getReferenceById(deworming.getConsultation().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(deworming.getCompany().id());
-        DewormingJpaEntity saved = jpaRepository.save(mapper.toJpa(deworming, animal, company));
-        return mapper.toDomain(saved, deworming.getAnimal(), deworming.getCompany());
+        DewormingJpaEntity saved = jpaRepository.save(
+            mapper.toJpa(deworming, animal, consultation, company));
+        return mapper.toDomain(saved, deworming.getAnimal(),
+            deworming.getConsultation(), deworming.getCompany());
     }
 
     @Override

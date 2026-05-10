@@ -12,6 +12,7 @@ public record VaccinationDto(
         String notes,
         LocalDate nextVaccination,
         AnimalSummaryDto animal,
+        ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         LocalDateTime createdDate
 ) {
@@ -24,6 +25,7 @@ public record VaccinationDto(
             vaccination.getNotes(),
             vaccination.getNextVaccination(),
             AnimalSummaryDto.from(vaccination.getAnimal()),
+            vaccination.getConsultation() == null ? null : ConsultationSummaryDto.from(vaccination.getConsultation()),
             CompanySummaryDto.from(vaccination.getCompany()),
             vaccination.getCreatedDate()
         );

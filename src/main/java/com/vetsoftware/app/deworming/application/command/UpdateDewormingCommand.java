@@ -13,5 +13,6 @@ public record UpdateDewormingCommand(
         LocalDate nextControl,
         String observations,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

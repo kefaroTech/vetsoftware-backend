@@ -307,6 +307,7 @@ class Vaccination {
   -notes: String
   -nextVaccination: LocalDate
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
   -company: Company
   -createdBy: Employee
@@ -327,7 +328,9 @@ class Surgery {
   -observations: String
   -complications: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
+  -company: Company
   -createdBy: Employee
 }
 
@@ -340,6 +343,7 @@ class Hospitalization {
   -reason: String
   -observations: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
   -company: Company
   -createdBy: Employee
@@ -358,6 +362,7 @@ class LaboratoryTest {
   -quantity: Integer
   -diagnosis: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
   -company:Company
   -createdBy: Employee
@@ -368,16 +373,17 @@ class Prescription {
   -diagnosis: String
   -observations: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
   -company:Company
   -createdBy: Employee
 }
 
-class Medicament {
+class MedicamentPrescription {
   -name: String
   -presentation: String
   -quantity: Double
-  -posology: Posology
+  -posology: String
   -prescription: Prescription
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -392,6 +398,7 @@ class Deworming {
   -nextControl: LocalDate
   -observations: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
   -company:Company
   -createdBy: Employee
@@ -412,7 +419,9 @@ class DiagnosticImaging {
   -diagnosis: String
   -observations: String
   -animal: Animal
+  -consultation: Consultation
   -createdDate: LocalDateTime
+  -company: Company
   -createdBy: Employee
 }
 
@@ -430,6 +439,7 @@ class Spa {
   -details: String
   -observations: String
   -animal: Animal
+  -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
 }
@@ -491,24 +501,34 @@ Consultation      --> ConsultationType
 Vaccination       --> Animal
 Vaccination       --> Company
 Vaccination       --> VaccinationType
+Vaccination       "0..*" --> "0..1" Consultation
 Surgery           --> Animal
 Surgery           --> SurgeryType
+Surgery           --> Company
+Surgery           "0..*" --> "0..1" Consultation
 Hospitalization   --> Animal
 Hospitalization   --> Company
 Hospitalization   --> HospitalizationType
 Hospitalization   --> ReasonLeaving
+Hospitalization   "0..*" --> "0..1" Consultation
 LaboratoryTest    --> Animal
+LaboratoryTest    "0..*" --> "0..1" Consultation
 LaboratoryTest    --> Company
 LaboratoryTest    --> TestType
 Prescription      --> Animal
+Prescription      --> Consultation
 Prescription      --> Company
-Prescription      --> Medicament
+Prescription      --> MedicamentPrescription
 Deworming         --> Animal
 Deworming         --> Company
 Deworming         --> DewormingType
+Deworming         "0..*" --> "0..1" Consultation
 DiagnosticImaging --> Animal
 DiagnosticImaging --> DiagnosticImagingType
+DiagnosticImaging --> Company
+DiagnosticImaging "0..*" --> "0..1" Consultation
 Spa               --> Animal
+Spa               --> Company
 Spa               --> SpaType
 
 @enduml

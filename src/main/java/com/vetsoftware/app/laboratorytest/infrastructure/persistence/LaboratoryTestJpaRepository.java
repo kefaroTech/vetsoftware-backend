@@ -8,10 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LaboratoryTestJpaRepository extends JpaRepository<LaboratoryTestJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"testType", "animal", "company"})
+    @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company"})
     List<LaboratoryTestJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"testType", "animal", "company"})
+    @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company"})
     Optional<LaboratoryTestJpaEntity> findById(Long id);
 }

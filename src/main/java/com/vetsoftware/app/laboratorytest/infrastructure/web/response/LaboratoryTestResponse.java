@@ -10,6 +10,7 @@ public record LaboratoryTestResponse(
         Integer quantity,
         String diagnosis,
         AnimalSummary animal,
+        ConsultationSummary consultation,
         CompanySummary company,
         LocalDateTime createdDate
 ) {}

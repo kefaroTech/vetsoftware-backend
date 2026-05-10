@@ -12,5 +12,6 @@ public record UpdateLaboratoryTestRequest(
         @NotNull @Min(1) Integer quantity,
         @NotBlank @Size(max = 2000) String diagnosis,
         @NotNull Long animalId,
+        Long consultationId,
         @NotNull Long companyId
 ) {}

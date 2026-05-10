@@ -13,6 +13,5 @@ public record CreateConsultationRequest(
         @NotBlank @Size(max = 2000) String therapeuticPlan,
         @NotBlank @Size(max = 2000) String diagnosisPlan,
         LocalDate nextControl,
-        @NotNull Long animalId,
-        @NotNull Long companyId
+        @NotNull Long animalId
 ) {}

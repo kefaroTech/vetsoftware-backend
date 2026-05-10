@@ -11,6 +11,7 @@ public record LaboratoryTestDto(
         Integer quantity,
         String diagnosis,
         AnimalSummaryDto animal,
+        ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         LocalDateTime createdDate
 ) {
@@ -22,6 +23,7 @@ public record LaboratoryTestDto(
             laboratoryTest.getQuantity(),
             laboratoryTest.getDiagnosis(),
             AnimalSummaryDto.from(laboratoryTest.getAnimal()),
+            laboratoryTest.getConsultation() == null ? null : ConsultationSummaryDto.from(laboratoryTest.getConsultation()),
             CompanySummaryDto.from(laboratoryTest.getCompany()),
             laboratoryTest.getCreatedDate()
         );

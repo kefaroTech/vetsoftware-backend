@@ -11,12 +11,14 @@ public class Vaccination {
     private String notes;
     private LocalDate nextVaccination;
     private AnimalRef animal;
+    private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
 
     public Vaccination(Long id, LocalDate date, VaccinationTypeRef vaccinationType,
                        String lot, String notes, LocalDate nextVaccination,
-                       AnimalRef animal, CompanyRef company, LocalDateTime createdDate) {
+                       AnimalRef animal, ConsultationRef consultation, CompanyRef company,
+                       LocalDateTime createdDate) {
         validate(date, vaccinationType, lot, notes, animal, company);
         this.id = id;
         this.date = date;
@@ -25,20 +27,21 @@ public class Vaccination {
         this.notes = notes;
         this.nextVaccination = nextVaccination;
         this.animal = animal;
+        this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
     }
 
     public static Vaccination create(LocalDate date, VaccinationTypeRef vaccinationType,
                                      String lot, String notes, LocalDate nextVaccination,
-                                     AnimalRef animal, CompanyRef company) {
+                                     AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Vaccination(null, date, vaccinationType, lot, notes, nextVaccination,
-                               animal, company, LocalDateTime.now());
+                               animal, consultation, company, LocalDateTime.now());
     }
 
     public void update(LocalDate date, VaccinationTypeRef vaccinationType,
                        String lot, String notes, LocalDate nextVaccination,
-                       AnimalRef animal, CompanyRef company) {
+                       AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         validate(date, vaccinationType, lot, notes, animal, company);
         this.date = date;
         this.vaccinationType = vaccinationType;
@@ -46,6 +49,7 @@ public class Vaccination {
         this.notes = notes;
         this.nextVaccination = nextVaccination;
         this.animal = animal;
+        this.consultation = consultation;
         this.company = company;
     }
 
@@ -67,6 +71,7 @@ public class Vaccination {
     public String getNotes() { return notes; }
     public LocalDate getNextVaccination() { return nextVaccination; }
     public AnimalRef getAnimal() { return animal; }
+    public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
 }

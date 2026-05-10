@@ -7,5 +7,6 @@ public record CreatePrescriptionCommand(
         String diagnosis,
         String observations,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

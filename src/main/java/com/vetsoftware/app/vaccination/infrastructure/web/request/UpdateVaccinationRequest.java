@@ -12,5 +12,6 @@ public record UpdateVaccinationRequest(
         @Size(max = 2000) String notes,
         LocalDate nextVaccination,
         @NotNull Long animalId,
+        Long consultationId,
         @NotNull Long companyId
 ) {}

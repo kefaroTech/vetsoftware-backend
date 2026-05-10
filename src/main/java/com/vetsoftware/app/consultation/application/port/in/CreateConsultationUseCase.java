@@ -5,6 +5,6 @@ import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateConsultationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') or (hasAuthority('consultation.create') and @authz.isMyCompany(#command.companyId))")
     ConsultationDto execute(CreateConsultationCommand command);
 }

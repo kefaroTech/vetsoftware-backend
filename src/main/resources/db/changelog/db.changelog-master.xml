@@ -46,5 +46,17 @@
     <include file="db/changelog/migrations/040_create_dewormings.xml"/>
     <include file="db/changelog/migrations/041_create_animal_colors.xml"/>
     <include file="db/changelog/migrations/042_alter_animals_color_to_fk.xml"/>
+    <include file="db/changelog/migrations/043_create_spa_types.xml"/>
+    <include file="db/changelog/migrations/044_create_spas.xml"/>
+    <include file="db/changelog/migrations/045_add_consultation_to_prescriptions.xml"/>
+    <include file="db/changelog/migrations/046_create_medicament_prescriptions.xml"/>
+    <include file="db/changelog/migrations/047_alter_laboratory_tests_consultation_nullable.xml"/>
+    <include file="db/changelog/migrations/048_add_consultation_to_vaccinations.xml"/>
+    <include file="db/changelog/migrations/049_add_consultation_to_hospitalizations.xml"/>
+    <include file="db/changelog/migrations/050_add_consultation_to_dewormings.xml"/>
+    <include file="db/changelog/migrations/051_create_surgery_types.xml"/>
+    <include file="db/changelog/migrations/052_create_surgeries.xml"/>
+    <include file="db/changelog/migrations/053_create_diagnostic_imaging_types.xml"/>
+    <include file="db/changelog/migrations/054_create_diagnostic_imagings.xml"/>
 
 </databaseChangeLog>

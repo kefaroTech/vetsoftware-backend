@@ -9,5 +9,6 @@ public record UpdateLaboratoryTestCommand(
         Integer quantity,
         String diagnosis,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

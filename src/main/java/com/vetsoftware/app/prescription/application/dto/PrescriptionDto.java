@@ -10,6 +10,7 @@ public record PrescriptionDto(
         String diagnosis,
         String observations,
         AnimalSummaryDto animal,
+        ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         LocalDateTime createdDate
 ) {
@@ -20,6 +21,7 @@ public record PrescriptionDto(
             prescription.getDiagnosis(),
             prescription.getObservations(),
             AnimalSummaryDto.from(prescription.getAnimal()),
+            ConsultationSummaryDto.from(prescription.getConsultation()),
             CompanySummaryDto.from(prescription.getCompany()),
             prescription.getCreatedDate()
         );

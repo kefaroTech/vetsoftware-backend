@@ -10,5 +10,6 @@ public record UpdatePrescriptionRequest(
         @NotBlank @Size(max = 2000) String diagnosis,
         @Size(max = 2000) String observations,
         @NotNull Long animalId,
+        @NotNull Long consultationId,
         @NotNull Long companyId
 ) {}

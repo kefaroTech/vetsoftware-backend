@@ -4,6 +4,8 @@ import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaRepository;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
+import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
+import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.vaccination.application.port.out.VaccinationRepository;
 import com.vetsoftware.app.vaccination.domain.Vaccination;
 import com.vetsoftware.app.vaccinationtype.infrastructure.persistence.VaccinationTypeJpaEntity;
@@ -18,17 +20,20 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     private final VaccinationJpaMapper mapper;
     private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
     private final AnimalJpaRepository animalJpaRepository;
+    private final ConsultationJpaRepository consultationJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaVaccinationRepository(VaccinationJpaRepository jpaRepository,
                                     VaccinationJpaMapper mapper,
                                     VaccinationTypeJpaRepository vaccinationTypeJpaRepository,
                                     AnimalJpaRepository animalJpaRepository,
+                                    ConsultationJpaRepository consultationJpaRepository,
                                     CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
         this.animalJpaRepository = animalJpaRepository;
+        this.consultationJpaRepository = consultationJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
     }
 
@@ -37,11 +42,14 @@ public class JpaVaccinationRepository implements VaccinationRepository {
         VaccinationTypeJpaEntity vaccinationType =
             vaccinationTypeJpaRepository.getReferenceById(vaccination.getVaccinationType().id());
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(vaccination.getAnimal().id());
+        ConsultationJpaEntity consultation = vaccination.getConsultation() == null ? null
+            : consultationJpaRepository.getReferenceById(vaccination.getConsultation().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(vaccination.getCompany().id());
         VaccinationJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(vaccination, vaccinationType, animal, company));
+            mapper.toJpa(vaccination, vaccinationType, animal, consultation, company));
         return mapper.toDomain(saved, vaccination.getVaccinationType(),
-                                vaccination.getAnimal(), vaccination.getCompany());
+                                vaccination.getAnimal(), vaccination.getConsultation(),
+                                vaccination.getCompany());
     }
 
     @Override

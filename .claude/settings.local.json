@@ -26,7 +26,10 @@
       "Bash(Select-Object FullName)",
       "Bash(ConvertTo-Csv -NoTypeInformation)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(mvn compile *)",
+      "PowerShell(Get-Command *)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

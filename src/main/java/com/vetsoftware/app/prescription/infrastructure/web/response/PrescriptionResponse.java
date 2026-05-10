@@ -9,6 +9,7 @@ public record PrescriptionResponse(
         String diagnosis,
         String observations,
         AnimalSummary animal,
+        ConsultationSummary consultation,
         CompanySummary company,
         LocalDateTime createdDate
 ) {}

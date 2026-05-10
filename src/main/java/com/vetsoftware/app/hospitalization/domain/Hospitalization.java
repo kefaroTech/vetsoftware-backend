@@ -13,13 +13,15 @@ public class Hospitalization {
     private String reason;
     private String observations;
     private AnimalRef animal;
+    private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
 
     public Hospitalization(Long id, LocalDate date, LocalDate startDate, LocalDate endDate,
                            HospitalizationType type, ReasonLeaving reasonLeaving,
                            String reason, String observations,
-                           AnimalRef animal, CompanyRef company, LocalDateTime createdDate) {
+                           AnimalRef animal, ConsultationRef consultation, CompanyRef company,
+                           LocalDateTime createdDate) {
         validate(date, startDate, endDate, type, reason, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -30,6 +32,7 @@ public class Hospitalization {
         this.reason = reason;
         this.observations = observations;
         this.animal = animal;
+        this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
     }
@@ -37,15 +40,15 @@ public class Hospitalization {
     public static Hospitalization create(LocalDate date, LocalDate startDate, LocalDate endDate,
                                          HospitalizationType type, ReasonLeaving reasonLeaving,
                                          String reason, String observations,
-                                         AnimalRef animal, CompanyRef company) {
+                                         AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Hospitalization(null, date, startDate, endDate, type, reasonLeaving,
-                                   reason, observations, animal, company, LocalDateTime.now());
+                                   reason, observations, animal, consultation, company, LocalDateTime.now());
     }
 
     public void update(LocalDate date, LocalDate startDate, LocalDate endDate,
                        HospitalizationType type, ReasonLeaving reasonLeaving,
                        String reason, String observations,
-                       AnimalRef animal, CompanyRef company) {
+                       AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         validate(date, startDate, endDate, type, reason, observations, animal, company);
         this.date = date;
         this.startDate = startDate;
@@ -55,6 +58,7 @@ public class Hospitalization {
         this.reason = reason;
         this.observations = observations;
         this.animal = animal;
+        this.consultation = consultation;
         this.company = company;
     }
 
@@ -83,6 +87,7 @@ public class Hospitalization {
     public String getReason() { return reason; }
     public String getObservations() { return observations; }
     public AnimalRef getAnimal() { return animal; }
+    public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
 }

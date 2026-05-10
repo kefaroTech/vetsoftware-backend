@@ -13,5 +13,6 @@ public record CreateHospitalizationCommand(
         String reason,
         String observations,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

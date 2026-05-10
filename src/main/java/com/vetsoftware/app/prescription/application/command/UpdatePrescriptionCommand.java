@@ -8,5 +8,6 @@ public record UpdatePrescriptionCommand(
         String diagnosis,
         String observations,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

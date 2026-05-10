@@ -12,5 +12,6 @@ public record CreateDewormingCommand(
         LocalDate nextControl,
         String observations,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

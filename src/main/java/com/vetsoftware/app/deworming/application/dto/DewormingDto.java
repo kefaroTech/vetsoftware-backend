@@ -15,6 +15,7 @@ public record DewormingDto(
         LocalDate nextControl,
         String observations,
         AnimalSummaryDto animal,
+        ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         LocalDateTime createdDate
 ) {
@@ -29,6 +30,7 @@ public record DewormingDto(
             deworming.getNextControl(),
             deworming.getObservations(),
             AnimalSummaryDto.from(deworming.getAnimal()),
+            deworming.getConsultation() == null ? null : ConsultationSummaryDto.from(deworming.getConsultation()),
             CompanySummaryDto.from(deworming.getCompany()),
             deworming.getCreatedDate()
         );

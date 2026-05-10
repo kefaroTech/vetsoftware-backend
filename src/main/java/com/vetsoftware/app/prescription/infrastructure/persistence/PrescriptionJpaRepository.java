@@ -8,10 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PrescriptionJpaRepository extends JpaRepository<PrescriptionJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "company"})
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     List<PrescriptionJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "company"})
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<PrescriptionJpaEntity> findById(Long id);
 }

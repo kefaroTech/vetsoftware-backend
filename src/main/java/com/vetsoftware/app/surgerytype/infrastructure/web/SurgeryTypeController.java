@@ -1,0 +1,73 @@
+package com.vetsoftware.app.surgerytype.infrastructure.web;
+
+import com.vetsoftware.app.surgerytype.application.command.CreateSurgeryTypeCommand;
+import com.vetsoftware.app.surgerytype.application.command.UpdateSurgeryTypeCommand;
+import com.vetsoftware.app.surgerytype.application.dto.SurgeryTypeDto;
+import com.vetsoftware.app.surgerytype.application.port.in.CreateSurgeryTypeUseCase;
+import com.vetsoftware.app.surgerytype.application.port.in.DeleteSurgeryTypeUseCase;
+import com.vetsoftware.app.surgerytype.application.port.in.FindSurgeryTypeUseCase;
+import com.vetsoftware.app.surgerytype.application.port.in.ListSurgeryTypesUseCase;
+import com.vetsoftware.app.surgerytype.application.port.in.UpdateSurgeryTypeUseCase;
+import com.vetsoftware.app.surgerytype.infrastructure.web.request.CreateSurgeryTypeRequest;
+import com.vetsoftware.app.surgerytype.infrastructure.web.request.UpdateSurgeryTypeRequest;
+import com.vetsoftware.app.surgerytype.infrastructure.web.response.SurgeryTypeResponse;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/surgery-types")
+public class SurgeryTypeController {
+    private final CreateSurgeryTypeUseCase createUseCase;
+    private final UpdateSurgeryTypeUseCase updateUseCase;
+    private final FindSurgeryTypeUseCase findUseCase;
+    private final ListSurgeryTypesUseCase listUseCase;
+    private final DeleteSurgeryTypeUseCase deleteUseCase;
+
+    public SurgeryTypeController(CreateSurgeryTypeUseCase createUseCase,
+                                 UpdateSurgeryTypeUseCase updateUseCase,
+                                 FindSurgeryTypeUseCase findUseCase,
+                                 ListSurgeryTypesUseCase listUseCase,
+                                 DeleteSurgeryTypeUseCase deleteUseCase) {
+        this.createUseCase = createUseCase;
+        this.updateUseCase = updateUseCase;
+        this.findUseCase = findUseCase;
+        this.listUseCase = listUseCase;
+        this.deleteUseCase = deleteUseCase;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public SurgeryTypeResponse create(@Valid @RequestBody CreateSurgeryTypeRequest request) {
+        return toResponse(createUseCase.execute(
+                new CreateSurgeryTypeCommand(request.name(), request.description())));
+    }
+
+    @GetMapping
+    public List<SurgeryTypeResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/{id}")
+    public SurgeryTypeResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public SurgeryTypeResponse update(@PathVariable Long id,
+                                     @Valid @RequestBody UpdateSurgeryTypeRequest request) {
+        return toResponse(updateUseCase.execute(
+                new UpdateSurgeryTypeCommand(id, request.name(), request.description())));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
+    }
+
+    private SurgeryTypeResponse toResponse(SurgeryTypeDto dto) {
+        return new SurgeryTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+    }
+}

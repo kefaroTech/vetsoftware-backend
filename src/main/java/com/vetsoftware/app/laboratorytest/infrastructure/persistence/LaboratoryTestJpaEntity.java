@@ -2,6 +2,7 @@ package com.vetsoftware.app.laboratorytest.infrastructure.persistence;
 
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
 import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -32,6 +33,10 @@ public class LaboratoryTestJpaEntity {
     private AnimalJpaEntity animal;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consultation_id")
+    private ConsultationJpaEntity consultation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
@@ -52,6 +57,8 @@ public class LaboratoryTestJpaEntity {
     public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
     public AnimalJpaEntity getAnimal() { return animal; }
     public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
+    public ConsultationJpaEntity getConsultation() { return consultation; }
+    public void setConsultation(ConsultationJpaEntity consultation) { this.consultation = consultation; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }

@@ -8,10 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface DewormingJpaRepository extends JpaRepository<DewormingJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "company"})
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     List<DewormingJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "company"})
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<DewormingJpaEntity> findById(Long id);
 }

@@ -4,6 +4,7 @@ import com.vetsoftware.app.prescription.application.command.CreatePrescriptionCo
 import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
 import com.vetsoftware.app.prescription.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.prescription.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.prescription.infrastructure.web.request.CreatePrescri
 import com.vetsoftware.app.prescription.infrastructure.web.request.UpdatePrescriptionRequest;
 import com.vetsoftware.app.prescription.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.CompanySummary;
+import com.vetsoftware.app.prescription.infrastructure.web.response.ConsultationSummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.PrescriptionResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -47,7 +49,7 @@ public class PrescriptionController {
         return toResponse(createUseCase.execute(
             new CreatePrescriptionCommand(
                 request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), request.consultationId(), request.companyId())));
     }
 
     @GetMapping
@@ -66,7 +68,7 @@ public class PrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdatePrescriptionCommand(
                 id, request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), request.consultationId(), request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,10 +79,12 @@ public class PrescriptionController {
 
     private PrescriptionResponse toResponse(PrescriptionDto dto) {
         AnimalSummaryDto a = dto.animal();
+        ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         return new PrescriptionResponse(
             dto.id(), dto.date(), dto.diagnosis(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
+            new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate());
     }

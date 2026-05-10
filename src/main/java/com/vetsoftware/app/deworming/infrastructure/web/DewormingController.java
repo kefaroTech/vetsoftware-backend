@@ -4,6 +4,7 @@ import com.vetsoftware.app.deworming.application.command.CreateDewormingCommand;
 import com.vetsoftware.app.deworming.application.command.UpdateDewormingCommand;
 import com.vetsoftware.app.deworming.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.deworming.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.deworming.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.deworming.application.dto.DewormingDto;
 import com.vetsoftware.app.deworming.application.port.in.CreateDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.DeleteDewormingUseCase;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.deworming.infrastructure.web.request.CreateDewormingR
 import com.vetsoftware.app.deworming.infrastructure.web.request.UpdateDewormingRequest;
 import com.vetsoftware.app.deworming.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.deworming.infrastructure.web.response.CompanySummary;
+import com.vetsoftware.app.deworming.infrastructure.web.response.ConsultationSummary;
 import com.vetsoftware.app.deworming.infrastructure.web.response.DewormingResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -48,7 +50,8 @@ public class DewormingController {
             new CreateDewormingCommand(
                 request.date(), request.lastDeworming(), request.type(),
                 request.product(), request.dosage(), request.nextControl(),
-                request.observations(), request.animalId(), request.companyId())));
+                request.observations(), request.animalId(), request.consultationId(),
+                request.companyId())));
     }
 
     @GetMapping
@@ -68,7 +71,8 @@ public class DewormingController {
             new UpdateDewormingCommand(
                 id, request.date(), request.lastDeworming(), request.type(),
                 request.product(), request.dosage(), request.nextControl(),
-                request.observations(), request.animalId(), request.companyId())));
+                request.observations(), request.animalId(), request.consultationId(),
+                request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -79,11 +83,13 @@ public class DewormingController {
 
     private DewormingResponse toResponse(DewormingDto dto) {
         AnimalSummaryDto a = dto.animal();
+        ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         return new DewormingResponse(
             dto.id(), dto.date(), dto.lastDeworming(), dto.type(),
             dto.product(), dto.dosage(), dto.nextControl(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
+            co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate());
     }

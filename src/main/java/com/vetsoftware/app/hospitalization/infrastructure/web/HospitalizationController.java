@@ -4,6 +4,7 @@ import com.vetsoftware.app.hospitalization.application.command.CreateHospitaliza
 import com.vetsoftware.app.hospitalization.application.command.UpdateHospitalizationCommand;
 import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.hospitalization.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.hospitalization.infrastructure.web.request.CreateHosp
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.UpdateHospitalizationRequest;
 import com.vetsoftware.app.hospitalization.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.hospitalization.infrastructure.web.response.CompanySummary;
+import com.vetsoftware.app.hospitalization.infrastructure.web.response.ConsultationSummary;
 import com.vetsoftware.app.hospitalization.infrastructure.web.response.HospitalizationResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -49,7 +51,7 @@ public class HospitalizationController {
                 request.date(), request.startDate(), request.endDate(),
                 request.type(), request.reasonLeaving(),
                 request.reason(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), request.consultationId(), request.companyId())));
     }
 
     @GetMapping
@@ -70,7 +72,7 @@ public class HospitalizationController {
                 id, request.date(), request.startDate(), request.endDate(),
                 request.type(), request.reasonLeaving(),
                 request.reason(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), request.consultationId(), request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -81,12 +83,14 @@ public class HospitalizationController {
 
     private HospitalizationResponse toResponse(HospitalizationDto dto) {
         AnimalSummaryDto a = dto.animal();
+        ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         return new HospitalizationResponse(
             dto.id(), dto.date(), dto.startDate(), dto.endDate(),
             dto.type(), dto.reasonLeaving(),
             dto.reason(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
+            co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate());
     }

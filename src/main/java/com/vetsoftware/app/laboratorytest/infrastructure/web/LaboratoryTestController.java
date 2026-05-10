@@ -4,6 +4,7 @@ import com.vetsoftware.app.laboratorytest.application.command.CreateLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.command.UpdateLaboratoryTestCommand;
 import com.vetsoftware.app.laboratorytest.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.laboratorytest.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
 import com.vetsoftware.app.laboratorytest.application.dto.TestTypeSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTestUseCase;
@@ -15,6 +16,7 @@ import com.vetsoftware.app.laboratorytest.infrastructure.web.request.CreateLabor
 import com.vetsoftware.app.laboratorytest.infrastructure.web.request.UpdateLaboratoryTestRequest;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.CompanySummary;
+import com.vetsoftware.app.laboratorytest.infrastructure.web.response.ConsultationSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestResponse;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.TestTypeSummary;
 import jakarta.validation.Valid;
@@ -49,7 +51,8 @@ public class LaboratoryTestController {
         return toResponse(createUseCase.execute(
             new CreateLaboratoryTestCommand(
                 request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.animalId(), request.companyId())));
+                request.diagnosis(), request.animalId(), request.consultationId(),
+                request.companyId())));
     }
 
     @GetMapping
@@ -68,7 +71,8 @@ public class LaboratoryTestController {
         return toResponse(updateUseCase.execute(
             new UpdateLaboratoryTestCommand(
                 id, request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.animalId(), request.companyId())));
+                request.diagnosis(), request.animalId(), request.consultationId(),
+                request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -80,12 +84,14 @@ public class LaboratoryTestController {
     private LaboratoryTestResponse toResponse(LaboratoryTestDto dto) {
         TestTypeSummaryDto tt = dto.testType();
         AnimalSummaryDto a = dto.animal();
+        ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         return new LaboratoryTestResponse(
             dto.id(), dto.date(),
             new TestTypeSummary(tt.id(), tt.name()),
             dto.quantity(), dto.diagnosis(),
             new AnimalSummary(a.id(), a.name(), a.code()),
+            co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate());
     }

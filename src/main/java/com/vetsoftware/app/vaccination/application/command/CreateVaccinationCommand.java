@@ -9,5 +9,6 @@ public record CreateVaccinationCommand(
         String notes,
         LocalDate nextVaccination,
         Long animalId,
+        Long consultationId,
         Long companyId
 ) {}

@@ -16,6 +16,7 @@ public record HospitalizationDto(
         String reason,
         String observations,
         AnimalSummaryDto animal,
+        ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         LocalDateTime createdDate
 ) {
@@ -30,6 +31,7 @@ public record HospitalizationDto(
             hospitalization.getReason(),
             hospitalization.getObservations(),
             AnimalSummaryDto.from(hospitalization.getAnimal()),
+            hospitalization.getConsultation() == null ? null : ConsultationSummaryDto.from(hospitalization.getConsultation()),
             CompanySummaryDto.from(hospitalization.getCompany()),
             hospitalization.getCreatedDate()
         );

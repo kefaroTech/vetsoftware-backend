@@ -5,9 +5,11 @@ import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.hospitalization.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.hospitalization.application.port.out.ConsultationQueryPort;
 import com.vetsoftware.app.hospitalization.application.port.out.HospitalizationRepository;
 import com.vetsoftware.app.hospitalization.domain.AnimalRef;
 import com.vetsoftware.app.hospitalization.domain.CompanyRef;
+import com.vetsoftware.app.hospitalization.domain.ConsultationRef;
 import com.vetsoftware.app.hospitalization.domain.Hospitalization;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -17,13 +19,16 @@ import org.springframework.stereotype.Service;
 public class CreateHospitalizationService implements CreateHospitalizationUseCase {
     private final HospitalizationRepository repository;
     private final AnimalQueryPort animalQueryPort;
+    private final ConsultationQueryPort consultationQueryPort;
     private final CompanyQueryPort companyQueryPort;
 
     public CreateHospitalizationService(HospitalizationRepository repository,
                                         AnimalQueryPort animalQueryPort,
+                                        ConsultationQueryPort consultationQueryPort,
                                         CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
+        this.consultationQueryPort = consultationQueryPort;
         this.companyQueryPort = companyQueryPort;
     }
 
@@ -31,6 +36,9 @@ public class CreateHospitalizationService implements CreateHospitalizationUseCas
     public HospitalizationDto execute(CreateHospitalizationCommand command) {
         AnimalRef animal = animalQueryPort.findById(command.animalId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ConsultationRef consultation = command.consultationId() == null ? null
+            : consultationQueryPort.findById(command.consultationId())
+                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
@@ -38,7 +46,7 @@ public class CreateHospitalizationService implements CreateHospitalizationUseCas
             command.date(), command.startDate(), command.endDate(),
             command.type(), command.reasonLeaving(),
             command.reason(), command.observations(),
-            animal, company);
+            animal, consultation, company);
         return HospitalizationDto.from(repository.save(hospitalization));
     }
 }

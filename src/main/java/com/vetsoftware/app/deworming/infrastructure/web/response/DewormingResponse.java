@@ -14,6 +14,7 @@ public record DewormingResponse(
         LocalDate nextControl,
         String observations,
         AnimalSummary animal,
+        ConsultationSummary consultation,
         CompanySummary company,
         LocalDateTime createdDate
 ) {}

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.consultation.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.consultation.application.command.CreateConsultationCommand;
 import com.vetsoftware.app.consultation.application.command.UpdateConsultationCommand;
 import com.vetsoftware.app.consultation.application.dto.AnimalSummaryDto;
@@ -30,17 +31,19 @@ public class ConsultationController {
     private final FindConsultationUseCase findUseCase;
     private final ListConsultationsUseCase listUseCase;
     private final DeleteConsultationUseCase deleteUseCase;
+    private final Authz authz;
 
     public ConsultationController(CreateConsultationUseCase createUseCase,
                                   UpdateConsultationUseCase updateUseCase,
                                   FindConsultationUseCase findUseCase,
                                   ListConsultationsUseCase listUseCase,
-                                  DeleteConsultationUseCase deleteUseCase) {
+                                  DeleteConsultationUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,7 +53,7 @@ public class ConsultationController {
             new CreateConsultationCommand(
                 request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.nextControl(), request.animalId(), request.companyId())));
+                request.nextControl(), request.animalId(), authz.currentCompanyId())));
     }
 
     @GetMapping

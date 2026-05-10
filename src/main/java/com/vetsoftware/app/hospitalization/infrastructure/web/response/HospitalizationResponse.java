@@ -15,6 +15,7 @@ public record HospitalizationResponse(
         String reason,
         String observations,
         AnimalSummary animal,
+        ConsultationSummary consultation,
         CompanySummary company,
         LocalDateTime createdDate
 ) {}

@@ -11,6 +11,7 @@ public record VaccinationResponse(
         String notes,
         LocalDate nextVaccination,
         AnimalSummary animal,
+        ConsultationSummary consultation,
         CompanySummary company,
         LocalDateTime createdDate
 ) {}
