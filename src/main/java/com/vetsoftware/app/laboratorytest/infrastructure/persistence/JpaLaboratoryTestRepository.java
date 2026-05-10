@@ -8,8 +8,8 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
-import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaEntity;
-import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaRepository;
+import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
+import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -18,14 +18,14 @@ import org.springframework.stereotype.Repository;
 public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     private final LaboratoryTestJpaRepository jpaRepository;
     private final LaboratoryTestJpaMapper mapper;
-    private final TestTypeJpaRepository testTypeJpaRepository;
+    private final LaboratoryTestTypeJpaRepository testTypeJpaRepository;
     private final AnimalJpaRepository animalJpaRepository;
     private final ConsultationJpaRepository consultationJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaLaboratoryTestRepository(LaboratoryTestJpaRepository jpaRepository,
                                        LaboratoryTestJpaMapper mapper,
-                                       TestTypeJpaRepository testTypeJpaRepository,
+                                       LaboratoryTestTypeJpaRepository testTypeJpaRepository,
                                        AnimalJpaRepository animalJpaRepository,
                                        ConsultationJpaRepository consultationJpaRepository,
                                        CompanyJpaRepository companyJpaRepository) {
@@ -39,7 +39,7 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
 
     @Override
     public LaboratoryTest save(LaboratoryTest laboratoryTest) {
-        TestTypeJpaEntity testType = testTypeJpaRepository.getReferenceById(laboratoryTest.getTestType().id());
+        LaboratoryTestTypeJpaEntity testType = testTypeJpaRepository.getReferenceById(laboratoryTest.getTestType().id());
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(laboratoryTest.getAnimal().id());
         ConsultationJpaEntity consultation = laboratoryTest.getConsultation() == null ? null
             : consultationJpaRepository.getReferenceById(laboratoryTest.getConsultation().id());

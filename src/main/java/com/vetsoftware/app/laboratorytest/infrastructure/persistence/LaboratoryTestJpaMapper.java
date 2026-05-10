@@ -7,15 +7,15 @@ import com.vetsoftware.app.laboratorytest.domain.AnimalRef;
 import com.vetsoftware.app.laboratorytest.domain.CompanyRef;
 import com.vetsoftware.app.laboratorytest.domain.ConsultationRef;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
-import com.vetsoftware.app.laboratorytest.domain.TestTypeRef;
-import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaEntity;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestTypeRef;
+import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LaboratoryTestJpaMapper {
 
     public LaboratoryTestJpaEntity toJpa(LaboratoryTest laboratoryTest,
-                                         TestTypeJpaEntity testType,
+                                         LaboratoryTestTypeJpaEntity testType,
                                          AnimalJpaEntity animal,
                                          ConsultationJpaEntity consultation,
                                          CompanyJpaEntity company) {
@@ -33,18 +33,18 @@ public class LaboratoryTestJpaMapper {
     }
 
     public LaboratoryTest toDomain(LaboratoryTestJpaEntity entity) {
-        TestTypeJpaEntity tt = entity.getTestType();
+        LaboratoryTestTypeJpaEntity tt = entity.getTestType();
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
         return toDomain(entity,
-            new TestTypeRef(tt.getId(), tt.getName()),
+            new LaboratoryTestTypeRef(tt.getId(), tt.getName()),
             new AnimalRef(a.getId(), a.getName(), a.getCode()),
             co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
             new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public LaboratoryTest toDomain(LaboratoryTestJpaEntity entity, TestTypeRef testTypeRef,
+    public LaboratoryTest toDomain(LaboratoryTestJpaEntity entity, LaboratoryTestTypeRef testTypeRef,
                                    AnimalRef animalRef, ConsultationRef consultationRef,
                                    CompanyRef companyRef) {
         return new LaboratoryTest(

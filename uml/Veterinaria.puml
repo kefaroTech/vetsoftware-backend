@@ -353,7 +353,7 @@ class Hospitalization {
   -createdBy: Employee
 }
 
-class TestType {
+class LaboratoryTestType {
   -name: String
   -description: String
   -company: Company
@@ -364,7 +364,7 @@ class TestType {
 
 class LaboratoryTest {
   -date: LocalDate
-  -type: TestType
+  -type: LaboratoryTestType
   -quantity: Integer
   -diagnosis: String
   -animal: Animal
@@ -525,8 +525,8 @@ Hospitalization       --> Animal
 Hospitalization       --> Company
 Hospitalization       "0..*" --> "0..1" Consultation
 
-TestType              "0..*" --> "0..1" Company
-LaboratoryTest        --> TestType
+LaboratoryTestType              "0..*" --> "0..1" Company
+LaboratoryTest        --> LaboratoryTestType
 LaboratoryTest        --> Animal
 LaboratoryTest        --> Company
 LaboratoryTest        "0..*" --> "0..1" Consultation

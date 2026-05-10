@@ -29,7 +29,8 @@
       "Bash(grep *)",
       "Bash(mvn compile *)",
       "PowerShell(Get-Command *)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(mvn -q -pl . -DskipTests compile)"
     ]
   }
 }

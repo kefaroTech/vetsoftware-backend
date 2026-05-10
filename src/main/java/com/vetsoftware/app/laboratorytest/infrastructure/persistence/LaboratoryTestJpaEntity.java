@@ -3,7 +3,7 @@ package com.vetsoftware.app.laboratorytest.infrastructure.persistence;
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
-import com.vetsoftware.app.testtype.infrastructure.persistence.TestTypeJpaEntity;
+import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,7 +20,7 @@ public class LaboratoryTestJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "test_type_id", nullable = false)
-    private TestTypeJpaEntity testType;
+    private LaboratoryTestTypeJpaEntity testType;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -49,8 +49,8 @@ public class LaboratoryTestJpaEntity {
     public void setId(Long id) { this.id = id; }
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }
-    public TestTypeJpaEntity getTestType() { return testType; }
-    public void setTestType(TestTypeJpaEntity testType) { this.testType = testType; }
+    public LaboratoryTestTypeJpaEntity getTestType() { return testType; }
+    public void setTestType(LaboratoryTestTypeJpaEntity testType) { this.testType = testType; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public String getDiagnosis() { return diagnosis; }

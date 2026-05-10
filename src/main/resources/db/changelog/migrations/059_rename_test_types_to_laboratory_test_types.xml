@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="059_rename_test_types_to_laboratory_test_types" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_types"/>
+        </preConditions>
+        <renameTable oldTableName="test_types" newTableName="laboratory_test_types"/>
+    </changeSet>
+
+</databaseChangeLog>

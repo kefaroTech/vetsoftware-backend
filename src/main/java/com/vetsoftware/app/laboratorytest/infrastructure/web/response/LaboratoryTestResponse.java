@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public record LaboratoryTestResponse(
         Long id,
         LocalDate date,
-        TestTypeSummary testType,
+        LaboratoryTestTypeSummary testType,
         Integer quantity,
         String diagnosis,
         AnimalSummary animal,

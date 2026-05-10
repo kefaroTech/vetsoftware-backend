@@ -19,6 +19,7 @@ import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
+import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
@@ -37,7 +38,6 @@ import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
-import com.vetsoftware.app.testtype.domain.TestTypeNotFoundException;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
@@ -77,7 +77,7 @@ public class GlobalExceptionHandler {
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,
-            TestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
+            LaboratoryTestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
             PrescriptionNotFoundException.class, DewormingNotFoundException.class,
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
             MedicamentPrescriptionNotFoundException.class,

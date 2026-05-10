@@ -6,7 +6,7 @@ import com.vetsoftware.app.laboratorytest.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
-import com.vetsoftware.app.laboratorytest.application.dto.TestTypeSummaryDto;
+import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestTypeSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.FindLaboratoryTestUseCase;
@@ -18,7 +18,7 @@ import com.vetsoftware.app.laboratorytest.infrastructure.web.response.AnimalSumm
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.ConsultationSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestResponse;
-import com.vetsoftware.app.laboratorytest.infrastructure.web.response.TestTypeSummary;
+import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestTypeSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -82,13 +82,13 @@ public class LaboratoryTestController {
     }
 
     private LaboratoryTestResponse toResponse(LaboratoryTestDto dto) {
-        TestTypeSummaryDto tt = dto.testType();
+        LaboratoryTestTypeSummaryDto tt = dto.testType();
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         return new LaboratoryTestResponse(
             dto.id(), dto.date(),
-            new TestTypeSummary(tt.id(), tt.name()),
+            new LaboratoryTestTypeSummary(tt.id(), tt.name()),
             dto.quantity(), dto.diagnosis(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),

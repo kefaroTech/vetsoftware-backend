@@ -62,5 +62,6 @@
     <include file="db/changelog/migrations/056_alter_test_types_add_company_and_general.xml"/>
     <include file="db/changelog/migrations/057_alter_surgery_types_add_company_and_general.xml"/>
     <include file="db/changelog/migrations/058_alter_diagnostic_imaging_types_add_company_and_general.xml"/>
+    <include file="db/changelog/migrations/059_rename_test_types_to_laboratory_test_types.xml"/>
 
 </databaseChangeLog>

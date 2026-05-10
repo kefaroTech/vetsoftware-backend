@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 public record LaboratoryTestDto(
         Long id,
         LocalDate date,
-        TestTypeSummaryDto testType,
+        LaboratoryTestTypeSummaryDto testType,
         Integer quantity,
         String diagnosis,
         AnimalSummaryDto animal,
@@ -19,7 +19,7 @@ public record LaboratoryTestDto(
         return new LaboratoryTestDto(
             laboratoryTest.getId(),
             laboratoryTest.getDate(),
-            TestTypeSummaryDto.from(laboratoryTest.getTestType()),
+            LaboratoryTestTypeSummaryDto.from(laboratoryTest.getTestType()),
             laboratoryTest.getQuantity(),
             laboratoryTest.getDiagnosis(),
             AnimalSummaryDto.from(laboratoryTest.getAnimal()),

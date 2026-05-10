@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public class LaboratoryTest {
     private Long id;
     private LocalDate date;
-    private TestTypeRef testType;
+    private LaboratoryTestTypeRef testType;
     private Integer quantity;
     private String diagnosis;
     private AnimalRef animal;
@@ -14,7 +14,7 @@ public class LaboratoryTest {
     private CompanyRef company;
     private final LocalDateTime createdDate;
 
-    public LaboratoryTest(Long id, LocalDate date, TestTypeRef testType, Integer quantity,
+    public LaboratoryTest(Long id, LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                           String diagnosis, AnimalRef animal, ConsultationRef consultation,
                           CompanyRef company, LocalDateTime createdDate) {
         validate(date, testType, quantity, diagnosis, animal, consultation, company);
@@ -29,14 +29,14 @@ public class LaboratoryTest {
         this.createdDate = createdDate;
     }
 
-    public static LaboratoryTest create(LocalDate date, TestTypeRef testType, Integer quantity,
+    public static LaboratoryTest create(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                                         String diagnosis, AnimalRef animal,
                                         ConsultationRef consultation, CompanyRef company) {
         return new LaboratoryTest(null, date, testType, quantity, diagnosis, animal, consultation,
                                   company, LocalDateTime.now());
     }
 
-    public void update(LocalDate date, TestTypeRef testType, Integer quantity,
+    public void update(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                        String diagnosis, AnimalRef animal, ConsultationRef consultation,
                        CompanyRef company) {
         validate(date, testType, quantity, diagnosis, animal, consultation, company);
@@ -49,7 +49,7 @@ public class LaboratoryTest {
         this.company = company;
     }
 
-    private static void validate(LocalDate date, TestTypeRef testType, Integer quantity,
+    private static void validate(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                                   String diagnosis, AnimalRef animal, ConsultationRef consultation,
                                   CompanyRef company) {
         if (date == null) throw new IllegalArgumentException("date is required");
@@ -64,7 +64,7 @@ public class LaboratoryTest {
 
     public Long getId() { return id; }
     public LocalDate getDate() { return date; }
-    public TestTypeRef getTestType() { return testType; }
+    public LaboratoryTestTypeRef getTestType() { return testType; }
     public Integer getQuantity() { return quantity; }
     public String getDiagnosis() { return diagnosis; }
     public AnimalRef getAnimal() { return animal; }
