@@ -89,8 +89,8 @@ class SystemUserPermission {
 class Membership {
   -name: String
   -status: MembershipStatus
-  -createdDate: LocalDateTime
   -mandatory: Boolean
+  -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
@@ -128,8 +128,8 @@ class Company {
   -name: String
   -identifier: String
   -address: String
-  -city: City
   -contactNumber: String
+  -city: City
   -membership: Membership
   -createdDate: LocalDateTime
 }
@@ -250,19 +250,19 @@ class Breed {
 class Animal {
   -name: String
   -code: String
-  -specie: Specie
-  -breed: Breed
-  -owner: Owner
+  -bod: LocalDate
+  -weight: Integer
+  -size: Integer
   -gender: Gender
   -weightType: WeightType
   -animalType: AnimalType
   -reproductiveState: ReproductiveState
-  -color: AnimalColor
-  -bod: LocalDate
-  -weight: Integer
-  -size: Integer
   -deceased: Boolean
   -deceasedDate: LocalDate
+  -specie: Specie
+  -breed: Breed
+  -color: AnimalColor
+  -owner: Owner
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -308,8 +308,8 @@ class Vaccination {
   -nextVaccination: LocalDate
   -animal: Animal
   -consultation: Consultation
-  -createdDate: LocalDateTime
   -company: Company
+  -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
@@ -329,8 +329,8 @@ class Surgery {
   -complications: String
   -animal: Animal
   -consultation: Consultation
-  -createdDate: LocalDateTime
   -company: Company
+  -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
@@ -344,8 +344,8 @@ class Hospitalization {
   -observations: String
   -animal: Animal
   -consultation: Consultation
-  -createdDate: LocalDateTime
   -company: Company
+  -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
@@ -363,8 +363,8 @@ class LaboratoryTest {
   -diagnosis: String
   -animal: Animal
   -consultation: Consultation
+  -company: Company
   -createdDate: LocalDateTime
-  -company:Company
   -createdBy: Employee
 }
 
@@ -374,8 +374,8 @@ class Prescription {
   -observations: String
   -animal: Animal
   -consultation: Consultation
+  -company: Company
   -createdDate: LocalDateTime
-  -company:Company
   -createdBy: Employee
 }
 
@@ -392,15 +392,15 @@ class MedicamentPrescription {
 class Deworming {
   -date: LocalDate
   -lastDeworming: LocalDate
+  -nextControl: LocalDate
   -type: DewormingType
   -product: String
   -dosage: String
-  -nextControl: LocalDate
   -observations: String
   -animal: Animal
   -consultation: Consultation
+  -company: Company
   -createdDate: LocalDateTime
-  -company:Company
   -createdBy: Employee
 }
 
@@ -420,8 +420,8 @@ class DiagnosticImaging {
   -observations: String
   -animal: Animal
   -consultation: Consultation
-  -createdDate: LocalDateTime
   -company: Company
+  -createdDate: LocalDateTime
   -createdBy: Employee
 }
 
@@ -448,24 +448,24 @@ class Spa {
 ' Relationships
 ' =========================
 
-' System / Auth
+' --- System / Auth ---
 SystemUserPermission --> SystemUser
 SystemUserPermission --> SystemPermission
 
-' Membership / Modules
+' --- Membership / Modules ---
 Membership          --> MembershipStatus
 MembershipSubModule --> Membership
 MembershipSubModule --> SubModule
 SubModule           --> Module
 BasePermission      --> SubModule
 
-' Company / Employee
+' --- Company / Employee ---
 Company  --> Membership
 Company  --> City
 Employee --> Company
 Employee --> EmployeeStatus
 
-' Authorization
+' --- Authorization ---
 Role               --> Company
 Permission         --> Company
 Permission         --> SubModule
@@ -476,59 +476,67 @@ BaseRolePermission --> BasePermission
 EmployeeRole       --> Employee
 EmployeeRole       --> Role
 
-' Location
-City         --> State
-State         --> Country
-Owner "0..*" --> "1" City
+' --- Location ---
+City  --> State
+State --> Country
 
-' Owner / Animal
-Owner  --> Company
-Breed  --> Specie
-Animal --> Specie
-Animal --> AnimalColor
-Animal --> Breed
-Animal --> Owner
-Animal --> Company
-Animal --> Gender
-Animal --> WeightType
-Animal --> AnimalType
-Animal --> ReproductiveState
+' --- Owner / Animal ---
+Owner  "0..*" --> "1" City
+Owner         --> Company
+Breed         --> Specie
+Animal        --> Specie
+Animal        --> Breed
+Animal        --> AnimalColor
+Animal        --> Owner
+Animal        --> Company
+Animal        --> Gender
+Animal        --> WeightType
+Animal        --> AnimalType
+Animal        --> ReproductiveState
 
-' Medical Records
+' --- Medical Records ---
+Consultation      --> ConsultationType
 Consultation      --> Animal
 Consultation      --> Company
-Consultation      --> ConsultationType
+
+Vaccination       --> VaccinationType
 Vaccination       --> Animal
 Vaccination       --> Company
-Vaccination       --> VaccinationType
 Vaccination       "0..*" --> "0..1" Consultation
-Surgery           --> Animal
+
 Surgery           --> SurgeryType
+Surgery           --> Animal
 Surgery           --> Company
 Surgery           "0..*" --> "0..1" Consultation
-Hospitalization   --> Animal
-Hospitalization   --> Company
+
 Hospitalization   --> HospitalizationType
 Hospitalization   --> ReasonLeaving
+Hospitalization   --> Animal
+Hospitalization   --> Company
 Hospitalization   "0..*" --> "0..1" Consultation
-LaboratoryTest    --> Animal
-LaboratoryTest    "0..*" --> "0..1" Consultation
-LaboratoryTest    --> Company
+
 LaboratoryTest    --> TestType
+LaboratoryTest    --> Animal
+LaboratoryTest    --> Company
+LaboratoryTest    "0..*" --> "0..1" Consultation
+
 Prescription      --> Animal
-Prescription      --> Consultation
 Prescription      --> Company
-Prescription      --> MedicamentPrescription
+Prescription      --> Consultation
+MedicamentPrescription --> Prescription
+
+Deworming         --> DewormingType
 Deworming         --> Animal
 Deworming         --> Company
-Deworming         --> DewormingType
 Deworming         "0..*" --> "0..1" Consultation
-DiagnosticImaging --> Animal
+
 DiagnosticImaging --> DiagnosticImagingType
+DiagnosticImaging --> Animal
 DiagnosticImaging --> Company
 DiagnosticImaging "0..*" --> "0..1" Consultation
+
+Spa               --> SpaType
 Spa               --> Animal
 Spa               --> Company
-Spa               --> SpaType
 
 @enduml
