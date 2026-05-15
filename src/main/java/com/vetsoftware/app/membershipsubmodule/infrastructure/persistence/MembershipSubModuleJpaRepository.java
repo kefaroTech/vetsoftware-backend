@@ -1,5 +1,6 @@
 package com.vetsoftware.app.membershipsubmodule.infrastructure.persistence;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -17,4 +18,7 @@ public interface MembershipSubModuleJpaRepository extends JpaRepository<Membersh
 
     @EntityGraph(attributePaths = "subModule")
     List<MembershipSubModuleJpaEntity> findByMembershipId(Long membershipId);
+
+    @EntityGraph(attributePaths = {"membership", "subModule"})
+    List<MembershipSubModuleJpaEntity> findByMembershipIdIn(Collection<Long> membershipIds);
 }
