@@ -40,6 +40,11 @@ public class JpaRoleRepository implements RoleRepository {
     }
 
     @Override
+    public List<Role> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

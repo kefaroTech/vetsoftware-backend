@@ -1,5 +1,6 @@
 package com.vetsoftware.app.role.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.role.application.command.CreateRoleCommand;
 import com.vetsoftware.app.role.application.command.UpdateRoleCommand;
 import com.vetsoftware.app.role.application.dto.CompanySummaryDto;
@@ -7,6 +8,7 @@ import com.vetsoftware.app.role.application.dto.RoleDto;
 import com.vetsoftware.app.role.application.port.in.CreateRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.DeleteRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.FindRoleUseCase;
+import com.vetsoftware.app.role.application.port.in.ListRolesByCompanyUseCase;
 import com.vetsoftware.app.role.application.port.in.ListRolesUseCase;
 import com.vetsoftware.app.role.application.port.in.UpdateRoleUseCase;
 import com.vetsoftware.app.role.infrastructure.web.request.CreateRoleRequest;
@@ -25,16 +27,21 @@ public class RoleController {
     private final UpdateRoleUseCase updateUseCase;
     private final FindRoleUseCase findUseCase;
     private final ListRolesUseCase listUseCase;
+    private final ListRolesByCompanyUseCase listByCompanyUseCase;
     private final DeleteRoleUseCase deleteUseCase;
+    private final Authz authz;
 
     public RoleController(CreateRoleUseCase createUseCase, UpdateRoleUseCase updateUseCase,
                           FindRoleUseCase findUseCase, ListRolesUseCase listUseCase,
-                          DeleteRoleUseCase deleteUseCase) {
+                          ListRolesByCompanyUseCase listByCompanyUseCase,
+                          DeleteRoleUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -47,6 +54,12 @@ public class RoleController {
     @GetMapping
     public List<RoleResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-company")
+    public List<RoleResponse> listByCompany() {
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

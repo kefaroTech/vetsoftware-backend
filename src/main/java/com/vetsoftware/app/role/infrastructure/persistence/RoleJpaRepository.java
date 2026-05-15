@@ -17,4 +17,7 @@ public interface RoleJpaRepository extends JpaRepository<RoleJpaEntity, Long> {
 
     @EntityGraph(attributePaths = {"company", "company.membership"})
     List<RoleJpaEntity> findAllByCode(String code);
+
+    @EntityGraph(attributePaths = "company")
+    List<RoleJpaEntity> findAllByCompanyId(Long companyId);
 }

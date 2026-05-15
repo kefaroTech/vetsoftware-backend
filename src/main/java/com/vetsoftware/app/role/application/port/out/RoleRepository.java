@@ -8,5 +8,6 @@ public interface RoleRepository {
     Role save(Role role);
     Optional<Role> findById(Long id);
     List<Role> findAll();
+    List<Role> findAllByCompanyId(Long companyId);
     void delete(Long id);
 }
