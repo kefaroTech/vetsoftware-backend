@@ -8,5 +8,6 @@ public interface PermissionRepository {
     Permission save(Permission permission);
     Optional<Permission> findById(Long id);
     List<Permission> findAll();
+    List<Permission> findAllByCompanyId(Long companyId);
     void delete(Long id);
 }

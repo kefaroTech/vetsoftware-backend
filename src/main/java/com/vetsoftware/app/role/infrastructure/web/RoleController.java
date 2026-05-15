@@ -5,6 +5,7 @@ import com.vetsoftware.app.role.application.command.CreateRoleCommand;
 import com.vetsoftware.app.role.application.command.UpdateRoleCommand;
 import com.vetsoftware.app.role.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.role.application.dto.RoleDto;
+import com.vetsoftware.app.role.infrastructure.web.response.PermissionSummary;
 import com.vetsoftware.app.role.application.port.in.CreateRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.DeleteRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.FindRoleUseCase;
@@ -81,10 +82,14 @@ public class RoleController {
 
     private RoleResponse toResponse(RoleDto dto) {
         CompanySummaryDto c = dto.company();
+        List<PermissionSummary> permissions = dto.permissions().stream()
+            .map(p -> new PermissionSummary(p.rolePermissionId(), p.id(), p.name(), p.code()))
+            .toList();
         return new RoleResponse(
             dto.id(), dto.name(), dto.code(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate()
+            dto.createdDate(),
+            permissions
         );
     }
 }

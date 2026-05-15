@@ -1,5 +1,6 @@
 package com.vetsoftware.app.permission.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.permission.application.command.CreatePermissionCommand;
 import com.vetsoftware.app.permission.application.command.UpdatePermissionCommand;
 import com.vetsoftware.app.permission.application.dto.CompanySummaryDto;
@@ -8,6 +9,7 @@ import com.vetsoftware.app.permission.application.dto.SubModuleSummaryDto;
 import com.vetsoftware.app.permission.application.port.in.CreatePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.DeletePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.FindPermissionUseCase;
+import com.vetsoftware.app.permission.application.port.in.ListPermissionsByCompanyUseCase;
 import com.vetsoftware.app.permission.application.port.in.ListPermissionsUseCase;
 import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCase;
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
@@ -27,18 +29,24 @@ public class PermissionController {
     private final UpdatePermissionUseCase updateUseCase;
     private final FindPermissionUseCase findUseCase;
     private final ListPermissionsUseCase listUseCase;
+    private final ListPermissionsByCompanyUseCase listByCompanyUseCase;
     private final DeletePermissionUseCase deleteUseCase;
+    private final Authz authz;
 
     public PermissionController(CreatePermissionUseCase createUseCase,
                                  UpdatePermissionUseCase updateUseCase,
                                  FindPermissionUseCase findUseCase,
                                  ListPermissionsUseCase listUseCase,
-                                 DeletePermissionUseCase deleteUseCase) {
+                                 ListPermissionsByCompanyUseCase listByCompanyUseCase,
+                                 DeletePermissionUseCase deleteUseCase,
+                                 Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -51,6 +59,12 @@ public class PermissionController {
     @GetMapping
     public List<PermissionResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-company")
+    public List<PermissionResponse> listByCompany() {
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

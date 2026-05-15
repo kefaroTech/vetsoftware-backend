@@ -46,6 +46,11 @@ public class JpaPermissionRepository implements PermissionRepository {
     }
 
     @Override
+    public List<Permission> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

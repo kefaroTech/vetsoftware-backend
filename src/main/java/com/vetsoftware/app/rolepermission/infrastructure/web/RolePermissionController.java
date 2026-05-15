@@ -1,5 +1,6 @@
 package com.vetsoftware.app.rolepermission.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.rolepermission.application.command.CreateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.command.UpdateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.PermissionSummaryDto;
@@ -8,6 +9,7 @@ import com.vetsoftware.app.rolepermission.application.dto.RoleSummaryDto;
 import com.vetsoftware.app.rolepermission.application.port.in.CreateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.FindRolePermissionUseCase;
+import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsByCompanyUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.infrastructure.web.request.CreateRolePermissionRequest;
@@ -27,18 +29,24 @@ public class RolePermissionController {
     private final UpdateRolePermissionUseCase updateUseCase;
     private final FindRolePermissionUseCase findUseCase;
     private final ListRolePermissionsUseCase listUseCase;
+    private final ListRolePermissionsByCompanyUseCase listByCompanyUseCase;
     private final DeleteRolePermissionUseCase deleteUseCase;
+    private final Authz authz;
 
     public RolePermissionController(CreateRolePermissionUseCase createUseCase,
                                     UpdateRolePermissionUseCase updateUseCase,
                                     FindRolePermissionUseCase findUseCase,
                                     ListRolePermissionsUseCase listUseCase,
-                                    DeleteRolePermissionUseCase deleteUseCase) {
+                                    ListRolePermissionsByCompanyUseCase listByCompanyUseCase,
+                                    DeleteRolePermissionUseCase deleteUseCase,
+                                    Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -51,6 +59,12 @@ public class RolePermissionController {
     @GetMapping
     public List<RolePermissionResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-company")
+    public List<RolePermissionResponse> listByCompany() {
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

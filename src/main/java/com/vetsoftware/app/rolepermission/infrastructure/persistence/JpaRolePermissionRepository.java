@@ -46,6 +46,11 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     }
 
     @Override
+    public List<RolePermission> findAllByRoleCompanyId(Long companyId) {
+        return jpaRepository.findAllByRoleCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

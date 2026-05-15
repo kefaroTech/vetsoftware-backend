@@ -8,5 +8,6 @@ public interface RolePermissionRepository {
     RolePermission save(RolePermission rolePermission);
     Optional<RolePermission> findById(Long id);
     List<RolePermission> findAll();
+    List<RolePermission> findAllByRoleCompanyId(Long companyId);
     void delete(Long id);
 }

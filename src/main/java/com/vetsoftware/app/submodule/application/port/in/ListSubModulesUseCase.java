@@ -5,6 +5,5 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSubModulesUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
     List<SubModuleDto> listAll();
 }
