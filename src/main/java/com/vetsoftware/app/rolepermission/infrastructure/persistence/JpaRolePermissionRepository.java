@@ -6,6 +6,7 @@ import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaRepository;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
 import com.vetsoftware.app.rolepermission.domain.RolePermission;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -36,6 +37,25 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     }
 
     @Override
+    public List<RolePermission> saveAll(List<RolePermission> rolePermissions) {
+        List<RolePermissionJpaEntity> entities = rolePermissions.stream()
+            .map(rp -> {
+                RoleJpaEntity role = roleJpaRepository.getReferenceById(rp.getRole().id());
+                PermissionJpaEntity permission = permissionJpaRepository.getReferenceById(rp.getPermission().id());
+                return mapper.toJpa(rp, role, permission);
+            })
+            .toList();
+        List<RolePermissionJpaEntity> saved = jpaRepository.saveAll(entities);
+        List<RolePermission> result = new ArrayList<>(saved.size());
+        for (int i = 0; i < saved.size(); i++) {
+            result.add(mapper.toDomain(saved.get(i),
+                rolePermissions.get(i).getRole(),
+                rolePermissions.get(i).getPermission()));
+        }
+        return result;
+    }
+
+    @Override
     public Optional<RolePermission> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
     }
@@ -46,6 +66,11 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     }
 
     @Override
+    public List<RolePermission> findAllByRoleId(Long roleId) {
+        return jpaRepository.findAllByRoleId(roleId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public List<RolePermission> findAllByRoleCompanyId(Long companyId) {
         return jpaRepository.findAllByRoleCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }
@@ -53,5 +78,11 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public void deleteAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        jpaRepository.deleteAllByIdInBatch(ids);
     }
 }

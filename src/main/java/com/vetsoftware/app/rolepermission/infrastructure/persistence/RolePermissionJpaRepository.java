@@ -21,5 +21,8 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     boolean existsByRoleIdAndPermissionId(Long roleId, Long permissionId);
 
     @EntityGraph(attributePaths = {"role", "permission"})
+    List<RolePermissionJpaEntity> findAllByRoleId(Long roleId);
+
+    @EntityGraph(attributePaths = {"role", "permission"})
     List<RolePermissionJpaEntity> findAllByRoleCompanyId(Long companyId);
 }

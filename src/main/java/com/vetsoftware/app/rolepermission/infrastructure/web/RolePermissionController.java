@@ -2,6 +2,7 @@ package com.vetsoftware.app.rolepermission.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.rolepermission.application.command.CreateRolePermissionCommand;
+import com.vetsoftware.app.rolepermission.application.command.SyncRolePermissionsCommand;
 import com.vetsoftware.app.rolepermission.application.command.UpdateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.PermissionSummaryDto;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
@@ -11,8 +12,10 @@ import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissi
 import com.vetsoftware.app.rolepermission.application.port.in.FindRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsByCompanyUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsUseCase;
+import com.vetsoftware.app.rolepermission.application.port.in.SyncRolePermissionsUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.infrastructure.web.request.CreateRolePermissionRequest;
+import com.vetsoftware.app.rolepermission.infrastructure.web.request.SyncRolePermissionsRequest;
 import com.vetsoftware.app.rolepermission.infrastructure.web.request.UpdateRolePermissionRequest;
 import com.vetsoftware.app.rolepermission.infrastructure.web.response.PermissionSummary;
 import com.vetsoftware.app.rolepermission.infrastructure.web.response.RolePermissionResponse;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/role-permissions")
 public class RolePermissionController {
     private final CreateRolePermissionUseCase createUseCase;
+    private final SyncRolePermissionsUseCase syncUseCase;
     private final UpdateRolePermissionUseCase updateUseCase;
     private final FindRolePermissionUseCase findUseCase;
     private final ListRolePermissionsUseCase listUseCase;
@@ -34,6 +38,7 @@ public class RolePermissionController {
     private final Authz authz;
 
     public RolePermissionController(CreateRolePermissionUseCase createUseCase,
+                                    SyncRolePermissionsUseCase syncUseCase,
                                     UpdateRolePermissionUseCase updateUseCase,
                                     FindRolePermissionUseCase findUseCase,
                                     ListRolePermissionsUseCase listUseCase,
@@ -41,6 +46,7 @@ public class RolePermissionController {
                                     DeleteRolePermissionUseCase deleteUseCase,
                                     Authz authz) {
         this.createUseCase = createUseCase;
+        this.syncUseCase = syncUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
@@ -54,6 +60,13 @@ public class RolePermissionController {
     public RolePermissionResponse create(@Valid @RequestBody CreateRolePermissionRequest request) {
         return toResponse(createUseCase.execute(
             new CreateRolePermissionCommand(request.roleId(), request.permissionId())));
+    }
+
+    @PutMapping("/by-role/{roleId}")
+    public List<RolePermissionResponse> syncByRole(@PathVariable Long roleId,
+                                                   @Valid @RequestBody SyncRolePermissionsRequest request) {
+        return syncUseCase.execute(new SyncRolePermissionsCommand(roleId, request.permissionIds()))
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping

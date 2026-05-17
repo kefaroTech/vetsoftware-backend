@@ -8,6 +8,7 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeStatus;
+import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +18,12 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
     private final EmployeeRepository repository;
     private final CompanyQueryPort companyQueryPort;
 
-    public CreateEmployeeService(EmployeeRepository repository, CompanyQueryPort companyQueryPort) {
+    private final PasswordHasher passwordHasher;
+
+    public CreateEmployeeService(EmployeeRepository repository, CompanyQueryPort companyQueryPort, PasswordHasher passwordHasher) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
+        this.passwordHasher = passwordHasher;
     }
 
     @Override
@@ -27,8 +31,11 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
         EmployeeStatus status = EmployeeStatus.valueOf(command.status().toUpperCase());
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+
+        String hashed = passwordHasher.hash(command.password());
+
         Employee employee = Employee.create(
-            command.employeeCode(), command.password(), command.name(), command.email(),
+            command.employeeCode(), hashed, command.name(), command.email(),
             status, company
         );
         return EmployeeDto.from(repository.save(employee));
