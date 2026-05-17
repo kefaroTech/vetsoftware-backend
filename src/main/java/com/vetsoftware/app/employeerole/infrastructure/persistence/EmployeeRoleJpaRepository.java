@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpaEntity, Long> {
 
@@ -20,4 +21,7 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
 
     @EntityGraph(attributePaths = "role")
     List<EmployeeRoleJpaEntity> findByEmployeeIdIn(List<Long> employeeIds);
+
+    @Query("select er.employee.id from EmployeeRoleJpaEntity er where er.role.id = :roleId")
+    List<Long> findEmployeeIdsByRoleId(Long roleId);
 }

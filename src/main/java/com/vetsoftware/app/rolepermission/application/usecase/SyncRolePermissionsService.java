@@ -3,6 +3,7 @@ package com.vetsoftware.app.rolepermission.application.usecase;
 import com.vetsoftware.app.rolepermission.application.command.SyncRolePermissionsCommand;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import com.vetsoftware.app.rolepermission.application.port.in.SyncRolePermissionsUseCase;
+import com.vetsoftware.app.rolepermission.application.port.out.PermissionCachePort;
 import com.vetsoftware.app.rolepermission.application.port.out.PermissionQueryPort;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
 import com.vetsoftware.app.rolepermission.application.port.out.RoleQueryPort;
@@ -24,13 +25,16 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
     private final RolePermissionRepository repository;
     private final RoleQueryPort roleQueryPort;
     private final PermissionQueryPort permissionQueryPort;
+    private final PermissionCachePort permissionCachePort;
 
     public SyncRolePermissionsService(RolePermissionRepository repository,
                                       RoleQueryPort roleQueryPort,
-                                      PermissionQueryPort permissionQueryPort) {
+                                      PermissionQueryPort permissionQueryPort,
+                                      PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.roleQueryPort = roleQueryPort;
         this.permissionQueryPort = permissionQueryPort;
+        this.permissionCachePort = permissionCachePort;
     }
 
     @Override
@@ -75,8 +79,10 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
             repository.saveAll(nuevos);
         }
 
-        return repository.findAllByRoleId(command.roleId()).stream()
+        List<RolePermissionDto> result = repository.findAllByRoleId(command.roleId()).stream()
             .map(RolePermissionDto::from)
             .toList();
+        permissionCachePort.evictByRoleId(command.roleId());
+        return result;
     }
 }

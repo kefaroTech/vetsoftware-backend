@@ -5,6 +5,7 @@ import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.employeerole.application.port.out.EmployeeRoleRepository;
+import com.vetsoftware.app.employeerole.application.port.out.PermissionCachePort;
 import com.vetsoftware.app.employeerole.application.port.out.RoleQueryPort;
 import com.vetsoftware.app.employeerole.domain.EmployeeRef;
 import com.vetsoftware.app.employeerole.domain.EmployeeRole;
@@ -18,13 +19,16 @@ public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
     private final EmployeeRoleRepository repository;
     private final EmployeeQueryPort employeeQueryPort;
     private final RoleQueryPort roleQueryPort;
+    private final PermissionCachePort permissionCachePort;
 
     public CreateEmployeeRoleService(EmployeeRoleRepository repository,
                                      EmployeeQueryPort employeeQueryPort,
-                                     RoleQueryPort roleQueryPort) {
+                                     RoleQueryPort roleQueryPort,
+                                     PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
         this.roleQueryPort = roleQueryPort;
+        this.permissionCachePort = permissionCachePort;
     }
 
     @Override
@@ -34,6 +38,8 @@ public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
         RoleRef role = roleQueryPort.findById(command.roleId())
             .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
         EmployeeRole employeeRole = EmployeeRole.create(employee, role);
-        return EmployeeRoleDto.from(repository.save(employeeRole));
+        EmployeeRoleDto dto = EmployeeRoleDto.from(repository.save(employeeRole));
+        permissionCachePort.evictByEmployeeId(command.employeeId());
+        return dto;
     }
 }
