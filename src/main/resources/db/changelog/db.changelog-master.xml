@@ -66,5 +66,6 @@
     <include file="db/changelog/migrations/060_add_status_to_laboratory_tests.xml"/>
     <include file="db/changelog/migrations/061_add_status_to_surgeries.xml"/>
     <include file="db/changelog/migrations/062_add_status_to_diagnostic_imagings.xml"/>
+    <include file="db/changelog/migrations/063_create_clinical_event_view.xml"/>
 
 </databaseChangeLog>
