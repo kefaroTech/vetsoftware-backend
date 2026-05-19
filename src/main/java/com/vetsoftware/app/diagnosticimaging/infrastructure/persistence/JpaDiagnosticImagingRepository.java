@@ -62,6 +62,11 @@ public class JpaDiagnosticImagingRepository implements DiagnosticImagingReposito
     }
 
     @Override
+    public List<DiagnosticImaging> findAllByAnimalId(Long animalId) {
+        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

@@ -63,6 +63,11 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     }
 
     @Override
+    public List<Vaccination> findAllByAnimalId(Long animalId) {
+        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

@@ -8,5 +8,6 @@ public interface DewormingRepository {
     Deworming save(Deworming deworming);
     Optional<Deworming> findById(Long id);
     List<Deworming> findAll();
+    List<Deworming> findAllByAnimalId(Long animalId);
     void delete(Long id);
 }

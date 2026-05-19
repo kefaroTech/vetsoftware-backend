@@ -10,6 +10,7 @@ import com.vetsoftware.app.surgery.application.dto.SurgeryTypeSummaryDto;
 import com.vetsoftware.app.surgery.application.port.in.CreateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.DeleteSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.FindSurgeryUseCase;
+import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesByAnimalUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesUseCase;
 import com.vetsoftware.app.surgery.application.port.in.UpdateSurgeryUseCase;
 import com.vetsoftware.app.surgery.infrastructure.web.request.CreateSurgeryRequest;
@@ -31,17 +32,20 @@ public class SurgeryController {
     private final UpdateSurgeryUseCase updateUseCase;
     private final FindSurgeryUseCase findUseCase;
     private final ListSurgeriesUseCase listUseCase;
+    private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
     private final DeleteSurgeryUseCase deleteUseCase;
 
     public SurgeryController(CreateSurgeryUseCase createUseCase,
                              UpdateSurgeryUseCase updateUseCase,
                              FindSurgeryUseCase findUseCase,
                              ListSurgeriesUseCase listUseCase,
+                             ListSurgeriesByAnimalUseCase listByAnimalUseCase,
                              DeleteSurgeryUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -58,6 +62,11 @@ public class SurgeryController {
     @GetMapping
     public List<SurgeryResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<SurgeryResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

@@ -8,5 +8,6 @@ public interface VaccinationRepository {
     Vaccination save(Vaccination vaccination);
     Optional<Vaccination> findById(Long id);
     List<Vaccination> findAll();
+    List<Vaccination> findAllByAnimalId(Long animalId);
     void delete(Long id);
 }

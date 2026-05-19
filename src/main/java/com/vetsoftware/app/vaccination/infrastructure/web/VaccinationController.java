@@ -10,6 +10,7 @@ import com.vetsoftware.app.vaccination.application.dto.VaccinationTypeSummaryDto
 import com.vetsoftware.app.vaccination.application.port.in.CreateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.DeleteVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.FindVaccinationUseCase;
+import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsByAnimalUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.UpdateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.infrastructure.web.request.CreateVaccinationRequest;
@@ -31,17 +32,20 @@ public class VaccinationController {
     private final UpdateVaccinationUseCase updateUseCase;
     private final FindVaccinationUseCase findUseCase;
     private final ListVaccinationsUseCase listUseCase;
+    private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteVaccinationUseCase deleteUseCase;
 
     public VaccinationController(CreateVaccinationUseCase createUseCase,
                                  UpdateVaccinationUseCase updateUseCase,
                                  FindVaccinationUseCase findUseCase,
                                  ListVaccinationsUseCase listUseCase,
+                                 ListVaccinationsByAnimalUseCase listByAnimalUseCase,
                                  DeleteVaccinationUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -58,6 +62,11 @@ public class VaccinationController {
     @GetMapping
     public List<VaccinationResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<VaccinationResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

@@ -61,6 +61,11 @@ public class JpaSurgeryRepository implements SurgeryRepository {
     }
 
     @Override
+    public List<Surgery> findAllByAnimalId(Long animalId) {
+        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

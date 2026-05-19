@@ -14,4 +14,7 @@ public interface HospitalizationJpaRepository extends JpaRepository<Hospitalizat
     @Override
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<HospitalizationJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    List<HospitalizationJpaEntity> findAllByAnimalId(Long animalId);
 }

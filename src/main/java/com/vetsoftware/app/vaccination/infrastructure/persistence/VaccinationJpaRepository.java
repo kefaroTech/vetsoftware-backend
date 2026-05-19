@@ -14,4 +14,7 @@ public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEn
     @Override
     @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
     Optional<VaccinationJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+    List<VaccinationJpaEntity> findAllByAnimalId(Long animalId);
 }

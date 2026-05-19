@@ -10,6 +10,7 @@ import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestTypeSumm
 import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.FindLaboratoryTestUseCase;
+import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsByAnimalUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.UpdateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.request.CreateLaboratoryTestRequest;
@@ -31,17 +32,20 @@ public class LaboratoryTestController {
     private final UpdateLaboratoryTestUseCase updateUseCase;
     private final FindLaboratoryTestUseCase findUseCase;
     private final ListLaboratoryTestsUseCase listUseCase;
+    private final ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase;
     private final DeleteLaboratoryTestUseCase deleteUseCase;
 
     public LaboratoryTestController(CreateLaboratoryTestUseCase createUseCase,
                                     UpdateLaboratoryTestUseCase updateUseCase,
                                     FindLaboratoryTestUseCase findUseCase,
                                     ListLaboratoryTestsUseCase listUseCase,
+                                    ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase,
                                     DeleteLaboratoryTestUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -58,6 +62,11 @@ public class LaboratoryTestController {
     @GetMapping
     public List<LaboratoryTestResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<LaboratoryTestResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

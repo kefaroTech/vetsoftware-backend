@@ -8,5 +8,6 @@ public interface DiagnosticImagingRepository {
     DiagnosticImaging save(DiagnosticImaging imaging);
     Optional<DiagnosticImaging> findById(Long id);
     List<DiagnosticImaging> findAll();
+    List<DiagnosticImaging> findAllByAnimalId(Long animalId);
     void delete(Long id);
 }

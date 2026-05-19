@@ -14,4 +14,7 @@ public interface LaboratoryTestJpaRepository extends JpaRepository<LaboratoryTes
     @Override
     @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company"})
     Optional<LaboratoryTestJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company"})
+    List<LaboratoryTestJpaEntity> findAllByAnimalId(Long animalId);
 }

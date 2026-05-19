@@ -1,0 +1,23 @@
+package com.vetsoftware.app.laboratorytest.application.usecase;
+
+import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
+import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsByAnimalUseCase;
+import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
+import io.micrometer.observation.annotation.Observed;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Observed(name = "laboratorytest.list.byAnimal")
+@Service
+public class ListLaboratoryTestsByAnimalService implements ListLaboratoryTestsByAnimalUseCase {
+    private final LaboratoryTestRepository repository;
+
+    public ListLaboratoryTestsByAnimalService(LaboratoryTestRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<LaboratoryTestDto> listByAnimal(Long animalId) {
+        return repository.findAllByAnimalId(animalId).stream().map(LaboratoryTestDto::from).toList();
+    }
+}

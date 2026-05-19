@@ -8,5 +8,6 @@ public interface HospitalizationRepository {
     Hospitalization save(Hospitalization hospitalization);
     Optional<Hospitalization> findById(Long id);
     List<Hospitalization> findAll();
+    List<Hospitalization> findAllByAnimalId(Long animalId);
     void delete(Long id);
 }

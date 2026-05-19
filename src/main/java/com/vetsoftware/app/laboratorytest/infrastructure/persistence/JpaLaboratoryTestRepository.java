@@ -62,6 +62,11 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     }
 
     @Override
+    public List<LaboratoryTest> findAllByAnimalId(Long animalId) {
+        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

@@ -10,6 +10,7 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingTy
 import com.vetsoftware.app.diagnosticimaging.application.port.in.CreateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.DeleteDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.FindDiagnosticImagingUseCase;
+import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsByAnimalUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.UpdateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.CreateDiagnosticImagingRequest;
@@ -31,17 +32,20 @@ public class DiagnosticImagingController {
     private final UpdateDiagnosticImagingUseCase updateUseCase;
     private final FindDiagnosticImagingUseCase findUseCase;
     private final ListDiagnosticImagingsUseCase listUseCase;
+    private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDiagnosticImagingUseCase deleteUseCase;
 
     public DiagnosticImagingController(CreateDiagnosticImagingUseCase createUseCase,
                                        UpdateDiagnosticImagingUseCase updateUseCase,
                                        FindDiagnosticImagingUseCase findUseCase,
                                        ListDiagnosticImagingsUseCase listUseCase,
+                                       ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
                                        DeleteDiagnosticImagingUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -58,6 +62,11 @@ public class DiagnosticImagingController {
     @GetMapping
     public List<DiagnosticImagingResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<DiagnosticImagingResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

@@ -9,6 +9,7 @@ import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.CreateHospitalizationRequest;
@@ -29,17 +30,20 @@ public class HospitalizationController {
     private final UpdateHospitalizationUseCase updateUseCase;
     private final FindHospitalizationUseCase findUseCase;
     private final ListHospitalizationsUseCase listUseCase;
+    private final ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteHospitalizationUseCase deleteUseCase;
 
     public HospitalizationController(CreateHospitalizationUseCase createUseCase,
                                      UpdateHospitalizationUseCase updateUseCase,
                                      FindHospitalizationUseCase findUseCase,
                                      ListHospitalizationsUseCase listUseCase,
+                                     ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
                                      DeleteHospitalizationUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -57,6 +61,11 @@ public class HospitalizationController {
     @GetMapping
     public List<HospitalizationResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<HospitalizationResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

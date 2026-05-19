@@ -14,4 +14,7 @@ public interface DewormingJpaRepository extends JpaRepository<DewormingJpaEntity
     @Override
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<DewormingJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    List<DewormingJpaEntity> findAllByAnimalId(Long animalId);
 }
