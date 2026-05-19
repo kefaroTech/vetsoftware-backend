@@ -34,6 +34,9 @@ public class SurgeryJpaEntity {
     @Column(length = 2000)
     private String complications;
 
+    @Column(nullable = false, length = 20)
+    private String status;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "animal_id", nullable = false)
     private AnimalJpaEntity animal;
@@ -65,6 +68,8 @@ public class SurgeryJpaEntity {
     public void setObservations(String observations) { this.observations = observations; }
     public String getComplications() { return complications; }
     public void setComplications(String complications) { this.complications = complications; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public AnimalJpaEntity getAnimal() { return animal; }
     public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
     public ConsultationJpaEntity getConsultation() { return consultation; }

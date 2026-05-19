@@ -9,6 +9,7 @@ public record LaboratoryTestResponse(
         LaboratoryTestTypeSummary testType,
         Integer quantity,
         String diagnosis,
+        String status,
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,

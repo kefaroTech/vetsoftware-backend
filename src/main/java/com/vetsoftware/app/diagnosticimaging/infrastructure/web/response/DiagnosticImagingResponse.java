@@ -11,6 +11,7 @@ public record DiagnosticImagingResponse(
         String studyType,
         String diagnosis,
         String observations,
+        String status,
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,

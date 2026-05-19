@@ -11,6 +11,7 @@ public class DiagnosticImaging {
     private String studyType;
     private String diagnosis;
     private String observations;
+    private DiagnosticImagingStatus status;
     private AnimalRef animal;
     private ConsultationRef consultation;
     private CompanyRef company;
@@ -18,10 +19,11 @@ public class DiagnosticImaging {
 
     public DiagnosticImaging(Long id, LocalDate date, DiagnosticImagingTypeRef diagnosticImagingType,
                              String clinicalSigns, String studyType, String diagnosis, String observations,
-                             AnimalRef animal, ConsultationRef consultation, CompanyRef company,
+                             DiagnosticImagingStatus status, AnimalRef animal,
+                             ConsultationRef consultation, CompanyRef company,
                              LocalDateTime createdDate) {
         validate(date, diagnosticImagingType, clinicalSigns, studyType, diagnosis, observations,
-                 animal, company);
+                 status, animal, company);
         this.id = id;
         this.date = date;
         this.diagnosticImagingType = diagnosticImagingType;
@@ -29,6 +31,7 @@ public class DiagnosticImaging {
         this.studyType = studyType;
         this.diagnosis = diagnosis;
         this.observations = observations;
+        this.status = status;
         this.animal = animal;
         this.consultation = consultation;
         this.company = company;
@@ -40,15 +43,15 @@ public class DiagnosticImaging {
                                            String observations, AnimalRef animal,
                                            ConsultationRef consultation, CompanyRef company) {
         return new DiagnosticImaging(null, date, diagnosticImagingType, clinicalSigns, studyType,
-                                     diagnosis, observations, animal, consultation, company,
-                                     LocalDateTime.now());
+                                     diagnosis, observations, DiagnosticImagingStatus.PENDIENTE,
+                                     animal, consultation, company, LocalDateTime.now());
     }
 
     public void update(LocalDate date, DiagnosticImagingTypeRef diagnosticImagingType,
                        String clinicalSigns, String studyType, String diagnosis, String observations,
                        AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         validate(date, diagnosticImagingType, clinicalSigns, studyType, diagnosis, observations,
-                 animal, company);
+                 this.status, animal, company);
         this.date = date;
         this.diagnosticImagingType = diagnosticImagingType;
         this.clinicalSigns = clinicalSigns;
@@ -60,9 +63,15 @@ public class DiagnosticImaging {
         this.company = company;
     }
 
+    public void changeStatus(DiagnosticImagingStatus newStatus) {
+        if (newStatus == null) throw new IllegalArgumentException("status is required");
+        this.status = newStatus;
+    }
+
     private static void validate(LocalDate date, DiagnosticImagingTypeRef diagnosticImagingType,
                                   String clinicalSigns, String studyType, String diagnosis,
-                                  String observations, AnimalRef animal, CompanyRef company) {
+                                  String observations, DiagnosticImagingStatus status,
+                                  AnimalRef animal, CompanyRef company) {
         if (date == null) throw new IllegalArgumentException("date is required");
         if (diagnosticImagingType == null) throw new IllegalArgumentException("diagnosticImagingType is required");
         if (clinicalSigns == null || clinicalSigns.isBlank()) throw new IllegalArgumentException("clinicalSigns is required");
@@ -73,6 +82,7 @@ public class DiagnosticImaging {
         if (diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
         if (observations != null && observations.length() > 2000)
             throw new IllegalArgumentException("observations must be 2000 chars or less");
+        if (status == null) throw new IllegalArgumentException("status is required");
         if (animal == null) throw new IllegalArgumentException("animal is required");
         if (company == null) throw new IllegalArgumentException("company is required");
     }
@@ -84,6 +94,7 @@ public class DiagnosticImaging {
     public String getStudyType() { return studyType; }
     public String getDiagnosis() { return diagnosis; }
     public String getObservations() { return observations; }
+    public DiagnosticImagingStatus getStatus() { return status; }
     public AnimalRef getAnimal() { return animal; }
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }

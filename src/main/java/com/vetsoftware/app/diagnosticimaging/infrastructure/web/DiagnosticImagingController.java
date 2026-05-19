@@ -1,5 +1,6 @@
 package com.vetsoftware.app.diagnosticimaging.infrastructure.web;
 
+import com.vetsoftware.app.diagnosticimaging.application.command.ChangeDiagnosticImagingStatusCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.CreateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.UpdateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.dto.AnimalSummaryDto;
@@ -7,12 +8,14 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingTypeSummaryDto;
+import com.vetsoftware.app.diagnosticimaging.application.port.in.ChangeDiagnosticImagingStatusUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.CreateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.DeleteDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.FindDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsByAnimalUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.UpdateDiagnosticImagingUseCase;
+import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.ChangeDiagnosticImagingStatusRequest;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.CreateDiagnosticImagingRequest;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.UpdateDiagnosticImagingRequest;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.response.AnimalSummary;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class DiagnosticImagingController {
     private final CreateDiagnosticImagingUseCase createUseCase;
     private final UpdateDiagnosticImagingUseCase updateUseCase;
+    private final ChangeDiagnosticImagingStatusUseCase changeStatusUseCase;
     private final FindDiagnosticImagingUseCase findUseCase;
     private final ListDiagnosticImagingsUseCase listUseCase;
     private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
@@ -37,12 +41,14 @@ public class DiagnosticImagingController {
 
     public DiagnosticImagingController(CreateDiagnosticImagingUseCase createUseCase,
                                        UpdateDiagnosticImagingUseCase updateUseCase,
+                                       ChangeDiagnosticImagingStatusUseCase changeStatusUseCase,
                                        FindDiagnosticImagingUseCase findUseCase,
                                        ListDiagnosticImagingsUseCase listUseCase,
                                        ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
                                        DeleteDiagnosticImagingUseCase deleteUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
+        this.changeStatusUseCase = changeStatusUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
@@ -84,6 +90,13 @@ public class DiagnosticImagingController {
                 request.animalId(), request.consultationId(), request.companyId())));
     }
 
+    @PatchMapping("/{id}/status")
+    public DiagnosticImagingResponse changeStatus(@PathVariable Long id,
+                                                  @Valid @RequestBody ChangeDiagnosticImagingStatusRequest request) {
+        return toResponse(changeStatusUseCase.execute(
+            new ChangeDiagnosticImagingStatusCommand(id, request.status())));
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
@@ -99,6 +112,7 @@ public class DiagnosticImagingController {
             dto.id(), dto.date(),
             new DiagnosticImagingTypeSummary(t.id(), t.name()),
             dto.clinicalSigns(), dto.studyType(), dto.diagnosis(), dto.observations(),
+            dto.status(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),

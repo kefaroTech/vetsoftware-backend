@@ -7,6 +7,7 @@ import com.vetsoftware.app.diagnosticimaging.domain.AnimalRef;
 import com.vetsoftware.app.diagnosticimaging.domain.CompanyRef;
 import com.vetsoftware.app.diagnosticimaging.domain.ConsultationRef;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImaging;
+import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingStatus;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingTypeRef;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.persistence.DiagnosticImagingTypeJpaEntity;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,7 @@ public class DiagnosticImagingJpaMapper {
         entity.setStudyType(imaging.getStudyType());
         entity.setDiagnosis(imaging.getDiagnosis());
         entity.setObservations(imaging.getObservations());
+        entity.setStatus(imaging.getStatus().name());
         entity.setAnimal(animal);
         entity.setConsultation(consultation);
         entity.setCompany(company);
@@ -52,6 +54,7 @@ public class DiagnosticImagingJpaMapper {
             entity.getId(), entity.getDate(), typeRef,
             entity.getClinicalSigns(), entity.getStudyType(),
             entity.getDiagnosis(), entity.getObservations(),
+            DiagnosticImagingStatus.valueOf(entity.getStatus()),
             animalRef, consultationRef, companyRef, entity.getCreatedDate());
     }
 }

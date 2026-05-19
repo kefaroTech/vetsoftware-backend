@@ -7,6 +7,7 @@ import com.vetsoftware.app.laboratorytest.domain.AnimalRef;
 import com.vetsoftware.app.laboratorytest.domain.CompanyRef;
 import com.vetsoftware.app.laboratorytest.domain.ConsultationRef;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestStatus;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestTypeRef;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public class LaboratoryTestJpaMapper {
         entity.setTestType(testType);
         entity.setQuantity(laboratoryTest.getQuantity());
         entity.setDiagnosis(laboratoryTest.getDiagnosis());
+        entity.setStatus(laboratoryTest.getStatus().name());
         entity.setAnimal(animal);
         entity.setConsultation(consultation);
         entity.setCompany(company);
@@ -50,6 +52,7 @@ public class LaboratoryTestJpaMapper {
         return new LaboratoryTest(
             entity.getId(), entity.getDate(), testTypeRef,
             entity.getQuantity(), entity.getDiagnosis(),
+            LaboratoryTestStatus.valueOf(entity.getStatus()),
             animalRef, consultationRef, companyRef, entity.getCreatedDate());
     }
 }

@@ -28,6 +28,9 @@ public class LaboratoryTestJpaEntity {
     @Column(nullable = false, length = 2000)
     private String diagnosis;
 
+    @Column(nullable = false, length = 20)
+    private String status;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "animal_id", nullable = false)
     private AnimalJpaEntity animal;
@@ -55,6 +58,8 @@ public class LaboratoryTestJpaEntity {
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public String getDiagnosis() { return diagnosis; }
     public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public AnimalJpaEntity getAnimal() { return animal; }
     public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
     public ConsultationJpaEntity getConsultation() { return consultation; }

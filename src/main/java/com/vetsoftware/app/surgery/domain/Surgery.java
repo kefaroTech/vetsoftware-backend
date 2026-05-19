@@ -11,6 +11,7 @@ public class Surgery {
     private String medicament;
     private String observations;
     private String complications;
+    private SurgeryStatus status;
     private AnimalRef animal;
     private ConsultationRef consultation;
     private CompanyRef company;
@@ -18,9 +19,10 @@ public class Surgery {
 
     public Surgery(Long id, LocalDate date, SurgeryTypeRef surgeryType, String description,
                    String medicament, String observations, String complications,
-                   AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-                   LocalDateTime createdDate) {
-        validate(date, surgeryType, description, medicament, observations, complications, animal, company);
+                   SurgeryStatus status, AnimalRef animal, ConsultationRef consultation,
+                   CompanyRef company, LocalDateTime createdDate) {
+        validate(date, surgeryType, description, medicament, observations, complications,
+                 status, animal, company);
         this.id = id;
         this.date = date;
         this.surgeryType = surgeryType;
@@ -28,6 +30,7 @@ public class Surgery {
         this.medicament = medicament;
         this.observations = observations;
         this.complications = complications;
+        this.status = status;
         this.animal = animal;
         this.consultation = consultation;
         this.company = company;
@@ -38,13 +41,15 @@ public class Surgery {
                                  String medicament, String observations, String complications,
                                  AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Surgery(null, date, surgeryType, description, medicament, observations,
-                           complications, animal, consultation, company, LocalDateTime.now());
+                           complications, SurgeryStatus.PENDIENTE, animal, consultation, company,
+                           LocalDateTime.now());
     }
 
     public void update(LocalDate date, SurgeryTypeRef surgeryType, String description,
                        String medicament, String observations, String complications,
                        AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
-        validate(date, surgeryType, description, medicament, observations, complications, animal, company);
+        validate(date, surgeryType, description, medicament, observations, complications,
+                 this.status, animal, company);
         this.date = date;
         this.surgeryType = surgeryType;
         this.description = description;
@@ -56,9 +61,14 @@ public class Surgery {
         this.company = company;
     }
 
+    public void changeStatus(SurgeryStatus newStatus) {
+        if (newStatus == null) throw new IllegalArgumentException("status is required");
+        this.status = newStatus;
+    }
+
     private static void validate(LocalDate date, SurgeryTypeRef surgeryType, String description,
                                   String medicament, String observations, String complications,
-                                  AnimalRef animal, CompanyRef company) {
+                                  SurgeryStatus status, AnimalRef animal, CompanyRef company) {
         if (date == null) throw new IllegalArgumentException("date is required");
         if (surgeryType == null) throw new IllegalArgumentException("surgeryType is required");
         if (description == null || description.isBlank()) throw new IllegalArgumentException("description is required");
@@ -69,6 +79,7 @@ public class Surgery {
             throw new IllegalArgumentException("observations must be 2000 chars or less");
         if (complications != null && complications.length() > 2000)
             throw new IllegalArgumentException("complications must be 2000 chars or less");
+        if (status == null) throw new IllegalArgumentException("status is required");
         if (animal == null) throw new IllegalArgumentException("animal is required");
         if (company == null) throw new IllegalArgumentException("company is required");
     }
@@ -80,6 +91,7 @@ public class Surgery {
     public String getMedicament() { return medicament; }
     public String getObservations() { return observations; }
     public String getComplications() { return complications; }
+    public SurgeryStatus getStatus() { return status; }
     public AnimalRef getAnimal() { return animal; }
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }

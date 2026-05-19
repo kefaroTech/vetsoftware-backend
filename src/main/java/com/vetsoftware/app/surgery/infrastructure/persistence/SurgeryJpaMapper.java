@@ -7,6 +7,7 @@ import com.vetsoftware.app.surgery.domain.AnimalRef;
 import com.vetsoftware.app.surgery.domain.CompanyRef;
 import com.vetsoftware.app.surgery.domain.ConsultationRef;
 import com.vetsoftware.app.surgery.domain.Surgery;
+import com.vetsoftware.app.surgery.domain.SurgeryStatus;
 import com.vetsoftware.app.surgery.domain.SurgeryTypeRef;
 import com.vetsoftware.app.surgerytype.infrastructure.persistence.SurgeryTypeJpaEntity;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,7 @@ public class SurgeryJpaMapper {
         entity.setMedicament(surgery.getMedicament());
         entity.setObservations(surgery.getObservations());
         entity.setComplications(surgery.getComplications());
+        entity.setStatus(surgery.getStatus().name());
         entity.setAnimal(animal);
         entity.setConsultation(consultation);
         entity.setCompany(company);
@@ -52,6 +54,7 @@ public class SurgeryJpaMapper {
             entity.getId(), entity.getDate(), surgeryTypeRef,
             entity.getDescription(), entity.getMedicament(), entity.getObservations(),
             entity.getComplications(),
+            SurgeryStatus.valueOf(entity.getStatus()),
             animalRef, consultationRef, companyRef, entity.getCreatedDate());
     }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="061_add_status_to_surgeries" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="surgeries" columnName="status"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="surgeries">
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDIENTE">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

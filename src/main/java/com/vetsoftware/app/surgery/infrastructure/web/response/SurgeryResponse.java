@@ -11,6 +11,7 @@ public record SurgeryResponse(
         String medicament,
         String observations,
         String complications,
+        String status,
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,

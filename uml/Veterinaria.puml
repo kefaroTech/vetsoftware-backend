@@ -60,6 +60,24 @@ enum DewormingType {
   OTHER
 }
 
+enum LaboratoryTestStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum SurgeryStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum DiagnosticImagingStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -331,6 +349,7 @@ class Surgery {
   -medicament: String
   -observations: String
   -complications: String
+  -status: SurgeryStatus
   -animal: Animal
   -consultation: Consultation
   -company: Company
@@ -367,6 +386,7 @@ class LaboratoryTest {
   -type: LaboratoryTestType
   -quantity: Integer
   -diagnosis: String
+  -status: LaboratoryTestStatus
   -animal: Animal
   -consultation: Consultation
   -company: Company
@@ -426,6 +446,7 @@ class DiagnosticImaging {
   -studyType: String
   -diagnosis: String
   -observations: String
+  -status: DiagnosticImagingStatus
   -animal: Animal
   -consultation: Consultation
   -company: Company
@@ -517,6 +538,7 @@ SurgeryType           "0..*" --> "0..1" Company
 Surgery               --> SurgeryType
 Surgery               --> Animal
 Surgery               --> Company
+Surgery               --> SurgeryStatus
 Surgery               "0..*" --> "0..1" Consultation
 
 Hospitalization       --> HospitalizationType
@@ -529,6 +551,7 @@ LaboratoryTestType              "0..*" --> "0..1" Company
 LaboratoryTest        --> LaboratoryTestType
 LaboratoryTest        --> Animal
 LaboratoryTest        --> Company
+LaboratoryTest        --> LaboratoryTestStatus
 LaboratoryTest        "0..*" --> "0..1" Consultation
 
 Prescription          --> Animal
@@ -545,6 +568,7 @@ DiagnosticImagingType "0..*" --> "0..1" Company
 DiagnosticImaging     --> DiagnosticImagingType
 DiagnosticImaging     --> Animal
 DiagnosticImaging     --> Company
+DiagnosticImaging     --> DiagnosticImagingStatus
 DiagnosticImaging     "0..*" --> "0..1" Consultation
 
 Spa                   --> SpaType
