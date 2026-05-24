@@ -12,6 +12,7 @@ import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
+import com.vetsoftware.app.daycare.domain.DayCareNotFoundException;
 import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
@@ -80,6 +81,7 @@ public class GlobalExceptionHandler {
             HospitalizationNotFoundException.class,
             LaboratoryTestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
             PrescriptionNotFoundException.class, DewormingNotFoundException.class,
+            DayCareNotFoundException.class,
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
             MedicamentPrescriptionNotFoundException.class,
             SurgeryTypeNotFoundException.class, SurgeryNotFoundException.class,

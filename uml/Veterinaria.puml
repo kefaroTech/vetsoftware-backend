@@ -43,6 +43,11 @@ enum HospitalizationType {
   HOSPITALIZATION
 }
 
+enum DayCareType {
+  DAYCARE
+  HOTEL
+}
+
 enum ReasonLeaving {
   MEDICAL_DISCHARGE
   HOME_TREATMENT
@@ -372,6 +377,19 @@ class Hospitalization {
   -createdBy: Employee
 }
 
+class DayCare {
+  -date: LocalDate
+  -startDate: LocalDate
+  -endDate: LocalDate
+  -type: DayCareType
+  -objects: String
+  -observations: String
+  -animal: Animal
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+}
+
 class LaboratoryTestType {
   -name: String
   -description: String
@@ -546,6 +564,10 @@ Hospitalization       --> ReasonLeaving
 Hospitalization       --> Animal
 Hospitalization       --> Company
 Hospitalization       "0..*" --> "0..1" Consultation
+
+DayCare       --> DayCareType
+DayCare       --> Animal
+DayCare       --> Company
 
 LaboratoryTestType              "0..*" --> "0..1" Company
 LaboratoryTest        --> LaboratoryTestType
