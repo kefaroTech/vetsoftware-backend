@@ -1,0 +1,57 @@
+@startuml membershipsubmodule_find
+title GET /membership-sub-modules/{id} — Find MembershipSubModule by ID
+
+actor Client
+participant "MembershipSubModuleController" as Controller
+participant "FindMembershipSubModuleUseCase\n<<port.in>>" as UseCase
+participant "FindMembershipSubModuleService" as Service
+participant "MembershipSubModuleRepository\n<<port.out>>" as Repo
+participant "MembershipSubModuleJpaMapper" as Mapper
+participant "MembershipSubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /membership-sub-modules/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT membership_sub_module\nJOIN FETCH (membership, subModule)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<MembershipSubModuleJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : MembershipSubModule
+  Repo --> Service : Optional<MembershipSubModule>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : MembershipSubModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : MembershipSubModuleDto.from(...)
+Service --> UseCase : MembershipSubModuleDto
+UseCase --> Controller : MembershipSubModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nMembershipSubModuleResponse
+deactivate Controller
+
+@enduml

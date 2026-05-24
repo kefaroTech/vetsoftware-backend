@@ -1,0 +1,46 @@
+@startuml city_list
+title GET /cities — List all Cities
+
+actor Client
+participant "CityController" as Controller
+participant "ListCitiesUseCase\n<<port.in>>" as UseCase
+participant "ListCitiesService" as Service
+participant "CityRepository\n<<port.out>>" as Repo
+participant "CityJpaMapper" as Mapper
+participant "CityJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /cities
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase: (sin @PreAuthorize)
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT city\nJOIN FETCH state\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<CityJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<City>
+Repo --> Service : List<City>
+deactivate Repo
+
+Service -> Service : stream().map(CityDto::from).toList()
+Service --> UseCase : List<CityDto>
+UseCase --> Controller : List<CityDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<CityResponse>
+deactivate Controller
+
+@enduml

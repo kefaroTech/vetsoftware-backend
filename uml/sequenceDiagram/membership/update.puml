@@ -1,0 +1,73 @@
+@startuml membership_update
+title PUT /memberships/{id} — Update Membership
+
+actor Client
+participant "MembershipController" as Controller
+participant "UpdateMembershipUseCase\n<<port.in>>" as UseCase
+participant "UpdateMembershipService" as Service
+participant "MembershipRepository\n<<port.out>>" as Repo
+participant "MembershipJpaMapper" as Mapper
+participant "MembershipJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /memberships/{id}\n+ UpdateMembershipRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateMembershipCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT membership
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<MembershipJpaEntity>
+alt membership no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : MembershipNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Membership
+Repo --> Service : Optional<Membership>
+
+Service -> Service : MembershipStatus.valueOf(command.status().toUpperCase())
+alt status inválido
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : membership.update(name, status, mandatory)\n(invariantes de dominio)
+
+Service -> Repo : save(membership)
+Repo -> Mapper : toJpa(membership)
+Mapper --> Repo : MembershipJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE membership
+DB --> JpaRepo : ok
+JpaRepo --> Repo : MembershipJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Membership
+Repo --> Service : Membership
+
+Service -> Service : MembershipDto.from(membership)
+Service --> UseCase : MembershipDto
+UseCase --> Controller : MembershipDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nMembershipResponse
+deactivate Controller
+
+@enduml

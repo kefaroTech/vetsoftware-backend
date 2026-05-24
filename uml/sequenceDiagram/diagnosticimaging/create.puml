@@ -1,0 +1,79 @@
+@startuml diagnostic_imaging_create
+title POST /diagnostic-imagings — Create DiagnosticImaging
+
+actor Client
+participant "DiagnosticImagingController" as Controller
+participant "CreateDiagnosticImagingUseCase\n<<port.in>>" as UseCase
+participant "CreateDiagnosticImagingService" as Service
+participant "DiagnosticImagingTypeQueryPort" as TypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DiagnosticImagingRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingJpaMapper" as Mapper
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /diagnostic-imagings\n+ CreateDiagnosticImagingRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateDiagnosticImagingCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR
+  (diagnosticimaging.create AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> TypeQP : findById(diagnosticImagingTypeId)
+TypeQP --> Service : Optional<DiagnosticImagingTypeRef>
+alt type no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : DiagnosticImaging.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(imaging)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\ntype, animal, consultation?, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(imaging, type, animal, consultation, company)
+Mapper --> Repo : DiagnosticImagingJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT diagnostic_imaging
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : DiagnosticImagingJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DiagnosticImaging
+Repo --> Service : DiagnosticImaging
+deactivate Repo
+
+Service -> Service : DiagnosticImagingDto.from(imaging)
+Service --> UseCase : DiagnosticImagingDto
+UseCase --> Controller : DiagnosticImagingDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nDiagnosticImagingResponse
+deactivate Controller
+deactivate Service
+
+@enduml

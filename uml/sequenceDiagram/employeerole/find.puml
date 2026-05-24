@@ -1,0 +1,57 @@
+@startuml employeerole_find
+title GET /employee-roles/{id} — Find EmployeeRole by ID
+
+actor Client
+participant "EmployeeRoleController" as Controller
+participant "FindEmployeeRoleUseCase\n<<port.in>>" as UseCase
+participant "FindEmployeeRoleService" as Service
+participant "EmployeeRoleRepository\n<<port.out>>" as Repo
+participant "EmployeeRoleJpaMapper" as Mapper
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /employee-roles/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT employee_role\nJOIN FETCH (employee, role)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<EmployeeRoleJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : EmployeeRole
+  Repo --> Service : Optional<EmployeeRole>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : EmployeeRoleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : EmployeeRoleDto.from(employeeRole)
+Service --> UseCase : EmployeeRoleDto
+UseCase --> Controller : EmployeeRoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nEmployeeRoleResponse
+deactivate Controller
+
+@enduml

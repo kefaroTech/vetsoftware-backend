@@ -1,0 +1,54 @@
+@startuml specie_create
+title POST /species — Create Specie
+
+actor Client
+participant "SpecieController" as Controller
+participant "CreateSpecieUseCase\n<<port.in>>" as UseCase
+participant "CreateSpecieService" as Service
+participant "SpecieRepository\n<<port.out>>" as Repo
+participant "SpecieJpaMapper" as Mapper
+participant "SpecieJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /species\n+ CreateSpecieRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSpecieCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : Specie.create(name)\n(invariantes de dominio)
+
+Service -> Repo : save(specie)
+activate Repo
+Repo -> Mapper : toJpa(specie)
+Mapper --> Repo : SpecieJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT specie
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SpecieJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Specie
+Repo --> Service : Specie
+deactivate Repo
+
+Service -> Service : SpecieDto.from(specie)
+Service --> UseCase : SpecieDto
+UseCase --> Controller : SpecieDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSpecieResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml permission_update
+title PUT /permissions/{id} — Update Permission
+
+actor Client
+participant "PermissionController" as Controller
+participant "UpdatePermissionUseCase\n<<port.in>>" as UseCase
+participant "UpdatePermissionService" as Service
+participant "PermissionRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "SubModuleQueryPort" as SubModuleQP
+participant "PermissionJpaMapper" as Mapper
+participant "PermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /permissions/{id}\n+ UpdatePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdatePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT permission\nJOIN FETCH (company, subModule)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PermissionJpaEntity>
+alt permission no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Permission
+Repo --> Service : Optional<Permission>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt subModule no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : permission.update(name, code, company, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(permission)
+Repo -> JpaRepo : getReferenceById(...)\ncompany, subModule (sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(permission, company, subModule)
+Mapper --> Repo : PermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : PermissionJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Permission
+Repo --> Service : Permission
+
+Service -> Service : PermissionDto.from(permission)
+Service --> UseCase : PermissionDto
+UseCase --> Controller : PermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPermissionResponse
+deactivate Controller
+
+@enduml

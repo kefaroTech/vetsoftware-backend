@@ -1,0 +1,49 @@
+@startuml baserole_list
+title GET /base-roles — List all BaseRoles
+
+actor Client
+participant "BaseRoleController" as Controller
+participant "ListBaseRolesUseCase\n<<port.in>>" as UseCase
+participant "ListBaseRolesService" as Service
+participant "BaseRoleRepository\n<<port.out>>" as Repo
+participant "BaseRoleJpaMapper" as Mapper
+participant "BaseRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /base-roles
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT base_role
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<BaseRoleJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<BaseRole>
+Repo --> Service : List<BaseRole>
+deactivate Repo
+
+Service -> Service : stream().map(BaseRoleDto::from).toList()
+Service --> UseCase : List<BaseRoleDto>
+UseCase --> Controller : List<BaseRoleDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<BaseRoleResponse>
+deactivate Controller
+
+@enduml

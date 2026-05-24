@@ -1,0 +1,57 @@
+@startuml systemuserpermission_find
+title GET /system-user-permissions/{id} — Find SystemUserPermission by ID
+
+actor Client
+participant "SystemUserPermissionController" as Controller
+participant "FindSystemUserPermissionUseCase\n<<port.in>>" as UseCase
+participant "FindSystemUserPermissionService" as Service
+participant "SystemUserPermissionRepository\n<<port.out>>" as Repo
+participant "SystemUserPermissionJpaMapper" as Mapper
+participant "SystemUserPermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /system-user-permissions/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT system_user_permission\nJOIN FETCH (systemUser, systemPermission)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SystemUserPermissionJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : SystemUserPermission
+  Repo --> Service : Optional<SystemUserPermission>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SystemUserPermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SystemUserPermissionDto.from(...)
+Service --> UseCase : SystemUserPermissionDto
+UseCase --> Controller : SystemUserPermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSystemUserPermissionResponse
+deactivate Controller
+
+@enduml

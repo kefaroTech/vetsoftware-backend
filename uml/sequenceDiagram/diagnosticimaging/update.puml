@@ -1,0 +1,88 @@
+@startuml diagnostic_imaging_update
+title PUT /diagnostic-imagings/{id} — Update DiagnosticImaging
+
+actor Client
+participant "DiagnosticImagingController" as Controller
+participant "UpdateDiagnosticImagingUseCase\n<<port.in>>" as UseCase
+participant "UpdateDiagnosticImagingService" as Service
+participant "DiagnosticImagingRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingTypeQueryPort" as TypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DiagnosticImagingJpaMapper" as Mapper
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /diagnostic-imagings/{id}\n+ UpdateDiagnosticImagingRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateDiagnosticImagingCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR diagnosticimaging.update OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT diagnostic_imaging (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DiagnosticImagingJpaEntity>
+alt imaging no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DiagnosticImagingNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : DiagnosticImaging
+Repo --> Service : Optional<DiagnosticImaging>
+
+Service -> TypeQP : findById(diagnosticImagingTypeId)
+TypeQP --> Service : Optional<DiagnosticImagingTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : imaging.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(imaging)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(imaging, type, animal, consultation, company)
+Mapper --> Repo : DiagnosticImagingJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE diagnostic_imaging
+DB --> JpaRepo : ok
+JpaRepo --> Repo : DiagnosticImagingJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DiagnosticImaging
+Repo --> Service : DiagnosticImaging
+
+Service -> Service : DiagnosticImagingDto.from(imaging)
+Service --> UseCase : DiagnosticImagingDto
+UseCase --> Controller : DiagnosticImagingDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDiagnosticImagingResponse
+deactivate Controller
+
+@enduml

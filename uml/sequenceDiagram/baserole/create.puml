@@ -1,0 +1,80 @@
+@startuml baserole_create
+title POST /base-roles — Create BaseRole
+
+actor Client
+participant "BaseRoleController" as Controller
+participant "CreateBaseRoleUseCase\n<<port.in>>" as UseCase
+participant "CreateBaseRoleService" as Service
+participant "BaseRoleRepository\n<<port.out>>" as Repo
+participant "BaseRoleJpaMapper" as Mapper
+participant "BaseRoleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "BaseRolePermissionInitializationPort\n<<port.out>>" as InitPort
+participant "BasePermissionJpaRepository\n<<spring-data>>" as BPJpaRepo
+participant "BaseRolePermissionJpaRepository\n<<spring-data>>" as BRPJpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /base-roles\n+ CreateBaseRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateBaseRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> Service : BaseRole.create(name, code, mandatory)\n(invariantes de dominio)
+
+Service -> Repo : save(baseRole)
+activate Repo
+Repo -> Mapper : toJpa(baseRole)
+Mapper --> Repo : BaseRoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT base_role
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : BaseRoleJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : BaseRole
+Repo --> Service : BaseRole
+deactivate Repo
+
+Service -> Service : BaseRoleDto.from(baseRole)
+
+alt baseRole.getMandatory() == true
+  Service -> InitPort : initializeForAllBasePermissions(savedId)
+  activate InitPort
+  InitPort -> JpaRepo : getReferenceById(baseRoleId)
+  JpaRepo --> InitPort : proxy
+  InitPort -> BPJpaRepo : findAll()
+  BPJpaRepo -> DB : SELECT base_permission
+  DB --> BPJpaRepo : rows[]
+  BPJpaRepo --> InitPort : List<BasePermissionJpaEntity>
+  InitPort -> BRPJpaRepo : existsByBaseRoleIdAndBasePermissionId(...)\npor cada base_permission
+  BRPJpaRepo -> DB : SELECT count base_role_permission
+  DB --> BRPJpaRepo : boolean
+  BRPJpaRepo --> InitPort : boolean[]
+  InitPort -> InitPort : crear BaseRolePermissionJpaEntity[]\n(solo los faltantes)
+  InitPort -> BRPJpaRepo : saveAll(entities)
+  BRPJpaRepo -> DB : INSERT base_role_permission [*]
+  DB --> BRPJpaRepo : ok
+  BRPJpaRepo --> InitPort : List<BaseRolePermissionJpaEntity>
+  InitPort --> Service : void
+  deactivate InitPort
+end
+
+Service --> UseCase : BaseRoleDto
+UseCase --> Controller : BaseRoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nBaseRoleResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,73 @@
+@startuml permission_create
+title POST /permissions — Create Permission
+
+actor Client
+participant "PermissionController" as Controller
+participant "CreatePermissionUseCase\n<<port.in>>" as UseCase
+participant "CreatePermissionService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "SubModuleQueryPort" as SubModuleQP
+participant "PermissionRepository\n<<port.out>>" as Repo
+participant "PermissionJpaMapper" as Mapper
+participant "PermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /permissions\n+ CreatePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreatePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt subModule no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Permission.create(name, code, company, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(permission)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\ncompany, subModule
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(permission, company, subModule)
+Mapper --> Repo : PermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : PermissionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, company, subModule)
+Mapper --> Repo : Permission
+Repo --> Service : Permission
+deactivate Repo
+
+Service -> Service : PermissionDto.from(permission)
+Service --> UseCase : PermissionDto
+UseCase --> Controller : PermissionDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nPermissionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml surgery_delete
+title DELETE /surgeries/{id} — Delete Surgery
+
+actor Client
+participant "SurgeryController" as Controller
+participant "DeleteSurgeryUseCase\n<<port.in>>" as UseCase
+participant "DeleteSurgeryService" as Service
+participant "SurgeryRepository\n<<port.out>>" as Repo
+participant "SurgeryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /surgeries/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  surgery.delete OR
+  hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT surgery
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SurgeryJpaEntity>
+alt surgery no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SurgeryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Surgery>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE surgery
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

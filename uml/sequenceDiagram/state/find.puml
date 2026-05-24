@@ -1,0 +1,57 @@
+@startuml state_find
+title GET /states/{id} — Find State by ID
+
+actor Client
+participant "StateController" as Controller
+participant "FindStateUseCase\n<<port.in>>" as UseCase
+participant "FindStateService" as Service
+participant "StateRepository\n<<port.out>>" as Repo
+participant "StateJpaMapper" as Mapper
+participant "StateJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /states/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT state\nJOIN FETCH country\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<StateJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : State
+  Repo --> Service : Optional<State>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : StateNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : StateDto.from(state)
+Service --> UseCase : StateDto
+UseCase --> Controller : StateDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nStateResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,107 @@
+@startuml publishadminpermissions_publish
+title POST /admin/admin-permissions/publish — Publish ADMIN permissions to all companies
+
+actor Client
+participant "AdminPermissionPublishController" as Controller
+participant "PublishAdminPermissionsUseCase\n<<port.in>>" as UseCase
+participant "PublishAdminPermissionsService" as Service
+participant "AdminBaseRoleQueryPort\n<<port.out>>" as AdminBRQP
+participant "AdminBasePermissionsQueryPort\n<<port.out>>" as AdminBPQP
+participant "CompanyCatalogQueryPort\n<<port.out>>" as CatalogQP
+participant "MembershipSubModuleIdsQueryPort\n<<port.out>>" as MSubQP
+participant "PermissionUpsertPort\n<<port.out>>" as PermUpsert
+participant "RolePermissionUpsertPort\n<<port.out>>" as RolePermUpsert
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /admin/admin-permissions/publish
+activate Controller
+
+Controller -> UseCase : execute()
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute()  @Transactional
+activate Service
+
+Service -> AdminBRQP : findAdminBaseRoleId()
+AdminBRQP -> DB : SELECT base_role WHERE code='ADMIN'
+DB --> AdminBRQP : row | empty
+AdminBRQP --> Service : Optional<Long>
+alt no existe BaseRole 'ADMIN'
+  Service --> GEH : IllegalStateException
+  GEH --> Client : 500 Internal Server Error
+end
+
+Service -> AdminBPQP : findByAdminBaseRoleId(adminBaseRoleId)
+AdminBPQP -> DB : SELECT base_role_permission WHERE base_role_id=?\nJOIN FETCH (basePermission, basePermission.subModule)\nvia @EntityGraph
+DB --> AdminBPQP : rows[]
+AdminBPQP --> Service : List<AdminBasePermission>
+
+Service -> CatalogQP : findAllWithAdminRole()
+CatalogQP -> DB : SELECT role WHERE code='ADMIN'\n(JOIN company, company.membership)
+DB --> CatalogQP : rows[]
+CatalogQP --> Service : List<CompanyAdminContext>
+
+alt sin admin base permissions o sin companies
+  Service --> UseCase : PublishAdminPermissionsDto(total, 0, 0, 0)
+  UseCase --> Controller : dto
+  Controller --> Client : 200 OK\nPublishAdminPermissionsResponse
+end
+
+Service -> MSubQP : findSubModuleIdsByMembershipIds(membershipIds)
+MSubQP -> DB : SELECT membership_submodule WHERE membership_id IN (...)\n(JOIN membership, subModule)
+DB --> MSubQP : rows[]
+MSubQP --> Service : Map<membershipId, Set<subModuleId>>
+
+loop por cada CompanyAdminContext
+  loop por cada AdminBasePermission tpl
+    alt subModuleId no está permitido en la membership de la company
+      Service -> Service : skip
+    else permitido
+      Service -> PermUpsert : upsert(companyId, tpl)
+      PermUpsert -> DB : SELECT permission WHERE company_id=? AND code=?
+      alt existe
+        DB --> PermUpsert : row
+        PermUpsert --> Service : UpsertedPermission(id, created=false)
+      else no existe
+        DB --> PermUpsert : empty
+        PermUpsert -> DB : getReferenceById(companyId)\ngetReferenceById(subModuleId)
+        PermUpsert -> DB : INSERT permission
+        DB --> PermUpsert : id
+        PermUpsert --> Service : UpsertedPermission(id, created=true)
+      end
+
+      Service -> RolePermUpsert : linkIfAbsent(adminRoleId, permissionId)
+      RolePermUpsert -> DB : SELECT count role_permission WHERE role_id=? AND permission_id=?
+      alt ya existe
+        DB --> RolePermUpsert : true
+        RolePermUpsert --> Service : false
+      else falta link
+        DB --> RolePermUpsert : false
+        RolePermUpsert -> DB : getReferenceById(roleId)\ngetReferenceById(permissionId)
+        RolePermUpsert -> DB : INSERT role_permission
+        DB --> RolePermUpsert : ok
+        RolePermUpsert --> Service : true (changedHere)
+      end
+    end
+  end
+end
+
+Service -> Service : PublishAdminPermissionsDto.from(\n  new PublishAdminPermissionsResult(\n    totalCompanies, companiesUpdated,\n    permissionsCreated, rolePermissionsCreated))
+Service --> UseCase : PublishAdminPermissionsDto
+UseCase --> Controller : PublishAdminPermissionsDto
+deactivate Service
+
+Controller -> Controller : PublishAdminPermissionsResponse.from(dto)
+Controller --> Client : 200 OK\nPublishAdminPermissionsResponse
+deactivate Controller
+
+@enduml

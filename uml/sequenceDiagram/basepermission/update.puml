@@ -1,0 +1,77 @@
+@startuml basepermission_update
+title PUT /base-permissions/{id} — Update BasePermission
+
+actor Client
+participant "BasePermissionController" as Controller
+participant "UpdateBasePermissionUseCase\n<<port.in>>" as UseCase
+participant "UpdateBasePermissionService" as Service
+participant "BasePermissionRepository\n<<port.out>>" as Repo
+participant "SubModuleQueryPort\n<<port.out>>" as SubModuleQP
+participant "BasePermissionJpaMapper" as Mapper
+participant "BasePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /base-permissions/{id}\n+ UpdateBasePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateBasePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT base_permission JOIN FETCH subModule
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BasePermissionJpaEntity>
+alt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BasePermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : BasePermission
+Repo --> Service : Optional<BasePermission>
+
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt submodule no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : basePermission.update(name, code, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(basePermission)
+Repo -> JpaRepo : getReferenceById(subModuleId)
+JpaRepo --> Repo : SubModuleJpaEntity (proxy)
+Repo -> Mapper : toJpa(basePermission, subModule)
+Mapper --> Repo : BasePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE base_permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : BasePermissionJpaEntity
+Repo -> Mapper : toDomain(entity, subModuleRef precargado)
+Mapper --> Repo : BasePermission
+Repo --> Service : BasePermission
+
+Service -> Service : BasePermissionDto.from(basePermission)
+Service --> UseCase : BasePermissionDto
+UseCase --> Controller : BasePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nBasePermissionResponse
+deactivate Controller
+
+@enduml

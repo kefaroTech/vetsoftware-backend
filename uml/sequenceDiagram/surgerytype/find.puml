@@ -1,0 +1,57 @@
+@startuml surgery_type_find
+title GET /surgery-types/{id} — Find SurgeryType by ID
+
+actor Client
+participant "SurgeryTypeController" as Controller
+participant "FindSurgeryTypeUseCase\n<<port.in>>" as UseCase
+participant "FindSurgeryTypeService" as Service
+participant "SurgeryTypeRepository\n<<port.out>>" as Repo
+participant "SurgeryTypeJpaMapper" as Mapper
+participant "SurgeryTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /surgery-types/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT surgery_type\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SurgeryTypeJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : SurgeryType
+  Repo --> Service : Optional<SurgeryType>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SurgeryTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SurgeryTypeDto.from(surgeryType)
+Service --> UseCase : SurgeryTypeDto
+UseCase --> Controller : SurgeryTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSurgeryTypeResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml baserole_find
+title GET /base-roles/{id} — Find BaseRole by ID
+
+actor Client
+participant "BaseRoleController" as Controller
+participant "FindBaseRoleUseCase\n<<port.in>>" as UseCase
+participant "FindBaseRoleService" as Service
+participant "BaseRoleRepository\n<<port.out>>" as Repo
+participant "BaseRoleJpaMapper" as Mapper
+participant "BaseRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /base-roles/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT base_role
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BaseRoleJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : BaseRole
+  Repo --> Service : Optional<BaseRole>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BaseRoleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : BaseRoleDto.from(baseRole)
+Service --> UseCase : BaseRoleDto
+UseCase --> Controller : BaseRoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nBaseRoleResponse
+deactivate Controller
+
+@enduml

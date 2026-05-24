@@ -1,0 +1,93 @@
+@startuml surgery_create
+title POST /surgeries — Create Surgery
+
+actor Client
+participant "SurgeryController" as Controller
+participant "CreateSurgeryUseCase\n<<port.in>>" as UseCase
+participant "CreateSurgeryService" as Service
+participant "SurgeryTypeQueryPort" as SurgeryTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "SurgeryRepository\n<<port.out>>" as Repo
+participant "SurgeryJpaMapper" as Mapper
+participant "SurgeryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /surgeries\n+ CreateSurgeryRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSurgeryCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  surgery.create OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> SurgeryTypeQP : findById(surgeryTypeId)
+SurgeryTypeQP --> Service : Optional<SurgeryTypeRef>
+alt surgeryType no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+  alt consultation no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Surgery.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(surgery)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nsurgeryType, animal, consultation, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(surgery, surgeryType, animal, consultation, company)
+Mapper --> Repo : SurgeryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT surgery
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SurgeryJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Surgery
+Repo --> Service : Surgery
+deactivate Repo
+
+Service -> Service : SurgeryDto.from(surgery)
+Service --> UseCase : SurgeryDto
+UseCase --> Controller : SurgeryDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSurgeryResponse
+deactivate Controller
+deactivate Service
+
+@enduml

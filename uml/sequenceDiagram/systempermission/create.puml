@@ -1,0 +1,54 @@
+@startuml systempermission_create
+title POST /system-permissions — Create SystemPermission
+
+actor Client
+participant "SystemPermissionController" as Controller
+participant "CreateSystemPermissionUseCase\n<<port.in>>" as UseCase
+participant "CreateSystemPermissionService" as Service
+participant "SystemPermissionRepository\n<<port.out>>" as Repo
+participant "SystemPermissionJpaMapper" as Mapper
+participant "SystemPermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /system-permissions\n+ CreateSystemPermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSystemPermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : SystemPermission.create(name, code)\n(invariantes de dominio)
+
+Service -> Repo : save(systemPermission)
+activate Repo
+Repo -> Mapper : toJpa(systemPermission)
+Mapper --> Repo : SystemPermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT system_permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SystemPermissionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SystemPermission
+Repo --> Service : SystemPermission
+deactivate Repo
+
+Service -> Service : SystemPermissionDto.from(systemPermission)
+Service --> UseCase : SystemPermissionDto
+UseCase --> Controller : SystemPermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSystemPermissionResponse
+deactivate Controller
+
+@enduml

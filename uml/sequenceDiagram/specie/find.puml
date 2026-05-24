@@ -1,0 +1,57 @@
+@startuml specie_find
+title GET /species/{id} — Find Specie by ID
+
+actor Client
+participant "SpecieController" as Controller
+participant "FindSpecieUseCase\n<<port.in>>" as UseCase
+participant "FindSpecieService" as Service
+participant "SpecieRepository\n<<port.out>>" as Repo
+participant "SpecieJpaMapper" as Mapper
+participant "SpecieJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /species/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT specie
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SpecieJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Specie
+  Repo --> Service : Optional<Specie>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SpecieNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SpecieDto.from(specie)
+Service --> UseCase : SpecieDto
+UseCase --> Controller : SpecieDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSpecieResponse
+deactivate Controller
+
+@enduml

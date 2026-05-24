@@ -1,0 +1,74 @@
+@startuml surgery_change_status
+title PATCH /surgeries/{id}/status — Change Surgery Status
+
+actor Client
+participant "SurgeryController" as Controller
+participant "ChangeSurgeryStatusUseCase\n<<port.in>>" as UseCase
+participant "ChangeSurgeryStatusService" as Service
+participant "SurgeryRepository\n<<port.out>>" as Repo
+participant "SurgeryJpaMapper" as Mapper
+participant "SurgeryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PATCH /surgeries/{id}/status\n+ ChangeSurgeryStatusRequest
+activate Controller
+
+Controller -> UseCase : execute(ChangeSurgeryStatusCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT surgery (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SurgeryJpaEntity>
+alt surgery no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SurgeryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Surgery
+Repo --> Service : Optional<Surgery>
+
+Service -> Service : SurgeryStatus.valueOf(\n  command.status().toUpperCase())
+note right of Service
+  Si el status no es válido,
+  IllegalArgumentException → 400
+end note
+Service -> Service : surgery.changeStatus(newStatus)\n(invariantes de dominio)
+
+Service -> Repo : save(surgery)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(surgery, refs)
+Mapper --> Repo : SurgeryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE surgery
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SurgeryJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Surgery
+Repo --> Service : Surgery
+
+Service -> Service : SurgeryDto.from(surgery)
+Service --> UseCase : SurgeryDto
+UseCase --> Controller : SurgeryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSurgeryResponse
+deactivate Controller
+
+@enduml

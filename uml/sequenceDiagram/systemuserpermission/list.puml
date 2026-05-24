@@ -1,0 +1,49 @@
+@startuml systemuserpermission_list
+title GET /system-user-permissions — List all SystemUserPermissions
+
+actor Client
+participant "SystemUserPermissionController" as Controller
+participant "ListSystemUserPermissionsUseCase\n<<port.in>>" as UseCase
+participant "ListSystemUserPermissionsService" as Service
+participant "SystemUserPermissionRepository\n<<port.out>>" as Repo
+participant "SystemUserPermissionJpaMapper" as Mapper
+participant "SystemUserPermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /system-user-permissions
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT system_user_permission\nJOIN FETCH (systemUser, systemPermission)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<SystemUserPermissionJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<SystemUserPermission>
+Repo --> Service : List<SystemUserPermission>
+deactivate Repo
+
+Service -> Service : stream().map(SystemUserPermissionDto::from).toList()
+Service --> UseCase : List<SystemUserPermissionDto>
+UseCase --> Controller : List<SystemUserPermissionDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<SystemUserPermissionResponse>
+deactivate Controller
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml submodule_find
+title GET /sub-modules/{id} — Find SubModule by ID
+
+actor Client
+participant "SubModuleController" as Controller
+participant "FindSubModuleUseCase\n<<port.in>>" as UseCase
+participant "FindSubModuleService" as Service
+participant "SubModuleRepository\n<<port.out>>" as Repo
+participant "SubModuleJpaMapper" as Mapper
+participant "SubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /sub-modules/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT sub_module\nJOIN FETCH module\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SubModuleJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : SubModule
+  Repo --> Service : Optional<SubModule>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SubModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SubModuleDto.from(subModule)
+Service --> UseCase : SubModuleDto
+UseCase --> Controller : SubModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSubModuleResponse
+deactivate Controller
+
+@enduml

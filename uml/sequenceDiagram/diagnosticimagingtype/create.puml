@@ -1,0 +1,71 @@
+@startuml diagnostic_imaging_type_create
+title POST /diagnostic-imaging-types — Create DiagnosticImagingType
+
+actor Client
+participant "DiagnosticImagingTypeController" as Controller
+participant "CreateDiagnosticImagingTypeUseCase\n<<port.in>>" as UseCase
+participant "CreateDiagnosticImagingTypeService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "DiagnosticImagingTypeRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingTypeJpaMapper" as Mapper
+participant "DiagnosticImagingTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /diagnostic-imaging-types\n+ CreateDiagnosticImagingTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateDiagnosticImagingTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+else companyId == null
+  note right of Service: tipo general (sin company)
+end
+
+Service -> Service : DiagnosticImagingType.create(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(type)
+activate Repo
+alt company != null
+  Repo -> JpaRepo : companyJpaRepository.getReferenceById(companyId)
+  JpaRepo --> Repo : CompanyJpaEntity proxy
+end
+Repo -> Mapper : toJpa(type, company)
+Mapper --> Repo : DiagnosticImagingTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT diagnostic_imaging_type
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : DiagnosticImagingTypeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, companyRef)
+Mapper --> Repo : DiagnosticImagingType
+Repo --> Service : DiagnosticImagingType
+deactivate Repo
+
+Service -> Service : DiagnosticImagingTypeDto.from(type)
+Service --> UseCase : DiagnosticImagingTypeDto
+UseCase --> Controller : DiagnosticImagingTypeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nDiagnosticImagingTypeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

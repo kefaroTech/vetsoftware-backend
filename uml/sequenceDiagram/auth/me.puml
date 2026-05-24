@@ -1,0 +1,61 @@
+@startuml auth_me
+title GET /auth/me — Get current authenticated user
+
+actor Client
+participant "AuthController" as Controller
+participant "GetCurrentUserUseCase\n<<port.in>>" as UseCase
+participant "GetCurrentUserService" as Service
+participant "SecurityContextHolder" as SCH
+participant "EmployeeProfileQueryPort\n<<port.out>>" as ProfileQP
+participant "JpaEmployeeProfileQueryPort" as JpaProfileQP
+participant "EmployeeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /auth/me\n(Authorization: Bearer <jwt>)
+activate Controller
+
+Controller -> UseCase : execute()
+note right of UseCase
+  @PreAuthorize:
+  isAuthenticated()
+end note
+
+UseCase -> Service : execute()
+activate Service
+
+Service -> SCH : getContext().getAuthentication()
+SCH --> Service : Authentication
+alt principal no es EmployeeContext
+  Service --> GEH : AccessDeniedException("Not an employee context")
+  GEH --> Client : 403 Forbidden
+end
+
+Service -> ProfileQP : findById(me.employeeId())
+ProfileQP -> JpaProfileQP : findById(employeeId)
+JpaProfileQP -> JpaRepo : findById(employeeId)
+JpaRepo -> DB : SELECT employee\nJOIN company
+DB --> JpaRepo : row | empty
+JpaRepo --> JpaProfileQP : Optional<EmployeeJpaEntity>
+JpaProfileQP --> Service : Optional<EmployeeProfile>\n(id, companyId, name, employeeCode)
+
+alt perfil no existe
+  Service --> GEH : AccessDeniedException("Employee profile not found")
+  GEH --> Client : 403 Forbidden
+end
+
+Service -> Service : new MeDto(id, "EMPLOYEE", companyId,\n  name, employeeCode, permissions)
+Service --> UseCase : MeDto
+UseCase --> Controller : MeDto
+deactivate Service
+
+Controller -> Controller : new MeResponse(...permissions...)
+Controller --> Client : 200 OK\nMeResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,71 @@
+@startuml diagnostic_imaging_change_status
+title PATCH /diagnostic-imagings/{id}/status — Change DiagnosticImaging Status
+
+actor Client
+participant "DiagnosticImagingController" as Controller
+participant "ChangeDiagnosticImagingStatusUseCase\n<<port.in>>" as UseCase
+participant "ChangeDiagnosticImagingStatusService" as Service
+participant "DiagnosticImagingRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingJpaMapper" as Mapper
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PATCH /diagnostic-imagings/{id}/status\n+ ChangeDiagnosticImagingStatusRequest
+activate Controller
+
+Controller -> UseCase : execute(ChangeDiagnosticImagingStatusCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT diagnostic_imaging (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DiagnosticImagingJpaEntity>
+alt imaging no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DiagnosticImagingNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : DiagnosticImaging
+Repo --> Service : Optional<DiagnosticImaging>
+
+Service -> Service : DiagnosticImagingStatus.valueOf(status.toUpperCase())
+note right of Service: lanza IllegalArgumentException si\nel status no es válido → 400
+Service -> Service : imaging.changeStatus(newStatus)
+
+Service -> Repo : save(imaging)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(imaging, type, animal, consultation, company)
+Mapper --> Repo : DiagnosticImagingJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE diagnostic_imaging
+DB --> JpaRepo : ok
+JpaRepo --> Repo : DiagnosticImagingJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DiagnosticImaging
+Repo --> Service : DiagnosticImaging
+
+Service -> Service : DiagnosticImagingDto.from(imaging)
+Service --> UseCase : DiagnosticImagingDto
+UseCase --> Controller : DiagnosticImagingDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDiagnosticImagingResponse
+deactivate Controller
+
+@enduml

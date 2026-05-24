@@ -1,0 +1,88 @@
+@startuml vaccination_create
+title POST /vaccinations — Create Vaccination
+
+actor Client
+participant "VaccinationController" as Controller
+participant "CreateVaccinationUseCase\n<<port.in>>" as UseCase
+participant "Authz" as Authz
+participant "CreateVaccinationService" as Service
+participant "VaccinationTypeQueryPort" as VaccinationTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "VaccinationRepository\n<<port.out>>" as Repo
+participant "VaccinationJpaMapper" as Mapper
+participant "VaccinationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /vaccinations\n+ CreateVaccinationRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateVaccinationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM') OR
+  (vaccination.create AND
+   @authz.isMyCompany(#command.companyId))
+end note
+UseCase -> Authz : isMyCompany(command.companyId)
+Authz --> UseCase : true | false
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> VaccinationTypeQP : findById(vaccinationTypeId)
+VaccinationTypeQP --> Service : Optional<VaccinationTypeRef>
+alt vaccinationType no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : Vaccination.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(vaccination)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nvaccinationType, animal, consultation, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(vaccination, vaccinationType, animal, consultation, company)
+Mapper --> Repo : VaccinationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT vaccination
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : VaccinationJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Vaccination
+Repo --> Service : Vaccination
+deactivate Repo
+
+Service -> Service : VaccinationDto.from(vaccination)
+Service --> UseCase : VaccinationDto
+UseCase --> Controller : VaccinationDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nVaccinationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

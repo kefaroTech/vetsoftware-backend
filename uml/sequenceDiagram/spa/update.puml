@@ -1,0 +1,83 @@
+@startuml spa_update
+title PUT /spas/{id} — Update Spa
+
+actor Client
+participant "SpaController" as Controller
+participant "UpdateSpaUseCase\n<<port.in>>" as UseCase
+participant "UpdateSpaService" as Service
+participant "SpaRepository\n<<port.out>>" as Repo
+participant "SpaTypeQueryPort" as SpaTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "SpaJpaMapper" as Mapper
+participant "SpaJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /spas/{id}\n+ UpdateSpaRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateSpaCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT spa (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SpaJpaEntity>
+alt spa no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SpaNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Spa
+Repo --> Service : Optional<Spa>
+
+Service -> SpaTypeQP : findById(spaTypeId)
+SpaTypeQP --> Service : Optional<SpaTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : spa.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(spa)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(spa, spaType, animal, company)
+Mapper --> Repo : SpaJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE spa
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SpaJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Spa
+Repo --> Service : Spa
+
+Service -> Service : SpaDto.from(spa)
+Service --> UseCase : SpaDto
+UseCase --> Controller : SpaDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSpaResponse
+deactivate Controller
+
+@enduml

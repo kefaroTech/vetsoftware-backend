@@ -1,0 +1,83 @@
+@startuml consultation_update
+title PUT /consultations/{id} — Update Consultation
+
+actor Client
+participant "ConsultationController" as Controller
+participant "UpdateConsultationUseCase\n<<port.in>>" as UseCase
+participant "UpdateConsultationService" as Service
+participant "ConsultationRepository\n<<port.out>>" as Repo
+participant "ConsultationTypeQueryPort" as CTQP
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "ConsultationJpaMapper" as Mapper
+participant "ConsultationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /consultations/{id}\n+ UpdateConsultationRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateConsultationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT consultation (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ConsultationJpaEntity>
+alt consultation no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ConsultationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Consultation
+Repo --> Service : Optional<Consultation>
+
+Service -> CTQP : findById(consultationTypeId)
+CTQP --> Service : Optional<ConsultationTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : consultation.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(consultation)
+Repo -> JpaRepo : getReferenceById(...)\nconsultationType, animal, company (proxies)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(consultation, refs)
+Mapper --> Repo : ConsultationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE consultation
+DB --> JpaRepo : ok
+JpaRepo --> Repo : ConsultationJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Consultation
+Repo --> Service : Consultation
+
+Service -> Service : ConsultationDto.from(consultation)
+Service --> UseCase : ConsultationDto
+UseCase --> Controller : ConsultationDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nConsultationResponse
+deactivate Controller
+
+@enduml

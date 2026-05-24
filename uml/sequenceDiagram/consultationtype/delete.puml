@@ -1,0 +1,56 @@
+@startuml consultationtype_delete
+title DELETE /consultation-types/{id} — Delete ConsultationType
+
+actor Client
+participant "ConsultationTypeController" as Controller
+participant "DeleteConsultationTypeUseCase\n<<port.in>>" as UseCase
+participant "DeleteConsultationTypeService" as Service
+participant "ConsultationTypeRepository\n<<port.out>>" as Repo
+participant "ConsultationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /consultation-types/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT consultation_type WHERE id=?
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ConsultationTypeJpaEntity>
+alt consultationType no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ConsultationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<ConsultationType>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE consultation_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

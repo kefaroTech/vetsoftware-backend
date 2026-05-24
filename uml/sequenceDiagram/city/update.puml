@@ -1,0 +1,78 @@
+@startuml city_update
+title PUT /cities/{id} — Update City
+
+actor Client
+participant "CityController" as Controller
+participant "UpdateCityUseCase\n<<port.in>>" as UseCase
+participant "UpdateCityService" as Service
+participant "CityRepository\n<<port.out>>" as Repo
+participant "StateQueryPort" as StateQP
+participant "CityJpaMapper" as Mapper
+participant "CityJpaRepository\n<<spring-data>>" as JpaRepo
+participant "StateJpaRepository\n<<spring-data>>" as StateJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /cities/{id}\n+ UpdateCityRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateCityCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT city (JOIN FETCH state)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CityJpaEntity>
+alt city no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CityNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : City
+Repo --> Service : Optional<City>
+
+Service -> StateQP : findById(stateId)
+StateQP --> Service : Optional<StateRef>
+alt state no encontrado
+  Service --> GEH : IllegalArgumentException\n("State not found")
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : city.update(name, state)\n(invariantes de dominio)
+
+Service -> Repo : save(city)
+Repo -> StateJpaRepo : getReferenceById(state.id())
+StateJpaRepo --> Repo : StateJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(city, state)
+Mapper --> Repo : CityJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE city
+DB --> JpaRepo : ok
+JpaRepo --> Repo : CityJpaEntity
+Repo -> Mapper : toDomain(entity, stateRef precargado)
+Mapper --> Repo : City
+Repo --> Service : City
+
+Service -> Service : CityDto.from(city)
+Service --> UseCase : CityDto
+UseCase --> Controller : CityDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nCityResponse
+deactivate Controller
+
+@enduml

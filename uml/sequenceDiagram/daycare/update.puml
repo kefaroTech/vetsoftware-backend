@@ -1,0 +1,83 @@
+@startuml daycare_update
+title PUT /daycares/{id} — Update DayCare
+
+actor Client
+participant "DayCareController" as Controller
+participant "UpdateDayCareUseCase\n<<port.in>>" as UseCase
+participant "UpdateDayCareService" as Service
+participant "DayCareRepository\n<<port.out>>" as Repo
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DayCareJpaMapper" as Mapper
+participant "DayCareJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /daycares/{id}\n+ UpdateDayCareRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateDayCareCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  dayCare.update OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT daycare (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DayCareJpaEntity>
+alt daycare no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DayCareNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : DayCare
+Repo --> Service : Optional<DayCare>
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : dayCare.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(dayCare)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(dayCare, animal, company)
+Mapper --> Repo : DayCareJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE daycare
+DB --> JpaRepo : ok
+JpaRepo --> Repo : DayCareJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DayCare
+Repo --> Service : DayCare
+
+Service -> Service : DayCareDto.from(dayCare)
+Service --> UseCase : DayCareDto
+UseCase --> Controller : DayCareDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDayCareResponse
+deactivate Controller
+
+@enduml

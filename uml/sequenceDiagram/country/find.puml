@@ -1,0 +1,57 @@
+@startuml country_find
+title GET /countries/{id} — Find Country by ID
+
+actor Client
+participant "CountryController" as Controller
+participant "FindCountryUseCase\n<<port.in>>" as UseCase
+participant "FindCountryService" as Service
+participant "CountryRepository\n<<port.out>>" as Repo
+participant "CountryJpaMapper" as Mapper
+participant "CountryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /countries/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT country
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CountryJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Country
+  Repo --> Service : Optional<Country>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CountryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : CountryDto.from(country)
+Service --> UseCase : CountryDto
+UseCase --> Controller : CountryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nCountryResponse
+deactivate Controller
+
+@enduml

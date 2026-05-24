@@ -1,0 +1,76 @@
+@startuml employeerole_create
+title POST /employee-roles — Create EmployeeRole
+
+actor Client
+participant "EmployeeRoleController" as Controller
+participant "CreateEmployeeRoleUseCase\n<<port.in>>" as UseCase
+participant "CreateEmployeeRoleService" as Service
+participant "EmployeeQueryPort" as EmployeeQP
+participant "RoleQueryPort" as RoleQP
+participant "EmployeeRoleRepository\n<<port.out>>" as Repo
+participant "PermissionCachePort\n<<port.out>>" as CachePort
+participant "EmployeeRoleJpaMapper" as Mapper
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /employee-roles\n+ CreateEmployeeRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateEmployeeRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR employee.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> EmployeeQP : findById(employeeId)
+EmployeeQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> RoleQP : findById(roleId)
+RoleQP --> Service : Optional<RoleRef>
+alt role no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : EmployeeRole.create(employee, role)\n(invariantes de dominio)
+
+Service -> Repo : save(employeeRole)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nemployee, role
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(employeeRole, employee, role)
+Mapper --> Repo : EmployeeRoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT employee_role
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : EmployeeRoleJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, employee, role)
+Mapper --> Repo : EmployeeRole
+Repo --> Service : EmployeeRole
+deactivate Repo
+
+Service -> Service : EmployeeRoleDto.from(employeeRole)
+Service -> CachePort : evictByEmployeeId(employeeId)
+CachePort --> Service : ok
+Service --> UseCase : EmployeeRoleDto
+UseCase --> Controller : EmployeeRoleDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nEmployeeRoleResponse
+deactivate Controller
+deactivate Service
+
+@enduml

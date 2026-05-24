@@ -1,0 +1,51 @@
+@startuml hospitalization_list_by_animal
+title GET /hospitalizations/by-animal/{animalId} — List Hospitalizations of an Animal
+
+actor Client
+participant "HospitalizationController" as Controller
+participant "ListHospitalizationsByAnimalUseCase\n<<port.in>>" as UseCase
+participant "ListHospitalizationsByAnimalService" as Service
+participant "HospitalizationRepository\n<<port.out>>" as Repo
+participant "HospitalizationJpaMapper" as Mapper
+participant "HospitalizationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /hospitalizations/by-animal/{animalId}
+activate Controller
+
+Controller -> UseCase : listByAnimal(animalId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  hospitalization.read OR
+  hasRole('SYSTEM')
+end note
+UseCase -> Service : listByAnimal(animalId)
+activate Service
+
+Service -> Repo : findAllByAnimalId(animalId)
+activate Repo
+Repo -> JpaRepo : findAllByAnimalId(animalId)
+JpaRepo -> DB : SELECT hospitalization\nWHERE animal_id=?\nJOIN FETCH (animal, consultation, company)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<HospitalizationJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Hospitalization>
+Repo --> Service : List<Hospitalization>
+deactivate Repo
+
+Service -> Service : stream().map(HospitalizationDto::from).toList()
+Service --> UseCase : List<HospitalizationDto>
+UseCase --> Controller : List<HospitalizationDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<HospitalizationResponse>
+deactivate Controller
+
+@enduml

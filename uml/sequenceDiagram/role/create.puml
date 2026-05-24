@@ -1,0 +1,65 @@
+@startuml role_create
+title POST /roles — Create Role
+
+actor Client
+participant "RoleController" as Controller
+participant "CreateRoleUseCase\n<<port.in>>" as UseCase
+participant "CreateRoleService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "RoleRepository\n<<port.out>>" as Repo
+participant "RoleJpaMapper" as Mapper
+participant "RoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /roles\n+ CreateRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR rolePermissions.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Role.create(name, code, company)\n(invariantes de dominio)
+
+Service -> Repo : save(role)
+activate Repo
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(role, company)
+Mapper --> Repo : RoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT role
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : RoleJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, company)
+Mapper --> Repo : Role
+Repo --> Service : Role
+deactivate Repo
+
+Service -> Service : RoleDto.from(role)
+Service --> UseCase : RoleDto
+UseCase --> Controller : RoleDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nRoleResponse
+deactivate Controller
+deactivate Service
+
+@enduml

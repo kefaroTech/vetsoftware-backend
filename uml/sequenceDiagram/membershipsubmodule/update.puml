@@ -1,0 +1,89 @@
+@startuml membershipsubmodule_update
+title PUT /membership-sub-modules/{id} — Update MembershipSubModule
+
+actor Client
+participant "MembershipSubModuleController" as Controller
+participant "UpdateMembershipSubModuleUseCase\n<<port.in>>" as UseCase
+participant "UpdateMembershipSubModuleService" as Service
+participant "MembershipSubModuleRepository\n<<port.out>>" as Repo
+participant "MembershipQueryPort" as MembershipQP
+participant "SubModuleQueryPort" as SubModuleQP
+participant "MembershipSubModuleJpaMapper" as Mapper
+participant "MembershipSubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "MembershipJpaRepository\n<<spring-data>>" as MembershipJpa
+participant "SubModuleJpaRepository\n<<spring-data>>" as SubModuleJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /membership-sub-modules/{id}\n+ UpdateMembershipSubModuleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateMembershipSubModuleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT membership_sub_module (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<MembershipSubModuleJpaEntity>
+alt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : MembershipSubModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : MembershipSubModule
+Repo --> Service : Optional<MembershipSubModule>
+
+Service -> MembershipQP : findById(membershipId)
+MembershipQP --> Service : Optional<MembershipRef>
+alt membership no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt submodule no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : membershipSubModule.update(membership, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(membershipSubModule)
+Repo -> MembershipJpa : getReferenceById(membershipId)
+MembershipJpa --> Repo : MembershipJpaEntity (proxy sin SELECT)
+Repo -> SubModuleJpa : getReferenceById(subModuleId)
+SubModuleJpa --> Repo : SubModuleJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(domain, membership, subModule)
+Mapper --> Repo : MembershipSubModuleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE membership_sub_module
+DB --> JpaRepo : ok
+JpaRepo --> Repo : MembershipSubModuleJpaEntity
+Repo -> Mapper : toDomain(entity, membershipRef, subModuleRef)
+Mapper --> Repo : MembershipSubModule
+Repo --> Service : MembershipSubModule
+
+Service -> Service : MembershipSubModuleDto.from(...)
+Service --> UseCase : MembershipSubModuleDto
+UseCase --> Controller : MembershipSubModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nMembershipSubModuleResponse
+deactivate Controller
+
+@enduml

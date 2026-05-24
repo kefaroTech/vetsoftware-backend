@@ -1,0 +1,75 @@
+@startuml daycare_create
+title POST /daycares — Create DayCare
+
+actor Client
+participant "DayCareController" as Controller
+participant "CreateDayCareUseCase\n<<port.in>>" as UseCase
+participant "CreateDayCareService" as Service
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DayCareRepository\n<<port.out>>" as Repo
+participant "DayCareJpaMapper" as Mapper
+participant "DayCareJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /daycares\n+ CreateDayCareRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateDayCareCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  dayCare.create OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : DayCare.create(...)\n(invariantes de dominio:\nendDate >= startDate,\nobjects ≤ 1000,\nobservations ≤ 2000)
+
+Service -> Repo : save(dayCare)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nanimal, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(dayCare, animal, company)
+Mapper --> Repo : DayCareJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT daycare
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : DayCareJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DayCare
+Repo --> Service : DayCare
+deactivate Repo
+
+Service -> Service : DayCareDto.from(dayCare)
+Service --> UseCase : DayCareDto
+UseCase --> Controller : DayCareDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nDayCareResponse
+deactivate Controller
+deactivate Service
+
+@enduml

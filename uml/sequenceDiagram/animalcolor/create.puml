@@ -1,0 +1,54 @@
+@startuml animalcolor_create
+title POST /animal-colors — Create AnimalColor
+
+actor Client
+participant "AnimalColorController" as Controller
+participant "CreateAnimalColorUseCase\n<<port.in>>" as UseCase
+participant "CreateAnimalColorService" as Service
+participant "AnimalColorRepository\n<<port.out>>" as Repo
+participant "AnimalColorJpaMapper" as Mapper
+participant "AnimalColorJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /animal-colors\n+ CreateAnimalColorRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateAnimalColorCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : AnimalColor.create(name)\n(invariantes de dominio)
+
+Service -> Repo : save(color)
+activate Repo
+Repo -> Mapper : toJpa(color)
+Mapper --> Repo : AnimalColorJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT animal_color
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : AnimalColorJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : AnimalColor
+Repo --> Service : AnimalColor
+deactivate Repo
+
+Service -> Service : AnimalColorDto.from(color)
+Service --> UseCase : AnimalColorDto
+UseCase --> Controller : AnimalColorDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nAnimalColorResponse
+deactivate Controller
+
+@enduml

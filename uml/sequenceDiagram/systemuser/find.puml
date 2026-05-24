@@ -1,0 +1,57 @@
+@startuml systemuser_find
+title GET /system-users/{id} — Find SystemUser by ID
+
+actor Client
+participant "SystemUserController" as Controller
+participant "FindSystemUserUseCase\n<<port.in>>" as UseCase
+participant "FindSystemUserService" as Service
+participant "SystemUserRepository\n<<port.out>>" as Repo
+participant "SystemUserJpaMapper" as Mapper
+participant "SystemUserJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /system-users/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT system_user
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SystemUserJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : SystemUser
+  Repo --> Service : Optional<SystemUser>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SystemUserNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SystemUserDto.from(systemUser)
+Service --> UseCase : SystemUserDto
+UseCase --> Controller : SystemUserDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSystemUserResponse
+deactivate Controller
+
+@enduml

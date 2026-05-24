@@ -1,0 +1,66 @@
+@startuml state_create
+title POST /states — Create State
+
+actor Client
+participant "StateController" as Controller
+participant "CreateStateUseCase\n<<port.in>>" as UseCase
+participant "CreateStateService" as Service
+participant "CountryQueryPort" as CountryQP
+participant "StateRepository\n<<port.out>>" as Repo
+participant "StateJpaMapper" as Mapper
+participant "StateJpaRepository\n<<spring-data>>" as JpaRepo
+participant "CountryJpaRepository\n<<spring-data>>" as CountryJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /states\n+ CreateStateRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateStateCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CountryQP : findById(countryId)
+CountryQP --> Service : Optional<CountryRef>
+alt country no encontrado
+  Service --> GEH : IllegalArgumentException\n("Country not found")
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : State.create(name, country)\n(invariantes de dominio)
+
+Service -> Repo : save(state)
+activate Repo
+Repo -> CountryJpaRepo : getReferenceById(country.id())
+CountryJpaRepo --> Repo : CountryJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(state, country)
+Mapper --> Repo : StateJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT state
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : StateJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, countryRef precargado)
+Mapper --> Repo : State
+Repo --> Service : State
+deactivate Repo
+
+Service -> Service : StateDto.from(state)
+Service --> UseCase : StateDto
+UseCase --> Controller : StateDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nStateResponse
+deactivate Controller
+
+@enduml

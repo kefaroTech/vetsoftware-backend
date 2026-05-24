@@ -1,0 +1,58 @@
+@startuml systemuser_create
+title POST /system-users — Create SystemUser
+
+actor Client
+participant "SystemUserController" as Controller
+participant "CreateSystemUserUseCase\n<<port.in>>" as UseCase
+participant "CreateSystemUserService" as Service
+participant "PasswordHasher" as Hasher
+participant "SystemUserRepository\n<<port.out>>" as Repo
+participant "SystemUserJpaMapper" as Mapper
+participant "SystemUserJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /system-users\n+ CreateSystemUserRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSystemUserCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Hasher : hash(command.password())
+Hasher --> Service : hashed
+
+Service -> Service : SystemUser.create(code, hashed)\n(invariantes de dominio)
+
+Service -> Repo : save(systemUser)
+activate Repo
+Repo -> Mapper : toJpa(systemUser)
+Mapper --> Repo : SystemUserJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT system_user
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SystemUserJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SystemUser
+Repo --> Service : SystemUser
+deactivate Repo
+
+Service -> Service : SystemUserDto.from(systemUser)
+Service --> UseCase : SystemUserDto
+UseCase --> Controller : SystemUserDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSystemUserResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,87 @@
+@startuml deworming_create
+title POST /dewormings — Create Deworming
+
+actor Client
+participant "DewormingController" as Controller
+participant "CreateDewormingUseCase\n<<port.in>>" as UseCase
+participant "CreateDewormingService" as Service
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DewormingRepository\n<<port.out>>" as Repo
+participant "DewormingJpaMapper" as Mapper
+participant "DewormingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /dewormings\n+ CreateDewormingRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateDewormingCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR deworming.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultQP : findById(consultationId)
+  ConsultQP --> Service : Optional<ConsultationRef>
+  alt consultation no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+else consultationId == null
+  Service -> Service : consultation = null
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Deworming.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(deworming)
+activate Repo
+Repo -> JpaRepo : getReferenceById(animalId)
+Repo -> JpaRepo : getReferenceById(consultationId)\n(si consultation != null)
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(deworming, animal, consultation, company)
+Mapper --> Repo : DewormingJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT deworming
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : DewormingJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Deworming
+Repo --> Service : Deworming
+deactivate Repo
+
+Service -> Service : DewormingDto.from(deworming)
+Service --> UseCase : DewormingDto
+UseCase --> Controller : DewormingDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nDewormingResponse
+deactivate Controller
+deactivate Service
+
+@enduml

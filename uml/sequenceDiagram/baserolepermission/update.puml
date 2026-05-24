@@ -1,0 +1,87 @@
+@startuml baserolepermission_update
+title PUT /base-role-permissions/{id} — Update BaseRolePermission
+
+actor Client
+participant "BaseRolePermissionController" as Controller
+participant "UpdateBaseRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "UpdateBaseRolePermissionService" as Service
+participant "BaseRolePermissionRepository\n<<port.out>>" as Repo
+participant "BaseRoleQueryPort\n<<port.out>>" as BaseRoleQP
+participant "BasePermissionQueryPort\n<<port.out>>" as BasePermQP
+participant "BaseRolePermissionJpaMapper" as Mapper
+participant "BaseRolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /base-role-permissions/{id}\n+ UpdateBaseRolePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateBaseRolePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT base_role_permission\nJOIN FETCH (baseRole, basePermission)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BaseRolePermissionJpaEntity>
+alt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BaseRolePermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : BaseRolePermission
+Repo --> Service : Optional<BaseRolePermission>
+
+Service -> BaseRoleQP : findById(baseRoleId)
+BaseRoleQP --> Service : Optional<BaseRoleRef>
+alt baseRole no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> BasePermQP : findById(basePermissionId)
+BasePermQP --> Service : Optional<BasePermissionRef>
+alt basePermission no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : baseRolePermission.update(baseRole, basePermission)\n(invariantes de dominio)
+
+Service -> Repo : save(baseRolePermission)
+Repo -> JpaRepo : getReferenceById(baseRoleId)
+JpaRepo --> Repo : BaseRoleJpaEntity (proxy)
+Repo -> JpaRepo : getReferenceById(basePermissionId)
+JpaRepo --> Repo : BasePermissionJpaEntity (proxy)
+Repo -> Mapper : toJpa(baseRolePermission, baseRole, basePermission)
+Mapper --> Repo : BaseRolePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE base_role_permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : BaseRolePermissionJpaEntity
+Repo -> Mapper : toDomain(entity, baseRoleRef, basePermissionRef)
+Mapper --> Repo : BaseRolePermission
+Repo --> Service : BaseRolePermission
+
+Service -> Service : BaseRolePermissionDto.from(baseRolePermission)
+Service --> UseCase : BaseRolePermissionDto
+UseCase --> Controller : BaseRolePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nBaseRolePermissionResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,66 @@
+@startuml breed_create
+title POST /breeds — Create Breed
+
+actor Client
+participant "BreedController" as Controller
+participant "CreateBreedUseCase\n<<port.in>>" as UseCase
+participant "CreateBreedService" as Service
+participant "SpecieQueryPort" as SpecieQP
+participant "BreedRepository\n<<port.out>>" as Repo
+participant "BreedJpaMapper" as Mapper
+participant "BreedJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SpecieJpaRepository\n<<spring-data>>" as SpecieJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /breeds\n+ CreateBreedRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateBreedCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> SpecieQP : findById(specieId)
+SpecieQP --> Service : Optional<SpecieRef>
+alt specie no encontrada
+  Service --> GEH : IllegalArgumentException\n"Specie not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Breed.create(name, specie)\n(invariantes de dominio)
+
+Service -> Repo : save(breed)
+activate Repo
+Repo -> SpecieJpa : getReferenceById(specieId)
+SpecieJpa --> Repo : SpecieJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(breed, specie)
+Mapper --> Repo : BreedJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT breed
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : BreedJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, specieRef precargado)
+Mapper --> Repo : Breed
+Repo --> Service : Breed
+deactivate Repo
+
+Service -> Service : BreedDto.from(breed)
+Service --> UseCase : BreedDto
+UseCase --> Controller : BreedDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nBreedResponse
+deactivate Controller
+
+@enduml

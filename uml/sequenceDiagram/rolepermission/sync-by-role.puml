@@ -1,0 +1,108 @@
+@startuml rolepermission_sync_by_role
+title PUT /role-permissions/by-role/{roleId} — Sync permissions of a Role
+
+actor Client
+participant "RolePermissionController" as Controller
+participant "SyncRolePermissionsUseCase\n<<port.in>>" as UseCase
+participant "SyncRolePermissionsService" as Service
+participant "RoleQueryPort" as RoleQP
+participant "PermissionQueryPort" as PermQP
+participant "RolePermissionRepository\n<<port.out>>" as Repo
+participant "PermissionCachePort\n<<port.out>>" as CachePort
+participant "RolePermissionJpaMapper" as Mapper
+participant "RolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /role-permissions/by-role/{roleId}\n+ SyncRolePermissionsRequest
+activate Controller
+
+Controller -> UseCase : execute(SyncRolePermissionsCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR rolePermissions.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+alt command.roleId == null
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> RoleQP : findById(roleId)
+RoleQP --> Service : Optional<RoleRef>
+alt role no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Repo : findAllByRoleId(roleId)
+Repo -> JpaRepo : findAllByRoleId(roleId)
+JpaRepo -> DB : SELECT role_permission\nWHERE role_id=?\nJOIN FETCH (role, permission)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<RolePermissionJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<RolePermission>
+Repo --> Service : List<RolePermission> (existing)
+
+Service -> Service : compute diff:\n  toRemove = existing - desired\n  toAdd    = desired - existing
+
+alt toRemoveRpIds no vacío
+  Service -> Repo : deleteAllByIds(toRemoveRpIds)
+  Repo -> JpaRepo : deleteAllByIdInBatch(ids)
+  JpaRepo -> DB : DELETE FROM role_permission\nWHERE id IN (...)
+  DB --> JpaRepo : ok
+end
+
+alt toAddPermIds no vacío
+  loop por cada permissionId nuevo
+    Service -> PermQP : findById(pid)
+    PermQP --> Service : Optional<PermissionRef>
+    alt permission no encontrado
+      Service --> GEH : IllegalArgumentException
+      GEH --> Client : 400 Bad Request
+    end
+    Service -> Service : RolePermission.create(role, permission)
+  end
+  Service -> Repo : saveAll(nuevos)
+  Repo -> JpaRepo : getReferenceById(...) por cada\nrole, permission
+  JpaRepo --> Repo : proxies (sin SELECT)
+  Repo -> Mapper : toJpa(rp, role, permission) por cada
+  Mapper --> Repo : List<RolePermissionJpaEntity>
+  Repo -> JpaRepo : saveAll(entities)
+  JpaRepo -> DB : INSERT role_permission (batch)
+  DB --> JpaRepo : ids generados
+  JpaRepo --> Repo : List<RolePermissionJpaEntity>
+  Repo -> Mapper : toDomain(saved, role, permission) por cada
+  Mapper --> Repo : List<RolePermission>
+  Repo --> Service : List<RolePermission>
+end
+
+Service -> Repo : findAllByRoleId(roleId)
+Repo -> JpaRepo : findAllByRoleId(roleId)
+JpaRepo -> DB : SELECT role_permission\nWHERE role_id=?\nJOIN FETCH (role, permission)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<RolePermissionJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada
+Mapper --> Repo : List<RolePermission>
+Repo --> Service : List<RolePermission> (final)
+
+Service -> Service : stream().map(RolePermissionDto::from).toList()
+Service -> CachePort : evictByRoleId(roleId)
+CachePort --> Service : ok
+Service --> UseCase : List<RolePermissionDto>
+UseCase --> Controller : List<RolePermissionDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<RolePermissionResponse>
+deactivate Controller
+
+@enduml

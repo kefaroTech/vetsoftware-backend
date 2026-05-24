@@ -1,0 +1,73 @@
+@startuml company_create
+title POST /companies — Create Company
+
+actor Client
+participant "CompanyController" as Controller
+participant "CreateCompanyUseCase\n<<port.in>>" as UseCase
+participant "CreateCompanyService" as Service
+participant "CityQueryPort" as CityQP
+participant "MembershipQueryPort" as MembershipQP
+participant "CompanyRepository\n<<port.out>>" as Repo
+participant "CompanyJpaMapper" as Mapper
+participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /companies\n+ CreateCompanyRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateCompanyCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR company.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CityQP : findById(cityId)
+CityQP --> Service : Optional<CityRef>
+alt city no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> MembershipQP : findById(membershipId)
+MembershipQP --> Service : Optional<MembershipRef>
+alt membership no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Company.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(company)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\ncity, membership
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(company, city, membership)
+Mapper --> Repo : CompanyJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT company
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : CompanyJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, city, membership)
+Mapper --> Repo : Company
+Repo --> Service : Company
+deactivate Repo
+
+Service -> Service : CompanyDto.from(company)
+Service --> UseCase : CompanyDto
+UseCase --> Controller : CompanyDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nCompanyResponse
+deactivate Controller
+deactivate Service
+
+@enduml

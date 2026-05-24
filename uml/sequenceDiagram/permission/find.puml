@@ -1,0 +1,57 @@
+@startuml permission_find
+title GET /permissions/{id} — Find Permission by ID
+
+actor Client
+participant "PermissionController" as Controller
+participant "FindPermissionUseCase\n<<port.in>>" as UseCase
+participant "FindPermissionService" as Service
+participant "PermissionRepository\n<<port.out>>" as Repo
+participant "PermissionJpaMapper" as Mapper
+participant "PermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /permissions/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT permission\nJOIN FETCH (company, subModule)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PermissionJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Permission
+  Repo --> Service : Optional<Permission>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : PermissionDto.from(permission)
+Service --> UseCase : PermissionDto
+UseCase --> Controller : PermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPermissionResponse
+deactivate Controller
+
+@enduml

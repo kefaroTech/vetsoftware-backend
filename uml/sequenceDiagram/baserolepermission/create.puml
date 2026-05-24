@@ -1,0 +1,75 @@
+@startuml baserolepermission_create
+title POST /base-role-permissions — Create BaseRolePermission
+
+actor Client
+participant "BaseRolePermissionController" as Controller
+participant "CreateBaseRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "CreateBaseRolePermissionService" as Service
+participant "BaseRoleQueryPort\n<<port.out>>" as BaseRoleQP
+participant "BasePermissionQueryPort\n<<port.out>>" as BasePermQP
+participant "BaseRolePermissionRepository\n<<port.out>>" as Repo
+participant "BaseRolePermissionJpaMapper" as Mapper
+participant "BaseRolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /base-role-permissions\n+ CreateBaseRolePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateBaseRolePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> BaseRoleQP : findById(baseRoleId)
+BaseRoleQP --> Service : Optional<BaseRoleRef>
+alt baseRole no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> BasePermQP : findById(basePermissionId)
+BasePermQP --> Service : Optional<BasePermissionRef>
+alt basePermission no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : BaseRolePermission.create(baseRole, basePermission)\n(invariantes de dominio)
+
+Service -> Repo : save(baseRolePermission)
+activate Repo
+Repo -> JpaRepo : getReferenceById(baseRoleId)\nbaseRoleJpaRepository
+JpaRepo --> Repo : BaseRoleJpaEntity (proxy)
+Repo -> JpaRepo : getReferenceById(basePermissionId)\nbasePermissionJpaRepository
+JpaRepo --> Repo : BasePermissionJpaEntity (proxy)
+Repo -> Mapper : toJpa(baseRolePermission, baseRole, basePermission)
+Mapper --> Repo : BaseRolePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT base_role_permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : BaseRolePermissionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, baseRoleRef, basePermissionRef)
+Mapper --> Repo : BaseRolePermission
+Repo --> Service : BaseRolePermission
+deactivate Repo
+
+Service -> Service : BaseRolePermissionDto.from(baseRolePermission)
+Service --> UseCase : BaseRolePermissionDto
+UseCase --> Controller : BaseRolePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)\n(envuelve BaseRoleSummary + BasePermissionSummary)
+Controller --> Client : 201 Created\nBaseRolePermissionResponse
+deactivate Controller
+
+@enduml

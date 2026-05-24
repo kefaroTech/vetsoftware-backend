@@ -1,0 +1,55 @@
+@startuml baserolepermission_delete
+title DELETE /base-role-permissions/{id} — Delete BaseRolePermission
+
+actor Client
+participant "BaseRolePermissionController" as Controller
+participant "DeleteBaseRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "DeleteBaseRolePermissionService" as Service
+participant "BaseRolePermissionRepository\n<<port.out>>" as Repo
+participant "BaseRolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /base-role-permissions/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT base_role_permission\nJOIN FETCH (baseRole, basePermission)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BaseRolePermissionJpaEntity>
+alt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BaseRolePermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<BaseRolePermission>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE base_role_permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

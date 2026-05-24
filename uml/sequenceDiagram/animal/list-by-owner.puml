@@ -1,0 +1,49 @@
+@startuml animal_list_by_owner
+title GET /animals/by-owner/{ownerId} — List Animals of an Owner (current company)
+
+actor Client
+participant "AnimalController" as Controller
+participant "Authz" as Authz
+participant "ListAnimalsByOwnerUseCase\n<<port.in>>" as UseCase
+participant "ListAnimalsByOwnerService" as Service
+participant "AnimalRepository\n<<port.out>>" as Repo
+participant "AnimalJpaMapper" as Mapper
+participant "AnimalJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /animals/by-owner/{ownerId}
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listByOwner(ownerId, companyId)
+UseCase -> Service : listByOwner(ownerId, companyId)
+activate Service
+
+Service -> Repo : findByOwnerIdAndCompanyId(ownerId, companyId)
+activate Repo
+Repo -> JpaRepo : findAllByOwner_IdAndCompany_Id(ownerId, companyId)
+JpaRepo -> DB : SELECT animal\nWHERE owner_id=? AND company_id=?\nJOIN FETCH (specie, breed, owner, company, color)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<AnimalJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Animal>
+Repo --> Service : List<Animal>
+deactivate Repo
+
+Service -> Service : stream().map(AnimalDto::from).toList()
+Service --> UseCase : List<AnimalDto>
+UseCase --> Controller : List<AnimalDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<AnimalResponse>
+deactivate Controller
+
+@enduml

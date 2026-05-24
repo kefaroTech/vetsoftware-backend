@@ -1,0 +1,70 @@
+@startuml employee_create
+title POST /employees — Create Employee
+
+actor Client
+participant "EmployeeController" as Controller
+participant "CreateEmployeeUseCase\n<<port.in>>" as UseCase
+participant "CreateEmployeeService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "PasswordHasher" as Hasher
+participant "EmployeeRepository\n<<port.out>>" as Repo
+participant "EmployeeJpaMapper" as Mapper
+participant "EmployeeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /employees\n+ CreateEmployeeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateEmployeeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR employee.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : EmployeeStatus.valueOf(...)
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Hasher : hash(password)
+Hasher --> Service : hashed
+
+Service -> Service : Employee.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(employee)
+activate Repo
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(employee, company)
+Mapper --> Repo : EmployeeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT employee
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : EmployeeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, company)
+Mapper --> Repo : Employee
+Repo --> Service : Employee
+deactivate Repo
+
+Service -> Service : EmployeeDto.from(employee)
+Service --> UseCase : EmployeeDto
+UseCase --> Controller : EmployeeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nEmployeeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

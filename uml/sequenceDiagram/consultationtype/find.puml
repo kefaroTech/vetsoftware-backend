@@ -1,0 +1,58 @@
+@startuml consultationtype_find
+title GET /consultation-types/{id} — Find ConsultationType by ID
+
+actor Client
+participant "ConsultationTypeController" as Controller
+participant "FindConsultationTypeUseCase\n<<port.in>>" as UseCase
+participant "FindConsultationTypeService" as Service
+participant "ConsultationTypeRepository\n<<port.out>>" as Repo
+participant "ConsultationTypeJpaMapper" as Mapper
+participant "ConsultationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /consultation-types/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT consultation_type WHERE id=?
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ConsultationTypeJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : ConsultationType
+  Repo --> Service : Optional<ConsultationType>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ConsultationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : ConsultationTypeDto.from(consultationType)
+Service --> UseCase : ConsultationTypeDto
+UseCase --> Controller : ConsultationTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nConsultationTypeResponse
+deactivate Controller
+
+@enduml

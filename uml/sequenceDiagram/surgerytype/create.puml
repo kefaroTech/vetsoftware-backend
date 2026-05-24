@@ -1,0 +1,69 @@
+@startuml surgery_type_create
+title POST /surgery-types — Create SurgeryType
+
+actor Client
+participant "SurgeryTypeController" as Controller
+participant "CreateSurgeryTypeUseCase\n<<port.in>>" as UseCase
+participant "CreateSurgeryTypeService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "SurgeryTypeRepository\n<<port.out>>" as Repo
+participant "SurgeryTypeJpaMapper" as Mapper
+participant "SurgeryTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /surgery-types\n+ CreateSurgeryTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSurgeryTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+
+Service -> Service : SurgeryType.create(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(surgeryType)
+activate Repo
+alt company != null
+  Repo -> JpaRepo : getReferenceById(companyId)
+  JpaRepo --> Repo : proxy (sin SELECT)
+end
+Repo -> Mapper : toJpa(surgeryType, company)
+Mapper --> Repo : SurgeryTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT surgery_type
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SurgeryTypeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : SurgeryType
+Repo --> Service : SurgeryType
+deactivate Repo
+
+Service -> Service : SurgeryTypeDto.from(surgeryType)
+Service --> UseCase : SurgeryTypeDto
+UseCase --> Controller : SurgeryTypeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSurgeryTypeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

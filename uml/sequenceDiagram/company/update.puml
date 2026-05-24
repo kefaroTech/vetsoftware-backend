@@ -1,0 +1,84 @@
+@startuml company_update
+title PUT /companies/{id} — Update Company
+
+actor Client
+participant "CompanyController" as Controller
+participant "UpdateCompanyUseCase\n<<port.in>>" as UseCase
+participant "UpdateCompanyService" as Service
+participant "CompanyRepository\n<<port.out>>" as Repo
+participant "CityQueryPort" as CityQP
+participant "MembershipQueryPort" as MembershipQP
+participant "CompanyJpaMapper" as Mapper
+participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /companies/{id}\n+ UpdateCompanyRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateCompanyCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR company.update OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT company (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CompanyJpaEntity>
+alt company no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CompanyNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Company
+Repo --> Service : Optional<Company>
+
+Service -> CityQP : findById(cityId)
+CityQP --> Service : Optional<CityRef>
+alt city no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> MembershipQP : findById(membershipId)
+MembershipQP --> Service : Optional<MembershipRef>
+alt membership no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : company.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(company)
+Repo -> JpaRepo : getReferenceById(...)\ncity, membership (sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(company, city, membership)
+Mapper --> Repo : CompanyJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE company
+DB --> JpaRepo : ok
+JpaRepo --> Repo : CompanyJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Company
+Repo --> Service : Company
+
+Service -> Service : CompanyDto.from(company)
+Service --> UseCase : CompanyDto
+UseCase --> Controller : CompanyDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nCompanyResponse
+deactivate Controller
+
+@enduml

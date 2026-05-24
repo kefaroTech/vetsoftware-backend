@@ -1,0 +1,67 @@
+@startuml consultationtype_update
+title PUT /consultation-types/{id} — Update ConsultationType
+
+actor Client
+participant "ConsultationTypeController" as Controller
+participant "UpdateConsultationTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateConsultationTypeService" as Service
+participant "ConsultationTypeRepository\n<<port.out>>" as Repo
+participant "ConsultationTypeJpaMapper" as Mapper
+participant "ConsultationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /consultation-types/{id}\n+ UpdateConsultationTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateConsultationTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT consultation_type WHERE id=?
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ConsultationTypeJpaEntity>
+alt consultationType no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ConsultationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ConsultationType
+Repo --> Service : Optional<ConsultationType>
+
+Service -> Service : consultationType.update(name, description)\n(invariantes de dominio)
+
+Service -> Repo : save(consultationType)
+Repo -> Mapper : toJpa(consultationType)
+Mapper --> Repo : ConsultationTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE consultation_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : ConsultationTypeJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ConsultationType
+Repo --> Service : ConsultationType
+
+Service -> Service : ConsultationTypeDto.from(consultationType)
+Service --> UseCase : ConsultationTypeDto
+UseCase --> Controller : ConsultationTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nConsultationTypeResponse
+deactivate Controller
+
+@enduml

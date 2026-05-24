@@ -1,0 +1,78 @@
+@startuml state_update
+title PUT /states/{id} — Update State
+
+actor Client
+participant "StateController" as Controller
+participant "UpdateStateUseCase\n<<port.in>>" as UseCase
+participant "UpdateStateService" as Service
+participant "StateRepository\n<<port.out>>" as Repo
+participant "CountryQueryPort" as CountryQP
+participant "StateJpaMapper" as Mapper
+participant "StateJpaRepository\n<<spring-data>>" as JpaRepo
+participant "CountryJpaRepository\n<<spring-data>>" as CountryJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /states/{id}\n+ UpdateStateRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateStateCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT state (JOIN FETCH country)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<StateJpaEntity>
+alt state no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : StateNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : State
+Repo --> Service : Optional<State>
+
+Service -> CountryQP : findById(countryId)
+CountryQP --> Service : Optional<CountryRef>
+alt country no encontrado
+  Service --> GEH : IllegalArgumentException\n("Country not found")
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : state.update(name, country)\n(invariantes de dominio)
+
+Service -> Repo : save(state)
+Repo -> CountryJpaRepo : getReferenceById(country.id())
+CountryJpaRepo --> Repo : CountryJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(state, country)
+Mapper --> Repo : StateJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE state
+DB --> JpaRepo : ok
+JpaRepo --> Repo : StateJpaEntity
+Repo -> Mapper : toDomain(entity, countryRef precargado)
+Mapper --> Repo : State
+Repo --> Service : State
+
+Service -> Service : StateDto.from(state)
+Service --> UseCase : StateDto
+UseCase --> Controller : StateDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nStateResponse
+deactivate Controller
+
+@enduml

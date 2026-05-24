@@ -1,0 +1,55 @@
+@startuml diagnostic_imaging_delete
+title DELETE /diagnostic-imagings/{id} — Delete DiagnosticImaging
+
+actor Client
+participant "DiagnosticImagingController" as Controller
+participant "DeleteDiagnosticImagingUseCase\n<<port.in>>" as UseCase
+participant "DeleteDiagnosticImagingService" as Service
+participant "DiagnosticImagingRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /diagnostic-imagings/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR diagnosticimaging.delete OR SYSTEM
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT diagnostic_imaging (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DiagnosticImagingJpaEntity>
+alt imaging no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DiagnosticImagingNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<DiagnosticImaging>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE diagnostic_imaging
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

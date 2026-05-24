@@ -1,0 +1,77 @@
+@startuml laboratory_test_create
+title POST /laboratory-tests — Create LaboratoryTest
+
+actor Client
+participant "LaboratoryTestController" as Controller
+participant "CreateLaboratoryTestUseCase\n<<port.in>>" as UseCase
+participant "CreateLaboratoryTestService" as Service
+participant "LaboratoryTestTypeQueryPort" as TestTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "LaboratoryTestRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestJpaMapper" as Mapper
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /laboratory-tests\n+ CreateLaboratoryTestRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateLaboratoryTestCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTest.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> TestTypeQP : findById(testTypeId)
+TestTypeQP --> Service : Optional<LaboratoryTestTypeRef>
+alt testType no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : LaboratoryTest.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(laboratoryTest)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\ntestType, animal, consultation?, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company)
+Mapper --> Repo : LaboratoryTestJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT laboratory_test
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : LaboratoryTestJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : LaboratoryTest
+Repo --> Service : LaboratoryTest
+deactivate Repo
+
+Service -> Service : LaboratoryTestDto.from(laboratoryTest)
+Service --> UseCase : LaboratoryTestDto
+UseCase --> Controller : LaboratoryTestDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nLaboratoryTestResponse
+deactivate Controller
+deactivate Service
+
+@enduml

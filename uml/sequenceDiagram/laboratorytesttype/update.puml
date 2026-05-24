@@ -1,0 +1,83 @@
+@startuml laboratory_test_type_update
+title PUT /laboratory-test-types/{id} — Update LaboratoryTestType
+
+actor Client
+participant "LaboratoryTestTypeController" as Controller
+participant "UpdateLaboratoryTestTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateLaboratoryTestTypeService" as Service
+participant "LaboratoryTestTypeRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "LaboratoryTestTypeJpaMapper" as Mapper
+participant "LaboratoryTestTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /laboratory-test-types/{id}\n+ UpdateLaboratoryTestTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateLaboratoryTestTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test_type (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestTypeJpaEntity>
+alt type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : LaboratoryTestTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : LaboratoryTestType
+Repo --> Service : Optional<LaboratoryTestType>
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+else companyId == null
+  note right of Service: tipo general (sin company)
+end
+
+Service -> Service : type.update(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(type)
+alt company != null
+  Repo -> JpaRepo : companyJpaRepository.getReferenceById(companyId)
+  JpaRepo --> Repo : CompanyJpaEntity proxy
+end
+Repo -> Mapper : toJpa(type, company)
+Mapper --> Repo : LaboratoryTestTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE laboratory_test_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : LaboratoryTestTypeJpaEntity
+Repo -> Mapper : toDomain(entity, companyRef)
+Mapper --> Repo : LaboratoryTestType
+Repo --> Service : LaboratoryTestType
+
+Service -> Service : LaboratoryTestTypeDto.from(type)
+Service --> UseCase : LaboratoryTestTypeDto
+UseCase --> Controller : LaboratoryTestTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nLaboratoryTestTypeResponse
+deactivate Controller
+
+@enduml

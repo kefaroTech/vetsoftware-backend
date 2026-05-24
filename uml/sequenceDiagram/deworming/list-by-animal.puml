@@ -1,0 +1,50 @@
+@startuml deworming_list_by_animal
+title GET /dewormings/by-animal/{animalId} — List Dewormings of an Animal
+
+actor Client
+participant "DewormingController" as Controller
+participant "ListDewormingsByAnimalUseCase\n<<port.in>>" as UseCase
+participant "ListDewormingsByAnimalService" as Service
+participant "DewormingRepository\n<<port.out>>" as Repo
+participant "DewormingJpaMapper" as Mapper
+participant "DewormingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /dewormings/by-animal/{animalId}
+activate Controller
+
+Controller -> UseCase : listByAnimal(animalId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR deworming.read OR SYSTEM
+end note
+
+UseCase -> Service : listByAnimal(animalId)
+activate Service
+
+Service -> Repo : findAllByAnimalId(animalId)
+activate Repo
+Repo -> JpaRepo : findAllByAnimalId(animalId)
+JpaRepo -> DB : SELECT deworming\nWHERE animal_id=?\nJOIN FETCH (animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<DewormingJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Deworming>
+Repo --> Service : List<Deworming>
+deactivate Repo
+
+Service -> Service : stream().map(DewormingDto::from).toList()
+Service --> UseCase : List<DewormingDto>
+UseCase --> Controller : List<DewormingDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<DewormingResponse>
+deactivate Controller
+
+@enduml

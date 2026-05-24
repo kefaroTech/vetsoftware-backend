@@ -1,0 +1,61 @@
+@startuml company_find
+title GET /companies/{id} — Find Company by ID
+
+actor Client
+participant "CompanyController" as Controller
+participant "Authz" as Authz
+participant "FindCompanyUseCase\n<<port.in>>" as UseCase
+participant "FindCompanyService" as Service
+participant "CompanyRepository\n<<port.out>>" as Repo
+participant "CompanyJpaMapper" as Mapper
+participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /companies/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR
+  (company.read AND
+   authz.isMyCompany(#id))
+end note
+
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT company\nJOIN FETCH (city, membership)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CompanyJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Company
+  Repo --> Service : Optional<Company>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CompanyNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : CompanyDto.from(company)
+Service --> UseCase : CompanyDto
+UseCase --> Controller : CompanyDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nCompanyResponse
+deactivate Controller
+
+@enduml

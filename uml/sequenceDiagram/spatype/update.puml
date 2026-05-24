@@ -1,0 +1,67 @@
+@startuml spa_type_update
+title PUT /spa-types/{id} — Update SpaType
+
+actor Client
+participant "SpaTypeController" as Controller
+participant "UpdateSpaTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateSpaTypeService" as Service
+participant "SpaTypeRepository\n<<port.out>>" as Repo
+participant "SpaTypeJpaMapper" as Mapper
+participant "SpaTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /spa-types/{id}\n+ UpdateSpaTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateSpaTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT spa_type
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SpaTypeJpaEntity>
+alt spa_type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SpaTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SpaType
+Repo --> Service : Optional<SpaType>
+
+Service -> Service : spaType.update(name, description)\n(invariantes de dominio)
+
+Service -> Repo : save(spaType)
+Repo -> Mapper : toJpa(spaType)
+Mapper --> Repo : SpaTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE spa_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SpaTypeJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SpaType
+Repo --> Service : SpaType
+
+Service -> Service : SpaTypeDto.from(spaType)
+Service --> UseCase : SpaTypeDto
+UseCase --> Controller : SpaTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSpaTypeResponse
+deactivate Controller
+
+@enduml

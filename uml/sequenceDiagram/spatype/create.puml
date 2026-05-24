@@ -1,0 +1,54 @@
+@startuml spa_type_create
+title POST /spa-types — Create SpaType
+
+actor Client
+participant "SpaTypeController" as Controller
+participant "CreateSpaTypeUseCase\n<<port.in>>" as UseCase
+participant "CreateSpaTypeService" as Service
+participant "SpaTypeRepository\n<<port.out>>" as Repo
+participant "SpaTypeJpaMapper" as Mapper
+participant "SpaTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /spa-types\n+ CreateSpaTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSpaTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : SpaType.create(name, description)\n(invariantes de dominio)
+
+Service -> Repo : save(spaType)
+activate Repo
+Repo -> Mapper : toJpa(spaType)
+Mapper --> Repo : SpaTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT spa_type
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SpaTypeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SpaType
+Repo --> Service : SpaType
+deactivate Repo
+
+Service -> Service : SpaTypeDto.from(spaType)
+Service --> UseCase : SpaTypeDto
+UseCase --> Controller : SpaTypeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSpaTypeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

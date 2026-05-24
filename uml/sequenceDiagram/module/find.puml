@@ -1,0 +1,57 @@
+@startuml module_find
+title GET /modules/{id} — Find Module by ID
+
+actor Client
+participant "ModuleController" as Controller
+participant "FindModuleUseCase\n<<port.in>>" as UseCase
+participant "FindModuleService" as Service
+participant "ModuleRepository\n<<port.out>>" as Repo
+participant "ModuleJpaMapper" as Mapper
+participant "ModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /modules/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT module
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ModuleJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Module
+  Repo --> Service : Optional<Module>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : ModuleDto.from(module)
+Service --> UseCase : ModuleDto
+UseCase --> Controller : ModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nModuleResponse
+deactivate Controller
+
+@enduml

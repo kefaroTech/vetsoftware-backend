@@ -1,0 +1,54 @@
+@startuml surgery_type_list_available
+title GET /surgery-types/available — List SurgeryTypes available for current company
+
+actor Client
+participant "SurgeryTypeController" as Controller
+participant "Authz" as Authz
+participant "ListAvailableSurgeryTypesUseCase\n<<port.in>>" as UseCase
+participant "ListAvailableSurgeryTypesService" as Service
+participant "SurgeryTypeRepository\n<<port.out>>" as Repo
+participant "SurgeryTypeJpaMapper" as Mapper
+participant "SurgeryTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /surgery-types/available
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listAvailable(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  authz.isMyCompany(#companyId)
+end note
+UseCase -> Service : listAvailable(companyId)
+activate Service
+
+Service -> Repo : findAllAvailableForCompany(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByGeneralTrueOrCompany_Id(companyId)
+JpaRepo -> DB : SELECT surgery_type\nWHERE general=true OR company_id=?\nJOIN FETCH (company)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<SurgeryTypeJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<SurgeryType>
+Repo --> Service : List<SurgeryType>
+deactivate Repo
+
+Service -> Service : stream().map(SurgeryTypeDto::from).toList()
+Service --> UseCase : List<SurgeryTypeDto>
+UseCase --> Controller : List<SurgeryTypeDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<SurgeryTypeResponse>
+deactivate Controller
+
+@enduml

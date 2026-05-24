@@ -1,0 +1,54 @@
+@startuml consultationtype_create
+title POST /consultation-types — Create ConsultationType
+
+actor Client
+participant "ConsultationTypeController" as Controller
+participant "CreateConsultationTypeUseCase\n<<port.in>>" as UseCase
+participant "CreateConsultationTypeService" as Service
+participant "ConsultationTypeRepository\n<<port.out>>" as Repo
+participant "ConsultationTypeJpaMapper" as Mapper
+participant "ConsultationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /consultation-types\n+ CreateConsultationTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateConsultationTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : ConsultationType.create(name, description)\n(invariantes de dominio)
+
+Service -> Repo : save(consultationType)
+activate Repo
+Repo -> Mapper : toJpa(consultationType)
+Mapper --> Repo : ConsultationTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT consultation_type
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : ConsultationTypeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ConsultationType
+Repo --> Service : ConsultationType
+deactivate Repo
+
+Service -> Service : ConsultationTypeDto.from(consultationType)
+Service --> UseCase : ConsultationTypeDto
+UseCase --> Controller : ConsultationTypeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nConsultationTypeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

@@ -1,0 +1,59 @@
+@startuml daycare_find
+title GET /daycares/{id} — Find DayCare by ID
+
+actor Client
+participant "DayCareController" as Controller
+participant "FindDayCareUseCase\n<<port.in>>" as UseCase
+participant "FindDayCareService" as Service
+participant "DayCareRepository\n<<port.out>>" as Repo
+participant "DayCareJpaMapper" as Mapper
+participant "DayCareJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /daycares/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  dayCare.read OR
+  hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT daycare\nJOIN FETCH (animal, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DayCareJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : DayCare
+  Repo --> Service : Optional<DayCare>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DayCareNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : DayCareDto.from(dayCare)
+Service --> UseCase : DayCareDto
+UseCase --> Controller : DayCareDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDayCareResponse
+deactivate Controller
+
+@enduml

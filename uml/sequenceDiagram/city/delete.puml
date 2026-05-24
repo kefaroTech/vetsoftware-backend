@@ -1,0 +1,55 @@
+@startuml city_delete
+title DELETE /cities/{id} — Delete City
+
+actor Client
+participant "CityController" as Controller
+participant "DeleteCityUseCase\n<<port.in>>" as UseCase
+participant "DeleteCityService" as Service
+participant "CityRepository\n<<port.out>>" as Repo
+participant "CityJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /cities/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT city (JOIN FETCH state)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CityJpaEntity>
+alt city no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CityNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<City>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE city
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

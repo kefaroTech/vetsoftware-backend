@@ -1,0 +1,71 @@
+@startuml laboratory_test_type_create
+title POST /laboratory-test-types — Create LaboratoryTestType
+
+actor Client
+participant "LaboratoryTestTypeController" as Controller
+participant "CreateLaboratoryTestTypeUseCase\n<<port.in>>" as UseCase
+participant "CreateLaboratoryTestTypeService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "LaboratoryTestTypeRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestTypeJpaMapper" as Mapper
+participant "LaboratoryTestTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /laboratory-test-types\n+ CreateLaboratoryTestTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateLaboratoryTestTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+else companyId == null
+  note right of Service: tipo general (sin company)
+end
+
+Service -> Service : LaboratoryTestType.create(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(type)
+activate Repo
+alt company != null
+  Repo -> JpaRepo : companyJpaRepository.getReferenceById(companyId)
+  JpaRepo --> Repo : CompanyJpaEntity proxy
+end
+Repo -> Mapper : toJpa(type, company)
+Mapper --> Repo : LaboratoryTestTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT laboratory_test_type
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : LaboratoryTestTypeJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, companyRef)
+Mapper --> Repo : LaboratoryTestType
+Repo --> Service : LaboratoryTestType
+deactivate Repo
+
+Service -> Service : LaboratoryTestTypeDto.from(type)
+Service --> UseCase : LaboratoryTestTypeDto
+UseCase --> Controller : LaboratoryTestTypeDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nLaboratoryTestTypeResponse
+deactivate Controller
+deactivate Service
+
+@enduml

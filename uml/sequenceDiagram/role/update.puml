@@ -1,0 +1,77 @@
+@startuml role_update
+title PUT /roles/{id} — Update Role
+
+actor Client
+participant "RoleController" as Controller
+participant "UpdateRoleUseCase\n<<port.in>>" as UseCase
+participant "UpdateRoleService" as Service
+participant "RoleRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "RoleJpaMapper" as Mapper
+participant "RoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /roles/{id}\n+ UpdateRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT role (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<RoleJpaEntity>
+alt role no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : RoleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Role
+Repo --> Service : Optional<Role>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : role.update(name, code, company)\n(invariantes de dominio)
+
+Service -> Repo : save(role)
+Repo -> JpaRepo : getReferenceById(companyId)\n(proxy sin SELECT)
+JpaRepo --> Repo : proxy
+Repo -> Mapper : toJpa(role, company)
+Mapper --> Repo : RoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE role
+DB --> JpaRepo : ok
+JpaRepo --> Repo : RoleJpaEntity
+Repo -> Mapper : toDomain(entity, company precargado)
+Mapper --> Repo : Role
+Repo --> Service : Role
+
+Service -> Service : RoleDto.from(role)
+Service --> UseCase : RoleDto
+UseCase --> Controller : RoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nRoleResponse
+deactivate Controller
+
+@enduml

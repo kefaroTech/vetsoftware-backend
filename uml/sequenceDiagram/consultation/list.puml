@@ -1,0 +1,50 @@
+@startuml consultation_list
+title GET /consultations — List all Consultations
+
+actor Client
+participant "ConsultationController" as Controller
+participant "ListConsultationsUseCase\n<<port.in>>" as UseCase
+participant "ListConsultationsService" as Service
+participant "ConsultationRepository\n<<port.out>>" as Repo
+participant "ConsultationJpaMapper" as Mapper
+participant "ConsultationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /consultations
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT consultation\nJOIN FETCH (consultationType, animal, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<ConsultationJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Consultation>
+Repo --> Service : List<Consultation>
+deactivate Repo
+
+Service -> Service : stream().map(ConsultationDto::from).toList()
+Service --> UseCase : List<ConsultationDto>
+UseCase --> Controller : List<ConsultationDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<ConsultationResponse>
+deactivate Controller
+
+@enduml

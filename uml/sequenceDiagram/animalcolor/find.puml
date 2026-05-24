@@ -1,0 +1,54 @@
+@startuml animalcolor_find
+title GET /animal-colors/{id} — Find AnimalColor by ID
+
+actor Client
+participant "AnimalColorController" as Controller
+participant "FindAnimalColorUseCase\n<<port.in>>" as UseCase
+participant "FindAnimalColorService" as Service
+participant "AnimalColorRepository\n<<port.out>>" as Repo
+participant "AnimalColorJpaMapper" as Mapper
+participant "AnimalColorJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /animal-colors/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase: (sin @PreAuthorize)
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT animal_color
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<AnimalColorJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : AnimalColor
+  Repo --> Service : Optional<AnimalColor>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : AnimalColorNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : AnimalColorDto.from(color)
+Service --> UseCase : AnimalColorDto
+UseCase --> Controller : AnimalColorDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nAnimalColorResponse
+deactivate Controller
+
+@enduml

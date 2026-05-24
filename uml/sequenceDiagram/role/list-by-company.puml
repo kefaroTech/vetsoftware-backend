@@ -1,0 +1,71 @@
+@startuml role_list_by_company
+title GET /roles/by-company — List Roles of current company (con permissions)
+
+actor Client
+participant "RoleController" as Controller
+participant "Authz" as Authz
+participant "ListRolesByCompanyUseCase\n<<port.in>>" as UseCase
+participant "ListRolesByCompanyService" as Service
+participant "RoleRepository\n<<port.out>>" as Repo
+participant "RolePermissionsForRolesQueryPort" as PermsQP
+participant "RoleJpaMapper" as Mapper
+participant "RoleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "RolePermissionJpaRepository\n<<spring-data>>" as RPJpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /roles/by-company
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listByCompany(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR
+  ((rolePermissions.read OR role.read) AND
+   authz.isMyCompany(#companyId))
+end note
+UseCase -> Service : listByCompany(companyId)
+activate Service
+
+Service -> Repo : findAllByCompanyId(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByCompanyId(companyId)
+JpaRepo -> DB : SELECT role\nWHERE company_id=?\nJOIN FETCH company
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<RoleJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Role>
+Repo --> Service : List<Role>
+deactivate Repo
+
+alt roles vacío
+  Service --> UseCase : List.of()
+end
+
+Service -> PermsQP : findByRoleIds(roleIds)
+activate PermsQP
+PermsQP -> RPJpaRepo : findByRoleIdIn(roleIds)
+RPJpaRepo -> DB : SELECT role_permission\nWHERE role_id IN (...)\nJOIN FETCH permission
+DB --> RPJpaRepo : rows[]
+RPJpaRepo --> PermsQP : List<RolePermissionJpaEntity>
+PermsQP -> PermsQP : groupingBy(roleId,\n  mapping(PermissionSummaryDto))
+PermsQP --> Service : Map<Long, List<PermissionSummaryDto>>
+deactivate PermsQP
+
+Service -> Service : stream().map(r ->\n  RoleDto.from(r, perms)).toList()
+Service --> UseCase : List<RoleDto>
+UseCase --> Controller : List<RoleDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<RoleResponse>
+deactivate Controller
+
+@enduml

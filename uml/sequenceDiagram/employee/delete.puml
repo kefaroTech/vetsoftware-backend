@@ -1,0 +1,55 @@
+@startuml employee_delete
+title DELETE /employees/{id} — Delete Employee
+
+actor Client
+participant "EmployeeController" as Controller
+participant "DeleteEmployeeUseCase\n<<port.in>>" as UseCase
+participant "DeleteEmployeeService" as Service
+participant "EmployeeRepository\n<<port.out>>" as Repo
+participant "EmployeeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /employees/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR employee.delete OR SYSTEM
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT employee (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<EmployeeJpaEntity>
+alt employee no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : EmployeeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Employee>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE employee
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

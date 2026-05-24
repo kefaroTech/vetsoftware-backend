@@ -1,0 +1,87 @@
+@startuml consultation_create
+title POST /consultations — Create Consultation
+
+actor Client
+participant "ConsultationController" as Controller
+participant "Authz" as Authz
+participant "CreateConsultationUseCase\n<<port.in>>" as UseCase
+participant "CreateConsultationService" as Service
+participant "ConsultationTypeQueryPort" as CTQP
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "ConsultationRepository\n<<port.out>>" as Repo
+participant "ConsultationJpaMapper" as Mapper
+participant "ConsultationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /consultations\n+ CreateConsultationRequest
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(CreateConsultationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR
+  (consultation.create AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CTQP : findById(consultationTypeId)
+CTQP --> Service : Optional<ConsultationTypeRef>
+alt consultationType no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Consultation.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(consultation)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nconsultationType, animal, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(consultation, refs)
+Mapper --> Repo : ConsultationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT consultation
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : ConsultationJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Consultation
+Repo --> Service : Consultation
+deactivate Repo
+
+Service -> Service : ConsultationDto.from(consultation)
+Service --> UseCase : ConsultationDto
+UseCase --> Controller : ConsultationDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nConsultationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

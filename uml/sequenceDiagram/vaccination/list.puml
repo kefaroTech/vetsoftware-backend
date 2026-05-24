@@ -1,0 +1,49 @@
+@startuml vaccination_list
+title GET /vaccinations — List all Vaccinations
+
+actor Client
+participant "VaccinationController" as Controller
+participant "ListVaccinationsUseCase\n<<port.in>>" as UseCase
+participant "ListVaccinationsService" as Service
+participant "VaccinationRepository\n<<port.out>>" as Repo
+participant "VaccinationJpaMapper" as Mapper
+participant "VaccinationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /vaccinations
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT vaccination\nJOIN FETCH (vaccinationType, animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<VaccinationJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Vaccination>
+Repo --> Service : List<Vaccination>
+deactivate Repo
+
+Service -> Service : stream().map(VaccinationDto::from).toList()
+Service --> UseCase : List<VaccinationDto>
+UseCase --> Controller : List<VaccinationDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<VaccinationResponse>
+deactivate Controller
+
+@enduml

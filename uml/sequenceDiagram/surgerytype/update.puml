@@ -1,0 +1,81 @@
+@startuml surgery_type_update
+title PUT /surgery-types/{id} — Update SurgeryType
+
+actor Client
+participant "SurgeryTypeController" as Controller
+participant "UpdateSurgeryTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateSurgeryTypeService" as Service
+participant "SurgeryTypeRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "SurgeryTypeJpaMapper" as Mapper
+participant "SurgeryTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /surgery-types/{id}\n+ UpdateSurgeryTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateSurgeryTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT surgery_type (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SurgeryTypeJpaEntity>
+alt surgery_type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SurgeryTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SurgeryType
+Repo --> Service : Optional<SurgeryType>
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+
+Service -> Service : surgeryType.update(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(surgeryType)
+alt company != null
+  Repo -> JpaRepo : getReferenceById(companyId)
+  JpaRepo --> Repo : proxy (sin SELECT)
+end
+Repo -> Mapper : toJpa(surgeryType, company)
+Mapper --> Repo : SurgeryTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE surgery_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SurgeryTypeJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : SurgeryType
+Repo --> Service : SurgeryType
+
+Service -> Service : SurgeryTypeDto.from(surgeryType)
+Service --> UseCase : SurgeryTypeDto
+UseCase --> Controller : SurgeryTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSurgeryTypeResponse
+deactivate Controller
+
+@enduml

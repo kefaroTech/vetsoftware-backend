@@ -1,0 +1,78 @@
+@startuml submodule_update
+title PUT /sub-modules/{id} — Update SubModule
+
+actor Client
+participant "SubModuleController" as Controller
+participant "UpdateSubModuleUseCase\n<<port.in>>" as UseCase
+participant "UpdateSubModuleService" as Service
+participant "SubModuleRepository\n<<port.out>>" as Repo
+participant "ModuleQueryPort" as ModuleQP
+participant "SubModuleJpaMapper" as Mapper
+participant "SubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "ModuleJpaRepository\n<<spring-data>>" as ModuleJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /sub-modules/{id}\n+ UpdateSubModuleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateSubModuleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT sub_module (JOIN FETCH module)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SubModuleJpaEntity>
+alt subModule no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SubModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : SubModule
+Repo --> Service : Optional<SubModule>
+
+Service -> ModuleQP : findById(moduleId)
+ModuleQP --> Service : Optional<ModuleRef>
+alt module no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : subModule.update(name, code, module)\n(invariantes de dominio)
+
+Service -> Repo : save(subModule)
+Repo -> ModuleJpa : getReferenceById(moduleId)
+ModuleJpa --> Repo : ModuleJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(subModule, module)
+Mapper --> Repo : SubModuleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE sub_module
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SubModuleJpaEntity
+Repo -> Mapper : toDomain(entity, moduleRef precargado)
+Mapper --> Repo : SubModule
+Repo --> Service : SubModule
+
+Service -> Service : SubModuleDto.from(subModule)
+Service --> UseCase : SubModuleDto
+UseCase --> Controller : SubModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSubModuleResponse
+deactivate Controller
+
+@enduml

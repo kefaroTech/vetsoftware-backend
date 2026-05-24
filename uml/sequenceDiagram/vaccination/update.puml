@@ -1,0 +1,93 @@
+@startuml vaccination_update
+title PUT /vaccinations/{id} — Update Vaccination
+
+actor Client
+participant "VaccinationController" as Controller
+participant "UpdateVaccinationUseCase\n<<port.in>>" as UseCase
+participant "UpdateVaccinationService" as Service
+participant "VaccinationRepository\n<<port.out>>" as Repo
+participant "VaccinationTypeQueryPort" as VaccinationTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "VaccinationJpaMapper" as Mapper
+participant "VaccinationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /vaccinations/{id}\n+ UpdateVaccinationRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateVaccinationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  vaccination.update OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT vaccination (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<VaccinationJpaEntity>
+alt vaccination no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : VaccinationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Vaccination
+Repo --> Service : Optional<Vaccination>
+
+Service -> VaccinationTypeQP : findById(vaccinationTypeId)
+VaccinationTypeQP --> Service : Optional<VaccinationTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : vaccination.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(vaccination)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(vaccination, vaccinationType, animal, consultation, company)
+Mapper --> Repo : VaccinationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE vaccination
+DB --> JpaRepo : ok
+JpaRepo --> Repo : VaccinationJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Vaccination
+Repo --> Service : Vaccination
+
+Service -> Service : VaccinationDto.from(vaccination)
+Service --> UseCase : VaccinationDto
+UseCase --> Controller : VaccinationDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nVaccinationResponse
+deactivate Controller
+
+@enduml

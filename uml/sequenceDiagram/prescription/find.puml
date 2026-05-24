@@ -1,0 +1,63 @@
+@startuml prescription_find
+title GET /prescriptions/{id} — Find Prescription by ID
+
+actor Client
+participant "PrescriptionController" as Controller
+participant "FindPrescriptionUseCase\n<<port.in>>" as UseCase
+participant "FindPrescriptionService" as Service
+participant "PrescriptionRepository\n<<port.out>>" as Repo
+participant "MedicamentQueryPort" as MedicamentQP
+participant "PrescriptionJpaMapper" as Mapper
+participant "PrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /prescriptions/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  prescription.read OR
+  hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT prescription\nJOIN FETCH (animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PrescriptionJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Prescription
+  Repo --> Service : Optional<Prescription>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PrescriptionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> MedicamentQP : findByPrescriptionId(id)
+MedicamentQP --> Service : List<MedicamentRef>
+
+Service -> Service : PrescriptionDto.from(prescription, medicaments)
+Service --> UseCase : PrescriptionDto
+UseCase --> Controller : PrescriptionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPrescriptionResponse
+deactivate Controller
+
+@enduml

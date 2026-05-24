@@ -1,0 +1,67 @@
+@startuml medicament_prescription_create
+title POST /medicament-prescriptions — Create MedicamentPrescription
+
+actor Client
+participant "MedicamentPrescriptionController" as Controller
+participant "CreateMedicamentPrescriptionUseCase\n<<port.in>>" as UseCase
+participant "CreateMedicamentPrescriptionService" as Service
+participant "PrescriptionQueryPort" as PrescriptionQP
+participant "MedicamentPrescriptionRepository\n<<port.out>>" as Repo
+participant "MedicamentPrescriptionJpaMapper" as Mapper
+participant "MedicamentPrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /medicament-prescriptions\n+ CreateMedicamentPrescriptionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateMedicamentPrescriptionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  medicamentPrescription.create OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> PrescriptionQP : findById(prescriptionId)
+PrescriptionQP --> Service : Optional<PrescriptionRef>
+alt prescription no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : MedicamentPrescription.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(medicament)
+activate Repo
+Repo -> JpaRepo : getReferenceById(prescriptionId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(medicament, prescription)
+Mapper --> Repo : MedicamentPrescriptionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT medicament_prescription
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : MedicamentPrescriptionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : MedicamentPrescription
+Repo --> Service : MedicamentPrescription
+deactivate Repo
+
+Service -> Service : MedicamentPrescriptionDto.from(medicament)
+Service --> UseCase : MedicamentPrescriptionDto
+UseCase --> Controller : MedicamentPrescriptionDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nMedicamentPrescriptionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

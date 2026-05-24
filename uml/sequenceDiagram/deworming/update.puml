@@ -1,0 +1,89 @@
+@startuml deworming_update
+title PUT /dewormings/{id} — Update Deworming
+
+actor Client
+participant "DewormingController" as Controller
+participant "UpdateDewormingUseCase\n<<port.in>>" as UseCase
+participant "UpdateDewormingService" as Service
+participant "DewormingRepository\n<<port.out>>" as Repo
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultQP
+participant "CompanyQueryPort" as CompanyQP
+participant "DewormingJpaMapper" as Mapper
+participant "DewormingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /dewormings/{id}\n+ UpdateDewormingRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateDewormingCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR deworming.update OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT deworming (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DewormingJpaEntity>
+alt deworming no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DewormingNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Deworming
+Repo --> Service : Optional<Deworming>
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultQP : findById(consultationId)
+  ConsultQP --> Service : Optional<ConsultationRef>
+else consultationId == null
+  Service -> Service : consultation = null
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : deworming.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(deworming)
+Repo -> JpaRepo : getReferenceById(...)\nanimal, consultation (si != null), company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(deworming, refs)
+Mapper --> Repo : DewormingJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE deworming
+DB --> JpaRepo : ok
+JpaRepo --> Repo : DewormingJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Deworming
+Repo --> Service : Deworming
+
+Service -> Service : DewormingDto.from(deworming)
+Service --> UseCase : DewormingDto
+UseCase --> Controller : DewormingDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDewormingResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,59 @@
+@startuml hospitalization_find
+title GET /hospitalizations/{id} — Find Hospitalization by ID
+
+actor Client
+participant "HospitalizationController" as Controller
+participant "FindHospitalizationUseCase\n<<port.in>>" as UseCase
+participant "FindHospitalizationService" as Service
+participant "HospitalizationRepository\n<<port.out>>" as Repo
+participant "HospitalizationJpaMapper" as Mapper
+participant "HospitalizationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /hospitalizations/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  hospitalization.read OR
+  hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT hospitalization\nJOIN FETCH (animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<HospitalizationJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Hospitalization
+  Repo --> Service : Optional<Hospitalization>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : HospitalizationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : HospitalizationDto.from(hospitalization)
+Service --> UseCase : HospitalizationDto
+UseCase --> Controller : HospitalizationDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nHospitalizationResponse
+deactivate Controller
+
+@enduml

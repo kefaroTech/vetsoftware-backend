@@ -1,0 +1,56 @@
+@startuml deworming_delete
+title DELETE /dewormings/{id} — Delete Deworming
+
+actor Client
+participant "DewormingController" as Controller
+participant "DeleteDewormingUseCase\n<<port.in>>" as UseCase
+participant "DeleteDewormingService" as Service
+participant "DewormingRepository\n<<port.out>>" as Repo
+participant "DewormingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /dewormings/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR deworming.delete OR SYSTEM
+end note
+
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT deworming (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DewormingJpaEntity>
+alt deworming no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DewormingNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Deworming>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE deworming
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

@@ -1,0 +1,85 @@
+@startuml hospitalization_create
+title POST /hospitalizations — Create Hospitalization
+
+actor Client
+participant "HospitalizationController" as Controller
+participant "CreateHospitalizationUseCase\n<<port.in>>" as UseCase
+participant "CreateHospitalizationService" as Service
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "HospitalizationRepository\n<<port.out>>" as Repo
+participant "HospitalizationJpaMapper" as Mapper
+participant "HospitalizationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /hospitalizations\n+ CreateHospitalizationRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateHospitalizationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  hospitalization.create OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+  alt consultation no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Hospitalization.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(hospitalization)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nanimal, consultation, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(hospitalization, animal, consultation, company)
+Mapper --> Repo : HospitalizationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT hospitalization
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : HospitalizationJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Hospitalization
+Repo --> Service : Hospitalization
+deactivate Repo
+
+Service -> Service : HospitalizationDto.from(hospitalization)
+Service --> UseCase : HospitalizationDto
+UseCase --> Controller : HospitalizationDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nHospitalizationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

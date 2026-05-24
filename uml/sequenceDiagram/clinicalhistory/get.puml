@@ -1,0 +1,66 @@
+@startuml clinicalhistory_get
+title GET /animals/{animalId}/clinical-history — Get Clinical History
+
+actor Client
+participant "ClinicalHistoryController" as Controller
+participant "Authz" as Authz
+participant "GetClinicalHistoryUseCase\n<<port.in>>" as UseCase
+participant "GetClinicalHistoryService" as Service
+participant "ClinicalEventRepository\n<<port.out>>" as Repo
+participant "ClinicalEventJpaMapper" as Mapper
+participant "ClinicalEventJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /animals/{animalId}/clinical-history\n?types=&from=&to=
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> Controller : new GetClinicalHistoryQuery(\n  animalId, companyId, types, from, to)
+note right of Controller
+  El record valida invariantes:
+  - animalId/companyId requeridos
+  - to >= from
+  Lanza IllegalArgumentException → 400
+end note
+
+Controller -> UseCase : execute(query)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR
+  (clinicalHistory.read AND
+   authz.isMyCompany(#query.companyId))
+end note
+
+UseCase -> Service : execute(query)
+activate Service
+
+Service -> Repo : findHistory(query)
+activate Repo
+Repo -> Repo : types = query.types().isEmpty()\n  ? ALL_TYPES : query.types()
+Repo -> JpaRepo : findHistory(animalId, companyId,\n  types, from, to)
+JpaRepo -> DB : SELECT e FROM ClinicalEventViewJpaEntity\nWHERE animalId=? AND companyId=?\n  AND eventType IN (:types)\n  AND (:from IS NULL OR eventDate>=:from)\n  AND (:to IS NULL OR eventDate<=:to)\nORDER BY eventDate DESC, sourceId DESC
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<ClinicalEventViewJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<ClinicalEvent>
+Repo --> Service : List<ClinicalEvent>
+deactivate Repo
+
+Service -> Service : stream().map(ClinicalEventDto::from).toList()
+Service --> UseCase : List<ClinicalEventDto>
+UseCase --> Controller : List<ClinicalEventDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<ClinicalEventResponse>
+deactivate Controller
+
+@enduml

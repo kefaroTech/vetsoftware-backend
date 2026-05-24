@@ -1,0 +1,77 @@
+@startuml basepermission_create
+title POST /base-permissions — Create BasePermission
+
+actor Client
+participant "BasePermissionController" as Controller
+participant "CreateBasePermissionUseCase\n<<port.in>>" as UseCase
+participant "CreateBasePermissionService" as Service
+participant "SubModuleQueryPort\n<<port.out>>" as SubModuleQP
+participant "BasePermissionRepository\n<<port.out>>" as Repo
+participant "BasePermissionJpaMapper" as Mapper
+participant "BasePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+participant "MandatoryBaseRolePermissionInitializationPort\n<<port.out>>" as InitPort
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /base-permissions\n+ CreateBasePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateBasePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt submodule no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : BasePermission.create(name, code, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(basePermission)
+activate Repo
+Repo -> JpaRepo : getReferenceById(subModuleId)
+JpaRepo --> Repo : SubModuleJpaEntity (proxy)
+Repo -> Mapper : toJpa(basePermission, subModule)
+Mapper --> Repo : BasePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT base_permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : BasePermissionJpaEntity
+Repo -> Mapper : toDomain(entity, subModuleRef precargado)
+Mapper --> Repo : BasePermission
+Repo --> Service : BasePermission
+deactivate Repo
+
+Service -> Service : BasePermissionDto.from(basePermission)
+
+Service -> InitPort : initializeForMandatoryBaseRoles(savedId)
+activate InitPort
+InitPort -> JpaRepo : getReferenceById(basePermissionId)
+JpaRepo --> InitPort : proxy
+InitPort -> InitPort : baseRoleJpaRepository.findByMandatoryTrue()\nfiltra por existsByBaseRoleIdAndBasePermissionId
+InitPort -> InitPort : crear BaseRolePermissionJpaEntity[]
+InitPort -> InitPort : baseRolePermissionJpaRepository.saveAll(...)\nINSERTs base_role_permission
+InitPort --> Service : void
+deactivate InitPort
+
+Service --> UseCase : BasePermissionDto
+UseCase --> Controller : BasePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)\n(envuelve SubModuleSummary)
+Controller --> Client : 201 Created\nBasePermissionResponse
+deactivate Controller
+
+@enduml

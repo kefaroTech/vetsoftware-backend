@@ -1,0 +1,45 @@
+@startuml animal_list
+title GET /animals — List all Animals
+
+actor Client
+participant "AnimalController" as Controller
+participant "ListAnimalsUseCase\n<<port.in>>" as UseCase
+participant "ListAnimalsService" as Service
+participant "AnimalRepository\n<<port.out>>" as Repo
+participant "AnimalJpaMapper" as Mapper
+participant "AnimalJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /animals
+activate Controller
+
+Controller -> UseCase : listAll()
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT animal\nJOIN FETCH (specie, breed, owner, company, color)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<AnimalJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Animal>
+Repo --> Service : List<Animal>
+deactivate Repo
+
+Service -> Service : stream().map(AnimalDto::from).toList()
+Service --> UseCase : List<AnimalDto>
+UseCase --> Controller : List<AnimalDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<AnimalResponse>
+deactivate Controller
+
+@enduml

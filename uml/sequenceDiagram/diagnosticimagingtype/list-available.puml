@@ -1,0 +1,54 @@
+@startuml diagnostic_imaging_type_list_available
+title GET /diagnostic-imaging-types/available — List DiagnosticImagingTypes available for current company
+
+actor Client
+participant "DiagnosticImagingTypeController" as Controller
+participant "Authz" as Authz
+participant "ListAvailableDiagnosticImagingTypesUseCase\n<<port.in>>" as UseCase
+participant "ListAvailableDiagnosticImagingTypesService" as Service
+participant "DiagnosticImagingTypeRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingTypeJpaMapper" as Mapper
+participant "DiagnosticImagingTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /diagnostic-imaging-types/available
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listAvailable(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  authz.isMyCompany(#companyId)
+end note
+UseCase -> Service : listAvailable(companyId)
+activate Service
+
+Service -> Repo : findAllAvailableForCompany(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByGeneralTrueOrCompany_Id(companyId)
+JpaRepo -> DB : SELECT diagnostic_imaging_type\nWHERE general=true OR company_id=?\nJOIN FETCH company
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<DiagnosticImagingTypeJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<DiagnosticImagingType>
+Repo --> Service : List<DiagnosticImagingType>
+deactivate Repo
+
+Service -> Service : stream().map(DiagnosticImagingTypeDto::from).toList()
+Service --> UseCase : List<DiagnosticImagingTypeDto>
+UseCase --> Controller : List<DiagnosticImagingTypeDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<DiagnosticImagingTypeResponse>
+deactivate Controller
+
+@enduml

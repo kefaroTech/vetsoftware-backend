@@ -1,0 +1,65 @@
+@startuml auth_login_system
+title POST /auth/login/system — Login System User
+
+actor Client
+participant "AuthController" as Controller
+participant "LoginSystemUserUseCase\n<<port.in>>" as UseCase
+participant "LoginSystemUserService" as Service
+participant "SystemUserCredentialsRepository\n<<port.out>>" as CredsRepo
+participant "JpaSystemUserCredentialsRepository" as JpaCredsRepo
+participant "SystemUserJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "PasswordHasher" as Hasher
+participant "TokenGenerator\n<<port.out>>" as TokenGen
+participant "JwtProvider" as Jwt
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  Ruta pública declarada en AuthFilter.PUBLIC_PATHS
+  (POST /auth/login/**), no requiere JWT.
+end note
+
+Client -> Controller : POST /auth/login/system\n+ LoginSystemUserRequest(code, password)
+activate Controller
+
+Controller -> UseCase : execute(LoginSystemUserCommand)
+note right of UseCase: (sin @PreAuthorize — login es público)
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CredsRepo : findByCode(code)
+CredsRepo -> JpaCredsRepo : findByCode(code)
+JpaCredsRepo -> JpaRepo : findByCode(code)
+JpaRepo -> DB : SELECT system_user\nWHERE code=?
+DB --> JpaRepo : row | empty
+JpaRepo --> JpaCredsRepo : Optional<SystemUserJpaEntity>
+JpaCredsRepo --> Service : Optional<SystemUserCredentials>\n(id, hashPassword)
+
+alt credenciales no encontradas
+  Service --> GEH : InvalidCredentialsException
+  GEH --> Client : 401 Unauthorized
+end
+
+Service -> Hasher : matches(rawPassword, hashPassword)
+Hasher --> Service : boolean
+alt password no coincide
+  Service --> GEH : InvalidCredentialsException
+  GEH --> Client : 401 Unauthorized
+end
+
+Service -> TokenGen : generate(id, "SYSTEM_USER", null)
+TokenGen -> Jwt : firmar JWT con claims {sub, type, iat, exp}\n(sin companyId)
+Jwt --> TokenGen : tokenString
+TokenGen --> Service : token
+
+Service -> Service : new TokenDto(token, "SYSTEM_USER")
+Service --> UseCase : TokenDto
+UseCase --> Controller : TokenDto
+deactivate Service
+
+Controller -> Controller : new TokenResponse(token, type)
+Controller --> Client : 200 OK\nTokenResponse
+deactivate Controller
+
+@enduml

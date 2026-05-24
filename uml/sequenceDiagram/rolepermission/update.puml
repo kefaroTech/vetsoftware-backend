@@ -1,0 +1,91 @@
+@startuml rolepermission_update
+title PUT /role-permissions/{id} — Update RolePermission
+
+actor Client
+participant "RolePermissionController" as Controller
+participant "UpdateRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "UpdateRolePermissionService" as Service
+participant "RolePermissionRepository\n<<port.out>>" as Repo
+participant "RoleQueryPort" as RoleQP
+participant "PermissionQueryPort" as PermQP
+participant "PermissionCachePort\n<<port.out>>" as CachePort
+participant "RolePermissionJpaMapper" as Mapper
+participant "RolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /role-permissions/{id}\n+ UpdateRolePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateRolePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT role_permission\nJOIN FETCH (role, permission)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<RolePermissionJpaEntity>
+alt rolePermission no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : RolePermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : RolePermission
+Repo --> Service : Optional<RolePermission>
+
+Service -> Service : previousRoleId =\n  rolePermission.getRole().id()
+
+Service -> RoleQP : findById(roleId)
+RoleQP --> Service : Optional<RoleRef>
+alt role no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> PermQP : findById(permissionId)
+PermQP --> Service : Optional<PermissionRef>
+alt permission no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : rolePermission.update(role, permission)
+
+Service -> Repo : save(rolePermission)
+Repo -> JpaRepo : getReferenceById(...)\nrole, permission
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(rolePermission, role, permission)
+Mapper --> Repo : RolePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE role_permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : RolePermissionJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : RolePermission
+Repo --> Service : RolePermission
+
+Service -> Service : RolePermissionDto.from(rolePermission)
+Service -> CachePort : evictByRoleId(previousRoleId)
+alt previousRoleId != command.roleId
+  Service -> CachePort : evictByRoleId(command.roleId)
+end
+Service --> UseCase : RolePermissionDto
+UseCase --> Controller : RolePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nRolePermissionResponse
+deactivate Controller
+
+@enduml

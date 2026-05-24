@@ -1,0 +1,61 @@
+@startuml membership_create
+title POST /memberships — Create Membership
+
+actor Client
+participant "MembershipController" as Controller
+participant "CreateMembershipUseCase\n<<port.in>>" as UseCase
+participant "CreateMembershipService" as Service
+participant "MembershipRepository\n<<port.out>>" as Repo
+participant "MembershipJpaMapper" as Mapper
+participant "MembershipJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /memberships\n+ CreateMembershipRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateMembershipCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : MembershipStatus.valueOf(command.status().toUpperCase())
+alt status inválido
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Membership.create(name, status, mandatory)\n(invariantes de dominio)
+
+Service -> Repo : save(membership)
+activate Repo
+Repo -> Mapper : toJpa(membership)
+Mapper --> Repo : MembershipJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT membership
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : MembershipJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Membership
+Repo --> Service : Membership
+deactivate Repo
+
+Service -> Service : MembershipDto.from(membership)
+Service --> UseCase : MembershipDto
+UseCase --> Controller : MembershipDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nMembershipResponse
+deactivate Controller
+
+@enduml

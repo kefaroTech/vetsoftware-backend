@@ -1,0 +1,83 @@
+@startuml owner_create
+title POST /owners — Create Owner (scoped to current company)
+
+actor Client
+participant "OwnerController" as Controller
+participant "Authz" as Authz
+participant "CreateOwnerUseCase\n<<port.in>>" as UseCase
+participant "CreateOwnerService" as Service
+participant "CityQueryPort" as CityQP
+participant "CompanyQueryPort" as CompanyQP
+participant "OwnerRepository\n<<port.out>>" as Repo
+participant "OwnerJpaMapper" as Mapper
+participant "OwnerJpaRepository\n<<spring-data>>" as JpaRepo
+participant "CityJpaRepository\n<<spring-data>>" as CityJpa
+participant "CompanyJpaRepository\n<<spring-data>>" as CompanyJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /owners\n+ CreateOwnerRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(CreateOwnerCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (owner.create AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CityQP : findById(cityId)
+CityQP --> Service : Optional<CityRef>
+alt city no encontrada
+  Service --> GEH : IllegalArgumentException\n"City not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException\n"Company not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Owner.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(owner)
+activate Repo
+Repo -> CityJpa : getReferenceById(cityId)
+CityJpa --> Repo : CityJpaEntity (proxy sin SELECT)
+Repo -> CompanyJpa : getReferenceById(companyId)
+CompanyJpa --> Repo : CompanyJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(owner, city, company)
+Mapper --> Repo : OwnerJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT owner
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : OwnerJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, cityRef, companyRef)
+Mapper --> Repo : Owner
+Repo --> Service : Owner
+deactivate Repo
+
+Service -> Service : OwnerDto.from(owner)
+Service --> UseCase : OwnerDto
+UseCase --> Controller : OwnerDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nOwnerResponse
+deactivate Controller
+
+@enduml

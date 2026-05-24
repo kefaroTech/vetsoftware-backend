@@ -1,0 +1,93 @@
+@startuml surgery_update
+title PUT /surgeries/{id} — Update Surgery
+
+actor Client
+participant "SurgeryController" as Controller
+participant "UpdateSurgeryUseCase\n<<port.in>>" as UseCase
+participant "UpdateSurgeryService" as Service
+participant "SurgeryRepository\n<<port.out>>" as Repo
+participant "SurgeryTypeQueryPort" as SurgeryTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "SurgeryJpaMapper" as Mapper
+participant "SurgeryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /surgeries/{id}\n+ UpdateSurgeryRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateSurgeryCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  surgery.update OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT surgery (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SurgeryJpaEntity>
+alt surgery no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SurgeryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Surgery
+Repo --> Service : Optional<Surgery>
+
+Service -> SurgeryTypeQP : findById(surgeryTypeId)
+SurgeryTypeQP --> Service : Optional<SurgeryTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : surgery.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(surgery)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(surgery, surgeryType, animal, consultation, company)
+Mapper --> Repo : SurgeryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE surgery
+DB --> JpaRepo : ok
+JpaRepo --> Repo : SurgeryJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Surgery
+Repo --> Service : Surgery
+
+Service -> Service : SurgeryDto.from(surgery)
+Service --> UseCase : SurgeryDto
+UseCase --> Controller : SurgeryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSurgeryResponse
+deactivate Controller
+
+@enduml

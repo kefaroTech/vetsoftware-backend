@@ -1,0 +1,49 @@
+@startuml systemuser_list
+title GET /system-users — List all SystemUsers
+
+actor Client
+participant "SystemUserController" as Controller
+participant "ListSystemUsersUseCase\n<<port.in>>" as UseCase
+participant "ListSystemUsersService" as Service
+participant "SystemUserRepository\n<<port.out>>" as Repo
+participant "SystemUserJpaMapper" as Mapper
+participant "SystemUserJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /system-users
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT system_user
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<SystemUserJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<SystemUser>
+Repo --> Service : List<SystemUser>
+deactivate Repo
+
+Service -> Service : stream().map(SystemUserDto::from).toList()
+Service --> UseCase : List<SystemUserDto>
+UseCase --> Controller : List<SystemUserDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<SystemUserResponse>
+deactivate Controller
+
+@enduml

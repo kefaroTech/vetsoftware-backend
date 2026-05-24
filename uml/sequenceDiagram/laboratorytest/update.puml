@@ -1,0 +1,88 @@
+@startuml laboratory_test_update
+title PUT /laboratory-tests/{id} — Update LaboratoryTest
+
+actor Client
+participant "LaboratoryTestController" as Controller
+participant "UpdateLaboratoryTestUseCase\n<<port.in>>" as UseCase
+participant "UpdateLaboratoryTestService" as Service
+participant "LaboratoryTestRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestTypeQueryPort" as TestTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "LaboratoryTestJpaMapper" as Mapper
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /laboratory-tests/{id}\n+ UpdateLaboratoryTestRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateLaboratoryTestCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTest.update OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestJpaEntity>
+alt laboratoryTest no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : LaboratoryTestNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : LaboratoryTest
+Repo --> Service : Optional<LaboratoryTest>
+
+Service -> TestTypeQP : findById(testTypeId)
+TestTypeQP --> Service : Optional<LaboratoryTestTypeRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : laboratoryTest.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(laboratoryTest)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company)
+Mapper --> Repo : LaboratoryTestJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE laboratory_test
+DB --> JpaRepo : ok
+JpaRepo --> Repo : LaboratoryTestJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : LaboratoryTest
+Repo --> Service : LaboratoryTest
+
+Service -> Service : LaboratoryTestDto.from(laboratoryTest)
+Service --> UseCase : LaboratoryTestDto
+UseCase --> Controller : LaboratoryTestDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nLaboratoryTestResponse
+deactivate Controller
+
+@enduml

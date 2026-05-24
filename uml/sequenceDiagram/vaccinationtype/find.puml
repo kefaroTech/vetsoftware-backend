@@ -1,0 +1,57 @@
+@startuml vaccination_type_find
+title GET /vaccination-types/{id} — Find VaccinationType by ID
+
+actor Client
+participant "VaccinationTypeController" as Controller
+participant "FindVaccinationTypeUseCase\n<<port.in>>" as UseCase
+participant "FindVaccinationTypeService" as Service
+participant "VaccinationTypeRepository\n<<port.out>>" as Repo
+participant "VaccinationTypeJpaMapper" as Mapper
+participant "VaccinationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /vaccination-types/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT vaccination_type\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<VaccinationTypeJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : VaccinationType
+  Repo --> Service : Optional<VaccinationType>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : VaccinationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : VaccinationTypeDto.from(vaccinationType)
+Service --> UseCase : VaccinationTypeDto
+UseCase --> Controller : VaccinationTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nVaccinationTypeResponse
+deactivate Controller
+
+@enduml

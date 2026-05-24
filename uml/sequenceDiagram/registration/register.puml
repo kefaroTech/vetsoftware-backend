@@ -1,0 +1,128 @@
+@startuml registration_register
+title POST /register — Register new Company + Admin Employee
+
+actor Client
+participant "RegistrationController" as Controller
+participant "RegisterUserUseCase\n<<port.in>>" as UseCase
+participant "RegisterUserService" as Service
+participant "CompanyIdentifierChecker\n<<port.out>>" as IdChecker
+participant "PasswordHasher" as Hasher
+participant "DefaultMembershipProvider\n<<port.out>>" as MembershipProv
+participant "CompanyCreator\n<<port.out>>\n(CreateCompanyAdapter)" as CompanyCreator
+participant "EmployeeCodeChecker\n<<port.out>>" as CodeChecker
+participant "EmployeeCreator\n<<port.out>>\n(CreateEmployeeAdapter)" as EmployeeCreator
+participant "MandatoryBaseRoleProvider\n<<port.out>>" as RoleProv
+participant "RoleCreator\n<<port.out>>\n(CreateRoleAdapter)" as RoleCreator
+participant "RolePermissionInitializationPort\n<<port.out>>" as RolePermInit
+participant "EmployeeRoleAssigner\n<<port.out>>\n(CreateEmployeeRoleAdapter)" as RoleAssigner
+participant "SystemAuthRunner" as SysRunner
+participant "TokenGenerator\n<<port.out>>" as TokenGen
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  Ruta pública declarada en AuthFilter.PUBLIC_PATHS
+  (POST /register), no requiere JWT.
+end note
+
+Client -> Controller : POST /register\n+ RegisterUserRequest
+activate Controller
+
+Controller -> UseCase : execute(RegisterUserCommand)
+note right of UseCase: (sin @PreAuthorize — público)
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> IdChecker : exists(companyIdentifier)
+IdChecker -> DB : SELECT count company WHERE identifier=?
+DB --> IdChecker : boolean
+IdChecker --> Service : boolean
+alt identifier ya en uso
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Hasher : hash(rawPassword)
+Hasher --> Service : hashedPassword
+
+Service -> MembershipProv : getDefaultMembershipId()
+MembershipProv -> DB : SELECT membership WHERE mandatory=true LIMIT 1
+DB --> MembershipProv : row | empty
+alt no hay membership mandatory
+  MembershipProv --> Service : IllegalStateException
+  Service --> GEH : (propaga)
+  GEH --> Client : 500 Internal Server Error
+end
+MembershipProv --> Service : membershipId
+
+Service -> CompanyCreator : create(name, identifier, address, contact, cityId, membershipId)
+CompanyCreator -> SysRunner : call(() -> createCompanyUseCase.execute(...))
+SysRunner -> SysRunner : autentica temporalmente como SYSTEM
+note right of SysRunner
+  SystemAuthRunner instala SystemContext en
+  SecurityContextHolder para permitir el @PreAuthorize
+  de CreateCompanyUseCase ("admin.all OR ROLE_SYSTEM").
+end note
+SysRunner -> DB : INSERT company (via CreateCompanyService)
+DB --> SysRunner : id
+SysRunner --> CompanyCreator : CompanyDto
+CompanyCreator --> Service : CompanyResult(id, name, identifier)
+
+Service -> Service : EmployeeCodeGenerator.generate(companyName, employeeName)
+loop hasta encontrar code único (suffix -2, -3, ...)
+  Service -> CodeChecker : exists(candidate)
+  CodeChecker -> DB : SELECT count employee WHERE employee_code=?
+  DB --> CodeChecker : boolean
+  CodeChecker --> Service : boolean
+end
+
+Service -> EmployeeCreator : create(employeeCode, hashedPassword, name, email, companyId)
+EmployeeCreator -> SysRunner : call(() -> createEmployeeUseCase.execute(...))
+SysRunner -> DB : INSERT employee
+DB --> SysRunner : id
+SysRunner --> EmployeeCreator : EmployeeDto
+EmployeeCreator --> Service : EmployeeResult(id)
+
+Service -> RoleProv : findMandatory()
+RoleProv -> DB : SELECT base_role WHERE mandatory=true
+DB --> RoleProv : rows[]
+RoleProv --> Service : List<BaseRoleData>
+
+loop por cada baseRole mandatory
+  Service -> RoleCreator : create(name, code, companyId)
+  RoleCreator -> SysRunner : call(() -> createRoleUseCase.execute(...))
+  SysRunner -> DB : INSERT role
+  DB --> SysRunner : id
+  SysRunner --> RoleCreator : RoleDto
+  RoleCreator --> Service : RoleResult(id)
+
+  Service -> RolePermInit : initializeForRole(roleId, companyId, baseRoleId, membershipId)
+  RolePermInit -> DB : SELECT membership_submodule WHERE membership_id=?
+  RolePermInit -> DB : SELECT base_role_permission WHERE base_role_id=?\n(JOIN basePermission via @EntityGraph)
+  RolePermInit -> DB : SELECT permission WHERE company_id=? AND code=?\n(por cada base_permission aplicable)
+  RolePermInit -> DB : INSERT permission [* faltantes] (saveAll)
+  RolePermInit -> DB : INSERT role_permission [*] (saveAll)
+  RolePermInit --> Service : void
+
+  Service -> RoleAssigner : assign(employeeId, roleId)
+  RoleAssigner -> SysRunner : run(() -> createEmployeeRoleUseCase.execute(...))
+  SysRunner -> DB : INSERT employee_role
+  DB --> SysRunner : ok
+  SysRunner --> RoleAssigner : void
+  RoleAssigner --> Service : void
+end
+
+Service -> TokenGen : generate(employeeId, "EMPLOYEE", companyId)
+TokenGen --> Service : token
+
+Service -> Service : new RegistrationDto(companyId, employeeId, token, "EMPLOYEE")
+Service --> UseCase : RegistrationDto
+UseCase --> Controller : RegistrationDto
+deactivate Service
+
+Controller -> Controller : new RegistrationResponse(...)
+Controller --> Client : 201 Created\nRegistrationResponse
+deactivate Controller
+
+@enduml

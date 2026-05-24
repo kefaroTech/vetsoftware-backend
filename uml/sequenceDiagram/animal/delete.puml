@@ -1,0 +1,52 @@
+@startuml animal_delete
+title DELETE /animals/{id} — Delete Animal
+
+actor Client
+participant "AnimalController" as Controller
+participant "DeleteAnimalUseCase\n<<port.in>>" as UseCase
+participant "DeleteAnimalService" as Service
+participant "AnimalRepository\n<<port.out>>" as Repo
+participant "AnimalJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /animals/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase: (sin @PreAuthorize de ownership en esta variante)
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT animal
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<AnimalJpaEntity>
+alt animal no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : AnimalNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Animal>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE animal
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

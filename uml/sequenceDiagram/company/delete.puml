@@ -1,0 +1,55 @@
+@startuml company_delete
+title DELETE /companies/{id} — Delete Company
+
+actor Client
+participant "CompanyController" as Controller
+participant "DeleteCompanyUseCase\n<<port.in>>" as UseCase
+participant "DeleteCompanyService" as Service
+participant "CompanyRepository\n<<port.out>>" as Repo
+participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /companies/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR company.delete OR SYSTEM
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT company (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CompanyJpaEntity>
+alt company no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CompanyNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Company>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE company
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

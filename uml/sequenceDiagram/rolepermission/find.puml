@@ -1,0 +1,57 @@
+@startuml rolepermission_find
+title GET /role-permissions/{id} — Find RolePermission by ID
+
+actor Client
+participant "RolePermissionController" as Controller
+participant "FindRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "FindRolePermissionService" as Service
+participant "RolePermissionRepository\n<<port.out>>" as Repo
+participant "RolePermissionJpaMapper" as Mapper
+participant "RolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /role-permissions/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT role_permission\nJOIN FETCH (role, permission)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<RolePermissionJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : RolePermission
+  Repo --> Service : Optional<RolePermission>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : RolePermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : RolePermissionDto.from(rolePermission)
+Service --> UseCase : RolePermissionDto
+UseCase --> Controller : RolePermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nRolePermissionResponse
+deactivate Controller
+
+@enduml

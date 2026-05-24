@@ -1,0 +1,78 @@
+@startuml breed_update
+title PUT /breeds/{id} — Update Breed
+
+actor Client
+participant "BreedController" as Controller
+participant "UpdateBreedUseCase\n<<port.in>>" as UseCase
+participant "UpdateBreedService" as Service
+participant "BreedRepository\n<<port.out>>" as Repo
+participant "SpecieQueryPort" as SpecieQP
+participant "BreedJpaMapper" as Mapper
+participant "BreedJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SpecieJpaRepository\n<<spring-data>>" as SpecieJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /breeds/{id}\n+ UpdateBreedRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateBreedCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT breed (JOIN FETCH specie)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BreedJpaEntity>
+alt breed no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BreedNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Breed
+Repo --> Service : Optional<Breed>
+
+Service -> SpecieQP : findById(specieId)
+SpecieQP --> Service : Optional<SpecieRef>
+alt specie no encontrada
+  Service --> GEH : IllegalArgumentException\n"Specie not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : breed.update(name, specie)\n(invariantes de dominio)
+
+Service -> Repo : save(breed)
+Repo -> SpecieJpa : getReferenceById(specieId)
+SpecieJpa --> Repo : SpecieJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(breed, specie)
+Mapper --> Repo : BreedJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE breed
+DB --> JpaRepo : ok
+JpaRepo --> Repo : BreedJpaEntity
+Repo -> Mapper : toDomain(entity, specieRef precargado)
+Mapper --> Repo : Breed
+Repo --> Service : Breed
+
+Service -> Service : BreedDto.from(breed)
+Service --> UseCase : BreedDto
+UseCase --> Controller : BreedDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nBreedResponse
+deactivate Controller
+
+@enduml

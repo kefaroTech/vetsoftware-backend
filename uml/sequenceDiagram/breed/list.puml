@@ -1,0 +1,45 @@
+@startuml breed_list
+title GET /breeds — List all Breeds
+
+actor Client
+participant "BreedController" as Controller
+participant "ListBreedsUseCase\n<<port.in>>" as UseCase
+participant "ListBreedsService" as Service
+participant "BreedRepository\n<<port.out>>" as Repo
+participant "BreedJpaMapper" as Mapper
+participant "BreedJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /breeds
+activate Controller
+
+Controller -> UseCase : listAll()
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT breed\nJOIN FETCH specie\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<BreedJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Breed>
+Repo --> Service : List<Breed>
+deactivate Repo
+
+Service -> Service : stream().map(BreedDto::from).toList()
+Service --> UseCase : List<BreedDto>
+UseCase --> Controller : List<BreedDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<BreedResponse>
+deactivate Controller
+
+@enduml

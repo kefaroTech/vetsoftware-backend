@@ -1,0 +1,49 @@
+@startuml laboratory_test_list_by_animal
+title GET /laboratory-tests/by-animal/{animalId} — List LaboratoryTests of an Animal
+
+actor Client
+participant "LaboratoryTestController" as Controller
+participant "ListLaboratoryTestsByAnimalUseCase\n<<port.in>>" as UseCase
+participant "ListLaboratoryTestsByAnimalService" as Service
+participant "LaboratoryTestRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestJpaMapper" as Mapper
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /laboratory-tests/by-animal/{animalId}
+activate Controller
+
+Controller -> UseCase : listByAnimal(animalId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTest.read OR SYSTEM
+end note
+UseCase -> Service : listByAnimal(animalId)
+activate Service
+
+Service -> Repo : findAllByAnimalId(animalId)
+activate Repo
+Repo -> JpaRepo : findAllByAnimalId(animalId)
+JpaRepo -> DB : SELECT laboratory_test\nWHERE animal_id=?\nJOIN FETCH (testType, animal, consultation, company)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<LaboratoryTestJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<LaboratoryTest>
+Repo --> Service : List<LaboratoryTest>
+deactivate Repo
+
+Service -> Service : stream().map(LaboratoryTestDto::from).toList()
+Service --> UseCase : List<LaboratoryTestDto>
+UseCase --> Controller : List<LaboratoryTestDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<LaboratoryTestResponse>
+deactivate Controller
+
+@enduml

@@ -1,0 +1,54 @@
+@startuml module_create
+title POST /modules — Create Module
+
+actor Client
+participant "ModuleController" as Controller
+participant "CreateModuleUseCase\n<<port.in>>" as UseCase
+participant "CreateModuleService" as Service
+participant "ModuleRepository\n<<port.out>>" as Repo
+participant "ModuleJpaMapper" as Mapper
+participant "ModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /modules\n+ CreateModuleRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateModuleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Service : Module.create(name, code)\n(invariantes de dominio)
+
+Service -> Repo : save(module)
+activate Repo
+Repo -> Mapper : toJpa(module)
+Mapper --> Repo : ModuleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT module
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : ModuleJpaEntity (con id)
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Module
+Repo --> Service : Module
+deactivate Repo
+
+Service -> Service : ModuleDto.from(module)
+Service --> UseCase : ModuleDto
+UseCase --> Controller : ModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nModuleResponse
+deactivate Controller
+
+@enduml

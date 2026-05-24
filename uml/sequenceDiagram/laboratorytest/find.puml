@@ -1,0 +1,57 @@
+@startuml laboratory_test_find
+title GET /laboratory-tests/{id} — Find LaboratoryTest by ID
+
+actor Client
+participant "LaboratoryTestController" as Controller
+participant "FindLaboratoryTestUseCase\n<<port.in>>" as UseCase
+participant "FindLaboratoryTestService" as Service
+participant "LaboratoryTestRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestJpaMapper" as Mapper
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /laboratory-tests/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTest.read OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test\nJOIN FETCH (testType, animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : LaboratoryTest
+  Repo --> Service : Optional<LaboratoryTest>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : LaboratoryTestNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : LaboratoryTestDto.from(laboratoryTest)
+Service --> UseCase : LaboratoryTestDto
+UseCase --> Controller : LaboratoryTestDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nLaboratoryTestResponse
+deactivate Controller
+
+@enduml

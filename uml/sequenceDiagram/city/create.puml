@@ -1,0 +1,66 @@
+@startuml city_create
+title POST /cities — Create City
+
+actor Client
+participant "CityController" as Controller
+participant "CreateCityUseCase\n<<port.in>>" as UseCase
+participant "CreateCityService" as Service
+participant "StateQueryPort" as StateQP
+participant "CityRepository\n<<port.out>>" as Repo
+participant "CityJpaMapper" as Mapper
+participant "CityJpaRepository\n<<spring-data>>" as JpaRepo
+participant "StateJpaRepository\n<<spring-data>>" as StateJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /cities\n+ CreateCityRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateCityCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> StateQP : findById(stateId)
+StateQP --> Service : Optional<StateRef>
+alt state no encontrado
+  Service --> GEH : IllegalArgumentException\n("State not found")
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : City.create(name, state)\n(invariantes de dominio)
+
+Service -> Repo : save(city)
+activate Repo
+Repo -> StateJpaRepo : getReferenceById(state.id())
+StateJpaRepo --> Repo : StateJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(city, state)
+Mapper --> Repo : CityJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT city
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : CityJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, stateRef precargado)
+Mapper --> Repo : City
+Repo --> Service : City
+deactivate Repo
+
+Service -> Service : CityDto.from(city)
+Service --> UseCase : CityDto
+UseCase --> Controller : CityDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nCityResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,91 @@
+@startuml employeerole_update
+title PUT /employee-roles/{id} — Update EmployeeRole
+
+actor Client
+participant "EmployeeRoleController" as Controller
+participant "UpdateEmployeeRoleUseCase\n<<port.in>>" as UseCase
+participant "UpdateEmployeeRoleService" as Service
+participant "EmployeeRoleRepository\n<<port.out>>" as Repo
+participant "EmployeeQueryPort" as EmployeeQP
+participant "RoleQueryPort" as RoleQP
+participant "PermissionCachePort\n<<port.out>>" as CachePort
+participant "EmployeeRoleJpaMapper" as Mapper
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /employee-roles/{id}\n+ UpdateEmployeeRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateEmployeeRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT employee_role\nJOIN FETCH (employee, role)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<EmployeeRoleJpaEntity>
+alt employeeRole no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : EmployeeRoleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : EmployeeRole
+Repo --> Service : Optional<EmployeeRole>
+
+Service -> Service : previousEmployeeId =\n  employeeRole.getEmployee().id()
+
+Service -> EmployeeQP : findById(employeeId)
+EmployeeQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> RoleQP : findById(roleId)
+RoleQP --> Service : Optional<RoleRef>
+alt role no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : employeeRole.update(employee, role)
+
+Service -> Repo : save(employeeRole)
+Repo -> JpaRepo : getReferenceById(...)\nemployee, role
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(employeeRole, employee, role)
+Mapper --> Repo : EmployeeRoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE employee_role
+DB --> JpaRepo : ok
+JpaRepo --> Repo : EmployeeRoleJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : EmployeeRole
+Repo --> Service : EmployeeRole
+
+Service -> Service : EmployeeRoleDto.from(employeeRole)
+Service -> CachePort : evictByEmployeeId(previousEmployeeId)
+alt previousEmployeeId != command.employeeId
+  Service -> CachePort : evictByEmployeeId(command.employeeId)
+end
+Service --> UseCase : EmployeeRoleDto
+UseCase --> Controller : EmployeeRoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nEmployeeRoleResponse
+deactivate Controller
+
+@enduml

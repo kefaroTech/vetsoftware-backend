@@ -1,0 +1,67 @@
+@startuml employee_list_by_company
+title GET /employees/by-company — List Employees of current company
+
+actor Client
+participant "EmployeeController" as Controller
+participant "Authz" as Authz
+participant "ListEmployeesByCompanyUseCase\n<<port.in>>" as UseCase
+participant "ListEmployeesByCompanyService" as Service
+participant "EmployeeRepository\n<<port.out>>" as Repo
+participant "EmployeeRolesQueryPort" as RolesQP
+participant "EmployeeJpaMapper" as Mapper
+participant "EmployeeJpaRepository\n<<spring-data>>" as JpaRepo
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as ERJpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /employees/by-company
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listByCompany(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (employee.read AND
+   authz.isMyCompany(#companyId))
+end note
+UseCase -> Service : listByCompany(companyId)
+activate Service
+
+Service -> Repo : findAllByCompanyId(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByCompanyId(companyId)
+JpaRepo -> DB : SELECT employee\nWHERE company_id=?\nJOIN FETCH company
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<EmployeeJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Employee>
+Repo --> Service : List<Employee>
+deactivate Repo
+
+Service -> RolesQP : findRolesByEmployeeIds(ids)
+activate RolesQP
+RolesQP -> ERJpaRepo : findByEmployeeIdIn(ids)
+ERJpaRepo -> DB : SELECT employee_role\nWHERE employee_id IN (...)\nJOIN FETCH role
+DB --> ERJpaRepo : rows[]
+ERJpaRepo --> RolesQP : List<EmployeeRoleJpaEntity>
+RolesQP -> RolesQP : groupingBy(employeeId,\n  mapping(toSnapshot))
+RolesQP --> Service : Map<Long, List<RoleSnapshot>>
+deactivate RolesQP
+
+Service -> Service : stream().map(e -> EmployeeDto.from(e, roles)).toList()
+Service --> UseCase : List<EmployeeDto>
+UseCase --> Controller : List<EmployeeDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<EmployeeResponse>
+deactivate Controller
+
+@enduml

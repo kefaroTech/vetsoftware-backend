@@ -1,0 +1,67 @@
+@startuml baserole_update
+title PUT /base-roles/{id} — Update BaseRole
+
+actor Client
+participant "BaseRoleController" as Controller
+participant "UpdateBaseRoleUseCase\n<<port.in>>" as UseCase
+participant "UpdateBaseRoleService" as Service
+participant "BaseRoleRepository\n<<port.out>>" as Repo
+participant "BaseRoleJpaMapper" as Mapper
+participant "BaseRoleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /base-roles/{id}\n+ UpdateBaseRoleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateBaseRoleCommand)
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)  @Transactional
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT base_role
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<BaseRoleJpaEntity>
+alt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : BaseRoleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : BaseRole
+Repo --> Service : Optional<BaseRole>
+
+Service -> Service : baseRole.update(name, code, mandatory)\n(invariantes de dominio)
+
+Service -> Repo : save(baseRole)
+Repo -> Mapper : toJpa(baseRole)
+Mapper --> Repo : BaseRoleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE base_role
+DB --> JpaRepo : ok
+JpaRepo --> Repo : BaseRoleJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : BaseRole
+Repo --> Service : BaseRole
+
+Service -> Service : BaseRoleDto.from(baseRole)
+Service --> UseCase : BaseRoleDto
+UseCase --> Controller : BaseRoleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nBaseRoleResponse
+deactivate Controller
+
+@enduml

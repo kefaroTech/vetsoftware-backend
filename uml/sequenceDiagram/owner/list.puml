@@ -1,0 +1,49 @@
+@startuml owner_list
+title GET /owners — List all Owners (admin/SYSTEM)
+
+actor Client
+participant "OwnerController" as Controller
+participant "ListOwnersUseCase\n<<port.in>>" as UseCase
+participant "ListOwnersService" as Service
+participant "OwnerRepository\n<<port.out>>" as Repo
+participant "OwnerJpaMapper" as Mapper
+participant "OwnerJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /owners
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT owner\nJOIN FETCH (city, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<OwnerJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Owner>
+Repo --> Service : List<Owner>
+deactivate Repo
+
+Service -> Service : stream().map(OwnerDto::from).toList()
+Service --> UseCase : List<OwnerDto>
+UseCase --> Controller : List<OwnerDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<OwnerResponse>
+deactivate Controller
+
+@enduml

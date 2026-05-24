@@ -1,0 +1,57 @@
+@startuml diagnostic_imaging_type_find
+title GET /diagnostic-imaging-types/{id} — Find DiagnosticImagingType by ID
+
+actor Client
+participant "DiagnosticImagingTypeController" as Controller
+participant "FindDiagnosticImagingTypeUseCase\n<<port.in>>" as UseCase
+participant "FindDiagnosticImagingTypeService" as Service
+participant "DiagnosticImagingTypeRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingTypeJpaMapper" as Mapper
+participant "DiagnosticImagingTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /diagnostic-imaging-types/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT diagnostic_imaging_type\nJOIN FETCH company\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DiagnosticImagingTypeJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : DiagnosticImagingType
+  Repo --> Service : Optional<DiagnosticImagingType>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DiagnosticImagingTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : DiagnosticImagingTypeDto.from(type)
+Service --> UseCase : DiagnosticImagingTypeDto
+UseCase --> Controller : DiagnosticImagingTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDiagnosticImagingTypeResponse
+deactivate Controller
+
+@enduml

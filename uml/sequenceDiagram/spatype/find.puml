@@ -1,0 +1,57 @@
+@startuml spa_type_find
+title GET /spa-types/{id} — Find SpaType by ID
+
+actor Client
+participant "SpaTypeController" as Controller
+participant "FindSpaTypeUseCase\n<<port.in>>" as UseCase
+participant "FindSpaTypeService" as Service
+participant "SpaTypeRepository\n<<port.out>>" as Repo
+participant "SpaTypeJpaMapper" as Mapper
+participant "SpaTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /spa-types/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT spa_type
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SpaTypeJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : SpaType
+  Repo --> Service : Optional<SpaType>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SpaTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SpaTypeDto.from(spaType)
+Service --> UseCase : SpaTypeDto
+UseCase --> Controller : SpaTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSpaTypeResponse
+deactivate Controller
+
+@enduml

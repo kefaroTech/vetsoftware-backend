@@ -1,0 +1,81 @@
+@startuml vaccination_type_update
+title PUT /vaccination-types/{id} — Update VaccinationType
+
+actor Client
+participant "VaccinationTypeController" as Controller
+participant "UpdateVaccinationTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateVaccinationTypeService" as Service
+participant "VaccinationTypeRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "VaccinationTypeJpaMapper" as Mapper
+participant "VaccinationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /vaccination-types/{id}\n+ UpdateVaccinationTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateVaccinationTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT vaccination_type (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<VaccinationTypeJpaEntity>
+alt vaccination_type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : VaccinationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : VaccinationType
+Repo --> Service : Optional<VaccinationType>
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+
+Service -> Service : vaccinationType.update(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(vaccinationType)
+alt company != null
+  Repo -> JpaRepo : getReferenceById(companyId)
+  JpaRepo --> Repo : proxy (sin SELECT)
+end
+Repo -> Mapper : toJpa(vaccinationType, company)
+Mapper --> Repo : VaccinationTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE vaccination_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : VaccinationTypeJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : VaccinationType
+Repo --> Service : VaccinationType
+
+Service -> Service : VaccinationTypeDto.from(vaccinationType)
+Service --> UseCase : VaccinationTypeDto
+UseCase --> Controller : VaccinationTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nVaccinationTypeResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,67 @@
+@startuml country_update
+title PUT /countries/{id} — Update Country
+
+actor Client
+participant "CountryController" as Controller
+participant "UpdateCountryUseCase\n<<port.in>>" as UseCase
+participant "UpdateCountryService" as Service
+participant "CountryRepository\n<<port.out>>" as Repo
+participant "CountryJpaMapper" as Mapper
+participant "CountryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /countries/{id}\n+ UpdateCountryRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateCountryCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT country
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<CountryJpaEntity>
+alt country no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : CountryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Country
+Repo --> Service : Optional<Country>
+
+Service -> Service : country.update(name)\n(invariantes de dominio)
+
+Service -> Repo : save(country)
+Repo -> Mapper : toJpa(country)
+Mapper --> Repo : CountryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE country
+DB --> JpaRepo : ok
+JpaRepo --> Repo : CountryJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Country
+Repo --> Service : Country
+
+Service -> Service : CountryDto.from(country)
+Service --> UseCase : CountryDto
+UseCase --> Controller : CountryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nCountryResponse
+deactivate Controller
+
+@enduml

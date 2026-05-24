@@ -1,0 +1,67 @@
+@startuml module_update
+title PUT /modules/{id} — Update Module
+
+actor Client
+participant "ModuleController" as Controller
+participant "UpdateModuleUseCase\n<<port.in>>" as UseCase
+participant "UpdateModuleService" as Service
+participant "ModuleRepository\n<<port.out>>" as Repo
+participant "ModuleJpaMapper" as Mapper
+participant "ModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /modules/{id}\n+ UpdateModuleRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateModuleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT module
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ModuleJpaEntity>
+alt module no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ModuleNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Module
+Repo --> Service : Optional<Module>
+
+Service -> Service : module.update(name, code)\n(invariantes de dominio)
+
+Service -> Repo : save(module)
+Repo -> Mapper : toJpa(module)
+Mapper --> Repo : ModuleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE module
+DB --> JpaRepo : ok
+JpaRepo --> Repo : ModuleJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Module
+Repo --> Service : Module
+
+Service -> Service : ModuleDto.from(module)
+Service --> UseCase : ModuleDto
+UseCase --> Controller : ModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nModuleResponse
+deactivate Controller
+
+@enduml

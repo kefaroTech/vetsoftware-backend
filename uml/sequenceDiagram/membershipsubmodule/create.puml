@@ -1,0 +1,77 @@
+@startuml membershipsubmodule_create
+title POST /membership-sub-modules — Create MembershipSubModule
+
+actor Client
+participant "MembershipSubModuleController" as Controller
+participant "CreateMembershipSubModuleUseCase\n<<port.in>>" as UseCase
+participant "CreateMembershipSubModuleService" as Service
+participant "MembershipQueryPort" as MembershipQP
+participant "SubModuleQueryPort" as SubModuleQP
+participant "MembershipSubModuleRepository\n<<port.out>>" as Repo
+participant "MembershipSubModuleJpaMapper" as Mapper
+participant "MembershipSubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "MembershipJpaRepository\n<<spring-data>>" as MembershipJpa
+participant "SubModuleJpaRepository\n<<spring-data>>" as SubModuleJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /membership-sub-modules\n+ CreateMembershipSubModuleRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateMembershipSubModuleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> MembershipQP : findById(membershipId)
+MembershipQP --> Service : Optional<MembershipRef>
+alt membership no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> SubModuleQP : findById(subModuleId)
+SubModuleQP --> Service : Optional<SubModuleRef>
+alt submodule no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : MembershipSubModule.create(membership, subModule)\n(invariantes de dominio)
+
+Service -> Repo : save(membershipSubModule)
+activate Repo
+Repo -> MembershipJpa : getReferenceById(membershipId)
+MembershipJpa --> Repo : MembershipJpaEntity (proxy sin SELECT)
+Repo -> SubModuleJpa : getReferenceById(subModuleId)
+SubModuleJpa --> Repo : SubModuleJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(domain, membership, subModule)
+Mapper --> Repo : MembershipSubModuleJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT membership_sub_module
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : MembershipSubModuleJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, membershipRef, subModuleRef)
+Mapper --> Repo : MembershipSubModule
+Repo --> Service : MembershipSubModule
+deactivate Repo
+
+Service -> Service : MembershipSubModuleDto.from(...)
+Service --> UseCase : MembershipSubModuleDto
+UseCase --> Controller : MembershipSubModuleDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nMembershipSubModuleResponse
+deactivate Controller
+
+@enduml

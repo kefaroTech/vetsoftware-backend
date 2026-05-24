@@ -1,0 +1,45 @@
+@startuml animalcolor_list
+title GET /animal-colors — List all AnimalColors
+
+actor Client
+participant "AnimalColorController" as Controller
+participant "ListAnimalColorsUseCase\n<<port.in>>" as UseCase
+participant "ListAnimalColorsService" as Service
+participant "AnimalColorRepository\n<<port.out>>" as Repo
+participant "AnimalColorJpaMapper" as Mapper
+participant "AnimalColorJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /animal-colors
+activate Controller
+
+Controller -> UseCase : listAll()
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT animal_color
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<AnimalColorJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<AnimalColor>
+Repo --> Service : List<AnimalColor>
+deactivate Repo
+
+Service -> Service : stream().map(AnimalColorDto::from).toList()
+Service --> UseCase : List<AnimalColorDto>
+UseCase --> Controller : List<AnimalColorDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<AnimalColorResponse>
+deactivate Controller
+
+@enduml

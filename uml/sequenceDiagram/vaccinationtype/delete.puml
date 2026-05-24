@@ -1,0 +1,55 @@
+@startuml vaccination_type_delete
+title DELETE /vaccination-types/{id} — Delete VaccinationType
+
+actor Client
+participant "VaccinationTypeController" as Controller
+participant "DeleteVaccinationTypeUseCase\n<<port.in>>" as UseCase
+participant "DeleteVaccinationTypeService" as Service
+participant "VaccinationTypeRepository\n<<port.out>>" as Repo
+participant "VaccinationTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /vaccination-types/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT vaccination_type
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<VaccinationTypeJpaEntity>
+alt vaccination_type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : VaccinationTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<VaccinationType>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE vaccination_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

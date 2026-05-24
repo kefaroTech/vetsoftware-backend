@@ -1,0 +1,77 @@
+@startuml systemuserpermission_create
+title POST /system-user-permissions — Create SystemUserPermission
+
+actor Client
+participant "SystemUserPermissionController" as Controller
+participant "CreateSystemUserPermissionUseCase\n<<port.in>>" as UseCase
+participant "CreateSystemUserPermissionService" as Service
+participant "SystemUserQueryPort" as UserQP
+participant "SystemPermissionQueryPort" as PermQP
+participant "SystemUserPermissionRepository\n<<port.out>>" as Repo
+participant "SystemUserPermissionJpaMapper" as Mapper
+participant "SystemUserPermissionJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SystemUserJpaRepository\n<<spring-data>>" as UserJpa
+participant "SystemPermissionJpaRepository\n<<spring-data>>" as PermJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /system-user-permissions\n+ CreateSystemUserPermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSystemUserPermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> UserQP : findById(systemUserId)
+UserQP --> Service : Optional<SystemUserRef>
+alt systemUser no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> PermQP : findById(systemPermissionId)
+PermQP --> Service : Optional<SystemPermissionRef>
+alt systemPermission no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : SystemUserPermission.create(systemUser, systemPermission)\n(invariantes de dominio)
+
+Service -> Repo : save(systemUserPermission)
+activate Repo
+Repo -> UserJpa : getReferenceById(systemUserId)
+UserJpa --> Repo : SystemUserJpaEntity (proxy sin SELECT)
+Repo -> PermJpa : getReferenceById(systemPermissionId)
+PermJpa --> Repo : SystemPermissionJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(domain, systemUser, systemPermission)
+Mapper --> Repo : SystemUserPermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT system_user_permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SystemUserPermissionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, userRef, permRef)
+Mapper --> Repo : SystemUserPermission
+Repo --> Service : SystemUserPermission
+deactivate Repo
+
+Service -> Service : SystemUserPermissionDto.from(...)
+Service --> UseCase : SystemUserPermissionDto
+UseCase --> Controller : SystemUserPermissionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSystemUserPermissionResponse
+deactivate Controller
+
+@enduml

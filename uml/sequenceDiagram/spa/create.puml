@@ -1,0 +1,81 @@
+@startuml spa_create
+title POST /spas — Create Spa
+
+actor Client
+participant "SpaController" as Controller
+participant "CreateSpaUseCase\n<<port.in>>" as UseCase
+participant "CreateSpaService" as Service
+participant "SpaTypeQueryPort" as SpaTypeQP
+participant "AnimalQueryPort" as AnimalQP
+participant "CompanyQueryPort" as CompanyQP
+participant "SpaRepository\n<<port.out>>" as Repo
+participant "SpaJpaMapper" as Mapper
+participant "SpaJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /spas\n+ CreateSpaRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateSpaCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> SpaTypeQP : findById(spaTypeId)
+SpaTypeQP --> Service : Optional<SpaTypeRef>
+alt spaType no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Spa.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(spa)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nspaType, animal, company
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(spa, spaType, animal, company)
+Mapper --> Repo : SpaJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT spa
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : SpaJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Spa
+Repo --> Service : Spa
+deactivate Repo
+
+Service -> Service : SpaDto.from(spa)
+Service --> UseCase : SpaDto
+UseCase --> Controller : SpaDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nSpaResponse
+deactivate Controller
+deactivate Service
+
+@enduml

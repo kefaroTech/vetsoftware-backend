@@ -1,0 +1,89 @@
+@startuml hospitalization_update
+title PUT /hospitalizations/{id} — Update Hospitalization
+
+actor Client
+participant "HospitalizationController" as Controller
+participant "UpdateHospitalizationUseCase\n<<port.in>>" as UseCase
+participant "UpdateHospitalizationService" as Service
+participant "HospitalizationRepository\n<<port.out>>" as Repo
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "HospitalizationJpaMapper" as Mapper
+participant "HospitalizationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /hospitalizations/{id}\n+ UpdateHospitalizationRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateHospitalizationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  hospitalization.update OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT hospitalization (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<HospitalizationJpaEntity>
+alt hospitalization no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : HospitalizationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Hospitalization
+Repo --> Service : Optional<Hospitalization>
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+alt consultationId != null
+  Service -> ConsultationQP : findById(consultationId)
+  ConsultationQP --> Service : Optional<ConsultationRef>
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : hospitalization.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(hospitalization)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(hospitalization, animal, consultation, company)
+Mapper --> Repo : HospitalizationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE hospitalization
+DB --> JpaRepo : ok
+JpaRepo --> Repo : HospitalizationJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Hospitalization
+Repo --> Service : Hospitalization
+
+Service -> Service : HospitalizationDto.from(hospitalization)
+Service --> UseCase : HospitalizationDto
+UseCase --> Controller : HospitalizationDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nHospitalizationResponse
+deactivate Controller
+
+@enduml

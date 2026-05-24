@@ -1,0 +1,76 @@
+@startuml rolepermission_create
+title POST /role-permissions — Create RolePermission
+
+actor Client
+participant "RolePermissionController" as Controller
+participant "CreateRolePermissionUseCase\n<<port.in>>" as UseCase
+participant "CreateRolePermissionService" as Service
+participant "RoleQueryPort" as RoleQP
+participant "PermissionQueryPort" as PermQP
+participant "RolePermissionRepository\n<<port.out>>" as Repo
+participant "PermissionCachePort\n<<port.out>>" as CachePort
+participant "RolePermissionJpaMapper" as Mapper
+participant "RolePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /role-permissions\n+ CreateRolePermissionRequest
+activate Controller
+
+Controller -> UseCase : execute(CreateRolePermissionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> RoleQP : findById(roleId)
+RoleQP --> Service : Optional<RoleRef>
+alt role no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> PermQP : findById(permissionId)
+PermQP --> Service : Optional<PermissionRef>
+alt permission no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : RolePermission.create(role, permission)\n(invariantes de dominio)
+
+Service -> Repo : save(rolePermission)
+activate Repo
+Repo -> JpaRepo : getReferenceById(...)\nrole, permission
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(rolePermission, role, permission)
+Mapper --> Repo : RolePermissionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT role_permission
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : RolePermissionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, role, permission)
+Mapper --> Repo : RolePermission
+Repo --> Service : RolePermission
+deactivate Repo
+
+Service -> Service : RolePermissionDto.from(rolePermission)
+Service -> CachePort : evictByRoleId(roleId)
+CachePort --> Service : ok
+Service --> UseCase : RolePermissionDto
+UseCase --> Controller : RolePermissionDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nRolePermissionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

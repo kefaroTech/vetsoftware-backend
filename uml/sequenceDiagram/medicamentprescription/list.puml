@@ -1,0 +1,49 @@
+@startuml medicament_prescription_list
+title GET /medicament-prescriptions — List all MedicamentPrescriptions
+
+actor Client
+participant "MedicamentPrescriptionController" as Controller
+participant "ListMedicamentPrescriptionsUseCase\n<<port.in>>" as UseCase
+participant "ListMedicamentPrescriptionsService" as Service
+participant "MedicamentPrescriptionRepository\n<<port.out>>" as Repo
+participant "MedicamentPrescriptionJpaMapper" as Mapper
+participant "MedicamentPrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /medicament-prescriptions
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT medicament_prescription\nJOIN FETCH (prescription)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<MedicamentPrescriptionJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<MedicamentPrescription>
+Repo --> Service : List<MedicamentPrescription>
+deactivate Repo
+
+Service -> Service : stream().map(MedicamentPrescriptionDto::from).toList()
+Service --> UseCase : List<MedicamentPrescriptionDto>
+UseCase --> Controller : List<MedicamentPrescriptionDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<MedicamentPrescriptionResponse>
+deactivate Controller
+
+@enduml

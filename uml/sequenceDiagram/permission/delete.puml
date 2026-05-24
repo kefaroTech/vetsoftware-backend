@@ -1,0 +1,55 @@
+@startuml permission_delete
+title DELETE /permissions/{id} — Delete Permission
+
+actor Client
+participant "PermissionController" as Controller
+participant "DeletePermissionUseCase\n<<port.in>>" as UseCase
+participant "DeletePermissionService" as Service
+participant "PermissionRepository\n<<port.out>>" as Repo
+participant "PermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : DELETE /permissions/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT permission (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PermissionJpaEntity>
+alt permission no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PermissionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Permission>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE permission
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

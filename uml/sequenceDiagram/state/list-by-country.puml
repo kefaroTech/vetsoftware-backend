@@ -1,0 +1,46 @@
+@startuml state_list_by_country
+title GET /countries/{countryId}/states — List States of a Country
+
+actor Client
+participant "StateController" as Controller
+participant "ListStatesByCountryUseCase\n<<port.in>>" as UseCase
+participant "ListStatesByCountryService" as Service
+participant "StateRepository\n<<port.out>>" as Repo
+participant "StateJpaMapper" as Mapper
+participant "StateJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso el principal
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /countries/{countryId}/states
+activate Controller
+
+Controller -> UseCase : listByCountry(countryId)
+note right of UseCase: (sin @PreAuthorize)
+UseCase -> Service : listByCountry(countryId)
+activate Service
+
+Service -> Repo : findByCountryId(countryId)
+activate Repo
+Repo -> JpaRepo : findAllByCountry_Id(countryId)
+JpaRepo -> DB : SELECT state\nWHERE country_id=?\nJOIN FETCH country
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<StateJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<State>
+Repo --> Service : List<State>
+deactivate Repo
+
+Service -> Service : stream().map(StateDto::from).toList()
+Service --> UseCase : List<StateDto>
+UseCase --> Controller : List<StateDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<StateResponse>
+deactivate Controller
+
+@enduml

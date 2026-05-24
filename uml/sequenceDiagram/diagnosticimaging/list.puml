@@ -1,0 +1,49 @@
+@startuml diagnostic_imaging_list
+title GET /diagnostic-imagings — List all DiagnosticImagings
+
+actor Client
+participant "DiagnosticImagingController" as Controller
+participant "ListDiagnosticImagingsUseCase\n<<port.in>>" as UseCase
+participant "ListDiagnosticImagingsService" as Service
+participant "DiagnosticImagingRepository\n<<port.out>>" as Repo
+participant "DiagnosticImagingJpaMapper" as Mapper
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /diagnostic-imagings
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR diagnosticimaging.read OR SYSTEM
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT diagnostic_imaging\nJOIN FETCH (diagnosticImagingType, animal, consultation, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<DiagnosticImagingJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<DiagnosticImaging>
+Repo --> Service : List<DiagnosticImaging>
+deactivate Repo
+
+Service -> Service : stream().map(DiagnosticImagingDto::from).toList()
+Service --> UseCase : List<DiagnosticImagingDto>
+UseCase --> Controller : List<DiagnosticImagingDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<DiagnosticImagingResponse>
+deactivate Controller
+
+@enduml

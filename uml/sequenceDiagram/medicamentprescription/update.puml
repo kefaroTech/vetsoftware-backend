@@ -1,0 +1,77 @@
+@startuml medicament_prescription_update
+title PUT /medicament-prescriptions/{id} — Update MedicamentPrescription
+
+actor Client
+participant "MedicamentPrescriptionController" as Controller
+participant "UpdateMedicamentPrescriptionUseCase\n<<port.in>>" as UseCase
+participant "UpdateMedicamentPrescriptionService" as Service
+participant "MedicamentPrescriptionRepository\n<<port.out>>" as Repo
+participant "PrescriptionQueryPort" as PrescriptionQP
+participant "MedicamentPrescriptionJpaMapper" as Mapper
+participant "MedicamentPrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /medicament-prescriptions/{id}\n+ UpdateMedicamentPrescriptionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateMedicamentPrescriptionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT medicament_prescription (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<MedicamentPrescriptionJpaEntity>
+alt medicament no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : MedicamentPrescriptionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : MedicamentPrescription
+Repo --> Service : Optional<MedicamentPrescription>
+
+Service -> PrescriptionQP : findById(prescriptionId)
+PrescriptionQP --> Service : Optional<PrescriptionRef>
+alt prescription no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : medicament.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(medicament)
+Repo -> JpaRepo : getReferenceById(prescriptionId)\n(proxy sin SELECT)
+JpaRepo --> Repo : proxy
+Repo -> Mapper : toJpa(medicament, prescription)
+Mapper --> Repo : MedicamentPrescriptionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE medicament_prescription
+DB --> JpaRepo : ok
+JpaRepo --> Repo : MedicamentPrescriptionJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : MedicamentPrescription
+Repo --> Service : MedicamentPrescription
+
+Service -> Service : MedicamentPrescriptionDto.from(medicament)
+Service --> UseCase : MedicamentPrescriptionDto
+UseCase --> Controller : MedicamentPrescriptionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nMedicamentPrescriptionResponse
+deactivate Controller
+
+@enduml

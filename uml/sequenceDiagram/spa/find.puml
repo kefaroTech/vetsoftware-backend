@@ -1,0 +1,57 @@
+@startuml spa_find
+title GET /spas/{id} — Find Spa by ID
+
+actor Client
+participant "SpaController" as Controller
+participant "FindSpaUseCase\n<<port.in>>" as UseCase
+participant "FindSpaService" as Service
+participant "SpaRepository\n<<port.out>>" as Repo
+participant "SpaJpaMapper" as Mapper
+participant "SpaJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /spas/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT spa\nJOIN FETCH (spaType, animal, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<SpaJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Spa
+  Repo --> Service : Optional<Spa>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : SpaNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : SpaDto.from(spa)
+Service --> UseCase : SpaDto
+UseCase --> Controller : SpaDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nSpaResponse
+deactivate Controller
+
+@enduml

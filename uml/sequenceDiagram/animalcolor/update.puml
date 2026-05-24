@@ -1,0 +1,67 @@
+@startuml animalcolor_update
+title PUT /animal-colors/{id} — Update AnimalColor
+
+actor Client
+participant "AnimalColorController" as Controller
+participant "UpdateAnimalColorUseCase\n<<port.in>>" as UseCase
+participant "UpdateAnimalColorService" as Service
+participant "AnimalColorRepository\n<<port.out>>" as Repo
+participant "AnimalColorJpaMapper" as Mapper
+participant "AnimalColorJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /animal-colors/{id}\n+ UpdateAnimalColorRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateAnimalColorCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT animal_color
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<AnimalColorJpaEntity>
+alt color no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : AnimalColorNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : AnimalColor
+Repo --> Service : Optional<AnimalColor>
+
+Service -> Service : color.update(name)\n(invariantes de dominio)
+
+Service -> Repo : save(color)
+Repo -> Mapper : toJpa(color)
+Mapper --> Repo : AnimalColorJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE animal_color
+DB --> JpaRepo : ok
+JpaRepo --> Repo : AnimalColorJpaEntity
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : AnimalColor
+Repo --> Service : AnimalColor
+
+Service -> Service : AnimalColorDto.from(color)
+Service --> UseCase : AnimalColorDto
+UseCase --> Controller : AnimalColorDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nAnimalColorResponse
+deactivate Controller
+
+@enduml

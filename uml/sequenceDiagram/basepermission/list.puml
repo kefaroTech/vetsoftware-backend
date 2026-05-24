@@ -1,0 +1,49 @@
+@startuml basepermission_list
+title GET /base-permissions — List all BasePermissions
+
+actor Client
+participant "BasePermissionController" as Controller
+participant "ListBasePermissionsUseCase\n<<port.in>>" as UseCase
+participant "ListBasePermissionsService" as Service
+participant "BasePermissionRepository\n<<port.out>>" as Repo
+participant "BasePermissionJpaMapper" as Mapper
+participant "BasePermissionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext / SystemContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /base-permissions
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  hasAuthority('admin.all') OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT base_permission\nJOIN FETCH subModule\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<BasePermissionJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<BasePermission>
+Repo --> Service : List<BasePermission>
+deactivate Repo
+
+Service -> Service : stream().map(BasePermissionDto::from).toList()
+Service --> UseCase : List<BasePermissionDto>
+UseCase --> Controller : List<BasePermissionDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<BasePermissionResponse>
+deactivate Controller
+
+@enduml

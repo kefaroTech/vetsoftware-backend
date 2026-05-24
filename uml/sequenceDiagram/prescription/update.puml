@@ -1,0 +1,83 @@
+@startuml prescription_update
+title PUT /prescriptions/{id} — Update Prescription
+
+actor Client
+participant "PrescriptionController" as Controller
+participant "UpdatePrescriptionUseCase\n<<port.in>>" as UseCase
+participant "UpdatePrescriptionService" as Service
+participant "PrescriptionRepository\n<<port.out>>" as Repo
+participant "AnimalQueryPort" as AnimalQP
+participant "ConsultationQueryPort" as ConsultationQP
+participant "CompanyQueryPort" as CompanyQP
+participant "PrescriptionJpaMapper" as Mapper
+participant "PrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /prescriptions/{id}\n+ UpdatePrescriptionRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdatePrescriptionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT prescription (JOIN FETCH refs)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PrescriptionJpaEntity>
+alt prescription no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PrescriptionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Prescription
+Repo --> Service : Optional<Prescription>
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt cualquier ref no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> ConsultationQP : findById(consultationId)
+ConsultationQP --> Service : Optional<ConsultationRef>
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+
+Service -> Service : prescription.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(prescription)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(prescription, animal, consultation, company)
+Mapper --> Repo : PrescriptionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE prescription
+DB --> JpaRepo : ok
+JpaRepo --> Repo : PrescriptionJpaEntity
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : Prescription
+Repo --> Service : Prescription
+
+Service -> Service : PrescriptionDto.from(prescription)
+Service --> UseCase : PrescriptionDto
+UseCase --> Controller : PrescriptionDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPrescriptionResponse
+deactivate Controller
+
+@enduml

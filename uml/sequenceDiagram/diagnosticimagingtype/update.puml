@@ -1,0 +1,83 @@
+@startuml diagnostic_imaging_type_update
+title PUT /diagnostic-imaging-types/{id} — Update DiagnosticImagingType
+
+actor Client
+participant "DiagnosticImagingTypeController" as Controller
+participant "UpdateDiagnosticImagingTypeUseCase\n<<port.in>>" as UseCase
+participant "UpdateDiagnosticImagingTypeService" as Service
+participant "DiagnosticImagingTypeRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "DiagnosticImagingTypeJpaMapper" as Mapper
+participant "DiagnosticImagingTypeJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /diagnostic-imaging-types/{id}\n+ UpdateDiagnosticImagingTypeRequest
+activate Controller
+
+Controller -> UseCase : execute(UpdateDiagnosticImagingTypeCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT diagnostic_imaging_type (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DiagnosticImagingTypeJpaEntity>
+alt type no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DiagnosticImagingTypeNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : DiagnosticImagingType
+Repo --> Service : Optional<DiagnosticImagingType>
+
+alt companyId != null
+  Service -> CompanyQP : findById(companyId)
+  CompanyQP --> Service : Optional<CompanyRef>
+  alt company no encontrada
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+else companyId == null
+  note right of Service: tipo general (sin company)
+end
+
+Service -> Service : type.update(name, description, company, general)\n(invariantes de dominio)
+
+Service -> Repo : save(type)
+alt company != null
+  Repo -> JpaRepo : companyJpaRepository.getReferenceById(companyId)
+  JpaRepo --> Repo : CompanyJpaEntity proxy
+end
+Repo -> Mapper : toJpa(type, company)
+Mapper --> Repo : DiagnosticImagingTypeJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE diagnostic_imaging_type
+DB --> JpaRepo : ok
+JpaRepo --> Repo : DiagnosticImagingTypeJpaEntity
+Repo -> Mapper : toDomain(entity, companyRef)
+Mapper --> Repo : DiagnosticImagingType
+Repo --> Service : DiagnosticImagingType
+
+Service -> Service : DiagnosticImagingTypeDto.from(type)
+Service --> UseCase : DiagnosticImagingTypeDto
+UseCase --> Controller : DiagnosticImagingTypeDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDiagnosticImagingTypeResponse
+deactivate Controller
+
+@enduml

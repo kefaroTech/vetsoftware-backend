@@ -1,0 +1,55 @@
+@startuml owner_search
+title GET /owners/search?q=... — Search Owners (current company)
+
+actor Client
+participant "OwnerController" as Controller
+participant "Authz" as Authz
+participant "SearchOwnersUseCase\n<<port.in>>" as UseCase
+participant "SearchOwnersService" as Service
+participant "OwnerRepository\n<<port.out>>" as Repo
+participant "OwnerJpaMapper" as Mapper
+participant "OwnerJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /owners/search?q={query}
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : search(companyId, query)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (owner.read AND
+   authz.isMyCompany(#companyId))
+end note
+UseCase -> Service : search(companyId, query)
+activate Service
+
+Service -> Repo : searchByCompanyAndNameOrEmail(companyId, query)
+activate Repo
+Repo -> JpaRepo : searchByCompanyAndNameOrEmail(companyId, query)
+JpaRepo -> DB : SELECT owner\nWHERE company_id=? AND\n(LOWER(name) LIKE %q% OR LOWER(email) LIKE %q%)\nJOIN FETCH (city, company)
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<OwnerJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Owner>
+Repo --> Service : List<Owner>
+deactivate Repo
+
+Service -> Service : stream().map(OwnerDto::from).toList()
+Service --> UseCase : List<OwnerDto>
+UseCase --> Controller : List<OwnerDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<OwnerResponse>
+deactivate Controller
+
+@enduml

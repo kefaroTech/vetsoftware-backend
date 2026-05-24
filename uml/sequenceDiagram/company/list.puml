@@ -1,0 +1,49 @@
+@startuml company_list
+title GET /companies — List all Companies
+
+actor Client
+participant "CompanyController" as Controller
+participant "ListCompaniesUseCase\n<<port.in>>" as UseCase
+participant "ListCompaniesService" as Service
+participant "CompanyRepository\n<<port.out>>" as Repo
+participant "CompanyJpaMapper" as Mapper
+participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /companies
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR company.read OR SYSTEM
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT company\nJOIN FETCH (city, membership)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<CompanyJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Company>
+Repo --> Service : List<Company>
+deactivate Repo
+
+Service -> Service : stream().map(CompanyDto::from).toList()
+Service --> UseCase : List<CompanyDto>
+UseCase --> Controller : List<CompanyDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<CompanyResponse>
+deactivate Controller
+
+@enduml

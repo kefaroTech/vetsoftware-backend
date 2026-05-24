@@ -1,0 +1,49 @@
+@startuml membershipsubmodule_list
+title GET /membership-sub-modules — List all MembershipSubModules
+
+actor Client
+participant "MembershipSubModuleController" as Controller
+participant "ListMembershipSubModulesUseCase\n<<port.in>>" as UseCase
+participant "ListMembershipSubModulesService" as Service
+participant "MembershipSubModuleRepository\n<<port.out>>" as Repo
+participant "MembershipSubModuleJpaMapper" as Mapper
+participant "MembershipSubModuleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /membership-sub-modules
+activate Controller
+
+Controller -> UseCase : listAll()
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listAll()
+activate Service
+
+Service -> Repo : findAll()
+activate Repo
+Repo -> JpaRepo : findAll()
+JpaRepo -> DB : SELECT membership_sub_module\nJOIN FETCH (membership, subModule)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<MembershipSubModuleJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<MembershipSubModule>
+Repo --> Service : List<MembershipSubModule>
+deactivate Repo
+
+Service -> Service : stream().map(MembershipSubModuleDto::from).toList()
+Service --> UseCase : List<MembershipSubModuleDto>
+UseCase --> Controller : List<MembershipSubModuleDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<MembershipSubModuleResponse>
+deactivate Controller
+
+@enduml

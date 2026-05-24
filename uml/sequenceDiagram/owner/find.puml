@@ -1,0 +1,57 @@
+@startuml owner_find
+title GET /owners/{id} — Find Owner by ID
+
+actor Client
+participant "OwnerController" as Controller
+participant "FindOwnerUseCase\n<<port.in>>" as UseCase
+participant "FindOwnerService" as Service
+participant "OwnerRepository\n<<port.out>>" as Repo
+participant "OwnerJpaMapper" as Mapper
+participant "OwnerJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /owners/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT owner\nJOIN FETCH (city, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<OwnerJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Owner
+  Repo --> Service : Optional<Owner>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : OwnerNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : OwnerDto.from(owner)
+Service --> UseCase : OwnerDto
+UseCase --> Controller : OwnerDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nOwnerResponse
+deactivate Controller
+
+@enduml
