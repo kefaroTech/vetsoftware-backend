@@ -8,6 +8,7 @@ public record ClinicalEventDto(
         Long sourceId,
         ClinicalEventType eventType,
         LocalDate eventDate,
+        Long consultationId,
         String summary
 ) {
     public static ClinicalEventDto from(ClinicalEvent event) {
@@ -15,6 +16,7 @@ public record ClinicalEventDto(
                 event.sourceId(),
                 event.eventType(),
                 event.eventDate(),
+                event.consultationId(),
                 event.summary()
         );
     }

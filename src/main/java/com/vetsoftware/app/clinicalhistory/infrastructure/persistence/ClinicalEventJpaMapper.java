@@ -11,6 +11,7 @@ public class ClinicalEventJpaMapper {
                 entity.getSourceId(),
                 entity.getAnimalId(),
                 entity.getCompanyId(),
+                entity.getConsultationId(),
                 entity.getEventDate(),
                 entity.getEventType(),
                 entity.getSummary()

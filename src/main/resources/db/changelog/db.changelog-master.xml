@@ -67,5 +67,8 @@
     <include file="db/changelog/migrations/061_add_status_to_surgeries.xml"/>
     <include file="db/changelog/migrations/062_add_status_to_diagnostic_imagings.xml"/>
     <include file="db/changelog/migrations/063_create_clinical_event_view.xml"/>
+    <include file="db/changelog/migrations/064_alter_clinical_event_view_consultation_id.xml"/>
+    <include file="db/changelog/migrations/065_fix_clinical_event_view_consultation_id_type.xml"/>
+    <include file="db/changelog/migrations/066_fix_clinical_event_view_typed_null.xml"/>
 
 </databaseChangeLog>

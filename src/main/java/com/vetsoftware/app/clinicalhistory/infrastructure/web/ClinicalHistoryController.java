@@ -51,6 +51,7 @@ public class ClinicalHistoryController {
                 dto.sourceId(),
                 dto.eventType(),
                 dto.eventDate(),
+                dto.consultationId(),
                 dto.summary()
         );
     }

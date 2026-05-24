@@ -14,4 +14,6 @@ public interface MedicamentPrescriptionJpaRepository extends JpaRepository<Medic
     @Override
     @EntityGraph(attributePaths = "prescription")
     Optional<MedicamentPrescriptionJpaEntity> findById(Long id);
+
+    List<MedicamentPrescriptionJpaEntity> findByPrescriptionId(Long prescriptionId);
 }

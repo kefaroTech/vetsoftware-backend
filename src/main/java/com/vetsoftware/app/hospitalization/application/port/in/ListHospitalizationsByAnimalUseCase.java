@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationsByAnimalUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.read') or hasRole('SYSTEM')")
     List<HospitalizationDto> listByAnimal(Long animalId);
 }

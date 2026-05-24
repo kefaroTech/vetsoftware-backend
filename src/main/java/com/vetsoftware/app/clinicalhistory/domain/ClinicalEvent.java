@@ -6,6 +6,7 @@ public record ClinicalEvent(
         Long sourceId,
         Long animalId,
         Long companyId,
+        Long consultationId,
         LocalDate eventDate,
         ClinicalEventType eventType,
         String summary

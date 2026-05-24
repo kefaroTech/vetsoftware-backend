@@ -2,6 +2,7 @@ package com.vetsoftware.app.prescription.infrastructure.web.response;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PrescriptionResponse(
         Long id,
@@ -11,5 +12,6 @@ public record PrescriptionResponse(
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,
+        List<MedicamentSummary> medicaments,
         LocalDateTime createdDate
 ) {}

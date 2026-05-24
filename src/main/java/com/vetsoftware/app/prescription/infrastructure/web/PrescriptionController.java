@@ -16,6 +16,7 @@ import com.vetsoftware.app.prescription.infrastructure.web.request.UpdatePrescri
 import com.vetsoftware.app.prescription.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.ConsultationSummary;
+import com.vetsoftware.app.prescription.infrastructure.web.response.MedicamentSummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.PrescriptionResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -81,11 +82,16 @@ public class PrescriptionController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
+        List<MedicamentSummary> medicaments = dto.medicaments().stream()
+            .map(m -> new MedicamentSummary(
+                m.id(), m.name(), m.presentation(), m.quantity(), m.posology()))
+            .toList();
         return new PrescriptionResponse(
             dto.id(), dto.date(), dto.diagnosis(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
+            medicaments,
             dto.createdDate());
     }
 }

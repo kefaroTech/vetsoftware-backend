@@ -28,6 +28,9 @@ public class ClinicalEventViewJpaEntity {
     @Column(name = "company_id", nullable = false)
     private Long companyId;
 
+    @Column(name = "consultation_id")
+    private Long consultationId;
+
     @Column(name = "event_date", nullable = false)
     private LocalDate eventDate;
 
@@ -44,6 +47,7 @@ public class ClinicalEventViewJpaEntity {
     public Long getSourceId() { return sourceId; }
     public Long getAnimalId() { return animalId; }
     public Long getCompanyId() { return companyId; }
+    public Long getConsultationId() { return consultationId; }
     public LocalDate getEventDate() { return eventDate; }
     public ClinicalEventType getEventType() { return eventType; }
     public String getSummary() { return summary; }

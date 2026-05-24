@@ -33,10 +33,10 @@ class GetClinicalHistoryServiceTest {
     @Test
     void maps_repository_events_to_dtos_preserving_order() {
         repository.events.add(new ClinicalEvent(
-                42L, 1L, 10L, LocalDate.of(2026, 5, 10),
+                42L, 1L, 10L, 17L, LocalDate.of(2026, 5, 10),
                 ClinicalEventType.SURGERY, "Esterilización"));
         repository.events.add(new ClinicalEvent(
-                17L, 1L, 10L, LocalDate.of(2026, 3, 1),
+                17L, 1L, 10L, null, LocalDate.of(2026, 3, 1),
                 ClinicalEventType.CONSULTATION, "Control rutinario"));
 
         List<ClinicalEventDto> result = service.execute(
