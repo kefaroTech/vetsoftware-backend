@@ -95,6 +95,16 @@ services:
       - vetsoftware_sonarqube_extensions:/opt/sonarqube/extensions
       - vetsoftware_sonarqube_logs:/opt/sonarqube/logs
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: vetsoftware_gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    command:
+      - "gotenberg"
+      - "--api-timeout=30s"
+
 volumes:
   vetsoftware_redis_data:
   vetsoftware_mysql_data:

@@ -47,3 +47,9 @@ management:
   otlp:
     tracing:
       endpoint: http://localhost:4318/v1/traces
+
+vetsoftware:
+  pdf:
+    gotenberg:
+      url: ${GOTENBERG_URL:http://localhost:3001}
+      timeout-seconds: 30

@@ -18,6 +18,7 @@ import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNot
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
+import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
@@ -129,6 +130,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
         log.error("Data integrity violation", ex);
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
+    }
+
+    @ExceptionHandler(PdfRenderException.class)
+    public ProblemDetail handlePdfRender(PdfRenderException ex) {
+        log.error("PDF render failed", ex);
+        return problem(HttpStatus.BAD_GATEWAY, "PDF_RENDER_FAILED",
+                "Failed to generate PDF document");
     }
 
     @ExceptionHandler(Exception.class)
