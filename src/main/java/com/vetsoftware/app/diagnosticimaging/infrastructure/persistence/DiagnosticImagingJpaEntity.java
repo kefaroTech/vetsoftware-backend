@@ -7,12 +7,13 @@ import com.vetsoftware.app.diagnosticimagingtype.infrastructure.persistence.Diag
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "diagnostic_imagings")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE diagnostic_imagings SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class DiagnosticImagingJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

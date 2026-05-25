@@ -2,15 +2,16 @@ package com.vetsoftware.app.state.infrastructure.persistence;
 
 import com.vetsoftware.app.country.infrastructure.persistence.CountryJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "states", uniqueConstraints = {
     @UniqueConstraint(name = "uq_states_country_name", columnNames = {"country_id", "name"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE states SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class StateJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

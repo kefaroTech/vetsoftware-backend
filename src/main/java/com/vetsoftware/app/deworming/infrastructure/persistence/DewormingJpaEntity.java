@@ -7,12 +7,13 @@ import com.vetsoftware.app.deworming.domain.DewormingType;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "dewormings")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE dewormings SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class DewormingJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

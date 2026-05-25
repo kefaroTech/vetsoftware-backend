@@ -3,15 +3,16 @@ package com.vetsoftware.app.employeerole.infrastructure.persistence;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "employee_roles", uniqueConstraints = {
     @UniqueConstraint(name = "uq_employee_roles", columnNames = {"employee_id", "role_id"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE employee_roles SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class EmployeeRoleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

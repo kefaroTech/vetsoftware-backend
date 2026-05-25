@@ -10,8 +10,8 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 @Table(name = "animals", uniqueConstraints = {
     @UniqueConstraint(name = "uq_animals_company_code", columnNames = {"company_id", "code"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE animals SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class AnimalJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

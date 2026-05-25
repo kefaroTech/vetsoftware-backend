@@ -3,13 +3,14 @@ package com.vetsoftware.app.company.infrastructure.persistence;
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "companies")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE companies SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class CompanyJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

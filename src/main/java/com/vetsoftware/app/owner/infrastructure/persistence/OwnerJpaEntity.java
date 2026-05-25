@@ -3,15 +3,16 @@ package com.vetsoftware.app.owner.infrastructure.persistence;
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "owners", uniqueConstraints = {
     @UniqueConstraint(name = "uq_owners_company_document", columnNames = {"company_id", "document"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE owners SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class OwnerJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

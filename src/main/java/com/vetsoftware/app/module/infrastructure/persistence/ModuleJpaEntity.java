@@ -1,13 +1,14 @@
 package com.vetsoftware.app.module.infrastructure.persistence;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "modules")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE modules SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class ModuleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

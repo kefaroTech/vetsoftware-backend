@@ -4,12 +4,13 @@ import com.vetsoftware.app.systempermission.infrastructure.persistence.SystemPer
 import com.vetsoftware.app.systemuser.infrastructure.persistence.SystemUserJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "system_user_permissions")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE system_user_permissions SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class SystemUserPermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

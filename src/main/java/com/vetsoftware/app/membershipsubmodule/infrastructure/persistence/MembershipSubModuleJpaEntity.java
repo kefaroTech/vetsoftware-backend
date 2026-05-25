@@ -3,15 +3,16 @@ package com.vetsoftware.app.membershipsubmodule.infrastructure.persistence;
 import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
 import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "membership_sub_modules", uniqueConstraints = {
     @UniqueConstraint(name = "uq_membership_sub_modules", columnNames = {"membership_id", "sub_module_id"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE membership_sub_modules SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class MembershipSubModuleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

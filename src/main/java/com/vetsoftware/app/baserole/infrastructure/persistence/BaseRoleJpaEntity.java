@@ -1,13 +1,14 @@
 package com.vetsoftware.app.baserole.infrastructure.persistence;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "base_roles")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE base_roles SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class BaseRoleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

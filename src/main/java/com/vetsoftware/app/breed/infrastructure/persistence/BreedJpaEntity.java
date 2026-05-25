@@ -2,15 +2,16 @@ package com.vetsoftware.app.breed.infrastructure.persistence;
 
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "breeds", uniqueConstraints = {
     @UniqueConstraint(name = "uq_breeds_specie_name", columnNames = {"specie_id", "name"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE breeds SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class BreedJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

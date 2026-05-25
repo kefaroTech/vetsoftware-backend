@@ -1,13 +1,14 @@
 package com.vetsoftware.app.animalcolor.infrastructure.persistence;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "animal_colors")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE animal_colors SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class AnimalColorJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

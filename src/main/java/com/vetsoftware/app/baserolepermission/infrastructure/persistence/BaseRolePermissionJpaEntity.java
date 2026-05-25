@@ -3,15 +3,16 @@ package com.vetsoftware.app.baserolepermission.infrastructure.persistence;
 import com.vetsoftware.app.basepermission.infrastructure.persistence.BasePermissionJpaEntity;
 import com.vetsoftware.app.baserole.infrastructure.persistence.BaseRoleJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "base_role_permissions", uniqueConstraints = {
     @UniqueConstraint(name = "uq_base_role_permissions", columnNames = {"base_role_id", "base_permission_id"})
 })
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE base_role_permissions SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class BaseRolePermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -8,12 +8,13 @@ import com.vetsoftware.app.hospitalization.domain.ReasonLeaving;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "hospitalizations")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE hospitalizations SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class HospitalizationJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

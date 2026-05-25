@@ -2,12 +2,13 @@ package com.vetsoftware.app.membership.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "memberships")
-@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
+@SQLDelete(sql = "UPDATE memberships SET enabled = false WHERE id = ?")
+@SQLRestriction("enabled = true")
 public class MembershipJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
