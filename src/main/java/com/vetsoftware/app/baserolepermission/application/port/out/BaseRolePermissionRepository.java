@@ -10,4 +10,5 @@ public interface BaseRolePermissionRepository {
     List<BaseRolePermission> findAll();
     void delete(Long id);
     int reactivate(Long id);
+    Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId, Long basePermissionId);
 }

@@ -8,7 +8,10 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "system_user_permissions")
+@Table(name = "system_user_permissions", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_system_user_permissions",
+        columnNames = {"system_user_id", "system_permission_id"})
+})
 @SQLDelete(sql = "UPDATE system_user_permissions SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class SystemUserPermissionJpaEntity {

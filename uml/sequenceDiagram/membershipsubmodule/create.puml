@@ -52,6 +52,24 @@ alt submodule no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : findDisabledIdByMembershipAndSubModule(membershipId, subModuleId)
+Repo -> JpaRepo : findDisabledIdByMembershipAndSubModule(...)
+JpaRepo -> DB : SELECT id FROM membership_sub_modules\nWHERE membership_id=? AND sub_module_id=?\nAND enabled=false LIMIT 1\n(native — bypassa @SQLRestriction)
+DB --> JpaRepo : id | empty
+JpaRepo --> Repo : Optional<Long>
+Repo --> Service : Optional<Long>
+alt fila desactivada encontrada
+  Service -> Repo : reactivate(id)
+  Repo -> JpaRepo : reactivate(id)
+  JpaRepo -> DB : UPDATE membership_sub_modules SET enabled=true WHERE id=?
+  DB --> JpaRepo : ok
+  Service -> Repo : findById(id)
+  Repo --> Service : MembershipSubModule
+  Service --> UseCase : MembershipSubModuleDto
+  UseCase --> Controller : MembershipSubModuleDto
+  Controller --> Client : 201 Created
+end
+
 Service -> Service : MembershipSubModule.create(membership, subModule)\n(invariantes de dominio)
 
 Service -> Repo : save(membershipSubModule)

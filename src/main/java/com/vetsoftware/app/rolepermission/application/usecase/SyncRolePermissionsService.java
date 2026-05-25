@@ -6,6 +6,7 @@ import com.vetsoftware.app.rolepermission.application.port.in.SyncRolePermission
 import com.vetsoftware.app.rolepermission.application.port.out.PermissionCachePort;
 import com.vetsoftware.app.rolepermission.application.port.out.PermissionQueryPort;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
+import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository.DisabledRolePermissionLookup;
 import com.vetsoftware.app.rolepermission.application.port.out.RoleQueryPort;
 import com.vetsoftware.app.rolepermission.domain.PermissionRef;
 import com.vetsoftware.app.rolepermission.domain.RolePermission;
@@ -69,14 +70,31 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
         }
 
         if (!toAddPermIds.isEmpty()) {
-            List<RolePermission> nuevos = toAddPermIds.stream()
-                .map(pid -> {
-                    PermissionRef permission = permissionQueryPort.findById(pid)
-                        .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + pid));
-                    return RolePermission.create(role, permission);
-                })
-                .toList();
-            repository.saveAll(nuevos);
+            // Reactivar las filas desactivadas que coincidan con la clave única
+            List<DisabledRolePermissionLookup> disabled =
+                repository.findDisabledByRoleAndPermissions(command.roleId(), toAddPermIds);
+            Set<Long> reactivatedPermIds = new HashSet<>();
+            if (!disabled.isEmpty()) {
+                List<Long> idsToReactivate = disabled.stream()
+                    .map(DisabledRolePermissionLookup::id)
+                    .toList();
+                repository.reactivateAllByIds(idsToReactivate);
+                disabled.forEach(d -> reactivatedPermIds.add(d.permissionId()));
+            }
+
+            // Crear los que no existían (ni activos, ni desactivados)
+            Set<Long> toCreatePermIds = new HashSet<>(toAddPermIds);
+            toCreatePermIds.removeAll(reactivatedPermIds);
+            if (!toCreatePermIds.isEmpty()) {
+                List<RolePermission> nuevos = toCreatePermIds.stream()
+                    .map(pid -> {
+                        PermissionRef permission = permissionQueryPort.findById(pid)
+                            .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + pid));
+                        return RolePermission.create(role, permission);
+                    })
+                    .toList();
+                repository.saveAll(nuevos);
+            }
         }
 
         List<RolePermissionDto> result = repository.findAllByRoleId(command.roleId()).stream()

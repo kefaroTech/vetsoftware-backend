@@ -31,6 +31,13 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
         value = "UPDATE employee_roles SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
+    @org.springframework.data.jpa.repository.Query(
+        value = "SELECT id FROM employee_roles WHERE employee_id = :employeeId AND role_id = :roleId AND enabled = false LIMIT 1",
+        nativeQuery = true)
+    java.util.Optional<Long> findDisabledIdByEmployeeAndRole(
+        @org.springframework.data.repository.query.Param("employeeId") Long employeeId,
+        @org.springframework.data.repository.query.Param("roleId") Long roleId);
+
     boolean existsByEmployee_Id(Long employeeId);
 
     boolean existsByRole_Id(Long roleId);

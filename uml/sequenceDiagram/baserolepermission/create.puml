@@ -50,6 +50,24 @@ alt basePermission no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : findDisabledIdByBaseRoleAndBasePermission(baseRoleId, basePermissionId)
+Repo -> JpaRepo : findDisabledIdByBaseRoleAndBasePermission(...)
+JpaRepo -> DB : SELECT id FROM base_role_permissions\nWHERE base_role_id=? AND base_permission_id=?\nAND enabled=false LIMIT 1\n(native — bypassa @SQLRestriction)
+DB --> JpaRepo : id | empty
+JpaRepo --> Repo : Optional<Long>
+Repo --> Service : Optional<Long>
+alt fila desactivada encontrada
+  Service -> Repo : reactivate(id)
+  Repo -> JpaRepo : reactivate(id)
+  JpaRepo -> DB : UPDATE base_role_permissions SET enabled=true WHERE id=?
+  DB --> JpaRepo : ok
+  Service -> Repo : findById(id)
+  Repo --> Service : BaseRolePermission
+  Service --> UseCase : BaseRolePermissionDto
+  UseCase --> Controller : BaseRolePermissionDto
+  Controller --> Client : 201 Created
+end
+
 Service -> Service : BaseRolePermission.create(baseRole, basePermission)\n(invariantes de dominio)
 
 Service -> Repo : save(baseRolePermission)

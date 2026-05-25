@@ -10,4 +10,5 @@ public interface SystemUserPermissionRepository {
     List<SystemUserPermission> findAll();
     void delete(Long id);
     int reactivate(Long id);
+    Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId, Long systemPermissionId);
 }

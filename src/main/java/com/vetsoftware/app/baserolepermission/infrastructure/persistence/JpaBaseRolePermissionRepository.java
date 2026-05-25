@@ -54,4 +54,9 @@ public class JpaBaseRolePermissionRepository implements BaseRolePermissionReposi
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId, Long basePermissionId) {
+        return jpaRepository.findDisabledIdByBaseRoleAndBasePermission(baseRoleId, basePermissionId);
+    }
 }

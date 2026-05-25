@@ -51,6 +51,25 @@ alt permission no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : findDisabledIdByRoleAndPermission(roleId, permissionId)
+Repo -> JpaRepo : findDisabledIdByRoleAndPermission(...)
+JpaRepo -> DB : SELECT id FROM role_permissions\nWHERE role_id=? AND permission_id=?\nAND enabled=false LIMIT 1\n(native — bypassa @SQLRestriction)
+DB --> JpaRepo : id | empty
+JpaRepo --> Repo : Optional<Long>
+Repo --> Service : Optional<Long>
+alt fila desactivada encontrada
+  Service -> Repo : reactivate(id)
+  Repo -> JpaRepo : reactivate(id)
+  JpaRepo -> DB : UPDATE role_permissions SET enabled=true WHERE id=?
+  DB --> JpaRepo : ok
+  Service -> Repo : findById(id)
+  Repo --> Service : RolePermission
+  Service -> CachePort : evictByRoleId(roleId)
+  Service --> UseCase : RolePermissionDto
+  UseCase --> Controller : RolePermissionDto
+  Controller --> Client : 201 Created
+end
+
 Service -> Service : RolePermission.create(role, permission)\n(invariantes de dominio)
 
 Service -> Repo : save(rolePermission)

@@ -51,6 +51,25 @@ alt role no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : findDisabledIdByEmployeeAndRole(employeeId, roleId)
+Repo -> JpaRepo : findDisabledIdByEmployeeAndRole(...)
+JpaRepo -> DB : SELECT id FROM employee_roles\nWHERE employee_id=? AND role_id=?\nAND enabled=false LIMIT 1\n(native — bypassa @SQLRestriction)
+DB --> JpaRepo : id | empty
+JpaRepo --> Repo : Optional<Long>
+Repo --> Service : Optional<Long>
+alt fila desactivada encontrada
+  Service -> Repo : reactivate(id)
+  Repo -> JpaRepo : reactivate(id)
+  JpaRepo -> DB : UPDATE employee_roles SET enabled=true WHERE id=?
+  DB --> JpaRepo : ok
+  Service -> Repo : findById(id)
+  Repo --> Service : EmployeeRole
+  Service -> CachePort : evictByEmployeeId(employeeId)
+  Service --> UseCase : EmployeeRoleDto
+  UseCase --> Controller : EmployeeRoleDto
+  Controller --> Client : 201 Created
+end
+
 Service -> Service : EmployeeRole.create(employee, role)\n(invariantes de dominio)
 
 Service -> Repo : save(employeeRole)

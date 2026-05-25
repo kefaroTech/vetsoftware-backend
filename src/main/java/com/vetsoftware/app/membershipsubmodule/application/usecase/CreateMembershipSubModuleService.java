@@ -8,9 +8,12 @@ import com.vetsoftware.app.membershipsubmodule.application.port.out.MembershipSu
 import com.vetsoftware.app.membershipsubmodule.application.port.out.SubModuleQueryPort;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipRef;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModule;
+import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.SubModuleRef;
 import io.micrometer.observation.annotation.Observed;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "membershipsubmodule.create")
 @Service
@@ -28,11 +31,23 @@ public class CreateMembershipSubModuleService implements CreateMembershipSubModu
     }
 
     @Override
+    @Transactional
     public MembershipSubModuleDto execute(CreateMembershipSubModuleCommand command) {
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())
             .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
             .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+
+        Optional<Long> disabledId = repository
+            .findDisabledIdByMembershipAndSubModule(command.membershipId(), command.subModuleId());
+        if (disabledId.isPresent()) {
+            Long id = disabledId.get();
+            repository.reactivate(id);
+            MembershipSubModule refreshed = repository.findById(id)
+                .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
+            return MembershipSubModuleDto.from(refreshed);
+        }
+
         MembershipSubModule membershipSubModule = MembershipSubModule.create(membership, subModule);
         return MembershipSubModuleDto.from(repository.save(membershipSubModule));
     }

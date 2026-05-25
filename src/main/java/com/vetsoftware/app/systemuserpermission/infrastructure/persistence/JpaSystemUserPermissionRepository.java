@@ -54,4 +54,9 @@ public class JpaSystemUserPermissionRepository implements SystemUserPermissionRe
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId, Long systemPermissionId) {
+        return jpaRepository.findDisabledIdBySystemUserAndSystemPermission(systemUserId, systemPermissionId);
+    }
 }

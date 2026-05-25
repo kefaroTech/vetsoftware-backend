@@ -8,9 +8,12 @@ import com.vetsoftware.app.baserolepermission.application.port.out.BaseRolePermi
 import com.vetsoftware.app.baserolepermission.application.port.out.BaseRoleQueryPort;
 import com.vetsoftware.app.baserolepermission.domain.BasePermissionRef;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermission;
+import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRoleRef;
 import io.micrometer.observation.annotation.Observed;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "baserolepermission.create")
 @Service
@@ -28,11 +31,23 @@ public class CreateBaseRolePermissionService implements CreateBaseRolePermission
     }
 
     @Override
+    @Transactional
     public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command) {
         BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())
             .orElseThrow(() -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
         BasePermissionRef basePermission = basePermissionQueryPort.findById(command.basePermissionId())
             .orElseThrow(() -> new IllegalArgumentException("BasePermission not found: " + command.basePermissionId()));
+
+        Optional<Long> disabledId = repository
+            .findDisabledIdByBaseRoleAndBasePermission(command.baseRoleId(), command.basePermissionId());
+        if (disabledId.isPresent()) {
+            Long id = disabledId.get();
+            repository.reactivate(id);
+            BaseRolePermission refreshed = repository.findById(id)
+                .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+            return BaseRolePermissionDto.from(refreshed);
+        }
+
         BaseRolePermission baseRolePermission = BaseRolePermission.create(baseRole, basePermission);
         return BaseRolePermissionDto.from(repository.save(baseRolePermission));
     }

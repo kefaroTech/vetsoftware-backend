@@ -54,4 +54,9 @@ public class JpaEmployeeRoleRepository implements EmployeeRoleRepository {
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public Optional<Long> findDisabledIdByEmployeeAndRole(Long employeeId, Long roleId) {
+        return jpaRepository.findDisabledIdByEmployeeAndRole(employeeId, roleId);
+    }
 }

@@ -73,5 +73,6 @@
     <include file="db/changelog/migrations/067_create_daycares.xml"/>
     <include file="db/changelog/migrations/068_add_enabled_to_all_tables.xml"/>
     <include file="db/changelog/migrations/069_drop_employees_status.xml"/>
+    <include file="db/changelog/migrations/070_add_unique_to_system_user_permissions.xml"/>
 
 </databaseChangeLog>

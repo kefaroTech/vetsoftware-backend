@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!--
+      Añade unique constraint (system_user_id, system_permission_id) a system_user_permissions
+      para que el patrón "reactivate-on-create" pueda usarla como clave de lookup.
+
+      Antes del ADD CONSTRAINT colapsa cualquier par duplicado preexistente:
+      - Si alguna fila del par tiene enabled=true, conserva una activa (el MIN(id)) y
+        deactiva el resto.
+      - Si todas las filas del par son enabled=false, conserva el MIN(id) y borra
+        físicamente las demás (no hay nada activo que preservar, y necesitamos quitar
+        duplicados para la constraint).
+    -->
+
+    <changeSet id="070-collapse-duplicate-system-user-permissions" author="claude">
+        <sql>
+            UPDATE system_user_permissions sup
+            JOIN (
+                SELECT system_user_id, system_permission_id, MIN(id) AS keep_id
+                FROM system_user_permissions
+                WHERE enabled = TRUE
+                GROUP BY system_user_id, system_permission_id
+                HAVING COUNT(*) &gt; 1
+            ) dups
+              ON sup.system_user_id = dups.system_user_id
+             AND sup.system_permission_id = dups.system_permission_id
+            SET sup.enabled = FALSE
+            WHERE sup.id &lt;&gt; dups.keep_id
+              AND sup.enabled = TRUE;
+        </sql>
+        <sql>
+            DELETE sup FROM system_user_permissions sup
+            JOIN (
+                SELECT system_user_id, system_permission_id, MIN(id) AS keep_id
+                FROM system_user_permissions
+                GROUP BY system_user_id, system_permission_id
+                HAVING COUNT(*) &gt; 1
+            ) dups
+              ON sup.system_user_id = dups.system_user_id
+             AND sup.system_permission_id = dups.system_permission_id
+            WHERE sup.id &lt;&gt; dups.keep_id
+              AND sup.enabled = FALSE
+              AND NOT EXISTS (
+                  SELECT 1 FROM (SELECT id FROM system_user_permissions WHERE enabled = TRUE) act
+                  WHERE act.id = dups.keep_id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet id="070-add-unique-system-user-permissions" author="claude">
+        <addUniqueConstraint
+            tableName="system_user_permissions"
+            columnNames="system_user_id, system_permission_id"
+            constraintName="uq_system_user_permissions"/>
+    </changeSet>
+
+</databaseChangeLog>

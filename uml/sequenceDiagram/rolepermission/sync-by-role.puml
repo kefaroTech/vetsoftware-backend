@@ -68,27 +68,42 @@ alt toRemoveRpIds no vacío
 end
 
 alt toAddPermIds no vacío
-  loop por cada permissionId nuevo
-    Service -> PermQP : findById(pid)
-    PermQP --> Service : Optional<PermissionRef>
-    alt permission no encontrado
-      Service --> GEH : IllegalArgumentException
-      GEH --> Client : 400 Bad Request
-    end
-    Service -> Service : RolePermission.create(role, permission)
+  Service -> Repo : findDisabledByRoleAndPermissions(roleId, toAddPermIds)
+  Repo -> JpaRepo : findDisabledByRoleAndPermissions(...)
+  JpaRepo -> DB : SELECT id, permission_id FROM role_permissions\nWHERE role_id=? AND permission_id IN (...)\nAND enabled=false\n(native — bypassa @SQLRestriction)
+  DB --> JpaRepo : rows[]
+  JpaRepo --> Repo : List<DisabledRolePermissionRow>
+  Repo --> Service : List<DisabledRolePermissionLookup>
+  alt hay filas desactivadas que coinciden
+    Service -> Repo : reactivateAllByIds(ids)
+    Repo -> JpaRepo : reactivateAllByIds(ids)
+    JpaRepo -> DB : UPDATE role_permissions SET enabled=true\nWHERE id IN (...)
+    DB --> JpaRepo : ok
   end
-  Service -> Repo : saveAll(nuevos)
-  Repo -> JpaRepo : getReferenceById(...) por cada\nrole, permission
-  JpaRepo --> Repo : proxies (sin SELECT)
-  Repo -> Mapper : toJpa(rp, role, permission) por cada
-  Mapper --> Repo : List<RolePermissionJpaEntity>
-  Repo -> JpaRepo : saveAll(entities)
-  JpaRepo -> DB : INSERT role_permission (batch)
-  DB --> JpaRepo : ids generados
-  JpaRepo --> Repo : List<RolePermissionJpaEntity>
-  Repo -> Mapper : toDomain(saved, role, permission) por cada
-  Mapper --> Repo : List<RolePermission>
-  Repo --> Service : List<RolePermission>
+  Service -> Service : toCreatePermIds = toAddPermIds - reactivatedPermIds
+  alt toCreatePermIds no vacío
+    loop por cada permissionId restante
+      Service -> PermQP : findById(pid)
+      PermQP --> Service : Optional<PermissionRef>
+      alt permission no encontrado
+        Service --> GEH : IllegalArgumentException
+        GEH --> Client : 400 Bad Request
+      end
+      Service -> Service : RolePermission.create(role, permission)
+    end
+    Service -> Repo : saveAll(nuevos)
+    Repo -> JpaRepo : getReferenceById(...) por cada\nrole, permission
+    JpaRepo --> Repo : proxies (sin SELECT)
+    Repo -> Mapper : toJpa(rp, role, permission) por cada
+    Mapper --> Repo : List<RolePermissionJpaEntity>
+    Repo -> JpaRepo : saveAll(entities)
+    JpaRepo -> DB : INSERT role_permission (batch)
+    DB --> JpaRepo : ids generados
+    JpaRepo --> Repo : List<RolePermissionJpaEntity>
+    Repo -> Mapper : toDomain(saved, role, permission) por cada
+    Mapper --> Repo : List<RolePermission>
+    Repo --> Service : List<RolePermission>
+  end
 end
 
 Service -> Repo : findAllByRoleId(roleId)

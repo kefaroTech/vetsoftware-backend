@@ -54,4 +54,9 @@ public class JpaMembershipSubModuleRepository implements MembershipSubModuleRepo
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public Optional<Long> findDisabledIdByMembershipAndSubModule(Long membershipId, Long subModuleId) {
+        return jpaRepository.findDisabledIdByMembershipAndSubModule(membershipId, subModuleId);
+    }
 }

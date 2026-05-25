@@ -52,6 +52,24 @@ alt systemPermission no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : findDisabledIdBySystemUserAndSystemPermission(systemUserId, systemPermissionId)
+Repo -> JpaRepo : findDisabledIdBySystemUserAndSystemPermission(...)
+JpaRepo -> DB : SELECT id FROM system_user_permissions\nWHERE system_user_id=? AND system_permission_id=?\nAND enabled=false LIMIT 1\n(native — bypassa @SQLRestriction)
+DB --> JpaRepo : id | empty
+JpaRepo --> Repo : Optional<Long>
+Repo --> Service : Optional<Long>
+alt fila desactivada encontrada
+  Service -> Repo : reactivate(id)
+  Repo -> JpaRepo : reactivate(id)
+  JpaRepo -> DB : UPDATE system_user_permissions SET enabled=true WHERE id=?
+  DB --> JpaRepo : ok
+  Service -> Repo : findById(id)
+  Repo --> Service : SystemUserPermission
+  Service --> UseCase : SystemUserPermissionDto
+  UseCase --> Controller : SystemUserPermissionDto
+  Controller --> Client : 201 Created
+end
+
 Service -> Service : SystemUserPermission.create(systemUser, systemPermission)\n(invariantes de dominio)
 
 Service -> Repo : save(systemUserPermission)

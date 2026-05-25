@@ -27,6 +27,13 @@ public interface MembershipSubModuleJpaRepository extends JpaRepository<Membersh
     @org.springframework.data.jpa.repository.Query(value = "UPDATE membership_sub_modules SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
+    @org.springframework.data.jpa.repository.Query(
+        value = "SELECT id FROM membership_sub_modules WHERE membership_id = :membershipId AND sub_module_id = :subModuleId AND enabled = false LIMIT 1",
+        nativeQuery = true)
+    Optional<Long> findDisabledIdByMembershipAndSubModule(
+        @org.springframework.data.repository.query.Param("membershipId") Long membershipId,
+        @org.springframework.data.repository.query.Param("subModuleId") Long subModuleId);
+
     boolean existsByMembership_Id(Long membershipId);
 
     boolean existsBySubModule_Id(Long subModuleId);

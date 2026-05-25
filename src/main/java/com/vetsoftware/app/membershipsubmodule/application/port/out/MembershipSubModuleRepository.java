@@ -10,4 +10,5 @@ public interface MembershipSubModuleRepository {
     List<MembershipSubModule> findAll();
     void delete(Long id);
     int reactivate(Long id);
+    Optional<Long> findDisabledIdByMembershipAndSubModule(Long membershipId, Long subModuleId);
 }

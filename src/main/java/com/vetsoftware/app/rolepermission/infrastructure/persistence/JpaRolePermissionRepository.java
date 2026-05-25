@@ -5,8 +5,10 @@ import com.vetsoftware.app.permission.infrastructure.persistence.PermissionJpaRe
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaRepository;
 import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository;
+import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRepository.DisabledRolePermissionLookup;
 import com.vetsoftware.app.rolepermission.domain.RolePermission;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -89,5 +91,25 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     @Override
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
+    }
+
+    @Override
+    public int reactivateAllByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        return jpaRepository.reactivateAllByIds(ids);
+    }
+
+    @Override
+    public Optional<Long> findDisabledIdByRoleAndPermission(Long roleId, Long permissionId) {
+        return jpaRepository.findDisabledIdByRoleAndPermission(roleId, permissionId);
+    }
+
+    @Override
+    public List<DisabledRolePermissionLookup> findDisabledByRoleAndPermissions(
+            Long roleId, Collection<Long> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty()) return List.of();
+        return jpaRepository.findDisabledByRoleAndPermissions(roleId, permissionIds).stream()
+            .map(row -> new DisabledRolePermissionLookup(row.getId(), row.getPermissionId()))
+            .toList();
     }
 }

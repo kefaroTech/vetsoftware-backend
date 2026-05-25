@@ -10,4 +10,5 @@ public interface EmployeeRoleRepository {
     List<EmployeeRole> findAll();
     void delete(Long id);
     int reactivate(Long id);
+    Optional<Long> findDisabledIdByEmployeeAndRole(Long employeeId, Long roleId);
 }

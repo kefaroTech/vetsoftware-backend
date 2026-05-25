@@ -9,9 +9,12 @@ import com.vetsoftware.app.rolepermission.application.port.out.RolePermissionRep
 import com.vetsoftware.app.rolepermission.application.port.out.RoleQueryPort;
 import com.vetsoftware.app.rolepermission.domain.PermissionRef;
 import com.vetsoftware.app.rolepermission.domain.RolePermission;
+import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RoleRef;
 import io.micrometer.observation.annotation.Observed;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "rolepermission.create")
 @Service
@@ -32,11 +35,25 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
     }
 
     @Override
+    @Transactional
     public RolePermissionDto execute(CreateRolePermissionCommand command) {
         RoleRef role = roleQueryPort.findById(command.roleId())
             .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
         PermissionRef permission = permissionQueryPort.findById(command.permissionId())
             .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + command.permissionId()));
+
+        Optional<Long> disabledId = repository
+            .findDisabledIdByRoleAndPermission(command.roleId(), command.permissionId());
+        if (disabledId.isPresent()) {
+            Long id = disabledId.get();
+            repository.reactivate(id);
+            RolePermission refreshed = repository.findById(id)
+                .orElseThrow(() -> new RolePermissionNotFoundException(id));
+            RolePermissionDto dto = RolePermissionDto.from(refreshed);
+            permissionCachePort.evictByRoleId(command.roleId());
+            return dto;
+        }
+
         RolePermission rolePermission = RolePermission.create(role, permission);
         RolePermissionDto dto = RolePermissionDto.from(repository.save(rolePermission));
         permissionCachePort.evictByRoleId(command.roleId());
