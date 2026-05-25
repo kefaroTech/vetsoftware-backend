@@ -7,8 +7,9 @@ participant "DeleteEmployeeUseCase\n<<port.in>>" as UseCase
 participant "DeleteEmployeeService" as Service
 participant "EmployeeRepository\n<<port.out>>" as Repo
 participant "EmployeeJpaRepository\n<<spring-data>>" as JpaRepo
+participant "EmployeeRolesQueryPort\n<<port.out>>" as RolesPort
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as RoleJpaRepo
 participant "EmployeeRoleChildrenQueryPort\n<<port.out>>" as ChildrenPort
-participant "EmployeeRoleJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
@@ -46,15 +47,26 @@ alt employee no existe
 end
 Repo --> Service : Optional<Employee>
 
+Service -> RolesPort : findRolesByEmployeeIds([id])
+RolesPort -> RoleJpaRepo : findByEmployeeIdIn([id])
+RoleJpaRepo -> DB : SELECT employee_role JOIN role WHERE employee_id IN (?) AND enabled=true
+DB --> RoleJpaRepo : rows
+RoleJpaRepo --> RolesPort : List<EmployeeRoleJpaEntity>
+RolesPort --> Service : Map<Long, List<RoleSnapshot>>
+alt alguno de los roles tiene code = "ADMIN"
+  Service --> GEH : AdminEmployeeCannotBeDisabledException
+  GEH --> Client : 409 Conflict\ncode=ADMIN_EMPLOYEE_CANNOT_BE_DISABLED
+end
+
 Service -> ChildrenPort : existsActiveByEmployeeId(id)
-ChildrenPort -> ChildJpaRepo : existsByEmployee_Id(id)
-ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE employee_id=? AND enabled=true
-DB --> ChildJpaRepo : true/false
-ChildJpaRepo --> ChildrenPort : boolean
+ChildrenPort -> RoleJpaRepo : existsByEmployee_Id(id)
+RoleJpaRepo -> DB : SELECT EXISTS(...) WHERE employee_id=? AND enabled=true
+DB --> RoleJpaRepo : true/false
+RoleJpaRepo --> ChildrenPort : boolean
 ChildrenPort --> Service : boolean
 alt hay hijos activos
   Service --> GEH : EmployeeHasActiveChildrenException
-  GEH --> Client : 409 Conflict
+  GEH --> Client : 409 Conflict\ncode=ENTITY_HAS_ACTIVE_CHILDREN
 end
 
 Service -> Repo : delete(id)

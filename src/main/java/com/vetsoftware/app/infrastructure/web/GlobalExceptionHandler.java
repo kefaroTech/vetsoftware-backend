@@ -27,6 +27,7 @@ import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeHasActiveChildrenException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
+import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
 import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
@@ -151,6 +152,12 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.warn("Cannot delete entity with active children: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
+    }
+
+    @ExceptionHandler(AdminEmployeeCannotBeDisabledException.class)
+    public ProblemDetail handleAdminEmployeeCannotBeDisabled(AdminEmployeeCannotBeDisabledException ex) {
+        log.warn("Cannot disable admin employee: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
