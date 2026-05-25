@@ -30,6 +30,6 @@ public class JpaEmployeeRolesQueryPort implements EmployeeRolesQueryPort {
 
     private RoleSnapshot toSnapshot(EmployeeRoleJpaEntity er) {
         RoleJpaEntity r = er.getRole();
-        return new RoleSnapshot(r.getId(), r.getName(), r.getCode());
+        return new RoleSnapshot(er.getId(), r.getId(), r.getName(), r.getCode());
     }
 }

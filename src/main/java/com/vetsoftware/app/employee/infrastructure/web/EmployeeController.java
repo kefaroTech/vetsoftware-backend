@@ -95,7 +95,7 @@ public class EmployeeController {
     private EmployeeResponse toResponse(EmployeeDto dto) {
         CompanySummaryDto c = dto.company();
         List<RoleSummary> roles = dto.roles().stream()
-            .map(r -> new RoleSummary(r.id(), r.name(), r.code()))
+            .map(r -> new RoleSummary(r.employeeRoleId(), r.id(), r.name(), r.code()))
             .toList();
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
