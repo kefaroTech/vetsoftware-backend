@@ -15,6 +15,7 @@ public class DiagnosticImagingTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(type.isGeneral());
         entity.setCreatedDate(type.getCreatedDate());
+        entity.setEnabled(type.isEnabled());
         return entity;
     }
 
@@ -31,6 +32,7 @@ public class DiagnosticImagingTypeJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

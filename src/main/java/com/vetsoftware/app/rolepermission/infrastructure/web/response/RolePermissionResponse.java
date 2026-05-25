@@ -5,4 +5,5 @@ import java.time.LocalDateTime;
 public record RolePermissionResponse(Long id,
                                      RoleSummary role,
                                      PermissionSummary permission,
-                                     LocalDateTime createdDate) {}
+                                     LocalDateTime createdDate,
+                                     boolean enabled) {}

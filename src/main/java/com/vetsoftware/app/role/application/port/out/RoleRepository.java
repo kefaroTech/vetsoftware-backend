@@ -10,4 +10,5 @@ public interface RoleRepository {
     List<Role> findAll();
     List<Role> findAllByCompanyId(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

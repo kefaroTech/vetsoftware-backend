@@ -9,7 +9,9 @@ import com.vetsoftware.app.spa.application.dto.SpaTypeSummaryDto;
 import com.vetsoftware.app.spa.application.port.in.CreateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.DeleteSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.FindSpaUseCase;
+import com.vetsoftware.app.spa.application.port.in.ListSpasByAnimalUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasUseCase;
+import com.vetsoftware.app.spa.application.port.in.ReactivateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.UpdateSpaUseCase;
 import com.vetsoftware.app.spa.infrastructure.web.request.CreateSpaRequest;
 import com.vetsoftware.app.spa.infrastructure.web.request.UpdateSpaRequest;
@@ -29,18 +31,24 @@ public class SpaController {
     private final UpdateSpaUseCase updateUseCase;
     private final FindSpaUseCase findUseCase;
     private final ListSpasUseCase listUseCase;
+    private final ListSpasByAnimalUseCase listByAnimalUseCase;
     private final DeleteSpaUseCase deleteUseCase;
+    private final ReactivateSpaUseCase reactivateUseCase;
 
     public SpaController(CreateSpaUseCase createUseCase,
                          UpdateSpaUseCase updateUseCase,
                          FindSpaUseCase findUseCase,
                          ListSpasUseCase listUseCase,
-                         DeleteSpaUseCase deleteUseCase) {
+                         ListSpasByAnimalUseCase listByAnimalUseCase,
+                         DeleteSpaUseCase deleteUseCase,
+                         ReactivateSpaUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -56,6 +64,11 @@ public class SpaController {
     @GetMapping
     public List<SpaResponse> listAll() {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-animal/{animalId}")
+    public List<SpaResponse> listByAnimal(@PathVariable Long animalId) {
+        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -79,6 +92,11 @@ public class SpaController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SpaResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SpaResponse toResponse(SpaDto dto) {
         SpaTypeSummaryDto st = dto.spaType();
         AnimalSummaryDto a = dto.animal();
@@ -89,6 +107,7 @@ public class SpaController {
             dto.reason(), dto.details(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

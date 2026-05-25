@@ -17,7 +17,8 @@ public record DewormingDto(
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static DewormingDto from(Deworming deworming) {
         return new DewormingDto(
@@ -32,7 +33,8 @@ public record DewormingDto(
             AnimalSummaryDto.from(deworming.getAnimal()),
             deworming.getConsultation() == null ? null : ConsultationSummaryDto.from(deworming.getConsultation()),
             CompanySummaryDto.from(deworming.getCompany()),
-            deworming.getCreatedDate()
+            deworming.getCreatedDate(),
+            deworming.isEnabled()
         );
     }
 }

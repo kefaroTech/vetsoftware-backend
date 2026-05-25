@@ -13,7 +13,8 @@ public record SpaDto(
         String observations,
         AnimalSummaryDto animal,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static SpaDto from(Spa spa) {
         return new SpaDto(
@@ -25,7 +26,8 @@ public record SpaDto(
             spa.getObservations(),
             AnimalSummaryDto.from(spa.getAnimal()),
             CompanySummaryDto.from(spa.getCompany()),
-            spa.getCreatedDate()
+            spa.getCreatedDate(),
+            spa.isEnabled()
         );
     }
 }

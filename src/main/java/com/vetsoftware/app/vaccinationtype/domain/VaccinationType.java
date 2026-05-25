@@ -9,9 +9,10 @@ public class VaccinationType {
     private CompanyRef company;
     private boolean general;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public VaccinationType(Long id, String name, String description,
-                           CompanyRef company, boolean general, LocalDateTime createdDate) {
+                           CompanyRef company, boolean general, LocalDateTime createdDate, boolean enabled) {
         validate(name, description, company, general);
         this.id = id;
         this.name = name;
@@ -19,11 +20,12 @@ public class VaccinationType {
         this.company = company;
         this.general = general;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static VaccinationType create(String name, String description,
                                          CompanyRef company, boolean general) {
-        return new VaccinationType(null, name, description, company, general, LocalDateTime.now());
+        return new VaccinationType(null, name, description, company, general, LocalDateTime.now(), true);
     }
 
     public void update(String name, String description, CompanyRef company, boolean general) {
@@ -49,4 +51,7 @@ public class VaccinationType {
     public CompanyRef getCompany() { return company; }
     public boolean isGeneral() { return general; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

@@ -10,4 +10,5 @@ public interface HospitalizationRepository {
     List<Hospitalization> findAll();
     List<Hospitalization> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

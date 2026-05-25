@@ -9,4 +9,5 @@ public interface MembershipRepository {
     Optional<Membership> findById(Long id);
     List<Membership> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

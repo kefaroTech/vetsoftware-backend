@@ -9,6 +9,7 @@ import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUs
 import com.vetsoftware.app.employeerole.application.port.in.DeleteEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.FindEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.ListEmployeeRolesUseCase;
+import com.vetsoftware.app.employeerole.application.port.in.ReactivateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.UpdateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.infrastructure.web.request.CreateEmployeeRoleRequest;
 import com.vetsoftware.app.employeerole.infrastructure.web.request.UpdateEmployeeRoleRequest;
@@ -28,17 +29,20 @@ public class EmployeeRoleController {
     private final FindEmployeeRoleUseCase findUseCase;
     private final ListEmployeeRolesUseCase listUseCase;
     private final DeleteEmployeeRoleUseCase deleteUseCase;
+    private final ReactivateEmployeeRoleUseCase reactivateUseCase;
 
     public EmployeeRoleController(CreateEmployeeRoleUseCase createUseCase,
                                   UpdateEmployeeRoleUseCase updateUseCase,
                                   FindEmployeeRoleUseCase findUseCase,
                                   ListEmployeeRolesUseCase listUseCase,
-                                  DeleteEmployeeRoleUseCase deleteUseCase) {
+                                  DeleteEmployeeRoleUseCase deleteUseCase,
+                                  ReactivateEmployeeRoleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -71,6 +75,11 @@ public class EmployeeRoleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public EmployeeRoleResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private EmployeeRoleResponse toResponse(EmployeeRoleDto dto) {
         EmployeeSummaryDto e = dto.employee();
         RoleSummaryDto r = dto.role();
@@ -78,7 +87,8 @@ public class EmployeeRoleController {
             dto.id(),
             new EmployeeSummary(e.id(), e.employeeCode(), e.name()),
             new RoleSummary(r.id(), r.name(), r.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

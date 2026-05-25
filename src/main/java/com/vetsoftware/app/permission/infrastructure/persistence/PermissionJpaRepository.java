@@ -19,4 +19,13 @@ public interface PermissionJpaRepository extends JpaRepository<PermissionJpaEnti
 
     @EntityGraph(attributePaths = {"company", "subModule"})
     List<PermissionJpaEntity> findAllByCompanyId(Long companyId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE permissions SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByCompany_Id(Long companyId);
+
+    boolean existsBySubModule_Id(Long subModuleId);
 }

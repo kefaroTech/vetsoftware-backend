@@ -9,4 +9,5 @@ public interface SubModuleRepository {
     Optional<SubModule> findById(Long id);
     List<SubModule> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

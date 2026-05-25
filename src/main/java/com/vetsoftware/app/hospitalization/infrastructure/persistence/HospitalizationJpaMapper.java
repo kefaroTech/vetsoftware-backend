@@ -29,6 +29,7 @@ public class HospitalizationJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(hospitalization.getCreatedDate());
+        entity.setEnabled(hospitalization.isEnabled());
         return entity;
     }
 
@@ -48,6 +49,7 @@ public class HospitalizationJpaMapper {
             entity.getId(), entity.getDate(), entity.getStartDate(), entity.getEndDate(),
             entity.getType(), entity.getReasonLeaving(),
             entity.getReason(), entity.getObservations(),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate());
+            animalRef, consultationRef, companyRef, entity.getCreatedDate(),
+            entity.isEnabled());
     }
 }

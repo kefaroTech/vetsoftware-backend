@@ -10,4 +10,5 @@ public interface LaboratoryTestTypeRepository {
     List<LaboratoryTestType> findAll();
     List<LaboratoryTestType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

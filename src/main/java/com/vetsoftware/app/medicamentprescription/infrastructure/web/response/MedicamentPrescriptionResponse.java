@@ -9,5 +9,6 @@ public record MedicamentPrescriptionResponse(
         Double quantity,
         String posology,
         PrescriptionSummary prescription,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

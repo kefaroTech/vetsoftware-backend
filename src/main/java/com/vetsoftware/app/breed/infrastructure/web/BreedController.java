@@ -9,6 +9,7 @@ import com.vetsoftware.app.breed.application.port.in.DeleteBreedUseCase;
 import com.vetsoftware.app.breed.application.port.in.FindBreedUseCase;
 import com.vetsoftware.app.breed.application.port.in.ListBreedsBySpecieUseCase;
 import com.vetsoftware.app.breed.application.port.in.ListBreedsUseCase;
+import com.vetsoftware.app.breed.application.port.in.ReactivateBreedUseCase;
 import com.vetsoftware.app.breed.application.port.in.UpdateBreedUseCase;
 import com.vetsoftware.app.breed.infrastructure.web.request.CreateBreedRequest;
 import com.vetsoftware.app.breed.infrastructure.web.request.UpdateBreedRequest;
@@ -27,17 +28,20 @@ public class BreedController {
     private final ListBreedsUseCase listUseCase;
     private final ListBreedsBySpecieUseCase listBySpecieUseCase;
     private final DeleteBreedUseCase deleteUseCase;
+    private final ReactivateBreedUseCase reactivateUseCase;
 
     public BreedController(CreateBreedUseCase createUseCase, UpdateBreedUseCase updateUseCase,
                            FindBreedUseCase findUseCase, ListBreedsUseCase listUseCase,
                            ListBreedsBySpecieUseCase listBySpecieUseCase,
-                           DeleteBreedUseCase deleteUseCase) {
+                           DeleteBreedUseCase deleteUseCase,
+                           ReactivateBreedUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listBySpecieUseCase = listBySpecieUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping("/breeds")
@@ -75,12 +79,17 @@ public class BreedController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/breeds/{id}/enable")
+    public BreedResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private BreedResponse toResponse(BreedDto dto) {
         SpecieSummaryDto s = dto.specie();
         return new BreedResponse(
             dto.id(), dto.name(),
             new SpecieSummary(s.id(), s.name()),
-            dto.createdDate()
+            dto.createdDate(), dto.enabled()
         );
     }
 }

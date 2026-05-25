@@ -18,6 +18,7 @@ public class EmployeeRoleJpaMapper {
         entity.setEmployee(employee);
         entity.setRole(role);
         entity.setCreatedDate(employeeRole.getCreatedDate());
+        entity.setEnabled(employeeRole.isEnabled());
         return entity;
     }
 
@@ -36,7 +37,8 @@ public class EmployeeRoleJpaMapper {
             entity.getId(),
             employeeRef,
             roleRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

@@ -8,6 +8,7 @@ import com.vetsoftware.app.basepermission.application.port.in.CreateBasePermissi
 import com.vetsoftware.app.basepermission.application.port.in.DeleteBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.in.FindBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.in.ListBasePermissionsUseCase;
+import com.vetsoftware.app.basepermission.application.port.in.ReactivateBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.application.port.in.UpdateBasePermissionUseCase;
 import com.vetsoftware.app.basepermission.infrastructure.web.request.CreateBasePermissionRequest;
 import com.vetsoftware.app.basepermission.infrastructure.web.request.UpdateBasePermissionRequest;
@@ -26,17 +27,20 @@ public class BasePermissionController {
     private final FindBasePermissionUseCase findUseCase;
     private final ListBasePermissionsUseCase listUseCase;
     private final DeleteBasePermissionUseCase deleteUseCase;
+    private final ReactivateBasePermissionUseCase reactivateUseCase;
 
     public BasePermissionController(CreateBasePermissionUseCase createUseCase,
                                     UpdateBasePermissionUseCase updateUseCase,
                                     FindBasePermissionUseCase findUseCase,
                                     ListBasePermissionsUseCase listUseCase,
-                                    DeleteBasePermissionUseCase deleteUseCase) {
+                                    DeleteBasePermissionUseCase deleteUseCase,
+                                    ReactivateBasePermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -69,12 +73,18 @@ public class BasePermissionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public BasePermissionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private BasePermissionResponse toResponse(BasePermissionDto dto) {
         SubModuleSummaryDto sm = dto.subModule();
         return new BasePermissionResponse(
             dto.id(), dto.name(), dto.code(),
             new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

@@ -21,4 +21,13 @@ public interface MembershipSubModuleJpaRepository extends JpaRepository<Membersh
 
     @EntityGraph(attributePaths = {"membership", "subModule"})
     List<MembershipSubModuleJpaEntity> findByMembershipIdIn(Collection<Long> membershipIds);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE membership_sub_modules SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByMembership_Id(Long membershipId);
+
+    boolean existsBySubModule_Id(Long subModuleId);
 }

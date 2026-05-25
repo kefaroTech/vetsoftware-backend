@@ -11,6 +11,7 @@ import com.vetsoftware.app.consultation.application.port.in.CreateConsultationUs
 import com.vetsoftware.app.consultation.application.port.in.DeleteConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.FindConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.ListConsultationsUseCase;
+import com.vetsoftware.app.consultation.application.port.in.ReactivateConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.UpdateConsultationUseCase;
 import com.vetsoftware.app.consultation.infrastructure.web.request.CreateConsultationRequest;
 import com.vetsoftware.app.consultation.infrastructure.web.request.UpdateConsultationRequest;
@@ -31,18 +32,21 @@ public class ConsultationController {
     private final FindConsultationUseCase findUseCase;
     private final ListConsultationsUseCase listUseCase;
     private final DeleteConsultationUseCase deleteUseCase;
+    private final ReactivateConsultationUseCase reactivateUseCase;
     private final Authz authz;
 
     public ConsultationController(CreateConsultationUseCase createUseCase,
                                   UpdateConsultationUseCase updateUseCase,
                                   FindConsultationUseCase findUseCase,
                                   ListConsultationsUseCase listUseCase,
-                                  DeleteConsultationUseCase deleteUseCase, Authz authz) {
+                                  DeleteConsultationUseCase deleteUseCase,
+                                  ReactivateConsultationUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -82,6 +86,11 @@ public class ConsultationController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public ConsultationResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private ConsultationResponse toResponse(ConsultationDto dto) {
         ConsultationTypeSummaryDto ct = dto.consultationType();
         AnimalSummaryDto a = dto.animal();
@@ -93,6 +102,7 @@ public class ConsultationController {
             dto.nextControl(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

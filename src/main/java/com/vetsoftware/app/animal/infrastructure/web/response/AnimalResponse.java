@@ -13,5 +13,5 @@ public record AnimalResponse(
         Gender gender, WeightType weightType, AnimalType animalType,
         ReproductiveState reproductiveState, AnimalColorSummary color, LocalDate bod,
         Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
-        CompanySummary company, LocalDateTime createdDate
+        CompanySummary company, LocalDateTime createdDate, boolean enabled
 ) {}

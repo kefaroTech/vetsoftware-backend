@@ -15,6 +15,7 @@ public class SubModuleJpaMapper {
         entity.setCode(subModule.getCode());
         entity.setModule(module);
         entity.setCreatedDate(subModule.getCreatedDate());
+        entity.setEnabled(subModule.isEnabled());
         return entity;
     }
 
@@ -29,7 +30,8 @@ public class SubModuleJpaMapper {
             entity.getName(),
             entity.getCode(),
             ref,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

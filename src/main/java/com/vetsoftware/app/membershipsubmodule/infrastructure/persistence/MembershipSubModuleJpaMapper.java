@@ -18,6 +18,7 @@ public class MembershipSubModuleJpaMapper {
         entity.setMembership(membership);
         entity.setSubModule(subModule);
         entity.setCreatedDate(membershipSubModule.getCreatedDate());
+        entity.setEnabled(membershipSubModule.isEnabled());
         return entity;
     }
 
@@ -36,7 +37,8 @@ public class MembershipSubModuleJpaMapper {
             entity.getId(),
             membershipRef,
             subModuleRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

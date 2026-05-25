@@ -8,12 +8,12 @@ public class Employee {
     private String hashPassword;
     private String name;
     private String email;
-    private EmployeeStatus status;
     private final CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
-                    EmployeeStatus status, CompanyRef company, LocalDateTime createdDate) {
+                    CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -21,44 +21,44 @@ public class Employee {
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (email == null || email.isBlank()) throw new IllegalArgumentException("email is required");
         if (email.length() > 100) throw new IllegalArgumentException("email must be 100 chars or less");
-        if (status == null) throw new IllegalArgumentException("status is required");
         if (company == null) throw new IllegalArgumentException("company is required");
         this.id = id;
         this.employeeCode = employeeCode;
         this.hashPassword = hashPassword;
         this.name = name;
         this.email = email;
-        this.status = status;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Employee create(String employeeCode, String hashPassword, String name, String email,
-                                  EmployeeStatus status, CompanyRef company) {
+                                  CompanyRef company) {
         return new Employee(null, employeeCode, hashPassword, name, email,
-            status, company, LocalDateTime.now());
+            company, LocalDateTime.now(), true);
     }
 
-    public void update(String employeeCode, String name, String email, EmployeeStatus status) {
+    public void update(String employeeCode, String name, String email) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (email == null || email.isBlank()) throw new IllegalArgumentException("email is required");
         if (email.length() > 100) throw new IllegalArgumentException("email must be 100 chars or less");
-        if (status == null) throw new IllegalArgumentException("status is required");
         this.employeeCode = employeeCode;
         this.name = name;
         this.email = email;
-        this.status = status;
     }
+
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 
     public Long getId() { return id; }
     public String getEmployeeCode() { return employeeCode; }
     public String getHashPassword() { return hashPassword; }
     public String getName() { return name; }
     public String getEmail() { return email; }
-    public EmployeeStatus getStatus() { return status; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
 }

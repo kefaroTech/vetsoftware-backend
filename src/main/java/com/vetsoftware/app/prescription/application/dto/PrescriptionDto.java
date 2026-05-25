@@ -15,7 +15,8 @@ public record PrescriptionDto(
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
         List<MedicamentRef> medicaments,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static PrescriptionDto from(Prescription prescription) {
         return from(prescription, List.of());
@@ -31,7 +32,8 @@ public record PrescriptionDto(
             ConsultationSummaryDto.from(prescription.getConsultation()),
             CompanySummaryDto.from(prescription.getCompany()),
             medicaments,
-            prescription.getCreatedDate()
+            prescription.getCreatedDate(),
+            prescription.isEnabled()
         );
     }
 }

@@ -5,7 +5,8 @@ import java.time.LocalDateTime;
 
 public record OwnerDto(
         Long id, String name, String email, String document, String address,
-        String phone, CitySummaryDto city, CompanySummaryDto company, LocalDateTime createdDate
+        String phone, CitySummaryDto city, CompanySummaryDto company, LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static OwnerDto from(Owner owner) {
         return new OwnerDto(
@@ -13,7 +14,7 @@ public record OwnerDto(
             owner.getAddress(), owner.getPhone(),
             CitySummaryDto.from(owner.getCity()),
             CompanySummaryDto.from(owner.getCompany()),
-            owner.getCreatedDate()
+            owner.getCreatedDate(), owner.isEnabled()
         );
     }
 }

@@ -17,4 +17,14 @@ public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Lo
 
     @EntityGraph(attributePaths = {"animal", "company"})
     List<DayCareJpaEntity> findAllByAnimalId(Long animalId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(
+        value = "UPDATE daycares SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByAnimal_Id(Long animalId);
+
+    boolean existsByCompany_Id(Long companyId);
 }

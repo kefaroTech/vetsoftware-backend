@@ -9,6 +9,7 @@ import com.vetsoftware.app.state.application.port.in.DeleteStateUseCase;
 import com.vetsoftware.app.state.application.port.in.FindStateUseCase;
 import com.vetsoftware.app.state.application.port.in.ListStatesByCountryUseCase;
 import com.vetsoftware.app.state.application.port.in.ListStatesUseCase;
+import com.vetsoftware.app.state.application.port.in.ReactivateStateUseCase;
 import com.vetsoftware.app.state.application.port.in.UpdateStateUseCase;
 import com.vetsoftware.app.state.infrastructure.web.request.CreateStateRequest;
 import com.vetsoftware.app.state.infrastructure.web.request.UpdateStateRequest;
@@ -28,17 +29,20 @@ public class StateController {
     private final ListStatesUseCase listUseCase;
     private final ListStatesByCountryUseCase listByCountryUseCase;
     private final DeleteStateUseCase deleteUseCase;
+    private final ReactivateStateUseCase reactivateUseCase;
 
     public StateController(CreateStateUseCase createUseCase, UpdateStateUseCase updateUseCase,
                            FindStateUseCase findUseCase, ListStatesUseCase listUseCase,
                            ListStatesByCountryUseCase listByCountryUseCase,
-                           DeleteStateUseCase deleteUseCase) {
+                           DeleteStateUseCase deleteUseCase,
+                           ReactivateStateUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByCountryUseCase = listByCountryUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping("/states")
@@ -76,13 +80,19 @@ public class StateController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/states/{id}/enable")
+    public StateResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private StateResponse toResponse(StateDto dto) {
         CountrySummaryDto c = dto.country();
         return new StateResponse(
             dto.id(),
             dto.name(),
             new CountrySummary(c.id(), c.name()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

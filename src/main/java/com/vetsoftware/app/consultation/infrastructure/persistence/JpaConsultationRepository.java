@@ -58,4 +58,9 @@ public class JpaConsultationRepository implements ConsultationRepository {
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
+    }
 }

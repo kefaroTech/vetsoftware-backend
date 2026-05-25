@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 public record PermissionDto(Long id, String name, String code,
                             CompanySummaryDto company, SubModuleSummaryDto subModule,
-                            LocalDateTime createdDate) {
+                            LocalDateTime createdDate, boolean enabled) {
     public static PermissionDto from(Permission permission) {
         return new PermissionDto(
             permission.getId(),
@@ -13,7 +13,8 @@ public record PermissionDto(Long id, String name, String code,
             permission.getCode(),
             CompanySummaryDto.from(permission.getCompany()),
             SubModuleSummaryDto.from(permission.getSubModule()),
-            permission.getCreatedDate()
+            permission.getCreatedDate(),
+            permission.isEnabled()
         );
     }
 }

@@ -8,9 +8,10 @@ public class Membership {
     private MembershipStatus status;
     private boolean mandatory;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Membership(Long id, String name, MembershipStatus status, boolean mandatory,
-                      LocalDateTime createdDate) {
+                      LocalDateTime createdDate, boolean enabled) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (status == null) throw new IllegalArgumentException("status is required");
@@ -19,10 +20,11 @@ public class Membership {
         this.status = status;
         this.mandatory = mandatory;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Membership create(String name, MembershipStatus status, boolean mandatory) {
-        return new Membership(null, name, status, mandatory, LocalDateTime.now());
+        return new Membership(null, name, status, mandatory, LocalDateTime.now(), true);
     }
 
     public void update(String name, MembershipStatus status, boolean mandatory) {
@@ -34,9 +36,13 @@ public class Membership {
         this.mandatory = mandatory;
     }
 
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public MembershipStatus getStatus() { return status; }
     public boolean isMandatory() { return mandatory; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
 }

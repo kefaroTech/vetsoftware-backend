@@ -10,4 +10,5 @@ public interface EmployeeRepository {
     List<Employee> findAll();
     List<Employee> findAllByCompanyId(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

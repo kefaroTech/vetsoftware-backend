@@ -3,7 +3,6 @@ package com.vetsoftware.app.employee.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
-import com.vetsoftware.app.employee.domain.EmployeeStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,9 +14,9 @@ public class EmployeeJpaMapper {
         entity.setHashPassword(employee.getHashPassword());
         entity.setName(employee.getName());
         entity.setEmail(employee.getEmail());
-        entity.setStatus(employee.getStatus().name());
         entity.setCompany(company);
         entity.setCreatedDate(employee.getCreatedDate());
+        entity.setEnabled(employee.isEnabled());
         return entity;
     }
 
@@ -33,9 +32,9 @@ public class EmployeeJpaMapper {
             entity.getHashPassword(),
             entity.getName(),
             entity.getEmail(),
-            EmployeeStatus.valueOf(entity.getStatus()),
             companyRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

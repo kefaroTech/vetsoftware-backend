@@ -11,6 +11,7 @@ public class SpaTypeJpaMapper {
         entity.setName(spaType.getName());
         entity.setDescription(spaType.getDescription());
         entity.setCreatedDate(spaType.getCreatedDate());
+        entity.setEnabled(spaType.isEnabled());
         return entity;
     }
 
@@ -19,6 +20,7 @@ public class SpaTypeJpaMapper {
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

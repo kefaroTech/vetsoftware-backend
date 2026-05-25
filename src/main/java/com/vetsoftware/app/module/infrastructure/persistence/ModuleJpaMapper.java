@@ -11,10 +11,11 @@ public class ModuleJpaMapper {
         entity.setName(module.getName());
         entity.setCode(module.getCode());
         entity.setCreatedDate(module.getCreatedDate());
+        entity.setEnabled(module.isEnabled());
         return entity;
     }
 
     public Module toDomain(ModuleJpaEntity entity) {
-        return new Module(entity.getId(), entity.getName(), entity.getCode(), entity.getCreatedDate());
+        return new Module(entity.getId(), entity.getName(), entity.getCode(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

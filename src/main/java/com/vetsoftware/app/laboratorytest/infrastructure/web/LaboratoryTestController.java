@@ -14,6 +14,7 @@ import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.port.in.FindLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsByAnimalUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsUseCase;
+import com.vetsoftware.app.laboratorytest.application.port.in.ReactivateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.UpdateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.request.ChangeLaboratoryTestStatusRequest;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.request.CreateLaboratoryTestRequest;
@@ -38,6 +39,7 @@ public class LaboratoryTestController {
     private final ListLaboratoryTestsUseCase listUseCase;
     private final ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase;
     private final DeleteLaboratoryTestUseCase deleteUseCase;
+    private final ReactivateLaboratoryTestUseCase reactivateUseCase;
 
     public LaboratoryTestController(CreateLaboratoryTestUseCase createUseCase,
                                     UpdateLaboratoryTestUseCase updateUseCase,
@@ -45,7 +47,8 @@ public class LaboratoryTestController {
                                     FindLaboratoryTestUseCase findUseCase,
                                     ListLaboratoryTestsUseCase listUseCase,
                                     ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase,
-                                    DeleteLaboratoryTestUseCase deleteUseCase) {
+                                    DeleteLaboratoryTestUseCase deleteUseCase,
+                                    ReactivateLaboratoryTestUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -53,6 +56,7 @@ public class LaboratoryTestController {
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -103,6 +107,11 @@ public class LaboratoryTestController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public LaboratoryTestResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private LaboratoryTestResponse toResponse(LaboratoryTestDto dto) {
         LaboratoryTestTypeSummaryDto tt = dto.testType();
         AnimalSummaryDto a = dto.animal();
@@ -115,6 +124,6 @@ public class LaboratoryTestController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(), dto.enabled());
     }
 }

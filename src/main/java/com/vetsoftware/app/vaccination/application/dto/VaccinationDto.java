@@ -14,7 +14,8 @@ public record VaccinationDto(
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static VaccinationDto from(Vaccination vaccination) {
         return new VaccinationDto(
@@ -27,7 +28,8 @@ public record VaccinationDto(
             AnimalSummaryDto.from(vaccination.getAnimal()),
             vaccination.getConsultation() == null ? null : ConsultationSummaryDto.from(vaccination.getConsultation()),
             CompanySummaryDto.from(vaccination.getCompany()),
-            vaccination.getCreatedDate()
+            vaccination.getCreatedDate(),
+            vaccination.isEnabled()
         );
     }
 }

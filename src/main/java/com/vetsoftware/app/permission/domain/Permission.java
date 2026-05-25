@@ -9,8 +9,9 @@ public class Permission {
     private CompanyRef company;
     private SubModuleRef subModule;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
-    public Permission(Long id, String name, String code, CompanyRef company, SubModuleRef subModule, LocalDateTime createdDate) {
+    public Permission(Long id, String name, String code, CompanyRef company, SubModuleRef subModule, LocalDateTime createdDate, boolean enabled) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (code == null || code.isBlank()) throw new IllegalArgumentException("code is required");
@@ -23,10 +24,11 @@ public class Permission {
         this.company = company;
         this.subModule = subModule;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Permission create(String name, String code, CompanyRef company, SubModuleRef subModule) {
-        return new Permission(null, name, code, company, subModule, LocalDateTime.now());
+        return new Permission(null, name, code, company, subModule, LocalDateTime.now(), true);
     }
 
     public void update(String name, String code, CompanyRef company, SubModuleRef subModule) {
@@ -48,4 +50,7 @@ public class Permission {
     public CompanyRef getCompany() { return company; }
     public SubModuleRef getSubModule() { return subModule; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

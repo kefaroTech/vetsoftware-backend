@@ -10,4 +10,5 @@ public interface CityRepository {
     List<City> findAll();
     List<City> findByStateId(Long stateId);
     void delete(Long id);
+    int reactivate(Long id);
 }

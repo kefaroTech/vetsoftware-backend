@@ -23,18 +23,21 @@ public class AnimalController {
     private final ListAnimalsUseCase listUseCase;
     private final ListAnimalsByOwnerUseCase listByOwnerUseCase;
     private final DeleteAnimalUseCase deleteUseCase;
+    private final ReactivateAnimalUseCase reactivateUseCase;
     private final Authz authz;
 
     public AnimalController(CreateAnimalUseCase createUseCase, UpdateAnimalUseCase updateUseCase,
                             FindAnimalUseCase findUseCase, ListAnimalsUseCase listUseCase,
                             ListAnimalsByOwnerUseCase listByOwnerUseCase,
-                            DeleteAnimalUseCase deleteUseCase, Authz authz) {
+                            DeleteAnimalUseCase deleteUseCase,
+                            ReactivateAnimalUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByOwnerUseCase = listByOwnerUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -83,6 +86,11 @@ public class AnimalController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public AnimalResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private AnimalResponse toResponse(AnimalDto dto) {
         SpecieSummaryDto s = dto.specie();
         BreedSummaryDto b = dto.breed();
@@ -100,7 +108,7 @@ public class AnimalController {
                 dto.bod(),
                 dto.weight(), dto.size(), dto.deceased(), dto.deceasedDate(),
                 new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate()
+                dto.createdDate(), dto.enabled()
         );
     }
 }

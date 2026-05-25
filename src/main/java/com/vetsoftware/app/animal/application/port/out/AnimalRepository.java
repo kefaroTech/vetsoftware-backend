@@ -10,4 +10,5 @@ public interface AnimalRepository {
     List<Animal> findAll();
     List<Animal> findByOwnerIdAndCompanyId(Long ownerId, Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

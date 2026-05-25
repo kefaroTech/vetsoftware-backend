@@ -13,4 +13,5 @@ public interface RolePermissionRepository {
     List<RolePermission> findAllByRoleCompanyId(Long companyId);
     void delete(Long id);
     void deleteAllByIds(List<Long> ids);
+    int reactivate(Long id);
 }

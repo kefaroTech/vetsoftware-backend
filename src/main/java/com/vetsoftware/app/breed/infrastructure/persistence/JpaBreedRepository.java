@@ -48,4 +48,9 @@ public class JpaBreedRepository implements BreedRepository {
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
+    }
 }

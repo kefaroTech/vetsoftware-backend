@@ -9,4 +9,5 @@ public interface EmployeeRoleRepository {
     Optional<EmployeeRole> findById(Long id);
     List<EmployeeRole> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

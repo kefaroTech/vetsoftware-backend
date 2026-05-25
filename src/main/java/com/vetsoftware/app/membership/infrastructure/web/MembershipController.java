@@ -7,6 +7,7 @@ import com.vetsoftware.app.membership.application.port.in.CreateMembershipUseCas
 import com.vetsoftware.app.membership.application.port.in.DeleteMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.in.FindMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.in.ListMembershipsUseCase;
+import com.vetsoftware.app.membership.application.port.in.ReactivateMembershipUseCase;
 import com.vetsoftware.app.membership.application.port.in.UpdateMembershipUseCase;
 import com.vetsoftware.app.membership.infrastructure.web.request.CreateMembershipRequest;
 import com.vetsoftware.app.membership.infrastructure.web.request.UpdateMembershipRequest;
@@ -24,15 +25,18 @@ public class MembershipController {
     private final FindMembershipUseCase findUseCase;
     private final ListMembershipsUseCase listUseCase;
     private final DeleteMembershipUseCase deleteUseCase;
+    private final ReactivateMembershipUseCase reactivateUseCase;
 
     public MembershipController(CreateMembershipUseCase createUseCase, UpdateMembershipUseCase updateUseCase,
                                 FindMembershipUseCase findUseCase, ListMembershipsUseCase listUseCase,
-                                DeleteMembershipUseCase deleteUseCase) {
+                                DeleteMembershipUseCase deleteUseCase,
+                                ReactivateMembershipUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -66,7 +70,13 @@ public class MembershipController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public MembershipResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private MembershipResponse toResponse(MembershipDto dto) {
-        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.mandatory(), dto.createdDate());
+        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.mandatory(), dto.createdDate(),
+            dto.enabled());
     }
 }

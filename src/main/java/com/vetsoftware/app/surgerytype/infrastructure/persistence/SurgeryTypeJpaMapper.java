@@ -15,6 +15,7 @@ public class SurgeryTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(surgeryType.isGeneral());
         entity.setCreatedDate(surgeryType.getCreatedDate());
+        entity.setEnabled(surgeryType.isEnabled());
         return entity;
     }
 
@@ -31,6 +32,7 @@ public class SurgeryTypeJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

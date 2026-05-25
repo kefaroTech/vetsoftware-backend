@@ -9,4 +9,5 @@ public interface CompanyRepository {
     Optional<Company> findById(Long id);
     List<Company> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

@@ -10,10 +10,11 @@ public class CountryJpaMapper {
         entity.setId(country.getId());
         entity.setName(country.getName());
         entity.setCreatedDate(country.getCreatedDate());
+        entity.setEnabled(country.isEnabled());
         return entity;
     }
 
     public Country toDomain(CountryJpaEntity entity) {
-        return new Country(entity.getId(), entity.getName(), entity.getCreatedDate());
+        return new Country(entity.getId(), entity.getName(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -10,10 +10,11 @@ public class SpecieJpaMapper {
         entity.setId(specie.getId());
         entity.setName(specie.getName());
         entity.setCreatedDate(specie.getCreatedDate());
+        entity.setEnabled(specie.isEnabled());
         return entity;
     }
 
     public Specie toDomain(SpecieJpaEntity entity) {
-        return new Specie(entity.getId(), entity.getName(), entity.getCreatedDate());
+        return new Specie(entity.getId(), entity.getName(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

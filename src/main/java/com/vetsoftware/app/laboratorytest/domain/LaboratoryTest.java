@@ -14,10 +14,12 @@ public class LaboratoryTest {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public LaboratoryTest(Long id, LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                           String diagnosis, LaboratoryTestStatus status, AnimalRef animal,
-                          ConsultationRef consultation, CompanyRef company, LocalDateTime createdDate) {
+                          ConsultationRef consultation, CompanyRef company, LocalDateTime createdDate,
+                          boolean enabled) {
         validate(date, testType, quantity, diagnosis, status, animal, consultation, company);
         this.id = id;
         this.date = date;
@@ -29,6 +31,7 @@ public class LaboratoryTest {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static LaboratoryTest create(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
@@ -36,7 +39,7 @@ public class LaboratoryTest {
                                         ConsultationRef consultation, CompanyRef company) {
         return new LaboratoryTest(null, date, testType, quantity, diagnosis,
                                   LaboratoryTestStatus.PENDIENTE, animal, consultation, company,
-                                  LocalDateTime.now());
+                                  LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
@@ -81,4 +84,7 @@ public class LaboratoryTest {
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

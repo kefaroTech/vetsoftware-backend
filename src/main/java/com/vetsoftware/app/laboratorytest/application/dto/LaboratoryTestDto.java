@@ -14,7 +14,8 @@ public record LaboratoryTestDto(
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static LaboratoryTestDto from(LaboratoryTest laboratoryTest) {
         return new LaboratoryTestDto(
@@ -27,7 +28,8 @@ public record LaboratoryTestDto(
             AnimalSummaryDto.from(laboratoryTest.getAnimal()),
             laboratoryTest.getConsultation() == null ? null : ConsultationSummaryDto.from(laboratoryTest.getConsultation()),
             CompanySummaryDto.from(laboratoryTest.getCompany()),
-            laboratoryTest.getCreatedDate()
+            laboratoryTest.getCreatedDate(),
+            laboratoryTest.isEnabled()
         );
     }
 }

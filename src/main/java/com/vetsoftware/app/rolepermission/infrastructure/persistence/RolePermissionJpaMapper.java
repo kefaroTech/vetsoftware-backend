@@ -18,6 +18,7 @@ public class RolePermissionJpaMapper {
         entity.setRole(role);
         entity.setPermission(permission);
         entity.setCreatedDate(rolePermission.getCreatedDate());
+        entity.setEnabled(rolePermission.isEnabled());
         return entity;
     }
 
@@ -36,7 +37,8 @@ public class RolePermissionJpaMapper {
             entity.getId(),
             roleRef,
             permissionRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

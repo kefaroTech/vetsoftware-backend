@@ -10,4 +10,5 @@ public interface PermissionRepository {
     List<Permission> findAll();
     List<Permission> findAllByCompanyId(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

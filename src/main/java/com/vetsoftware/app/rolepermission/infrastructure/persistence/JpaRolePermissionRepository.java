@@ -85,4 +85,9 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
         if (ids == null || ids.isEmpty()) return;
         jpaRepository.deleteAllByIdInBatch(ids);
     }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
+    }
 }

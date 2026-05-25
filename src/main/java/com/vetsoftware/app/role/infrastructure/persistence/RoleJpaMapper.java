@@ -15,6 +15,7 @@ public class RoleJpaMapper {
         entity.setCode(role.getCode());
         entity.setCompany(company);
         entity.setCreatedDate(role.getCreatedDate());
+        entity.setEnabled(role.isEnabled());
         return entity;
     }
 
@@ -29,7 +30,8 @@ public class RoleJpaMapper {
             entity.getName(),
             entity.getCode(),
             companyRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

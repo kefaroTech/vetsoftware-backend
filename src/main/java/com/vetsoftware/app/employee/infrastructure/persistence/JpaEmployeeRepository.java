@@ -48,4 +48,9 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
+    }
 }

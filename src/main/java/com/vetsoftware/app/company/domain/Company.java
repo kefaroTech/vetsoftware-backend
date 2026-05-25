@@ -11,10 +11,11 @@ public class Company {
     private CityRef city;
     private MembershipRef membership;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Company(Long id, String name, String identifier, String address,
                    String contactNumber, CityRef city, MembershipRef membership,
-                   LocalDateTime createdDate) {
+                   LocalDateTime createdDate, boolean enabled) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (identifier == null || identifier.isBlank()) throw new IllegalArgumentException("identifier is required");
@@ -29,12 +30,13 @@ public class Company {
         this.city = city;
         this.membership = membership;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Company create(String name, String identifier, String address,
                                  String contactNumber, CityRef city, MembershipRef membership) {
         return new Company(null, name, identifier, address, contactNumber, city, membership,
-            LocalDateTime.now());
+            LocalDateTime.now(), true);
     }
 
     public void update(String name, String identifier, String address,
@@ -52,6 +54,10 @@ public class Company {
         this.city = city;
         this.membership = membership;
     }
+
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 
     public Long getId() { return id; }
     public String getName() { return name; }

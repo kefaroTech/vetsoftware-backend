@@ -12,5 +12,6 @@ public record SpaResponse(
         String observations,
         AnimalSummary animal,
         CompanySummary company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

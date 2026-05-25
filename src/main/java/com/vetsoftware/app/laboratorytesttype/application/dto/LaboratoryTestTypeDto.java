@@ -9,7 +9,8 @@ public record LaboratoryTestTypeDto(
         String description,
         CompanySummaryDto company,
         boolean general,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static LaboratoryTestTypeDto from(LaboratoryTestType laboratoryTestType) {
         return new LaboratoryTestTypeDto(
@@ -18,6 +19,7 @@ public record LaboratoryTestTypeDto(
                 laboratoryTestType.getDescription(),
                 laboratoryTestType.getCompany() == null ? null : CompanySummaryDto.from(laboratoryTestType.getCompany()),
                 laboratoryTestType.isGeneral(),
-                laboratoryTestType.getCreatedDate());
+                laboratoryTestType.getCreatedDate(),
+                laboratoryTestType.isEnabled());
     }
 }

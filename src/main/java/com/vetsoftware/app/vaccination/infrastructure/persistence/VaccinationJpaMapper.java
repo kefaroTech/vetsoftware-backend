@@ -30,6 +30,7 @@ public class VaccinationJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(vaccination.getCreatedDate());
+        entity.setEnabled(vaccination.isEnabled());
         return entity;
     }
 
@@ -50,6 +51,6 @@ public class VaccinationJpaMapper {
         return new Vaccination(
             entity.getId(), entity.getDate(), vaccinationTypeRef,
             entity.getLot(), entity.getNotes(), entity.getNextVaccination(),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate());
+            animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

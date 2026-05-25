@@ -8,5 +8,7 @@ public interface SpaRepository {
     Spa save(Spa spa);
     Optional<Spa> findById(Long id);
     List<Spa> findAll();
+    List<Spa> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

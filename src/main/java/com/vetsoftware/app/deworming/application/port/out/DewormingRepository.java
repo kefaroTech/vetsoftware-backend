@@ -10,4 +10,5 @@ public interface DewormingRepository {
     List<Deworming> findAll();
     List<Deworming> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

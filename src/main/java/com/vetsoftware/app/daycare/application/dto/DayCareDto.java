@@ -15,7 +15,8 @@ public record DayCareDto(
         String observations,
         AnimalSummaryDto animal,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static DayCareDto from(DayCare dayCare) {
         return new DayCareDto(
@@ -28,7 +29,8 @@ public record DayCareDto(
             dayCare.getObservations(),
             AnimalSummaryDto.from(dayCare.getAnimal()),
             CompanySummaryDto.from(dayCare.getCompany()),
-            dayCare.getCreatedDate()
+            dayCare.getCreatedDate(),
+            dayCare.isEnabled()
         );
     }
 }

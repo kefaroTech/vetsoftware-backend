@@ -11,6 +11,7 @@ import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitaliza
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.ReactivateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.CreateHospitalizationRequest;
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.UpdateHospitalizationRequest;
@@ -32,19 +33,22 @@ public class HospitalizationController {
     private final ListHospitalizationsUseCase listUseCase;
     private final ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteHospitalizationUseCase deleteUseCase;
+    private final ReactivateHospitalizationUseCase reactivateUseCase;
 
     public HospitalizationController(CreateHospitalizationUseCase createUseCase,
                                      UpdateHospitalizationUseCase updateUseCase,
                                      FindHospitalizationUseCase findUseCase,
                                      ListHospitalizationsUseCase listUseCase,
                                      ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
-                                     DeleteHospitalizationUseCase deleteUseCase) {
+                                     DeleteHospitalizationUseCase deleteUseCase,
+                                     ReactivateHospitalizationUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -90,6 +94,11 @@ public class HospitalizationController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public HospitalizationResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private HospitalizationResponse toResponse(HospitalizationDto dto) {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
@@ -101,6 +110,6 @@ public class HospitalizationController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(), dto.enabled());
     }
 }

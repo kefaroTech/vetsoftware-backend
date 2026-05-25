@@ -10,4 +10,5 @@ public interface StateRepository {
     List<State> findAll();
     List<State> findByCountryId(Long countryId);
     void delete(Long id);
+    int reactivate(Long id);
 }

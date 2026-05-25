@@ -10,4 +10,5 @@ public interface DayCareRepository {
     List<DayCare> findAll();
     List<DayCare> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

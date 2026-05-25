@@ -7,6 +7,7 @@ import com.vetsoftware.app.specie.application.port.in.CreateSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.in.DeleteSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.in.FindSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.in.ListSpeciesUseCase;
+import com.vetsoftware.app.specie.application.port.in.ReactivateSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.in.UpdateSpecieUseCase;
 import com.vetsoftware.app.specie.infrastructure.web.request.CreateSpecieRequest;
 import com.vetsoftware.app.specie.infrastructure.web.request.UpdateSpecieRequest;
@@ -24,15 +25,18 @@ public class SpecieController {
     private final FindSpecieUseCase findUseCase;
     private final ListSpeciesUseCase listUseCase;
     private final DeleteSpecieUseCase deleteUseCase;
+    private final ReactivateSpecieUseCase reactivateUseCase;
 
     public SpecieController(CreateSpecieUseCase createUseCase, UpdateSpecieUseCase updateUseCase,
                             FindSpecieUseCase findUseCase, ListSpeciesUseCase listUseCase,
-                            DeleteSpecieUseCase deleteUseCase) {
+                            DeleteSpecieUseCase deleteUseCase,
+                            ReactivateSpecieUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -62,7 +66,12 @@ public class SpecieController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SpecieResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SpecieResponse toResponse(SpecieDto dto) {
-        return new SpecieResponse(dto.id(), dto.name(), dto.createdDate());
+        return new SpecieResponse(dto.id(), dto.name(), dto.createdDate(), dto.enabled());
     }
 }

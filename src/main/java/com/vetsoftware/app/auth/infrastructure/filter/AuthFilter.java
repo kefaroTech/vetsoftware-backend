@@ -58,6 +58,7 @@ public class AuthFilter extends OncePerRequestFilter {
             new PublicRoute("GET",  "/consultation-types"),
             new PublicRoute("GET",  "/modules"),
             new PublicRoute("GET",  "/sub-modules"),
+            new PublicRoute("GET",  "/spa-types"),
             new PublicRoute(null,   "/swagger-ui/**"),
             new PublicRoute(null,   "/v3/api-docs/**"),
             new PublicRoute(null,   "/swagger-resources/**"),

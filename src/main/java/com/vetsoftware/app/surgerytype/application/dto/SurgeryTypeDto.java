@@ -9,7 +9,8 @@ public record SurgeryTypeDto(
         String description,
         CompanySummaryDto company,
         boolean general,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static SurgeryTypeDto from(SurgeryType surgeryType) {
         return new SurgeryTypeDto(
@@ -18,6 +19,7 @@ public record SurgeryTypeDto(
                 surgeryType.getDescription(),
                 surgeryType.getCompany() == null ? null : CompanySummaryDto.from(surgeryType.getCompany()),
                 surgeryType.isGeneral(),
-                surgeryType.getCreatedDate());
+                surgeryType.getCreatedDate(),
+                surgeryType.isEnabled());
     }
 }

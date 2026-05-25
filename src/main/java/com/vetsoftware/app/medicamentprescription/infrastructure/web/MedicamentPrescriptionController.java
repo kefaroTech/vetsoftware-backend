@@ -8,6 +8,7 @@ import com.vetsoftware.app.medicamentprescription.application.port.in.CreateMedi
 import com.vetsoftware.app.medicamentprescription.application.port.in.DeleteMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.in.FindMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.in.ListMedicamentPrescriptionsUseCase;
+import com.vetsoftware.app.medicamentprescription.application.port.in.ReactivateMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.in.UpdateMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.request.CreateMedicamentPrescriptionRequest;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.request.UpdateMedicamentPrescriptionRequest;
@@ -26,17 +27,20 @@ public class MedicamentPrescriptionController {
     private final FindMedicamentPrescriptionUseCase findUseCase;
     private final ListMedicamentPrescriptionsUseCase listUseCase;
     private final DeleteMedicamentPrescriptionUseCase deleteUseCase;
+    private final ReactivateMedicamentPrescriptionUseCase reactivateUseCase;
 
     public MedicamentPrescriptionController(CreateMedicamentPrescriptionUseCase createUseCase,
                                             UpdateMedicamentPrescriptionUseCase updateUseCase,
                                             FindMedicamentPrescriptionUseCase findUseCase,
                                             ListMedicamentPrescriptionsUseCase listUseCase,
-                                            DeleteMedicamentPrescriptionUseCase deleteUseCase) {
+                                            DeleteMedicamentPrescriptionUseCase deleteUseCase,
+                                            ReactivateMedicamentPrescriptionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -73,11 +77,17 @@ public class MedicamentPrescriptionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public MedicamentPrescriptionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {
         PrescriptionSummaryDto p = dto.prescription();
         return new MedicamentPrescriptionResponse(
             dto.id(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
             new PrescriptionSummary(p.id(), p.date()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

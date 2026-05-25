@@ -5,4 +5,5 @@ import java.time.LocalDateTime;
 public record SystemUserPermissionResponse(Long id,
                                            SystemUserSummary systemUser,
                                            SystemPermissionSummary systemPermission,
-                                           LocalDateTime createdDate) {}
+                                           LocalDateTime createdDate,
+                                           boolean enabled) {}

@@ -10,4 +10,5 @@ public interface LaboratoryTestRepository {
     List<LaboratoryTest> findAll();
     List<LaboratoryTest> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

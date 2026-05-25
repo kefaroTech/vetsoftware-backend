@@ -7,7 +7,8 @@ import java.util.List;
 public record RoleDto(Long id, String name, String code,
                       CompanySummaryDto company,
                       LocalDateTime createdDate,
-                      List<PermissionSummaryDto> permissions) {
+                      List<PermissionSummaryDto> permissions,
+                      boolean enabled) {
 
     public static RoleDto from(Role role) {
         return from(role, List.of());
@@ -20,7 +21,8 @@ public record RoleDto(Long id, String name, String code,
             role.getCode(),
             CompanySummaryDto.from(role.getCompany()),
             role.getCreatedDate(),
-            permissions
+            permissions,
+            role.isEnabled()
         );
     }
 }

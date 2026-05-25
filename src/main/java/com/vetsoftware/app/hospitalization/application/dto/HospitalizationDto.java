@@ -18,7 +18,8 @@ public record HospitalizationDto(
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static HospitalizationDto from(Hospitalization hospitalization) {
         return new HospitalizationDto(
@@ -33,7 +34,8 @@ public record HospitalizationDto(
             AnimalSummaryDto.from(hospitalization.getAnimal()),
             hospitalization.getConsultation() == null ? null : ConsultationSummaryDto.from(hospitalization.getConsultation()),
             CompanySummaryDto.from(hospitalization.getCompany()),
-            hospitalization.getCreatedDate()
+            hospitalization.getCreatedDate(),
+            hospitalization.isEnabled()
         );
     }
 }

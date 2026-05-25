@@ -12,9 +12,11 @@ public class Owner {
     private CityRef city;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Owner(Long id, String name, String email, String document, String address,
-                 String phone, CityRef city, CompanyRef company, LocalDateTime createdDate) {
+                 String phone, CityRef city, CompanyRef company, LocalDateTime createdDate,
+                 boolean enabled) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 150) throw new IllegalArgumentException("name must be 150 chars or less");
         if (document == null || document.isBlank()) throw new IllegalArgumentException("document is required");
@@ -33,11 +35,12 @@ public class Owner {
         this.city = city;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Owner create(String name, String email, String document, String address,
                                 String phone, CityRef city, CompanyRef company) {
-        return new Owner(null, name, email, document, address, phone, city, company, LocalDateTime.now());
+        return new Owner(null, name, email, document, address, phone, city, company, LocalDateTime.now(), true);
     }
 
     public void update(String name, String email, String document, String address,
@@ -69,4 +72,7 @@ public class Owner {
     public CityRef getCity() { return city; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

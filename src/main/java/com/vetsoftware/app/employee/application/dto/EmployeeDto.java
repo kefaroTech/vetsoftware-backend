@@ -6,9 +6,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record EmployeeDto(Long id, String employeeCode, String name, String email,
-                          String status, CompanySummaryDto company,
+                          CompanySummaryDto company,
                           List<RoleSummaryDto> roles,
-                          LocalDateTime createdDate) {
+                          LocalDateTime createdDate,
+                          boolean enabled) {
     public static EmployeeDto from(Employee employee) {
         return from(employee, List.of());
     }
@@ -19,10 +20,10 @@ public record EmployeeDto(Long id, String employeeCode, String name, String emai
             employee.getEmployeeCode(),
             employee.getName(),
             employee.getEmail(),
-            employee.getStatus().name(),
             CompanySummaryDto.from(employee.getCompany()),
             roles.stream().map(RoleSummaryDto::from).toList(),
-            employee.getCreatedDate()
+            employee.getCreatedDate(),
+            employee.isEnabled()
         );
     }
 }

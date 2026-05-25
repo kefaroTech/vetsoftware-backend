@@ -10,4 +10,5 @@ public interface DiagnosticImagingRepository {
     List<DiagnosticImaging> findAll();
     List<DiagnosticImaging> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

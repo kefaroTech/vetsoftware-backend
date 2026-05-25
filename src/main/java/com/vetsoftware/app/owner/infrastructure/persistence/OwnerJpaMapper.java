@@ -21,6 +21,7 @@ public class OwnerJpaMapper {
         entity.setCity(city);
         entity.setCompany(company);
         entity.setCreatedDate(owner.getCreatedDate());
+        entity.setEnabled(owner.isEnabled());
         return entity;
     }
 
@@ -35,7 +36,8 @@ public class OwnerJpaMapper {
     public Owner toDomain(OwnerJpaEntity entity, CityRef cityRef, CompanyRef companyRef) {
         return new Owner(
             entity.getId(), entity.getName(), entity.getEmail(), entity.getDocument(),
-            entity.getAddress(), entity.getPhone(), cityRef, companyRef, entity.getCreatedDate()
+            entity.getAddress(), entity.getPhone(), cityRef, companyRef, entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

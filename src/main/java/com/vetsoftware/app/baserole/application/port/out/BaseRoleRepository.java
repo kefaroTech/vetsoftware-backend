@@ -9,4 +9,5 @@ public interface BaseRoleRepository {
     Optional<BaseRole> findById(Long id);
     List<BaseRole> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

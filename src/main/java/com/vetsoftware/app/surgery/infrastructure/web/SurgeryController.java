@@ -14,6 +14,7 @@ import com.vetsoftware.app.surgery.application.port.in.DeleteSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.FindSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesByAnimalUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesUseCase;
+import com.vetsoftware.app.surgery.application.port.in.ReactivateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.UpdateSurgeryUseCase;
 import com.vetsoftware.app.surgery.infrastructure.web.request.ChangeSurgeryStatusRequest;
 import com.vetsoftware.app.surgery.infrastructure.web.request.CreateSurgeryRequest;
@@ -38,6 +39,7 @@ public class SurgeryController {
     private final ListSurgeriesUseCase listUseCase;
     private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
     private final DeleteSurgeryUseCase deleteUseCase;
+    private final ReactivateSurgeryUseCase reactivateUseCase;
 
     public SurgeryController(CreateSurgeryUseCase createUseCase,
                              UpdateSurgeryUseCase updateUseCase,
@@ -45,7 +47,8 @@ public class SurgeryController {
                              FindSurgeryUseCase findUseCase,
                              ListSurgeriesUseCase listUseCase,
                              ListSurgeriesByAnimalUseCase listByAnimalUseCase,
-                             DeleteSurgeryUseCase deleteUseCase) {
+                             DeleteSurgeryUseCase deleteUseCase,
+                             ReactivateSurgeryUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -53,6 +56,7 @@ public class SurgeryController {
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -103,6 +107,11 @@ public class SurgeryController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SurgeryResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SurgeryResponse toResponse(SurgeryDto dto) {
         SurgeryTypeSummaryDto st = dto.surgeryType();
         AnimalSummaryDto a = dto.animal();
@@ -116,6 +125,7 @@ public class SurgeryController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

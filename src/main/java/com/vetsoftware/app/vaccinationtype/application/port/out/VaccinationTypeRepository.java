@@ -10,4 +10,5 @@ public interface VaccinationTypeRepository {
     List<VaccinationType> findAll();
     List<VaccinationType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

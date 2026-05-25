@@ -7,6 +7,7 @@ import com.vetsoftware.app.baserole.application.port.in.CreateBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.in.DeleteBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.in.FindBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.in.ListBaseRolesUseCase;
+import com.vetsoftware.app.baserole.application.port.in.ReactivateBaseRoleUseCase;
 import com.vetsoftware.app.baserole.application.port.in.UpdateBaseRoleUseCase;
 import com.vetsoftware.app.baserole.infrastructure.web.request.CreateBaseRoleRequest;
 import com.vetsoftware.app.baserole.infrastructure.web.request.UpdateBaseRoleRequest;
@@ -24,17 +25,20 @@ public class BaseRoleController {
     private final FindBaseRoleUseCase findUseCase;
     private final ListBaseRolesUseCase listUseCase;
     private final DeleteBaseRoleUseCase deleteUseCase;
+    private final ReactivateBaseRoleUseCase reactivateUseCase;
 
     public BaseRoleController(CreateBaseRoleUseCase createUseCase,
                                UpdateBaseRoleUseCase updateUseCase,
                                FindBaseRoleUseCase findUseCase,
                                ListBaseRolesUseCase listUseCase,
-                               DeleteBaseRoleUseCase deleteUseCase) {
+                               DeleteBaseRoleUseCase deleteUseCase,
+                               ReactivateBaseRoleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -67,7 +71,12 @@ public class BaseRoleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public BaseRoleResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private BaseRoleResponse toResponse(BaseRoleDto dto) {
-        return new BaseRoleResponse(dto.id(), dto.name(), dto.code(), dto.mandatory(), dto.createdDate());
+        return new BaseRoleResponse(dto.id(), dto.name(), dto.code(), dto.mandatory(), dto.createdDate(), dto.enabled());
     }
 }

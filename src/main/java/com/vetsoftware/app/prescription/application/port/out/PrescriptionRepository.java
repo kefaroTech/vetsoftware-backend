@@ -9,4 +9,5 @@ public interface PrescriptionRepository {
     Optional<Prescription> findById(Long id);
     List<Prescription> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

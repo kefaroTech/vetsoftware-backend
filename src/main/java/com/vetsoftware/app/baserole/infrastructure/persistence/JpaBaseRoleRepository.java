@@ -35,4 +35,9 @@ public class JpaBaseRoleRepository implements BaseRoleRepository {
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
+    }
 }

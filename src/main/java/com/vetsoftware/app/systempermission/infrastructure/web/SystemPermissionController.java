@@ -7,6 +7,7 @@ import com.vetsoftware.app.systempermission.application.port.in.CreateSystemPerm
 import com.vetsoftware.app.systempermission.application.port.in.DeleteSystemPermissionUseCase;
 import com.vetsoftware.app.systempermission.application.port.in.FindSystemPermissionUseCase;
 import com.vetsoftware.app.systempermission.application.port.in.ListSystemPermissionsUseCase;
+import com.vetsoftware.app.systempermission.application.port.in.ReactivateSystemPermissionUseCase;
 import com.vetsoftware.app.systempermission.application.port.in.UpdateSystemPermissionUseCase;
 import com.vetsoftware.app.systempermission.infrastructure.web.request.CreateSystemPermissionRequest;
 import com.vetsoftware.app.systempermission.infrastructure.web.request.UpdateSystemPermissionRequest;
@@ -24,17 +25,20 @@ public class SystemPermissionController {
     private final FindSystemPermissionUseCase findUseCase;
     private final ListSystemPermissionsUseCase listUseCase;
     private final DeleteSystemPermissionUseCase deleteUseCase;
+    private final ReactivateSystemPermissionUseCase reactivateUseCase;
 
     public SystemPermissionController(CreateSystemPermissionUseCase createUseCase,
                                       UpdateSystemPermissionUseCase updateUseCase,
                                       FindSystemPermissionUseCase findUseCase,
                                       ListSystemPermissionsUseCase listUseCase,
-                                      DeleteSystemPermissionUseCase deleteUseCase) {
+                                      DeleteSystemPermissionUseCase deleteUseCase,
+                                      ReactivateSystemPermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -67,7 +71,12 @@ public class SystemPermissionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SystemPermissionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SystemPermissionResponse toResponse(SystemPermissionDto dto) {
-        return new SystemPermissionResponse(dto.id(), dto.name(), dto.code(), dto.createdDate());
+        return new SystemPermissionResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
     }
 }

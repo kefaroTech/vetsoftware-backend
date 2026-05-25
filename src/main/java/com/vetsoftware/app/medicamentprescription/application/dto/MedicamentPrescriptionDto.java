@@ -10,7 +10,8 @@ public record MedicamentPrescriptionDto(
         Double quantity,
         String posology,
         PrescriptionSummaryDto prescription,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static MedicamentPrescriptionDto from(MedicamentPrescription medicament) {
         return new MedicamentPrescriptionDto(
@@ -20,7 +21,8 @@ public record MedicamentPrescriptionDto(
             medicament.getQuantity(),
             medicament.getPosology(),
             PrescriptionSummaryDto.from(medicament.getPrescription()),
-            medicament.getCreatedDate()
+            medicament.getCreatedDate(),
+            medicament.isEnabled()
         );
     }
 }

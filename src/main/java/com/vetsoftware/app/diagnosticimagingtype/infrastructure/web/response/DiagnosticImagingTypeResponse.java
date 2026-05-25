@@ -8,5 +8,6 @@ public record DiagnosticImagingTypeResponse(
         String description,
         CompanySummary company,
         boolean general,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

@@ -11,6 +11,7 @@ public class ConsultationTypeJpaMapper {
         entity.setName(consultationType.getName());
         entity.setDescription(consultationType.getDescription());
         entity.setCreatedDate(consultationType.getCreatedDate());
+        entity.setEnabled(consultationType.isEnabled());
         return entity;
     }
 
@@ -19,6 +20,7 @@ public class ConsultationTypeJpaMapper {
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

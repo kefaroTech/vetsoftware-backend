@@ -12,6 +12,7 @@ public class SystemUserJpaMapper {
         entity.setCode(systemUser.getCode());
         entity.setHashPassword(systemUser.getHashPassword());
         entity.setCreatedDate(systemUser.getCreatedDate());
+        entity.setEnabled(systemUser.isEnabled());
         return entity;
     }
 
@@ -20,7 +21,8 @@ public class SystemUserJpaMapper {
             entity.getId(),
             entity.getCode(),
             entity.getHashPassword(),
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

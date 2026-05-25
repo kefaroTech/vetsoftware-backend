@@ -15,7 +15,8 @@ public record ConsultationDto(
         LocalDate nextControl,
         AnimalSummaryDto animal,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static ConsultationDto from(Consultation consultation) {
         return new ConsultationDto(
@@ -29,7 +30,8 @@ public record ConsultationDto(
             consultation.getNextControl(),
             AnimalSummaryDto.from(consultation.getAnimal()),
             CompanySummaryDto.from(consultation.getCompany()),
-            consultation.getCreatedDate()
+            consultation.getCreatedDate(),
+            consultation.isEnabled()
         );
     }
 }

@@ -9,4 +9,5 @@ public interface SystemUserRepository {
     Optional<SystemUser> findById(Long id);
     List<SystemUser> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

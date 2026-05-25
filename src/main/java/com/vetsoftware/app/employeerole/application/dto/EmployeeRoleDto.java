@@ -6,13 +6,15 @@ import java.time.LocalDateTime;
 public record EmployeeRoleDto(Long id,
                               EmployeeSummaryDto employee,
                               RoleSummaryDto role,
-                              LocalDateTime createdDate) {
+                              LocalDateTime createdDate,
+                              boolean enabled) {
     public static EmployeeRoleDto from(EmployeeRole employeeRole) {
         return new EmployeeRoleDto(
             employeeRole.getId(),
             EmployeeSummaryDto.from(employeeRole.getEmployee()),
             RoleSummaryDto.from(employeeRole.getRole()),
-            employeeRole.getCreatedDate()
+            employeeRole.getCreatedDate(),
+            employeeRole.isEnabled()
         );
     }
 }

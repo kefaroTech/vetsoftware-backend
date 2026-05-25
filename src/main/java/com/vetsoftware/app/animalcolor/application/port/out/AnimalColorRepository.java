@@ -9,4 +9,5 @@ public interface AnimalColorRepository {
     Optional<AnimalColor> findById(Long id);
     List<AnimalColor> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

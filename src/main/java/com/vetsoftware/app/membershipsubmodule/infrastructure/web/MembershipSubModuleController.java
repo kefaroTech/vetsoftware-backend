@@ -9,6 +9,7 @@ import com.vetsoftware.app.membershipsubmodule.application.port.in.CreateMembers
 import com.vetsoftware.app.membershipsubmodule.application.port.in.DeleteMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.FindMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.ListMembershipSubModulesUseCase;
+import com.vetsoftware.app.membershipsubmodule.application.port.in.ReactivateMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.application.port.in.UpdateMembershipSubModuleUseCase;
 import com.vetsoftware.app.membershipsubmodule.infrastructure.web.request.CreateMembershipSubModuleRequest;
 import com.vetsoftware.app.membershipsubmodule.infrastructure.web.request.UpdateMembershipSubModuleRequest;
@@ -28,17 +29,20 @@ public class MembershipSubModuleController {
     private final FindMembershipSubModuleUseCase findUseCase;
     private final ListMembershipSubModulesUseCase listUseCase;
     private final DeleteMembershipSubModuleUseCase deleteUseCase;
+    private final ReactivateMembershipSubModuleUseCase reactivateUseCase;
 
     public MembershipSubModuleController(CreateMembershipSubModuleUseCase createUseCase,
                                           UpdateMembershipSubModuleUseCase updateUseCase,
                                           FindMembershipSubModuleUseCase findUseCase,
                                           ListMembershipSubModulesUseCase listUseCase,
-                                          DeleteMembershipSubModuleUseCase deleteUseCase) {
+                                          DeleteMembershipSubModuleUseCase deleteUseCase,
+                                          ReactivateMembershipSubModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -71,6 +75,11 @@ public class MembershipSubModuleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public MembershipSubModuleResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {
         MembershipSummaryDto m = dto.membership();
         SubModuleSummaryDto sm = dto.subModule();
@@ -78,7 +87,8 @@ public class MembershipSubModuleController {
             dto.id(),
             new MembershipSummary(m.id(), m.name()),
             new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

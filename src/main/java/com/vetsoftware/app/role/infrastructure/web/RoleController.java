@@ -11,6 +11,7 @@ import com.vetsoftware.app.role.application.port.in.DeleteRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.FindRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.ListRolesByCompanyUseCase;
 import com.vetsoftware.app.role.application.port.in.ListRolesUseCase;
+import com.vetsoftware.app.role.application.port.in.ReactivateRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.UpdateRoleUseCase;
 import com.vetsoftware.app.role.infrastructure.web.request.CreateRoleRequest;
 import com.vetsoftware.app.role.infrastructure.web.request.UpdateRoleRequest;
@@ -30,18 +31,21 @@ public class RoleController {
     private final ListRolesUseCase listUseCase;
     private final ListRolesByCompanyUseCase listByCompanyUseCase;
     private final DeleteRoleUseCase deleteUseCase;
+    private final ReactivateRoleUseCase reactivateUseCase;
     private final Authz authz;
 
     public RoleController(CreateRoleUseCase createUseCase, UpdateRoleUseCase updateUseCase,
                           FindRoleUseCase findUseCase, ListRolesUseCase listUseCase,
                           ListRolesByCompanyUseCase listByCompanyUseCase,
-                          DeleteRoleUseCase deleteUseCase, Authz authz) {
+                          DeleteRoleUseCase deleteUseCase,
+                          ReactivateRoleUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -80,6 +84,11 @@ public class RoleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public RoleResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private RoleResponse toResponse(RoleDto dto) {
         CompanySummaryDto c = dto.company();
         List<PermissionSummary> permissions = dto.permissions().stream()
@@ -89,7 +98,8 @@ public class RoleController {
             dto.id(), dto.name(), dto.code(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate(),
-            permissions
+            permissions,
+            dto.enabled()
         );
     }
 }

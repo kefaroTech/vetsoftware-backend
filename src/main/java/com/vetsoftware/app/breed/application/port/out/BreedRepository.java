@@ -10,4 +10,5 @@ public interface BreedRepository {
     List<Breed> findAll();
     List<Breed> findBySpecieId(Long specieId);
     void delete(Long id);
+    int reactivate(Long id);
 }

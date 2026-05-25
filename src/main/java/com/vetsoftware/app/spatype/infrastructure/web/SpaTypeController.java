@@ -7,6 +7,7 @@ import com.vetsoftware.app.spatype.application.port.in.CreateSpaTypeUseCase;
 import com.vetsoftware.app.spatype.application.port.in.DeleteSpaTypeUseCase;
 import com.vetsoftware.app.spatype.application.port.in.FindSpaTypeUseCase;
 import com.vetsoftware.app.spatype.application.port.in.ListSpaTypesUseCase;
+import com.vetsoftware.app.spatype.application.port.in.ReactivateSpaTypeUseCase;
 import com.vetsoftware.app.spatype.application.port.in.UpdateSpaTypeUseCase;
 import com.vetsoftware.app.spatype.infrastructure.web.request.CreateSpaTypeRequest;
 import com.vetsoftware.app.spatype.infrastructure.web.request.UpdateSpaTypeRequest;
@@ -24,17 +25,20 @@ public class SpaTypeController {
     private final FindSpaTypeUseCase findUseCase;
     private final ListSpaTypesUseCase listUseCase;
     private final DeleteSpaTypeUseCase deleteUseCase;
+    private final ReactivateSpaTypeUseCase reactivateUseCase;
 
     public SpaTypeController(CreateSpaTypeUseCase createUseCase,
                              UpdateSpaTypeUseCase updateUseCase,
                              FindSpaTypeUseCase findUseCase,
                              ListSpaTypesUseCase listUseCase,
-                             DeleteSpaTypeUseCase deleteUseCase) {
+                             DeleteSpaTypeUseCase deleteUseCase,
+                             ReactivateSpaTypeUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -67,7 +71,12 @@ public class SpaTypeController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SpaTypeResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SpaTypeResponse toResponse(SpaTypeDto dto) {
-        return new SpaTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+        return new SpaTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
     }
 }

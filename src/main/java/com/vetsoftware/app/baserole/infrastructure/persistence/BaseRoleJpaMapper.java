@@ -13,6 +13,7 @@ public class BaseRoleJpaMapper {
         entity.setCode(baseRole.getCode());
         entity.setMandatory(baseRole.getMandatory());
         entity.setCreatedDate(baseRole.getCreatedDate());
+        entity.setEnabled(baseRole.isEnabled());
         return entity;
     }
 
@@ -22,7 +23,8 @@ public class BaseRoleJpaMapper {
             entity.getName(),
             entity.getCode(),
             entity.getMandatory(),
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

@@ -22,12 +22,13 @@ public class Animal {
     private LocalDate deceasedDate;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Animal(Long id, String name, String code, SpecieRef specie, BreedRef breed,
                   OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
                   ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod,
                   Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
-                  CompanyRef company, LocalDateTime createdDate) {
+                  CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
                  reproductiveState, color, weight, size, deceased, deceasedDate, company);
         this.id = id;
@@ -48,6 +49,7 @@ public class Animal {
         this.deceasedDate = deceasedDate;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Animal create(String name, String code, SpecieRef specie, BreedRef breed,
@@ -57,7 +59,7 @@ public class Animal {
                                  boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         return new Animal(null, name, code, specie, breed, owner, gender, weightType, animalType,
                           reproductiveState, color, bod, weight, size, deceased, deceasedDate,
-                          company, LocalDateTime.now());
+                          company, LocalDateTime.now(), true);
     }
 
     public void update(String name, String code, SpecieRef specie, BreedRef breed,
@@ -127,4 +129,7 @@ public class Animal {
     public LocalDate getDeceasedDate() { return deceasedDate; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

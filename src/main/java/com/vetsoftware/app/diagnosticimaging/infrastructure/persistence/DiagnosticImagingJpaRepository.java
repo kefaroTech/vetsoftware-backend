@@ -17,4 +17,18 @@ public interface DiagnosticImagingJpaRepository extends JpaRepository<Diagnostic
 
     @EntityGraph(attributePaths = {"diagnosticImagingType", "animal", "consultation", "company"})
     List<DiagnosticImagingJpaEntity> findAllByAnimalId(Long animalId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(
+        value = "UPDATE diagnostic_imagings SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByDiagnosticImagingType_Id(Long diagnosticImagingTypeId);
+
+    boolean existsByAnimal_Id(Long animalId);
+
+    boolean existsByConsultation_Id(Long consultationId);
+
+    boolean existsByCompany_Id(Long companyId);
 }

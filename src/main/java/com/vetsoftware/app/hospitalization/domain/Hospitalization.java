@@ -16,12 +16,13 @@ public class Hospitalization {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Hospitalization(Long id, LocalDate date, LocalDate startDate, LocalDate endDate,
                            HospitalizationType type, ReasonLeaving reasonLeaving,
                            String reason, String observations,
                            AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-                           LocalDateTime createdDate) {
+                           LocalDateTime createdDate, boolean enabled) {
         validate(date, startDate, endDate, type, reason, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -35,6 +36,7 @@ public class Hospitalization {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Hospitalization create(LocalDate date, LocalDate startDate, LocalDate endDate,
@@ -42,7 +44,7 @@ public class Hospitalization {
                                          String reason, String observations,
                                          AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Hospitalization(null, date, startDate, endDate, type, reasonLeaving,
-                                   reason, observations, animal, consultation, company, LocalDateTime.now());
+                                   reason, observations, animal, consultation, company, LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, LocalDate startDate, LocalDate endDate,
@@ -90,4 +92,7 @@ public class Hospitalization {
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

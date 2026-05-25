@@ -10,4 +10,5 @@ public interface SurgeryTypeRepository {
     List<SurgeryType> findAll();
     List<SurgeryType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

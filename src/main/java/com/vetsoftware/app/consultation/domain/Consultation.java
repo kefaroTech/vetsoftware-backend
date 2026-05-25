@@ -15,11 +15,12 @@ public class Consultation {
     private AnimalRef animal;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Consultation(Long id, LocalDate date, ConsultationTypeRef consultationType,
                         String anamnesis, String diagnosis, String therapeuticPlan,
                         String diagnosisPlan, LocalDate nextControl, AnimalRef animal,
-                        CompanyRef company, LocalDateTime createdDate) {
+                        CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         validate(date, consultationType, anamnesis, diagnosis, therapeuticPlan, diagnosisPlan,
                  animal, company);
         this.id = id;
@@ -33,6 +34,7 @@ public class Consultation {
         this.animal = animal;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Consultation create(LocalDate date, ConsultationTypeRef consultationType,
@@ -41,7 +43,7 @@ public class Consultation {
                                       AnimalRef animal, CompanyRef company) {
         return new Consultation(null, date, consultationType, anamnesis, diagnosis,
                                 therapeuticPlan, diagnosisPlan, nextControl, animal, company,
-                                LocalDateTime.now());
+                                LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, ConsultationTypeRef consultationType,
@@ -89,4 +91,7 @@ public class Consultation {
     public AnimalRef getAnimal() { return animal; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

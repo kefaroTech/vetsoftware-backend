@@ -9,4 +9,5 @@ public interface SystemUserPermissionRepository {
     Optional<SystemUserPermission> findById(Long id);
     List<SystemUserPermission> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

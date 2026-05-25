@@ -7,6 +7,7 @@ import com.vetsoftware.app.systemuser.application.port.in.CreateSystemUserUseCas
 import com.vetsoftware.app.systemuser.application.port.in.DeleteSystemUserUseCase;
 import com.vetsoftware.app.systemuser.application.port.in.FindSystemUserUseCase;
 import com.vetsoftware.app.systemuser.application.port.in.ListSystemUsersUseCase;
+import com.vetsoftware.app.systemuser.application.port.in.ReactivateSystemUserUseCase;
 import com.vetsoftware.app.systemuser.application.port.in.UpdateSystemUserUseCase;
 import com.vetsoftware.app.systemuser.infrastructure.web.request.CreateSystemUserRequest;
 import com.vetsoftware.app.systemuser.infrastructure.web.request.UpdateSystemUserRequest;
@@ -24,17 +25,20 @@ public class SystemUserController {
     private final FindSystemUserUseCase findUseCase;
     private final ListSystemUsersUseCase listUseCase;
     private final DeleteSystemUserUseCase deleteUseCase;
+    private final ReactivateSystemUserUseCase reactivateUseCase;
 
     public SystemUserController(CreateSystemUserUseCase createUseCase,
                                 UpdateSystemUserUseCase updateUseCase,
                                 FindSystemUserUseCase findUseCase,
                                 ListSystemUsersUseCase listUseCase,
-                                DeleteSystemUserUseCase deleteUseCase) {
+                                DeleteSystemUserUseCase deleteUseCase,
+                                ReactivateSystemUserUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -67,7 +71,12 @@ public class SystemUserController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SystemUserResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SystemUserResponse toResponse(SystemUserDto dto) {
-        return new SystemUserResponse(dto.id(), dto.code(), dto.createdDate());
+        return new SystemUserResponse(dto.id(), dto.code(), dto.createdDate(), dto.enabled());
     }
 }

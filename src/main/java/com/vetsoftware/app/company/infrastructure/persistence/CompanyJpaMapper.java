@@ -20,6 +20,7 @@ public class CompanyJpaMapper {
         entity.setCity(city);
         entity.setMembership(membership);
         entity.setCreatedDate(company.getCreatedDate());
+        entity.setEnabled(company.isEnabled());
         return entity;
     }
 
@@ -40,7 +41,8 @@ public class CompanyJpaMapper {
             entity.getContactNumber(),
             cityRef,
             membershipRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

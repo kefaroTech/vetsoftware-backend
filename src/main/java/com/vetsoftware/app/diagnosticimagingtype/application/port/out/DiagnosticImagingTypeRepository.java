@@ -10,4 +10,5 @@ public interface DiagnosticImagingTypeRepository {
     List<DiagnosticImagingType> findAll();
     List<DiagnosticImagingType> findAllAvailableForCompany(Long companyId);
     void delete(Long id);
+    int reactivate(Long id);
 }

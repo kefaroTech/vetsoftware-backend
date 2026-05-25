@@ -14,7 +14,7 @@ public record AnimalDto(
         Gender gender, WeightType weightType, AnimalType animalType,
         ReproductiveState reproductiveState, AnimalColorSummaryDto color, LocalDate bod,
         Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
-        CompanySummaryDto company, LocalDateTime createdDate
+        CompanySummaryDto company, LocalDateTime createdDate, boolean enabled
 ) {
     public static AnimalDto from(Animal animal) {
         return new AnimalDto(
@@ -27,7 +27,7 @@ public record AnimalDto(
             AnimalColorSummaryDto.from(animal.getColor()),
             animal.getBod(),
             animal.getWeight(), animal.getSize(), animal.isDeceased(), animal.getDeceasedDate(),
-            CompanySummaryDto.from(animal.getCompany()), animal.getCreatedDate()
+            CompanySummaryDto.from(animal.getCompany()), animal.getCreatedDate(), animal.isEnabled()
         );
     }
 }

@@ -9,6 +9,7 @@ import com.vetsoftware.app.city.application.port.in.DeleteCityUseCase;
 import com.vetsoftware.app.city.application.port.in.FindCityUseCase;
 import com.vetsoftware.app.city.application.port.in.ListCitiesByStateUseCase;
 import com.vetsoftware.app.city.application.port.in.ListCitiesUseCase;
+import com.vetsoftware.app.city.application.port.in.ReactivateCityUseCase;
 import com.vetsoftware.app.city.application.port.in.UpdateCityUseCase;
 import com.vetsoftware.app.city.infrastructure.web.request.CreateCityRequest;
 import com.vetsoftware.app.city.infrastructure.web.request.UpdateCityRequest;
@@ -28,17 +29,20 @@ public class CityController {
     private final ListCitiesUseCase listUseCase;
     private final ListCitiesByStateUseCase listByStateUseCase;
     private final DeleteCityUseCase deleteUseCase;
+    private final ReactivateCityUseCase reactivateUseCase;
 
     public CityController(CreateCityUseCase createUseCase, UpdateCityUseCase updateUseCase,
                           FindCityUseCase findUseCase, ListCitiesUseCase listUseCase,
                           ListCitiesByStateUseCase listByStateUseCase,
-                          DeleteCityUseCase deleteUseCase) {
+                          DeleteCityUseCase deleteUseCase,
+                          ReactivateCityUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByStateUseCase = listByStateUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping("/cities")
@@ -76,13 +80,19 @@ public class CityController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/cities/{id}/enable")
+    public CityResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private CityResponse toResponse(CityDto dto) {
         StateSummaryDto s = dto.state();
         return new CityResponse(
             dto.id(),
             dto.name(),
             new StateSummary(s.id(), s.name()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

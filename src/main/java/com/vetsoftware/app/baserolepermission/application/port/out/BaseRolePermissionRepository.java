@@ -9,4 +9,5 @@ public interface BaseRolePermissionRepository {
     Optional<BaseRolePermission> findById(Long id);
     List<BaseRolePermission> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

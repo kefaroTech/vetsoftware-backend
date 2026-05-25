@@ -7,6 +7,7 @@ import com.vetsoftware.app.module.application.port.in.CreateModuleUseCase;
 import com.vetsoftware.app.module.application.port.in.DeleteModuleUseCase;
 import com.vetsoftware.app.module.application.port.in.FindModuleUseCase;
 import com.vetsoftware.app.module.application.port.in.ListModulesUseCase;
+import com.vetsoftware.app.module.application.port.in.ReactivateModuleUseCase;
 import com.vetsoftware.app.module.application.port.in.UpdateModuleUseCase;
 import com.vetsoftware.app.module.infrastructure.web.request.CreateModuleRequest;
 import com.vetsoftware.app.module.infrastructure.web.request.UpdateModuleRequest;
@@ -24,15 +25,18 @@ public class ModuleController {
     private final FindModuleUseCase findUseCase;
     private final ListModulesUseCase listUseCase;
     private final DeleteModuleUseCase deleteUseCase;
+    private final ReactivateModuleUseCase reactivateUseCase;
 
     public ModuleController(CreateModuleUseCase createUseCase, UpdateModuleUseCase updateUseCase,
                             FindModuleUseCase findUseCase, ListModulesUseCase listUseCase,
-                            DeleteModuleUseCase deleteUseCase) {
+                            DeleteModuleUseCase deleteUseCase,
+                            ReactivateModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -62,7 +66,12 @@ public class ModuleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public ModuleResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private ModuleResponse toResponse(ModuleDto dto) {
-        return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate());
+        return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
     }
 }

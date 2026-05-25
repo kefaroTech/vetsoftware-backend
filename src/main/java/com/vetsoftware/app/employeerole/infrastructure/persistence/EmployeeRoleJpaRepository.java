@@ -24,4 +24,14 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
 
     @Query("select er.employee.id from EmployeeRoleJpaEntity er where er.role.id = :roleId")
     List<Long> findEmployeeIdsByRoleId(Long roleId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(
+        value = "UPDATE employee_roles SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByEmployee_Id(Long employeeId);
+
+    boolean existsByRole_Id(Long roleId);
 }

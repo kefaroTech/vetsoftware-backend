@@ -7,6 +7,7 @@ import com.vetsoftware.app.animalcolor.application.port.in.CreateAnimalColorUseC
 import com.vetsoftware.app.animalcolor.application.port.in.DeleteAnimalColorUseCase;
 import com.vetsoftware.app.animalcolor.application.port.in.FindAnimalColorUseCase;
 import com.vetsoftware.app.animalcolor.application.port.in.ListAnimalColorsUseCase;
+import com.vetsoftware.app.animalcolor.application.port.in.ReactivateAnimalColorUseCase;
 import com.vetsoftware.app.animalcolor.application.port.in.UpdateAnimalColorUseCase;
 import com.vetsoftware.app.animalcolor.infrastructure.web.request.CreateAnimalColorRequest;
 import com.vetsoftware.app.animalcolor.infrastructure.web.request.UpdateAnimalColorRequest;
@@ -24,17 +25,20 @@ public class AnimalColorController {
     private final FindAnimalColorUseCase findUseCase;
     private final ListAnimalColorsUseCase listUseCase;
     private final DeleteAnimalColorUseCase deleteUseCase;
+    private final ReactivateAnimalColorUseCase reactivateUseCase;
 
     public AnimalColorController(CreateAnimalColorUseCase createUseCase,
                                  UpdateAnimalColorUseCase updateUseCase,
                                  FindAnimalColorUseCase findUseCase,
                                  ListAnimalColorsUseCase listUseCase,
-                                 DeleteAnimalColorUseCase deleteUseCase) {
+                                 DeleteAnimalColorUseCase deleteUseCase,
+                                 ReactivateAnimalColorUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -64,7 +68,12 @@ public class AnimalColorController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public AnimalColorResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private AnimalColorResponse toResponse(AnimalColorDto dto) {
-        return new AnimalColorResponse(dto.id(), dto.name(), dto.createdDate());
+        return new AnimalColorResponse(dto.id(), dto.name(), dto.createdDate(), dto.enabled());
     }
 }

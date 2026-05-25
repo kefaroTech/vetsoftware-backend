@@ -9,4 +9,5 @@ public interface ConsultationTypeRepository {
     Optional<ConsultationType> findById(Long id);
     List<ConsultationType> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

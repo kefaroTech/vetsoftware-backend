@@ -31,6 +31,7 @@ public class LaboratoryTestJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(laboratoryTest.getCreatedDate());
+        entity.setEnabled(laboratoryTest.isEnabled());
         return entity;
     }
 
@@ -53,6 +54,7 @@ public class LaboratoryTestJpaMapper {
             entity.getId(), entity.getDate(), testTypeRef,
             entity.getQuantity(), entity.getDiagnosis(),
             LaboratoryTestStatus.valueOf(entity.getStatus()),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate());
+            animalRef, consultationRef, companyRef, entity.getCreatedDate(),
+            entity.isEnabled());
     }
 }

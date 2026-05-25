@@ -13,5 +13,6 @@ public record PrescriptionResponse(
         ConsultationSummary consultation,
         CompanySummary company,
         List<MedicamentSummary> medicaments,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

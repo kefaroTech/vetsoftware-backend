@@ -10,6 +10,7 @@ import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.FindEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesByCompanyUseCase;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesUseCase;
+import com.vetsoftware.app.employee.application.port.in.ReactivateEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.UpdateEmployeeRequest;
@@ -30,18 +31,21 @@ public class EmployeeController {
     private final ListEmployeesUseCase listUseCase;
     private final ListEmployeesByCompanyUseCase listByCompanyUseCase;
     private final DeleteEmployeeUseCase deleteUseCase;
+    private final ReactivateEmployeeUseCase reactivateUseCase;
     private final Authz authz;
 
     public EmployeeController(CreateEmployeeUseCase createUseCase, UpdateEmployeeUseCase updateUseCase,
                                FindEmployeeUseCase findUseCase, ListEmployeesUseCase listUseCase,
                                ListEmployeesByCompanyUseCase listByCompanyUseCase,
-                               DeleteEmployeeUseCase deleteUseCase, Authz authz) {
+                               DeleteEmployeeUseCase deleteUseCase,
+                               ReactivateEmployeeUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -50,7 +54,7 @@ public class EmployeeController {
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
         return toResponse(createUseCase.execute(
             new CreateEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.status(), request.companyId())
+                request.email(), request.companyId())
         ));
     }
 
@@ -73,7 +77,7 @@ public class EmployeeController {
     @PutMapping("/{id}")
     public EmployeeResponse update(@PathVariable Long id, @Valid @RequestBody UpdateEmployeeRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateEmployeeCommand(id, request.employeeCode(), request.name(), request.email(), request.status())
+            new UpdateEmployeeCommand(id, request.employeeCode(), request.name(), request.email())
         ));
     }
 
@@ -83,15 +87,20 @@ public class EmployeeController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public EmployeeResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private EmployeeResponse toResponse(EmployeeDto dto) {
         CompanySummaryDto c = dto.company();
         List<RoleSummary> roles = dto.roles().stream()
             .map(r -> new RoleSummary(r.id(), r.name(), r.code()))
             .toList();
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),
-            dto.status(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             roles,
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

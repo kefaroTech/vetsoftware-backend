@@ -9,6 +9,7 @@ import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
+import com.vetsoftware.app.company.application.port.in.ReactivateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.request.UpdateCompanyRequest;
@@ -28,15 +29,18 @@ public class CompanyController {
     private final FindCompanyUseCase findUseCase;
     private final ListCompaniesUseCase listUseCase;
     private final DeleteCompanyUseCase deleteUseCase;
+    private final ReactivateCompanyUseCase reactivateUseCase;
 
     public CompanyController(CreateCompanyUseCase createUseCase, UpdateCompanyUseCase updateUseCase,
                              FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
-                             DeleteCompanyUseCase deleteUseCase) {
+                             DeleteCompanyUseCase deleteUseCase,
+                             ReactivateCompanyUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -72,6 +76,11 @@ public class CompanyController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public CompanyResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private CompanyResponse toResponse(CompanyDto dto) {
         CitySummaryDto c = dto.city();
         MembershipSummaryDto m = dto.membership();
@@ -79,6 +88,7 @@ public class CompanyController {
             dto.contactNumber(),
             new CitySummary(c.id(), c.name()),
             new MembershipSummary(m.id(), m.name(), m.status()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

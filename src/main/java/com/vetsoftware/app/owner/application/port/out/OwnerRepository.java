@@ -10,4 +10,5 @@ public interface OwnerRepository {
     List<Owner> findAll();
     List<Owner> searchByCompanyAndNameOrEmail(Long companyId, String query);
     void delete(Long id);
+    int reactivate(Long id);
 }

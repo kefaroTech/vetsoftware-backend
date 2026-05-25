@@ -10,6 +10,7 @@ import com.vetsoftware.app.daycare.application.port.in.DeleteDayCareUseCase;
 import com.vetsoftware.app.daycare.application.port.in.FindDayCareUseCase;
 import com.vetsoftware.app.daycare.application.port.in.ListDayCaresByAnimalUseCase;
 import com.vetsoftware.app.daycare.application.port.in.ListDayCaresUseCase;
+import com.vetsoftware.app.daycare.application.port.in.ReactivateDayCareUseCase;
 import com.vetsoftware.app.daycare.application.port.in.UpdateDayCareUseCase;
 import com.vetsoftware.app.daycare.infrastructure.web.request.CreateDayCareRequest;
 import com.vetsoftware.app.daycare.infrastructure.web.request.UpdateDayCareRequest;
@@ -30,19 +31,22 @@ public class DayCareController {
     private final ListDayCaresUseCase listUseCase;
     private final ListDayCaresByAnimalUseCase listByAnimalUseCase;
     private final DeleteDayCareUseCase deleteUseCase;
+    private final ReactivateDayCareUseCase reactivateUseCase;
 
     public DayCareController(CreateDayCareUseCase createUseCase,
                              UpdateDayCareUseCase updateUseCase,
                              FindDayCareUseCase findUseCase,
                              ListDayCaresUseCase listUseCase,
                              ListDayCaresByAnimalUseCase listByAnimalUseCase,
-                             DeleteDayCareUseCase deleteUseCase) {
+                             DeleteDayCareUseCase deleteUseCase,
+                             ReactivateDayCareUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -86,6 +90,11 @@ public class DayCareController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public DayCareResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private DayCareResponse toResponse(DayCareDto dto) {
         AnimalSummaryDto a = dto.animal();
         CompanySummaryDto c = dto.company();
@@ -94,6 +103,7 @@ public class DayCareController {
             dto.type(), dto.objects(), dto.observations(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

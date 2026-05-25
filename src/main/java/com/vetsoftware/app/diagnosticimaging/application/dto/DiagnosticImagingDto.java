@@ -16,7 +16,8 @@ public record DiagnosticImagingDto(
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static DiagnosticImagingDto from(DiagnosticImaging imaging) {
         return new DiagnosticImagingDto(
@@ -31,7 +32,8 @@ public record DiagnosticImagingDto(
             AnimalSummaryDto.from(imaging.getAnimal()),
             imaging.getConsultation() == null ? null : ConsultationSummaryDto.from(imaging.getConsultation()),
             CompanySummaryDto.from(imaging.getCompany()),
-            imaging.getCreatedDate()
+            imaging.getCreatedDate(),
+            imaging.isEnabled()
         );
     }
 }

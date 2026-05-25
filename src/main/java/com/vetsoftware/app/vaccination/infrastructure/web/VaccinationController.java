@@ -12,6 +12,7 @@ import com.vetsoftware.app.vaccination.application.port.in.DeleteVaccinationUseC
 import com.vetsoftware.app.vaccination.application.port.in.FindVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsByAnimalUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsUseCase;
+import com.vetsoftware.app.vaccination.application.port.in.ReactivateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.UpdateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.infrastructure.web.request.CreateVaccinationRequest;
 import com.vetsoftware.app.vaccination.infrastructure.web.request.UpdateVaccinationRequest;
@@ -34,19 +35,22 @@ public class VaccinationController {
     private final ListVaccinationsUseCase listUseCase;
     private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteVaccinationUseCase deleteUseCase;
+    private final ReactivateVaccinationUseCase reactivateUseCase;
 
     public VaccinationController(CreateVaccinationUseCase createUseCase,
                                  UpdateVaccinationUseCase updateUseCase,
                                  FindVaccinationUseCase findUseCase,
                                  ListVaccinationsUseCase listUseCase,
                                  ListVaccinationsByAnimalUseCase listByAnimalUseCase,
-                                 DeleteVaccinationUseCase deleteUseCase) {
+                                 DeleteVaccinationUseCase deleteUseCase,
+                                 ReactivateVaccinationUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -90,6 +94,11 @@ public class VaccinationController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public VaccinationResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private VaccinationResponse toResponse(VaccinationDto dto) {
         VaccinationTypeSummaryDto vt = dto.vaccinationType();
         AnimalSummaryDto a = dto.animal();
@@ -102,6 +111,7 @@ public class VaccinationController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

@@ -4,4 +4,4 @@ import java.time.LocalDateTime;
 
 public record CompanyResponse(Long id, String name, String identifier, String address,
                               String contactNumber, CitySummary city, MembershipSummary membership,
-                              LocalDateTime createdDate) {}
+                              LocalDateTime createdDate, boolean enabled) {}

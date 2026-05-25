@@ -33,6 +33,7 @@ public class DiagnosticImagingJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(imaging.getCreatedDate());
+        entity.setEnabled(imaging.isEnabled());
         return entity;
     }
 
@@ -55,6 +56,7 @@ public class DiagnosticImagingJpaMapper {
             entity.getClinicalSigns(), entity.getStudyType(),
             entity.getDiagnosis(), entity.getObservations(),
             DiagnosticImagingStatus.valueOf(entity.getStatus()),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate());
+            animalRef, consultationRef, companyRef, entity.getCreatedDate(),
+            entity.isEnabled());
     }
 }

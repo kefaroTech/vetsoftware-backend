@@ -15,6 +15,7 @@ public class LaboratoryTestTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(laboratoryTestType.isGeneral());
         entity.setCreatedDate(laboratoryTestType.getCreatedDate());
+        entity.setEnabled(laboratoryTestType.isEnabled());
         return entity;
     }
 
@@ -31,6 +32,7 @@ public class LaboratoryTestTypeJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

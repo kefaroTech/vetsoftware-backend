@@ -6,13 +6,15 @@ import java.time.LocalDateTime;
 public record BaseRolePermissionDto(Long id,
                                      BaseRoleSummaryDto baseRole,
                                      BasePermissionSummaryDto basePermission,
-                                     LocalDateTime createdDate) {
+                                     LocalDateTime createdDate,
+                                     boolean enabled) {
     public static BaseRolePermissionDto from(BaseRolePermission baseRolePermission) {
         return new BaseRolePermissionDto(
             baseRolePermission.getId(),
             BaseRoleSummaryDto.from(baseRolePermission.getBaseRole()),
             BasePermissionSummaryDto.from(baseRolePermission.getBasePermission()),
-            baseRolePermission.getCreatedDate()
+            baseRolePermission.getCreatedDate(),
+            baseRolePermission.isEnabled()
         );
     }
 }

@@ -9,8 +9,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class CreateEmployeeAdapter implements EmployeeCreator {
 
-    private static final String DEFAULT_STATUS = "ACTIVE";
-
     private final CreateEmployeeUseCase createEmployeeUseCase;
     private final SystemAuthRunner systemAuthRunner;
 
@@ -24,7 +22,7 @@ public class CreateEmployeeAdapter implements EmployeeCreator {
     public EmployeeResult create(String employeeCode, String hashedPassword, String name,
                                  String email, Long companyId) {
         var dto = systemAuthRunner.call(() -> createEmployeeUseCase.execute(
-            new CreateEmployeeCommand(employeeCode, hashedPassword, name, email, DEFAULT_STATUS, companyId)
+            new CreateEmployeeCommand(employeeCode, hashedPassword, name, email, companyId)
         ));
         return new EmployeeResult(dto.id());
     }

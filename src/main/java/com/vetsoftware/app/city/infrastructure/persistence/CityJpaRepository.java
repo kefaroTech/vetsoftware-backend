@@ -17,4 +17,11 @@ public interface CityJpaRepository extends JpaRepository<CityJpaEntity, Long> {
 
     @EntityGraph(attributePaths = "state")
     List<CityJpaEntity> findAllByState_Id(Long stateId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE cities SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByState_Id(Long stateId);
 }

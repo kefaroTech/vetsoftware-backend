@@ -13,5 +13,6 @@ public record VaccinationResponse(
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

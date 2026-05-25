@@ -10,4 +10,5 @@ public interface SurgeryRepository {
     List<Surgery> findAll();
     List<Surgery> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }

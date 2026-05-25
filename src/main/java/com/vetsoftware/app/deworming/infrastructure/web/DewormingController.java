@@ -11,6 +11,7 @@ import com.vetsoftware.app.deworming.application.port.in.DeleteDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.FindDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsByAnimalUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsUseCase;
+import com.vetsoftware.app.deworming.application.port.in.ReactivateDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.UpdateDewormingUseCase;
 import com.vetsoftware.app.deworming.infrastructure.web.request.CreateDewormingRequest;
 import com.vetsoftware.app.deworming.infrastructure.web.request.UpdateDewormingRequest;
@@ -32,19 +33,22 @@ public class DewormingController {
     private final ListDewormingsUseCase listUseCase;
     private final ListDewormingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDewormingUseCase deleteUseCase;
+    private final ReactivateDewormingUseCase reactivateUseCase;
 
     public DewormingController(CreateDewormingUseCase createUseCase,
                                UpdateDewormingUseCase updateUseCase,
                                FindDewormingUseCase findUseCase,
                                ListDewormingsUseCase listUseCase,
                                ListDewormingsByAnimalUseCase listByAnimalUseCase,
-                               DeleteDewormingUseCase deleteUseCase) {
+                               DeleteDewormingUseCase deleteUseCase,
+                               ReactivateDewormingUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -90,6 +94,11 @@ public class DewormingController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public DewormingResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private DewormingResponse toResponse(DewormingDto dto) {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
@@ -100,6 +109,6 @@ public class DewormingController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(), dto.enabled());
     }
 }

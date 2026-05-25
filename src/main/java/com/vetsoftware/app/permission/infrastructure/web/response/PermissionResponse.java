@@ -4,4 +4,4 @@ import java.time.LocalDateTime;
 
 public record PermissionResponse(Long id, String name, String code,
                                   CompanySummary company, SubModuleSummary subModule,
-                                  LocalDateTime createdDate) {}
+                                  LocalDateTime createdDate, boolean enabled) {}

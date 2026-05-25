@@ -10,6 +10,7 @@ import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUs
 import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.FindPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ListPrescriptionsUseCase;
+import com.vetsoftware.app.prescription.application.port.in.ReactivatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.UpdatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.infrastructure.web.request.CreatePrescriptionRequest;
 import com.vetsoftware.app.prescription.infrastructure.web.request.UpdatePrescriptionRequest;
@@ -31,17 +32,20 @@ public class PrescriptionController {
     private final FindPrescriptionUseCase findUseCase;
     private final ListPrescriptionsUseCase listUseCase;
     private final DeletePrescriptionUseCase deleteUseCase;
+    private final ReactivatePrescriptionUseCase reactivateUseCase;
 
     public PrescriptionController(CreatePrescriptionUseCase createUseCase,
                                   UpdatePrescriptionUseCase updateUseCase,
                                   FindPrescriptionUseCase findUseCase,
                                   ListPrescriptionsUseCase listUseCase,
-                                  DeletePrescriptionUseCase deleteUseCase) {
+                                  DeletePrescriptionUseCase deleteUseCase,
+                                  ReactivatePrescriptionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -78,6 +82,11 @@ public class PrescriptionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public PrescriptionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private PrescriptionResponse toResponse(PrescriptionDto dto) {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
@@ -92,6 +101,7 @@ public class PrescriptionController {
             new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             medicaments,
-            dto.createdDate());
+            dto.createdDate(),
+            dto.enabled());
     }
 }

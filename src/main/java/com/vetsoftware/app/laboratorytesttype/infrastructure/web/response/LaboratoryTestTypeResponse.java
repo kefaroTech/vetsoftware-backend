@@ -8,5 +8,6 @@ public record LaboratoryTestTypeResponse(
         String description,
         CompanySummary company,
         boolean general,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

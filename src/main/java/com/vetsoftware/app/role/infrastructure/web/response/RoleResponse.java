@@ -6,4 +6,5 @@ import java.util.List;
 public record RoleResponse(Long id, String name, String code,
                            CompanySummary company,
                            LocalDateTime createdDate,
-                           List<PermissionSummary> permissions) {}
+                           List<PermissionSummary> permissions,
+                           boolean enabled) {}

@@ -14,6 +14,7 @@ import com.vetsoftware.app.diagnosticimaging.application.port.in.DeleteDiagnosti
 import com.vetsoftware.app.diagnosticimaging.application.port.in.FindDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsByAnimalUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsUseCase;
+import com.vetsoftware.app.diagnosticimaging.application.port.in.ReactivateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.UpdateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.ChangeDiagnosticImagingStatusRequest;
 import com.vetsoftware.app.diagnosticimaging.infrastructure.web.request.CreateDiagnosticImagingRequest;
@@ -38,6 +39,7 @@ public class DiagnosticImagingController {
     private final ListDiagnosticImagingsUseCase listUseCase;
     private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDiagnosticImagingUseCase deleteUseCase;
+    private final ReactivateDiagnosticImagingUseCase reactivateUseCase;
 
     public DiagnosticImagingController(CreateDiagnosticImagingUseCase createUseCase,
                                        UpdateDiagnosticImagingUseCase updateUseCase,
@@ -45,7 +47,8 @@ public class DiagnosticImagingController {
                                        FindDiagnosticImagingUseCase findUseCase,
                                        ListDiagnosticImagingsUseCase listUseCase,
                                        ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
-                                       DeleteDiagnosticImagingUseCase deleteUseCase) {
+                                       DeleteDiagnosticImagingUseCase deleteUseCase,
+                                       ReactivateDiagnosticImagingUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -53,6 +56,7 @@ public class DiagnosticImagingController {
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -103,6 +107,11 @@ public class DiagnosticImagingController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public DiagnosticImagingResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private DiagnosticImagingResponse toResponse(DiagnosticImagingDto dto) {
         DiagnosticImagingTypeSummaryDto t = dto.diagnosticImagingType();
         AnimalSummaryDto a = dto.animal();
@@ -116,6 +125,6 @@ public class DiagnosticImagingController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate());
+            dto.createdDate(), dto.enabled());
     }
 }

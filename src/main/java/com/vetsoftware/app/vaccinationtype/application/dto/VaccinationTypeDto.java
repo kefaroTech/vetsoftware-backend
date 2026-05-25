@@ -9,7 +9,8 @@ public record VaccinationTypeDto(
         String description,
         CompanySummaryDto company,
         boolean general,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {
     public static VaccinationTypeDto from(VaccinationType vaccinationType) {
         return new VaccinationTypeDto(
@@ -18,6 +19,7 @@ public record VaccinationTypeDto(
                 vaccinationType.getDescription(),
                 vaccinationType.getCompany() == null ? null : CompanySummaryDto.from(vaccinationType.getCompany()),
                 vaccinationType.isGeneral(),
-                vaccinationType.getCreatedDate());
+                vaccinationType.getCreatedDate(),
+                vaccinationType.isEnabled());
     }
 }

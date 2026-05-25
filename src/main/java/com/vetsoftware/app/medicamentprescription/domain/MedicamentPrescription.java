@@ -10,10 +10,11 @@ public class MedicamentPrescription {
     private String posology;
     private PrescriptionRef prescription;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public MedicamentPrescription(Long id, String name, String presentation, Double quantity,
                                   String posology, PrescriptionRef prescription,
-                                  LocalDateTime createdDate) {
+                                  LocalDateTime createdDate, boolean enabled) {
         validate(name, presentation, quantity, posology, prescription);
         this.id = id;
         this.name = name;
@@ -22,12 +23,13 @@ public class MedicamentPrescription {
         this.posology = posology;
         this.prescription = prescription;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static MedicamentPrescription create(String name, String presentation, Double quantity,
                                                 String posology, PrescriptionRef prescription) {
         return new MedicamentPrescription(null, name, presentation, quantity, posology,
-                                          prescription, LocalDateTime.now());
+                                          prescription, LocalDateTime.now(), true);
     }
 
     public void update(String name, String presentation, Double quantity, String posology,
@@ -39,6 +41,10 @@ public class MedicamentPrescription {
         this.posology = posology;
         this.prescription = prescription;
     }
+
+    public void enable() { this.enabled = true; }
+
+    public void disable() { this.enabled = false; }
 
     private static void validate(String name, String presentation, Double quantity,
                                   String posology, PrescriptionRef prescription) {
@@ -60,4 +66,5 @@ public class MedicamentPrescription {
     public String getPosology() { return posology; }
     public PrescriptionRef getPrescription() { return prescription; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
 }

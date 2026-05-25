@@ -20,6 +20,7 @@ public class PermissionJpaMapper {
         entity.setCompany(company);
         entity.setSubModule(subModule);
         entity.setCreatedDate(permission.getCreatedDate());
+        entity.setEnabled(permission.isEnabled());
         return entity;
     }
 
@@ -38,7 +39,8 @@ public class PermissionJpaMapper {
             entity.getCode(),
             companyRef,
             subModuleRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

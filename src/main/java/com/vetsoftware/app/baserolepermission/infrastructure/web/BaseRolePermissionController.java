@@ -9,6 +9,7 @@ import com.vetsoftware.app.baserolepermission.application.port.in.CreateBaseRole
 import com.vetsoftware.app.baserolepermission.application.port.in.DeleteBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.application.port.in.FindBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.application.port.in.ListBaseRolePermissionsUseCase;
+import com.vetsoftware.app.baserolepermission.application.port.in.ReactivateBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.application.port.in.UpdateBaseRolePermissionUseCase;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.CreateBaseRolePermissionRequest;
 import com.vetsoftware.app.baserolepermission.infrastructure.web.request.UpdateBaseRolePermissionRequest;
@@ -28,17 +29,20 @@ public class BaseRolePermissionController {
     private final FindBaseRolePermissionUseCase findUseCase;
     private final ListBaseRolePermissionsUseCase listUseCase;
     private final DeleteBaseRolePermissionUseCase deleteUseCase;
+    private final ReactivateBaseRolePermissionUseCase reactivateUseCase;
 
     public BaseRolePermissionController(CreateBaseRolePermissionUseCase createUseCase,
                                          UpdateBaseRolePermissionUseCase updateUseCase,
                                          FindBaseRolePermissionUseCase findUseCase,
                                          ListBaseRolePermissionsUseCase listUseCase,
-                                         DeleteBaseRolePermissionUseCase deleteUseCase) {
+                                         DeleteBaseRolePermissionUseCase deleteUseCase,
+                                         ReactivateBaseRolePermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -71,6 +75,11 @@ public class BaseRolePermissionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public BaseRolePermissionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {
         BaseRoleSummaryDto br = dto.baseRole();
         BasePermissionSummaryDto bp = dto.basePermission();
@@ -78,7 +87,8 @@ public class BaseRolePermissionController {
             dto.id(),
             new BaseRoleSummary(br.id(), br.name(), br.code()),
             new BasePermissionSummary(bp.id(), bp.name(), bp.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

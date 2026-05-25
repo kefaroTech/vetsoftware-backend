@@ -52,7 +52,17 @@ public class JpaSpaRepository implements SpaRepository {
     }
 
     @Override
+    public List<Spa> findAllByAnimalId(Long animalId) {
+        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
     }
 }

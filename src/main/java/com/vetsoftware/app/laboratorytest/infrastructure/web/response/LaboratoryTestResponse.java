@@ -13,5 +13,6 @@ public record LaboratoryTestResponse(
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

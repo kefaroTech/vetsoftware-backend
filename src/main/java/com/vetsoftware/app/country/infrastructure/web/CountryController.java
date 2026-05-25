@@ -7,6 +7,7 @@ import com.vetsoftware.app.country.application.port.in.CreateCountryUseCase;
 import com.vetsoftware.app.country.application.port.in.DeleteCountryUseCase;
 import com.vetsoftware.app.country.application.port.in.FindCountryUseCase;
 import com.vetsoftware.app.country.application.port.in.ListCountriesUseCase;
+import com.vetsoftware.app.country.application.port.in.ReactivateCountryUseCase;
 import com.vetsoftware.app.country.application.port.in.UpdateCountryUseCase;
 import com.vetsoftware.app.country.infrastructure.web.request.CreateCountryRequest;
 import com.vetsoftware.app.country.infrastructure.web.request.UpdateCountryRequest;
@@ -25,15 +26,18 @@ public class CountryController {
     private final FindCountryUseCase findUseCase;
     private final ListCountriesUseCase listUseCase;
     private final DeleteCountryUseCase deleteUseCase;
+    private final ReactivateCountryUseCase reactivateUseCase;
 
     public CountryController(CreateCountryUseCase createUseCase, UpdateCountryUseCase updateUseCase,
                              FindCountryUseCase findUseCase, ListCountriesUseCase listUseCase,
-                             DeleteCountryUseCase deleteUseCase) {
+                             DeleteCountryUseCase deleteUseCase,
+                             ReactivateCountryUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -63,7 +67,12 @@ public class CountryController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public CountryResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private CountryResponse toResponse(CountryDto dto) {
-        return new CountryResponse(dto.id(), dto.name(), dto.createdDate());
+        return new CountryResponse(dto.id(), dto.name(), dto.createdDate(), dto.enabled());
     }
 }

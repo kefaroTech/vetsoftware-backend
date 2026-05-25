@@ -18,6 +18,7 @@ public class SystemUserPermissionJpaMapper {
         entity.setSystemUser(systemUser);
         entity.setSystemPermission(systemPermission);
         entity.setCreatedDate(systemUserPermission.getCreatedDate());
+        entity.setEnabled(systemUserPermission.isEnabled());
         return entity;
     }
 
@@ -36,7 +37,8 @@ public class SystemUserPermissionJpaMapper {
             entity.getId(),
             systemUserRef,
             systemPermissionRef,
-            entity.getCreatedDate()
+            entity.getCreatedDate(),
+            entity.isEnabled()
         );
     }
 }

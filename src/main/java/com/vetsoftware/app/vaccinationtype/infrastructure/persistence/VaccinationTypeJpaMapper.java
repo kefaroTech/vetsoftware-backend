@@ -15,6 +15,7 @@ public class VaccinationTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(vaccinationType.isGeneral());
         entity.setCreatedDate(vaccinationType.getCreatedDate());
+        entity.setEnabled(vaccinationType.isEnabled());
         return entity;
     }
 
@@ -31,6 +32,7 @@ public class VaccinationTypeJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate());
+                entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

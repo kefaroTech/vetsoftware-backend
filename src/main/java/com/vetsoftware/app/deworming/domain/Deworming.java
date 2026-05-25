@@ -16,11 +16,12 @@ public class Deworming {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Deworming(Long id, LocalDate date, LocalDate lastDeworming, DewormingType type,
                      String product, String dosage, LocalDate nextControl, String observations,
                      AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-                     LocalDateTime createdDate) {
+                     LocalDateTime createdDate, boolean enabled) {
         validate(date, type, product, dosage, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -34,6 +35,7 @@ public class Deworming {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Deworming create(LocalDate date, LocalDate lastDeworming, DewormingType type,
@@ -41,7 +43,7 @@ public class Deworming {
                                    String observations, AnimalRef animal,
                                    ConsultationRef consultation, CompanyRef company) {
         return new Deworming(null, date, lastDeworming, type, product, dosage, nextControl,
-                             observations, animal, consultation, company, LocalDateTime.now());
+                             observations, animal, consultation, company, LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, LocalDate lastDeworming, DewormingType type,
@@ -87,4 +89,7 @@ public class Deworming {
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

@@ -10,6 +10,7 @@ import com.vetsoftware.app.diagnosticimagingtype.application.port.in.DeleteDiagn
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.FindDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListAvailableDiagnosticImagingTypesUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListDiagnosticImagingTypesUseCase;
+import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ReactivateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.UpdateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.CreateDiagnosticImagingTypeRequest;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.UpdateDiagnosticImagingTypeRequest;
@@ -29,6 +30,7 @@ public class DiagnosticImagingTypeController {
     private final ListDiagnosticImagingTypesUseCase listUseCase;
     private final ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
     private final DeleteDiagnosticImagingTypeUseCase deleteUseCase;
+    private final ReactivateDiagnosticImagingTypeUseCase reactivateUseCase;
     private final Authz authz;
 
     public DiagnosticImagingTypeController(CreateDiagnosticImagingTypeUseCase createUseCase,
@@ -37,6 +39,7 @@ public class DiagnosticImagingTypeController {
                                            ListDiagnosticImagingTypesUseCase listUseCase,
                                            ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
                                            DeleteDiagnosticImagingTypeUseCase deleteUseCase,
+                                           ReactivateDiagnosticImagingTypeUseCase reactivateUseCase,
                                            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -44,6 +47,7 @@ public class DiagnosticImagingTypeController {
         this.listUseCase = listUseCase;
         this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -85,12 +89,17 @@ public class DiagnosticImagingTypeController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public DiagnosticImagingTypeResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {
         CompanySummaryDto c = dto.company();
         return new DiagnosticImagingTypeResponse(
                 dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
                 dto.general(),
-                dto.createdDate());
+                dto.createdDate(), dto.enabled());
     }
 }

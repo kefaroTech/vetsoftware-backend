@@ -11,6 +11,7 @@ import com.vetsoftware.app.permission.application.port.in.DeletePermissionUseCas
 import com.vetsoftware.app.permission.application.port.in.FindPermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.ListPermissionsByCompanyUseCase;
 import com.vetsoftware.app.permission.application.port.in.ListPermissionsUseCase;
+import com.vetsoftware.app.permission.application.port.in.ReactivatePermissionUseCase;
 import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCase;
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
 import com.vetsoftware.app.permission.infrastructure.web.request.UpdatePermissionRequest;
@@ -31,6 +32,7 @@ public class PermissionController {
     private final ListPermissionsUseCase listUseCase;
     private final ListPermissionsByCompanyUseCase listByCompanyUseCase;
     private final DeletePermissionUseCase deleteUseCase;
+    private final ReactivatePermissionUseCase reactivateUseCase;
     private final Authz authz;
 
     public PermissionController(CreatePermissionUseCase createUseCase,
@@ -39,6 +41,7 @@ public class PermissionController {
                                  ListPermissionsUseCase listUseCase,
                                  ListPermissionsByCompanyUseCase listByCompanyUseCase,
                                  DeletePermissionUseCase deleteUseCase,
+                                 ReactivatePermissionUseCase reactivateUseCase,
                                  Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -46,6 +49,7 @@ public class PermissionController {
         this.listUseCase = listUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -85,6 +89,11 @@ public class PermissionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public PermissionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private PermissionResponse toResponse(PermissionDto dto) {
         CompanySummaryDto c = dto.company();
         SubModuleSummaryDto sm = dto.subModule();
@@ -92,7 +101,8 @@ public class PermissionController {
             dto.id(), dto.name(), dto.code(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

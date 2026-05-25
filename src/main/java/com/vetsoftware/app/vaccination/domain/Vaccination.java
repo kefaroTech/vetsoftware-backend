@@ -14,11 +14,12 @@ public class Vaccination {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public Vaccination(Long id, LocalDate date, VaccinationTypeRef vaccinationType,
                        String lot, String notes, LocalDate nextVaccination,
                        AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-                       LocalDateTime createdDate) {
+                       LocalDateTime createdDate, boolean enabled) {
         validate(date, vaccinationType, lot, notes, animal, company);
         this.id = id;
         this.date = date;
@@ -30,13 +31,14 @@ public class Vaccination {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static Vaccination create(LocalDate date, VaccinationTypeRef vaccinationType,
                                      String lot, String notes, LocalDate nextVaccination,
                                      AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Vaccination(null, date, vaccinationType, lot, notes, nextVaccination,
-                               animal, consultation, company, LocalDateTime.now());
+                               animal, consultation, company, LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, VaccinationTypeRef vaccinationType,
@@ -74,4 +76,7 @@ public class Vaccination {
     public ConsultationRef getConsultation() { return consultation; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void enable() { this.enabled = true; }
+    public void disable() { this.enabled = false; }
 }

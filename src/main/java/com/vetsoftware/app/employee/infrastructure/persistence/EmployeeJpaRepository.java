@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, Long> {
 
@@ -24,5 +26,12 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     boolean existsByEmployeeCode(String employeeCode);
 
     @EntityGraph(attributePaths = "company")
-    Optional<EmployeeJpaEntity> findByEmployeeCodeAndStatus(String employeeCode, String status);
+    Optional<EmployeeJpaEntity> findByEmployeeCode(String employeeCode);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = "UPDATE employees SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@Param("id") Long id);
+
+    boolean existsByCompany_Id(Long companyId);
 }

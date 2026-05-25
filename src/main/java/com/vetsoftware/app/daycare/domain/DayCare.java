@@ -14,11 +14,12 @@ public class DayCare {
     private AnimalRef animal;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private boolean enabled;
 
     public DayCare(Long id, LocalDate date, LocalDate startDate, LocalDate endDate,
                    DayCareType type, String objects, String observations,
                    AnimalRef animal, CompanyRef company,
-                   LocalDateTime createdDate) {
+                   LocalDateTime createdDate, boolean enabled) {
         validate(date, startDate, endDate, type, objects, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -30,13 +31,14 @@ public class DayCare {
         this.animal = animal;
         this.company = company;
         this.createdDate = createdDate;
+        this.enabled = enabled;
     }
 
     public static DayCare create(LocalDate date, LocalDate startDate, LocalDate endDate,
                                  DayCareType type, String objects, String observations,
                                  AnimalRef animal, CompanyRef company) {
         return new DayCare(null, date, startDate, endDate, type, objects, observations,
-                           animal, company, LocalDateTime.now());
+                           animal, company, LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, LocalDate startDate, LocalDate endDate,
@@ -52,6 +54,10 @@ public class DayCare {
         this.animal = animal;
         this.company = company;
     }
+
+    public void enable() { this.enabled = true; }
+
+    public void disable() { this.enabled = false; }
 
     private static void validate(LocalDate date, LocalDate startDate, LocalDate endDate,
                                   DayCareType type, String objects, String observations,
@@ -79,4 +85,5 @@ public class DayCare {
     public AnimalRef getAnimal() { return animal; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public boolean isEnabled() { return enabled; }
 }

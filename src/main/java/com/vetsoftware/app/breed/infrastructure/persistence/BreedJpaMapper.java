@@ -14,6 +14,7 @@ public class BreedJpaMapper {
         entity.setName(breed.getName());
         entity.setSpecie(specie);
         entity.setCreatedDate(breed.getCreatedDate());
+        entity.setEnabled(breed.isEnabled());
         return entity;
     }
 
@@ -23,6 +24,6 @@ public class BreedJpaMapper {
     }
 
     public Breed toDomain(BreedJpaEntity entity, SpecieRef ref) {
-        return new Breed(entity.getId(), entity.getName(), ref, entity.getCreatedDate());
+        return new Breed(entity.getId(), entity.getName(), ref, entity.getCreatedDate(), entity.isEnabled());
     }
 }

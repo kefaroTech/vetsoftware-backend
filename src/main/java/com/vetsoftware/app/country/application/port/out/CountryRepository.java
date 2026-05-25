@@ -9,4 +9,5 @@ public interface CountryRepository {
     Optional<Country> findById(Long id);
     List<Country> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

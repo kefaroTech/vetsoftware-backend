@@ -8,6 +8,7 @@ import com.vetsoftware.app.submodule.application.port.in.CreateSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.in.DeleteSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.in.FindSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.in.ListSubModulesUseCase;
+import com.vetsoftware.app.submodule.application.port.in.ReactivateSubModuleUseCase;
 import com.vetsoftware.app.submodule.application.port.in.UpdateSubModuleUseCase;
 import com.vetsoftware.app.submodule.infrastructure.web.request.CreateSubModuleRequest;
 import com.vetsoftware.app.submodule.infrastructure.web.request.UpdateSubModuleRequest;
@@ -26,15 +27,18 @@ public class SubModuleController {
     private final FindSubModuleUseCase findUseCase;
     private final ListSubModulesUseCase listUseCase;
     private final DeleteSubModuleUseCase deleteUseCase;
+    private final ReactivateSubModuleUseCase reactivateUseCase;
 
     public SubModuleController(CreateSubModuleUseCase createUseCase, UpdateSubModuleUseCase updateUseCase,
                                FindSubModuleUseCase findUseCase, ListSubModulesUseCase listUseCase,
-                               DeleteSubModuleUseCase deleteUseCase) {
+                               DeleteSubModuleUseCase deleteUseCase,
+                               ReactivateSubModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -66,12 +70,18 @@ public class SubModuleController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public SubModuleResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private SubModuleResponse toResponse(SubModuleDto dto) {
         ModuleSummaryDto m = dto.module();
         return new SubModuleResponse(
             dto.id(), dto.name(), dto.code(),
             new ModuleSummary(m.id(), m.name(), m.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

@@ -12,6 +12,7 @@ import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissi
 import com.vetsoftware.app.rolepermission.application.port.in.FindRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsByCompanyUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsUseCase;
+import com.vetsoftware.app.rolepermission.application.port.in.ReactivateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.SyncRolePermissionsUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.infrastructure.web.request.CreateRolePermissionRequest;
@@ -35,6 +36,7 @@ public class RolePermissionController {
     private final ListRolePermissionsUseCase listUseCase;
     private final ListRolePermissionsByCompanyUseCase listByCompanyUseCase;
     private final DeleteRolePermissionUseCase deleteUseCase;
+    private final ReactivateRolePermissionUseCase reactivateUseCase;
     private final Authz authz;
 
     public RolePermissionController(CreateRolePermissionUseCase createUseCase,
@@ -44,6 +46,7 @@ public class RolePermissionController {
                                     ListRolePermissionsUseCase listUseCase,
                                     ListRolePermissionsByCompanyUseCase listByCompanyUseCase,
                                     DeleteRolePermissionUseCase deleteUseCase,
+                                    ReactivateRolePermissionUseCase reactivateUseCase,
                                     Authz authz) {
         this.createUseCase = createUseCase;
         this.syncUseCase = syncUseCase;
@@ -52,6 +55,7 @@ public class RolePermissionController {
         this.listUseCase = listUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -98,6 +102,11 @@ public class RolePermissionController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public RolePermissionResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private RolePermissionResponse toResponse(RolePermissionDto dto) {
         RoleSummaryDto r = dto.role();
         PermissionSummaryDto p = dto.permission();
@@ -105,7 +114,8 @@ public class RolePermissionController {
             dto.id(),
             new RoleSummary(r.id(), r.name(), r.code()),
             new PermissionSummary(p.id(), p.name(), p.code()),
-            dto.createdDate()
+            dto.createdDate(),
+            dto.enabled()
         );
     }
 }

@@ -14,5 +14,6 @@ public record ConsultationResponse(
         LocalDate nextControl,
         AnimalSummary animal,
         CompanySummary company,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        boolean enabled
 ) {}

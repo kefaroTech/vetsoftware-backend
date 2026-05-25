@@ -27,6 +27,7 @@ public class DewormingJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(deworming.getCreatedDate());
+        entity.setEnabled(deworming.isEnabled());
         return entity;
     }
 
@@ -45,6 +46,7 @@ public class DewormingJpaMapper {
         return new Deworming(
             entity.getId(), entity.getDate(), entity.getLastDeworming(), entity.getType(),
             entity.getProduct(), entity.getDosage(), entity.getNextControl(),
-            entity.getObservations(), animalRef, consultationRef, companyRef, entity.getCreatedDate());
+            entity.getObservations(), animalRef, consultationRef, companyRef, entity.getCreatedDate(),
+            entity.isEnabled());
     }
 }

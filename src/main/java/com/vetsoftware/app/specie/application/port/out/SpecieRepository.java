@@ -9,4 +9,5 @@ public interface SpecieRepository {
     Optional<Specie> findById(Long id);
     List<Specie> findAll();
     void delete(Long id);
+    int reactivate(Long id);
 }

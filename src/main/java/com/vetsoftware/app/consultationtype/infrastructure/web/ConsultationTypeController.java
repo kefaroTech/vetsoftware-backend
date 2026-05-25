@@ -7,6 +7,7 @@ import com.vetsoftware.app.consultationtype.application.port.in.CreateConsultati
 import com.vetsoftware.app.consultationtype.application.port.in.DeleteConsultationTypeUseCase;
 import com.vetsoftware.app.consultationtype.application.port.in.FindConsultationTypeUseCase;
 import com.vetsoftware.app.consultationtype.application.port.in.ListConsultationTypesUseCase;
+import com.vetsoftware.app.consultationtype.application.port.in.ReactivateConsultationTypeUseCase;
 import com.vetsoftware.app.consultationtype.application.port.in.UpdateConsultationTypeUseCase;
 import com.vetsoftware.app.consultationtype.infrastructure.web.request.CreateConsultationTypeRequest;
 import com.vetsoftware.app.consultationtype.infrastructure.web.request.UpdateConsultationTypeRequest;
@@ -24,17 +25,20 @@ public class ConsultationTypeController {
     private final FindConsultationTypeUseCase findUseCase;
     private final ListConsultationTypesUseCase listUseCase;
     private final DeleteConsultationTypeUseCase deleteUseCase;
+    private final ReactivateConsultationTypeUseCase reactivateUseCase;
 
     public ConsultationTypeController(CreateConsultationTypeUseCase createUseCase,
                                       UpdateConsultationTypeUseCase updateUseCase,
                                       FindConsultationTypeUseCase findUseCase,
                                       ListConsultationTypesUseCase listUseCase,
-                                      DeleteConsultationTypeUseCase deleteUseCase) {
+                                      DeleteConsultationTypeUseCase deleteUseCase,
+                                      ReactivateConsultationTypeUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
     }
 
     @PostMapping
@@ -67,7 +71,12 @@ public class ConsultationTypeController {
         deleteUseCase.execute(id);
     }
 
+    @PatchMapping("/{id}/enable")
+    public ConsultationTypeResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
     private ConsultationTypeResponse toResponse(ConsultationTypeDto dto) {
-        return new ConsultationTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate());
+        return new ConsultationTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
     }
 }

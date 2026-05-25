@@ -18,4 +18,13 @@ public interface SystemUserPermissionJpaRepository
 
     @EntityGraph(attributePaths = "systemPermission")
     List<SystemUserPermissionJpaEntity> findBySystemUserId(Long systemUserId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE system_user_permissions SET enabled = true WHERE id = :id", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsBySystemUser_Id(Long systemUserId);
+
+    boolean existsBySystemPermission_Id(Long systemPermissionId);
 }

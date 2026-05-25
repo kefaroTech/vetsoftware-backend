@@ -10,4 +10,5 @@ public interface VaccinationRepository {
     List<Vaccination> findAll();
     List<Vaccination> findAllByAnimalId(Long animalId);
     void delete(Long id);
+    int reactivate(Long id);
 }
