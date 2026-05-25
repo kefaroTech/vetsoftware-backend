@@ -8,6 +8,7 @@ public record ClinicalEvent(
         Long companyId,
         Long consultationId,
         LocalDate eventDate,
+        LocalDate endDate,
         ClinicalEventType eventType,
         String summary
 ) {

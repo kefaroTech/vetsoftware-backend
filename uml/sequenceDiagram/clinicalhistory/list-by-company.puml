@@ -1,0 +1,68 @@
+@startuml clinicalhistory_list_by_company
+title GET /clinical-history?from=&to=&types= — List clinical events for the JWT company
+
+actor Client
+participant "ClinicalHistoryCompanyController" as Controller
+participant "Authz" as Authz
+participant "ListCompanyClinicalEventsUseCase\n<<port.in>>" as UseCase
+participant "ListCompanyClinicalEventsService" as Service
+participant "ClinicalEventRepository\n<<port.out>>" as Repo
+participant "JpaClinicalEventRepository" as JpaAdapter
+participant "ClinicalEventJpaRepository\n<<spring-data>>" as JpaRepo
+participant "ClinicalEventJpaMapper" as Mapper
+database "MySQL\n(v_clinical_event)" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya valido el JWT y puso EmployeeContext en SecurityContextHolder
+  antes de llegar al controller. Authz expone currentCompanyId() para que el
+  controller NO acepte companyId via path/query (defensa en profundidad).
+end note
+
+note over Client, DB
+  La vista v_clinical_event UNION-aglutina 9 tablas clinicas filtrando por
+  enabled=true en cada rama (migration 071). El JPQL filtra adicionalmente
+  por companyId + tipos + rango de fechas.
+end note
+
+Client -> Controller : GET /clinical-history\n?types=CONSULTATION,SURGERY,...\n&from=2026-05-01&to=2026-05-31
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : Long companyId
+
+Controller -> Controller : new ListCompanyClinicalEventsQuery(\n  companyId,\n  types ?? [],\n  from, to\n)\n(record valida que to >= from)
+
+Controller -> UseCase : execute(query)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR SYSTEM OR @authz.isMyCompany(#query.companyId)
+  (cualquier empleado autenticado de la company; defensa en
+  profundidad porque el companyId no viene del request sino del JWT)
+end note
+
+UseCase -> Service : execute(query)
+activate Service
+
+Service -> Repo : findByCompany(query)
+Repo -> JpaAdapter : findByCompany(query)
+JpaAdapter -> JpaAdapter : types = query.types().isEmpty()\n  ? ALL_TYPES : query.types()
+JpaAdapter -> JpaRepo : findByCompany(companyId, types, from, to)
+JpaRepo -> DB : SELECT e.* FROM v_clinical_event e\nWHERE e.company_id = ?\n  AND e.event_type IN (...)\n  AND (? IS NULL OR e.event_date >= ?)\n  AND (? IS NULL OR e.event_date <= ?)\nORDER BY e.event_date ASC, e.source_id ASC
+DB --> JpaRepo : rows
+JpaRepo --> JpaAdapter : List<ClinicalEventViewJpaEntity>
+JpaAdapter -> Mapper : toDomain(entity) por cada row
+Mapper --> JpaAdapter : List<ClinicalEvent>
+JpaAdapter --> Repo : List<ClinicalEvent>
+Repo --> Service : List<ClinicalEvent>
+
+Service -> Service : ClinicalEventDto.from(event) por cada
+Service --> UseCase : List<ClinicalEventDto>
+UseCase --> Controller : List<ClinicalEventDto>
+deactivate Service
+
+Controller -> Controller : toResponse(dto) por cada
+Controller --> Client : 200 OK\nList<ClinicalEventResponse>
+deactivate Controller
+
+@enduml

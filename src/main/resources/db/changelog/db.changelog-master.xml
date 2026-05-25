@@ -77,5 +77,6 @@
     <include file="db/changelog/migrations/071_filter_enabled_in_clinical_event_view.xml"/>
     <include file="db/changelog/migrations/072_add_status_to_spas.xml"/>
     <include file="db/changelog/migrations/073_alter_surgeries_default_status_programada.xml"/>
+    <include file="db/changelog/migrations/074_add_end_date_to_clinical_event_view.xml"/>
 
 </databaseChangeLog>

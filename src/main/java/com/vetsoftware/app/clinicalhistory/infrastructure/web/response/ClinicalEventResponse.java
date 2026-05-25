@@ -5,8 +5,10 @@ import java.time.LocalDate;
 
 public record ClinicalEventResponse(
         Long sourceId,
+        Long animalId,
         ClinicalEventType eventType,
         LocalDate eventDate,
+        LocalDate endDate,
         Long consultationId,
         String summary
 ) {

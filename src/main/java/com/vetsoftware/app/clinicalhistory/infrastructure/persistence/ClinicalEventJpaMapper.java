@@ -13,6 +13,7 @@ public class ClinicalEventJpaMapper {
                 entity.getCompanyId(),
                 entity.getConsultationId(),
                 entity.getEventDate(),
+                entity.getEndDate(),
                 entity.getEventType(),
                 entity.getSummary()
         );

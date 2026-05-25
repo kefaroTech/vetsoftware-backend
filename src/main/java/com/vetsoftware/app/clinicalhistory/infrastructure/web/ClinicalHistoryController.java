@@ -82,8 +82,10 @@ public class ClinicalHistoryController {
     private ClinicalEventResponse toResponse(ClinicalEventDto dto) {
         return new ClinicalEventResponse(
                 dto.sourceId(),
+                dto.animalId(),
                 dto.eventType(),
                 dto.eventDate(),
+                dto.endDate(),
                 dto.consultationId(),
                 dto.summary()
         );

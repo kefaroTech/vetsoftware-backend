@@ -34,6 +34,9 @@ public class ClinicalEventViewJpaEntity {
     @Column(name = "event_date", nullable = false)
     private LocalDate eventDate;
 
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 32)
     private ClinicalEventType eventType;
@@ -49,6 +52,7 @@ public class ClinicalEventViewJpaEntity {
     public Long getCompanyId() { return companyId; }
     public Long getConsultationId() { return consultationId; }
     public LocalDate getEventDate() { return eventDate; }
+    public LocalDate getEndDate() { return endDate; }
     public ClinicalEventType getEventType() { return eventType; }
     public String getSummary() { return summary; }
 }

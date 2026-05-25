@@ -25,4 +25,19 @@ public interface ClinicalEventJpaRepository extends JpaRepository<ClinicalEventV
             @Param("from") LocalDate from,
             @Param("to") LocalDate to
     );
+
+    @Query("""
+            SELECT e FROM ClinicalEventViewJpaEntity e
+            WHERE e.companyId = :companyId
+              AND e.eventType IN :types
+              AND (:from IS NULL OR e.eventDate >= :from)
+              AND (:to IS NULL OR e.eventDate <= :to)
+            ORDER BY e.eventDate ASC, e.sourceId ASC
+            """)
+    List<ClinicalEventViewJpaEntity> findByCompany(
+            @Param("companyId") Long companyId,
+            @Param("types") List<ClinicalEventType> types,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 }
