@@ -315,8 +315,8 @@
         </addColumn>
     </changeSet>
 
-    <changeSet id="068-test_types-enabled" author="claude">
-        <addColumn tableName="test_types">
+    <changeSet id="068-laboratory_test_types-enabled" author="claude">
+        <addColumn tableName="laboratory_test_types">
             <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
