@@ -7,12 +7,32 @@ participant "DeleteConsultationUseCase\n<<port.in>>" as UseCase
 participant "DeleteConsultationService" as Service
 participant "ConsultationRepository\n<<port.out>>" as Repo
 participant "ConsultationJpaRepository\n<<spring-data>>" as JpaRepo
+participant "VaccinationChildrenQueryPort\n<<port.out>>" as VaccChildrenQuery
+participant "VaccinationJpaRepository\n<<spring-data>>" as VaccJpaRepo
+participant "SurgeryChildrenQueryPort\n<<port.out>>" as SurgChildrenQuery
+participant "SurgeryJpaRepository\n<<spring-data>>" as SurgJpaRepo
+participant "HospitalizationChildrenQueryPort\n<<port.out>>" as HospChildrenQuery
+participant "HospitalizationJpaRepository\n<<spring-data>>" as HospJpaRepo
+participant "DewormingChildrenQueryPort\n<<port.out>>" as DewChildrenQuery
+participant "DewormingJpaRepository\n<<spring-data>>" as DewJpaRepo
+participant "DiagnosticImagingChildrenQueryPort\n<<port.out>>" as DiagChildrenQuery
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as DiagJpaRepo
+participant "LaboratoryTestChildrenQueryPort\n<<port.out>>" as LabChildrenQuery
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as LabJpaRepo
+participant "PrescriptionChildrenQueryPort\n<<port.out>>" as PrescChildrenQuery
+participant "PrescriptionJpaRepository\n<<spring-data>>" as PrescJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /consultations/{id}
@@ -39,9 +59,57 @@ alt consultation no existe
 end
 Repo --> Service : Optional<Consultation>
 
+note over Service, DB
+  El service verifica 7 children en orden (short-circuit en el primero true).
+  Cada check sigue exactamente el mismo patrón. A continuación se muestra el
+  primero (Vaccination) en detalle; los restantes se compactan.
+end note
+
+Service -> VaccChildrenQuery : existsActiveByConsultationId(id)
+VaccChildrenQuery -> VaccJpaRepo : existsByConsultation_Id(id)
+VaccJpaRepo -> DB : SELECT EXISTS(...) WHERE consultation_id=? AND enabled=true
+DB --> VaccJpaRepo : true/false
+VaccJpaRepo --> VaccChildrenQuery : boolean
+VaccChildrenQuery --> Service : boolean
+
+Service -> SurgChildrenQuery : existsActiveByConsultationId(id)
+SurgChildrenQuery -> SurgJpaRepo : existsByConsultation_Id(id)
+SurgJpaRepo --> SurgChildrenQuery : boolean
+SurgChildrenQuery --> Service : boolean
+
+Service -> HospChildrenQuery : existsActiveByConsultationId(id)
+HospChildrenQuery -> HospJpaRepo : existsByConsultation_Id(id)
+HospJpaRepo --> HospChildrenQuery : boolean
+HospChildrenQuery --> Service : boolean
+
+Service -> DewChildrenQuery : existsActiveByConsultationId(id)
+DewChildrenQuery -> DewJpaRepo : existsByConsultation_Id(id)
+DewJpaRepo --> DewChildrenQuery : boolean
+DewChildrenQuery --> Service : boolean
+
+Service -> DiagChildrenQuery : existsActiveByConsultationId(id)
+DiagChildrenQuery -> DiagJpaRepo : existsByConsultation_Id(id)
+DiagJpaRepo --> DiagChildrenQuery : boolean
+DiagChildrenQuery --> Service : boolean
+
+Service -> LabChildrenQuery : existsActiveByConsultationId(id)
+LabChildrenQuery -> LabJpaRepo : existsByConsultation_Id(id)
+LabJpaRepo --> LabChildrenQuery : boolean
+LabChildrenQuery --> Service : boolean
+
+Service -> PrescChildrenQuery : existsActiveByConsultationId(id)
+PrescChildrenQuery -> PrescJpaRepo : existsByConsultation_Id(id)
+PrescJpaRepo --> PrescChildrenQuery : boolean
+PrescChildrenQuery --> Service : boolean
+
+alt cualquier check devolvió true
+  Service --> GEH : ConsultationHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE consultation
+JpaRepo -> DB : UPDATE consultation SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

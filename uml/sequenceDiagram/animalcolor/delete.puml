@@ -7,12 +7,20 @@ participant "DeleteAnimalColorUseCase\n<<port.in>>" as UseCase
 participant "DeleteAnimalColorService" as Service
 participant "AnimalColorRepository\n<<port.out>>" as Repo
 participant "AnimalColorJpaRepository\n<<spring-data>>" as JpaRepo
+participant "AnimalChildrenQueryPort\n<<port.out>>" as AnimalCP
+participant "AnimalJpaRepository\n<<spring-data>>" as AnimalJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /animal-colors/{id}
@@ -38,9 +46,20 @@ alt color no existe
 end
 Repo --> Service : Optional<AnimalColor>
 
+Service -> AnimalCP : existsActiveByAnimalColorId(id)
+AnimalCP -> AnimalJpaRepo : existsByAnimalColor_Id(id)
+AnimalJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_color_id=? AND enabled=true
+DB --> AnimalJpaRepo : true/false
+AnimalJpaRepo --> AnimalCP : boolean
+AnimalCP --> Service : boolean
+alt hay animales activos
+  Service --> GEH : AnimalColorHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE animal_color
+JpaRepo -> DB : UPDATE animal_color SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

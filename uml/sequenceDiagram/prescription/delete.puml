@@ -7,12 +7,20 @@ participant "DeletePrescriptionUseCase\n<<port.in>>" as UseCase
 participant "DeletePrescriptionService" as Service
 participant "PrescriptionRepository\n<<port.out>>" as Repo
 participant "PrescriptionJpaRepository\n<<spring-data>>" as JpaRepo
+participant "MedicamentPrescriptionChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "MedicamentPrescriptionJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /prescriptions/{id}
@@ -38,9 +46,20 @@ alt prescription no existe
 end
 Repo --> Service : Optional<Prescription>
 
+Service -> ChildrenQuery : existsActiveByPrescriptionId(id)
+ChildrenQuery -> ChildJpaRepo : existsByPrescription_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE prescription_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenQuery : boolean
+ChildrenQuery --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : PrescriptionHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE prescription
+JpaRepo -> DB : UPDATE prescription SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

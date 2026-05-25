@@ -7,12 +7,20 @@ participant "DeleteSpaTypeUseCase\n<<port.in>>" as UseCase
 participant "DeleteSpaTypeService" as Service
 participant "SpaTypeRepository\n<<port.out>>" as Repo
 participant "SpaTypeJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SpaChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "SpaJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /spa-types/{id}
@@ -38,9 +46,20 @@ alt spa_type no existe
 end
 Repo --> Service : Optional<SpaType>
 
+Service -> ChildrenQuery : existsActiveBySpaTypeId(id)
+ChildrenQuery -> ChildJpaRepo : existsBySpaType_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE spa_type_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenQuery : boolean
+ChildrenQuery --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : SpaTypeHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE spa_type
+JpaRepo -> DB : UPDATE spa_type SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

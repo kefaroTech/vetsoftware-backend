@@ -17,6 +17,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : DELETE /role-permissions/{id}
 activate Controller
 
@@ -44,7 +50,7 @@ Repo --> Service : Optional<RolePermission>
 
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE role_permission
+JpaRepo -> DB : UPDATE role_permission SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

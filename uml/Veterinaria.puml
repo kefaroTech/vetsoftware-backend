@@ -91,18 +91,21 @@ class SystemUser {
   -code: String
   -hashPassword: String
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class SystemPermission {
   -name: String
   -code: String
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class SystemUserPermission {
   -systemUser: SystemUser
   -systemPermission: SystemPermission
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 ' =========================
@@ -115,12 +118,14 @@ class Membership {
   -mandatory: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Module {
   -name: String
   -code: String
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class SubModule {
@@ -128,12 +133,14 @@ class SubModule {
   -code: String
   -module: Module
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class MembershipSubModule {
   -membership: Membership
   -subModule: SubModule
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class BasePermission {
@@ -141,6 +148,7 @@ class BasePermission {
   -code: String
   -subModule: SubModule
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 ' =========================
@@ -155,6 +163,7 @@ class Company {
   -city: City
   -membership: Membership
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class Employee {
@@ -165,6 +174,7 @@ class Employee {
   -status: EmployeeStatus
   -company: Company
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 ' =========================
@@ -176,6 +186,7 @@ class BaseRole {
   -code: String
   -mandatory: Boolean
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class Role {
@@ -184,6 +195,7 @@ class Role {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Permission {
@@ -192,6 +204,7 @@ class Permission {
   -company: Company
   -subModule: SubModule
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class RolePermission {
@@ -199,12 +212,14 @@ class RolePermission {
   -permission: Permission
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class BaseRolePermission {
   -baseRole: BaseRole
   -basePermission: BasePermission
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class EmployeeRole {
@@ -212,6 +227,7 @@ class EmployeeRole {
   -role: Role
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 ' =========================
@@ -221,18 +237,21 @@ class EmployeeRole {
 class Country {
   -name: String
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class State {
   -name: String
   -country: Country
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 class City {
   -name: String
   -state: State
   -createdDate: LocalDateTime
+  -enabled: boolean
 }
 
 ' =========================
@@ -249,18 +268,21 @@ class Owner {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Specie {
   -name: String
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class AnimalColor {
   -name: String
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Breed {
@@ -268,6 +290,7 @@ class Breed {
   -specie: Specie
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Animal {
@@ -289,6 +312,7 @@ class Animal {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 ' =========================
@@ -300,6 +324,7 @@ class ConsultationType {
   -description: String
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Consultation {
@@ -314,6 +339,7 @@ class Consultation {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class VaccinationType {
@@ -323,6 +349,7 @@ class VaccinationType {
   -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Vaccination {
@@ -336,6 +363,7 @@ class Vaccination {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class SurgeryType {
@@ -345,6 +373,7 @@ class SurgeryType {
   -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Surgery {
@@ -360,6 +389,7 @@ class Surgery {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Hospitalization {
@@ -375,6 +405,7 @@ class Hospitalization {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class DayCare {
@@ -388,6 +419,7 @@ class DayCare {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class LaboratoryTestType {
@@ -397,6 +429,7 @@ class LaboratoryTestType {
   -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class LaboratoryTest {
@@ -410,6 +443,7 @@ class LaboratoryTest {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Prescription {
@@ -421,6 +455,7 @@ class Prescription {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class MedicamentPrescription {
@@ -431,6 +466,7 @@ class MedicamentPrescription {
   -prescription: Prescription
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Deworming {
@@ -446,6 +482,7 @@ class Deworming {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class DiagnosticImagingType {
@@ -455,6 +492,7 @@ class DiagnosticImagingType {
   -general: Boolean
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class DiagnosticImaging {
@@ -470,6 +508,7 @@ class DiagnosticImaging {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class SpaType {
@@ -477,6 +516,7 @@ class SpaType {
   -description: String
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 class Spa {
@@ -489,6 +529,7 @@ class Spa {
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -enabled: boolean
 }
 
 ' =========================

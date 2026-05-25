@@ -15,6 +15,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : DELETE /dewormings/{id}
 activate Controller
 
@@ -41,7 +47,7 @@ Repo --> Service : Optional<Deworming>
 
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE deworming
+JpaRepo -> DB : UPDATE deworming SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

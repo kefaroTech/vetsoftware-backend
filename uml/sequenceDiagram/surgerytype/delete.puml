@@ -7,12 +7,20 @@ participant "DeleteSurgeryTypeUseCase\n<<port.in>>" as UseCase
 participant "DeleteSurgeryTypeService" as Service
 participant "SurgeryTypeRepository\n<<port.out>>" as Repo
 participant "SurgeryTypeJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SurgeryChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "SurgeryJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /surgery-types/{id}
@@ -38,9 +46,20 @@ alt surgery_type no existe
 end
 Repo --> Service : Optional<SurgeryType>
 
+Service -> ChildrenQuery : existsActiveBySurgeryTypeId(id)
+ChildrenQuery -> ChildJpaRepo : existsBySurgeryType_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE surgery_type_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenQuery : boolean
+ChildrenQuery --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : SurgeryTypeHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE surgery_type
+JpaRepo -> DB : UPDATE surgery_type SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

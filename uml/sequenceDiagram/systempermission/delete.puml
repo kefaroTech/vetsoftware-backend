@@ -7,12 +7,20 @@ participant "DeleteSystemPermissionUseCase\n<<port.in>>" as UseCase
 participant "DeleteSystemPermissionService" as Service
 participant "SystemPermissionRepository\n<<port.out>>" as Repo
 participant "SystemPermissionJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SystemUserPermissionChildrenQueryPort\n<<port.out>>" as SupChildrenPort
+participant "SystemUserPermissionJpaRepository\n<<spring-data>>" as SupJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /system-permissions/{id}
@@ -38,9 +46,20 @@ alt systemPermission no existe
 end
 Repo --> Service : Optional<SystemPermission>
 
+Service -> SupChildrenPort : existsActiveBySystemPermissionId(id)
+SupChildrenPort -> SupJpaRepo : existsBySystemPermission_Id(id)
+SupJpaRepo -> DB : SELECT EXISTS(...) WHERE system_permission_id=? AND enabled=true
+DB --> SupJpaRepo : true/false
+SupJpaRepo --> SupChildrenPort : boolean
+SupChildrenPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : SystemPermissionHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE system_permission
+JpaRepo -> DB : UPDATE system_permission SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

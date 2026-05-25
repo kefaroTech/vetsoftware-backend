@@ -7,12 +7,20 @@ participant "DeleteLaboratoryTestTypeUseCase\n<<port.in>>" as UseCase
 participant "DeleteLaboratoryTestTypeService" as Service
 participant "LaboratoryTestTypeRepository\n<<port.out>>" as Repo
 participant "LaboratoryTestTypeJpaRepository\n<<spring-data>>" as JpaRepo
+participant "LaboratoryTestChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /laboratory-test-types/{id}
@@ -38,9 +46,20 @@ alt type no existe
 end
 Repo --> Service : Optional<LaboratoryTestType>
 
+Service -> ChildrenQuery : existsActiveByLaboratoryTestTypeId(id)
+ChildrenQuery -> ChildJpaRepo : existsByLaboratoryTestType_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE laboratory_test_type_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenQuery : boolean
+ChildrenQuery --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : LaboratoryTestTypeHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE laboratory_test_type
+JpaRepo -> DB : UPDATE laboratory_test_type SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

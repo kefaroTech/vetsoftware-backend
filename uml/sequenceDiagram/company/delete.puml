@@ -7,12 +7,21 @@ participant "DeleteCompanyUseCase\n<<port.in>>" as UseCase
 participant "DeleteCompanyService" as Service
 participant "CompanyRepository\n<<port.out>>" as Repo
 participant "CompanyJpaRepository\n<<spring-data>>" as JpaRepo
+participant "AnimalChildrenQueryPort\n<<port.out>>" as AnimalChildrenPort
+participant "AnimalJpaRepository\n<<spring-data>>" as AnimalJpaRepo
+participant "Otros 14 ChildrenQueryPort\n(Owner, Employee, Vaccination,\nSurgery, Hospitalization, Deworming,\nDiagnosticImaging, LaboratoryTest,\nPrescription, Spa, DayCare,\nConsultation, Permission, Role)\n<<port.out>>" as OtherChildrenPorts
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /companies/{id}
@@ -38,9 +47,34 @@ alt company no existe
 end
 Repo --> Service : Optional<Company>
 
+' === Verificación RESTRICT: hijos activos ===
+' Primer child detallado: Animal
+Service -> AnimalChildrenPort : existsActiveByCompanyId(id)
+AnimalChildrenPort -> AnimalJpaRepo : existsByCompany_Id(id)
+AnimalJpaRepo -> DB : SELECT EXISTS(...) WHERE company_id=? AND enabled=true
+DB --> AnimalJpaRepo : true/false
+AnimalJpaRepo --> AnimalChildrenPort : boolean
+AnimalChildrenPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : CompanyHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+' Resto de children (mismo patrón, agregado)
+loop para cada uno de los 14 children restantes
+  Service -> OtherChildrenPorts : existsActiveByCompanyId(id)
+  OtherChildrenPorts -> DB : SELECT EXISTS(...) WHERE company_id=? AND enabled=true
+  DB --> OtherChildrenPorts : true/false
+  OtherChildrenPorts --> Service : boolean
+  alt hay hijos activos
+    Service --> GEH : CompanyHasActiveChildrenException
+    GEH --> Client : 409 Conflict
+  end
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE company
+JpaRepo -> DB : UPDATE company SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

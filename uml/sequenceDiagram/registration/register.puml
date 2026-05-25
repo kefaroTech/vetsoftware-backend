@@ -25,6 +25,12 @@ note over Client, GEH
   (POST /register), no requiere JWT.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : POST /register\n+ RegisterUserRequest
 activate Controller
 

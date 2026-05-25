@@ -21,6 +21,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : POST /owners\n+ CreateOwnerRequest (sin companyId)
 activate Controller
 

@@ -17,6 +17,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : POST /laboratory-test-types\n+ CreateLaboratoryTestTypeRequest
 activate Controller
 

@@ -7,12 +7,36 @@ participant "DeleteAnimalUseCase\n<<port.in>>" as UseCase
 participant "DeleteAnimalService" as Service
 participant "AnimalRepository\n<<port.out>>" as Repo
 participant "AnimalJpaRepository\n<<spring-data>>" as JpaRepo
+participant "VaccinationChildrenQueryPort\n<<port.out>>" as VaccCP
+participant "VaccinationJpaRepository\n<<spring-data>>" as VaccJpaRepo
+participant "DewormingChildrenQueryPort\n<<port.out>>" as DewCP
+participant "DewormingJpaRepository\n<<spring-data>>" as DewJpaRepo
+participant "SurgeryChildrenQueryPort\n<<port.out>>" as SurgCP
+participant "SurgeryJpaRepository\n<<spring-data>>" as SurgJpaRepo
+participant "HospitalizationChildrenQueryPort\n<<port.out>>" as HospCP
+participant "HospitalizationJpaRepository\n<<spring-data>>" as HospJpaRepo
+participant "DiagnosticImagingChildrenQueryPort\n<<port.out>>" as DiagCP
+participant "DiagnosticImagingJpaRepository\n<<spring-data>>" as DiagJpaRepo
+participant "LaboratoryTestChildrenQueryPort\n<<port.out>>" as LabCP
+participant "LaboratoryTestJpaRepository\n<<spring-data>>" as LabJpaRepo
+participant "SpaChildrenQueryPort\n<<port.out>>" as SpaCP
+participant "SpaJpaRepository\n<<spring-data>>" as SpaJpaRepo
+participant "DayCareChildrenQueryPort\n<<port.out>>" as DayCP
+participant "DayCareJpaRepository\n<<spring-data>>" as DayJpaRepo
+participant "ConsultationChildrenQueryPort\n<<port.out>>" as ConsCP
+participant "ConsultationJpaRepository\n<<spring-data>>" as ConsJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /animals/{id}
@@ -35,9 +59,115 @@ alt animal no existe
 end
 Repo --> Service : Optional<Animal>
 
+note over Service
+  RESTRICT children: el service consulta los 9 ChildrenQueryPort
+  (vaccination, deworming, surgery, hospitalization, diagnosticImaging,
+   laboratoryTest, spa, dayCare, consultation) ANTES de borrar.
+  Si alguno tiene hijos activos → AnimalHasActiveChildrenException → 409.
+end note
+
+Service -> VaccCP : existsActiveByAnimalId(id)
+VaccCP -> VaccJpaRepo : existsByAnimal_Id(id)
+VaccJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> VaccJpaRepo : true/false
+VaccJpaRepo --> VaccCP : boolean
+VaccCP --> Service : boolean
+alt hay vaccinations activas
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> DewCP : existsActiveByAnimalId(id)
+DewCP -> DewJpaRepo : existsByAnimal_Id(id)
+DewJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> DewJpaRepo : true/false
+DewJpaRepo --> DewCP : boolean
+DewCP --> Service : boolean
+alt hay dewormings activos
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> SurgCP : existsActiveByAnimalId(id)
+SurgCP -> SurgJpaRepo : existsByAnimal_Id(id)
+SurgJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> SurgJpaRepo : true/false
+SurgJpaRepo --> SurgCP : boolean
+SurgCP --> Service : boolean
+alt hay cirugías activas
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> HospCP : existsActiveByAnimalId(id)
+HospCP -> HospJpaRepo : existsByAnimal_Id(id)
+HospJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> HospJpaRepo : true/false
+HospJpaRepo --> HospCP : boolean
+HospCP --> Service : boolean
+alt hay hospitalizaciones activas
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> DiagCP : existsActiveByAnimalId(id)
+DiagCP -> DiagJpaRepo : existsByAnimal_Id(id)
+DiagJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> DiagJpaRepo : true/false
+DiagJpaRepo --> DiagCP : boolean
+DiagCP --> Service : boolean
+alt hay diagnostic imagings activos
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> LabCP : existsActiveByAnimalId(id)
+LabCP -> LabJpaRepo : existsByAnimal_Id(id)
+LabJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> LabJpaRepo : true/false
+LabJpaRepo --> LabCP : boolean
+LabCP --> Service : boolean
+alt hay laboratory tests activos
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> SpaCP : existsActiveByAnimalId(id)
+SpaCP -> SpaJpaRepo : existsByAnimal_Id(id)
+SpaJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> SpaJpaRepo : true/false
+SpaJpaRepo --> SpaCP : boolean
+SpaCP --> Service : boolean
+alt hay spa activos
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> DayCP : existsActiveByAnimalId(id)
+DayCP -> DayJpaRepo : existsByAnimal_Id(id)
+DayJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> DayJpaRepo : true/false
+DayJpaRepo --> DayCP : boolean
+DayCP --> Service : boolean
+alt hay day cares activos
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> ConsCP : existsActiveByAnimalId(id)
+ConsCP -> ConsJpaRepo : existsByAnimal_Id(id)
+ConsJpaRepo -> DB : SELECT EXISTS(...) WHERE animal_id=? AND enabled=true
+DB --> ConsJpaRepo : true/false
+ConsJpaRepo --> ConsCP : boolean
+ConsCP --> Service : boolean
+alt hay consultations activas
+  Service --> GEH : AnimalHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE animal
+JpaRepo -> DB : UPDATE animal SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

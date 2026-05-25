@@ -7,12 +7,20 @@ participant "DeleteSystemUserUseCase\n<<port.in>>" as UseCase
 participant "DeleteSystemUserService" as Service
 participant "SystemUserRepository\n<<port.out>>" as Repo
 participant "SystemUserJpaRepository\n<<spring-data>>" as JpaRepo
+participant "SystemUserPermissionChildrenQueryPort\n<<port.out>>" as SupChildrenPort
+participant "SystemUserPermissionJpaRepository\n<<spring-data>>" as SupJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /system-users/{id}
@@ -38,9 +46,20 @@ alt systemUser no existe
 end
 Repo --> Service : Optional<SystemUser>
 
+Service -> SupChildrenPort : existsActiveBySystemUserId(id)
+SupChildrenPort -> SupJpaRepo : existsBySystemUser_Id(id)
+SupJpaRepo -> DB : SELECT EXISTS(...) WHERE system_user_id=? AND enabled=true
+DB --> SupJpaRepo : true/false
+SupJpaRepo --> SupChildrenPort : boolean
+SupChildrenPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : SystemUserHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE system_user
+JpaRepo -> DB : UPDATE system_user SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

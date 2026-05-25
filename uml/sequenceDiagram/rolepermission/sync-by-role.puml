@@ -19,6 +19,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : PUT /role-permissions/by-role/{roleId}\n+ SyncRolePermissionsRequest
 activate Controller
 
@@ -57,7 +63,7 @@ Service -> Service : compute diff:\n  toRemove = existing - desired\n  toAdd    
 alt toRemoveRpIds no vacío
   Service -> Repo : deleteAllByIds(toRemoveRpIds)
   Repo -> JpaRepo : deleteAllByIdInBatch(ids)
-  JpaRepo -> DB : DELETE FROM role_permission\nWHERE id IN (...)
+  JpaRepo -> DB : UPDATE role_permission SET enabled=false\nWHERE id IN (...)
   DB --> JpaRepo : ok
 end
 

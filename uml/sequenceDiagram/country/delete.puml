@@ -7,12 +7,20 @@ participant "DeleteCountryUseCase\n<<port.in>>" as UseCase
 participant "DeleteCountryService" as Service
 participant "CountryRepository\n<<port.out>>" as Repo
 participant "CountryJpaRepository\n<<spring-data>>" as JpaRepo
+participant "StateChildrenQueryPort\n<<port.out>>" as ChildrenPort
+participant "StateJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso el principal
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /countries/{id}
@@ -38,9 +46,20 @@ alt country no existe
 end
 Repo --> Service : Optional<Country>
 
+Service -> ChildrenPort : existsActiveByCountryId(id)
+ChildrenPort -> ChildJpaRepo : existsByCountry_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE country_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenPort : boolean
+ChildrenPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : CountryHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE country
+JpaRepo -> DB : UPDATE country SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

@@ -19,6 +19,12 @@ note over Client, GEH
   (POST /auth/login/**), no requiere JWT.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : POST /auth/login/system\n+ LoginSystemUserRequest(code, password)
 activate Controller
 
@@ -31,7 +37,7 @@ activate Service
 Service -> CredsRepo : findByCode(code)
 CredsRepo -> JpaCredsRepo : findByCode(code)
 JpaCredsRepo -> JpaRepo : findByCode(code)
-JpaRepo -> DB : SELECT system_user\nWHERE code=?
+JpaRepo -> DB : SELECT system_user\nWHERE code=?\nAND enabled=true (via @SoftDelete)
 DB --> JpaRepo : row | empty
 JpaRepo --> JpaCredsRepo : Optional<SystemUserJpaEntity>
 JpaCredsRepo --> Service : Optional<SystemUserCredentials>\n(id, hashPassword)

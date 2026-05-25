@@ -16,6 +16,12 @@ note over Client, GEH
   en SecurityContextHolder antes de llegar al controller.
 end note
 
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
 Client -> Controller : PATCH /diagnostic-imagings/{id}/status\n+ ChangeDiagnosticImagingStatusRequest
 activate Controller
 

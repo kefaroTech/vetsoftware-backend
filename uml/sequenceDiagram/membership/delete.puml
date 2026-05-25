@@ -7,12 +7,20 @@ participant "DeleteMembershipUseCase\n<<port.in>>" as UseCase
 participant "DeleteMembershipService" as Service
 participant "MembershipRepository\n<<port.out>>" as Repo
 participant "MembershipJpaRepository\n<<spring-data>>" as JpaRepo
+participant "MembershipSubModuleChildrenQueryPort\n<<port.out>>" as ChildrenPort
+participant "MembershipSubModuleJpaRepository\n<<spring-data>>" as ChildJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /memberships/{id}
@@ -38,9 +46,20 @@ alt membership no existe
 end
 Repo --> Service : Optional<Membership>
 
+Service -> ChildrenPort : existsActiveByMembershipId(id)
+ChildrenPort -> ChildJpaRepo : existsByMembership_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE membership_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenPort : boolean
+ChildrenPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : MembershipHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE membership
+JpaRepo -> DB : UPDATE membership SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

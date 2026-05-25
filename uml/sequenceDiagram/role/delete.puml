@@ -7,12 +7,22 @@ participant "DeleteRoleUseCase\n<<port.in>>" as UseCase
 participant "DeleteRoleService" as Service
 participant "RoleRepository\n<<port.out>>" as Repo
 participant "RoleJpaRepository\n<<spring-data>>" as JpaRepo
+participant "RolePermissionChildrenQueryPort\n<<port.out>>" as RolePermPort
+participant "RolePermissionJpaRepository\n<<spring-data>>" as RolePermJpaRepo
+participant "EmployeeRoleChildrenQueryPort\n<<port.out>>" as EmpRolePort
+participant "EmployeeRoleJpaRepository\n<<spring-data>>" as EmpRoleJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
 note over Client, GEH
   AuthFilter ya validó el JWT y puso EmployeeContext
   en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
 end note
 
 Client -> Controller : DELETE /roles/{id}
@@ -38,9 +48,31 @@ alt role no existe
 end
 Repo --> Service : Optional<Role>
 
+Service -> RolePermPort : existsActiveByRoleId(id)
+RolePermPort -> RolePermJpaRepo : existsByRole_Id(id)
+RolePermJpaRepo -> DB : SELECT EXISTS(...) WHERE role_id=? AND enabled=true
+DB --> RolePermJpaRepo : true/false
+RolePermJpaRepo --> RolePermPort : boolean
+RolePermPort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : RoleHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> EmpRolePort : existsActiveByRoleId(id)
+EmpRolePort -> EmpRoleJpaRepo : existsByRole_Id(id)
+EmpRoleJpaRepo -> DB : SELECT EXISTS(...) WHERE role_id=? AND enabled=true
+DB --> EmpRoleJpaRepo : true/false
+EmpRoleJpaRepo --> EmpRolePort : boolean
+EmpRolePort --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : RoleHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)
-JpaRepo -> DB : DELETE role
+JpaRepo -> DB : UPDATE role SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 JpaRepo --> Repo : void
 Repo --> Service : void

@@ -1,10 +1,10 @@
-@startuml spa_list
-title GET /spas — List all Spas
+@startuml spa_list_by_animal
+title GET /spas/by-animal/{animalId} — List Spas of an Animal
 
 actor Client
 participant "SpaController" as Controller
-participant "ListSpasUseCase\n<<port.in>>" as UseCase
-participant "ListSpasService" as Service
+participant "ListSpasByAnimalUseCase\n<<port.in>>" as UseCase
+participant "ListSpasByAnimalService" as Service
 participant "SpaRepository\n<<port.out>>" as Repo
 participant "SpaJpaMapper" as Mapper
 participant "SpaJpaRepository\n<<spring-data>>" as JpaRepo
@@ -21,21 +21,21 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : GET /spas
+Client -> Controller : GET /spas/by-animal/{animalId}
 activate Controller
 
-Controller -> UseCase : listAll()
+Controller -> UseCase : listByAnimal(animalId)
 note right of UseCase
   @PreAuthorize:
   admin.all OR hasRole('SYSTEM')
 end note
-UseCase -> Service : listAll()
+UseCase -> Service : listByAnimal(animalId)
 activate Service
 
-Service -> Repo : findAll()
+Service -> Repo : findAllByAnimalId(animalId)
 activate Repo
-Repo -> JpaRepo : findAll()
-JpaRepo -> DB : SELECT spa\nJOIN FETCH (spaType, animal, company)\nvia @EntityGraph
+Repo -> JpaRepo : findAllByAnimalId(animalId)
+JpaRepo -> DB : SELECT spa\nWHERE animal_id=?\nJOIN FETCH (spaType, animal, company)\nvia @EntityGraph
 DB --> JpaRepo : rows[]
 JpaRepo --> Repo : List<SpaJpaEntity>
 Repo -> Mapper : toDomain(entity) por cada row
