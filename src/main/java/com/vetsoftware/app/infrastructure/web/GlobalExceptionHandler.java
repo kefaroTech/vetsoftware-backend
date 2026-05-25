@@ -1,47 +1,74 @@
 package com.vetsoftware.app.infrastructure.web;
 
+import com.vetsoftware.app.animal.domain.AnimalHasActiveChildrenException;
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
+import com.vetsoftware.app.animalcolor.domain.AnimalColorHasActiveChildrenException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
+import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
+import com.vetsoftware.app.baserole.domain.BaseRoleHasActiveChildrenException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
+import com.vetsoftware.app.breed.domain.BreedHasActiveChildrenException;
 import com.vetsoftware.app.breed.domain.BreedNotFoundException;
+import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
+import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
+import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
+import com.vetsoftware.app.country.domain.CountryHasActiveChildrenException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.daycare.domain.DayCareNotFoundException;
 import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
+import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeHasActiveChildrenException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
+import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
+import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
+import com.vetsoftware.app.membership.domain.MembershipHasActiveChildrenException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
+import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
+import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
+import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.spa.domain.SpaNotFoundException;
+import com.vetsoftware.app.spatype.domain.SpaTypeHasActiveChildrenException;
 import com.vetsoftware.app.spatype.domain.SpaTypeNotFoundException;
+import com.vetsoftware.app.specie.domain.SpecieHasActiveChildrenException;
 import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
 import com.vetsoftware.app.surgery.domain.SurgeryNotFoundException;
+import com.vetsoftware.app.surgerytype.domain.SurgeryTypeHasActiveChildrenException;
 import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
+import com.vetsoftware.app.state.domain.StateHasActiveChildrenException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
+import com.vetsoftware.app.submodule.domain.SubModuleHasActiveChildrenException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
+import com.vetsoftware.app.systempermission.domain.SystemPermissionHasActiveChildrenException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
+import com.vetsoftware.app.systemuser.domain.SystemUserHasActiveChildrenException;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +117,40 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            ConsultationTypeHasActiveChildrenException.class,
+            VaccinationTypeHasActiveChildrenException.class,
+            SurgeryTypeHasActiveChildrenException.class,
+            LaboratoryTestTypeHasActiveChildrenException.class,
+            DiagnosticImagingTypeHasActiveChildrenException.class,
+            SpaTypeHasActiveChildrenException.class,
+            AnimalColorHasActiveChildrenException.class,
+            SpecieHasActiveChildrenException.class,
+            BreedHasActiveChildrenException.class,
+            OwnerHasActiveChildrenException.class,
+            AnimalHasActiveChildrenException.class,
+            ConsultationHasActiveChildrenException.class,
+            PrescriptionHasActiveChildrenException.class,
+            CountryHasActiveChildrenException.class,
+            StateHasActiveChildrenException.class,
+            CityHasActiveChildrenException.class,
+            ModuleHasActiveChildrenException.class,
+            SubModuleHasActiveChildrenException.class,
+            MembershipHasActiveChildrenException.class,
+            BasePermissionHasActiveChildrenException.class,
+            BaseRoleHasActiveChildrenException.class,
+            RoleHasActiveChildrenException.class,
+            PermissionHasActiveChildrenException.class,
+            SystemUserHasActiveChildrenException.class,
+            SystemPermissionHasActiveChildrenException.class,
+            CompanyHasActiveChildrenException.class,
+            EmployeeHasActiveChildrenException.class
+    })
+    public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
+        log.warn("Cannot delete entity with active children: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
