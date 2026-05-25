@@ -74,5 +74,8 @@
     <include file="db/changelog/migrations/068_add_enabled_to_all_tables.xml"/>
     <include file="db/changelog/migrations/069_drop_employees_status.xml"/>
     <include file="db/changelog/migrations/070_add_unique_to_system_user_permissions.xml"/>
+    <include file="db/changelog/migrations/071_filter_enabled_in_clinical_event_view.xml"/>
+    <include file="db/changelog/migrations/072_add_status_to_spas.xml"/>
+    <include file="db/changelog/migrations/073_alter_surgeries_default_status_programada.xml"/>
 
 </databaseChangeLog>

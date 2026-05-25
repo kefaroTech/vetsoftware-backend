@@ -34,6 +34,9 @@ public class SpaJpaEntity {
     @Column(nullable = false, length = 2000)
     private String observations;
 
+    @Column(nullable = false, length = 20)
+    private String status;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "animal_id", nullable = false)
     private AnimalJpaEntity animal;
@@ -62,6 +65,8 @@ public class SpaJpaEntity {
     public void setDetails(String details) { this.details = details; }
     public String getObservations() { return observations; }
     public void setObservations(String observations) { this.observations = observations; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public AnimalJpaEntity getAnimal() { return animal; }
     public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
     public CompanyJpaEntity getCompany() { return company; }

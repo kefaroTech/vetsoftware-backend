@@ -54,7 +54,9 @@ end
 Service -> CompanyQP : findById(companyId)
 CompanyQP --> Service : Optional<CompanyRef>
 
-Service -> Service : LaboratoryTest.create(...)\n(invariantes de dominio)
+Service -> Service : initialStatus = command.status() == null\n  ? PENDIENTE\n  : LaboratoryTestStatus.valueOf(status)\n(default PENDIENTE; el front manda\nPENDIENTE_POR_PROCESAR si la muestra\nya fue recolectada al crear)
+
+Service -> Service : LaboratoryTest.create(..., initialStatus, ...)\n(invariantes de dominio:\nstatus solo PENDIENTE | PENDIENTE_POR_PROCESAR)
 
 Service -> Repo : save(laboratoryTest)
 activate Repo

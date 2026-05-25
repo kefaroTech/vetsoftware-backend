@@ -43,7 +43,7 @@ public class Surgery {
                                  String medicament, String observations, String complications,
                                  AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Surgery(null, date, surgeryType, description, medicament, observations,
-                           complications, SurgeryStatus.PENDIENTE, animal, consultation, company,
+                           complications, SurgeryStatus.PROGRAMADA, animal, consultation, company,
                            LocalDateTime.now(), true);
     }
 

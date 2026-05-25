@@ -12,6 +12,7 @@ import com.vetsoftware.app.laboratorytest.domain.AnimalRef;
 import com.vetsoftware.app.laboratorytest.domain.CompanyRef;
 import com.vetsoftware.app.laboratorytest.domain.ConsultationRef;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestStatus;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestTypeRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -49,9 +50,13 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
+        LaboratoryTestStatus initialStatus = command.status() == null || command.status().isBlank()
+            ? LaboratoryTestStatus.PENDIENTE
+            : LaboratoryTestStatus.valueOf(command.status().toUpperCase());
+
         LaboratoryTest laboratoryTest = LaboratoryTest.create(
             command.date(), testType, command.quantity(), command.diagnosis(),
-            animal, consultation, company);
+            initialStatus, animal, consultation, company);
         return LaboratoryTestDto.from(repository.save(laboratoryTest));
     }
 }

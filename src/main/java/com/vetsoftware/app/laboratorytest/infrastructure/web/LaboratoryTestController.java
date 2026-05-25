@@ -65,7 +65,8 @@ public class LaboratoryTestController {
         return toResponse(createUseCase.execute(
             new CreateLaboratoryTestCommand(
                 request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.animalId(), request.consultationId(),
+                request.diagnosis(), request.status(),
+                request.animalId(), request.consultationId(),
                 request.companyId())));
     }
 

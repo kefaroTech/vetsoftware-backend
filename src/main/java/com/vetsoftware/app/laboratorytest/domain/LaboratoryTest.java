@@ -37,8 +37,20 @@ public class LaboratoryTest {
     public static LaboratoryTest create(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                                         String diagnosis, AnimalRef animal,
                                         ConsultationRef consultation, CompanyRef company) {
+        return create(date, testType, quantity, diagnosis, LaboratoryTestStatus.PENDIENTE,
+                      animal, consultation, company);
+    }
+
+    public static LaboratoryTest create(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
+                                        String diagnosis, LaboratoryTestStatus initialStatus,
+                                        AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
+        if (initialStatus != LaboratoryTestStatus.PENDIENTE
+                && initialStatus != LaboratoryTestStatus.PENDIENTE_POR_PROCESAR) {
+            throw new IllegalArgumentException(
+                "initial status must be PENDIENTE or PENDIENTE_POR_PROCESAR");
+        }
         return new LaboratoryTest(null, date, testType, quantity, diagnosis,
-                                  LaboratoryTestStatus.PENDIENTE, animal, consultation, company,
+                                  initialStatus, animal, consultation, company,
                                   LocalDateTime.now(), true);
     }
 

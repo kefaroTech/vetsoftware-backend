@@ -7,6 +7,7 @@ public record CreateLaboratoryTestCommand(
         Long testTypeId,
         Integer quantity,
         String diagnosis,
+        String status,
         Long animalId,
         Long consultationId,
         Long companyId

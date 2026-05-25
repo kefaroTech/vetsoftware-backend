@@ -1,11 +1,13 @@
 package com.vetsoftware.app.spa.infrastructure.web;
 
+import com.vetsoftware.app.spa.application.command.ChangeSpaStatusCommand;
 import com.vetsoftware.app.spa.application.command.CreateSpaCommand;
 import com.vetsoftware.app.spa.application.command.UpdateSpaCommand;
 import com.vetsoftware.app.spa.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.spa.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.spa.application.dto.SpaDto;
 import com.vetsoftware.app.spa.application.dto.SpaTypeSummaryDto;
+import com.vetsoftware.app.spa.application.port.in.ChangeSpaStatusUseCase;
 import com.vetsoftware.app.spa.application.port.in.CreateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.DeleteSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.FindSpaUseCase;
@@ -13,6 +15,7 @@ import com.vetsoftware.app.spa.application.port.in.ListSpasByAnimalUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasUseCase;
 import com.vetsoftware.app.spa.application.port.in.ReactivateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.UpdateSpaUseCase;
+import com.vetsoftware.app.spa.infrastructure.web.request.ChangeSpaStatusRequest;
 import com.vetsoftware.app.spa.infrastructure.web.request.CreateSpaRequest;
 import com.vetsoftware.app.spa.infrastructure.web.request.UpdateSpaRequest;
 import com.vetsoftware.app.spa.infrastructure.web.response.AnimalSummary;
@@ -34,6 +37,7 @@ public class SpaController {
     private final ListSpasByAnimalUseCase listByAnimalUseCase;
     private final DeleteSpaUseCase deleteUseCase;
     private final ReactivateSpaUseCase reactivateUseCase;
+    private final ChangeSpaStatusUseCase changeStatusUseCase;
 
     public SpaController(CreateSpaUseCase createUseCase,
                          UpdateSpaUseCase updateUseCase,
@@ -41,7 +45,8 @@ public class SpaController {
                          ListSpasUseCase listUseCase,
                          ListSpasByAnimalUseCase listByAnimalUseCase,
                          DeleteSpaUseCase deleteUseCase,
-                         ReactivateSpaUseCase reactivateUseCase) {
+                         ReactivateSpaUseCase reactivateUseCase,
+                         ChangeSpaStatusUseCase changeStatusUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,6 +54,7 @@ public class SpaController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.changeStatusUseCase = changeStatusUseCase;
     }
 
     @PostMapping
@@ -97,6 +103,13 @@ public class SpaController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/status")
+    public SpaResponse changeStatus(@PathVariable Long id,
+                                    @Valid @RequestBody ChangeSpaStatusRequest request) {
+        return toResponse(changeStatusUseCase.execute(
+            new ChangeSpaStatusCommand(id, request.status())));
+    }
+
     private SpaResponse toResponse(SpaDto dto) {
         SpaTypeSummaryDto st = dto.spaType();
         AnimalSummaryDto a = dto.animal();
@@ -105,6 +118,7 @@ public class SpaController {
             dto.id(), dto.date(),
             new SpaTypeSummary(st.id(), st.name()),
             dto.reason(), dto.details(), dto.observations(),
+            dto.status(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate(),

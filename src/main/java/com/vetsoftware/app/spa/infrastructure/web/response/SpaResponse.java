@@ -10,6 +10,7 @@ public record SpaResponse(
         String reason,
         String details,
         String observations,
+        String status,
         AnimalSummary animal,
         CompanySummary company,
         LocalDateTime createdDate,

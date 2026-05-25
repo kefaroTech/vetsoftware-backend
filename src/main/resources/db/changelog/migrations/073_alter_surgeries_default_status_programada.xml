@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Cambia el default de surgeries.status de PENDIENTE a PROGRAMADA.
+      Las cirugias nuevas se crean en estado PROGRAMADA por defecto.
+      Las filas existentes no se modifican.
+    -->
+
+    <changeSet id="073_alter_surgeries_default_status_programada" author="claude">
+        <addDefaultValue
+            tableName="surgeries"
+            columnName="status"
+            defaultValue="PROGRAMADA"/>
+    </changeSet>
+
+</databaseChangeLog>

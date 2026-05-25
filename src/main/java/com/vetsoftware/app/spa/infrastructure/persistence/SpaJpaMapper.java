@@ -5,6 +5,7 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.spa.domain.AnimalRef;
 import com.vetsoftware.app.spa.domain.CompanyRef;
 import com.vetsoftware.app.spa.domain.Spa;
+import com.vetsoftware.app.spa.domain.SpaStatus;
 import com.vetsoftware.app.spa.domain.SpaTypeRef;
 import com.vetsoftware.app.spatype.infrastructure.persistence.SpaTypeJpaEntity;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class SpaJpaMapper {
         entity.setReason(spa.getReason());
         entity.setDetails(spa.getDetails());
         entity.setObservations(spa.getObservations());
+        entity.setStatus(spa.getStatus().name());
         entity.setAnimal(animal);
         entity.setCompany(company);
         entity.setCreatedDate(spa.getCreatedDate());
@@ -45,6 +47,7 @@ public class SpaJpaMapper {
         return new Spa(
             entity.getId(), entity.getDate(), spaTypeRef,
             entity.getReason(), entity.getDetails(), entity.getObservations(),
+            SpaStatus.valueOf(entity.getStatus()),
             animalRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

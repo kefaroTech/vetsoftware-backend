@@ -11,6 +11,7 @@ public record CreateLaboratoryTestRequest(
         @NotNull Long testTypeId,
         @NotNull @Min(1) Integer quantity,
         @NotBlank @Size(max = 2000) String diagnosis,
+        String status,
         @NotNull Long animalId,
         Long consultationId,
         @NotNull Long companyId
