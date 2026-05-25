@@ -7,10 +7,10 @@ participant "DeleteRoleUseCase\n<<port.in>>" as UseCase
 participant "DeleteRoleService" as Service
 participant "RoleRepository\n<<port.out>>" as Repo
 participant "RoleJpaRepository\n<<spring-data>>" as JpaRepo
-participant "RolePermissionChildrenQueryPort\n<<port.out>>" as RolePermPort
-participant "RolePermissionJpaRepository\n<<spring-data>>" as RolePermJpaRepo
 participant "EmployeeRoleChildrenQueryPort\n<<port.out>>" as EmpRolePort
 participant "EmployeeRoleJpaRepository\n<<spring-data>>" as EmpRoleJpaRepo
+participant "RolePermissionChildrenCascadePort\n<<port.out>>" as CascadePort
+participant "RolePermissionJpaRepository\n<<spring-data>>" as RolePermJpaRepo
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
@@ -48,27 +48,23 @@ alt role no existe
 end
 Repo --> Service : Optional<Role>
 
-Service -> RolePermPort : existsActiveByRoleId(id)
-RolePermPort -> RolePermJpaRepo : existsByRole_Id(id)
-RolePermJpaRepo -> DB : SELECT EXISTS(...) WHERE role_id=? AND enabled=true
-DB --> RolePermJpaRepo : true/false
-RolePermJpaRepo --> RolePermPort : boolean
-RolePermPort --> Service : boolean
-alt hay hijos activos
-  Service --> GEH : RoleHasActiveChildrenException
-  GEH --> Client : 409 Conflict
-end
-
 Service -> EmpRolePort : existsActiveByRoleId(id)
 EmpRolePort -> EmpRoleJpaRepo : existsByRole_Id(id)
 EmpRoleJpaRepo -> DB : SELECT EXISTS(...) WHERE role_id=? AND enabled=true
 DB --> EmpRoleJpaRepo : true/false
 EmpRoleJpaRepo --> EmpRolePort : boolean
 EmpRolePort --> Service : boolean
-alt hay hijos activos
-  Service --> GEH : RoleHasActiveChildrenException
-  GEH --> Client : 409 Conflict
+alt algún empleado tiene este rol asignado
+  Service --> GEH : RoleHasActiveChildrenException("employeeRole")
+  GEH --> Client : 409 Conflict\ncode=ENTITY_HAS_ACTIVE_CHILDREN
 end
+
+Service -> CascadePort : deactivateAllByRoleId(id)
+CascadePort -> RolePermJpaRepo : disableAllByRoleId(id)
+RolePermJpaRepo -> DB : UPDATE role_permissions SET enabled=false WHERE role_id=? AND enabled=true
+DB --> RolePermJpaRepo : N filas
+RolePermJpaRepo --> CascadePort : int
+CascadePort --> Service : int
 
 Service -> Repo : delete(id)
 Repo -> JpaRepo : deleteById(id)

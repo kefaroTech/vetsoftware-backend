@@ -31,6 +31,11 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions SET enabled = false WHERE role_id = :roleId AND enabled = true", nativeQuery = true)
+    int disableAllByRoleId(@org.springframework.data.repository.query.Param("roleId") Long roleId);
+
     boolean existsByRole_Id(Long roleId);
 
     boolean existsByPermission_Id(Long permissionId);
