@@ -3,9 +3,12 @@ package com.vetsoftware.app.laboratorytesttype.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 
 @Entity
 @Table(name = "laboratory_test_types")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class LaboratoryTestTypeJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +30,9 @@ public class LaboratoryTestTypeJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected LaboratoryTestTypeJpaEntity() {}
 
     public Long getId() { return id; }
@@ -41,4 +47,6 @@ public class LaboratoryTestTypeJpaEntity {
     public void setGeneral(Boolean general) { this.general = general; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!--
+      Elimina la columna `status` de employees.
+      Ahora la actividad del empleado se rige por `enabled` (gestionado vía
+      Hibernate @SoftDelete). El login filtra automáticamente WHERE enabled=true.
+    -->
+
+    <changeSet id="069-employees-drop-status" author="claude">
+        <dropColumn tableName="employees" columnName="status"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,12 +3,15 @@ package com.vetsoftware.app.employeerole.infrastructure.persistence;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "employee_roles", uniqueConstraints = {
     @UniqueConstraint(name = "uq_employee_roles", columnNames = {"employee_id", "role_id"})
 })
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class EmployeeRoleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,6 +28,9 @@ public class EmployeeRoleJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     public EmployeeRoleJpaEntity() {}
 
     public Long getId() { return id; }
@@ -35,4 +41,6 @@ public class EmployeeRoleJpaEntity {
     public void setRole(RoleJpaEntity role) { this.role = role; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

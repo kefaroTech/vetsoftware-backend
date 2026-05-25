@@ -1,10 +1,13 @@
 package com.vetsoftware.app.baserole.infrastructure.persistence;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "base_roles")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class BaseRoleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,6 +25,9 @@ public class BaseRoleJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected BaseRoleJpaEntity() {}
 
     public Long getId() { return id; }
@@ -34,4 +40,6 @@ public class BaseRoleJpaEntity {
     public void setMandatory(Boolean mandatory) { this.mandatory = mandatory; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

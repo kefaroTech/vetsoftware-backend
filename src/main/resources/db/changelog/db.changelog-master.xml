@@ -71,5 +71,7 @@
     <include file="db/changelog/migrations/065_fix_clinical_event_view_consultation_id_type.xml"/>
     <include file="db/changelog/migrations/066_fix_clinical_event_view_typed_null.xml"/>
     <include file="db/changelog/migrations/067_create_daycares.xml"/>
+    <include file="db/changelog/migrations/068_add_enabled_to_all_tables.xml"/>
+    <include file="db/changelog/migrations/069_drop_employees_status.xml"/>
 
 </databaseChangeLog>

@@ -3,12 +3,15 @@ package com.vetsoftware.app.rolepermission.infrastructure.persistence;
 import com.vetsoftware.app.permission.infrastructure.persistence.PermissionJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "role_permissions", uniqueConstraints = {
     @UniqueConstraint(name = "uq_role_permissions", columnNames = {"role_id", "permission_id"})
 })
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class RolePermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,6 +28,9 @@ public class RolePermissionJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     public RolePermissionJpaEntity() {}
 
     public Long getId() { return id; }
@@ -35,4 +41,6 @@ public class RolePermissionJpaEntity {
     public void setPermission(PermissionJpaEntity permission) { this.permission = permission; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

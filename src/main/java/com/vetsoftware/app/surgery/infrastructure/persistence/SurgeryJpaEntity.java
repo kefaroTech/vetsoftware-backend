@@ -5,11 +5,14 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
 import com.vetsoftware.app.surgerytype.infrastructure.persistence.SurgeryTypeJpaEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "surgeries")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class SurgeryJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,6 +55,9 @@ public class SurgeryJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected SurgeryJpaEntity() {}
 
     public Long getId() { return id; }
@@ -78,4 +84,6 @@ public class SurgeryJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

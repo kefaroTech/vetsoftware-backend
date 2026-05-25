@@ -1,10 +1,13 @@
 package com.vetsoftware.app.module.infrastructure.persistence;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "modules")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class ModuleJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,6 +22,9 @@ public class ModuleJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected ModuleJpaEntity() {}
 
     public Long getId() { return id; }
@@ -29,4 +35,6 @@ public class ModuleJpaEntity {
     public void setCode(String code) { this.code = code; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

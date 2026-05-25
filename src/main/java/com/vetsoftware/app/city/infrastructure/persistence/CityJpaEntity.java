@@ -2,12 +2,15 @@ package com.vetsoftware.app.city.infrastructure.persistence;
 
 import com.vetsoftware.app.state.infrastructure.persistence.StateJpaEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cities", uniqueConstraints = {
     @UniqueConstraint(name = "uq_cities_state_name", columnNames = {"state_id", "name"})
 })
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class CityJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +26,9 @@ public class CityJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected CityJpaEntity() {}
 
     public Long getId() { return id; }
@@ -33,4 +39,6 @@ public class CityJpaEntity {
     public void setState(StateJpaEntity state) { this.state = state; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

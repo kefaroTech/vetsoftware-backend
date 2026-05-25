@@ -2,10 +2,13 @@ package com.vetsoftware.app.surgerytype.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "surgery_types")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class SurgeryTypeJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +30,9 @@ public class SurgeryTypeJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected SurgeryTypeJpaEntity() {}
 
     public Long getId() { return id; }
@@ -41,4 +47,6 @@ public class SurgeryTypeJpaEntity {
     public void setGeneral(Boolean general) { this.general = general; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

@@ -4,9 +4,12 @@ import com.vetsoftware.app.systempermission.infrastructure.persistence.SystemPer
 import com.vetsoftware.app.systemuser.infrastructure.persistence.SystemUserJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 
 @Entity
 @Table(name = "system_user_permissions")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class SystemUserPermissionJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +26,9 @@ public class SystemUserPermissionJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     public SystemUserPermissionJpaEntity() {}
 
     public Long getId() { return id; }
@@ -33,4 +39,6 @@ public class SystemUserPermissionJpaEntity {
     public void setSystemPermission(SystemPermissionJpaEntity systemPermission) { this.systemPermission = systemPermission; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

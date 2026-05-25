@@ -2,9 +2,12 @@ package com.vetsoftware.app.membership.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 
 @Entity
 @Table(name = "memberships")
+@SoftDelete(strategy = SoftDeleteType.ACTIVE, columnName = "enabled")
 public class MembershipJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,6 +25,9 @@ public class MembershipJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     protected MembershipJpaEntity() {}
 
     public Long getId() { return id; }
@@ -34,4 +40,6 @@ public class MembershipJpaEntity {
     public void setMandatory(Boolean mandatory) { this.mandatory = mandatory; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }
