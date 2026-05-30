@@ -1,0 +1,52 @@
+@startuml laboratory_test_file_find
+title GET /laboratory-test-files/{id} — Find LaboratoryTestFile metadata
+
+actor Client
+participant "LaboratoryTestFileController" as Controller
+participant "FindLaboratoryTestFileUseCase\n<<port.in>>" as UseCase
+participant "FindLaboratoryTestFileService" as Service
+participant "LaboratoryTestFileRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestFileJpaMapper" as Mapper
+participant "LaboratoryTestFileJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /laboratory-test-files/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTestFile.read OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test_files (JOIN FETCH uploadedBy, laboratoryTest)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestFileJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : LaboratoryTestFile
+Repo --> Service : Optional<LaboratoryTestFile>
+alt file no existe
+  Service --> GEH : LaboratoryTestFileNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Service : LaboratoryTestFileDto.from(file)
+Service --> UseCase : LaboratoryTestFileDto
+UseCase --> Controller : LaboratoryTestFileDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nLaboratoryTestFileResponse
+deactivate Controller
+deactivate Service
+
+@enduml

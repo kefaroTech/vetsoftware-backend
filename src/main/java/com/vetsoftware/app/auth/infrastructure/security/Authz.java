@@ -24,4 +24,12 @@ public class Authz {
         }
         throw new AccessDeniedException("No employee context");
     }
+
+    public Long currentEmployeeId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
+            return me.employeeId();
+        }
+        throw new AccessDeniedException("No employee context");
+    }
 }

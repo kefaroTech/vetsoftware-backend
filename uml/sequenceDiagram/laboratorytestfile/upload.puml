@@ -1,0 +1,95 @@
+@startuml laboratory_test_file_upload
+title POST /laboratory-test-files — Upload LaboratoryTestFile (multipart)
+
+actor Client
+participant "LaboratoryTestFileController" as Controller
+participant "Authz" as Authz
+participant "CreateLaboratoryTestFileUseCase\n<<port.in>>" as UseCase
+participant "CreateLaboratoryTestFileService" as Service
+participant "LaboratoryTestQueryPort\n<<port.out>>" as LabTestQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
+participant "FileStoragePort\n<<port.out>>" as StoragePort
+participant "S3FileStorageAdapter" as S3Adapter
+participant "S3StorageClient\n<<infra.storage>>" as S3Client
+cloud "AWS S3" as S3
+participant "LaboratoryTestFileRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestFileJpaMapper" as Mapper
+participant "LaboratoryTestFileJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /laboratory-test-files\nmultipart: laboratoryTestId + file
+activate Controller
+
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId (desde EmployeeContext)
+Controller -> Controller : file.getBytes(), getOriginalFilename(),\ngetContentType(), getSize()
+
+Controller -> UseCase : execute(CreateLaboratoryTestFileCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTestFile.create OR SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> LabTestQP : findById(laboratoryTestId)
+LabTestQP --> Service : Optional<LaboratoryTestRef>
+alt laboratoryTest no encontrado (o no enabled)
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> EmployeeQP : findById(uploadedById)
+EmployeeQP --> Service : Optional<EmployeeRef>
+
+Service -> Service : storageKey = "laboratory-tests/{id}/{uuid}/{fileName}"
+
+Service -> StoragePort : store(storageKey, content, contentType)
+activate StoragePort
+StoragePort -> S3Adapter : store(...)
+S3Adapter -> S3Client : putObject(key, content, contentType)
+S3Client -> S3 : PutObject
+S3 --> S3Client : eTag
+S3Client --> S3Adapter : eTag
+S3Adapter --> StoragePort : StoredFile(bucket, key, eTag)
+StoragePort --> Service : StoredFile
+deactivate StoragePort
+alt fallo de S3
+  Service --> GEH : S3StorageException
+  GEH --> Client : 502 Bad Gateway
+end
+
+Service -> Service : LaboratoryTestFile.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(file)
+activate Repo
+Repo -> JpaRepo : getReferenceById(uploadedBy, laboratoryTest)
+JpaRepo --> Repo : proxies (sin SELECT)
+Repo -> Mapper : toJpa(file, uploadedBy, laboratoryTest)
+Mapper --> Repo : LaboratoryTestFileJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT laboratory_test_files
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : LaboratoryTestFileJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : LaboratoryTestFile
+Repo --> Service : LaboratoryTestFile
+deactivate Repo
+
+Service -> Service : LaboratoryTestFileDto.from(file)
+Service --> UseCase : LaboratoryTestFileDto
+UseCase --> Controller : LaboratoryTestFileDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nLaboratoryTestFileResponse
+deactivate Controller
+deactivate Service
+
+@enduml

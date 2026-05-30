@@ -11,9 +11,12 @@ public record LaboratoryTestDto(
         Integer quantity,
         String diagnosis,
         String status,
+        String prioridad,
         AnimalSummaryDto animal,
         ConsultationSummaryDto consultation,
         CompanySummaryDto company,
+        EmployeeSummaryDto processedBy,
+        LocalDateTime processedDate,
         LocalDateTime createdDate,
         boolean enabled
 ) {
@@ -25,9 +28,12 @@ public record LaboratoryTestDto(
             laboratoryTest.getQuantity(),
             laboratoryTest.getDiagnosis(),
             laboratoryTest.getStatus().name(),
+            laboratoryTest.getPrioridad().name(),
             AnimalSummaryDto.from(laboratoryTest.getAnimal()),
             laboratoryTest.getConsultation() == null ? null : ConsultationSummaryDto.from(laboratoryTest.getConsultation()),
             CompanySummaryDto.from(laboratoryTest.getCompany()),
+            laboratoryTest.getProcessedBy() == null ? null : EmployeeSummaryDto.from(laboratoryTest.getProcessedBy()),
+            laboratoryTest.getProcessedDate(),
             laboratoryTest.getCreatedDate(),
             laboratoryTest.isEnabled()
         );

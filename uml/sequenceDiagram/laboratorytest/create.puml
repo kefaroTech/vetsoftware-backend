@@ -9,6 +9,7 @@ participant "LaboratoryTestTypeQueryPort" as TestTypeQP
 participant "AnimalQueryPort" as AnimalQP
 participant "ConsultationQueryPort" as ConsultationQP
 participant "CompanyQueryPort" as CompanyQP
+participant "EmployeeQueryPort" as EmployeeQP
 participant "LaboratoryTestRepository\n<<port.out>>" as Repo
 participant "LaboratoryTestJpaMapper" as Mapper
 participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
@@ -26,7 +27,7 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : POST /laboratory-tests\n+ CreateLaboratoryTestRequest
+Client -> Controller : POST /laboratory-tests\n+ CreateLaboratoryTestRequest\n(incluye prioridad opcional: NORMAL | URGENTE;\nprocessedById y processedDate opcionales, nullables)
 activate Controller
 
 Controller -> UseCase : execute(CreateLaboratoryTestCommand)
@@ -54,15 +55,30 @@ end
 Service -> CompanyQP : findById(companyId)
 CompanyQP --> Service : Optional<CompanyRef>
 
+alt processedById != null
+  Service -> EmployeeQP : findById(processedById)
+  EmployeeQP --> Service : Optional<EmployeeRef>
+  alt employee no encontrado
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+note over Service
+  processedBy / processedDate son opcionales (nullables).
+  Si processedById es null → processedBy = null.
+end note
+
 Service -> Service : initialStatus = command.status() == null\n  ? PENDIENTE\n  : LaboratoryTestStatus.valueOf(status)\n(default PENDIENTE; el front manda\nPENDIENTE_POR_PROCESAR si la muestra\nya fue recolectada al crear)
 
-Service -> Service : LaboratoryTest.create(..., initialStatus, ...)\n(invariantes de dominio:\nstatus solo PENDIENTE | PENDIENTE_POR_PROCESAR)
+Service -> Service : prioridad = command.prioridad() == null/blank\n  ? NORMAL\n  : LaboratoryTestPriority.valueOf(prioridad)\n(default NORMAL)
+
+Service -> Service : LaboratoryTest.create(..., initialStatus, prioridad, ...,\nprocessedBy, processedDate)\n(invariantes de dominio:\nstatus solo PENDIENTE | PENDIENTE_POR_PROCESAR;\nprioridad requerida: NORMAL | URGENTE;\nprocessedBy/processedDate opcionales)
 
 Service -> Repo : save(laboratoryTest)
 activate Repo
-Repo -> JpaRepo : getReferenceById(...)\ntestType, animal, consultation?, company
+Repo -> JpaRepo : getReferenceById(...)\ntestType, animal, consultation?, company, processedBy?
 JpaRepo --> Repo : proxies (sin SELECT)
-Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company)
+Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company, processedBy)
 Mapper --> Repo : LaboratoryTestJpaEntity
 Repo -> JpaRepo : save(entity)
 JpaRepo -> DB : INSERT laboratory_test

@@ -71,6 +71,11 @@ enum LaboratoryTestStatus {
   CANCELADO
 }
 
+enum LaboratoryTestPriority {
+  NORMAL
+  URGENTE
+}
+
 enum SurgeryStatus {
   PENDIENTE
   COMPLETADO
@@ -438,12 +443,27 @@ class LaboratoryTest {
   -quantity: Integer
   -diagnosis: String
   -status: LaboratoryTestStatus
+  -prioridad: LaboratoryTestPriority
   -animal: Animal
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -processedBy: Employee
+  -processedDate: LocalDateTime
   -enabled: boolean
+}
+
+class LaboratoryTestFile {
+  - storageKey: String
+  - bucket: String
+  - originalFileName: String
+  - contentType: String
+  - sizeBytes: String
+  - eTag: String
+  - uploadedBy: Employee
+  - createdDate: LocalDateTime
+  - laboratoryTest: LaboratoryTest
 }
 
 class Prescription {
@@ -612,10 +632,13 @@ DayCare       --> Company
 
 LaboratoryTestType              "0..*" --> "0..1" Company
 LaboratoryTest        --> LaboratoryTestType
+LaboratoryTestFile    --> LaboratoryTest
 LaboratoryTest        --> Animal
 LaboratoryTest        --> Company
 LaboratoryTest        --> LaboratoryTestStatus
+LaboratoryTest        --> LaboratoryTestPriority
 LaboratoryTest        "0..*" --> "0..1" Consultation
+LaboratoryTest        "0..*" --> "0..1" Employee : processedBy
 
 Prescription          --> Animal
 Prescription          --> Company

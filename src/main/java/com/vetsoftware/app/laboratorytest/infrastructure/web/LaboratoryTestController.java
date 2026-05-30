@@ -6,6 +6,7 @@ import com.vetsoftware.app.laboratorytest.application.command.UpdateLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.ConsultationSummaryDto;
+import com.vetsoftware.app.laboratorytest.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestTypeSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.port.in.ChangeLaboratoryTestStatusUseCase;
@@ -22,6 +23,7 @@ import com.vetsoftware.app.laboratorytest.infrastructure.web.request.UpdateLabor
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.ConsultationSummary;
+import com.vetsoftware.app.laboratorytest.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestResponse;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestTypeSummary;
 import jakarta.validation.Valid;
@@ -65,9 +67,9 @@ public class LaboratoryTestController {
         return toResponse(createUseCase.execute(
             new CreateLaboratoryTestCommand(
                 request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.status(),
+                request.diagnosis(), request.status(), request.prioridad(),
                 request.animalId(), request.consultationId(),
-                request.companyId())));
+                request.companyId(), request.processedById(), request.processedDate())));
     }
 
     @GetMapping
@@ -91,8 +93,8 @@ public class LaboratoryTestController {
         return toResponse(updateUseCase.execute(
             new UpdateLaboratoryTestCommand(
                 id, request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.animalId(), request.consultationId(),
-                request.companyId())));
+                request.diagnosis(), request.prioridad(), request.animalId(), request.consultationId(),
+                request.companyId(), request.processedById(), request.processedDate())));
     }
 
     @PatchMapping("/{id}/status")
@@ -118,13 +120,16 @@ public class LaboratoryTestController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
+        EmployeeSummaryDto pb = dto.processedBy();
         return new LaboratoryTestResponse(
             dto.id(), dto.date(),
             new LaboratoryTestTypeSummary(tt.id(), tt.name()),
-            dto.quantity(), dto.diagnosis(), dto.status(),
+            dto.quantity(), dto.diagnosis(), dto.status(), dto.prioridad(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
+            pb == null ? null : new EmployeeSummary(pb.id(), pb.employeeCode(), pb.name()),
+            dto.processedDate(),
             dto.createdDate(), dto.enabled());
     }
 }

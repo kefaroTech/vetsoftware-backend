@@ -6,6 +6,8 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
+import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
+import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaRepository;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
@@ -22,19 +24,22 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     private final AnimalJpaRepository animalJpaRepository;
     private final ConsultationJpaRepository consultationJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
+    private final EmployeeJpaRepository employeeJpaRepository;
 
     public JpaLaboratoryTestRepository(LaboratoryTestJpaRepository jpaRepository,
                                        LaboratoryTestJpaMapper mapper,
                                        LaboratoryTestTypeJpaRepository testTypeJpaRepository,
                                        AnimalJpaRepository animalJpaRepository,
                                        ConsultationJpaRepository consultationJpaRepository,
-                                       CompanyJpaRepository companyJpaRepository) {
+                                       CompanyJpaRepository companyJpaRepository,
+                                       EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.testTypeJpaRepository = testTypeJpaRepository;
         this.animalJpaRepository = animalJpaRepository;
         this.consultationJpaRepository = consultationJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
+        this.employeeJpaRepository = employeeJpaRepository;
     }
 
     @Override
@@ -44,11 +49,13 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
         ConsultationJpaEntity consultation = laboratoryTest.getConsultation() == null ? null
             : consultationJpaRepository.getReferenceById(laboratoryTest.getConsultation().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(laboratoryTest.getCompany().id());
+        EmployeeJpaEntity processedBy = laboratoryTest.getProcessedBy() == null ? null
+            : employeeJpaRepository.getReferenceById(laboratoryTest.getProcessedBy().id());
         LaboratoryTestJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(laboratoryTest, testType, animal, consultation, company));
+            mapper.toJpa(laboratoryTest, testType, animal, consultation, company, processedBy));
         return mapper.toDomain(saved, laboratoryTest.getTestType(),
                                 laboratoryTest.getAnimal(), laboratoryTest.getConsultation(),
-                                laboratoryTest.getCompany());
+                                laboratoryTest.getCompany(), laboratoryTest.getProcessedBy());
     }
 
     @Override

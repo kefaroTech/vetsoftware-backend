@@ -10,6 +10,7 @@ participant "LaboratoryTestTypeQueryPort" as TestTypeQP
 participant "AnimalQueryPort" as AnimalQP
 participant "ConsultationQueryPort" as ConsultationQP
 participant "CompanyQueryPort" as CompanyQP
+participant "EmployeeQueryPort" as EmployeeQP
 participant "LaboratoryTestJpaMapper" as Mapper
 participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
 database "MySQL" as DB
@@ -26,7 +27,7 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : PUT /laboratory-tests/{id}\n+ UpdateLaboratoryTestRequest
+Client -> Controller : PUT /laboratory-tests/{id}\n+ UpdateLaboratoryTestRequest\n(incluye prioridad opcional: NORMAL | URGENTE;\nprocessedById y processedDate opcionales, nullables)
 activate Controller
 
 Controller -> UseCase : execute(UpdateLaboratoryTestCommand)
@@ -67,12 +68,28 @@ end
 Service -> CompanyQP : findById(companyId)
 CompanyQP --> Service : Optional<CompanyRef>
 
-Service -> Service : laboratoryTest.update(...)\n(invariantes de dominio)
+alt processedById != null
+  Service -> EmployeeQP : findById(processedById)
+  EmployeeQP --> Service : Optional<EmployeeRef>
+  alt employee no encontrado
+    Service --> GEH : IllegalArgumentException
+    GEH --> Client : 400 Bad Request
+  end
+end
+note over Service
+  processedBy / processedDate se reemplazan con lo que llega
+  en el request (ambos nullables). Si processedById es null →
+  processedBy queda en null.
+end note
+
+Service -> Service : prioridad = command.prioridad() == null/blank\n  ? laboratoryTest.getPrioridad() (conserva actual)\n  : LaboratoryTestPriority.valueOf(prioridad)
+
+Service -> Service : laboratoryTest.update(..., prioridad, ...,\nprocessedBy, processedDate)\n(invariantes de dominio;\nprioridad requerida: NORMAL | URGENTE;\nprocessedBy/processedDate opcionales)
 
 Service -> Repo : save(laboratoryTest)
-Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
+Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT, incl. processedBy?)
 JpaRepo --> Repo : proxies
-Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company)
+Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company, processedBy)
 Mapper --> Repo : LaboratoryTestJpaEntity
 Repo -> JpaRepo : save(entity)
 JpaRepo -> DB : UPDATE laboratory_test

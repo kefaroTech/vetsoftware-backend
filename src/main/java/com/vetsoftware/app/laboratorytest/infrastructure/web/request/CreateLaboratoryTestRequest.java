@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record CreateLaboratoryTestRequest(
         @NotNull LocalDate date,
@@ -12,7 +13,10 @@ public record CreateLaboratoryTestRequest(
         @NotNull @Min(1) Integer quantity,
         @NotBlank @Size(max = 2000) String diagnosis,
         String status,
+        String prioridad,
         @NotNull Long animalId,
         Long consultationId,
-        @NotNull Long companyId
+        @NotNull Long companyId,
+        Long processedById,
+        LocalDateTime processedDate
 ) {}

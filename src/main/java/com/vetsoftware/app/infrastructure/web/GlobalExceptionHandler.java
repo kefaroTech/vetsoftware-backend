@@ -33,7 +33,9 @@ import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
+import com.vetsoftware.app.infrastructure.storage.S3StorageException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
+import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
@@ -108,6 +110,7 @@ public class GlobalExceptionHandler {
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,
             LaboratoryTestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
+            LaboratoryTestFileNotFoundException.class,
             PrescriptionNotFoundException.class, DewormingNotFoundException.class,
             DayCareNotFoundException.class,
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
@@ -207,6 +210,13 @@ public class GlobalExceptionHandler {
         log.error("PDF render failed", ex);
         return problem(HttpStatus.BAD_GATEWAY, "PDF_RENDER_FAILED",
                 "Failed to generate PDF document");
+    }
+
+    @ExceptionHandler(S3StorageException.class)
+    public ProblemDetail handleS3Storage(S3StorageException ex) {
+        log.error("S3 storage operation failed", ex);
+        return problem(HttpStatus.BAD_GATEWAY, "FILE_STORAGE_FAILED",
+                "Failed to access file storage");
     }
 
     @ExceptionHandler(Exception.class)

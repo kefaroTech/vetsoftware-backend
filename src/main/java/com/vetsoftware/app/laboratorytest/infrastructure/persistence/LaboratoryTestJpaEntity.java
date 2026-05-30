@@ -3,6 +3,7 @@ package com.vetsoftware.app.laboratorytest.infrastructure.persistence;
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
+import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -35,6 +36,9 @@ public class LaboratoryTestJpaEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
+    @Column(nullable = false, length = 20)
+    private String prioridad;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "animal_id", nullable = false)
     private AnimalJpaEntity animal;
@@ -46,6 +50,13 @@ public class LaboratoryTestJpaEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "processed_by_id")
+    private EmployeeJpaEntity processedBy;
+
+    @Column(name = "processed_date")
+    private LocalDateTime processedDate;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -67,12 +78,18 @@ public class LaboratoryTestJpaEntity {
     public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getPrioridad() { return prioridad; }
+    public void setPrioridad(String prioridad) { this.prioridad = prioridad; }
     public AnimalJpaEntity getAnimal() { return animal; }
     public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
     public ConsultationJpaEntity getConsultation() { return consultation; }
     public void setConsultation(ConsultationJpaEntity consultation) { this.consultation = consultation; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public EmployeeJpaEntity getProcessedBy() { return processedBy; }
+    public void setProcessedBy(EmployeeJpaEntity processedBy) { this.processedBy = processedBy; }
+    public LocalDateTime getProcessedDate() { return processedDate; }
+    public void setProcessedDate(LocalDateTime processedDate) { this.processedDate = processedDate; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }

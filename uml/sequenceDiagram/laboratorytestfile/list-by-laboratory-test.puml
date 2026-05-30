@@ -1,0 +1,47 @@
+@startuml laboratory_test_file_list_by_laboratory_test
+title GET /laboratory-test-files/by-laboratory-test/{laboratoryTestId} — List files of a LaboratoryTest
+
+actor Client
+participant "LaboratoryTestFileController" as Controller
+participant "ListLaboratoryTestFilesByLaboratoryTestUseCase\n<<port.in>>" as UseCase
+participant "ListLaboratoryTestFilesByLaboratoryTestService" as Service
+participant "LaboratoryTestFileRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestFileJpaMapper" as Mapper
+participant "LaboratoryTestFileJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /laboratory-test-files/by-laboratory-test/{laboratoryTestId}
+activate Controller
+
+Controller -> UseCase : listByLaboratoryTest(laboratoryTestId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTestFile.read OR SYSTEM
+end note
+UseCase -> Service : listByLaboratoryTest(laboratoryTestId)
+activate Service
+
+Service -> Repo : findAllByLaboratoryTestId(laboratoryTestId)
+Repo -> JpaRepo : findAllByLaboratoryTest_Id(laboratoryTestId)
+JpaRepo -> DB : SELECT laboratory_test_files (JOIN FETCH uploadedBy, laboratoryTest)
+DB --> JpaRepo : rows
+JpaRepo --> Repo : List<LaboratoryTestFileJpaEntity>
+Repo -> Mapper : toDomain(entity) (por cada fila)
+Mapper --> Repo : List<LaboratoryTestFile>
+Repo --> Service : List<LaboratoryTestFile>
+
+Service -> Service : map LaboratoryTestFileDto.from(...)
+Service --> UseCase : List<LaboratoryTestFileDto>
+UseCase --> Controller : List<LaboratoryTestFileDto>
+
+Controller -> Controller : map toResponse(dto)
+Controller --> Client : 200 OK\nList<LaboratoryTestFileResponse>
+deactivate Controller
+deactivate Service
+
+@enduml

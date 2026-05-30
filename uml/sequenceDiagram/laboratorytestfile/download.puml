@@ -1,0 +1,67 @@
+@startuml laboratory_test_file_download
+title GET /laboratory-test-files/{id}/download — Download file bytes from S3
+
+actor Client
+participant "LaboratoryTestFileController" as Controller
+participant "DownloadLaboratoryTestFileUseCase\n<<port.in>>" as UseCase
+participant "DownloadLaboratoryTestFileService" as Service
+participant "LaboratoryTestFileRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestFileJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "FileStoragePort\n<<port.out>>" as StoragePort
+participant "S3FileStorageAdapter" as S3Adapter
+participant "S3StorageClient\n<<infra.storage>>" as S3Client
+cloud "AWS S3" as S3
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /laboratory-test-files/{id}/download
+activate Controller
+
+Controller -> UseCase : download(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTestFile.read OR SYSTEM
+end note
+UseCase -> Service : download(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test_files
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestFileJpaEntity>
+Repo --> Service : Optional<LaboratoryTestFile>
+alt file no existe
+  Service --> GEH : LaboratoryTestFileNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> StoragePort : retrieve(file.storageKey)
+activate StoragePort
+StoragePort -> S3Adapter : retrieve(key)
+S3Adapter -> S3Client : getObject(key)
+S3Client -> S3 : GetObject
+S3 --> S3Client : bytes
+S3Client --> S3Adapter : byte[]
+S3Adapter --> StoragePort : byte[]
+StoragePort --> Service : byte[]
+deactivate StoragePort
+alt fallo de S3
+  Service --> GEH : S3StorageException
+  GEH --> Client : 502 Bad Gateway
+end
+
+Service --> UseCase : LaboratoryTestFileDownloadDto(fileName, contentType, content)
+UseCase --> Controller : LaboratoryTestFileDownloadDto
+
+Controller -> Controller : ResponseEntity con Content-Disposition: attachment\n+ Content-Type + body (ByteArrayResource)
+Controller --> Client : 200 OK\nbinary (attachment)
+deactivate Controller
+deactivate Service
+
+@enduml

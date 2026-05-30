@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="077_add_processed_to_laboratory_tests" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="laboratory_tests" columnName="processed_by_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="laboratory_tests">
+            <column name="processed_by_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_laboratory_tests_processed_by"
+                             references="employees(id)"/>
+            </column>
+            <column name="processed_date" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

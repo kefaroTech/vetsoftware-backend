@@ -1,0 +1,80 @@
+@startuml laboratory_test_file_delete
+title DELETE /laboratory-test-files/{id} — Delete LaboratoryTestFile (hard delete + S3)
+
+actor Client
+participant "LaboratoryTestFileController" as Controller
+participant "DeleteLaboratoryTestFileUseCase\n<<port.in>>" as UseCase
+participant "DeleteLaboratoryTestFileService" as Service
+participant "LaboratoryTestFileRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestFileJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "FileStoragePort\n<<port.out>>" as StoragePort
+participant "S3FileStorageAdapter" as S3Adapter
+participant "S3StorageClient\n<<infra.storage>>" as S3Client
+cloud "AWS S3" as S3
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Service, S3
+  El modelo LaboratoryTestFile no tiene `enabled`:
+  el borrado es FÍSICO (DELETE real), no soft-delete.
+  Dentro de la tx se borra primero la fila y luego el
+  objeto en S3; si S3 falla la tx hace rollback.
+end note
+
+Client -> Controller : DELETE /laboratory-test-files/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR laboratoryTestFile.delete OR SYSTEM
+end note
+UseCase -> Service : execute(id)  [@Transactional]
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT laboratory_test_files
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<LaboratoryTestFileJpaEntity>
+Repo --> Service : Optional<LaboratoryTestFile>
+alt file no existe
+  Service --> GEH : LaboratoryTestFileNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : DELETE FROM laboratory_test_files WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service -> StoragePort : delete(file.storageKey)
+activate StoragePort
+StoragePort -> S3Adapter : delete(key)
+S3Adapter -> S3Client : deleteObject(key)
+S3Client -> S3 : DeleteObject
+S3 --> S3Client : ok
+S3Client --> S3Adapter : void
+S3Adapter --> StoragePort : void
+StoragePort --> Service : void
+deactivate StoragePort
+alt fallo de S3
+  Service --> GEH : S3StorageException (rollback de la tx)
+  GEH --> Client : 502 Bad Gateway
+end
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

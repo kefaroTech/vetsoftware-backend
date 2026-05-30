@@ -6,12 +6,15 @@ import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.ConsultationQueryPort;
+import com.vetsoftware.app.laboratorytest.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestTypeQueryPort;
 import com.vetsoftware.app.laboratorytest.domain.AnimalRef;
 import com.vetsoftware.app.laboratorytest.domain.CompanyRef;
 import com.vetsoftware.app.laboratorytest.domain.ConsultationRef;
+import com.vetsoftware.app.laboratorytest.domain.EmployeeRef;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
+import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestPriority;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestStatus;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestTypeRef;
 import io.micrometer.observation.annotation.Observed;
@@ -25,17 +28,20 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
     private final AnimalQueryPort animalQueryPort;
     private final ConsultationQueryPort consultationQueryPort;
     private final CompanyQueryPort companyQueryPort;
+    private final EmployeeQueryPort employeeQueryPort;
 
     public CreateLaboratoryTestService(LaboratoryTestRepository repository,
                                        LaboratoryTestTypeQueryPort testTypeQueryPort,
                                        AnimalQueryPort animalQueryPort,
                                        ConsultationQueryPort consultationQueryPort,
-                                       CompanyQueryPort companyQueryPort) {
+                                       CompanyQueryPort companyQueryPort,
+                                       EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.testTypeQueryPort = testTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
         this.consultationQueryPort = consultationQueryPort;
         this.companyQueryPort = companyQueryPort;
+        this.employeeQueryPort = employeeQueryPort;
     }
 
     @Override
@@ -49,14 +55,22 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
                 .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        EmployeeRef processedBy = command.processedById() == null ? null
+            : employeeQueryPort.findById(command.processedById())
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.processedById()));
 
         LaboratoryTestStatus initialStatus = command.status() == null || command.status().isBlank()
-            ? LaboratoryTestStatus.PENDIENTE
+            ? LaboratoryTestStatus.PENDIENTE_POR_RECOLECTAR
             : LaboratoryTestStatus.valueOf(command.status().toUpperCase());
+
+        LaboratoryTestPriority prioridad = command.prioridad() == null || command.prioridad().isBlank()
+            ? LaboratoryTestPriority.NORMAL
+            : LaboratoryTestPriority.valueOf(command.prioridad().toUpperCase());
 
         LaboratoryTest laboratoryTest = LaboratoryTest.create(
             command.date(), testType, command.quantity(), command.diagnosis(),
-            initialStatus, animal, consultation, company);
+            initialStatus, prioridad, animal, consultation, company,
+            processedBy, command.processedDate());
         return LaboratoryTestDto.from(repository.save(laboratoryTest));
     }
 }

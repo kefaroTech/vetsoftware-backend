@@ -10,9 +10,12 @@ public record LaboratoryTestResponse(
         Integer quantity,
         String diagnosis,
         String status,
+        String prioridad,
         AnimalSummary animal,
         ConsultationSummary consultation,
         CompanySummary company,
+        EmployeeSummary processedBy,
+        LocalDateTime processedDate,
         LocalDateTime createdDate,
         boolean enabled
 ) {}
