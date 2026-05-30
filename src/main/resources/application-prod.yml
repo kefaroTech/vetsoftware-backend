@@ -1,0 +1,13 @@
+# Perfil prod — S3 real de AWS.
+vetsoftware:
+  storage:
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${S3_REGION:us-east-1}
+      # sin endpoint override → SDK usa el endpoint real de AWS
+      endpoint: ${S3_ENDPOINT:}
+      # credenciales vacías → DefaultCredentialsProvider (IAM role / env vars / perfil)
+      access-key: ${S3_ACCESS_KEY:}
+      secret-key: ${S3_SECRET_KEY:}
+      # virtual-hosted style (estándar en S3 real)
+      path-style-access: ${S3_PATH_STYLE_ACCESS:false}

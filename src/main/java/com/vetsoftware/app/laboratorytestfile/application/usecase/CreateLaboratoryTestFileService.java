@@ -9,9 +9,10 @@ import com.vetsoftware.app.laboratorytestfile.application.port.out.LaboratoryTes
 import com.vetsoftware.app.laboratorytestfile.application.port.out.LaboratoryTestQueryPort;
 import com.vetsoftware.app.laboratorytestfile.domain.EmployeeRef;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFile;
+import com.vetsoftware.app.laboratorytestfile.application.StorageKeyFactory;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestRef;
+import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestStoragePathRef;
 import io.micrometer.observation.annotation.Observed;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "laboratory_test_file.create")
@@ -39,8 +40,10 @@ public class CreateLaboratoryTestFileService implements CreateLaboratoryTestFile
         EmployeeRef uploadedBy = employeeQueryPort.findById(command.uploadedById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.uploadedById()));
 
-        String storageKey = "laboratory-tests/" + command.laboratoryTestId()
-            + "/" + UUID.randomUUID() + "/" + command.originalFileName();
+        LaboratoryTestStoragePathRef storagePath = laboratoryTestQueryPort.findStoragePath(command.laboratoryTestId())
+            .orElseThrow(() -> new IllegalArgumentException("LaboratoryTest not found: " + command.laboratoryTestId()));
+
+        String storageKey = StorageKeyFactory.build(storagePath, command.originalFileName());
 
         FileStoragePort.StoredFile stored =
             fileStoragePort.store(storageKey, command.content(), command.contentType());

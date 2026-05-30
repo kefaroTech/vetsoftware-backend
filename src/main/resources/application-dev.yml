@@ -1,0 +1,13 @@
+# Perfil dev — idéntico al entorno local actual, pero S3 apunta a LocalStack.
+vetsoftware:
+  storage:
+    s3:
+      bucket: ${S3_BUCKET:vetsoftware}
+      region: ${S3_REGION:us-east-1}
+      # endpoint de LocalStack (edge port por defecto)
+      endpoint: ${S3_ENDPOINT:http://localhost:4566}
+      # LocalStack acepta cualquier credencial; se usan valores de prueba
+      access-key: ${S3_ACCESS_KEY:test}
+      secret-key: ${S3_SECRET_KEY:test}
+      # path-style obligatorio contra LocalStack (no soporta virtual-hosted buckets)
+      path-style-access: ${S3_PATH_STYLE_ACCESS:true}

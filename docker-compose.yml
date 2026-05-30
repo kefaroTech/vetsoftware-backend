@@ -105,6 +105,19 @@ services:
       - "gotenberg"
       - "--api-timeout=30s"
 
+  localstack:
+    # community 3.x: gratis y con S3 sin token (el tag :latest exige licencia Pro)
+    image: localstack/localstack:3
+    container_name: vetsoftware_localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      # init script: crea el bucket por defecto al estar lista
+      - ./docker/localstack/ready.d:/etc/localstack/init/ready.d
+
 volumes:
   vetsoftware_redis_data:
   vetsoftware_mysql_data:

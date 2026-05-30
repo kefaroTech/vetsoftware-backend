@@ -49,7 +49,14 @@ end
 Service -> EmployeeQP : findById(uploadedById)
 EmployeeQP --> Service : Optional<EmployeeRef>
 
-Service -> Service : storageKey = "laboratory-tests/{id}/{uuid}/{fileName}"
+Service -> LabTestQP : findStoragePath(laboratoryTestId)
+LabTestQP --> Service : Optional<LaboratoryTestStoragePathRef>\n(companyId, ownerId, animalId, animalName;\nLaboratoryTest -> animal/owner/company,\n@Transactional(readOnly) para cargar owner LAZY)
+alt laboratoryTest no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : storageKey = StorageKeyFactory.build(path, fileName)\n= {companyId}/{ownerId}/{animalSlug}-{animalId}/{uuid}-{fileName}\n(animalSlug = nombre normalizado NFD)
 
 Service -> StoragePort : store(storageKey, content, contentType)
 activate StoragePort
