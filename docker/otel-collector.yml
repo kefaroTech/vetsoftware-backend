@@ -33,7 +33,7 @@ processors:
       - name: sample-rest
         type: probabilistic
         probabilistic:
-          sampling_percentage: 10
+          sampling_percentage: 100
 
   # Agrupa spans antes de exportar (eficiencia de red).
   batch:
@@ -43,8 +43,6 @@ processors:
 exporters:
   zipkin:
     endpoint: http://zipkin:9411/api/v2/spans
-  debug:
-    verbosity: basic
 
 service:
   pipelines:
@@ -52,4 +50,4 @@ service:
       receivers: [otlp]
       # Orden importa: memory_limiter primero, tail_sampling antes de batch.
       processors: [memory_limiter, tail_sampling, batch]
-      exporters: [zipkin, debug]
+      exporters: [zipkin]

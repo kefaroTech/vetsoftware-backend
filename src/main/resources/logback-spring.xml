@@ -1,19 +1,32 @@
 <configuration>
     <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="vetsoftware"/>
 
-    <!-- Consola: JSON estructurado -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"service":"${appName}"}</customFields>
-        </encoder>
-    </appender>
+    <!-- Consola legible para humanos en dev (no JSON crudo) -->
+    <springProfile name="dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%X{traceId:-no-trace}] %magenta(%X{actor.type:-}) %cyan(%logger{30}) : %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
 
-    <!-- Archivo: JSON para Promtail → Loki -->
+    <!-- Consola JSON estructurado en el resto de perfiles (prod, etc.) -->
+    <springProfile name="!dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"service":"${appName}"}</customFields>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- Archivo: JSON para Promtail → Loki, con rotación por fecha Y tamaño + tope total -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/vetsoftware.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/vetsoftware.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/vetsoftware.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <customFields>{"service":"${appName}"}</customFields>

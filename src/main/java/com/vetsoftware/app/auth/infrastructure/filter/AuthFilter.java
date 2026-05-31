@@ -8,6 +8,7 @@ import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,19 +33,27 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private static final String SYSTEM_ROLE = "ROLE_SYSTEM";
 
+    private static final String MDC_ACTOR_TYPE = "actor.type";
+    private static final String MDC_EMPLOYEE_ID = "actor.employeeId";
+    private static final String MDC_COMPANY_ID = "actor.companyId";
+    private static final String MDC_SYSTEM_USER_ID = "actor.systemUserId";
+
     private final ResolveAuthContextUseCase resolveAuthContextUseCase;
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
+    private final AuditLogger auditLogger;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
                       ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
                       JwtProvider jwtProvider,
-                      ObjectMapper objectMapper) {
+                      ObjectMapper objectMapper,
+                      AuditLogger auditLogger) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
         this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
+        this.auditLogger = auditLogger;
     }
 
     private record PublicRoute(String method, String pattern) {}
@@ -87,7 +96,7 @@ public class AuthFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
 
         if (header == null || !header.startsWith("Bearer ")) {
-            writeUnauthorized(response, "Missing or invalid Authorization header");
+            writeUnauthorized(request, response, "Missing or invalid Authorization header");
             return;
         }
 
@@ -96,7 +105,7 @@ public class AuthFilter extends OncePerRequestFilter {
         Long id = extractId(token);
 
         if (type == null || id == null) {
-            writeUnauthorized(response, "Invalid token");
+            writeUnauthorized(request, response, "Invalid token");
             return;
         }
 
@@ -107,7 +116,7 @@ public class AuthFilter extends OncePerRequestFilter {
         };
 
         if (authContext == null) {
-            writeUnauthorized(response, "Unknown user type");
+            writeUnauthorized(request, response, "Unknown user type");
             return;
         }
 
@@ -124,22 +133,22 @@ public class AuthFilter extends OncePerRequestFilter {
     /** Pone la identidad del actor en el MDC para que aparezca como campos en cada log de la request. */
     private static void putActorToMdc(AuthContext authContext) {
         if (authContext instanceof EmployeeContext employee) {
-            MDC.put("actorType", "EMPLOYEE");
-            MDC.put("employeeId", String.valueOf(employee.employeeId()));
-            MDC.put("companyId", String.valueOf(employee.companyId()));
+            MDC.put(MDC_ACTOR_TYPE, "EMPLOYEE");
+            MDC.put(MDC_EMPLOYEE_ID, String.valueOf(employee.employeeId()));
+            MDC.put(MDC_COMPANY_ID, String.valueOf(employee.companyId()));
         } else if (authContext instanceof SystemUserContext systemUser) {
-            MDC.put("actorType", "SYSTEM_USER");
-            MDC.put("systemUserId", String.valueOf(systemUser.systemUserId()));
+            MDC.put(MDC_ACTOR_TYPE, "SYSTEM_USER");
+            MDC.put(MDC_SYSTEM_USER_ID, String.valueOf(systemUser.systemUserId()));
         } else if (authContext instanceof SystemContext) {
-            MDC.put("actorType", "SYSTEM");
+            MDC.put(MDC_ACTOR_TYPE, "SYSTEM");
         }
     }
 
     private static void clearActorMdc() {
-        MDC.remove("actorType");
-        MDC.remove("employeeId");
-        MDC.remove("companyId");
-        MDC.remove("systemUserId");
+        MDC.remove(MDC_ACTOR_TYPE);
+        MDC.remove(MDC_EMPLOYEE_ID);
+        MDC.remove(MDC_COMPANY_ID);
+        MDC.remove(MDC_SYSTEM_USER_ID);
     }
 
     private static UsernamePasswordAuthenticationToken toAuthentication(AuthContext authContext) {
@@ -178,7 +187,9 @@ public class AuthFilter extends OncePerRequestFilter {
         }
     }
 
-    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+    private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response, String message)
+            throws IOException {
+        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), message);
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(), Map.of("error", message));

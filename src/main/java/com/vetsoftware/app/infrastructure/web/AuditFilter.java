@@ -13,14 +13,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Emite un evento de auditoría por cada mutación en el borde HTTP (POST/PUT/PATCH/DELETE).
  *
- * <p>Sin {@code @Order} → se registra como el filtro servlet más interno (igual que
- * {@code HttpRequestLoggingFilter}), por lo que corre dentro de la cadena de seguridad y el MDC
- * con el actor ya está poblado por {@code AuthFilter} cuando emite el evento.
+ * <p>Sin {@code @Order} → se registra como el filtro servlet más interno, por lo que corre dentro
+ * de la cadena de seguridad y el MDC con el actor ya está poblado por {@code AuthFilter} cuando
+ * emite el evento.
  */
 @Component
 public class AuditFilter extends OncePerRequestFilter {
 
-    private static final Set<String> MUTATING = Set.of("DELETE");
+    private static final Set<String> MUTATING = Set.of("PUT", "PATCH", "DELETE");
 
     private final AuditLogger auditLogger;
 

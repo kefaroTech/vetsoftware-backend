@@ -58,4 +58,14 @@ public class AuditLogger {
                 kv("http.path", path),
                 kv("outcome", "DENIED"));
     }
+
+    /** Acceso a un recurso protegido sin autenticación válida (token ausente/inválido → 401). */
+    public void unauthenticated(String method, String path, String reason) {
+        audit.warn("unauthenticated {} {} reason={}", method, path, reason,
+                kv("event", "unauthenticated"),
+                kv("http.method", method),
+                kv("http.path", path),
+                kv("outcome", "DENIED"),
+                kv("reason", reason));
+    }
 }

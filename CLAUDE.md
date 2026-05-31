@@ -86,6 +86,48 @@ private UUID id;             // UUID
 @GeneratedValue(strategy = GenerationType.UUID)
 ```
 
+### Columnas booleanas — siempre TINYINT pelado (nunca TINYINT(1))
+
+Todo booleano del schema usa **`TINYINT` sin display width**. El proyecto fija
+`hibernate.type.preferred_boolean_jdbc_type: TINYINT` (en `application.yml`), así que
+un campo `boolean`/`Boolean` mapea a `TINYINT` y Hibernate valida contra `tinyint` pelado.
+
+**Nunca uses `TINYINT(1)`.** El display width `(1)` hace que MySQL Connector/J
+(`tinyInt1isBit=true` por defecto) reporte la columna a JDBC como `Types.BIT`, lo que
+rompe la validación de schema (`ddl-auto: validate`) con:
+`found [bit (Types#BIT)], but expecting [tinyint (Types#TINYINT)]`. Además el width en
+enteros está deprecado en MySQL.
+
+```java
+// ✅ Correcto — sin columnDefinition; el preferred_boolean_jdbc_type hace el mapeo
+@Column(name = "enabled", nullable = false)
+private boolean enabled = true;
+
+@Column(name = "rescheduled")          // nullable → Boolean
+private Boolean rescheduled;
+
+// ❌ Incorrecto — fuerza tinyint(1) → el driver lo reporta como BIT → falla validate
+@Column(name = "rescheduled", columnDefinition = "TINYINT(1)")
+private Boolean rescheduled;
+```
+
+En Liquibase, declara los booleanos con `type="BOOLEAN"` (MySQL lo materializa como
+`tinyint` pelado) — **nunca** `type="TINYINT(1)"`:
+
+```xml
+<!-- ✅ Correcto -->
+<column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+    <constraints nullable="false"/>
+</column>
+
+<!-- ❌ Incorrecto — genera tinyint(1) → BIT → rompe schema-validation -->
+<column name="enabled" type="TINYINT(1)" defaultValueNumeric="1"/>
+```
+
+Si una columna ya existe como `tinyint(1)` o `bit`, normalízala con un changeset nuevo
+(no edites el ya aplicado — rompe el checksum): `ALTER TABLE x MODIFY col TINYINT ...`
+(ver `086`/`087`).
+
 ### Capa domain
 
 - **Entidad**: campos privados, factory method `Entity.create(...)` genera el ID internamente, método de mutación `entity.update(...)`. Sin setters públicos.
@@ -417,4 +459,4 @@ Toda entidad nueva vive en su propio paquete feature `com.<company>.<project>.<f
 9. `<feature>/infrastructure/web/request/` — `CreateXxxRequest`, `UpdateXxxRequest`
 10. `<feature>/infrastructure/web/response/` — `XxxResponse` (+ `YyySummary` por cada FK con datos en la response)
 11. `infrastructure/web/GlobalExceptionHandler` — añadir `XxxNotFoundException` al handler 404
-12. `db/changelog/migrations/` — nuevo changeset Liquibase con `id BIGINT AUTO_INCREMENT PRIMARY KEY`
+12. `db/changelog/migrations/` — nuevo changeset Liquibase con `id BIGINT AUTO_INCREMENT PRIMARY KEY`; columnas booleanas con `type="BOOLEAN"` (nunca `TINYINT(1)` — ver "Columnas booleanas")
