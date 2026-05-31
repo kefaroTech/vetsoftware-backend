@@ -9,6 +9,7 @@ import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,11 +33,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class AuthFilter extends OncePerRequestFilter {
 
     private static final String SYSTEM_ROLE = "ROLE_SYSTEM";
-
-    private static final String MDC_ACTOR_TYPE = "actor.type";
-    private static final String MDC_EMPLOYEE_ID = "actor.employeeId";
-    private static final String MDC_COMPANY_ID = "actor.companyId";
-    private static final String MDC_SYSTEM_USER_ID = "actor.systemUserId";
 
     private final ResolveAuthContextUseCase resolveAuthContextUseCase;
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
@@ -133,22 +129,22 @@ public class AuthFilter extends OncePerRequestFilter {
     /** Pone la identidad del actor en el MDC para que aparezca como campos en cada log de la request. */
     private static void putActorToMdc(AuthContext authContext) {
         if (authContext instanceof EmployeeContext employee) {
-            MDC.put(MDC_ACTOR_TYPE, "EMPLOYEE");
-            MDC.put(MDC_EMPLOYEE_ID, String.valueOf(employee.employeeId()));
-            MDC.put(MDC_COMPANY_ID, String.valueOf(employee.companyId()));
+            MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
+            MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, String.valueOf(employee.employeeId()));
+            MDC.put(MdcKeys.ACTOR_COMPANY_ID, String.valueOf(employee.companyId()));
         } else if (authContext instanceof SystemUserContext systemUser) {
-            MDC.put(MDC_ACTOR_TYPE, "SYSTEM_USER");
-            MDC.put(MDC_SYSTEM_USER_ID, String.valueOf(systemUser.systemUserId()));
+            MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM_USER");
+            MDC.put(MdcKeys.ACTOR_SYSTEM_USER_ID, String.valueOf(systemUser.systemUserId()));
         } else if (authContext instanceof SystemContext) {
-            MDC.put(MDC_ACTOR_TYPE, "SYSTEM");
+            MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM");
         }
     }
 
     private static void clearActorMdc() {
-        MDC.remove(MDC_ACTOR_TYPE);
-        MDC.remove(MDC_EMPLOYEE_ID);
-        MDC.remove(MDC_COMPANY_ID);
-        MDC.remove(MDC_SYSTEM_USER_ID);
+        MDC.remove(MdcKeys.ACTOR_TYPE);
+        MDC.remove(MdcKeys.ACTOR_EMPLOYEE_ID);
+        MDC.remove(MdcKeys.ACTOR_COMPANY_ID);
+        MDC.remove(MdcKeys.ACTOR_SYSTEM_USER_ID);
     }
 
     private static UsernamePasswordAuthenticationToken toAuthentication(AuthContext authContext) {

@@ -18,13 +18,14 @@ scrape_configs:
           env: local
           __path__: /logs/vetsoftware.log
     pipeline_stages:
+      # Solo extraemos dimensiones de BAJA cardinalidad para usarlas como labels.
+      # traceId/spanId NO se etiquetan: quedan en el contenido JSON del log y se consultan al vuelo
+      # con `| json | traceId="..."`. Usarlos como labels (únicos por request/span) dispara la
+      # cardinalidad — un stream por traza — y degrada el índice de Loki.
       - json:
           expressions:
             level: level
-            traceId: traceId
-            spanId: spanId
             logger: logger_name
       - labels:
           level:
-          traceId:
-          spanId:
+          logger:

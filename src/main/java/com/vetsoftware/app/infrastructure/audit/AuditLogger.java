@@ -9,10 +9,17 @@ import org.springframework.stereotype.Component;
 /**
  * Emisor central de eventos de auditoría (OWASP ASVS V7.1.2 / 7.1.4).
  *
- * <p>Escribe al logger {@code "AUDIT"} → mismo stream JSON que el resto, filtrable en Loki por
- * {@code logger_name="AUDIT"}. Los campos del actor ({@code companyId}/{@code employeeId}/
- * {@code actorType}) viajan por el MDC (poblado en {@code AuthFilter}) y el {@code LogstashEncoder}
- * los emite automáticamente como campos JSON; aquí solo se añaden los campos propios del evento.
+ * <p>Escribe al logger {@code "AUDIT"}, filtrable en Loki por {@code logger_name="AUDIT"}, y con
+ * appender dedicado de retención larga ({@code logs/audit.log}, ver {@code logback-spring.xml}).
+ * Los campos del actor ({@code actor.type} / {@code actor.companyId} / {@code actor.employeeId} /
+ * {@code actor.systemUserId}, ver {@link com.vetsoftware.app.infrastructure.logging.MdcKeys})
+ * viajan por el MDC (poblado en {@code AuthFilter}) y el {@code LogstashEncoder} los emite
+ * automáticamente como campos JSON; aquí solo se añaden los campos propios del evento.
+ *
+ * <p>Convención de campos: notación con punto ({@code http.*}, {@code actor.*}) alineada con
+ * OpenTelemetry. Nota: {@code actor.identifier} (en login) es el <em>código</em> de empleado/usuario
+ * tal como llega en la request — distinto de {@code actor.employeeId} del MDC, que es el id numérico
+ * del principal ya autenticado.
  *
  * <p>Nunca registra credenciales ni tokens — solo identificadores no sensibles.
  */
@@ -29,7 +36,7 @@ public class AuditLogger {
                 kv("http.path", path),
                 kv("http.status", status),
                 kv("outcome", outcome),
-                kv("duration_ms", durationMs));
+                kv("http.durationMs", durationMs));
     }
 
     /** Login exitoso; {@code identifier} es el código de empleado/usuario, no un secreto. */

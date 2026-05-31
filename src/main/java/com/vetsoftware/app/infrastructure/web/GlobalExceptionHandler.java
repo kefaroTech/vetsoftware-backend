@@ -220,7 +220,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.error("Data integrity violation", ex);
+        // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no ERROR.
+        log.warn("Data integrity violation: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }
 

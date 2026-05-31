@@ -43,8 +43,25 @@
     <!-- Logs propios de la app en INFO -->
     <logger name="com.vetsoftware" level="INFO"/>
 
-    <!-- Flujo de auditoría (OWASP ASVS V7): mismo stream JSON, filtrable por logger_name="AUDIT" -->
-    <logger name="AUDIT" level="INFO"/>
+    <!-- Auditoría: archivo dedicado con retención larga (cumplimiento), bajo volumen -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/audit.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>365</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${appName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Flujo de auditoría (OWASP ASVS V7): además del stream normal (Loki/consola por additivity),
+         va al archivo dedicado AUDIT_FILE de retención larga. Filtrable por logger_name="AUDIT". -->
+    <logger name="AUDIT" level="INFO" additivity="true">
+        <appender-ref ref="AUDIT_FILE"/>
+    </logger>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
