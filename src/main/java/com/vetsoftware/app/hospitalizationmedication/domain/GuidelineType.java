@@ -1,3 +1,6 @@
 package com.vetsoftware.app.hospitalizationmedication.domain;
 
-public enum GuidelineType {}
+public enum GuidelineType {
+    FIXED,
+    INTERVAL
+}

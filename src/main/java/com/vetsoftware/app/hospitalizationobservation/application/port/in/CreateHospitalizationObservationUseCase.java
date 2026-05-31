@@ -5,6 +5,6 @@ import com.vetsoftware.app.hospitalizationobservation.application.dto.Hospitaliz
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateHospitalizationObservationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalizationObservation.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.create') or hasRole('SYSTEM')")
     HospitalizationObservationDto execute(CreateHospitalizationObservationCommand command);
 }

@@ -5,6 +5,6 @@ import com.vetsoftware.app.hospitalizationmedication.application.dto.Hospitaliza
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateHospitalizationMedicationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalizationMedication.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.update') or hasRole('SYSTEM')")
     HospitalizationMedicationDto execute(UpdateHospitalizationMedicationCommand command);
 }
