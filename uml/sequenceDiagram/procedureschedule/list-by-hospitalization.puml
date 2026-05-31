@@ -1,0 +1,39 @@
+@startuml procedure_schedule_list_by_hospitalization
+title GET /procedure-schedules/by-hospitalization/{hospitalizationId} — List Procedure Schedules
+
+actor Client
+participant "ProcedureScheduleController" as Controller
+participant "ListProcedureSchedulesByHospitalizationUseCase\n<<port.in>>" as UseCase
+participant "ListProcedureSchedulesByHospitalizationService" as Service
+participant "ProcedureScheduleRepository\n<<port.out>>" as Repo
+participant "ProcedureScheduleJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  @SQLRestriction(enabled=true) filtra tanto los schedules
+  como los procedimientos dados de baja (join).
+end note
+
+Client -> Controller : GET /procedure-schedules/by-hospitalization/{hospId}
+activate Controller
+Controller -> UseCase : listByHospitalization(hospId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.read OR hasRole('SYSTEM')
+end note
+UseCase -> Service : listByHospitalization(hospId)
+activate Service
+Service -> Repo : findByHospitalizationId(hospId)
+Repo -> JpaRepo : findByHospitalizationProcedureHospitalizationId(hospId)\n@EntityGraph{hospitalizationProcedure, createdBy}
+JpaRepo -> DB : SELECT ... JOIN hospitalization_procedures\nWHERE hospitalization_id = ? AND enabled = true
+DB --> JpaRepo : rows
+JpaRepo --> Repo : List<ProcedureScheduleJpaEntity>
+Repo --> Service : List<ProcedureSchedule>
+Service -> Service : ProcedureScheduleDto.from(...)
+Service --> UseCase : List<ProcedureScheduleDto>
+UseCase --> Controller : List<ProcedureScheduleDto>
+Controller --> Client : 200 OK\nList<ProcedureScheduleResponse>
+deactivate Service
+deactivate Controller
+
+@enduml

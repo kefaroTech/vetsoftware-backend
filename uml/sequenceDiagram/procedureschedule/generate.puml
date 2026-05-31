@@ -1,0 +1,73 @@
+@startuml procedure_schedule_generate
+title POST /procedure-schedules/generate/{hospitalizationProcedureId} — Generate Procedure Schedule
+
+actor Client
+participant "ProcedureScheduleController" as Controller
+participant "Authz" as Authz
+participant "GenerateProcedureScheduleUseCase\n<<port.in>>" as UseCase
+participant "GenerateProcedureScheduleService" as Service
+participant "HospitalizationProcedureQueryPort\n<<port.out>>" as ProcQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+participant "ProcedureScheduleGenerator\n<<domain>>" as Generator
+participant "ProcedureScheduleRepository\n<<port.out>>" as Repo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /procedure-schedules/generate/{procId}
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+Controller -> UseCase : execute(GenerateProcedureScheduleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.create OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> ProcQP : findById(procedureId)
+ProcQP --> Service : Optional<ProcedureOrderParams>
+alt procedure no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> EmpQP : findById(createdById)
+EmpQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Repo : disableByHospitalizationProcedureId(procId)
+note right of Repo
+  Idempotente: soft-delete del plan previo
+  (UPDATE enabled=false) antes de regenerar.
+end note
+Repo -> DB : UPDATE procedure_schedules SET enabled=false
+
+Service -> Generator : generate(params, createdBy)
+Generator --> Service : List<ProcedureSchedule>\n(originalDateTime==currentDateTime,\nappliedStatus=PENDING, rescheduled=false)
+
+loop por cada ejecución generada
+  Service -> Repo : save(procedureSchedule)
+  Repo -> DB : INSERT procedure_schedules
+  DB --> Repo : id generado
+  Repo --> Service : ProcedureSchedule
+end
+
+Service -> Service : ProcedureScheduleDto.from(...)
+Service --> UseCase : List<ProcedureScheduleDto>
+UseCase --> Controller : List<ProcedureScheduleDto>
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nList<ProcedureScheduleResponse>
+deactivate Service
+deactivate Controller
+
+@enduml

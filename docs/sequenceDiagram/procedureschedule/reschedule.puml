@@ -1,0 +1,54 @@
+@startuml procedure_schedule_reschedule
+title PATCH /procedure-schedules/{id}/reschedule — Reschedule Procedure Execution
+
+actor Client
+participant "ProcedureScheduleController" as Controller
+participant "RescheduleProcedureScheduleUseCase\n<<port.in>>" as UseCase
+participant "RescheduleProcedureScheduleService" as Service
+participant "ProcedureScheduleRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureQueryPort\n<<port.out>>" as ProcQP
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /procedure-schedules/{id}/reschedule\n+ { newDateTime, mode }
+activate Controller
+Controller -> UseCase : execute(RescheduleProcedureScheduleCommand{id, newDateTime, mode})
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.update OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(id)
+Repo --> Service : Optional<ProcedureSchedule>
+alt no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Repo : findByHospitalizationProcedureId(procId)
+Repo --> Service : List<ProcedureSchedule> (orden previo al movimiento)
+Service -> Service : target.reschedule(newDateTime)  // currentDateTime=nuevo, rescheduled=true
+Service -> Repo : save(target)
+Repo -> DB : UPDATE procedure_schedules
+
+alt mode == "cascade"
+  Service -> ProcQP : findById(procId)
+  ProcQP --> Service : ProcedureOrderParams (guidelineType, frequency)
+  alt guidelineType == INTERVAL
+    loop ejecuciones PENDIENTES posteriores
+      Service -> Service : cursor += intervalo;  slot.reschedule(cursor)
+      Service -> Repo : save(slot)
+      Repo -> DB : UPDATE procedure_schedules
+    end
+  end
+end
+
+Service --> UseCase : List<ProcedureScheduleDto>
+UseCase --> Controller : List<ProcedureScheduleDto>
+Controller --> Client : 200 OK\nList<ProcedureScheduleResponse> (plan completo del procedimiento)
+deactivate Service
+deactivate Controller
+
+@enduml

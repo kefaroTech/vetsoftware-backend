@@ -8,6 +8,8 @@ public interface ProcedureScheduleRepository {
     ProcedureSchedule save(ProcedureSchedule procedureSchedule);
     Optional<ProcedureSchedule> findById(Long id);
     List<ProcedureSchedule> findByHospitalizationProcedureId(Long hospitalizationProcedureId);
+    List<ProcedureSchedule> findByHospitalizationId(Long hospitalizationId);
     void delete(Long id);
+    void disableByHospitalizationProcedureId(Long hospitalizationProcedureId);
     int reactivate(Long id);
 }

@@ -50,8 +50,19 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     }
 
     @Override
+    public List<ProcedureSchedule> findByHospitalizationId(Long hospitalizationId) {
+        return jpaRepository.findByHospitalizationProcedureHospitalizationId(hospitalizationId).stream()
+            .map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public void disableByHospitalizationProcedureId(Long hospitalizationProcedureId) {
+        jpaRepository.disableByHospitalizationProcedureId(hospitalizationProcedureId);
     }
 
     @Override

@@ -15,6 +15,17 @@ public interface MedicationScheduleJpaRepository
     @EntityGraph(attributePaths = {"hospitalizationMedication", "createdBy"})
     List<MedicationScheduleJpaEntity> findByHospitalizationMedicationId(Long hospitalizationMedicationId);
 
+    @EntityGraph(attributePaths = {"hospitalizationMedication", "createdBy"})
+    List<MedicationScheduleJpaEntity> findByHospitalizationMedicationHospitalizationId(Long hospitalizationId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(
+        value = "UPDATE medication_schedules SET enabled = false WHERE hospitalization_medication_id = :medicationId AND enabled = true",
+        nativeQuery = true)
+    int disableByHospitalizationMedicationId(
+        @org.springframework.data.repository.query.Param("medicationId") Long medicationId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(

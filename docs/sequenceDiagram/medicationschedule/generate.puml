@@ -1,0 +1,73 @@
+@startuml medication_schedule_generate
+title POST /medication-schedules/generate/{hospitalizationMedicationId} — Generate Medication Schedule
+
+actor Client
+participant "MedicationScheduleController" as Controller
+participant "Authz" as Authz
+participant "GenerateMedicationScheduleUseCase\n<<port.in>>" as UseCase
+participant "GenerateMedicationScheduleService" as Service
+participant "HospitalizationMedicationQueryPort\n<<port.out>>" as MedQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+participant "MedicationScheduleGenerator\n<<domain>>" as Generator
+participant "MedicationScheduleRepository\n<<port.out>>" as Repo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : POST /medication-schedules/generate/{medId}
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+Controller -> UseCase : execute(GenerateMedicationScheduleCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.create OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> MedQP : findById(medicationId)
+MedQP --> Service : Optional<MedicationOrderParams>
+alt medication no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> EmpQP : findById(createdById)
+EmpQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Repo : disableByHospitalizationMedicationId(medId)
+note right of Repo
+  Idempotente: soft-delete del plan previo
+  (UPDATE enabled=false) antes de regenerar.
+end note
+Repo -> DB : UPDATE medication_schedules SET enabled=false
+
+Service -> Generator : generate(params, createdBy)
+Generator --> Service : List<MedicationSchedule>\n(originalDateTime==currentDateTime,\nappliedStatus=PENDING, rescheduled=false)
+
+loop por cada toma generada
+  Service -> Repo : save(medicationSchedule)
+  Repo -> DB : INSERT medication_schedules
+  DB --> Repo : id generado
+  Repo --> Service : MedicationSchedule
+end
+
+Service -> Service : MedicationScheduleDto.from(...)
+Service --> UseCase : List<MedicationScheduleDto>
+UseCase --> Controller : List<MedicationScheduleDto>
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nList<MedicationScheduleResponse>
+deactivate Service
+deactivate Controller
+
+@enduml

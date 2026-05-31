@@ -43,6 +43,20 @@ public class ProcedureSchedule {
 
     public void disable() { this.enabled = false; }
 
+    /** Marca la ejecución como aplicada en la hora real indicada. */
+    public void apply(LocalDateTime realDateTime) {
+        if (realDateTime == null) throw new IllegalArgumentException("realDateTime is required");
+        this.appliedStatus = AppliedStatus.APPLIED;
+        this.realDateTime = realDateTime;
+    }
+
+    /** Reprograma la ejecución a una nueva hora (marca rescheduled). */
+    public void reschedule(LocalDateTime newCurrentDateTime) {
+        if (newCurrentDateTime == null) throw new IllegalArgumentException("currentDateTime is required");
+        this.currentDateTime = newCurrentDateTime;
+        this.rescheduled = true;
+    }
+
     private static void validate(HospitalizationProcedureRef hospitalizationProcedure,
                                  LocalDateTime originalDateTime, EmployeeRef createdBy) {
         if (hospitalizationProcedure == null)

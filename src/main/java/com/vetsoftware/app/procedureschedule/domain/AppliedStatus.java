@@ -1,3 +1,7 @@
 package com.vetsoftware.app.procedureschedule.domain;
 
-public enum AppliedStatus {}
+public enum AppliedStatus {
+    PENDING,
+    APPLIED,
+    SKIPPED
+}
