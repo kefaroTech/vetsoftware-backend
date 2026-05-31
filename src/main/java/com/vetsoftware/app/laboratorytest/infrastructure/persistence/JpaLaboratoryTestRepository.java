@@ -8,12 +8,21 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaRepository;
+import com.vetsoftware.app.laboratorytest.application.command.SearchLaboratoryTestsCommand;
+import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaRepository;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -71,6 +80,55 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     @Override
     public List<LaboratoryTest> findAllByAnimalId(Long animalId) {
         return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public PageResult<LaboratoryTest> search(SearchLaboratoryTestsCommand command) {
+        Specification<LaboratoryTestJpaEntity> spec = buildSpec(command);
+        PageRequest pageRequest = PageRequest.of(
+            Math.max(command.page(), 0),
+            command.pageSize() <= 0 ? 20 : command.pageSize(),
+            Sort.by(Sort.Direction.DESC, "createdDate"));
+        Page<LaboratoryTestJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
+        List<LaboratoryTest> content = page.getContent().stream().map(mapper::toDomain).toList();
+        return new PageResult<>(content, page.getNumber(), page.getSize(),
+            page.getTotalElements(), page.getTotalPages());
+    }
+
+    private Specification<LaboratoryTestJpaEntity> buildSpec(SearchLaboratoryTestsCommand command) {
+        return (root, query, cb) -> {
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("testType", JoinType.LEFT);
+                root.fetch("animal", JoinType.LEFT);
+                root.fetch("consultation", JoinType.LEFT);
+                root.fetch("company", JoinType.LEFT);
+                root.fetch("processedBy", JoinType.LEFT);
+                query.distinct(true);
+            }
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("company").get("id"), command.companyId()));
+            if (command.statuses() != null && !command.statuses().isEmpty()) {
+                predicates.add(root.get("status").in(
+                    command.statuses().stream().map(Enum::name).toList()));
+            }
+            if (command.animalId() != null) {
+                predicates.add(cb.equal(root.get("animal").get("id"), command.animalId()));
+            }
+            if (command.testTypeId() != null) {
+                predicates.add(cb.equal(root.get("testType").get("id"), command.testTypeId()));
+            }
+            if (command.prioridad() != null) {
+                predicates.add(cb.equal(root.get("prioridad"), command.prioridad().name()));
+            }
+            if (command.dateFrom() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("date"), command.dateFrom()));
+            }
+            if (command.dateTo() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("date"), command.dateTo()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     @Override

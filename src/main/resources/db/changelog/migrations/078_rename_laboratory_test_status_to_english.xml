@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="078_rename_laboratory_test_status_to_english" author="orlando">
+        <!-- Migra los valores del enum LaboratoryTestStatus de español a inglés.
+             'PENDIENTE' es el default legacy de la migración 060 (estado de 2 valores). -->
+        <update tableName="laboratory_tests">
+            <column name="status" value="PENDING_COLLECTION"/>
+            <where>status IN ('PENDIENTE', 'PENDIENTE_POR_RECOLECTAR')</where>
+        </update>
+        <update tableName="laboratory_tests">
+            <column name="status" value="PENDING_PROCESSING"/>
+            <where>status = 'PENDIENTE_POR_PROCESAR'</where>
+        </update>
+        <update tableName="laboratory_tests">
+            <column name="status" value="IN_PROGRESS"/>
+            <where>status = 'EN_PROCESO'</where>
+        </update>
+        <update tableName="laboratory_tests">
+            <column name="status" value="PENDING_VALIDATION"/>
+            <where>status = 'PENDIENTE_POR_LECTURA'</where>
+        </update>
+        <update tableName="laboratory_tests">
+            <column name="status" value="COMPLETED"/>
+            <where>status = 'COMPLETADO'</where>
+        </update>
+        <update tableName="laboratory_tests">
+            <column name="status" value="CANCELLED"/>
+            <where>status = 'CANCELADO'</where>
+        </update>
+
+        <!-- Reemplaza el default legacy 'PENDIENTE' por el inicial en inglés -->
+        <addDefaultValue tableName="laboratory_tests" columnName="status"
+                         defaultValue="PENDING_COLLECTION"/>
+    </changeSet>
+
+</databaseChangeLog>

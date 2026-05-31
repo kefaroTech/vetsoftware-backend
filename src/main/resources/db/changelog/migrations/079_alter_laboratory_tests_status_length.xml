@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="079_alter_laboratory_tests_status_length" author="orlando">
+        <modifyDataType tableName="laboratory_tests" columnName="status" newDataType="VARCHAR(50)"/>
+        <addNotNullConstraint tableName="laboratory_tests" columnName="status"
+                              columnDataType="VARCHAR(50)" defaultNullValue="PENDING_COLLECTION"/>
+        <rollback>
+            <modifyDataType tableName="laboratory_tests" columnName="status" newDataType="VARCHAR(20)"/>
+            <addNotNullConstraint tableName="laboratory_tests" columnName="status"
+                                  columnDataType="VARCHAR(20)" defaultNullValue="PENDING_COLLECTION"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

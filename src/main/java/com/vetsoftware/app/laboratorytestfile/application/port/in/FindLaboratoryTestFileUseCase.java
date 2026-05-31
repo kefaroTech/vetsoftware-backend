@@ -4,6 +4,6 @@ import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestFile
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindLaboratoryTestFileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTestFile.read') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTest.read') or hasRole('SYSTEM')")
     LaboratoryTestFileDto findById(Long id);
 }

@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface LaboratoryTestJpaRepository extends JpaRepository<LaboratoryTestJpaEntity, Long> {
+public interface LaboratoryTestJpaRepository extends JpaRepository<LaboratoryTestJpaEntity, Long>,
+        JpaSpecificationExecutor<LaboratoryTestJpaEntity> {
 
     @Override
     @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company", "processedBy"})

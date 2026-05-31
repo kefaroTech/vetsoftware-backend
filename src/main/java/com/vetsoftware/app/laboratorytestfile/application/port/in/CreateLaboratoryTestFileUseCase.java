@@ -5,6 +5,6 @@ import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestFile
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateLaboratoryTestFileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTestFile.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTest.create') or hasRole('SYSTEM')")
     LaboratoryTestFileDto execute(CreateLaboratoryTestFileCommand command);
 }

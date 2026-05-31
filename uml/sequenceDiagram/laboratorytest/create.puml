@@ -68,11 +68,11 @@ note over Service
   Si processedById es null → processedBy = null.
 end note
 
-Service -> Service : initialStatus = command.status() == null\n  ? PENDIENTE\n  : LaboratoryTestStatus.valueOf(status)\n(default PENDIENTE; el front manda\nPENDIENTE_POR_PROCESAR si la muestra\nya fue recolectada al crear)
+Service -> Service : initialStatus = command.status() == null\n  ? PENDING_COLLECTION\n  : LaboratoryTestStatus.valueOf(status)\n(default PENDING_COLLECTION; el front manda\nPENDING_PROCESSING si la muestra\nya fue recolectada al crear)
 
 Service -> Service : prioridad = command.prioridad() == null/blank\n  ? NORMAL\n  : LaboratoryTestPriority.valueOf(prioridad)\n(default NORMAL)
 
-Service -> Service : LaboratoryTest.create(..., initialStatus, prioridad, ...,\nprocessedBy, processedDate)\n(invariantes de dominio:\nstatus solo PENDIENTE | PENDIENTE_POR_PROCESAR;\nprioridad requerida: NORMAL | URGENTE;\nprocessedBy/processedDate opcionales)
+Service -> Service : LaboratoryTest.create(..., initialStatus, prioridad, ...,\nprocessedBy, processedDate)\n(invariantes de dominio:\nstatus solo PENDING_COLLECTION | PENDING_PROCESSING;\nprioridad requerida: NORMAL | URGENTE;\nprocessedBy/processedDate opcionales)
 
 Service -> Repo : save(laboratoryTest)
 activate Repo

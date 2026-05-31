@@ -33,7 +33,7 @@ public class LaboratoryTestJpaEntity {
     @Column(nullable = false, length = 2000)
     private String diagnosis;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 50)
     private String status;
 
     @Column(nullable = false, length = 20)

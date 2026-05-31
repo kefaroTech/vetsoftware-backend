@@ -60,7 +60,7 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.processedById()));
 
         LaboratoryTestStatus initialStatus = command.status() == null || command.status().isBlank()
-            ? LaboratoryTestStatus.PENDIENTE_POR_RECOLECTAR
+            ? LaboratoryTestStatus.PENDING_COLLECTION
             : LaboratoryTestStatus.valueOf(command.status().toUpperCase());
 
         LaboratoryTestPriority prioridad = command.prioridad() == null || command.prioridad().isBlank()

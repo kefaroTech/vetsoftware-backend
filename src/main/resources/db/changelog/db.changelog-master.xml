@@ -81,5 +81,7 @@
     <include file="db/changelog/migrations/075_add_prioridad_to_laboratory_tests.xml"/>
     <include file="db/changelog/migrations/076_create_laboratory_test_files.xml"/>
     <include file="db/changelog/migrations/077_add_processed_to_laboratory_tests.xml"/>
+    <include file="db/changelog/migrations/078_rename_laboratory_test_status_to_english.xml"/>
+    <include file="db/changelog/migrations/079_alter_laboratory_tests_status_length.xml"/>
 
 </databaseChangeLog>

@@ -44,7 +44,7 @@ public class LaboratoryTest {
     public static LaboratoryTest create(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
                                         String diagnosis, AnimalRef animal,
                                         ConsultationRef consultation, CompanyRef company) {
-        return create(date, testType, quantity, diagnosis, LaboratoryTestStatus.PENDIENTE_POR_RECOLECTAR,
+        return create(date, testType, quantity, diagnosis, LaboratoryTestStatus.PENDING_COLLECTION,
                       LaboratoryTestPriority.NORMAL, animal, consultation, company, null, null);
     }
 
@@ -53,10 +53,10 @@ public class LaboratoryTest {
                                         LaboratoryTestPriority prioridad, AnimalRef animal,
                                         ConsultationRef consultation, CompanyRef company,
                                         EmployeeRef processedBy, LocalDateTime processedDate) {
-        if (initialStatus != LaboratoryTestStatus.PENDIENTE_POR_RECOLECTAR
-                && initialStatus != LaboratoryTestStatus.PENDIENTE_POR_PROCESAR) {
+        if (initialStatus != LaboratoryTestStatus.PENDING_COLLECTION
+                && initialStatus != LaboratoryTestStatus.PENDING_PROCESSING) {
             throw new IllegalArgumentException(
-                "initial status must be PENDIENTE or PENDIENTE_POR_PROCESAR");
+                "initial status must be PENDING_COLLECTION or PENDING_PROCESSING");
         }
         return new LaboratoryTest(null, date, testType, quantity, diagnosis,
                                   initialStatus, prioridad, animal, consultation, company,
@@ -83,6 +83,14 @@ public class LaboratoryTest {
     public void changeStatus(LaboratoryTestStatus newStatus) {
         if (newStatus == null) throw new IllegalArgumentException("status is required");
         this.status = newStatus;
+    }
+
+    /** Cambia el estado registrando quién lo procesó/validó y cuándo (firma al validar). */
+    public void changeStatus(LaboratoryTestStatus newStatus, EmployeeRef processedBy,
+                             LocalDateTime processedDate) {
+        changeStatus(newStatus);
+        this.processedBy = processedBy;
+        this.processedDate = processedDate;
     }
 
     private static void validate(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,

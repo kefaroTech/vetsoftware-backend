@@ -32,4 +32,13 @@ public class Authz {
         }
         throw new AccessDeniedException("No employee context");
     }
+
+    /** Como {@link #currentEmployeeId()} pero devuelve null si no hay contexto de empleado (p.ej. SYSTEM). */
+    public Long currentEmployeeIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
+            return me.employeeId();
+        }
+        return null;
+    }
 }

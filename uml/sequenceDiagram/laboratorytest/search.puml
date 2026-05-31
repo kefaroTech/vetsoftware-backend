@@ -1,0 +1,61 @@
+@startuml laboratory_test_search
+title GET /laboratory-tests/search — Search LaboratoryTests (filtrado + paginado, scoped por empresa)
+
+actor Client
+participant "LaboratoryTestController" as Controller
+participant "Authz" as Authz
+participant "SearchLaboratoryTestsUseCase\n<<port.in>>" as UseCase
+participant "SearchLaboratoryTestsService" as Service
+participant "LaboratoryTestRepository\n<<port.out>>" as Repo
+participant "LaboratoryTestJpaMapper" as Mapper
+participant "LaboratoryTestJpaRepository\n<<spring-data + JpaSpecificationExecutor>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  Usado por la "Bandeja de muestras" (Laboratorio interno):
+  - tablero activo: statuses=PENDING_PROCESSING,IN_PROGRESS,PENDING_VALIDATION
+  - histórico:      statuses=COMPLETED (paginado)
+end note
+
+Client -> Controller : GET /laboratory-tests/search\n?statuses&animalId&testTypeId&prioridad&dateFrom&dateTo&page&pageSize
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId (del EmployeeContext)
+Controller -> Controller : parse statuses/prioridad a enums
+
+Controller -> UseCase : execute(SearchLaboratoryTestsCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (laboratoryTest.process AND @authz.isMyCompany(#command.companyId)) OR
+  SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : search(command)
+activate Repo
+Repo -> Repo : buildSpec(command)\n(company=companyId, status IN, animal?, testType?,\nprioridad?, date range; fetch-join solo en query de datos)
+Repo -> JpaRepo : findAll(spec, PageRequest(page, pageSize, sort createdDate desc))
+JpaRepo -> DB : SELECT … WHERE enabled=true AND company_id=? [filtros]\nLIMIT/OFFSET  (+ SELECT count)
+DB --> JpaRepo : page rows + total
+JpaRepo --> Repo : Page<LaboratoryTestJpaEntity>
+Repo -> Mapper : toDomain(entity) (por fila)
+Mapper --> Repo : LaboratoryTest
+Repo --> Service : PageResult<LaboratoryTest>
+deactivate Repo
+
+Service -> Service : page.map(LaboratoryTestDto::from)
+Service --> UseCase : PageResult<LaboratoryTestDto>
+UseCase --> Controller : PageResult<LaboratoryTestDto>
+
+Controller -> Controller : map content → PageResponse<LaboratoryTestResponse>
+Controller --> Client : 200 OK\nPageResponse<LaboratoryTestResponse>
+deactivate Controller
+deactivate Service
+
+@enduml

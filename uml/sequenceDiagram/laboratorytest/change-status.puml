@@ -5,6 +5,7 @@ actor Client
 participant "LaboratoryTestController" as Controller
 participant "ChangeLaboratoryTestStatusUseCase\n<<port.in>>" as UseCase
 participant "ChangeLaboratoryTestStatusService" as Service
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
 participant "LaboratoryTestRepository\n<<port.out>>" as Repo
 participant "LaboratoryTestJpaMapper" as Mapper
 participant "LaboratoryTestJpaRepository\n<<spring-data>>" as JpaRepo
@@ -25,10 +26,11 @@ end note
 Client -> Controller : PATCH /laboratory-tests/{id}/status\n+ ChangeLaboratoryTestStatusRequest
 activate Controller
 
-Controller -> UseCase : execute(ChangeLaboratoryTestStatusCommand)
+Controller -> Controller : processedById = authz.currentEmployeeIdOrNull()
+Controller -> UseCase : execute(ChangeLaboratoryTestStatusCommand{id, status, processedById})
 note right of UseCase
   @PreAuthorize:
-  admin.all OR SYSTEM
+  admin.all OR laboratoryTest.process OR SYSTEM
 end note
 
 UseCase -> Service : execute(command)
@@ -50,12 +52,18 @@ Repo --> Service : Optional<LaboratoryTest>
 
 Service -> Service : LaboratoryTestStatus.valueOf(status.toUpperCase())
 note right of Service: lanza IllegalArgumentException si\nel status no es válido → 400
-Service -> Service : laboratoryTest.changeStatus(newStatus)
+alt newStatus == COMPLETED && processedById != null  (validar y firmar)
+  Service -> EmployeeQP : findById(processedById)
+  EmployeeQP --> Service : Optional<EmployeeRef>
+  Service -> Service : laboratoryTest.changeStatus(COMPLETED, processedBy, now())\n(setea processedBy + processedDate)
+else otras transiciones
+  Service -> Service : laboratoryTest.changeStatus(newStatus)
+end
 
 Service -> Repo : save(laboratoryTest)
 Repo -> JpaRepo : getReferenceById(...)\n(proxies sin SELECT)
 JpaRepo --> Repo : proxies
-Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company)
+Repo -> Mapper : toJpa(laboratoryTest, testType, animal, consultation, company, processedBy)
 Mapper --> Repo : LaboratoryTestJpaEntity
 Repo -> JpaRepo : save(entity)
 JpaRepo -> DB : UPDATE laboratory_test
