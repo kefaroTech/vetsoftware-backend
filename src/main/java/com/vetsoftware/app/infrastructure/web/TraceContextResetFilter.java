@@ -31,20 +31,26 @@ public class TraceContextResetFilter extends OncePerRequestFilter {
         MDC.remove(MdcKeys.ACTOR_COMPANY_ID);
         MDC.remove(MdcKeys.ACTOR_SYSTEM_USER_ID);
 
-        // Contexto HTTP + IP de origen para TODA request (incluidas las públicas: login, etc.), de modo
-        // que cada log de la request quede autocontenido (sabes la ruta que falló sin ir a la traza) y
-        // cada evento AUDIT (login_failure, unauthenticated, access_denied, http_mutation) lo lleve.
-        // getRemoteAddr() es proxy-aware y NO falsificable porque server.forward-headers-strategy=native
-        // hace que Tomcat solo confíe en X-Forwarded-For de proxies internos de confianza.
+        // Contexto HTTP + IP de origen + user-agent para TODA request (incluidas las públicas: login,
+        // etc.), de modo que cada log de la request quede autocontenido (sabes la ruta que falló sin ir
+        // a la traza) y cada evento AUDIT (login_failure, login_rate_limited, unauthenticated,
+        // access_denied, http_mutation) los lleve. getRemoteAddr() es proxy-aware y NO falsificable
+        // porque server.forward-headers-strategy=native hace que Tomcat solo confíe en X-Forwarded-For
+        // de proxies internos de confianza. El User-Agent es opcional → solo se puebla si viene.
         MDC.put(MdcKeys.HTTP_METHOD, request.getMethod());
         MDC.put(MdcKeys.HTTP_PATH, request.getRequestURI());
         MDC.put(MdcKeys.CLIENT_IP, request.getRemoteAddr());
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null) {
+            MDC.put(MdcKeys.USER_AGENT, userAgent);
+        }
         try (Scope ignored = Context.root().makeCurrent()) {
             chain.doFilter(request, response);
         } finally {
             MDC.remove(MdcKeys.HTTP_METHOD);
             MDC.remove(MdcKeys.HTTP_PATH);
             MDC.remove(MdcKeys.CLIENT_IP);
+            MDC.remove(MdcKeys.USER_AGENT);
         }
     }
 }

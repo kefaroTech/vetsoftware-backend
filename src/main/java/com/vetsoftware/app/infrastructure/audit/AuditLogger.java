@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
  * appender dedicado de retención larga ({@code logs/audit.log}, ver {@code logback-spring.xml}).
  * Los campos del actor ({@code actor.type} / {@code actor.companyId} / {@code actor.employeeId} /
  * {@code actor.systemUserId}, poblados en {@code AuthFilter}) y el contexto HTTP de la request
- * ({@code client.ip} / {@code http.method} / {@code http.path}, poblados en
- * {@code TraceContextResetFilter} para toda request — ver
+ * ({@code client.ip} / {@code user_agent.original} / {@code http.method} / {@code http.path}, poblados
+ * en {@code TraceContextResetFilter} para toda request — ver
  * {@link com.vetsoftware.app.infrastructure.logging.MdcKeys}) viajan por el MDC, y el
  * {@code LogstashEncoder} los emite automáticamente como campos JSON; aquí solo se añaden los campos
  * propios del evento (no se duplican {@code http.method}/{@code http.path} ya presentes en el MDC).

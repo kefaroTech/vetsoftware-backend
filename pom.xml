@@ -114,6 +114,12 @@
             <artifactId>bucket4j-core</artifactId>
             <version>8.10.1</version>
         </dependency>
+        <!-- Rate limiting distribuido sobre Redis (buckets compartidos entre réplicas + TTL) -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-redis</artifactId>
+            <version>8.10.1</version>
+        </dependency>
 
         <!-- Spring Security: method security (@PreAuthorize) + BCrypt -->
         <dependency>

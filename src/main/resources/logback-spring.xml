@@ -14,6 +14,7 @@
     <springProfile name="!dev">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <timeZone>UTC</timeZone>
                 <customFields>{"service":"${appName}"}</customFields>
             </encoder>
         </appender>
@@ -29,6 +30,7 @@
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>UTC</timeZone>
             <customFields>{"service":"${appName}"}</customFields>
         </encoder>
     </appender>
@@ -44,11 +46,19 @@
     <logger name="com.vetsoftware" level="INFO"/>
 
     <!-- Auditoría: archivo dedicado con retención larga (cumplimiento), bajo volumen.
-         TAMPER-RESISTANCE: este archivo es local y editable. Para cumplimiento clínico real, el
-         audit trail debe enviarse off-host a un destino append-only/WORM o SIEM. Hoy los eventos
-         ya llegan a Loki vía el stream principal (additivity); para inmutabilidad, añadir un
-         appender de envío directo (p.ej. SyslogAppender/GELF a un SIEM) o hacer logs/audit.log
-         append-only a nivel SO (chattr +a) y rotarlo hacia almacenamiento WORM. -->
+
+         TAMPER-RESISTANCE (OWASP ASVS V7.3): logs/audit.log es local y editable, así que por sí solo
+         no es prueba de manipulación. Para cumplimiento clínico real el audit trail debe salir del host
+         hacia un destino append-only/WORM o un SIEM. Dos vías, según la infra disponible:
+
+           1. Reenvío off-host (recomendado): descomentar el appender SYSLOG_AUDIT de abajo, definir
+              `audit.syslog.host` (propiedad/env del colector del SIEM) y añadir su <appender-ref> al
+              logger AUDIT. El SIEM guarda los eventos fuera del alcance del host (inmutables).
+           2. OS-level: dejar logs/audit.log como append-only (`chattr +a`) y rotarlo hacia un volumen
+              WORM.
+
+         Hoy los eventos ya llegan a Loki por el stream principal (additivity) — bueno para consulta,
+         no para inmutabilidad. El paso 1 queda pendiente solo del host del SIEM (decisión de infra). -->
     <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -58,12 +68,26 @@
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>UTC</timeZone>
             <customFields>{"service":"${appName}"}</customFields>
         </encoder>
     </appender>
 
+    <!-- Reenvío off-host del audit trail a un SIEM (tamper-resistance). Listo para habilitar:
+         descomentar y definir `audit.syslog.host`; luego añadir <appender-ref ref="SYSLOG_AUDIT"/>
+         al logger AUDIT de abajo.
+    <springProperty scope="context" name="auditSyslogHost" source="audit.syslog.host"/>
+    <appender name="SYSLOG_AUDIT" class="ch.qos.logback.classic.net.SyslogAppender">
+        <syslogHost>${auditSyslogHost}</syslogHost>
+        <port>514</port>
+        <facility>AUTH</facility>
+        <suffixPattern>[%thread] %logger %msg</suffixPattern>
+    </appender>
+    -->
+
     <!-- Flujo de auditoría (OWASP ASVS V7): además del stream normal (Loki/consola por additivity),
-         va al archivo dedicado AUDIT_FILE de retención larga. Filtrable por logger_name="AUDIT". -->
+         va al archivo dedicado AUDIT_FILE de retención larga. Filtrable por logger_name="AUDIT".
+         Para tamper-resistance off-host, añadir aquí <appender-ref ref="SYSLOG_AUDIT"/>. -->
     <logger name="AUDIT" level="INFO" additivity="true">
         <appender-ref ref="AUDIT_FILE"/>
     </logger>
