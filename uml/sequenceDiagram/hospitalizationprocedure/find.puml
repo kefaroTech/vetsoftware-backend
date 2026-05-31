@@ -1,0 +1,42 @@
+@startuml hospitalization_procedure_find
+title GET /hospitalization-procedures/{id} — Find HospitalizationProcedure
+
+actor Client
+participant "HospitalizationProcedureController" as Controller
+participant "FindHospitalizationProcedureUseCase\n<<port.in>>" as UseCase
+participant "FindHospitalizationProcedureService" as Service
+participant "HospitalizationProcedureRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureJpaMapper" as Mapper
+participant "HospitalizationProcedureJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : GET /hospitalization-procedures/{id}
+activate Controller
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProcedure.read OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT (JOIN FETCH hospitalization, createdBy) WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : HospitalizationProcedure
+Repo --> Service : Optional<HospitalizationProcedure>
+alt no existe
+  Service --> GEH : HospitalizationProcedureNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Service : HospitalizationProcedureDto.from(...)
+Service --> UseCase : HospitalizationProcedureDto
+UseCase --> Controller : HospitalizationProcedureDto
+Controller --> Client : 200 OK\nHospitalizationProcedureResponse
+deactivate Controller
+deactivate Service
+
+@enduml

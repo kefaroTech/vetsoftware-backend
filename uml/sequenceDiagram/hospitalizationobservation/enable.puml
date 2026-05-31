@@ -1,0 +1,40 @@
+@startuml hospitalization_observation_enable
+title PATCH /hospitalization-observations/{id}/enable — Reactivate HospitalizationObservation
+
+actor Client
+participant "HospitalizationObservationController" as Controller
+participant "ReactivateHospitalizationObservationUseCase\n<<port.in>>" as UseCase
+participant "ReactivateHospitalizationObservationService" as Service
+participant "HospitalizationObservationRepository\n<<port.out>>" as Repo
+participant "HospitalizationObservationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /hospitalization-observations/{id}/enable
+activate Controller
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationObservation.update OR SYSTEM
+end note
+UseCase -> Service : execute(id)  [@Transactional]
+activate Service
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE hospitalization_observations SET enabled=true WHERE id=:id (nativeQuery)
+DB --> JpaRepo : filas afectadas
+JpaRepo --> Repo : int
+alt 0 filas (no existe)
+  Service --> GEH : HospitalizationObservationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Repo : findById(id)
+Repo --> Service : HospitalizationObservation
+Service -> Service : HospitalizationObservationDto.from(...)
+Service --> UseCase : HospitalizationObservationDto
+UseCase --> Controller : HospitalizationObservationDto
+Controller --> Client : 200 OK\nHospitalizationObservationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

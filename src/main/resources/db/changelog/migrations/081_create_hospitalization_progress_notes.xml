@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="081_create_hospitalization_progress_notes" author="orlando">
+        <createTable tableName="hospitalization_progress_notes">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(2000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hospitalization_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_hosp_progress_notes_hospitalization"
+                             references="hospitalizations(id)"/>
+            </column>
+            <column name="created_by_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_hosp_progress_notes_created_by"
+                             references="employees(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="TINYINT(1)" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

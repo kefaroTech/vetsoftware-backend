@@ -1,0 +1,42 @@
+@startuml hospitalization_progress_note_find
+title GET /hospitalization-progress-notes/{id} — Find HospitalizationProgressNote
+
+actor Client
+participant "HospitalizationProgressNoteController" as Controller
+participant "FindHospitalizationProgressNoteUseCase\n<<port.in>>" as UseCase
+participant "FindHospitalizationProgressNoteService" as Service
+participant "HospitalizationProgressNoteRepository\n<<port.out>>" as Repo
+participant "HospitalizationProgressNoteJpaMapper" as Mapper
+participant "HospitalizationProgressNoteJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : GET /hospitalization-progress-notes/{id}
+activate Controller
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProgressNote.read OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT (JOIN FETCH hospitalization, createdBy) WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : HospitalizationProgressNote
+Repo --> Service : Optional<HospitalizationProgressNote>
+alt no existe
+  Service --> GEH : HospitalizationProgressNoteNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Service : HospitalizationProgressNoteDto.from(...)
+Service --> UseCase : HospitalizationProgressNoteDto
+UseCase --> Controller : HospitalizationProgressNoteDto
+Controller --> Client : 200 OK\nHospitalizationProgressNoteResponse
+deactivate Controller
+deactivate Service
+
+@enduml

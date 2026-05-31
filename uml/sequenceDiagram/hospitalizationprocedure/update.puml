@@ -1,0 +1,47 @@
+@startuml hospitalization_procedure_update
+title PUT /hospitalization-procedures/{id} — Update HospitalizationProcedure
+
+actor Client
+participant "HospitalizationProcedureController" as Controller
+participant "UpdateHospitalizationProcedureUseCase\n<<port.in>>" as UseCase
+participant "UpdateHospitalizationProcedureService" as Service
+participant "HospitalizationProcedureRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PUT /hospitalization-procedures/{id}\n+ UpdateHospitalizationProcedureRequest
+activate Controller
+Controller -> UseCase : execute(UpdateHospitalizationProcedureCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProcedure.update OR SYSTEM
+end note
+UseCase -> Service : execute(command)  [@Transactional]
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+alt no existe
+  Service --> GEH : HospitalizationProcedureNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : HospitalizationProcedure
+Service -> Service : parse enums (frequency, guidelineType, durationMeasure)
+Service -> Service : procedure.update(name, dose, ...)\n(createdBy y hospitalization no se modifican)
+Service -> Repo : save(procedure)
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE hospitalization_procedures
+DB --> JpaRepo : ok
+JpaRepo --> Repo : entity
+Repo --> Service : HospitalizationProcedure
+Service -> Service : HospitalizationProcedureDto.from(...)
+Service --> UseCase : HospitalizationProcedureDto
+UseCase --> Controller : HospitalizationProcedureDto
+Controller --> Client : 200 OK\nHospitalizationProcedureResponse
+deactivate Controller
+deactivate Service
+
+@enduml

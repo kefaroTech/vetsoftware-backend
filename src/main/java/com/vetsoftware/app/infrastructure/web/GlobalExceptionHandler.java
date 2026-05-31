@@ -32,6 +32,10 @@ import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
+import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedicationNotFoundException;
+import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservationNotFoundException;
+import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationProcedureNotFoundException;
+import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNoteNotFoundException;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
@@ -109,6 +113,10 @@ public class GlobalExceptionHandler {
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,
+            HospitalizationObservationNotFoundException.class,
+            HospitalizationProgressNoteNotFoundException.class,
+            HospitalizationMedicationNotFoundException.class,
+            HospitalizationProcedureNotFoundException.class,
             LaboratoryTestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
             LaboratoryTestFileNotFoundException.class,
             PrescriptionNotFoundException.class, DewormingNotFoundException.class,

@@ -83,5 +83,11 @@
     <include file="db/changelog/migrations/077_add_processed_to_laboratory_tests.xml"/>
     <include file="db/changelog/migrations/078_rename_laboratory_test_status_to_english.xml"/>
     <include file="db/changelog/migrations/079_alter_laboratory_tests_status_length.xml"/>
+    <include file="db/changelog/migrations/080_create_hospitalization_observations.xml"/>
+    <include file="db/changelog/migrations/081_create_hospitalization_progress_notes.xml"/>
+    <include file="db/changelog/migrations/082_create_hospitalization_medications.xml"/>
+    <include file="db/changelog/migrations/083_create_hospitalization_procedures.xml"/>
+    <include file="db/changelog/migrations/084_create_procedure_schedules.xml"/>
+    <include file="db/changelog/migrations/085_create_medication_schedules.xml"/>
 
 </databaseChangeLog>

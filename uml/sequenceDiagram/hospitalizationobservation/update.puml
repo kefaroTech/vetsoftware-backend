@@ -1,0 +1,46 @@
+@startuml hospitalization_observation_update
+title PUT /hospitalization-observations/{id} — Update HospitalizationObservation
+
+actor Client
+participant "HospitalizationObservationController" as Controller
+participant "UpdateHospitalizationObservationUseCase\n<<port.in>>" as UseCase
+participant "UpdateHospitalizationObservationService" as Service
+participant "HospitalizationObservationRepository\n<<port.out>>" as Repo
+participant "HospitalizationObservationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PUT /hospitalization-observations/{id}\n+ UpdateHospitalizationObservationRequest
+activate Controller
+Controller -> UseCase : execute(UpdateHospitalizationObservationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationObservation.update OR SYSTEM
+end note
+UseCase -> Service : execute(command)  [@Transactional]
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+alt no existe
+  Service --> GEH : HospitalizationObservationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : HospitalizationObservation
+Service -> Service : observation.update(description)\n(createdBy y hospitalization no se modifican)
+Service -> Repo : save(observation)
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE hospitalization_observations
+DB --> JpaRepo : ok
+JpaRepo --> Repo : entity
+Repo --> Service : HospitalizationObservation
+Service -> Service : HospitalizationObservationDto.from(...)
+Service --> UseCase : HospitalizationObservationDto
+UseCase --> Controller : HospitalizationObservationDto
+Controller --> Client : 200 OK\nHospitalizationObservationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

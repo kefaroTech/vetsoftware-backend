@@ -1,0 +1,37 @@
+@startuml hospitalization_procedure_list_by_hospitalization
+title GET /hospitalization-procedures/by-hospitalization/{hospitalizationId}
+
+actor Client
+participant "HospitalizationProcedureController" as Controller
+participant "ListHospitalizationProceduresByHospitalizationUseCase\n<<port.in>>" as UseCase
+participant "ListHospitalizationProceduresByHospitalizationService" as Service
+participant "HospitalizationProcedureRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureJpaMapper" as Mapper
+participant "HospitalizationProcedureJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+Client -> Controller : GET /hospitalization-procedures/by-hospitalization/{hospitalizationId}
+activate Controller
+Controller -> UseCase : listByHospitalization(hospitalizationId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProcedure.read OR SYSTEM
+end note
+UseCase -> Service : listByHospitalization(hospitalizationId)
+activate Service
+Service -> Repo : findAllByHospitalizationId(hospitalizationId)
+Repo -> JpaRepo : findByHospitalizationId(hospitalizationId)
+JpaRepo -> DB : SELECT (JOIN FETCH refs) WHERE hospitalization_id=? AND enabled=true
+DB --> JpaRepo : rows
+JpaRepo --> Repo : List<entity>
+Repo -> Mapper : toDomain(entity) (por fila)
+Mapper --> Repo : List<HospitalizationProcedure>
+Repo --> Service : List<HospitalizationProcedure>
+Service -> Service : map HospitalizationProcedureDto.from(...)
+Service --> UseCase : List<HospitalizationProcedureDto>
+UseCase --> Controller : List<HospitalizationProcedureDto>
+Controller --> Client : 200 OK\nList<HospitalizationProcedureResponse>
+deactivate Controller
+deactivate Service
+
+@enduml

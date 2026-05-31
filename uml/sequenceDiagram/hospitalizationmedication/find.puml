@@ -1,0 +1,42 @@
+@startuml hospitalization_medication_find
+title GET /hospitalization-medications/{id} — Find HospitalizationMedication
+
+actor Client
+participant "HospitalizationMedicationController" as Controller
+participant "FindHospitalizationMedicationUseCase\n<<port.in>>" as UseCase
+participant "FindHospitalizationMedicationService" as Service
+participant "HospitalizationMedicationRepository\n<<port.out>>" as Repo
+participant "HospitalizationMedicationJpaMapper" as Mapper
+participant "HospitalizationMedicationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : GET /hospitalization-medications/{id}
+activate Controller
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationMedication.read OR SYSTEM
+end note
+UseCase -> Service : findById(id)
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT (JOIN FETCH hospitalization, createdBy) WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : HospitalizationMedication
+Repo --> Service : Optional<HospitalizationMedication>
+alt no existe
+  Service --> GEH : HospitalizationMedicationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Service : HospitalizationMedicationDto.from(...)
+Service --> UseCase : HospitalizationMedicationDto
+UseCase --> Controller : HospitalizationMedicationDto
+Controller --> Client : 200 OK\nHospitalizationMedicationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

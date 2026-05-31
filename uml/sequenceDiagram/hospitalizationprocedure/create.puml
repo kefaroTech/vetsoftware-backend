@@ -1,0 +1,69 @@
+@startuml hospitalization_procedure_create
+title POST /hospitalization-procedures — Create HospitalizationProcedure
+
+actor Client
+participant "HospitalizationProcedureController" as Controller
+participant "Authz" as Authz
+participant "CreateHospitalizationProcedureUseCase\n<<port.in>>" as UseCase
+participant "CreateHospitalizationProcedureService" as Service
+participant "HospitalizationQueryPort\n<<port.out>>" as HospQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+participant "HospitalizationProcedureRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureJpaMapper" as Mapper
+participant "HospitalizationProcedureJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  @SQLRestriction filtra enabled=true en todo SELECT.
+end note
+
+Client -> Controller : POST /hospitalization-procedures\n+ CreateHospitalizationProcedureRequest
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId (del EmployeeContext)
+Controller -> UseCase : execute(CreateHospitalizationProcedureCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProcedure.create OR SYSTEM
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> HospQP : findById(hospitalizationId)
+HospQP --> Service : Optional<HospitalizationRef>
+alt hospitalization no encontrada (o no enabled)
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> EmpQP : findById(createdById)
+EmpQP --> Service : Optional<EmployeeRef>
+
+Service -> Service : parse enums (frequency, guidelineType, durationMeasure)
+Service -> Service : HospitalizationProcedure.create(name, dose, ..., hospitalization, createdBy)\n(invariantes de dominio)
+Service -> Repo : save(procedure)
+activate Repo
+Repo -> JpaRepo : getReferenceById(hospitalization, createdBy)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(procedure, hospitalization, createdBy)
+Mapper --> Repo : HospitalizationProcedureJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT hospitalization_procedures
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : entity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : HospitalizationProcedure
+Repo --> Service : HospitalizationProcedure
+deactivate Repo
+
+Service -> Service : HospitalizationProcedureDto.from(...)
+Service --> UseCase : HospitalizationProcedureDto
+UseCase --> Controller : HospitalizationProcedureDto
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nHospitalizationProcedureResponse
+deactivate Controller
+deactivate Service
+
+@enduml

@@ -413,6 +413,76 @@ class Hospitalization {
   -enabled: boolean
 }
 
+class HospitalizationObservation {
+  -description: String
+  -hospitalization: Hospitalization
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class HospitalizationProgressNote {
+  -description: String
+  -hospitalization: Hospitalization
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class HospitalizationMedication {
+  -name: String
+  -dose: String
+  -frequency: Frequency
+  -guidelineType: GuidelineType
+  -durationMeasure: DurationMeasure
+  -durationQuantity: Integer
+  -startDate: LocalDate
+  -startTime: LocalTime
+  -notes: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class HospitalizationProcedure {
+  -name: String
+  -dose: String
+  -frequency: Frequency
+  -guidelineType: GuidelineType
+  -durationMeasure: DurationMeasure
+  -durationQuantity: Integer
+  -startDate: LocalDate
+  -startTime: LocalTime
+  -notes: String
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class ProcedureSchedule {
+  -hospitalizationProcedure: HospitalizationProcedure
+  -originalDateTime: LocalDateTime
+  -currentDateTime: LocalDateTime
+  -realDateTime: LocalDateTime
+  -appliedStatus: AppliedStatus
+  -rescheduled: Boolean
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class MedicationSchedule {
+  -medicationProcedure: MedicationSchedule
+  -originalDateTime: LocalDateTime
+  -currentDateTime: LocalDateTime
+  -realDateTime: LocalDateTime
+  -appliedStatus: AppliedStatus
+  -rescheduled: Boolean
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
 class DayCare {
   -date: LocalDate
   -startDate: LocalDate
@@ -621,6 +691,12 @@ Surgery               --> SurgeryStatus
 Surgery               "0..*" --> "0..1" Consultation
 
 Hospitalization       --> HospitalizationType
+HospitalizationObservation       --> Hospitalization
+HospitalizationProgressNote       --> Hospitalization
+HospitalizationMedication       --> Hospitalization
+HospitalizationProcedure       --> Hospitalization
+ProcedureSchedule       --> HospitalizationProcedure
+MedicationSchedule       --> HospitalizationMedication
 Hospitalization       --> ReasonLeaving
 Hospitalization       --> Animal
 Hospitalization       --> Company

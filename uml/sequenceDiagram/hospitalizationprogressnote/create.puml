@@ -1,0 +1,68 @@
+@startuml hospitalization_progress_note_create
+title POST /hospitalization-progress-notes — Create HospitalizationProgressNote
+
+actor Client
+participant "HospitalizationProgressNoteController" as Controller
+participant "Authz" as Authz
+participant "CreateHospitalizationProgressNoteUseCase\n<<port.in>>" as UseCase
+participant "CreateHospitalizationProgressNoteService" as Service
+participant "HospitalizationQueryPort\n<<port.out>>" as HospQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+participant "HospitalizationProgressNoteRepository\n<<port.out>>" as Repo
+participant "HospitalizationProgressNoteJpaMapper" as Mapper
+participant "HospitalizationProgressNoteJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  @SQLRestriction filtra enabled=true en todo SELECT.
+end note
+
+Client -> Controller : POST /hospitalization-progress-notes\n+ CreateHospitalizationProgressNoteRequest
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId (del EmployeeContext)
+Controller -> UseCase : execute(CreateHospitalizationProgressNoteCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProgressNote.create OR SYSTEM
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> HospQP : findById(hospitalizationId)
+HospQP --> Service : Optional<HospitalizationRef>
+alt hospitalization no encontrada (o no enabled)
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> EmpQP : findById(createdById)
+EmpQP --> Service : Optional<EmployeeRef>
+
+Service -> Service : HospitalizationProgressNote.create(description, hospitalization, createdBy)\n(invariantes de dominio)
+Service -> Repo : save(progressNote)
+activate Repo
+Repo -> JpaRepo : getReferenceById(hospitalization, createdBy)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(progressNote, hospitalization, createdBy)
+Mapper --> Repo : HospitalizationProgressNoteJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT hospitalization_progress_notes
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : entity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : HospitalizationProgressNote
+Repo --> Service : HospitalizationProgressNote
+deactivate Repo
+
+Service -> Service : HospitalizationProgressNoteDto.from(...)
+Service --> UseCase : HospitalizationProgressNoteDto
+UseCase --> Controller : HospitalizationProgressNoteDto
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nHospitalizationProgressNoteResponse
+deactivate Controller
+deactivate Service
+
+@enduml

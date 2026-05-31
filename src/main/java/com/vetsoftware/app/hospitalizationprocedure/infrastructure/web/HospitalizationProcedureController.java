@@ -1,0 +1,102 @@
+package com.vetsoftware.app.hospitalizationprocedure.infrastructure.web;
+
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.hospitalizationprocedure.application.command.CreateHospitalizationProcedureCommand;
+import com.vetsoftware.app.hospitalizationprocedure.application.command.UpdateHospitalizationProcedureCommand;
+import com.vetsoftware.app.hospitalizationprocedure.application.dto.EmployeeSummaryDto;
+import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationProcedureDto;
+import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationSummaryDto;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.CreateHospitalizationProcedureUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.DeleteHospitalizationProcedureUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.FindHospitalizationProcedureUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ListHospitalizationProceduresByHospitalizationUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ReactivateHospitalizationProcedureUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.application.port.in.UpdateHospitalizationProcedureUseCase;
+import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.request.CreateHospitalizationProcedureRequest;
+import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.request.UpdateHospitalizationProcedureRequest;
+import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.EmployeeSummary;
+import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.HospitalizationProcedureResponse;
+import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.HospitalizationSummary;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/hospitalization-procedures")
+public class HospitalizationProcedureController {
+    private final CreateHospitalizationProcedureUseCase createUseCase;
+    private final UpdateHospitalizationProcedureUseCase updateUseCase;
+    private final FindHospitalizationProcedureUseCase findUseCase;
+    private final ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase;
+    private final DeleteHospitalizationProcedureUseCase deleteUseCase;
+    private final ReactivateHospitalizationProcedureUseCase reactivateUseCase;
+    private final Authz authz;
+
+    public HospitalizationProcedureController(CreateHospitalizationProcedureUseCase createUseCase,
+                                              UpdateHospitalizationProcedureUseCase updateUseCase,
+                                              FindHospitalizationProcedureUseCase findUseCase,
+                                              ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase,
+                                              DeleteHospitalizationProcedureUseCase deleteUseCase,
+                                              ReactivateHospitalizationProcedureUseCase reactivateUseCase,
+                                              Authz authz) {
+        this.createUseCase = createUseCase;
+        this.updateUseCase = updateUseCase;
+        this.findUseCase = findUseCase;
+        this.listByHospitalizationUseCase = listByHospitalizationUseCase;
+        this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public HospitalizationProcedureResponse create(@Valid @RequestBody CreateHospitalizationProcedureRequest request) {
+        return toResponse(createUseCase.execute(new CreateHospitalizationProcedureCommand(
+            request.name(), request.dose(), request.frequency(), request.guidelineType(),
+            request.durationMeasure(), request.durationQuantity(), request.startDate(),
+            request.startTime(), request.notes(), request.hospitalizationId(), authz.currentEmployeeId())));
+    }
+
+    @GetMapping("/by-hospitalization/{hospitalizationId}")
+    public List<HospitalizationProcedureResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
+        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+            .map(this::toResponse).toList();
+    }
+
+    @GetMapping("/{id}")
+    public HospitalizationProcedureResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public HospitalizationProcedureResponse update(@PathVariable Long id,
+                                                   @Valid @RequestBody UpdateHospitalizationProcedureRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateHospitalizationProcedureCommand(
+            id, request.name(), request.dose(), request.frequency(), request.guidelineType(),
+            request.durationMeasure(), request.durationQuantity(), request.startDate(),
+            request.startTime(), request.notes())));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
+    }
+
+    @PatchMapping("/{id}/enable")
+    public HospitalizationProcedureResponse reactivate(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
+    private HospitalizationProcedureResponse toResponse(HospitalizationProcedureDto dto) {
+        HospitalizationSummaryDto h = dto.hospitalization();
+        EmployeeSummaryDto c = dto.createdBy();
+        return new HospitalizationProcedureResponse(
+            dto.id(), dto.name(), dto.dose(), dto.frequency(), dto.guidelineType(),
+            dto.durationMeasure(), dto.durationQuantity(), dto.startDate(), dto.startTime(), dto.notes(),
+            new HospitalizationSummary(h.id(), h.date()),
+            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
+            dto.createdDate(), dto.enabled());
+    }
+}

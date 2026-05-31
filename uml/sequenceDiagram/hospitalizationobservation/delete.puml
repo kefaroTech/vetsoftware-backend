@@ -1,0 +1,46 @@
+@startuml hospitalization_observation_delete
+title DELETE /hospitalization-observations/{id} — Soft-delete HospitalizationObservation
+
+actor Client
+participant "HospitalizationObservationController" as Controller
+participant "DeleteHospitalizationObservationUseCase\n<<port.in>>" as UseCase
+participant "DeleteHospitalizationObservationService" as Service
+participant "HospitalizationObservationRepository\n<<port.out>>" as Repo
+participant "HospitalizationObservationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, DB
+  @SQLDelete convierte el DELETE en UPDATE enabled=false;
+  @SQLRestriction oculta las filas con enabled=false.
+end note
+
+Client -> Controller : DELETE /hospitalization-observations/{id}
+activate Controller
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationObservation.delete OR SYSTEM
+end note
+UseCase -> Service : execute(id)  [@Transactional]
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT WHERE enabled=true
+DB --> JpaRepo : row | empty
+alt no existe
+  Service --> GEH : HospitalizationObservationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : HospitalizationObservation
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE hospitalization_observations SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+Service --> UseCase : void
+UseCase --> Controller : void
+Controller --> Client : 204 No Content
+deactivate Controller
+deactivate Service
+
+@enduml

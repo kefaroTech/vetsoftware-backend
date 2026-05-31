@@ -1,0 +1,68 @@
+@startuml hospitalization_observation_create
+title POST /hospitalization-observations — Create HospitalizationObservation
+
+actor Client
+participant "HospitalizationObservationController" as Controller
+participant "Authz" as Authz
+participant "CreateHospitalizationObservationUseCase\n<<port.in>>" as UseCase
+participant "CreateHospitalizationObservationService" as Service
+participant "HospitalizationQueryPort\n<<port.out>>" as HospQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+participant "HospitalizationObservationRepository\n<<port.out>>" as Repo
+participant "HospitalizationObservationJpaMapper" as Mapper
+participant "HospitalizationObservationJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  @SQLRestriction filtra enabled=true en todo SELECT.
+end note
+
+Client -> Controller : POST /hospitalization-observations\n+ CreateHospitalizationObservationRequest
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId (del EmployeeContext)
+Controller -> UseCase : execute(CreateHospitalizationObservationCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationObservation.create OR SYSTEM
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> HospQP : findById(hospitalizationId)
+HospQP --> Service : Optional<HospitalizationRef>
+alt hospitalization no encontrada (o no enabled)
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+Service -> EmpQP : findById(createdById)
+EmpQP --> Service : Optional<EmployeeRef>
+
+Service -> Service : HospitalizationObservation.create(description, hospitalization, createdBy)\n(invariantes de dominio)
+Service -> Repo : save(observation)
+activate Repo
+Repo -> JpaRepo : getReferenceById(hospitalization, createdBy)\n(proxies sin SELECT)
+JpaRepo --> Repo : proxies
+Repo -> Mapper : toJpa(observation, hospitalization, createdBy)
+Mapper --> Repo : HospitalizationObservationJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT hospitalization_observations
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : entity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : HospitalizationObservation
+Repo --> Service : HospitalizationObservation
+deactivate Repo
+
+Service -> Service : HospitalizationObservationDto.from(...)
+Service --> UseCase : HospitalizationObservationDto
+UseCase --> Controller : HospitalizationObservationDto
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nHospitalizationObservationResponse
+deactivate Controller
+deactivate Service
+
+@enduml

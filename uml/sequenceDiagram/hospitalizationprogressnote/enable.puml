@@ -1,0 +1,40 @@
+@startuml hospitalization_progress_note_enable
+title PATCH /hospitalization-progress-notes/{id}/enable — Reactivate HospitalizationProgressNote
+
+actor Client
+participant "HospitalizationProgressNoteController" as Controller
+participant "ReactivateHospitalizationProgressNoteUseCase\n<<port.in>>" as UseCase
+participant "ReactivateHospitalizationProgressNoteService" as Service
+participant "HospitalizationProgressNoteRepository\n<<port.out>>" as Repo
+participant "HospitalizationProgressNoteJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /hospitalization-progress-notes/{id}/enable
+activate Controller
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProgressNote.update OR SYSTEM
+end note
+UseCase -> Service : execute(id)  [@Transactional]
+activate Service
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE hospitalization_progress_notes SET enabled=true WHERE id=:id (nativeQuery)
+DB --> JpaRepo : filas afectadas
+JpaRepo --> Repo : int
+alt 0 filas (no existe)
+  Service --> GEH : HospitalizationProgressNoteNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Repo : findById(id)
+Repo --> Service : HospitalizationProgressNote
+Service -> Service : HospitalizationProgressNoteDto.from(...)
+Service --> UseCase : HospitalizationProgressNoteDto
+UseCase --> Controller : HospitalizationProgressNoteDto
+Controller --> Client : 200 OK\nHospitalizationProgressNoteResponse
+deactivate Controller
+deactivate Service
+
+@enduml

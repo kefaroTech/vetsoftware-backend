@@ -1,0 +1,46 @@
+@startuml hospitalization_progress_note_update
+title PUT /hospitalization-progress-notes/{id} — Update HospitalizationProgressNote
+
+actor Client
+participant "HospitalizationProgressNoteController" as Controller
+participant "UpdateHospitalizationProgressNoteUseCase\n<<port.in>>" as UseCase
+participant "UpdateHospitalizationProgressNoteService" as Service
+participant "HospitalizationProgressNoteRepository\n<<port.out>>" as Repo
+participant "HospitalizationProgressNoteJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PUT /hospitalization-progress-notes/{id}\n+ UpdateHospitalizationProgressNoteRequest
+activate Controller
+Controller -> UseCase : execute(UpdateHospitalizationProgressNoteCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProgressNote.update OR SYSTEM
+end note
+UseCase -> Service : execute(command)  [@Transactional]
+activate Service
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT WHERE enabled=true
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<entity>
+alt no existe
+  Service --> GEH : HospitalizationProgressNoteNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : HospitalizationProgressNote
+Service -> Service : progressNote.update(description)\n(createdBy y hospitalization no se modifican)
+Service -> Repo : save(progressNote)
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE hospitalization_progress_notes
+DB --> JpaRepo : ok
+JpaRepo --> Repo : entity
+Repo --> Service : HospitalizationProgressNote
+Service -> Service : HospitalizationProgressNoteDto.from(...)
+Service --> UseCase : HospitalizationProgressNoteDto
+UseCase --> Controller : HospitalizationProgressNoteDto
+Controller --> Client : 200 OK\nHospitalizationProgressNoteResponse
+deactivate Controller
+deactivate Service
+
+@enduml

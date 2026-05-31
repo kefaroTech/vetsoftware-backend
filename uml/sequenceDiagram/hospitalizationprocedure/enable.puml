@@ -1,0 +1,40 @@
+@startuml hospitalization_procedure_enable
+title PATCH /hospitalization-procedures/{id}/enable — Reactivate HospitalizationProcedure
+
+actor Client
+participant "HospitalizationProcedureController" as Controller
+participant "ReactivateHospitalizationProcedureUseCase\n<<port.in>>" as UseCase
+participant "ReactivateHospitalizationProcedureService" as Service
+participant "HospitalizationProcedureRepository\n<<port.out>>" as Repo
+participant "HospitalizationProcedureJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /hospitalization-procedures/{id}/enable
+activate Controller
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalizationProcedure.update OR SYSTEM
+end note
+UseCase -> Service : execute(id)  [@Transactional]
+activate Service
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE hospitalization_procedures SET enabled=true WHERE id=:id (nativeQuery)
+DB --> JpaRepo : filas afectadas
+JpaRepo --> Repo : int
+alt 0 filas (no existe)
+  Service --> GEH : HospitalizationProcedureNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> Repo : findById(id)
+Repo --> Service : HospitalizationProcedure
+Service -> Service : HospitalizationProcedureDto.from(...)
+Service --> UseCase : HospitalizationProcedureDto
+UseCase --> Controller : HospitalizationProcedureDto
+Controller --> Client : 200 OK\nHospitalizationProcedureResponse
+deactivate Controller
+deactivate Service
+
+@enduml
