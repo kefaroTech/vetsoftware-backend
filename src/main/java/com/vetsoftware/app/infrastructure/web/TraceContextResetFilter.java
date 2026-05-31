@@ -31,33 +31,20 @@ public class TraceContextResetFilter extends OncePerRequestFilter {
         MDC.remove(MdcKeys.ACTOR_COMPANY_ID);
         MDC.remove(MdcKeys.ACTOR_SYSTEM_USER_ID);
 
-        // IP de origen para TODA request (incluidas las públicas: login, etc.), de modo que cada
-        // evento AUDIT (login_failure, unauthenticated, access_denied, http_mutation) la lleve vía MDC.
-        MDC.put(MdcKeys.CLIENT_IP, clientIp(request));
+        // Contexto HTTP + IP de origen para TODA request (incluidas las públicas: login, etc.), de modo
+        // que cada log de la request quede autocontenido (sabes la ruta que falló sin ir a la traza) y
+        // cada evento AUDIT (login_failure, unauthenticated, access_denied, http_mutation) lo lleve.
+        // getRemoteAddr() es proxy-aware y NO falsificable porque server.forward-headers-strategy=native
+        // hace que Tomcat solo confíe en X-Forwarded-For de proxies internos de confianza.
+        MDC.put(MdcKeys.HTTP_METHOD, request.getMethod());
+        MDC.put(MdcKeys.HTTP_PATH, request.getRequestURI());
+        MDC.put(MdcKeys.CLIENT_IP, request.getRemoteAddr());
         try (Scope ignored = Context.root().makeCurrent()) {
             chain.doFilter(request, response);
         } finally {
+            MDC.remove(MdcKeys.HTTP_METHOD);
+            MDC.remove(MdcKeys.HTTP_PATH);
             MDC.remove(MdcKeys.CLIENT_IP);
         }
-    }
-
-    /**
-     * IP del cliente. Prioriza {@code X-Forwarded-For} (primer salto) y {@code X-Real-IP} para el caso
-     * detrás de proxy/balanceador; si no, {@code getRemoteAddr()}.
-     *
-     * <p>Cuidado: {@code X-Forwarded-For} es falsificable si NO hay un proxy de confianza que lo
-     * reescriba. Si despliegas tras un proxy conocido, lo robusto es {@code server.forward-headers-strategy}
-     * y usar solo {@code getRemoteAddr()}.
-     */
-    private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

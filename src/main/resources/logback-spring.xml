@@ -43,7 +43,12 @@
     <!-- Logs propios de la app en INFO -->
     <logger name="com.vetsoftware" level="INFO"/>
 
-    <!-- Auditoría: archivo dedicado con retención larga (cumplimiento), bajo volumen -->
+    <!-- Auditoría: archivo dedicado con retención larga (cumplimiento), bajo volumen.
+         TAMPER-RESISTANCE: este archivo es local y editable. Para cumplimiento clínico real, el
+         audit trail debe enviarse off-host a un destino append-only/WORM o SIEM. Hoy los eventos
+         ya llegan a Loki vía el stream principal (additivity); para inmutabilidad, añadir un
+         appender de envío directo (p.ej. SyslogAppender/GELF a un SIEM) o hacer logs/audit.log
+         append-only a nivel SO (chattr +a) y rotarlo hacia almacenamiento WORM. -->
     <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">

@@ -18,4 +18,8 @@ public final class MdcKeys {
 
     /** IP de origen de la request (OWASP ASVS 7.1.4 "source of the event"). */
     public static final String CLIENT_IP = "client.ip";
+
+    /** Método y ruta HTTP de la request en curso → logs de error autocontenidos. */
+    public static final String HTTP_METHOD = "http.method";
+    public static final String HTTP_PATH = "http.path";
 }

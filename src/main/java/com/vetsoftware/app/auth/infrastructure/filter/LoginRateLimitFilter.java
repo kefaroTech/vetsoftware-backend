@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
@@ -28,9 +29,11 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
+    private final AuditLogger auditLogger;
 
-    public LoginRateLimitFilter(ObjectMapper objectMapper) {
+    public LoginRateLimitFilter(ObjectMapper objectMapper, AuditLogger auditLogger) {
         this.objectMapper = objectMapper;
+        this.auditLogger = auditLogger;
     }
 
     @Override
@@ -45,6 +48,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
+            auditLogger.loginRateLimited();
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", String.valueOf(WINDOW.toSeconds()));
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
@@ -65,8 +69,9 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static String clientKey(HttpServletRequest request) {
-        String fwd = request.getHeader("X-Forwarded-For");
-        if (fwd != null && !fwd.isBlank()) return fwd.split(",")[0].trim();
+        // IP real y NO falsificable: server.forward-headers-strategy=native hace que Tomcat solo
+        // confíe en X-Forwarded-For de proxies internos. Parsear el header a mano permitiría evadir
+        // el límite mandando un XFF distinto en cada intento (un bucket nuevo por valor falso).
         return request.getRemoteAddr();
     }
 }

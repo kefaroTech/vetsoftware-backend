@@ -12,11 +12,12 @@ import org.springframework.stereotype.Component;
  * <p>Escribe al logger {@code "AUDIT"}, filtrable en Loki por {@code logger_name="AUDIT"}, y con
  * appender dedicado de retención larga ({@code logs/audit.log}, ver {@code logback-spring.xml}).
  * Los campos del actor ({@code actor.type} / {@code actor.companyId} / {@code actor.employeeId} /
- * {@code actor.systemUserId}, poblados en {@code AuthFilter}) y la IP de origen ({@code client.ip},
- * poblada en {@code TraceContextResetFilter} para toda request — ver
+ * {@code actor.systemUserId}, poblados en {@code AuthFilter}) y el contexto HTTP de la request
+ * ({@code client.ip} / {@code http.method} / {@code http.path}, poblados en
+ * {@code TraceContextResetFilter} para toda request — ver
  * {@link com.vetsoftware.app.infrastructure.logging.MdcKeys}) viajan por el MDC, y el
  * {@code LogstashEncoder} los emite automáticamente como campos JSON; aquí solo se añaden los campos
- * propios del evento.
+ * propios del evento (no se duplican {@code http.method}/{@code http.path} ya presentes en el MDC).
  *
  * <p>Convención de campos: notación con punto ({@code http.*}, {@code actor.*}) alineada con
  * OpenTelemetry. Nota: {@code actor.identifier} (en login) es el <em>código</em> de empleado/usuario
@@ -30,12 +31,10 @@ public class AuditLogger {
 
     private static final Logger audit = LoggerFactory.getLogger("AUDIT");
 
-    /** Mutación de recurso en el borde HTTP (POST/PUT/PATCH/DELETE). */
+    /** Mutación de recurso en el borde HTTP (POST/PUT/PATCH/DELETE). http.method/http.path vía MDC. */
     public void mutation(String method, String path, int status, String outcome, long durationMs) {
         audit.info("mutation {} {} -> {} ({})", method, path, status, outcome,
                 kv("event", "http_mutation"),
-                kv("http.method", method),
-                kv("http.path", path),
                 kv("http.status", status),
                 kv("outcome", outcome),
                 kv("http.durationMs", durationMs));
@@ -50,31 +49,35 @@ public class AuditLogger {
                 kv("outcome", "SUCCESS"));
     }
 
-    /** Intento de login fallido; sin identificador (no disponible en el handler) ni credenciales. */
+    /** Intento de login fallido; sin identificador (no disponible en el handler) ni credenciales.
+     *  http.path vía MDC. */
     public void loginFailure(String path, String reason) {
         audit.warn("login failure {} reason={}", path, reason,
                 kv("event", "login_failure"),
-                kv("http.path", path),
                 kv("outcome", "FAILURE"),
                 kv("reason", reason));
     }
 
-    /** Denegación de autorización (@PreAuthorize → AccessDeniedException). Actor vía MDC. */
+    /** Denegación de autorización (@PreAuthorize → AccessDeniedException). Actor, http.* vía MDC. */
     public void accessDenied(String method, String path) {
         audit.warn("access denied {} {}", method, path,
                 kv("event", "access_denied"),
-                kv("http.method", method),
-                kv("http.path", path),
                 kv("outcome", "DENIED"));
     }
 
-    /** Acceso a un recurso protegido sin autenticación válida (token ausente/inválido → 401). */
+    /** Acceso a un recurso protegido sin autenticación válida (token ausente/inválido → 401).
+     *  http.method/http.path vía MDC. */
     public void unauthenticated(String method, String path, String reason) {
         audit.warn("unauthenticated {} {} reason={}", method, path, reason,
                 kv("event", "unauthenticated"),
-                kv("http.method", method),
-                kv("http.path", path),
                 kv("outcome", "DENIED"),
                 kv("reason", reason));
+    }
+
+    /** Login bloqueado por rate limiting (429) — señal de fuerza bruta. client.ip/http.path vía MDC. */
+    public void loginRateLimited() {
+        audit.warn("login rate limited",
+                kv("event", "login_rate_limited"),
+                kv("outcome", "DENIED"));
     }
 }

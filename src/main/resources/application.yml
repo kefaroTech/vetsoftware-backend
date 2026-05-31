@@ -1,6 +1,10 @@
 server:
   servlet:
     context-path: /api/v1
+  # 'native' → Tomcat (RemoteIpValve) solo confía en X-Forwarded-For/Proto de proxies INTERNOS de
+  # confianza (rangos privados por defecto); un cliente externo no puede falsear su IP. Así
+  # request.getRemoteAddr() devuelve la IP real del cliente tanto detrás de balanceador como en local.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
 spring:
   application:
