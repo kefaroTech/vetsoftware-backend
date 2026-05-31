@@ -15,4 +15,7 @@ public final class MdcKeys {
     public static final String ACTOR_EMPLOYEE_ID = "actor.employeeId";
     public static final String ACTOR_COMPANY_ID = "actor.companyId";
     public static final String ACTOR_SYSTEM_USER_ID = "actor.systemUserId";
+
+    /** IP de origen de la request (OWASP ASVS 7.1.4 "source of the event"). */
+    public static final String CLIENT_IP = "client.ip";
 }

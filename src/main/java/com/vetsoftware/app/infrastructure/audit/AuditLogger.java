@@ -12,9 +12,11 @@ import org.springframework.stereotype.Component;
  * <p>Escribe al logger {@code "AUDIT"}, filtrable en Loki por {@code logger_name="AUDIT"}, y con
  * appender dedicado de retención larga ({@code logs/audit.log}, ver {@code logback-spring.xml}).
  * Los campos del actor ({@code actor.type} / {@code actor.companyId} / {@code actor.employeeId} /
- * {@code actor.systemUserId}, ver {@link com.vetsoftware.app.infrastructure.logging.MdcKeys})
- * viajan por el MDC (poblado en {@code AuthFilter}) y el {@code LogstashEncoder} los emite
- * automáticamente como campos JSON; aquí solo se añaden los campos propios del evento.
+ * {@code actor.systemUserId}, poblados en {@code AuthFilter}) y la IP de origen ({@code client.ip},
+ * poblada en {@code TraceContextResetFilter} para toda request — ver
+ * {@link com.vetsoftware.app.infrastructure.logging.MdcKeys}) viajan por el MDC, y el
+ * {@code LogstashEncoder} los emite automáticamente como campos JSON; aquí solo se añaden los campos
+ * propios del evento.
  *
  * <p>Convención de campos: notación con punto ({@code http.*}, {@code actor.*}) alineada con
  * OpenTelemetry. Nota: {@code actor.identifier} (en login) es el <em>código</em> de empleado/usuario
