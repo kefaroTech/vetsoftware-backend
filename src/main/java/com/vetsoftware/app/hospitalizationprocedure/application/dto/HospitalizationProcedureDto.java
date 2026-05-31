@@ -19,7 +19,9 @@ public record HospitalizationProcedureDto(
         HospitalizationSummaryDto hospitalization,
         EmployeeSummaryDto createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        LocalDateTime suspensionDate,
+        EmployeeSummaryDto suspensionBy
 ) {
     public static HospitalizationProcedureDto from(HospitalizationProcedure procedure) {
         return new HospitalizationProcedureDto(
@@ -36,6 +38,8 @@ public record HospitalizationProcedureDto(
             HospitalizationSummaryDto.from(procedure.getHospitalization()),
             EmployeeSummaryDto.from(procedure.getCreatedBy()),
             procedure.getCreatedDate(),
-            procedure.isEnabled());
+            procedure.isEnabled(),
+            procedure.getSuspensionDate(),
+            procedure.getSuspensionBy() == null ? null : EmployeeSummaryDto.from(procedure.getSuspensionBy()));
     }
 }

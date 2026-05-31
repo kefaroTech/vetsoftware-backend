@@ -11,5 +11,7 @@ public interface MedicationScheduleRepository {
     List<MedicationSchedule> findByHospitalizationId(Long hospitalizationId);
     void delete(Long id);
     void disableByHospitalizationMedicationId(Long hospitalizationMedicationId);
+    /** Deshabilita solo las tomas NO aplicadas (conserva el histórico de las aplicadas). */
+    void disablePendingByHospitalizationMedicationId(Long hospitalizationMedicationId);
     int reactivate(Long id);
 }

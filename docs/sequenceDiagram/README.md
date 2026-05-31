@@ -23,10 +23,27 @@ aplicación + web que se añadió sobre el dominio y la persistencia ya existent
 | `GET`   | `/procedure-schedules/by-hospitalization/{hospitalizationId}` | Lista las ejecuciones de todos los procedimientos del internamiento |
 | `PATCH` | `/procedure-schedules/{id}/apply` | Marca una ejecución como aplicada |
 | `PATCH` | `/procedure-schedules/{id}/reschedule` | Reprograma una ejecución (`mode` = `one` \| `cascade`) |
+| `PATCH` | `/hospitalization-medications/{id}/suspend` | Suspende la orden (registra `suspensionDate`/`suspensionBy`) |
+| `PATCH` | `/hospitalization-procedures/{id}/suspend` | Suspende la orden (registra `suspensionDate`/`suspensionBy`) |
+| `PATCH` | `/medication-schedules/by-medication/{id}/suspend-pending` | Soft-delete de las tomas pendientes (conserva las aplicadas) |
+| `PATCH` | `/procedure-schedules/by-procedure/{id}/suspend-pending` | Soft-delete de las ejecuciones pendientes (conserva las aplicadas) |
 
 Autorización: `generate` → `hospitalization.create`; `by-hospitalization` →
-`hospitalization.read`; `apply`/`reschedule` → `hospitalization.update`
-(siempre con `admin.all` o rol `SYSTEM` como alternativa).
+`hospitalization.read`; `apply`/`reschedule`/`suspend`/`suspend-pending` →
+`hospitalization.update` (siempre con `admin.all` o rol `SYSTEM` como alternativa).
+
+## Suspender (no eliminar)
+
+"Suspender" marca la orden como suspendida y retira sus tomas/ejecuciones **pendientes**,
+conservando las **aplicadas** (registro histórico inmutable). Campos nuevos en
+`HospitalizationMedication`/`HospitalizationProcedure`: `suspensionDate` (LocalDateTime) y
+`suspensionBy` (Employee), que se llenan al suspender. La orden **no** se borra
+(`enabled` sigue `true`); el front la muestra atenuada con etiqueta "Suspendido".
+
+El front orquesta en dos llamadas (cascada): `PATCH …/{id}/suspend` (marca la orden) +
+`PATCH …/by-{medication|procedure}/{id}/suspend-pending` (limpia pendientes y devuelve las
+aplicadas). Ver `hospitalization{medication|procedure}/suspend.puml` y
+`{medication|procedure}schedule/suspend-pending.puml`.
 
 ## Cómo se calcula (dominio puro: `{Medication|Procedure}ScheduleGenerator`)
 

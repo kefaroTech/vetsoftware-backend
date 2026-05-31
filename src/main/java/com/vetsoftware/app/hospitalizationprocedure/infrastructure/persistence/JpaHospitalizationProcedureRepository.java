@@ -33,9 +33,12 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
             hospitalizationJpaRepository.getReferenceById(procedure.getHospitalization().id());
         EmployeeJpaEntity createdBy =
             employeeJpaRepository.getReferenceById(procedure.getCreatedBy().id());
+        EmployeeJpaEntity suspensionBy = procedure.getSuspensionBy() == null ? null
+            : employeeJpaRepository.getReferenceById(procedure.getSuspensionBy().id());
         HospitalizationProcedureJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(procedure, hospitalization, createdBy));
-        return mapper.toDomain(saved, procedure.getHospitalization(), procedure.getCreatedBy());
+            jpaRepository.save(mapper.toJpa(procedure, hospitalization, createdBy, suspensionBy));
+        return mapper.toDomain(saved, procedure.getHospitalization(), procedure.getCreatedBy(),
+            procedure.getSuspensionBy());
     }
 
     @Override

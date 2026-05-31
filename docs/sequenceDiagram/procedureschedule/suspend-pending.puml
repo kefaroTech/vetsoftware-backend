@@ -1,0 +1,33 @@
+@startuml procedure_schedule_suspend_pending
+title PATCH /procedure-schedules/by-procedure/{id}/suspend-pending — Remove Pending Executions
+
+actor Client
+participant "ProcedureScheduleController" as Controller
+participant "SuspendPendingProcedureSchedulesUseCase\n<<port.in>>" as UseCase
+participant "SuspendPendingProcedureSchedulesService" as Service
+participant "ProcedureScheduleRepository\n<<port.out>>" as Repo
+database "MySQL" as DB
+
+Client -> Controller : PATCH /procedure-schedules/by-procedure/{procId}/suspend-pending
+activate Controller
+Controller -> UseCase : execute(procId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.update OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(procId)
+activate Service
+Service -> Repo : disablePendingByHospitalizationProcedureId(procId)
+Repo -> DB : UPDATE procedure_schedules SET enabled=false\nWHERE hospitalization_procedure_id=? AND applied_status <> 'APPLIED'
+note right of Repo
+  Las ejecuciones APLICADAS quedan intactas (registro histórico).
+end note
+Service -> Repo : findByHospitalizationProcedureId(procId)
+Repo --> Service : List<ProcedureSchedule> (solo aplicadas)
+Service --> UseCase : List<ProcedureScheduleDto>
+UseCase --> Controller : dtos
+Controller --> Client : 200 OK\nList<ProcedureScheduleResponse> (aplicadas)
+deactivate Service
+deactivate Controller
+
+@enduml

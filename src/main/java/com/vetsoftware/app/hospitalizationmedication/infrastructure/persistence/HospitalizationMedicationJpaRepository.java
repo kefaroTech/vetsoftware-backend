@@ -9,10 +9,10 @@ public interface HospitalizationMedicationJpaRepository
         extends JpaRepository<HospitalizationMedicationJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"hospitalization", "createdBy"})
+    @EntityGraph(attributePaths = {"hospitalization", "createdBy", "suspensionBy"})
     Optional<HospitalizationMedicationJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"hospitalization", "createdBy"})
+    @EntityGraph(attributePaths = {"hospitalization", "createdBy", "suspensionBy"})
     List<HospitalizationMedicationJpaEntity> findByHospitalizationId(Long hospitalizationId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

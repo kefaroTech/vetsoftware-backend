@@ -1,0 +1,49 @@
+@startuml hospitalization_medication_suspend
+title PATCH /hospitalization-medications/{id}/suspend — Suspend Medication Order
+
+actor Client
+participant "HospitalizationMedicationController" as Controller
+participant "Authz" as Authz
+participant "SuspendHospitalizationMedicationUseCase\n<<port.in>>" as UseCase
+participant "SuspendHospitalizationMedicationService" as Service
+participant "HospitalizationMedicationRepository\n<<port.out>>" as Repo
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQP
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /hospitalization-medications/{id}/suspend
+activate Controller
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+Controller -> UseCase : execute(SuspendHospitalizationMedicationCommand{id, suspendedById})
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.update OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(command)
+activate Service
+Service -> Repo : findById(id)
+Repo --> Service : Optional<HospitalizationMedication>
+alt no encontrada
+  Service --> GEH : HospitalizationMedicationNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Service -> EmpQP : findById(suspendedById)
+EmpQP --> Service : Optional<EmployeeRef>
+Service -> Service : medication.suspend(by, now())\n// set suspensionDate + suspensionBy
+Service -> Repo : save(medication)
+Repo -> DB : UPDATE hospitalization_medications\nSET suspension_date, suspension_by_id
+Service --> UseCase : HospitalizationMedicationDto
+UseCase --> Controller : dto
+Controller --> Client : 200 OK\nHospitalizationMedicationResponse (suspensionDate/By)
+deactivate Service
+deactivate Controller
+
+note over Client, DB
+  La orden NO se elimina (enabled sigue true): queda marcada como suspendida.
+  El front, acto seguido, llama
+  PATCH /medication-schedules/by-medication/{id}/suspend-pending
+  para retirar las tomas pendientes (ver suspend-pending.puml).
+end note
+
+@enduml

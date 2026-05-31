@@ -1,0 +1,33 @@
+@startuml medication_schedule_suspend_pending
+title PATCH /medication-schedules/by-medication/{id}/suspend-pending — Remove Pending Doses
+
+actor Client
+participant "MedicationScheduleController" as Controller
+participant "SuspendPendingMedicationSchedulesUseCase\n<<port.in>>" as UseCase
+participant "SuspendPendingMedicationSchedulesService" as Service
+participant "MedicationScheduleRepository\n<<port.out>>" as Repo
+database "MySQL" as DB
+
+Client -> Controller : PATCH /medication-schedules/by-medication/{medId}/suspend-pending
+activate Controller
+Controller -> UseCase : execute(medId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR hospitalization.update OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(medId)
+activate Service
+Service -> Repo : disablePendingByHospitalizationMedicationId(medId)
+Repo -> DB : UPDATE medication_schedules SET enabled=false\nWHERE hospitalization_medication_id=? AND applied_status <> 'APPLIED'
+note right of Repo
+  Las tomas APLICADAS quedan intactas (registro histórico).
+end note
+Service -> Repo : findByHospitalizationMedicationId(medId)
+Repo --> Service : List<MedicationSchedule> (solo aplicadas)
+Service --> UseCase : List<MedicationScheduleDto>
+UseCase --> Controller : dtos
+Controller --> Client : 200 OK\nList<MedicationScheduleResponse> (aplicadas)
+deactivate Service
+deactivate Controller
+
+@enduml

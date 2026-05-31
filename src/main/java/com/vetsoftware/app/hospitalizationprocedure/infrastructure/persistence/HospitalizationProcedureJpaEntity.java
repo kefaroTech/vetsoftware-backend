@@ -59,6 +59,13 @@ public class HospitalizationProcedureJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "suspension_date")
+    private LocalDateTime suspensionDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "suspension_by_id")
+    private EmployeeJpaEntity suspensionBy;
+
     protected HospitalizationProcedureJpaEntity() {}
 
     public Long getId() { return id; }
@@ -89,4 +96,8 @@ public class HospitalizationProcedureJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public LocalDateTime getSuspensionDate() { return suspensionDate; }
+    public void setSuspensionDate(LocalDateTime suspensionDate) { this.suspensionDate = suspensionDate; }
+    public EmployeeJpaEntity getSuspensionBy() { return suspensionBy; }
+    public void setSuspensionBy(EmployeeJpaEntity suspensionBy) { this.suspensionBy = suspensionBy; }
 }

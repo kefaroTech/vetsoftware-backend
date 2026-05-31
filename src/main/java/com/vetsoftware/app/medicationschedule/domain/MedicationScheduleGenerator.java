@@ -46,6 +46,56 @@ public final class MedicationScheduleGenerator {
         return slots;
     }
 
+    /**
+     * Regla de integridad: regenera SOLO las tomas pendientes conservando las ya aplicadas.
+     * - Pauta INTERVALO con aplicadas: re-cronometra desde la hora real de la última aplicada
+     *   (`lastAppliedRealDateTime`) + intervalo.
+     * - Pauta FIJA (o INTERVALO sin aplicadas): usa las horas de reloj saltando las primeras
+     *   `appliedCount` posiciones (ya cubiertas por aplicadas).
+     * - DOSES: el total objetivo manda; pendientes = total - appliedCount (nunca negativo).
+     */
+    public static List<MedicationSchedule> generatePending(MedicationOrderParams params,
+                                                           int appliedCount,
+                                                           LocalDateTime lastAppliedRealDateTime,
+                                                           EmployeeRef createdBy) {
+        List<MedicationSchedule> slots = new ArrayList<>();
+        if (params.startDate() == null) return slots;
+
+        LocalTime time = params.startTime() != null ? params.startTime() : DEFAULT_START_TIME;
+        LocalDateTime start = LocalDateTime.of(params.startDate(), time);
+        HospitalizationMedicationRef ref =
+            new HospitalizationMedicationRef(params.id(), params.name());
+
+        String frequency = params.frequency() == null ? "" : params.frequency().trim().toUpperCase();
+        if ("CONTINUOUS".equals(frequency)) return slots;
+        if ("SINGLE".equals(frequency)) {
+            if (appliedCount >= 1) return slots;
+            slots.add(slotAt(ref, start, createdBy));
+            return slots;
+        }
+
+        Integer intervalHours = intervalFromFrequency(frequency);
+        if (intervalHours == null) return slots;
+
+        int total = doseCount(params.durationMeasure(), params.durationQuantity(), intervalHours);
+        int pendingCount = Math.max(0, total - appliedCount);
+        if (pendingCount == 0) return slots;
+
+        boolean intervalMode = "INTERVAL".equalsIgnoreCase(params.guidelineType());
+        if (intervalMode && lastAppliedRealDateTime != null) {
+            LocalDateTime cursor = lastAppliedRealDateTime;
+            for (int i = 0; i < pendingCount; i++) {
+                cursor = cursor.plusHours(intervalHours);
+                slots.add(slotAt(ref, cursor, createdBy));
+            }
+        } else {
+            for (int idx = appliedCount; idx < total; idx++) {
+                slots.add(slotAt(ref, start.plusHours((long) idx * intervalHours), createdBy));
+            }
+        }
+        return slots;
+    }
+
     private static MedicationSchedule slotAt(HospitalizationMedicationRef ref, LocalDateTime dt,
                                              EmployeeRef createdBy) {
         return MedicationSchedule.create(ref, dt, dt, AppliedStatus.PENDING, false, createdBy);

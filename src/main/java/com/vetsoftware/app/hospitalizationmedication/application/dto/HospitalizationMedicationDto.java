@@ -19,7 +19,9 @@ public record HospitalizationMedicationDto(
         HospitalizationSummaryDto hospitalization,
         EmployeeSummaryDto createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        LocalDateTime suspensionDate,
+        EmployeeSummaryDto suspensionBy
 ) {
     public static HospitalizationMedicationDto from(HospitalizationMedication medication) {
         return new HospitalizationMedicationDto(
@@ -36,6 +38,8 @@ public record HospitalizationMedicationDto(
             HospitalizationSummaryDto.from(medication.getHospitalization()),
             EmployeeSummaryDto.from(medication.getCreatedBy()),
             medication.getCreatedDate(),
-            medication.isEnabled());
+            medication.isEnabled(),
+            medication.getSuspensionDate(),
+            medication.getSuspensionBy() == null ? null : EmployeeSummaryDto.from(medication.getSuspensionBy()));
     }
 }

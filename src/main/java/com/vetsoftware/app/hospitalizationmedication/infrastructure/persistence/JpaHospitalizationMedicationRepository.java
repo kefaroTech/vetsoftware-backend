@@ -33,9 +33,12 @@ public class JpaHospitalizationMedicationRepository implements HospitalizationMe
             hospitalizationJpaRepository.getReferenceById(medication.getHospitalization().id());
         EmployeeJpaEntity createdBy =
             employeeJpaRepository.getReferenceById(medication.getCreatedBy().id());
+        EmployeeJpaEntity suspensionBy = medication.getSuspensionBy() == null ? null
+            : employeeJpaRepository.getReferenceById(medication.getSuspensionBy().id());
         HospitalizationMedicationJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(medication, hospitalization, createdBy));
-        return mapper.toDomain(saved, medication.getHospitalization(), medication.getCreatedBy());
+            jpaRepository.save(mapper.toJpa(medication, hospitalization, createdBy, suspensionBy));
+        return mapper.toDomain(saved, medication.getHospitalization(), medication.getCreatedBy(),
+            medication.getSuspensionBy());
     }
 
     @Override

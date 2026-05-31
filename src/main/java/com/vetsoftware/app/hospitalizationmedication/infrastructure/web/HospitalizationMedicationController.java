@@ -2,6 +2,7 @@ package com.vetsoftware.app.hospitalizationmedication.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.hospitalizationmedication.application.command.CreateHospitalizationMedicationCommand;
+import com.vetsoftware.app.hospitalizationmedication.application.command.SuspendHospitalizationMedicationCommand;
 import com.vetsoftware.app.hospitalizationmedication.application.command.UpdateHospitalizationMedicationCommand;
 import com.vetsoftware.app.hospitalizationmedication.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.hospitalizationmedication.application.dto.HospitalizationMedicationDto;
@@ -11,6 +12,7 @@ import com.vetsoftware.app.hospitalizationmedication.application.port.in.DeleteH
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.FindHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.ListHospitalizationMedicationsByHospitalizationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.ReactivateHospitalizationMedicationUseCase;
+import com.vetsoftware.app.hospitalizationmedication.application.port.in.SuspendHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.UpdateHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.infrastructure.web.request.CreateHospitalizationMedicationRequest;
 import com.vetsoftware.app.hospitalizationmedication.infrastructure.web.request.UpdateHospitalizationMedicationRequest;
@@ -31,6 +33,7 @@ public class HospitalizationMedicationController {
     private final ListHospitalizationMedicationsByHospitalizationUseCase listByHospitalizationUseCase;
     private final DeleteHospitalizationMedicationUseCase deleteUseCase;
     private final ReactivateHospitalizationMedicationUseCase reactivateUseCase;
+    private final SuspendHospitalizationMedicationUseCase suspendUseCase;
     private final Authz authz;
 
     public HospitalizationMedicationController(CreateHospitalizationMedicationUseCase createUseCase,
@@ -39,6 +42,7 @@ public class HospitalizationMedicationController {
                                                ListHospitalizationMedicationsByHospitalizationUseCase listByHospitalizationUseCase,
                                                DeleteHospitalizationMedicationUseCase deleteUseCase,
                                                ReactivateHospitalizationMedicationUseCase reactivateUseCase,
+                                               SuspendHospitalizationMedicationUseCase suspendUseCase,
                                                Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -46,6 +50,7 @@ public class HospitalizationMedicationController {
         this.listByHospitalizationUseCase = listByHospitalizationUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.suspendUseCase = suspendUseCase;
         this.authz = authz;
     }
 
@@ -89,14 +94,24 @@ public class HospitalizationMedicationController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    /** Suspende la orden (registra quién/cuándo). El plan de tomas pendientes se limpia aparte. */
+    @PatchMapping("/{id}/suspend")
+    public HospitalizationMedicationResponse suspend(@PathVariable Long id) {
+        return toResponse(suspendUseCase.execute(
+            new SuspendHospitalizationMedicationCommand(id, authz.currentEmployeeId())));
+    }
+
     private HospitalizationMedicationResponse toResponse(HospitalizationMedicationDto dto) {
         HospitalizationSummaryDto h = dto.hospitalization();
         EmployeeSummaryDto c = dto.createdBy();
+        EmployeeSummaryDto s = dto.suspensionBy();
         return new HospitalizationMedicationResponse(
             dto.id(), dto.name(), dto.dose(), dto.frequency(), dto.guidelineType(),
             dto.durationMeasure(), dto.durationQuantity(), dto.startDate(), dto.startTime(), dto.notes(),
             new HospitalizationSummary(h.id(), h.date()),
             new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.enabled(),
+            dto.suspensionDate(),
+            s == null ? null : new EmployeeSummary(s.id(), s.employeeCode(), s.name()));
     }
 }

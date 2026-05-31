@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="088_add_suspension_to_hospitalization_medications" author="orlando">
+        <addColumn tableName="hospitalization_medications">
+            <column name="suspension_date" type="DATETIME"/>
+            <column name="suspension_by_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_hosp_medications_suspension_by"
+                             references="employees(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="088_add_suspension_to_hospitalization_procedures" author="orlando">
+        <addColumn tableName="hospitalization_procedures">
+            <column name="suspension_date" type="DATETIME"/>
+            <column name="suspension_by_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_hosp_procedures_suspension_by"
+                             references="employees(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

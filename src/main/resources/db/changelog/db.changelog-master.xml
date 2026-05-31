@@ -91,5 +91,6 @@
     <include file="db/changelog/migrations/085_create_medication_schedules.xml"/>
     <include file="db/changelog/migrations/086_fix_enabled_tinyint_width.xml"/>
     <include file="db/changelog/migrations/087_fix_rescheduled_tinyint_width.xml"/>
+    <include file="db/changelog/migrations/088_add_suspension_to_hospitalization_orders.xml"/>
 
 </databaseChangeLog>

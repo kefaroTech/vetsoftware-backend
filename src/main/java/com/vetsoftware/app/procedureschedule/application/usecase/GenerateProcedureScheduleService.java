@@ -9,9 +9,14 @@ import com.vetsoftware.app.procedureschedule.application.port.out.ProcedureSched
 import com.vetsoftware.app.procedureschedule.domain.EmployeeRef;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureOrderParams;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureSchedule;
+import com.vetsoftware.app.procedureschedule.domain.AppliedStatus;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureScheduleGenerator;
 import io.micrometer.observation.annotation.Observed;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,13 +45,34 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
             .orElseThrow(() -> new IllegalArgumentException(
                 "Employee not found: " + command.createdById()));
 
-        // Idempotente: limpia el plan previo antes de regenerar (cubre creación y edición).
-        repository.disableByHospitalizationProcedureId(params.id());
-
-        List<ProcedureSchedule> generated = ProcedureScheduleGenerator.generate(params, createdBy);
-        return generated.stream()
-            .map(repository::save)
-            .map(ProcedureScheduleDto::from)
+        // Regla de integridad: las ejecuciones APLICADAS son histórico inmutable; solo se
+        // recalculan las pendientes.
+        List<ProcedureSchedule> applied = repository.findByHospitalizationProcedureId(params.id()).stream()
+            .filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED)
             .toList();
+
+        List<ProcedureSchedule> result = new ArrayList<>();
+        if (applied.isEmpty()) {
+            // Alta nueva o sin aplicadas: regeneración completa (idempotente).
+            repository.disableByHospitalizationProcedureId(params.id());
+            for (ProcedureSchedule s : ProcedureScheduleGenerator.generate(params, createdBy)) {
+                result.add(repository.save(s));
+            }
+        } else {
+            // Conserva las aplicadas; reconstruye solo las pendientes.
+            repository.disablePendingByHospitalizationProcedureId(params.id());
+            LocalDateTime lastApplied = applied.stream()
+                .map(ProcedureSchedule::getRealDateTime)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+            List<ProcedureSchedule> pending = ProcedureScheduleGenerator.generatePending(
+                params, applied.size(), lastApplied, createdBy);
+            result.addAll(applied);
+            for (ProcedureSchedule s : pending) {
+                result.add(repository.save(s));
+            }
+        }
+        return result.stream().map(ProcedureScheduleDto::from).toList();
     }
 }

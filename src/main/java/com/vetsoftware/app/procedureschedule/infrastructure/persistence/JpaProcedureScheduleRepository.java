@@ -66,6 +66,11 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     }
 
     @Override
+    public void disablePendingByHospitalizationProcedureId(Long hospitalizationProcedureId) {
+        jpaRepository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId);
+    }
+
+    @Override
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }

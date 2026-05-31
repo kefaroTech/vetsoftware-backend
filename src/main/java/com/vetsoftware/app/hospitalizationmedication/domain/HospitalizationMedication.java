@@ -19,12 +19,15 @@ public class HospitalizationMedication {
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
     private boolean enabled;
+    private LocalDateTime suspensionDate;
+    private EmployeeRef suspensionBy;
 
     public HospitalizationMedication(Long id, String name, String dose, Frequency frequency,
                                      GuidelineType guidelineType, DurationMeasure durationMeasure,
                                      Integer durationQuantity, LocalDate startDate, LocalTime startTime,
                                      String notes, HospitalizationRef hospitalization, EmployeeRef createdBy,
-                                     LocalDateTime createdDate, boolean enabled) {
+                                     LocalDateTime createdDate, boolean enabled,
+                                     LocalDateTime suspensionDate, EmployeeRef suspensionBy) {
         validate(name, hospitalization, createdBy);
         this.id = id;
         this.name = name;
@@ -40,6 +43,8 @@ public class HospitalizationMedication {
         this.createdBy = createdBy;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.suspensionDate = suspensionDate;
+        this.suspensionBy = suspensionBy;
     }
 
     public static HospitalizationMedication create(String name, String dose, Frequency frequency,
@@ -49,7 +54,15 @@ public class HospitalizationMedication {
                                                    EmployeeRef createdBy) {
         return new HospitalizationMedication(null, name, dose, frequency, guidelineType, durationMeasure,
             durationQuantity, startDate, startTime, notes, hospitalization, createdBy,
-            LocalDateTime.now(), true);
+            LocalDateTime.now(), true, null, null);
+    }
+
+    /** Suspende la orden: registra quién y cuándo. Las dosis aplicadas no se tocan. */
+    public void suspend(EmployeeRef by, LocalDateTime when) {
+        if (by == null) throw new IllegalArgumentException("suspensionBy is required");
+        if (when == null) throw new IllegalArgumentException("suspensionDate is required");
+        this.suspensionDate = when;
+        this.suspensionBy = by;
     }
 
     public void update(String name, String dose, Frequency frequency, GuidelineType guidelineType,
@@ -92,4 +105,6 @@ public class HospitalizationMedication {
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
+    public LocalDateTime getSuspensionDate() { return suspensionDate; }
+    public EmployeeRef getSuspensionBy() { return suspensionBy; }
 }

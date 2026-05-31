@@ -9,6 +9,7 @@ import com.vetsoftware.app.medicationschedule.application.port.in.ApplyMedicatio
 import com.vetsoftware.app.medicationschedule.application.port.in.GenerateMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.ListMedicationSchedulesByHospitalizationUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.RescheduleMedicationScheduleUseCase;
+import com.vetsoftware.app.medicationschedule.application.port.in.SuspendPendingMedicationSchedulesUseCase;
 import com.vetsoftware.app.medicationschedule.infrastructure.web.request.RescheduleMedicationScheduleRequest;
 import com.vetsoftware.app.medicationschedule.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.medicationschedule.infrastructure.web.response.HospitalizationMedicationSummary;
@@ -25,17 +26,20 @@ public class MedicationScheduleController {
     private final ListMedicationSchedulesByHospitalizationUseCase listByHospitalizationUseCase;
     private final ApplyMedicationScheduleUseCase applyUseCase;
     private final RescheduleMedicationScheduleUseCase rescheduleUseCase;
+    private final SuspendPendingMedicationSchedulesUseCase suspendPendingUseCase;
     private final Authz authz;
 
     public MedicationScheduleController(GenerateMedicationScheduleUseCase generateUseCase,
                                         ListMedicationSchedulesByHospitalizationUseCase listByHospitalizationUseCase,
                                         ApplyMedicationScheduleUseCase applyUseCase,
                                         RescheduleMedicationScheduleUseCase rescheduleUseCase,
+                                        SuspendPendingMedicationSchedulesUseCase suspendPendingUseCase,
                                         Authz authz) {
         this.generateUseCase = generateUseCase;
         this.listByHospitalizationUseCase = listByHospitalizationUseCase;
         this.applyUseCase = applyUseCase;
         this.rescheduleUseCase = rescheduleUseCase;
+        this.suspendPendingUseCase = suspendPendingUseCase;
         this.authz = authz;
     }
 
@@ -66,6 +70,13 @@ public class MedicationScheduleController {
                                                        @Valid @RequestBody RescheduleMedicationScheduleRequest request) {
         return rescheduleUseCase.execute(
                 new RescheduleMedicationScheduleCommand(id, request.newDateTime(), request.mode()))
+            .stream().map(this::toResponse).toList();
+    }
+
+    /** Soft-delete de las tomas pendientes (al suspender la medicación). Devuelve las aplicadas. */
+    @PatchMapping("/by-medication/{hospitalizationMedicationId}/suspend-pending")
+    public List<MedicationScheduleResponse> suspendPending(@PathVariable Long hospitalizationMedicationId) {
+        return suspendPendingUseCase.execute(hospitalizationMedicationId)
             .stream().map(this::toResponse).toList();
     }
 

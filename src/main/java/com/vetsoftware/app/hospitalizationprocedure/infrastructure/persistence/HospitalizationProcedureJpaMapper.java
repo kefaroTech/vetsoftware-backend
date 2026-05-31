@@ -15,7 +15,8 @@ public class HospitalizationProcedureJpaMapper {
 
     public HospitalizationProcedureJpaEntity toJpa(HospitalizationProcedure procedure,
                                                    HospitalizationJpaEntity hospitalization,
-                                                   EmployeeJpaEntity createdBy) {
+                                                   EmployeeJpaEntity createdBy,
+                                                   EmployeeJpaEntity suspensionBy) {
         HospitalizationProcedureJpaEntity entity = new HospitalizationProcedureJpaEntity();
         entity.setId(procedure.getId());
         entity.setName(procedure.getName());
@@ -31,6 +32,8 @@ public class HospitalizationProcedureJpaMapper {
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(procedure.getCreatedDate());
         entity.setEnabled(procedure.isEnabled());
+        entity.setSuspensionDate(procedure.getSuspensionDate());
+        entity.setSuspensionBy(suspensionBy);
         return entity;
     }
 
@@ -38,14 +41,19 @@ public class HospitalizationProcedureJpaMapper {
     public HospitalizationProcedure toDomain(HospitalizationProcedureJpaEntity entity) {
         HospitalizationJpaEntity h = entity.getHospitalization();
         EmployeeJpaEntity e = entity.getCreatedBy();
+        EmployeeJpaEntity sb = entity.getSuspensionBy();
+        EmployeeRef suspensionByRef = sb == null ? null
+            : new EmployeeRef(sb.getId(), sb.getEmployeeCode(), sb.getName());
         return toDomain(entity,
             new HospitalizationRef(h.getId(), h.getDate()),
-            new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()));
+            new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()),
+            suspensionByRef);
     }
 
     // Write path — reusa los refs precargados, evita inicializar el proxy de getReferenceById
     public HospitalizationProcedure toDomain(HospitalizationProcedureJpaEntity entity,
-                                             HospitalizationRef hospitalizationRef, EmployeeRef createdByRef) {
+                                             HospitalizationRef hospitalizationRef, EmployeeRef createdByRef,
+                                             EmployeeRef suspensionByRef) {
         return new HospitalizationProcedure(
             entity.getId(),
             entity.getName(),
@@ -60,6 +68,8 @@ public class HospitalizationProcedureJpaMapper {
             hospitalizationRef,
             createdByRef,
             entity.getCreatedDate(),
-            entity.isEnabled());
+            entity.isEnabled(),
+            entity.getSuspensionDate(),
+            suspensionByRef);
     }
 }

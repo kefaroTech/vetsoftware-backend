@@ -9,9 +9,14 @@ import com.vetsoftware.app.medicationschedule.application.port.out.MedicationSch
 import com.vetsoftware.app.medicationschedule.domain.EmployeeRef;
 import com.vetsoftware.app.medicationschedule.domain.MedicationOrderParams;
 import com.vetsoftware.app.medicationschedule.domain.MedicationSchedule;
+import com.vetsoftware.app.medicationschedule.domain.AppliedStatus;
 import com.vetsoftware.app.medicationschedule.domain.MedicationScheduleGenerator;
 import io.micrometer.observation.annotation.Observed;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,13 +45,34 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
             .orElseThrow(() -> new IllegalArgumentException(
                 "Employee not found: " + command.createdById()));
 
-        // Idempotente: limpia el plan previo antes de regenerar (cubre creación y edición).
-        repository.disableByHospitalizationMedicationId(params.id());
-
-        List<MedicationSchedule> generated = MedicationScheduleGenerator.generate(params, createdBy);
-        return generated.stream()
-            .map(repository::save)
-            .map(MedicationScheduleDto::from)
+        // Regla de integridad: las tomas APLICADAS son histórico inmutable; solo se
+        // recalculan las pendientes.
+        List<MedicationSchedule> applied = repository.findByHospitalizationMedicationId(params.id()).stream()
+            .filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED)
             .toList();
+
+        List<MedicationSchedule> result = new ArrayList<>();
+        if (applied.isEmpty()) {
+            // Alta nueva o sin aplicadas: regeneración completa (idempotente).
+            repository.disableByHospitalizationMedicationId(params.id());
+            for (MedicationSchedule s : MedicationScheduleGenerator.generate(params, createdBy)) {
+                result.add(repository.save(s));
+            }
+        } else {
+            // Conserva las aplicadas; reconstruye solo las pendientes.
+            repository.disablePendingByHospitalizationMedicationId(params.id());
+            LocalDateTime lastApplied = applied.stream()
+                .map(MedicationSchedule::getRealDateTime)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+            List<MedicationSchedule> pending = MedicationScheduleGenerator.generatePending(
+                params, applied.size(), lastApplied, createdBy);
+            result.addAll(applied);
+            for (MedicationSchedule s : pending) {
+                result.add(repository.save(s));
+            }
+        }
+        return result.stream().map(MedicationScheduleDto::from).toList();
     }
 }

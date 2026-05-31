@@ -18,5 +18,7 @@ public record HospitalizationMedicationResponse(
         HospitalizationSummary hospitalization,
         EmployeeSummary createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        LocalDateTime suspensionDate,
+        EmployeeSummary suspensionBy
 ) {}
