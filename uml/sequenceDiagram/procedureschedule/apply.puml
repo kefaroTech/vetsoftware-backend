@@ -6,7 +6,6 @@ participant "ProcedureScheduleController" as Controller
 participant "ApplyProcedureScheduleUseCase\n<<port.in>>" as UseCase
 participant "ApplyProcedureScheduleService" as Service
 participant "ProcedureScheduleRepository\n<<port.out>>" as Repo
-participant "HospitalizationProcedureQueryPort\n<<port.out>>" as ProcQP
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
@@ -27,22 +26,19 @@ alt no encontrada
   GEH --> Client : 400 Bad Request
 end
 
-Service -> Repo : findByHospitalizationProcedureId(procId)
-Repo --> Service : List<ProcedureSchedule> (plan ordenado por currentDateTime)
 Service -> Service : target.apply(now)  // appliedStatus=APPLIED, realDateTime=now
 Service -> Repo : save(target)
 Repo -> DB : UPDATE procedure_schedules
 
-Service -> ProcQP : findById(procId)
-ProcQP --> Service : ProcedureOrderParams (guidelineType, frequency)
-alt guidelineType == INTERVAL
-  loop ejecuciones PENDIENTES posteriores
-    Service -> Service : cursor += intervalo;  slot.reschedule(cursor)
-    Service -> Repo : save(slot)
-    Repo -> DB : UPDATE procedure_schedules
-  end
-end
+note over Service, DB
+  Aplicar NO recalcula las siguientes (ni FIJO ni INTERVALO).
+  El recálculo de pauta INTERVALO ocurre solo al reprogramar
+  (reschedule con mode=cascade).
+end note
 
+Service -> Repo : findByHospitalizationProcedureId(procId)
+Repo --> Service : List<ProcedureSchedule>
+Service -> Service : ProcedureScheduleDto.from(...)
 Service --> UseCase : List<ProcedureScheduleDto>
 UseCase --> Controller : List<ProcedureScheduleDto>
 Controller --> Client : 200 OK\nList<ProcedureScheduleResponse> (plan completo del procedimiento)

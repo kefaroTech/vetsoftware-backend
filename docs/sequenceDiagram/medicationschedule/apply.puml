@@ -6,7 +6,6 @@ participant "MedicationScheduleController" as Controller
 participant "ApplyMedicationScheduleUseCase\n<<port.in>>" as UseCase
 participant "ApplyMedicationScheduleService" as Service
 participant "MedicationScheduleRepository\n<<port.out>>" as Repo
-participant "HospitalizationMedicationQueryPort\n<<port.out>>" as MedQP
 database "MySQL" as DB
 participant "GlobalExceptionHandler" as GEH
 
@@ -27,23 +26,19 @@ alt no encontrada
   GEH --> Client : 400 Bad Request
 end
 
-Service -> Repo : findByHospitalizationMedicationId(medId)
-Repo --> Service : List<MedicationSchedule> (plan ordenado por currentDateTime)
 Service -> Service : target.apply(now)  // appliedStatus=APPLIED, realDateTime=now
 Service -> Repo : save(target)
 Repo -> DB : UPDATE medication_schedules
 
-Service -> MedQP : findById(medId)
-MedQP --> Service : MedicationOrderParams (guidelineType, frequency)
-alt guidelineType == INTERVAL
-  loop tomas PENDIENTES posteriores
-    Service -> Service : cursor += intervalo;  slot.reschedule(cursor)
-    Service -> Repo : save(slot)
-    Repo -> DB : UPDATE medication_schedules
-  end
-end
+note over Service, DB
+  Aplicar NO recalcula las siguientes (ni FIJO ni INTERVALO).
+  El recálculo de pauta INTERVALO ocurre solo al reprogramar
+  (reschedule con mode=cascade).
+end note
 
-Service -> Service : MedicationScheduleDto.from(cada toma del plan)
+Service -> Repo : findByHospitalizationMedicationId(medId)
+Repo --> Service : List<MedicationSchedule>
+Service -> Service : MedicationScheduleDto.from(...)
 Service --> UseCase : List<MedicationScheduleDto>
 UseCase --> Controller : List<MedicationScheduleDto>
 Controller --> Client : 200 OK\nList<MedicationScheduleResponse> (plan completo de la medicación)

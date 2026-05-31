@@ -61,10 +61,10 @@ A partir de `frequency` + `durationMeasure`/`durationQuantity` + `startDate`/`st
 ## Aplicar y reprogramar (pauta FIJO vs INTERVALO)
 
 - **Aplicar** (`apply`): marca `appliedStatus = APPLIED` y `realDateTime = ahora`.
-  - Pauta `INTERVAL`: recalcula las tomas **pendientes posteriores** sumando el intervalo
-    desde la hora real de aplicación (`currentDateTime` se desplaza, `rescheduled = true`).
-  - Pauta `FIXED`: no mueve las siguientes (se quedan en sus horas de reloj).
-- **Reprogramar** (`reschedule`, drag&drop): mueve `currentDateTime` de la toma.
+  **No recalcula las siguientes** — ni en `FIXED` ni en `INTERVAL`. Aplicar tarde no mueve
+  las pendientes; estas conservan su `currentDateTime`.
+- **Reprogramar** (`reschedule`, drag&drop): mueve `currentDateTime` de la toma. **Es el
+  único punto donde se recalcula la cadena.**
   - `mode = one`: solo esa toma.
   - `mode = cascade` (solo `INTERVAL`): recalcula las pendientes posteriores desde la
     nueva hora.
