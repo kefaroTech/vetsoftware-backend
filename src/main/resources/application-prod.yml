@@ -1,4 +1,12 @@
 # Perfil prod — S3 real de AWS.
+management:
+  tracing:
+    sampling:
+      # Head-sampling al 100%: la app envía TODAS las trazas al otel-collector, que es quien
+      # decide qué retener vía tail_sampling (errores + lentas + 10% del resto).
+      # El muestreo real vive en docker/otel-collector.yml, no aquí.
+      probability: ${TRACING_SAMPLING:1.0}
+
 vetsoftware:
   storage:
     s3:

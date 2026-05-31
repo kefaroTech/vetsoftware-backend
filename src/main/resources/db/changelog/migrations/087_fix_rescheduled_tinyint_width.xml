@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      `rescheduled` en medication_schedules y procedure_schedules se creó como
+      TINYINT(1) (vía columnDefinition en la entidad). El display width (1) hace
+      que MySQL Connector/J reporte la columna como JDBC BIT, rompiendo la
+      validación de schema de Hibernate. Se elimina el columnDefinition de la
+      entidad (ahora mapea como Boolean → TINYINT pelado) y aquí normalizamos la
+      columna a TINYINT sin width. La columna es nullable (Boolean sin
+      nullable=false), así que no se añade NOT NULL.
+    -->
+
+    <changeSet id="087_fix_rescheduled_tinyint_width" author="orlando">
+        <sql>ALTER TABLE medication_schedules MODIFY rescheduled TINYINT NULL;</sql>
+        <sql>ALTER TABLE procedure_schedules MODIFY rescheduled TINYINT NULL;</sql>
+
+        <rollback>
+            <sql>ALTER TABLE medication_schedules MODIFY rescheduled TINYINT(1) NULL;</sql>
+            <sql>ALTER TABLE procedure_schedules MODIFY rescheduled TINYINT(1) NULL;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

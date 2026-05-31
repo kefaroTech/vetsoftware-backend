@@ -36,7 +36,7 @@ public class ProcedureScheduleJpaEntity {
     @Column(name = "applied_status", length = 40)
     private String appliedStatus;
 
-    @Column(name = "rescheduled", columnDefinition = "TINYINT(1)")
+    @Column(name = "rescheduled")
     private Boolean rescheduled;
 
     @Column(name = "created_date", nullable = false)

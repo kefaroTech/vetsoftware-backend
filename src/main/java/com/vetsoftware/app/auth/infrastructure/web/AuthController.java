@@ -11,6 +11,7 @@ import com.vetsoftware.app.auth.infrastructure.web.request.LoginEmployeeRequest;
 import com.vetsoftware.app.auth.infrastructure.web.request.LoginSystemUserRequest;
 import com.vetsoftware.app.auth.infrastructure.web.response.MeResponse;
 import com.vetsoftware.app.auth.infrastructure.web.response.TokenResponse;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +23,16 @@ public class AuthController {
     private final LoginEmployeeUseCase loginEmployeeUseCase;
     private final LoginSystemUserUseCase loginSystemUserUseCase;
     private final GetCurrentUserUseCase getCurrentUserUseCase;
+    private final AuditLogger auditLogger;
 
     public AuthController(LoginEmployeeUseCase loginEmployeeUseCase,
                           LoginSystemUserUseCase loginSystemUserUseCase,
-                          GetCurrentUserUseCase getCurrentUserUseCase) {
+                          GetCurrentUserUseCase getCurrentUserUseCase,
+                          AuditLogger auditLogger) {
         this.loginEmployeeUseCase = loginEmployeeUseCase;
         this.loginSystemUserUseCase = loginSystemUserUseCase;
         this.getCurrentUserUseCase = getCurrentUserUseCase;
+        this.auditLogger = auditLogger;
     }
 
     @PostMapping("/login/employee")
@@ -36,6 +40,7 @@ public class AuthController {
         TokenDto dto = loginEmployeeUseCase.execute(
                 new LoginEmployeeCommand(request.employeeCode(), request.password())
         );
+        auditLogger.loginSuccess("EMPLOYEE", request.employeeCode());
         return new TokenResponse(dto.token(), dto.type());
     }
 
@@ -44,6 +49,7 @@ public class AuthController {
         TokenDto dto = loginSystemUserUseCase.execute(
                 new LoginSystemUserCommand(request.code(), request.password())
         );
+        auditLogger.loginSuccess("SYSTEM_USER", request.code());
         return new TokenResponse(dto.token(), dto.type());
     }
 

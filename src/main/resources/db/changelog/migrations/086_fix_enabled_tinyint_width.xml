@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Las tablas 080-085 crearon `enabled` como TINYINT(1). El display width (1)
+      hace que MySQL Connector/J (tinyInt1isBit=true por defecto) reporte la columna
+      como JDBC BIT, lo que rompe la validación de schema de Hibernate cuando
+      preferred_boolean_jdbc_type=TINYINT (espera TINYINT, encuentra BIT).
+      Las otras 41 tablas usan TINYINT pelado (vía BOOLEAN en 068) y validan bien.
+      Aquí normalizamos las 6 columnas a TINYINT sin width, preservando
+      NOT NULL DEFAULT 1.
+    -->
+
+    <changeSet id="086_fix_enabled_tinyint_width" author="orlando">
+        <sql>ALTER TABLE hospitalization_observations    MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+        <sql>ALTER TABLE hospitalization_progress_notes   MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+        <sql>ALTER TABLE hospitalization_medications      MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+        <sql>ALTER TABLE hospitalization_procedures       MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+        <sql>ALTER TABLE procedure_schedules              MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+        <sql>ALTER TABLE medication_schedules             MODIFY enabled TINYINT NOT NULL DEFAULT 1;</sql>
+
+        <rollback>
+            <sql>ALTER TABLE hospitalization_observations    MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+            <sql>ALTER TABLE hospitalization_progress_notes   MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+            <sql>ALTER TABLE hospitalization_medications      MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+            <sql>ALTER TABLE hospitalization_procedures       MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+            <sql>ALTER TABLE procedure_schedules              MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+            <sql>ALTER TABLE medication_schedules             MODIFY enabled TINYINT(1) NOT NULL DEFAULT 1;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

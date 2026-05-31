@@ -89,5 +89,7 @@
     <include file="db/changelog/migrations/083_create_hospitalization_procedures.xml"/>
     <include file="db/changelog/migrations/084_create_procedure_schedules.xml"/>
     <include file="db/changelog/migrations/085_create_medication_schedules.xml"/>
+    <include file="db/changelog/migrations/086_fix_enabled_tinyint_width.xml"/>
+    <include file="db/changelog/migrations/087_fix_rescheduled_tinyint_width.xml"/>
 
 </databaseChangeLog>

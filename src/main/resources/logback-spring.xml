@@ -30,6 +30,9 @@
     <!-- Logs propios de la app en INFO -->
     <logger name="com.vetsoftware" level="INFO"/>
 
+    <!-- Flujo de auditoría (OWASP ASVS V7): mismo stream JSON, filtrable por logger_name="AUDIT" -->
+    <logger name="AUDIT" level="INFO"/>
+
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>

@@ -13,6 +13,7 @@ participant "PasswordHasher" as Hasher
 participant "TokenGenerator\n<<port.out>>" as TokenGen
 participant "JwtProvider" as Jwt
 participant "GlobalExceptionHandler" as GEH
+participant "AuditLogger\n(logger AUDIT)" as Audit
 
 note over Client, GEH
   Ruta pública declarada en AuthFilter.PUBLIC_PATHS
@@ -44,6 +45,7 @@ JpaCredsRepo --> Service : Optional<EmployeeCredentials>\n(id, companyId, hashPa
 
 alt credenciales no encontradas
   Service --> GEH : InvalidCredentialsException
+  GEH -> Audit : loginFailure(path, "invalid_credentials")
   GEH --> Client : 401 Unauthorized
 end
 
@@ -51,6 +53,7 @@ Service -> Hasher : matches(rawPassword, hashPassword)
 Hasher --> Service : boolean
 alt password no coincide
   Service --> GEH : InvalidCredentialsException
+  GEH -> Audit : loginFailure(path, "invalid_credentials")
   GEH --> Client : 401 Unauthorized
 end
 
@@ -64,6 +67,7 @@ Service --> UseCase : TokenDto
 UseCase --> Controller : TokenDto
 deactivate Service
 
+Controller -> Audit : loginSuccess("EMPLOYEE", employeeCode)
 Controller -> Controller : new TokenResponse(token, type)
 Controller --> Client : 200 OK\nTokenResponse
 deactivate Controller

@@ -6,6 +6,40 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+processors:
+  # Protege al collector de OOM bajo picos de carga.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Decide qué trazas retener una vez completas (tail-based, no ciego al outcome como el head):
+  #   - errores (span status = ERROR) → siempre
+  #   - lentas (>2s) → siempre
+  #   - el resto → 10%
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow
+        type: latency
+        latency:
+          threshold_ms: 2000
+      - name: sample-rest
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+  # Agrupa spans antes de exportar (eficiencia de red).
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
 exporters:
   zipkin:
     endpoint: http://zipkin:9411/api/v2/spans
@@ -16,4 +50,6 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      # Orden importa: memory_limiter primero, tail_sampling antes de batch.
+      processors: [memory_limiter, tail_sampling, batch]
       exporters: [zipkin, debug]

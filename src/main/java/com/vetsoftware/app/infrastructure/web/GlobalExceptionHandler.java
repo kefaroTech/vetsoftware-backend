@@ -36,6 +36,7 @@ import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedic
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservationNotFoundException;
 import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationProcedureNotFoundException;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNoteNotFoundException;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
@@ -77,6 +78,7 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFo
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -95,6 +97,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final AuditLogger auditLogger;
+
+    public GlobalExceptionHandler(AuditLogger auditLogger) {
+        this.auditLogger = auditLogger;
+    }
 
     @ExceptionHandler({
             CompanyNotFoundException.class, EmployeeNotFoundException.class,
@@ -172,20 +180,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ProblemDetail handleUnauthorized(InvalidCredentialsException ex) {
+    public ProblemDetail handleUnauthorized(InvalidCredentialsException ex, HttpServletRequest request) {
         log.warn("Unauthorized: {}", ex.getMessage());
+        auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Access denied: {}", ex.getMessage());
+        auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
         return problem(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex) {
+    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex, HttpServletRequest request) {
         log.warn("Authentication failed: {}", ex.getMessage());
+        auditLogger.loginFailure(request.getRequestURI(), "authentication_failed");
         return problem(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication required");
     }
 
