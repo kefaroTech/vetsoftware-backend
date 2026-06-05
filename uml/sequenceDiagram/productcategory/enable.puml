@@ -1,0 +1,64 @@
+@startuml product_category_enable
+title PATCH /product-categories/{id}/enable — Reactivate ProductCategory
+
+actor Client
+participant "ProductCategoryController" as Controller
+participant "ReactivateProductCategoryUseCase\n<<port.in>>" as UseCase
+participant "ReactivateProductCategoryService" as Service
+participant "ProductCategoryRepository\n<<port.out>>" as Repo
+participant "ProductCategoryJpaMapper" as Mapper
+participant "ProductCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  El reactivate es un native UPDATE que ignora el
+  @SQLRestriction(enabled=true) para poder revivir la fila.
+end note
+
+Client -> Controller : PATCH /product-categories/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR productCategory.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE product_categories SET enabled=true WHERE id=:id
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : ProductCategoryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT product_category\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<ProductCategoryJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ProductCategory
+Repo --> Service : Optional<ProductCategory>
+
+Service -> Service : ProductCategoryDto.from(productCategory)
+Service --> UseCase : ProductCategoryDto
+UseCase --> Controller : ProductCategoryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nProductCategoryResponse
+deactivate Controller
+
+@enduml

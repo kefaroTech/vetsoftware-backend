@@ -1,0 +1,53 @@
+@startuml promotion_enable
+title PATCH /promotions/{id}/enable — Reactivate Promotion
+
+actor Client
+participant "PromotionController" as Controller
+participant "ReactivatePromotionUseCase\n<<port.in>>" as UseCase
+participant "ReactivatePromotionService" as Service
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "PromotionJpaMapper" as Mapper
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+Client -> Controller : PATCH /promotions/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR promotion.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE promotions SET enabled=true WHERE id=? (nativeQuery, ignora @SQLRestriction)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : PromotionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT promotions (JOIN company)
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<PromotionJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Promotion
+Repo --> Service : Optional<Promotion>
+
+Service -> Service : PromotionDto.from(promotion)
+Service --> UseCase : PromotionDto
+UseCase --> Controller : PromotionDto
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPromotionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

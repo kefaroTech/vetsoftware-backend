@@ -1,0 +1,60 @@
+@startuml product_list
+title GET /products — List Products of current company
+
+actor Client
+participant "ProductController" as Controller
+participant "Authz" as Authz
+participant "ListProductsUseCase\n<<port.in>>" as UseCase
+participant "ListProductsService" as Service
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "ProductJpaMapper" as Mapper
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /products
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : listByCompany(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  authz.isMyCompany(#companyId)
+end note
+UseCase -> Service : listByCompany(companyId)
+activate Service
+
+Service -> Repo : findAllByCompanyId(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByCompanyId(companyId)
+JpaRepo -> DB : SELECT product\nWHERE company_id=?\nJOIN FETCH (productCategory, tax, company)\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<ProductJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Product>
+Repo --> Service : List<Product>
+deactivate Repo
+
+Service -> Service : stream().map(ProductDto::from).toList()
+Service --> UseCase : List<ProductDto>
+UseCase --> Controller : List<ProductDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<ProductResponse>
+deactivate Controller
+
+@enduml

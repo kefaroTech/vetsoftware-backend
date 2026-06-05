@@ -1,0 +1,23 @@
+package com.vetsoftware.app.product.application.usecase;
+
+import com.vetsoftware.app.product.application.dto.ProductDto;
+import com.vetsoftware.app.product.application.port.in.ListProductsUseCase;
+import com.vetsoftware.app.product.application.port.out.ProductRepository;
+import io.micrometer.observation.annotation.Observed;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Observed(name = "product.list_by_company")
+@Service
+public class ListProductsService implements ListProductsUseCase {
+    private final ProductRepository repository;
+
+    public ListProductsService(ProductRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<ProductDto> listByCompany(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(ProductDto::from).toList();
+    }
+}

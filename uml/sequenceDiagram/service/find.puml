@@ -1,0 +1,63 @@
+@startuml service_find
+title GET /services/{id} — Find Service by ID
+
+actor Client
+participant "ServiceController" as Controller
+participant "FindServiceUseCase\n<<port.in>>" as UseCase
+participant "FindServiceService" as Service
+participant "ServiceRepository\n<<port.out>>" as Repo
+participant "ServiceJpaMapper" as Mapper
+participant "ServiceJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /services/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR service.read
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT services\nJOIN FETCH (serviceCategory, tax, company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ServiceJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Service
+  Repo --> Service : Optional<Service>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ServiceNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : ServiceDto.from(service)
+Service --> UseCase : ServiceDto
+UseCase --> Controller : ServiceDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nServiceResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml product_delete
+title DELETE /products/{id} — Delete Product (leaf, sin children guard)
+
+actor Client
+participant "ProductController" as Controller
+participant "DeleteProductUseCase\n<<port.in>>" as UseCase
+participant "DeleteProductService" as Service
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /products/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR product.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT product (JOIN FETCH productCategory, tax, company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ProductJpaEntity>
+alt product no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ProductNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Product>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE product SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

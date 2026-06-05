@@ -78,6 +78,15 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFo
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
+import com.vetsoftware.app.product.domain.ProductNotFoundException;
+import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
+import com.vetsoftware.app.service.domain.ServiceNotFoundException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
+import com.vetsoftware.app.tax.domain.TaxHasActiveChildrenException;
+import com.vetsoftware.app.tax.domain.TaxNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -132,7 +141,10 @@ public class GlobalExceptionHandler {
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
             MedicamentPrescriptionNotFoundException.class,
             SurgeryTypeNotFoundException.class, SurgeryNotFoundException.class,
-            DiagnosticImagingTypeNotFoundException.class, DiagnosticImagingNotFoundException.class
+            DiagnosticImagingTypeNotFoundException.class, DiagnosticImagingNotFoundException.class,
+            TaxNotFoundException.class, ProductCategoryNotFoundException.class,
+            ServiceCategoryNotFoundException.class, ProductNotFoundException.class,
+            ServiceNotFoundException.class, PromotionNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -166,7 +178,10 @@ public class GlobalExceptionHandler {
             SystemUserHasActiveChildrenException.class,
             SystemPermissionHasActiveChildrenException.class,
             CompanyHasActiveChildrenException.class,
-            EmployeeHasActiveChildrenException.class
+            EmployeeHasActiveChildrenException.class,
+            TaxHasActiveChildrenException.class,
+            ProductCategoryHasActiveChildrenException.class,
+            ServiceCategoryHasActiveChildrenException.class
     })
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.warn("Cannot delete entity with active children: {}", ex.getMessage());

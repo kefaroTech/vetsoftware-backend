@@ -92,5 +92,11 @@
     <include file="db/changelog/migrations/086_fix_enabled_tinyint_width.xml"/>
     <include file="db/changelog/migrations/087_fix_rescheduled_tinyint_width.xml"/>
     <include file="db/changelog/migrations/088_add_suspension_to_hospitalization_orders.xml"/>
+    <include file="db/changelog/migrations/089_create_taxes.xml"/>
+    <include file="db/changelog/migrations/090_create_product_categories.xml"/>
+    <include file="db/changelog/migrations/091_create_service_categories.xml"/>
+    <include file="db/changelog/migrations/092_create_products.xml"/>
+    <include file="db/changelog/migrations/093_create_services.xml"/>
+    <include file="db/changelog/migrations/094_create_promotions.xml"/>
 
 </databaseChangeLog>

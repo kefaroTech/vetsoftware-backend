@@ -1,0 +1,63 @@
+@startuml product_category_find
+title GET /product-categories/{id} — Find ProductCategory by ID
+
+actor Client
+participant "ProductCategoryController" as Controller
+participant "FindProductCategoryUseCase\n<<port.in>>" as UseCase
+participant "FindProductCategoryService" as Service
+participant "ProductCategoryRepository\n<<port.out>>" as Repo
+participant "ProductCategoryJpaMapper" as Mapper
+participant "ProductCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /product-categories/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR productCategory.read
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT product_category\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ProductCategoryJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : ProductCategory
+  Repo --> Service : Optional<ProductCategory>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ProductCategoryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : ProductCategoryDto.from(productCategory)
+Service --> UseCase : ProductCategoryDto
+UseCase --> Controller : ProductCategoryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nProductCategoryResponse
+deactivate Controller
+
+@enduml

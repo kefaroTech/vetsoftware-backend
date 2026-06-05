@@ -1,0 +1,55 @@
+@startuml promotion_delete
+title DELETE /promotions/{id} — Delete Promotion (soft)
+
+actor Client
+participant "PromotionController" as Controller
+participant "DeletePromotionUseCase\n<<port.in>>" as UseCase
+participant "DeletePromotionService" as Service
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, DB
+  Hibernate `@SQLDelete`/`@SQLRestriction` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /promotions/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR promotion.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT promotions
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PromotionJpaEntity>
+alt promotion no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PromotionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Promotion>
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE promotions SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

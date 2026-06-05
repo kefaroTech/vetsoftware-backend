@@ -1,0 +1,64 @@
+@startuml product_search
+title GET /products/search — Paginated Search Products (current company)
+
+actor Client
+participant "ProductController" as Controller
+participant "Authz" as Authz
+participant "SearchProductsUseCase\n<<port.in>>" as UseCase
+participant "SearchProductsService" as Service
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "ProductJpaMapper" as Mapper
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /products/search?name=&code=&productCategoryId=&taxId=&page=&pageSize=
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(SearchProductsCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (product.read AND
+   authz.isMyCompany(#command.companyId))
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : search(command)
+activate Repo
+Repo -> Repo : buildSpec(command)\ncompany_id == companyId\n+ name LIKE, code LIKE,\nproductCategory.id, tax.id
+Repo -> JpaRepo : findAll(spec, PageRequest\nsort createdDate DESC)
+JpaRepo -> DB : SELECT COUNT(*) WHERE company_id=? AND ...
+DB --> JpaRepo : totalElements
+JpaRepo -> DB : SELECT product\nWHERE company_id=? AND ...\nJOIN FETCH (productCategory, tax, company)\nLIMIT pageSize OFFSET page*pageSize
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : Page<ProductJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Product>
+Repo --> Service : PageResult<Product>
+deactivate Repo
+
+Service -> Service : PageResult.map(ProductDto::from)
+Service --> UseCase : PageResult<ProductDto>
+UseCase --> Controller : PageResult<ProductDto>
+deactivate Service
+
+Controller -> Controller : map content -> ProductResponse\nwrap en PageResponse
+Controller --> Client : 200 OK\nPageResponse<ProductResponse>
+deactivate Controller
+
+@enduml

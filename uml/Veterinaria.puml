@@ -65,6 +65,33 @@ enum DewormingType {
   OTHER
 }
 
+enum Frequency {
+  CONTINUOUS
+  EVERY_4H
+  EVERY_6H
+  EVERY_8H
+  EVERY_12H
+  EVERY_24H
+  SINGLE
+}
+
+enum GuidelineType {
+  FIXED
+  INTERVAL
+}
+
+enum DurationMeasure {
+  DAYS
+  DOSES
+  INDEFINITE
+}
+
+enum AppliedStatus {
+  PENDING
+  APPLIED
+  SKIPPED
+}
+
 enum LaboratoryTestStatus {
   PENDIENTE
   COMPLETADO
@@ -476,7 +503,7 @@ class ProcedureSchedule {
 }
 
 class MedicationSchedule {
-  -medicationProcedure: MedicationSchedule
+  -hospitalizationMedication: HospitalizationMedication
   -originalDateTime: LocalDateTime
   -currentDateTime: LocalDateTime
   -realDateTime: LocalDateTime
@@ -499,6 +526,100 @@ class DayCare {
   -createdDate: LocalDateTime
   -createdBy: Employee
   -enabled: boolean
+}
+
+' =========================
+' Inventory / Catalog
+' =========================
+
+class Product {
+  -name: String
+  -code: String
+  -purchasePrice: BigDecimal
+  -salePrice: BigDecimal
+  -currentStock: Integer
+  -minStock: Integer
+  -provider: String
+  -hasTax: Boolean
+  -expireDate: Boolean
+  -notes: String
+  -productCategory: ProductCategory
+  -tax: Tax
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Service {
+  -name: String
+  -price: BigDecimal
+  -hasTax: Boolean
+  -notes: String
+  -serviceCategory: ServiceCategory
+  -tax: Tax
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class ProductCategory {
+  -name: String
+  -description: String
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class ServiceCategory {
+  -name: String
+  -description: String
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Tax {
+  -name: String
+  -percentage: BigDecimal
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Promotion {
+  -name: String
+  -promotionType: PromotionType
+  -applicationType: ApplicationType
+  -applicationItem: Integer
+  -valueType: ValueType
+  -value: Double
+  -startDate: LocalDateTime
+  -endDate: LocalDateTime
+  -promotionStatus: PromotionStatus
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+enum PromotionType {
+  DISCOUNT
+  SPECIAL_PRICE
+}
+
+enum ApplicationType {
+  CATEGORY
+  PRODUCT
+  SERVICE
+}
+
+enum ValueType {
+  PERCENTAGE
+  VALUE
+}
+
+enum PromotionStatus {
+  ACTIVE
+  INACTIVE
 }
 
 class LaboratoryTestType {
@@ -698,9 +819,17 @@ Hospitalization       --> HospitalizationType
 HospitalizationObservation       --> Hospitalization
 HospitalizationProgressNote       --> Hospitalization
 HospitalizationMedication       --> Hospitalization
+HospitalizationMedication       --> Frequency
+HospitalizationMedication       --> GuidelineType
+HospitalizationMedication       --> DurationMeasure
 HospitalizationProcedure       --> Hospitalization
+HospitalizationProcedure       --> Frequency
+HospitalizationProcedure       --> GuidelineType
+HospitalizationProcedure       --> DurationMeasure
 ProcedureSchedule       --> HospitalizationProcedure
+ProcedureSchedule       --> AppliedStatus
 MedicationSchedule       --> HospitalizationMedication
+MedicationSchedule       --> AppliedStatus
 Hospitalization       --> ReasonLeaving
 Hospitalization       --> Animal
 Hospitalization       --> Company
@@ -740,5 +869,22 @@ DiagnosticImaging     "0..*" --> "0..1" Consultation
 Spa                   --> SpaType
 Spa                   --> Animal
 Spa                   --> Company
+
+' --- Inventory / Catalog ---
+Product               --> ProductCategory
+Product               "0..*" --> "0..1" Tax
+Product               --> Company
+Service               --> ServiceCategory
+Service               "0..*" --> "0..1" Tax
+Service               --> Company
+ProductCategory       --> Company
+ServiceCategory       --> Company
+Tax                   --> Company
+
+Promotion             --> PromotionType
+Promotion             --> ApplicationType
+Promotion             --> ValueType
+Promotion             --> PromotionStatus
+Promotion             --> Company
 
 @enduml

@@ -1,0 +1,89 @@
+@startuml service_category_update
+title PUT /service-categories/{id} — Update ServiceCategory
+
+actor Client
+participant "ServiceCategoryController" as Controller
+participant "Authz" as Authz
+participant "UpdateServiceCategoryUseCase\n<<port.in>>" as UseCase
+participant "UpdateServiceCategoryService" as Service
+participant "ServiceCategoryRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "ServiceCategoryJpaMapper" as Mapper
+participant "ServiceCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : PUT /service-categories/{id}\n+ UpdateServiceCategoryRequest
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(UpdateServiceCategoryCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (serviceCategory.update AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT service_category (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ServiceCategoryJpaEntity>
+alt service_category no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ServiceCategoryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ServiceCategory
+Repo --> Service : Optional<ServiceCategory>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : serviceCategory.update(name, description, company)\n(invariantes de dominio)
+
+Service -> Repo : save(serviceCategory)
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(serviceCategory, company)
+Mapper --> Repo : ServiceCategoryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE service_categories
+DB --> JpaRepo : ok
+JpaRepo --> Repo : ServiceCategoryJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : ServiceCategory
+Repo --> Service : ServiceCategory
+
+Service -> Service : ServiceCategoryDto.from(serviceCategory)
+Service --> UseCase : ServiceCategoryDto
+UseCase --> Controller : ServiceCategoryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nServiceCategoryResponse
+deactivate Controller
+
+@enduml

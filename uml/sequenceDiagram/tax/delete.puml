@@ -1,0 +1,81 @@
+@startuml tax_delete
+title DELETE /taxes/{id} — Delete Tax
+
+actor Client
+participant "TaxController" as Controller
+participant "DeleteTaxUseCase\n<<port.in>>" as UseCase
+participant "DeleteTaxService" as Service
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+participant "TaxChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "ProductJpaRepository\n<<spring-data>>" as ProductJpaRepo
+participant "ServiceJpaRepository\n<<spring-data>>" as ServiceJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /taxes/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR tax.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT taxes
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<TaxJpaEntity>
+alt tax no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : TaxNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Tax>
+
+Service -> ChildrenQuery : existsActiveByTaxId(id)
+ChildrenQuery -> ProductJpaRepo : existsByTax_Id(id)
+ProductJpaRepo -> DB : SELECT EXISTS(...) WHERE tax_id=? AND enabled=true
+DB --> ProductJpaRepo : true/false
+ProductJpaRepo --> ChildrenQuery : boolean
+alt no hay productos activos
+  ChildrenQuery -> ServiceJpaRepo : existsByTax_Id(id)
+  ServiceJpaRepo -> DB : SELECT EXISTS(...) WHERE tax_id=? AND enabled=true
+  DB --> ServiceJpaRepo : true/false
+  ServiceJpaRepo --> ChildrenQuery : boolean
+end
+ChildrenQuery --> Service : boolean
+alt hay hijos activos (product/service)
+  Service --> GEH : TaxHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE taxes SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

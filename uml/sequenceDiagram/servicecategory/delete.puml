@@ -1,0 +1,74 @@
+@startuml service_category_delete
+title DELETE /service-categories/{id} — Delete ServiceCategory
+
+actor Client
+participant "ServiceCategoryController" as Controller
+participant "DeleteServiceCategoryUseCase\n<<port.in>>" as UseCase
+participant "DeleteServiceCategoryService" as Service
+participant "ServiceCategoryRepository\n<<port.out>>" as Repo
+participant "ServiceCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+participant "ServiceChildrenQueryPort\n<<port.out>>" as ChildrenQuery
+participant "ServiceJpaRepository\n<<spring-data>>" as ChildJpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /service-categories/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR serviceCategory.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT service_category
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ServiceCategoryJpaEntity>
+alt service_category no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ServiceCategoryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<ServiceCategory>
+
+Service -> ChildrenQuery : existsActiveByServiceCategoryId(id)
+ChildrenQuery -> ChildJpaRepo : existsByServiceCategory_Id(id)
+ChildJpaRepo -> DB : SELECT EXISTS(...) WHERE service_category_id=? AND enabled=true
+DB --> ChildJpaRepo : true/false
+ChildJpaRepo --> ChildrenQuery : boolean
+ChildrenQuery --> Service : boolean
+alt hay hijos activos
+  Service --> GEH : ServiceCategoryHasActiveChildrenException
+  GEH --> Client : 409 Conflict
+end
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE service_categories SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

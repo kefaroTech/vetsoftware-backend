@@ -1,0 +1,88 @@
+@startuml promotion_update
+title PUT /promotions/{id} — Update Promotion
+
+actor Client
+participant "PromotionController" as Controller
+participant "Authz" as Authz
+participant "UpdatePromotionUseCase\n<<port.in>>" as UseCase
+participant "UpdatePromotionService" as Service
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort\n<<port.out>>" as CompanyQP
+participant "PromotionTargetQueryPort\n<<port.out>>" as TargetQP
+participant "PromotionJpaMapper" as Mapper
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : PUT /promotions/{id}\n+ UpdatePromotionRequest
+activate Controller
+
+Controller -> Controller : parse enums (String → enum)
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : execute(UpdatePromotionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (promotion.update AND @authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT promotions (JOIN company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PromotionJpaEntity>
+alt promotion no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : PromotionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Promotion>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> TargetQP : exists(applicationType, applicationItem, companyId)
+TargetQP -> DB : SELECT EXISTS(...) WHERE id=? AND company_id=? AND enabled=true
+DB --> TargetQP : true/false
+TargetQP --> Service : boolean
+alt applicationItem no existe
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : promotion.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(promotion)
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(promotion, company)
+Mapper --> Repo : PromotionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE promotions
+DB --> JpaRepo : ok
+JpaRepo --> Repo : PromotionJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : Promotion
+Repo --> Service : Promotion
+
+Service -> Service : PromotionDto.from(promotion)
+Service --> UseCase : PromotionDto
+UseCase --> Controller : PromotionDto
+Controller --> Client : 200 OK\nPromotionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

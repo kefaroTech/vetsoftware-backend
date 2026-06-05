@@ -1,0 +1,118 @@
+@startuml product_update
+title PUT /products/{id} — Update Product
+
+actor Client
+participant "ProductController" as Controller
+participant "Authz" as Authz
+participant "UpdateProductUseCase\n<<port.in>>" as UseCase
+participant "UpdateProductService" as Service
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "ProductCategoryQueryPort" as CategoryQP
+participant "TaxQueryPort" as TaxQP
+participant "ProductJpaMapper" as Mapper
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+participant "ProductCategoryJpaRepository\n<<spring-data>>" as CategoryJpa
+participant "TaxJpaRepository\n<<spring-data>>" as TaxJpa
+participant "CompanyJpaRepository\n<<spring-data>>" as CompanyJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : PUT /products/{id}\n+ UpdateProductRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(UpdateProductCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (product.update AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT product (JOIN FETCH productCategory, tax, company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ProductJpaEntity>
+alt product no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ProductNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Product
+Repo --> Service : Optional<Product>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException\n"Company not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CategoryQP : findById(productCategoryId)
+CategoryQP --> Service : Optional<ProductCategoryRef>
+alt categoría no encontrada
+  Service --> GEH : IllegalArgumentException\n"ProductCategory not found"
+  GEH --> Client : 400 Bad Request
+end
+
+alt taxId != null
+  Service -> TaxQP : findById(taxId)
+  TaxQP --> Service : Optional<TaxRef>
+  alt tax no encontrado
+    Service --> GEH : IllegalArgumentException\n"Tax not found"
+    GEH --> Client : 400 Bad Request
+  end
+else taxId == null
+  note right of Service : tax = null (FK opcional)
+end
+
+Service -> Service : product.update(...)\n(invariantes de dominio)
+
+Service -> Repo : save(product)
+Repo -> CategoryJpa : getReferenceById(productCategoryId)
+CategoryJpa --> Repo : ProductCategoryJpaEntity (proxy sin SELECT)
+alt tax != null
+  Repo -> TaxJpa : getReferenceById(taxId)
+  TaxJpa --> Repo : TaxJpaEntity (proxy sin SELECT)
+end
+Repo -> CompanyJpa : getReferenceById(companyId)
+CompanyJpa --> Repo : CompanyJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(product, productCategory, tax, company)
+Mapper --> Repo : ProductJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE product
+DB --> JpaRepo : ok
+JpaRepo --> Repo : ProductJpaEntity
+Repo -> Mapper : toDomain(entity, categoryRef, taxRef, companyRef)
+Mapper --> Repo : Product
+Repo --> Service : Product
+
+Service -> Service : ProductDto.from(product)
+Service --> UseCase : ProductDto
+UseCase --> Controller : ProductDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nProductResponse
+deactivate Controller
+
+@enduml

@@ -1,0 +1,64 @@
+@startuml product_enable
+title PATCH /products/{id}/enable — Reactivate Product
+
+actor Client
+participant "ProductController" as Controller
+participant "ReactivateProductUseCase\n<<port.in>>" as UseCase
+participant "ReactivateProductService" as Service
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "ProductJpaMapper" as Mapper
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  reactivate es un UPDATE nativo que ignora @SQLRestriction
+  para poder reactivar filas con enabled=false.
+end note
+
+Client -> Controller : PATCH /products/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR product.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE products SET enabled=true WHERE id=:id (native)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : ProductNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT product (JOIN FETCH productCategory, tax, company)
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<ProductJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Product
+Repo --> Service : Optional<Product>
+
+Service -> Service : ProductDto.from(product)
+Service --> UseCase : ProductDto
+UseCase --> Controller : ProductDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nProductResponse
+deactivate Controller
+
+@enduml

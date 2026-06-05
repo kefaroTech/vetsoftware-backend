@@ -1,0 +1,37 @@
+package com.vetsoftware.app.productcategory.application.usecase;
+
+import com.vetsoftware.app.productcategory.application.command.UpdateProductCategoryCommand;
+import com.vetsoftware.app.productcategory.application.dto.ProductCategoryDto;
+import com.vetsoftware.app.productcategory.application.port.in.UpdateProductCategoryUseCase;
+import com.vetsoftware.app.productcategory.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.productcategory.application.port.out.ProductCategoryRepository;
+import com.vetsoftware.app.productcategory.domain.CompanyRef;
+import com.vetsoftware.app.productcategory.domain.ProductCategory;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "product_category.update")
+@Service
+public class UpdateProductCategoryService implements UpdateProductCategoryUseCase {
+    private final ProductCategoryRepository repository;
+    private final CompanyQueryPort companyQueryPort;
+
+    public UpdateProductCategoryService(ProductCategoryRepository repository,
+                                        CompanyQueryPort companyQueryPort) {
+        this.repository = repository;
+        this.companyQueryPort = companyQueryPort;
+    }
+
+    @Override
+    @Transactional
+    public ProductCategoryDto execute(UpdateProductCategoryCommand command) {
+        ProductCategory productCategory = repository.findById(command.id())
+                .orElseThrow(() -> new ProductCategoryNotFoundException(command.id()));
+        CompanyRef company = companyQueryPort.findById(command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        productCategory.update(command.name(), command.description(), company);
+        return ProductCategoryDto.from(repository.save(productCategory));
+    }
+}

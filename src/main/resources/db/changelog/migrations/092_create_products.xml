@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="092_create_products" author="orlando">
+        <createTable tableName="products">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="purchase_price" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sale_price" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="current_stock" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_stock" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="provider" type="VARCHAR(150)"/>
+            <column name="has_tax" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expire_date" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="product_category_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_products_product_category"
+                             references="product_categories(id)"/>
+            </column>
+            <column name="tax_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_products_tax"
+                             references="taxes(id)"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_products_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

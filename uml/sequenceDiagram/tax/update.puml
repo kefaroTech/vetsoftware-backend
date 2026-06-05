@@ -1,0 +1,87 @@
+@startuml tax_update
+title PUT /taxes/{id} — Update Tax
+
+actor Client
+participant "TaxController" as Controller
+participant "Authz" as Authz
+participant "UpdateTaxUseCase\n<<port.in>>" as UseCase
+participant "UpdateTaxService" as Service
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "CompanyQueryPort" as CompanyQP
+participant "TaxJpaMapper" as Mapper
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : PUT /taxes/{id}\n+ UpdateTaxRequest
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : execute(UpdateTaxCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (tax.update AND @authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT taxes (JOIN FETCH company)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<TaxJpaEntity>
+alt tax no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : TaxNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Tax
+Repo --> Service : Optional<Tax>
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : tax.update(name, percentage, company)\n(invariantes de dominio)
+
+Service -> Repo : save(tax)
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(tax, company)
+Mapper --> Repo : TaxJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE taxes
+DB --> JpaRepo : ok
+JpaRepo --> Repo : TaxJpaEntity
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : Tax
+Repo --> Service : Tax
+
+Service -> Service : TaxDto.from(tax)
+Service --> UseCase : TaxDto
+UseCase --> Controller : TaxDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nTaxResponse
+deactivate Controller
+
+@enduml

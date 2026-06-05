@@ -1,0 +1,65 @@
+@startuml tax_enable
+title PATCH /taxes/{id}/enable — Reactivate Tax
+
+actor Client
+participant "TaxController" as Controller
+participant "ReactivateTaxUseCase\n<<port.in>>" as UseCase
+participant "ReactivateTaxService" as Service
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "TaxJpaMapper" as Mapper
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  La reactivación usa un UPDATE nativo que ignora el
+  filtro @SQLRestriction(enabled = true) para poder
+  re-habilitar una fila soft-deleted.
+end note
+
+Client -> Controller : PATCH /taxes/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR tax.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE taxes SET enabled=true WHERE id=? (native)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : TaxNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT taxes\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<TaxJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Tax
+Repo --> Service : Optional<Tax>
+
+Service -> Service : TaxDto.from(tax)
+Service --> UseCase : TaxDto
+UseCase --> Controller : TaxDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nTaxResponse
+deactivate Controller
+
+@enduml

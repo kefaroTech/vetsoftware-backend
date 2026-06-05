@@ -1,0 +1,65 @@
+@startuml service_delete
+title DELETE /services/{id} — Delete Service
+
+actor Client
+participant "ServiceController" as Controller
+participant "DeleteServiceUseCase\n<<port.in>>" as UseCase
+participant "DeleteServiceService" as Service
+participant "ServiceRepository\n<<port.out>>" as Repo
+participant "ServiceJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /services/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR service.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT services
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<ServiceJpaEntity>
+alt service no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : ServiceNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : Optional<Service>
+
+note over Service
+  Service es LEAF — sin guard de hijos activos.
+end note
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE services SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : void
+Repo --> Service : void
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

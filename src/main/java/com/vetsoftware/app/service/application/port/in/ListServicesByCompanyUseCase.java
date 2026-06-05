@@ -1,0 +1,10 @@
+package com.vetsoftware.app.service.application.port.in;
+
+import com.vetsoftware.app.service.application.dto.ServiceDto;
+import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+public interface ListServicesByCompanyUseCase {
+    @PreAuthorize("hasAuthority('admin.all') or @authz.isMyCompany(#companyId)")
+    List<ServiceDto> listByCompany(Long companyId);
+}

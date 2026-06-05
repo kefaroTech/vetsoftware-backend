@@ -1,0 +1,86 @@
+@startuml promotion_create
+title POST /promotions — Create Promotion
+
+actor Client
+participant "PromotionController" as Controller
+participant "Authz" as Authz
+participant "CreatePromotionUseCase\n<<port.in>>" as UseCase
+participant "CreatePromotionService" as Service
+participant "CompanyQueryPort\n<<port.out>>" as CompanyQP
+participant "PromotionTargetQueryPort\n<<port.out>>" as TargetQP
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "PromotionJpaMapper" as Mapper
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SQLDelete`/`@SQLRestriction` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /promotions\n+ CreatePromotionRequest
+activate Controller
+
+Controller -> Controller : parse enums (String → enum)\ninvalid → IllegalArgumentException → 400
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : execute(CreatePromotionCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (promotion.create AND @authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> TargetQP : exists(applicationType, applicationItem, companyId)
+TargetQP -> DB : SELECT EXISTS(...) (product/service/category) WHERE id=? AND company_id=? AND enabled=true
+DB --> TargetQP : true/false
+TargetQP --> Service : boolean
+alt applicationItem no existe
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Promotion.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(promotion)
+activate Repo
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(promotion, company)
+Mapper --> Repo : PromotionJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT promotions
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : PromotionJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : Promotion
+Repo --> Service : Promotion
+deactivate Repo
+
+Service -> Service : PromotionDto.from(promotion)
+Service --> UseCase : PromotionDto
+UseCase --> Controller : PromotionDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nPromotionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

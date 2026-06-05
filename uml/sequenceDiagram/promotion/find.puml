@@ -1,0 +1,51 @@
+@startuml promotion_find
+title GET /promotions/{id} — Find Promotion
+
+actor Client
+participant "PromotionController" as Controller
+participant "FindPromotionUseCase\n<<port.in>>" as UseCase
+participant "FindPromotionService" as Service
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "PromotionJpaMapper" as Mapper
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /promotions/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR promotion.read
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT promotions (JOIN company, @EntityGraph)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<PromotionJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : Promotion
+Repo --> Service : Optional<Promotion>
+alt promotion no existe
+  Service --> GEH : PromotionNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Service : PromotionDto.from(promotion)
+Service --> UseCase : PromotionDto
+UseCase --> Controller : PromotionDto
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nPromotionResponse
+deactivate Controller
+deactivate Service
+
+@enduml

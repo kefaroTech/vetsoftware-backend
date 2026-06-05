@@ -1,0 +1,49 @@
+@startuml promotion_list
+title GET /promotions — List Promotions by Company
+
+actor Client
+participant "PromotionController" as Controller
+participant "Authz" as Authz
+participant "ListPromotionsUseCase\n<<port.in>>" as UseCase
+participant "ListPromotionsService" as Service
+participant "PromotionRepository\n<<port.out>>" as Repo
+participant "PromotionJpaMapper" as Mapper
+participant "PromotionJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+Client -> Controller : GET /promotions
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : listByCompany(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR @authz.isMyCompany(#companyId)
+end note
+UseCase -> Service : listByCompany(companyId)
+activate Service
+
+Service -> Repo : findAllByCompanyId(companyId)
+Repo -> JpaRepo : findAllByCompanyId(companyId)
+JpaRepo -> DB : SELECT promotions (JOIN company, @EntityGraph) WHERE company_id=? AND enabled=true
+DB --> JpaRepo : rows
+JpaRepo --> Repo : List<PromotionJpaEntity>
+Repo -> Mapper : toDomain(entity) (por fila)
+Mapper --> Repo : Promotion
+Repo --> Service : List<Promotion>
+
+Service -> Service : map PromotionDto.from(...)
+Service --> UseCase : List<PromotionDto>
+UseCase --> Controller : List<PromotionDto>
+Controller -> Controller : map toResponse(...)
+Controller --> Client : 200 OK\nList<PromotionResponse>
+deactivate Controller
+deactivate Service
+
+@enduml

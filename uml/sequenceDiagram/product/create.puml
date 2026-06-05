@@ -1,0 +1,106 @@
+@startuml product_create
+title POST /products — Create Product (scoped to current company)
+
+actor Client
+participant "ProductController" as Controller
+participant "Authz" as Authz
+participant "CreateProductUseCase\n<<port.in>>" as UseCase
+participant "CreateProductService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "ProductCategoryQueryPort" as CategoryQP
+participant "TaxQueryPort" as TaxQP
+participant "ProductRepository\n<<port.out>>" as Repo
+participant "ProductJpaMapper" as Mapper
+participant "ProductJpaRepository\n<<spring-data>>" as JpaRepo
+participant "ProductCategoryJpaRepository\n<<spring-data>>" as CategoryJpa
+participant "TaxJpaRepository\n<<spring-data>>" as TaxJpa
+participant "CompanyJpaRepository\n<<spring-data>>" as CompanyJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /products\n+ CreateProductRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(CreateProductCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (product.create AND
+   authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException\n"Company not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CategoryQP : findById(productCategoryId)
+CategoryQP --> Service : Optional<ProductCategoryRef>
+alt categoría no encontrada
+  Service --> GEH : IllegalArgumentException\n"ProductCategory not found"
+  GEH --> Client : 400 Bad Request
+end
+
+alt taxId != null
+  Service -> TaxQP : findById(taxId)
+  TaxQP --> Service : Optional<TaxRef>
+  alt tax no encontrado
+    Service --> GEH : IllegalArgumentException\n"Tax not found"
+    GEH --> Client : 400 Bad Request
+  end
+else taxId == null
+  note right of Service : tax = null (FK opcional)
+end
+
+Service -> Service : Product.create(...)\n(invariantes de dominio)
+
+Service -> Repo : save(product)
+activate Repo
+Repo -> CategoryJpa : getReferenceById(productCategoryId)
+CategoryJpa --> Repo : ProductCategoryJpaEntity (proxy sin SELECT)
+alt tax != null
+  Repo -> TaxJpa : getReferenceById(taxId)
+  TaxJpa --> Repo : TaxJpaEntity (proxy sin SELECT)
+end
+Repo -> CompanyJpa : getReferenceById(companyId)
+CompanyJpa --> Repo : CompanyJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(product, productCategory, tax, company)
+Mapper --> Repo : ProductJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT product
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : ProductJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, categoryRef, taxRef, companyRef)
+Mapper --> Repo : Product
+Repo --> Service : Product
+deactivate Repo
+
+Service -> Service : ProductDto.from(product)
+Service --> UseCase : ProductDto
+UseCase --> Controller : ProductDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nProductResponse
+deactivate Controller
+
+@enduml

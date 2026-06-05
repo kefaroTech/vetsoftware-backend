@@ -1,0 +1,76 @@
+@startuml product_category_create
+title POST /product-categories — Create ProductCategory
+
+actor Client
+participant "ProductCategoryController" as Controller
+participant "Authz" as Authz
+participant "CreateProductCategoryUseCase\n<<port.in>>" as UseCase
+participant "CreateProductCategoryService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "ProductCategoryRepository\n<<port.out>>" as Repo
+participant "ProductCategoryJpaMapper" as Mapper
+participant "ProductCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /product-categories\n+ CreateProductCategoryRequest
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(CreateProductCategoryCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (productCategory.create AND authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : ProductCategory.create(name, description, company)\n(invariantes de dominio)
+
+Service -> Repo : save(productCategory)
+activate Repo
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(productCategory, company)
+Mapper --> Repo : ProductCategoryJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT product_categories
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : ProductCategoryJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : ProductCategory
+Repo --> Service : ProductCategory
+deactivate Repo
+
+Service -> Service : ProductCategoryDto.from(productCategory)
+Service --> UseCase : ProductCategoryDto
+UseCase --> Controller : ProductCategoryDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nProductCategoryResponse
+deactivate Controller
+deactivate Service
+
+@enduml

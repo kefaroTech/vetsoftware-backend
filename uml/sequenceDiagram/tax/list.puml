@@ -1,0 +1,58 @@
+@startuml tax_list
+title GET /taxes — List Taxes of the current company
+
+actor Client
+participant "TaxController" as Controller
+participant "Authz" as Authz
+participant "ListTaxesUseCase\n<<port.in>>" as UseCase
+participant "ListTaxesService" as Service
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "TaxJpaMapper" as Mapper
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /taxes
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : listByCompany(companyId)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR @authz.isMyCompany(#companyId)
+end note
+UseCase -> Service : listByCompany(companyId)
+activate Service
+
+Service -> Repo : findAllByCompanyId(companyId)
+activate Repo
+Repo -> JpaRepo : findAllByCompanyId(companyId)
+JpaRepo -> DB : SELECT taxes\nJOIN FETCH (company)\nWHERE company_id=?\nvia @EntityGraph
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : List<TaxJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Tax>
+Repo --> Service : List<Tax>
+deactivate Repo
+
+Service -> Service : stream().map(TaxDto::from).toList()
+Service --> UseCase : List<TaxDto>
+UseCase --> Controller : List<TaxDto>
+deactivate Service
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<TaxResponse>
+deactivate Controller
+
+@enduml

@@ -1,0 +1,75 @@
+@startuml tax_create
+title POST /taxes — Create Tax
+
+actor Client
+participant "TaxController" as Controller
+participant "Authz" as Authz
+participant "CreateTaxUseCase\n<<port.in>>" as UseCase
+participant "CreateTaxService" as Service
+participant "CompanyQueryPort" as CompanyQP
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "TaxJpaMapper" as Mapper
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /taxes\n+ CreateTaxRequest
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> UseCase : execute(CreateTaxCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (tax.create AND @authz.isMyCompany(#command.companyId))
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : Tax.create(name, percentage, company)\n(invariantes de dominio)
+
+Service -> Repo : save(tax)
+activate Repo
+Repo -> JpaRepo : getReferenceById(companyId)
+JpaRepo --> Repo : proxy (sin SELECT)
+Repo -> Mapper : toJpa(tax, company)
+Mapper --> Repo : TaxJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT taxes
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : TaxJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ref precargado)
+Mapper --> Repo : Tax
+Repo --> Service : Tax
+deactivate Repo
+
+Service -> Service : TaxDto.from(tax)
+Service --> UseCase : TaxDto
+UseCase --> Controller : TaxDto
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nTaxResponse
+deactivate Controller
+deactivate Service
+
+@enduml

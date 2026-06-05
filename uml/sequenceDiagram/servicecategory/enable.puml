@@ -1,0 +1,66 @@
+@startuml service_category_enable
+title PATCH /service-categories/{id}/enable — Reactivate ServiceCategory
+
+actor Client
+participant "ServiceCategoryController" as Controller
+participant "ReactivateServiceCategoryUseCase\n<<port.in>>" as UseCase
+participant "ReactivateServiceCategoryService" as Service
+participant "ServiceCategoryRepository\n<<port.out>>" as Repo
+participant "ServiceCategoryJpaMapper" as Mapper
+participant "ServiceCategoryJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+  El reactivate usa una native query que ignora el filtro.
+end note
+
+Client -> Controller : PATCH /service-categories/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR serviceCategory.delete
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE service_categories SET enabled=true WHERE id=:id\n(native query)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : ServiceCategoryNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT service_category (JOIN FETCH company)
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<ServiceCategoryJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : ServiceCategory
+Repo --> Service : Optional<ServiceCategory>
+
+Service -> Service : ServiceCategoryDto.from(serviceCategory)
+Service --> UseCase : ServiceCategoryDto
+UseCase --> Controller : ServiceCategoryDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nServiceCategoryResponse
+deactivate Controller
+
+@enduml

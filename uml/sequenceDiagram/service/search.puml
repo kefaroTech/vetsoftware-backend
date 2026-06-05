@@ -1,0 +1,64 @@
+@startuml service_search
+title GET /services/search — Search Services (paginado, current company)
+
+actor Client
+participant "ServiceController" as Controller
+participant "Authz" as Authz
+participant "SearchServicesUseCase\n<<port.in>>" as UseCase
+participant "SearchServicesService" as Service
+participant "ServiceRepository\n<<port.out>>" as Repo
+participant "ServiceJpaMapper" as Mapper
+participant "ServiceJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /services/search?name=&serviceCategoryId=&taxId=&page=0&pageSize=20
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(SearchServicesCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (service.read AND
+   authz.isMyCompany(#command.companyId))
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : search(command)
+activate Repo
+Repo -> Repo : buildSpec(command)\ncompany_id == companyId (always)\n+ name LIKE, serviceCategory.id ==, tax.id == (opcionales)
+Repo -> JpaRepo : findAll(spec, PageRequest sort createdDate DESC)
+JpaRepo -> DB : SELECT count(...) WHERE company_id=? AND ...
+DB --> JpaRepo : total
+JpaRepo -> DB : SELECT services WHERE company_id=? AND ...\nJOIN FETCH (serviceCategory, tax, company)\nORDER BY created_date DESC LIMIT/OFFSET
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : Page<ServiceJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<Service>
+Repo --> Service : PageResult<Service>
+deactivate Repo
+
+Service -> Service : PageResult.map(ServiceDto::from)
+Service --> UseCase : PageResult<ServiceDto>
+UseCase --> Controller : PageResult<ServiceDto>
+deactivate Service
+
+Controller -> Controller : map content -> ServiceResponse\nwrap en PageResponse<ServiceResponse>
+Controller --> Client : 200 OK\nPageResponse<ServiceResponse>
+deactivate Controller
+
+@enduml

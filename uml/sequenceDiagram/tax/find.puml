@@ -1,0 +1,63 @@
+@startuml tax_find
+title GET /taxes/{id} — Find Tax by ID
+
+actor Client
+participant "TaxController" as Controller
+participant "FindTaxUseCase\n<<port.in>>" as UseCase
+participant "FindTaxService" as Service
+participant "TaxRepository\n<<port.out>>" as Repo
+participant "TaxJpaMapper" as Mapper
+participant "TaxJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /taxes/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR tax.read
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT taxes\nJOIN FETCH (company)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<TaxJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : Tax
+  Repo --> Service : Optional<Tax>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : TaxNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : TaxDto.from(tax)
+Service --> UseCase : TaxDto
+UseCase --> Controller : TaxDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nTaxResponse
+deactivate Controller
+
+@enduml
