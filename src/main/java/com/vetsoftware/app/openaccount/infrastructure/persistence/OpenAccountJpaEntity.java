@@ -2,6 +2,7 @@ package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -35,6 +36,10 @@ public class OpenAccountJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private OpenAccountStatus status = OpenAccountStatus.OPEN;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
     private EmployeeJpaEntity createdBy;
@@ -59,6 +64,8 @@ public class OpenAccountJpaEntity {
     public void setOutstandingAmount(BigDecimal outstandingAmount) { this.outstandingAmount = outstandingAmount; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public OpenAccountStatus getStatus() { return status; }
+    public void setStatus(OpenAccountStatus status) { this.status = status; }
     public EmployeeJpaEntity getCreatedBy() { return createdBy; }
     public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }

@@ -23,6 +23,7 @@ public class OpenAccountJpaMapper {
         entity.setPaidAmount(openAccount.getPaidAmount());
         entity.setOutstandingAmount(openAccount.getOutstandingAmount());
         entity.setCompany(company);
+        entity.setStatus(openAccount.getStatus());
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(openAccount.getCreatedDate());
         entity.setEnabled(openAccount.isEnabled());
@@ -48,6 +49,7 @@ public class OpenAccountJpaMapper {
             entity.getPaidAmount(),
             entity.getOutstandingAmount(),
             companyRef,
+            entity.getStatus(),
             createdByRef,
             entity.getCreatedDate(),
             entity.isEnabled());

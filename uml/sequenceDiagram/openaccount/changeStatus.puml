@@ -1,0 +1,80 @@
+@startuml open_account_change_status
+title PATCH /open-accounts/{id}/status — Change Open Account Status
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "ChangeOpenAccountStatusUseCase\n<<port.in>>" as UseCase
+participant "ChangeOpenAccountStatusService" as Service
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Estados válidos: OPEN, CLOSE, CANCEL.
+  Una cuenta nace OPEN; el cierre/cancelación
+  NO borra la cuenta, solo cambia su status
+  (preservación contable de los registros).
+end note
+
+Client -> Controller : PATCH /open-accounts/{id}/status\n+ ChangeOpenAccountStatusRequest { status }
+activate Controller
+
+Controller -> UseCase : execute(ChangeOpenAccountStatusCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR openAccount.update OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT open_account (JOIN FETCH owner, company, createdBy)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
+alt open account no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : OpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : OpenAccount
+Repo --> Service : Optional<OpenAccount>
+
+Service -> Service : OpenAccountStatus.valueOf(status.toUpperCase())
+alt status inválido
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : openAccount.changeStatus(newStatus)\n(invariantes de dominio)
+
+Service -> Repo : save(openAccount)
+Repo -> Mapper : toJpa(openAccount, owner, company, createdBy)
+Mapper --> Repo : OpenAccountJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE open_accounts SET status = ?
+DB --> JpaRepo : ok
+JpaRepo --> Repo : OpenAccountJpaEntity
+Repo -> Mapper : toDomain(entity, ownerRef, companyRef, createdByRef)
+Mapper --> Repo : OpenAccount
+Repo --> Service : OpenAccount
+
+Service -> Service : OpenAccountDto.from(openAccount)
+Service --> UseCase : OpenAccountDto
+UseCase --> Controller : OpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nOpenAccountResponse
+deactivate Controller
+
+@enduml

@@ -9,6 +9,12 @@ enum EmployeeStatus {
   INACTIVE
 }
 
+enum OpenAccountStatus {
+  OPEN
+  CLOSE
+  CANCEL
+}
+
 enum MembershipStatus {
   ACTIVE
   INACTIVE
@@ -767,6 +773,7 @@ class OpenAccount {
   -paidAmount: Double
   -outstandingAmount: Double
   -company: Company
+  -status: OpenAccountStatus
   -createdDate: LocalDateTime
   -createdBy: Employee
   -enabled: boolean

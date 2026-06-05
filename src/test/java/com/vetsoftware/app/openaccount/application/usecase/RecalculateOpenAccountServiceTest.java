@@ -10,6 +10,7 @@ import com.vetsoftware.app.openaccount.domain.CompanyRef;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.domain.OwnerRef;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -54,7 +55,7 @@ class RecalculateOpenAccountServiceTest {
 
     private OpenAccount existingAccount() {
         return new OpenAccount(1L, owner, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                company, createdBy, LocalDateTime.now(), true);
+                company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.vetsoftware.app.openaccount.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
+import com.vetsoftware.app.openaccount.application.command.ChangeOpenAccountStatusCommand;
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.command.UpdateOpenAccountCommand;
@@ -10,6 +11,7 @@ import com.vetsoftware.app.openaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import com.vetsoftware.app.openaccount.application.dto.OwnerSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
+import com.vetsoftware.app.openaccount.application.port.in.ChangeOpenAccountStatusUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.CreateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.FindOpenAccountUseCase;
@@ -17,6 +19,7 @@ import com.vetsoftware.app.openaccount.application.port.in.ListOpenAccountsUseCa
 import com.vetsoftware.app.openaccount.application.port.in.ReactivateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.SearchOpenAccountsUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.UpdateOpenAccountUseCase;
+import com.vetsoftware.app.openaccount.infrastructure.web.request.ChangeOpenAccountStatusRequest;
 import com.vetsoftware.app.openaccount.infrastructure.web.request.CreateOpenAccountRequest;
 import com.vetsoftware.app.openaccount.infrastructure.web.request.UpdateOpenAccountRequest;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.CompanySummary;
@@ -38,6 +41,7 @@ public class OpenAccountController {
     private final SearchOpenAccountsUseCase searchUseCase;
     private final DeleteOpenAccountUseCase deleteUseCase;
     private final ReactivateOpenAccountUseCase reactivateUseCase;
+    private final ChangeOpenAccountStatusUseCase changeStatusUseCase;
     private final Authz authz;
 
     public OpenAccountController(CreateOpenAccountUseCase createUseCase,
@@ -47,6 +51,7 @@ public class OpenAccountController {
                                 SearchOpenAccountsUseCase searchUseCase,
                                 DeleteOpenAccountUseCase deleteUseCase,
                                 ReactivateOpenAccountUseCase reactivateUseCase,
+                                ChangeOpenAccountStatusUseCase changeStatusUseCase,
                                 Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -55,6 +60,7 @@ public class OpenAccountController {
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.changeStatusUseCase = changeStatusUseCase;
         this.authz = authz;
     }
 
@@ -106,6 +112,13 @@ public class OpenAccountController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/status")
+    public OpenAccountResponse changeStatus(@PathVariable Long id,
+                                            @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
+        return toResponse(changeStatusUseCase.execute(
+            new ChangeOpenAccountStatusCommand(id, request.status())));
+    }
+
     private OpenAccountResponse toResponse(OpenAccountDto dto) {
         OwnerSummaryDto o = dto.owner();
         CompanySummaryDto c = dto.company();
@@ -115,6 +128,7 @@ public class OpenAccountController {
             new OwnerSummary(o.id(), o.name(), o.document()),
             dto.totalAmount(), dto.paidAmount(), dto.outstandingAmount(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
+            dto.status(),
             new EmployeeSummary(cb.id(), cb.name()),
             dto.createdDate(), dto.enabled());
     }
