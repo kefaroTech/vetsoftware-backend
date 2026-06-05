@@ -1,0 +1,79 @@
+@startuml product_charge_open_account_list
+title GET /product-charge-open-accounts — List Product Charges (all, or filtered by openAccountId)
+
+actor Client
+participant "ProductChargeOpenAccountController" as Controller
+participant "Authz" as Authz
+participant "ListProductChargeOpenAccountsUseCase\n<<port.in>>" as ListAllUC
+participant "ListProductChargeOpenAccountsByOpenAccountUseCase\n<<port.in>>" as ListByUC
+participant "ListProductChargeOpenAccountsService" as ListAllSvc
+participant "ListProductChargeOpenAccountsByOpenAccountService" as ListBySvc
+participant "ProductChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "ProductChargeOpenAccountJpaMapper" as Mapper
+participant "ProductChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /product-charge-open-accounts?openAccountId=(optional)
+activate Controller
+
+alt openAccountId != null
+  Controller -> Authz : currentCompanyId()
+  Authz --> Controller : companyId
+  Controller -> ListByUC : listByOpenAccount(openAccountId, companyId)
+  note right of ListByUC
+    @PreAuthorize:
+    admin.all OR
+    (productChargeOpenAccount.read AND
+     authz.isMyCompany(#companyId)) OR
+    hasRole('SYSTEM')
+  end note
+  ListByUC -> ListBySvc : listByOpenAccount(openAccountId, companyId)
+  activate ListBySvc
+  ListBySvc -> Repo : findByOpenAccountId(openAccountId)
+  Repo -> JpaRepo : findByOpenAccountId(openAccountId)
+  JpaRepo -> DB : SELECT charge WHERE open_account_id=?\nJOIN FETCH (animal, product, openAccount, createdBy)
+  DB --> JpaRepo : rows[]
+  JpaRepo --> Repo : List<ProductChargeOpenAccountJpaEntity>
+  Repo -> Mapper : toDomain(entity) por cada row
+  Mapper --> Repo : List<ProductChargeOpenAccount>
+  Repo --> ListBySvc : List<ProductChargeOpenAccount>
+  ListBySvc -> ListBySvc : stream().map(ProductChargeOpenAccountDto::from).toList()
+  ListBySvc --> Controller : List<ProductChargeOpenAccountDto>
+  deactivate ListBySvc
+else openAccountId == null
+  Controller -> ListAllUC : listAll()
+  note right of ListAllUC
+    @PreAuthorize:
+    admin.all OR hasRole('SYSTEM')
+  end note
+  ListAllUC -> ListAllSvc : listAll()
+  activate ListAllSvc
+  ListAllSvc -> Repo : findAll()
+  Repo -> JpaRepo : findAll()
+  JpaRepo -> DB : SELECT charge\nJOIN FETCH (animal, product, openAccount, createdBy)
+  DB --> JpaRepo : rows[]
+  JpaRepo --> Repo : List<ProductChargeOpenAccountJpaEntity>
+  Repo -> Mapper : toDomain(entity) por cada row
+  Mapper --> Repo : List<ProductChargeOpenAccount>
+  Repo --> ListAllSvc : List<ProductChargeOpenAccount>
+  ListAllSvc -> ListAllSvc : stream().map(ProductChargeOpenAccountDto::from).toList()
+  ListAllSvc --> Controller : List<ProductChargeOpenAccountDto>
+  deactivate ListAllSvc
+end
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<ProductChargeOpenAccountResponse>
+deactivate Controller
+
+@enduml

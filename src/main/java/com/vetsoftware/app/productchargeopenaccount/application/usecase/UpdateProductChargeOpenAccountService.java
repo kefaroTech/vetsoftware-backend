@@ -1,0 +1,66 @@
+package com.vetsoftware.app.productchargeopenaccount.application.usecase;
+
+import com.vetsoftware.app.productchargeopenaccount.application.command.UpdateProductChargeOpenAccountCommand;
+import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
+import com.vetsoftware.app.productchargeopenaccount.application.port.in.UpdateProductChargeOpenAccountUseCase;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.domain.AnimalRef;
+import com.vetsoftware.app.productchargeopenaccount.domain.OpenAccountRef;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductRef;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "product_charge_open_account.update")
+@Service
+public class UpdateProductChargeOpenAccountService implements UpdateProductChargeOpenAccountUseCase {
+    private final ProductChargeOpenAccountRepository repository;
+    private final AnimalQueryPort animalQueryPort;
+    private final ProductQueryPort productQueryPort;
+    private final OpenAccountQueryPort openAccountQueryPort;
+    private final OpenAccountRefresher refresher;
+
+    public UpdateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
+                                                 AnimalQueryPort animalQueryPort,
+                                                 ProductQueryPort productQueryPort,
+                                                 OpenAccountQueryPort openAccountQueryPort,
+                                                 OpenAccountRefresher refresher) {
+        this.repository = repository;
+        this.animalQueryPort = animalQueryPort;
+        this.productQueryPort = productQueryPort;
+        this.openAccountQueryPort = openAccountQueryPort;
+        this.refresher = refresher;
+    }
+
+    @Override
+    @Transactional
+    public ProductChargeOpenAccountDto execute(UpdateProductChargeOpenAccountCommand command) {
+        ProductChargeOpenAccount charge = repository.findById(command.id())
+            .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
+        Long previousOpenAccountId = charge.getOpenAccount().id();
+
+        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
+            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + command.openAccountId()));
+        if (!openAccount.companyId().equals(command.companyId())) {
+            throw new IllegalArgumentException("open account does not belong to company");
+        }
+        AnimalRef animal = animalQueryPort.findById(command.animalId())
+            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ProductRef product = productQueryPort.findById(command.productId())
+            .orElseThrow(() -> new IllegalArgumentException("Product not found: " + command.productId()));
+
+        charge.update(animal, product, openAccount);
+        ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
+        refresher.refresh(command.openAccountId());
+        if (!command.openAccountId().equals(previousOpenAccountId)) {
+            refresher.refresh(previousOpenAccountId);
+        }
+        return dto;
+    }
+}

@@ -1,0 +1,79 @@
+@startuml debt_open_account_list
+title GET /debt-open-accounts — List Debts (all, or filtered by openAccountId)
+
+actor Client
+participant "DebtOpenAccountController" as Controller
+participant "Authz" as Authz
+participant "ListDebtOpenAccountsUseCase\n<<port.in>>" as ListAllUC
+participant "ListDebtOpenAccountsByOpenAccountUseCase\n<<port.in>>" as ListByUC
+participant "ListDebtOpenAccountsService" as ListAllSvc
+participant "ListDebtOpenAccountsByOpenAccountService" as ListBySvc
+participant "DebtOpenAccountRepository\n<<port.out>>" as Repo
+participant "DebtOpenAccountJpaMapper" as Mapper
+participant "DebtOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /debt-open-accounts?openAccountId=(optional)
+activate Controller
+
+alt openAccountId != null
+  Controller -> Authz : currentCompanyId()
+  Authz --> Controller : companyId
+  Controller -> ListByUC : listByOpenAccount(openAccountId, companyId)
+  note right of ListByUC
+    @PreAuthorize:
+    admin.all OR
+    (debtOpenAccount.read AND
+     authz.isMyCompany(#companyId)) OR
+    hasRole('SYSTEM')
+  end note
+  ListByUC -> ListBySvc : listByOpenAccount(openAccountId, companyId)
+  activate ListBySvc
+  ListBySvc -> Repo : findByOpenAccountId(openAccountId)
+  Repo -> JpaRepo : findByOpenAccountId(openAccountId)
+  JpaRepo -> DB : SELECT debt WHERE open_account_id=?\nJOIN FETCH (openAccount, createdBy) via @EntityGraph
+  DB --> JpaRepo : rows[]
+  JpaRepo --> Repo : List<DebtOpenAccountJpaEntity>
+  Repo -> Mapper : toDomain(entity) por cada row
+  Mapper --> Repo : List<DebtOpenAccount>
+  Repo --> ListBySvc : List<DebtOpenAccount>
+  ListBySvc -> ListBySvc : stream().map(DebtOpenAccountDto::from).toList()
+  ListBySvc --> Controller : List<DebtOpenAccountDto>
+  deactivate ListBySvc
+else openAccountId == null
+  Controller -> ListAllUC : listAll()
+  note right of ListAllUC
+    @PreAuthorize:
+    admin.all OR hasRole('SYSTEM')
+  end note
+  ListAllUC -> ListAllSvc : listAll()
+  activate ListAllSvc
+  ListAllSvc -> Repo : findAll()
+  Repo -> JpaRepo : findAll()
+  JpaRepo -> DB : SELECT debt\nJOIN FETCH (openAccount, createdBy) via @EntityGraph
+  DB --> JpaRepo : rows[]
+  JpaRepo --> Repo : List<DebtOpenAccountJpaEntity>
+  Repo -> Mapper : toDomain(entity) por cada row
+  Mapper --> Repo : List<DebtOpenAccount>
+  Repo --> ListAllSvc : List<DebtOpenAccount>
+  ListAllSvc -> ListAllSvc : stream().map(DebtOpenAccountDto::from).toList()
+  ListAllSvc --> Controller : List<DebtOpenAccountDto>
+  deactivate ListAllSvc
+end
+
+Controller -> Controller : stream().map(toResponse).toList()
+Controller --> Client : 200 OK\nList<DebtOpenAccountResponse>
+deactivate Controller
+
+@enduml

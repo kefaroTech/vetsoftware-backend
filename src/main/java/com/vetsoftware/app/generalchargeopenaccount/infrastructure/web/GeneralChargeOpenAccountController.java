@@ -1,0 +1,115 @@
+package com.vetsoftware.app.generalchargeopenaccount.infrastructure.web;
+
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.generalchargeopenaccount.application.command.CreateGeneralChargeOpenAccountCommand;
+import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.EmployeeSummaryDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.OpenAccountSummaryDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.TaxSummaryDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.CreateGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.DeleteGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.FindGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsByOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ReactivateGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.UpdateGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.request.CreateGeneralChargeOpenAccountRequest;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.request.UpdateGeneralChargeOpenAccountRequest;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.EmployeeSummary;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.GeneralChargeOpenAccountResponse;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.OpenAccountSummary;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.TaxSummary;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/general-charge-open-accounts")
+public class GeneralChargeOpenAccountController {
+    private final CreateGeneralChargeOpenAccountUseCase createUseCase;
+    private final UpdateGeneralChargeOpenAccountUseCase updateUseCase;
+    private final FindGeneralChargeOpenAccountUseCase findUseCase;
+    private final ListGeneralChargeOpenAccountsUseCase listUseCase;
+    private final ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
+    private final DeleteGeneralChargeOpenAccountUseCase deleteUseCase;
+    private final ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase;
+    private final Authz authz;
+
+    public GeneralChargeOpenAccountController(CreateGeneralChargeOpenAccountUseCase createUseCase,
+                                              UpdateGeneralChargeOpenAccountUseCase updateUseCase,
+                                              FindGeneralChargeOpenAccountUseCase findUseCase,
+                                              ListGeneralChargeOpenAccountsUseCase listUseCase,
+                                              ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+                                              DeleteGeneralChargeOpenAccountUseCase deleteUseCase,
+                                              ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase,
+                                              Authz authz) {
+        this.createUseCase = createUseCase;
+        this.updateUseCase = updateUseCase;
+        this.findUseCase = findUseCase;
+        this.listUseCase = listUseCase;
+        this.listByOpenAccountUseCase = listByOpenAccountUseCase;
+        this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public GeneralChargeOpenAccountResponse create(
+            @Valid @RequestBody CreateGeneralChargeOpenAccountRequest request) {
+        return toResponse(createUseCase.execute(
+            new CreateGeneralChargeOpenAccountCommand(
+                request.name(), request.unitAmount(), request.quantity(), request.taxId(),
+                request.hasTax(), request.openAccountId(), authz.currentCompanyId(),
+                authz.currentEmployeeId())));
+    }
+
+    @GetMapping
+    public List<GeneralChargeOpenAccountResponse> list(
+            @RequestParam(required = false) Long openAccountId) {
+        List<GeneralChargeOpenAccountDto> dtos = openAccountId != null
+            ? listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
+            : listUseCase.listAll();
+        return dtos.stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/{id}")
+    public GeneralChargeOpenAccountResponse findById(@PathVariable Long id) {
+        return toResponse(findUseCase.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public GeneralChargeOpenAccountResponse update(
+            @PathVariable Long id, @Valid @RequestBody UpdateGeneralChargeOpenAccountRequest request) {
+        return toResponse(updateUseCase.execute(
+            new UpdateGeneralChargeOpenAccountCommand(
+                id, request.name(), request.unitAmount(), request.quantity(), request.taxId(),
+                request.hasTax(), request.openAccountId(), authz.currentCompanyId())));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        deleteUseCase.execute(id);
+    }
+
+    @PatchMapping("/{id}/enable")
+    public GeneralChargeOpenAccountResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
+    }
+
+    private GeneralChargeOpenAccountResponse toResponse(GeneralChargeOpenAccountDto dto) {
+        TaxSummaryDto t = dto.tax();
+        OpenAccountSummaryDto oa = dto.openAccount();
+        EmployeeSummaryDto emp = dto.createdBy();
+        return new GeneralChargeOpenAccountResponse(
+            dto.id(), dto.name(), dto.unitAmount(), dto.quantity(),
+            t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
+            dto.hasTax(),
+            new OpenAccountSummary(oa.id(), oa.companyId()),
+            new EmployeeSummary(emp.id(), emp.name()),
+            dto.createdDate(), dto.enabled());
+    }
+}

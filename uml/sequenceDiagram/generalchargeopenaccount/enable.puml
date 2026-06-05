@@ -1,0 +1,90 @@
+@startuml general_charge_open_account_enable
+title PATCH /general-charge-open-accounts/{id}/enable — Reactivate General Charge
+
+actor Client
+participant "GeneralChargeOpenAccountController" as Controller
+participant "ReactivateGeneralChargeOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "ReactivateGeneralChargeOpenAccountService" as Service
+participant "GeneralChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "GeneralChargeOpenAccountJpaMapper" as Mapper
+participant "GeneralChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
+participant "RecalculateOpenAccountService" as RecalcSvc
+participant "OpenAccountTotalsPort\n(openaccount <<port.out>>)" as TotalsPort
+participant "OpenAccountRepository\n(openaccount <<port.out>>)" as OARepo
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  reactivate es un UPDATE nativo que ignora @SQLRestriction
+  para poder reactivar filas con enabled=false.
+end note
+
+Client -> Controller : PATCH /general-charge-open-accounts/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR generalChargeOpenAccount.delete OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE general_charge_open_accounts SET enabled=true WHERE id=:id (native)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : GeneralChargeOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT charge (JOIN FETCH tax, openAccount, createdBy)
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<GeneralChargeOpenAccountJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : GeneralChargeOpenAccount
+Repo --> Service : GeneralChargeOpenAccount
+Service -> Service : openAccountId = charge.openAccount.id
+
+== Recálculo de la Open Account padre ==
+Service -> Refresher : refresh(openAccountId)
+activate Refresher
+Refresher -> Recalc : recalculate(openAccountId)
+Recalc -> RecalcSvc : recalculate(openAccountId)
+activate RecalcSvc
+RecalcSvc -> OARepo : findById(openAccountId)
+OARepo --> RecalcSvc : OpenAccount
+RecalcSvc -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : total
+RecalcSvc -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : paid
+RecalcSvc -> RecalcSvc : openAccount.recalculate(total, paid)\noutstanding = total - paid
+RecalcSvc -> OARepo : save(openAccount)
+OARepo -> DB : UPDATE open_accounts (total, paid, outstanding)
+deactivate RecalcSvc
+deactivate Refresher
+
+Service -> Service : GeneralChargeOpenAccountDto.from(charge)
+Service --> UseCase : GeneralChargeOpenAccountDto
+UseCase --> Controller : GeneralChargeOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nGeneralChargeOpenAccountResponse
+deactivate Controller
+
+@enduml

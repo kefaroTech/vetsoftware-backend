@@ -1,0 +1,108 @@
+@startuml open_account_create
+title POST /open-accounts — Create Open Account (scoped to current company)
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "Authz" as Authz
+participant "CreateOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "CreateOpenAccountService" as Service
+participant "OwnerQueryPort\n<<port.out>>" as OwnerQP
+participant "CompanyQueryPort\n<<port.out>>" as CompanyQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+participant "OwnerJpaRepository\n<<spring-data>>" as OwnerJpa
+participant "CompanyJpaRepository\n<<spring-data>>" as CompanyJpa
+participant "EmployeeJpaRepository\n<<spring-data>>" as EmployeeJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /open-accounts\n+ CreateOpenAccountRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+
+Controller -> UseCase : execute(CreateOpenAccountCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (openAccount.create AND
+   authz.isMyCompany(#command.companyId)) OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> OwnerQP : findById(ownerId)
+OwnerQP --> Service : Optional<OwnerRef>
+alt owner no encontrado
+  Service --> GEH : IllegalArgumentException\n"Owner not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> CompanyQP : findById(companyId)
+CompanyQP --> Service : Optional<CompanyRef>
+alt company no encontrada
+  Service --> GEH : IllegalArgumentException\n"Company not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> EmployeeQP : findById(createdById)
+EmployeeQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException\n"Employee not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : OpenAccount.create(owner, company, createdBy)
+note right of Service
+  total=0, paid=0, outstanding=0
+  (montos derivados; sin asignación manual —
+   se recalculan al crear/editar cargos hijos)
+end note
+
+Service -> Repo : save(openAccount)
+activate Repo
+Repo -> OwnerJpa : getReferenceById(ownerId)
+OwnerJpa --> Repo : OwnerJpaEntity (proxy sin SELECT)
+Repo -> CompanyJpa : getReferenceById(companyId)
+CompanyJpa --> Repo : CompanyJpaEntity (proxy sin SELECT)
+Repo -> EmployeeJpa : getReferenceById(createdById)
+EmployeeJpa --> Repo : EmployeeJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(openAccount, owner, company, createdBy)
+Mapper --> Repo : OpenAccountJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT open_accounts (total=0, paid=0, outstanding=0)
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : OpenAccountJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, ownerRef, companyRef, createdByRef)
+Mapper --> Repo : OpenAccount
+Repo --> Service : OpenAccount
+deactivate Repo
+
+Service -> Service : OpenAccountDto.from(openAccount)
+Service --> UseCase : OpenAccountDto
+UseCase --> Controller : OpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nOpenAccountResponse
+deactivate Controller
+
+@enduml

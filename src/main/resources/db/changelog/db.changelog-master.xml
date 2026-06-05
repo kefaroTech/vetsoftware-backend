@@ -98,5 +98,10 @@
     <include file="db/changelog/migrations/092_create_products.xml"/>
     <include file="db/changelog/migrations/093_create_services.xml"/>
     <include file="db/changelog/migrations/094_create_promotions.xml"/>
+    <include file="db/changelog/migrations/095_create_open_accounts.xml"/>
+    <include file="db/changelog/migrations/096_create_debt_open_accounts.xml"/>
+    <include file="db/changelog/migrations/097_create_product_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/098_create_service_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/099_create_general_charge_open_accounts.xml"/>
 
 </databaseChangeLog>

@@ -1,0 +1,61 @@
+package com.vetsoftware.app.generalchargeopenaccount.application.usecase;
+
+import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.UpdateGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountQueryPort;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.TaxQueryPort;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.generalchargeopenaccount.domain.OpenAccountRef;
+import com.vetsoftware.app.generalchargeopenaccount.domain.TaxRef;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "general_charge_open_account.update")
+@Service
+public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralChargeOpenAccountUseCase {
+    private final GeneralChargeOpenAccountRepository repository;
+    private final OpenAccountQueryPort openAccountQueryPort;
+    private final TaxQueryPort taxQueryPort;
+    private final OpenAccountRefresher refresher;
+
+    public UpdateGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
+                                                 OpenAccountQueryPort openAccountQueryPort,
+                                                 TaxQueryPort taxQueryPort,
+                                                 OpenAccountRefresher refresher) {
+        this.repository = repository;
+        this.openAccountQueryPort = openAccountQueryPort;
+        this.taxQueryPort = taxQueryPort;
+        this.refresher = refresher;
+    }
+
+    @Override
+    @Transactional
+    public GeneralChargeOpenAccountDto execute(UpdateGeneralChargeOpenAccountCommand command) {
+        GeneralChargeOpenAccount charge = repository.findById(command.id())
+            .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(command.id()));
+        Long previousOpenAccountId = charge.getOpenAccount().id();
+
+        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
+            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + command.openAccountId()));
+        if (!openAccount.companyId().equals(command.companyId())) {
+            throw new IllegalArgumentException("open account does not belong to company");
+        }
+        TaxRef tax = command.taxId() == null ? null
+            : taxQueryPort.findById(command.taxId())
+                .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
+
+        charge.update(command.name(), command.unitAmount(), command.quantity(), tax,
+            command.hasTax(), openAccount);
+        GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
+        refresher.refresh(openAccount.id());
+        if (!openAccount.id().equals(previousOpenAccountId)) {
+            refresher.refresh(previousOpenAccountId);
+        }
+        return dto;
+    }
+}

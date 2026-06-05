@@ -1,0 +1,25 @@
+package com.vetsoftware.app.openaccount.application.usecase;
+
+import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseCase;
+import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
+import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "open_account.delete")
+@Service
+public class DeleteOpenAccountService implements DeleteOpenAccountUseCase {
+    private final OpenAccountRepository repository;
+
+    public DeleteOpenAccountService(OpenAccountRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    @Transactional
+    public void execute(Long id) {
+        repository.findById(id).orElseThrow(() -> new OpenAccountNotFoundException(id));
+        repository.delete(id);
+    }
+}

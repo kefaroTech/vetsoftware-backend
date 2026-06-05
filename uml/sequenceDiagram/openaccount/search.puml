@@ -1,0 +1,64 @@
+@startuml open_account_search
+title GET /open-accounts/search — Paginated Search Open Accounts (current company)
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "Authz" as Authz
+participant "SearchOpenAccountsUseCase\n<<port.in>>" as UseCase
+participant "SearchOpenAccountsService" as Service
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+
+note over Client, DB
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, DB
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /open-accounts/search?ownerId=&enabled=&page=&pageSize=
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(SearchOpenAccountsCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (openAccount.read AND
+   authz.isMyCompany(#command.companyId))
+end note
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : search(command)
+activate Repo
+Repo -> Repo : buildSpec(command)\ncompany.id == companyId\n+ owner.id, enabled
+Repo -> JpaRepo : findAll(spec, PageRequest\nsort createdDate DESC)
+JpaRepo -> DB : SELECT COUNT(*) WHERE company_id=? AND ...
+DB --> JpaRepo : totalElements
+JpaRepo -> DB : SELECT open_account\nWHERE company_id=? AND ...\nFETCH (owner, company, createdBy)\nLIMIT pageSize OFFSET page*pageSize
+DB --> JpaRepo : rows[]
+JpaRepo --> Repo : Page<OpenAccountJpaEntity>
+Repo -> Mapper : toDomain(entity) por cada row
+Mapper --> Repo : List<OpenAccount>
+Repo --> Service : PageResult<OpenAccount>
+deactivate Repo
+
+Service -> Service : PageResult.map(OpenAccountDto::from)
+Service --> UseCase : PageResult<OpenAccountDto>
+UseCase --> Controller : PageResult<OpenAccountDto>
+deactivate Service
+
+Controller -> Controller : map content -> OpenAccountResponse\nwrap en PageResponse
+Controller --> Client : 200 OK\nPageResponse<OpenAccountResponse>
+deactivate Controller
+
+@enduml

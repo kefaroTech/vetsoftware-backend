@@ -1,0 +1,122 @@
+@startuml debt_open_account_create
+title POST /debt-open-accounts — Create Debt (payment) on an Open Account
+
+actor Client
+participant "DebtOpenAccountController" as Controller
+participant "Authz" as Authz
+participant "CreateDebtOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "CreateDebtOpenAccountService" as Service
+participant "OpenAccountQueryPort\n<<port.out>>" as OpenAccountQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
+participant "DebtOpenAccountRepository\n<<port.out>>" as Repo
+participant "DebtOpenAccountJpaMapper" as Mapper
+participant "DebtOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
+participant "RecalculateOpenAccountService" as RecalcSvc
+participant "OpenAccountTotalsPort\n(openaccount <<port.out>>)" as TotalsPort
+participant "OpenAccountRepository\n(openaccount <<port.out>>)" as OARepo
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /debt-open-accounts\n+ CreateDebtOpenAccountRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+
+Controller -> UseCase : execute(CreateDebtOpenAccountCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (debtOpenAccount.create AND
+   authz.isMyCompany(#command.companyId)) OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> OpenAccountQP : findById(openAccountId)
+OpenAccountQP -> DB : SELECT open_account WHERE id=?
+DB --> OpenAccountQP : row | empty
+OpenAccountQP --> Service : Optional<OpenAccountRef>
+alt open account no encontrada
+  Service --> GEH : IllegalArgumentException\n"OpenAccount not found"
+  GEH --> Client : 400 Bad Request
+end
+Service -> Service : check openAccount.companyId == command.companyId
+alt no pertenece a la company
+  Service --> GEH : IllegalArgumentException\n"open account does not belong to company"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> EmployeeQP : findById(createdById)
+EmployeeQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException\n"Employee not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : DebtOpenAccount.create(amount,\nPaymentMethod, openAccount, createdBy)
+
+Service -> Repo : save(debtOpenAccount)
+activate Repo
+Repo -> JpaRepo : getReferenceById(openAccountId), getReferenceById(createdById)
+Repo -> Mapper : toJpa(debt, openAccount, createdBy)
+Mapper --> Repo : DebtOpenAccountJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT debt_open_accounts
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : DebtOpenAccountJpaEntity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : DebtOpenAccount
+Repo --> Service : DebtOpenAccount
+deactivate Repo
+Service -> Service : DebtOpenAccountDto.from(debt)
+
+== Recálculo de la Open Account padre ==
+Service -> Refresher : refresh(openAccountId)
+activate Refresher
+Refresher -> Recalc : recalculate(openAccountId)
+Recalc -> RecalcSvc : recalculate(openAccountId)
+activate RecalcSvc
+RecalcSvc -> OARepo : findById(openAccountId)
+OARepo --> RecalcSvc : OpenAccount
+RecalcSvc -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : total
+TotalsPort --> RecalcSvc : totalCharges
+RecalcSvc -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : paid
+TotalsPort --> RecalcSvc : totalPayments
+RecalcSvc -> RecalcSvc : openAccount.recalculate(total, paid)\noutstanding = total - paid
+RecalcSvc -> OARepo : save(openAccount)
+OARepo -> DB : UPDATE open_accounts (total, paid, outstanding)
+DB --> OARepo : ok
+deactivate RecalcSvc
+deactivate Refresher
+
+Service --> UseCase : DebtOpenAccountDto
+UseCase --> Controller : DebtOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nDebtOpenAccountResponse
+deactivate Controller
+
+@enduml

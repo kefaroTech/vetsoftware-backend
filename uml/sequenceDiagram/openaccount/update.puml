@@ -1,0 +1,94 @@
+@startuml open_account_update
+title PUT /open-accounts/{id} — Update Open Account
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "Authz" as Authz
+participant "UpdateOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "UpdateOpenAccountService" as Service
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OwnerQueryPort\n<<port.out>>" as OwnerQP
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+participant "OwnerJpaRepository\n<<spring-data>>" as OwnerJpa
+participant "CompanyJpaRepository\n<<spring-data>>" as CompanyJpa
+participant "EmployeeJpaRepository\n<<spring-data>>" as EmployeeJpa
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : PUT /open-accounts/{id}\n+ UpdateOpenAccountRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(UpdateOpenAccountCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR openAccount.update OR hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT open_account (JOIN FETCH owner, company, createdBy)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
+alt open account no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : OpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : OpenAccount
+Repo --> Service : Optional<OpenAccount>
+
+Service -> OwnerQP : findById(ownerId)
+OwnerQP --> Service : Optional<OwnerRef>
+alt owner no encontrado
+  Service --> GEH : IllegalArgumentException\n"Owner not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : openAccount.update(owner)\n(invariantes de dominio)
+
+Service -> Repo : save(openAccount)
+Repo -> OwnerJpa : getReferenceById(ownerId)
+OwnerJpa --> Repo : OwnerJpaEntity (proxy sin SELECT)
+Repo -> CompanyJpa : getReferenceById(companyId)
+CompanyJpa --> Repo : CompanyJpaEntity (proxy sin SELECT)
+Repo -> EmployeeJpa : getReferenceById(createdById)
+EmployeeJpa --> Repo : EmployeeJpaEntity (proxy sin SELECT)
+Repo -> Mapper : toJpa(openAccount, owner, company, createdBy)
+Mapper --> Repo : OpenAccountJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE open_accounts
+DB --> JpaRepo : ok
+JpaRepo --> Repo : OpenAccountJpaEntity
+Repo -> Mapper : toDomain(entity, ownerRef, companyRef, createdByRef)
+Mapper --> Repo : OpenAccount
+Repo --> Service : OpenAccount
+
+Service -> Service : OpenAccountDto.from(openAccount)
+Service --> UseCase : OpenAccountDto
+UseCase --> Controller : OpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nOpenAccountResponse
+deactivate Controller
+
+@enduml

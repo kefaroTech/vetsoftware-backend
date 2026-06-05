@@ -1,0 +1,64 @@
+@startuml open_account_enable
+title PATCH /open-accounts/{id}/enable — Reactivate Open Account
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "ReactivateOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "ReactivateOpenAccountService" as Service
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  reactivate es un UPDATE nativo que ignora @SQLRestriction
+  para poder reactivar filas con enabled=false.
+end note
+
+Client -> Controller : PATCH /open-accounts/{id}/enable
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR openAccount.delete OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : reactivate(id)
+Repo -> JpaRepo : reactivate(id)
+JpaRepo -> DB : UPDATE open_accounts SET enabled=true WHERE id=:id (native)
+DB --> JpaRepo : rows afectadas
+JpaRepo --> Repo : int
+Repo --> Service : int
+alt rows == 0
+  Service --> GEH : OpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT open_account (JOIN FETCH owner, company, createdBy)
+DB --> JpaRepo : row
+JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
+Repo -> Mapper : toDomain(entity)
+Mapper --> Repo : OpenAccount
+Repo --> Service : Optional<OpenAccount>
+
+Service -> Service : OpenAccountDto.from(openAccount)
+Service --> UseCase : OpenAccountDto
+UseCase --> Controller : OpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nOpenAccountResponse
+deactivate Controller
+
+@enduml

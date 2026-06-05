@@ -1,0 +1,63 @@
+@startuml debt_open_account_find
+title GET /debt-open-accounts/{id} — Find Debt by ID
+
+actor Client
+participant "DebtOpenAccountController" as Controller
+participant "FindDebtOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "FindDebtOpenAccountService" as Service
+participant "DebtOpenAccountRepository\n<<port.out>>" as Repo
+participant "DebtOpenAccountJpaMapper" as Mapper
+participant "DebtOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /debt-open-accounts/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR debtOpenAccount.read OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT debt\nJOIN FETCH (openAccount, createdBy)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DebtOpenAccountJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : DebtOpenAccount
+  Repo --> Service : Optional<DebtOpenAccount>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DebtOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : DebtOpenAccountDto.from(debt)
+Service --> UseCase : DebtOpenAccountDto
+UseCase --> Controller : DebtOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDebtOpenAccountResponse
+deactivate Controller
+
+@enduml

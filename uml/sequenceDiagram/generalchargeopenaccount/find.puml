@@ -1,0 +1,63 @@
+@startuml general_charge_open_account_find
+title GET /general-charge-open-accounts/{id} — Find General Charge by ID
+
+actor Client
+participant "GeneralChargeOpenAccountController" as Controller
+participant "FindGeneralChargeOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "FindGeneralChargeOpenAccountService" as Service
+participant "GeneralChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "GeneralChargeOpenAccountJpaMapper" as Mapper
+participant "GeneralChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /general-charge-open-accounts/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR generalChargeOpenAccount.read OR hasRole('SYSTEM')
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT charge\nJOIN FETCH (tax, openAccount, createdBy)\nvia @EntityGraph (tax opcional)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<GeneralChargeOpenAccountJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : GeneralChargeOpenAccount
+  Repo --> Service : Optional<GeneralChargeOpenAccount>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : GeneralChargeOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : GeneralChargeOpenAccountDto.from(charge)
+Service --> UseCase : GeneralChargeOpenAccountDto
+UseCase --> Controller : GeneralChargeOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nGeneralChargeOpenAccountResponse
+deactivate Controller
+
+@enduml

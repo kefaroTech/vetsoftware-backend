@@ -32,6 +32,12 @@ enum AnimalType {
   NONE
 }
 
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+}
+
 enum ReproductiveState {
   STERILIZED
   NO_STERILIZED
@@ -113,6 +119,27 @@ enum DiagnosticImagingStatus {
   PENDIENTE
   COMPLETADO
   CANCELADO
+}
+
+enum PromotionType {
+  DISCOUNT
+  SPECIAL_PRICE
+}
+
+enum ApplicationType {
+  CATEGORY
+  PRODUCT
+  SERVICE
+}
+
+enum ValueType {
+  PERCENTAGE
+  VALUE
+}
+
+enum PromotionStatus {
+  ACTIVE
+  INACTIVE
 }
 
 ' =========================
@@ -601,26 +628,9 @@ class Promotion {
   -enabled: boolean
 }
 
-enum PromotionType {
-  DISCOUNT
-  SPECIAL_PRICE
-}
-
-enum ApplicationType {
-  CATEGORY
-  PRODUCT
-  SERVICE
-}
-
-enum ValueType {
-  PERCENTAGE
-  VALUE
-}
-
-enum PromotionStatus {
-  ACTIVE
-  INACTIVE
-}
+' =========================
+' Medical Records (continuación)
+' =========================
 
 class LaboratoryTestType {
   -name: String
@@ -742,6 +752,60 @@ class Spa {
   -observations: String
   -animal: Animal
   -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+' =========================
+' Billing / Open Accounts
+' =========================
+
+class OpenAccount {
+  -owner: Owner
+  -totalAmount: Double
+  -paidAmount: Double
+  -outstandingAmount: Double
+  -company: Company
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class DebtOpenAccount {
+  -amount: Double
+  -paymentMethod: PaymentMethod
+  -openAccount: OpenAccount
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class ProductChargeOpenAccount {
+  -animal: Animal
+  -product: Product
+  -openAccount: OpenAccount
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class ServiceChargeOpenAccount {
+  -animal: Animal
+  -service: Service
+  -openAccount: OpenAccount
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
+class GeneralChargeOpenAccount {
+  -name: String
+  -unitAmount: Double
+  -quantity: Double
+  -tax: Tax
+  -hasTax: Boolean
+  -openAccount: OpenAccount
   -createdDate: LocalDateTime
   -createdBy: Employee
   -enabled: boolean
@@ -886,5 +950,19 @@ Promotion             --> ApplicationType
 Promotion             --> ValueType
 Promotion             --> PromotionStatus
 Promotion             --> Company
+
+' --- Billing / Open Accounts ---
+OpenAccount                --> Owner
+OpenAccount                --> Company
+DebtOpenAccount            --> PaymentMethod
+DebtOpenAccount            --> OpenAccount
+ProductChargeOpenAccount   --> Animal
+ProductChargeOpenAccount   --> Product
+ProductChargeOpenAccount   --> OpenAccount
+ServiceChargeOpenAccount   --> Animal
+ServiceChargeOpenAccount   --> Service
+ServiceChargeOpenAccount   --> OpenAccount
+GeneralChargeOpenAccount   "0..*" --> "0..1" Tax
+GeneralChargeOpenAccount   --> OpenAccount
 
 @enduml

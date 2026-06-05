@@ -1,0 +1,63 @@
+@startuml open_account_find
+title GET /open-accounts/{id} — Find Open Account by ID
+
+actor Client
+participant "OpenAccountController" as Controller
+participant "FindOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "FindOpenAccountService" as Service
+participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountJpaMapper" as Mapper
+participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : GET /open-accounts/{id}
+activate Controller
+
+Controller -> UseCase : findById(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR openAccount.read
+end note
+UseCase -> Service : findById(id)
+activate Service
+
+Service -> Repo : findById(id)
+activate Repo
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT open_account\nJOIN FETCH (owner, company, createdBy)\nvia @EntityGraph
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
+
+alt entidad encontrada
+  Repo -> Mapper : toDomain(entity)
+  Mapper --> Repo : OpenAccount
+  Repo --> Service : Optional<OpenAccount>
+else no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : OpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+deactivate Repo
+
+Service -> Service : OpenAccountDto.from(openAccount)
+Service --> UseCase : OpenAccountDto
+UseCase --> Controller : OpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nOpenAccountResponse
+deactivate Controller
+
+@enduml

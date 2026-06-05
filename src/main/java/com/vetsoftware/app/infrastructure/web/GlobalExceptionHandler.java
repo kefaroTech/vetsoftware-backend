@@ -49,6 +49,11 @@ import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
@@ -144,7 +149,10 @@ public class GlobalExceptionHandler {
             DiagnosticImagingTypeNotFoundException.class, DiagnosticImagingNotFoundException.class,
             TaxNotFoundException.class, ProductCategoryNotFoundException.class,
             ServiceCategoryNotFoundException.class, ProductNotFoundException.class,
-            ServiceNotFoundException.class, PromotionNotFoundException.class
+            ServiceNotFoundException.class, PromotionNotFoundException.class,
+            OpenAccountNotFoundException.class, DebtOpenAccountNotFoundException.class,
+            ProductChargeOpenAccountNotFoundException.class, ServiceChargeOpenAccountNotFoundException.class,
+            GeneralChargeOpenAccountNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

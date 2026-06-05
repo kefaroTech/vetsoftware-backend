@@ -1,0 +1,132 @@
+@startuml general_charge_open_account_update
+title PUT /general-charge-open-accounts/{id} — Update General Charge
+
+actor Client
+participant "GeneralChargeOpenAccountController" as Controller
+participant "Authz" as Authz
+participant "UpdateGeneralChargeOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "UpdateGeneralChargeOpenAccountService" as Service
+participant "GeneralChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountQueryPort\n<<port.out>>" as OpenAccountQP
+participant "TaxQueryPort\n<<port.out>>" as TaxQP
+participant "GeneralChargeOpenAccountJpaMapper" as Mapper
+participant "GeneralChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
+participant "RecalculateOpenAccountService" as RecalcSvc
+participant "OpenAccountTotalsPort\n(openaccount <<port.out>>)" as TotalsPort
+participant "OpenAccountRepository\n(openaccount <<port.out>>)" as OARepo
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : PUT /general-charge-open-accounts/{id}\n+ UpdateGeneralChargeOpenAccountRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+
+Controller -> UseCase : execute(UpdateGeneralChargeOpenAccountCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (generalChargeOpenAccount.update AND
+   authz.isMyCompany(#command.companyId)) OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT charge (JOIN FETCH tax, openAccount, createdBy)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<GeneralChargeOpenAccountJpaEntity>
+alt charge no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : GeneralChargeOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : GeneralChargeOpenAccount
+Service -> Service : previousOpenAccountId = charge.openAccount.id
+
+Service -> OpenAccountQP : findById(openAccountId)
+OpenAccountQP -> DB : SELECT open_account WHERE id=?
+DB --> OpenAccountQP : row | empty
+OpenAccountQP --> Service : Optional<OpenAccountRef>
+alt open account no encontrada
+  Service --> GEH : IllegalArgumentException\n"OpenAccount not found"
+  GEH --> Client : 400 Bad Request
+end
+Service -> Service : check openAccount.companyId == command.companyId
+alt no pertenece a la company
+  Service --> GEH : IllegalArgumentException\n"open account does not belong to company"
+  GEH --> Client : 400 Bad Request
+end
+
+alt taxId != null
+  Service -> TaxQP : findById(taxId)
+  TaxQP --> Service : Optional<TaxRef>
+  alt tax no encontrado
+    Service --> GEH : IllegalArgumentException\n"Tax not found"
+    GEH --> Client : 400 Bad Request
+  end
+else taxId == null
+  note right of Service : tax = null (FK opcional)
+end
+
+Service -> Service : charge.update(name, unitAmount, quantity,\ntax, hasTax, openAccount)
+Service -> Repo : save(charge)
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : UPDATE general_charge_open_accounts
+DB --> JpaRepo : ok
+Repo --> Service : GeneralChargeOpenAccount
+Service -> Service : GeneralChargeOpenAccountDto.from(charge)
+
+== Recálculo de la(s) Open Account(s) afectada(s) ==
+Service -> Refresher : refresh(openAccount.id())
+activate Refresher
+Refresher -> Recalc : recalculate(openAccountId)
+Recalc -> RecalcSvc : recalculate(openAccountId)
+activate RecalcSvc
+RecalcSvc -> OARepo : findById(openAccountId)
+OARepo --> RecalcSvc : OpenAccount
+RecalcSvc -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : total
+RecalcSvc -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : paid
+RecalcSvc -> RecalcSvc : openAccount.recalculate(total, paid)\noutstanding = total - paid
+RecalcSvc -> OARepo : save(openAccount)
+OARepo -> DB : UPDATE open_accounts (total, paid, outstanding)
+deactivate RecalcSvc
+deactivate Refresher
+
+alt openAccount.id() != previousOpenAccountId
+  Service -> Refresher : refresh(previousOpenAccountId)
+  note right of Refresher
+    Mismo flujo de recálculo sobre la Open Account anterior.
+  end note
+end
+
+Service --> UseCase : GeneralChargeOpenAccountDto
+UseCase --> Controller : GeneralChargeOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nGeneralChargeOpenAccountResponse
+deactivate Controller
+
+@enduml

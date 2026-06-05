@@ -1,0 +1,86 @@
+@startuml debt_open_account_delete
+title DELETE /debt-open-accounts/{id} — Delete Debt (payment)
+
+actor Client
+participant "DebtOpenAccountController" as Controller
+participant "DeleteDebtOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "DeleteDebtOpenAccountService" as Service
+participant "DebtOpenAccountRepository\n<<port.out>>" as Repo
+participant "DebtOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
+participant "RecalculateOpenAccountService" as RecalcSvc
+participant "OpenAccountTotalsPort\n(openaccount <<port.out>>)" as TotalsPort
+participant "OpenAccountRepository\n(openaccount <<port.out>>)" as OARepo
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : DELETE /debt-open-accounts/{id}
+activate Controller
+
+Controller -> UseCase : execute(id)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR debtOpenAccount.delete OR hasRole('SYSTEM')
+end note
+UseCase -> Service : execute(id)
+activate Service
+
+Service -> Repo : findById(id)
+Repo -> JpaRepo : findById(id)
+JpaRepo -> DB : SELECT debt (JOIN FETCH openAccount, createdBy)
+DB --> JpaRepo : row | empty
+JpaRepo --> Repo : Optional<DebtOpenAccountJpaEntity>
+alt debt no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DebtOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : DebtOpenAccount
+Service -> Service : openAccountId = debt.openAccount.id
+
+Service -> Repo : delete(id)
+Repo -> JpaRepo : deleteById(id)
+JpaRepo -> DB : UPDATE debt_open_accounts SET enabled=false WHERE id=?
+DB --> JpaRepo : ok
+Repo --> Service : void
+
+== Recálculo de la Open Account padre ==
+Service -> Refresher : refresh(openAccountId)
+activate Refresher
+Refresher -> Recalc : recalculate(openAccountId)
+Recalc -> RecalcSvc : recalculate(openAccountId)
+activate RecalcSvc
+RecalcSvc -> OARepo : findById(openAccountId)
+OARepo --> RecalcSvc : OpenAccount
+RecalcSvc -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : total
+RecalcSvc -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : paid
+RecalcSvc -> RecalcSvc : openAccount.recalculate(total, paid)\noutstanding = total - paid
+RecalcSvc -> OARepo : save(openAccount)
+OARepo -> DB : UPDATE open_accounts (total, paid, outstanding)
+deactivate RecalcSvc
+deactivate Refresher
+
+Service --> UseCase : void
+UseCase --> Controller : void
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

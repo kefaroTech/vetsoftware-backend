@@ -1,0 +1,132 @@
+@startuml service_charge_open_account_create
+title POST /service-charge-open-accounts — Create Service Charge on an Open Account
+
+actor Client
+participant "ServiceChargeOpenAccountController" as Controller
+participant "Authz" as Authz
+participant "CreateServiceChargeOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "CreateServiceChargeOpenAccountService" as Service
+participant "OpenAccountQueryPort\n<<port.out>>" as OpenAccountQP
+participant "AnimalQueryPort\n<<port.out>>" as AnimalQP
+participant "ServiceQueryPort\n<<port.out>>" as ServiceQP
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
+participant "ServiceChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "ServiceChargeOpenAccountJpaMapper" as Mapper
+participant "ServiceChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
+database "MySQL" as DB
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
+participant "RecalculateOpenAccountService" as RecalcSvc
+participant "OpenAccountTotalsPort\n(openaccount <<port.out>>)" as TotalsPort
+participant "OpenAccountRepository\n(openaccount <<port.out>>)" as OARepo
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+end note
+
+note over Client, GEH
+  Hibernate `@SoftDelete` filtra automáticamente:
+  - DELETE → UPDATE enabled=false
+  - Todo SELECT añade WHERE enabled=true
+end note
+
+Client -> Controller : POST /service-charge-open-accounts\n+ CreateServiceChargeOpenAccountRequest (sin companyId)
+activate Controller
+
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+
+Controller -> UseCase : execute(CreateServiceChargeOpenAccountCommand)
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (serviceChargeOpenAccount.create AND
+   authz.isMyCompany(#command.companyId)) OR
+  hasRole('SYSTEM')
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> OpenAccountQP : findById(openAccountId)
+OpenAccountQP -> DB : SELECT open_account WHERE id=?
+DB --> OpenAccountQP : row | empty
+OpenAccountQP --> Service : Optional<OpenAccountRef>
+alt open account no encontrada
+  Service --> GEH : IllegalArgumentException\n"OpenAccount not found"
+  GEH --> Client : 400 Bad Request
+end
+Service -> Service : check openAccount.companyId == command.companyId
+alt no pertenece a la company
+  Service --> GEH : IllegalArgumentException\n"open account does not belong to company"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> AnimalQP : findById(animalId)
+AnimalQP --> Service : Optional<AnimalRef>
+alt animal no encontrado
+  Service --> GEH : IllegalArgumentException\n"Animal not found"
+  GEH --> Client : 400 Bad Request
+end
+Service -> ServiceQP : findById(serviceId)
+ServiceQP --> Service : Optional<ServiceRef>
+alt service no encontrado
+  Service --> GEH : IllegalArgumentException\n"Service not found"
+  GEH --> Client : 400 Bad Request
+end
+Service -> EmployeeQP : findById(createdById)
+EmployeeQP --> Service : Optional<EmployeeRef>
+alt employee no encontrado
+  Service --> GEH : IllegalArgumentException\n"Employee not found"
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Service : ServiceChargeOpenAccount.create(\nanimal, service, openAccount, createdBy)
+Service -> Repo : save(charge)
+activate Repo
+Repo -> JpaRepo : getReferenceById(animal, service, openAccount, createdBy)
+Repo -> Mapper : toJpa(charge, refs)
+Mapper --> Repo : ServiceChargeOpenAccountJpaEntity
+Repo -> JpaRepo : save(entity)
+JpaRepo -> DB : INSERT service_charge_open_accounts
+DB --> JpaRepo : id generado
+JpaRepo --> Repo : entity (con id)
+Repo -> Mapper : toDomain(entity, refs precargados)
+Mapper --> Repo : ServiceChargeOpenAccount
+Repo --> Service : ServiceChargeOpenAccount
+deactivate Repo
+Service -> Service : ServiceChargeOpenAccountDto.from(charge)
+
+== Recálculo de la Open Account padre ==
+Service -> Refresher : refresh(openAccountId)
+activate Refresher
+Refresher -> Recalc : recalculate(openAccountId)
+Recalc -> RecalcSvc : recalculate(openAccountId)
+activate RecalcSvc
+RecalcSvc -> OARepo : findById(openAccountId)
+OARepo --> RecalcSvc : OpenAccount
+RecalcSvc -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : total
+RecalcSvc -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : paid
+RecalcSvc -> RecalcSvc : openAccount.recalculate(total, paid)\noutstanding = total - paid
+RecalcSvc -> OARepo : save(openAccount)
+OARepo -> DB : UPDATE open_accounts (total, paid, outstanding)
+deactivate RecalcSvc
+deactivate Refresher
+
+Service --> UseCase : ServiceChargeOpenAccountDto
+UseCase --> Controller : ServiceChargeOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 201 Created\nServiceChargeOpenAccountResponse
+deactivate Controller
+
+@enduml

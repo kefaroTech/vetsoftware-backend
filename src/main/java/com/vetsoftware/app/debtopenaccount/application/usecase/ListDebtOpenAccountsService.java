@@ -1,0 +1,23 @@
+package com.vetsoftware.app.debtopenaccount.application.usecase;
+
+import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
+import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsUseCase;
+import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository;
+import io.micrometer.observation.annotation.Observed;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Observed(name = "debt_open_account.list_all")
+@Service
+public class ListDebtOpenAccountsService implements ListDebtOpenAccountsUseCase {
+    private final DebtOpenAccountRepository repository;
+
+    public ListDebtOpenAccountsService(DebtOpenAccountRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<DebtOpenAccountDto> listAll() {
+        return repository.findAll().stream().map(DebtOpenAccountDto::from).toList();
+    }
+}
