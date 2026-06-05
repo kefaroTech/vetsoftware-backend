@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListProductsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or @authz.isMyCompany(#companyId)")
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
     List<ProductDto> listByCompany(Long companyId);
 }

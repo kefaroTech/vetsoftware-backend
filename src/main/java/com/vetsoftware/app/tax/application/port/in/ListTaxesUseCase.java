@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListTaxesUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or @authz.isMyCompany(#companyId)")
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
     List<TaxDto> listByCompany(Long companyId);
 }
