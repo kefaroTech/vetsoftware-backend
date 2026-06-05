@@ -66,6 +66,11 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
+    public boolean existsActiveByOwnerId(Long ownerId) {
+        return jpaRepository.existsByOwnerIdAndEnabledTrue(ownerId);
+    }
+
+    @Override
     public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
         Specification<OpenAccountJpaEntity> spec = buildSpec(command);
         PageRequest pageRequest = PageRequest.of(

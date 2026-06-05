@@ -1,5 +1,5 @@
 @startuml debt_open_account_list
-title GET /debt-open-accounts — List Debts (all, or filtered by openAccountId)
+title GET /debt-open-accounts (listAll) · GET /debt-open-accounts/by-open-account/{openAccountId}
 
 actor Client
 participant "DebtOpenAccountController" as Controller
@@ -24,10 +24,10 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : GET /debt-open-accounts?openAccountId=(optional)
+Client -> Controller : GET (una de las dos rutas)
 activate Controller
 
-alt openAccountId != null
+alt ruta /debt-open-accounts/by-open-account/{openAccountId}
   Controller -> Authz : currentCompanyId()
   Authz --> Controller : companyId
   Controller -> ListByUC : listByOpenAccount(openAccountId, companyId)
@@ -51,7 +51,7 @@ alt openAccountId != null
   ListBySvc -> ListBySvc : stream().map(DebtOpenAccountDto::from).toList()
   ListBySvc --> Controller : List<DebtOpenAccountDto>
   deactivate ListBySvc
-else openAccountId == null
+else ruta /debt-open-accounts (listAll)
   Controller -> ListAllUC : listAll()
   note right of ListAllUC
     @PreAuthorize:

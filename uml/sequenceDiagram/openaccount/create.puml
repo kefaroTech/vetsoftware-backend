@@ -56,6 +56,20 @@ alt owner no encontrado
   GEH --> Client : 400 Bad Request
 end
 
+Service -> Repo : existsActiveByOwnerId(ownerId)
+Repo -> JpaRepo : existsByOwnerIdAndEnabledTrue(ownerId)
+JpaRepo -> DB : SELECT EXISTS(... WHERE owner_id=? AND enabled=true)
+DB --> JpaRepo : boolean
+JpaRepo --> Repo : boolean
+Repo --> Service : boolean
+alt el propietario ya tiene una cuenta abierta
+  note right of Service
+    Regla de negocio: 1 cuenta abierta por propietario.
+  end note
+  Service --> GEH : OwnerAlreadyHasOpenAccountException
+  GEH --> Client : 409 Conflict\nOWNER_ALREADY_HAS_OPEN_ACCOUNT
+end
+
 Service -> CompanyQP : findById(companyId)
 CompanyQP --> Service : Optional<CompanyRef>
 alt company no encontrada

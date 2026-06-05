@@ -11,6 +11,8 @@ public interface OpenAccountRepository {
     Optional<OpenAccount> findById(Long id);
     List<OpenAccount> findAll();
     List<OpenAccount> findAllByCompanyId(Long companyId);
+    /** true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por propietario. */
+    boolean existsActiveByOwnerId(Long ownerId);
     PageResult<OpenAccount> search(SearchOpenAccountsCommand command);
     void delete(Long id);
     int reactivate(Long id);

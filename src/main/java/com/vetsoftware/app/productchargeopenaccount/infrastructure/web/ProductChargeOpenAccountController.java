@@ -68,11 +68,14 @@ public class ProductChargeOpenAccountController {
     }
 
     @GetMapping
-    public List<ProductChargeOpenAccountResponse> list(@RequestParam(required = false) Long openAccountId) {
-        List<ProductChargeOpenAccountDto> dtos = openAccountId != null
-            ? listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            : listUseCase.listAll();
-        return dtos.stream().map(this::toResponse).toList();
+    public List<ProductChargeOpenAccountResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-open-account/{openAccountId}")
+    public List<ProductChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+        return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

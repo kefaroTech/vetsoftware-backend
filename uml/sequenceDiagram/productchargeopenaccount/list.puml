@@ -1,5 +1,5 @@
 @startuml product_charge_open_account_list
-title GET /product-charge-open-accounts — List Product Charges (all, or filtered by openAccountId)
+title GET /product-charge-open-accounts (listAll) · GET /product-charge-open-accounts/by-open-account/{openAccountId}
 
 actor Client
 participant "ProductChargeOpenAccountController" as Controller
@@ -24,10 +24,10 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : GET /product-charge-open-accounts?openAccountId=(optional)
+Client -> Controller : GET (una de las dos rutas)
 activate Controller
 
-alt openAccountId != null
+alt ruta /product-charge-open-accounts/by-open-account/{openAccountId}
   Controller -> Authz : currentCompanyId()
   Authz --> Controller : companyId
   Controller -> ListByUC : listByOpenAccount(openAccountId, companyId)
@@ -51,7 +51,7 @@ alt openAccountId != null
   ListBySvc -> ListBySvc : stream().map(ProductChargeOpenAccountDto::from).toList()
   ListBySvc --> Controller : List<ProductChargeOpenAccountDto>
   deactivate ListBySvc
-else openAccountId == null
+else ruta /product-charge-open-accounts (listAll)
   Controller -> ListAllUC : listAll()
   note right of ListAllUC
     @PreAuthorize:

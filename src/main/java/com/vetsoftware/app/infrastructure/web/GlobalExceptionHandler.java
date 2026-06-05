@@ -52,6 +52,7 @@ import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
@@ -200,6 +201,12 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleAdminEmployeeCannotBeDisabled(AdminEmployeeCannotBeDisabledException ex) {
         log.warn("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
+    }
+
+    @ExceptionHandler(OwnerAlreadyHasOpenAccountException.class)
+    public ProblemDetail handleOwnerAlreadyHasOpenAccount(OwnerAlreadyHasOpenAccountException ex) {
+        log.warn("Owner already has an open account: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)

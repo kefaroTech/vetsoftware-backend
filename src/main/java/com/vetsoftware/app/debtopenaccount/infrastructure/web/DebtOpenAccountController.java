@@ -63,11 +63,14 @@ public class DebtOpenAccountController {
     }
 
     @GetMapping
-    public List<DebtOpenAccountResponse> list(@RequestParam(required = false) Long openAccountId) {
-        List<DebtOpenAccountDto> dtos = openAccountId != null
-            ? listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            : listUseCase.listAll();
-        return dtos.stream().map(this::toResponse).toList();
+    public List<DebtOpenAccountResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-open-account/{openAccountId}")
+    public List<DebtOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+        return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

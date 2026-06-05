@@ -1,5 +1,5 @@
 @startuml service_charge_open_account_list
-title GET /service-charge-open-accounts — List Service Charges (all, or filtered by openAccountId)
+title GET /service-charge-open-accounts (listAll) · GET /service-charge-open-accounts/by-open-account/{openAccountId}
 
 actor Client
 participant "ServiceChargeOpenAccountController" as Controller
@@ -24,10 +24,10 @@ note over Client, DB
   - Todo SELECT añade WHERE enabled=true
 end note
 
-Client -> Controller : GET /service-charge-open-accounts?openAccountId=(optional)
+Client -> Controller : GET (una de las dos rutas)
 activate Controller
 
-alt openAccountId != null
+alt ruta /service-charge-open-accounts/by-open-account/{openAccountId}
   Controller -> Authz : currentCompanyId()
   Authz --> Controller : companyId
   Controller -> ListByUC : listByOpenAccount(openAccountId, companyId)
@@ -51,7 +51,7 @@ alt openAccountId != null
   ListBySvc -> ListBySvc : stream().map(ServiceChargeOpenAccountDto::from).toList()
   ListBySvc --> Controller : List<ServiceChargeOpenAccountDto>
   deactivate ListBySvc
-else openAccountId == null
+else ruta /service-charge-open-accounts (listAll)
   Controller -> ListAllUC : listAll()
   note right of ListAllUC
     @PreAuthorize:

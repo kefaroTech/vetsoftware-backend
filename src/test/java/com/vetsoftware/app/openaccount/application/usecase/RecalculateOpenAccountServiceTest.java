@@ -36,6 +36,7 @@ class RecalculateOpenAccountServiceTest {
             @Override public Optional<OpenAccount> findById(Long id) { return Optional.ofNullable(stored); }
             @Override public List<OpenAccount> findAll() { return List.of(); }
             @Override public List<OpenAccount> findAllByCompanyId(Long companyId) { return List.of(); }
+            @Override public boolean existsActiveByOwnerId(Long ownerId) { return false; }
             @Override public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
                 return new PageResult<>(List.of(), 0, 20, 0, 0);
             }

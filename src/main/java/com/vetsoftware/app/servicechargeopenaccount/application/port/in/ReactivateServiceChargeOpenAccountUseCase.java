@@ -4,6 +4,6 @@ import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateServiceChargeOpenAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('serviceChargeOpenAccount.delete') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('chargeOpenAccount.delete') or hasRole('SYSTEM')")
     ServiceChargeOpenAccountDto execute(Long id);
 }

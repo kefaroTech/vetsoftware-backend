@@ -4,7 +4,7 @@ import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateGeneralChargeOpenAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('generalChargeOpenAccount.delete') or "
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('chargeOpenAccount.delete') or "
         + "hasRole('SYSTEM')")
     GeneralChargeOpenAccountDto execute(Long id);
 }

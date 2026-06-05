@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateProductChargeOpenAccountUseCase {
     @PreAuthorize("hasAuthority('admin.all') or "
-        + "(hasAuthority('productChargeOpenAccount.update') and @authz.isMyCompany(#command.companyId)) or "
+        + "(hasAuthority('chargeOpenAccount.update') and @authz.isMyCompany(#command.companyId)) or "
         + "hasRole('SYSTEM')")
     ProductChargeOpenAccountDto execute(UpdateProductChargeOpenAccountCommand command);
 }

@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateGeneralChargeOpenAccountUseCase {
     @PreAuthorize("hasAuthority('admin.all') or "
-        + "(hasAuthority('generalChargeOpenAccount.create') and @authz.isMyCompany(#command.companyId)) or "
+        + "(hasAuthority('chargeOpenAccount.create') and @authz.isMyCompany(#command.companyId)) or "
         + "hasRole('SYSTEM')")
     GeneralChargeOpenAccountDto execute(CreateGeneralChargeOpenAccountCommand command);
 }

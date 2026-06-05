@@ -68,11 +68,14 @@ public class ServiceChargeOpenAccountController {
     }
 
     @GetMapping
-    public List<ServiceChargeOpenAccountResponse> list(@RequestParam(required = false) Long openAccountId) {
-        List<ServiceChargeOpenAccountDto> result = openAccountId != null
-            ? listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            : listUseCase.listAll();
-        return result.stream().map(this::toResponse).toList();
+    public List<ServiceChargeOpenAccountResponse> listAll() {
+        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/by-open-account/{openAccountId}")
+    public List<ServiceChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+        return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")

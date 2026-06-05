@@ -20,6 +20,10 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
     List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
 
+    // @SQLRestriction("enabled = true") ya limita a cuentas habilitadas; el AndEnabledTrue
+    // es explícito (no depender del filtro implícito para una validación de negocio).
+    boolean existsByOwnerIdAndEnabledTrue(Long ownerId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(

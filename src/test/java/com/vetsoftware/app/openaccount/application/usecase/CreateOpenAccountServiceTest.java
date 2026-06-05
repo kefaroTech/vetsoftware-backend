@@ -13,6 +13,7 @@ import com.vetsoftware.app.openaccount.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.openaccount.domain.CompanyRef;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
+import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
 import com.vetsoftware.app.openaccount.domain.OwnerRef;
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +27,7 @@ class CreateOpenAccountServiceTest {
     private final EmployeeRef createdBy = new EmployeeRef(7L, "Empleado Uno");
 
     private OpenAccount savedOpenAccount;
+    private boolean ownerHasAccount = false;
 
     private final OpenAccountRepository repository = new OpenAccountRepository() {
         @Override public OpenAccount save(OpenAccount openAccount) {
@@ -38,6 +40,7 @@ class CreateOpenAccountServiceTest {
         @Override public Optional<OpenAccount> findById(Long id) { return Optional.ofNullable(savedOpenAccount); }
         @Override public List<OpenAccount> findAll() { return List.of(); }
         @Override public List<OpenAccount> findAllByCompanyId(Long companyId) { return List.of(); }
+        @Override public boolean existsActiveByOwnerId(Long ownerId) { return ownerHasAccount; }
         @Override public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
             return new PageResult<>(List.of(), 0, 20, 0, 0);
         }
@@ -70,6 +73,17 @@ class CreateOpenAccountServiceTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(dto.paidAmount()));
         assertEquals(0, BigDecimal.ZERO.compareTo(dto.outstandingAmount()));
         assertTrue(dto.enabled());
+    }
+
+    @Test
+    void fails_when_owner_already_has_open_account() {
+        ownerHasAccount = true;
+        var service = new CreateOpenAccountService(repository,
+                ownerQueryPort(Optional.of(owner)),
+                companyQueryPort(Optional.of(company)),
+                employeeQueryPort(Optional.of(createdBy)));
+
+        assertThrows(OwnerAlreadyHasOpenAccountException.class, () -> service.execute(command()));
     }
 
     @Test

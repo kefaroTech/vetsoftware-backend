@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListGeneralChargeOpenAccountsByOpenAccountUseCase {
     @PreAuthorize("hasAuthority('admin.all') or "
-        + "(hasAuthority('generalChargeOpenAccount.read') and @authz.isMyCompany(#companyId)) or "
+        + "(hasAuthority('chargeOpenAccount.read') and @authz.isMyCompany(#companyId)) or "
         + "hasRole('SYSTEM')")
     List<GeneralChargeOpenAccountDto> listByOpenAccount(Long openAccountId, Long companyId);
 }

@@ -4,6 +4,6 @@ import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindGeneralChargeOpenAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('generalChargeOpenAccount.read')")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('chargeOpenAccount.read')")
     GeneralChargeOpenAccountDto findById(Long id);
 }
