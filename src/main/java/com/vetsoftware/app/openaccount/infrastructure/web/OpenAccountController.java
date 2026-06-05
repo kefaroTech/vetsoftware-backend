@@ -67,8 +67,8 @@ public class OpenAccountController {
     }
 
     @GetMapping
-    public List<OpenAccountResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public List<OpenAccountResponse> list() {
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/search")

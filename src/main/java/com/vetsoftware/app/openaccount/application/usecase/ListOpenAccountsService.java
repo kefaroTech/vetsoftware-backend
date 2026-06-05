@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "open_account.list")
+@Observed(name = "open_account.list_by_company")
 @Service
 public class ListOpenAccountsService implements ListOpenAccountsUseCase {
     private final OpenAccountRepository repository;
@@ -17,7 +17,7 @@ public class ListOpenAccountsService implements ListOpenAccountsUseCase {
     }
 
     @Override
-    public List<OpenAccountDto> listAll() {
-        return repository.findAll().stream().map(OpenAccountDto::from).toList();
+    public List<OpenAccountDto> listByCompany(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(OpenAccountDto::from).toList();
     }
 }

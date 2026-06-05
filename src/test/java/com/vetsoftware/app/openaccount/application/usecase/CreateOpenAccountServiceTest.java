@@ -37,6 +37,7 @@ class CreateOpenAccountServiceTest {
         }
         @Override public Optional<OpenAccount> findById(Long id) { return Optional.ofNullable(savedOpenAccount); }
         @Override public List<OpenAccount> findAll() { return List.of(); }
+        @Override public List<OpenAccount> findAllByCompanyId(Long companyId) { return List.of(); }
         @Override public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
             return new PageResult<>(List.of(), 0, 20, 0, 0);
         }

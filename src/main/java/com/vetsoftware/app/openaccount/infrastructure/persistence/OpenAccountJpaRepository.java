@@ -17,6 +17,9 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
     Optional<OpenAccountJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
+    List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(

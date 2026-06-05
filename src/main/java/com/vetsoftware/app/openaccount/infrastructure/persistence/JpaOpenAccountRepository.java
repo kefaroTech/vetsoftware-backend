@@ -61,6 +61,11 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
+    public List<OpenAccount> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
         Specification<OpenAccountJpaEntity> spec = buildSpec(command);
         PageRequest pageRequest = PageRequest.of(

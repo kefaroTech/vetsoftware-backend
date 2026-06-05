@@ -10,6 +10,7 @@ public interface OpenAccountRepository {
     OpenAccount save(OpenAccount openAccount);
     Optional<OpenAccount> findById(Long id);
     List<OpenAccount> findAll();
+    List<OpenAccount> findAllByCompanyId(Long companyId);
     PageResult<OpenAccount> search(SearchOpenAccountsCommand command);
     void delete(Long id);
     int reactivate(Long id);
