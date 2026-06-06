@@ -3,9 +3,12 @@ title PATCH /open-accounts/{id}/status — Change Open Account Status
 
 actor Client
 participant "OpenAccountController" as Controller
+participant "Authz" as Authz
 participant "ChangeOpenAccountStatusUseCase\n<<port.in>>" as UseCase
 participant "ChangeOpenAccountStatusService" as Service
 participant "OpenAccountRepository\n<<port.out>>" as Repo
+participant "EmployeeQueryPort\n<<port.out>>" as EmployeeQP
+participant "OpenAccount\n<<domain>>" as Domain
 participant "OpenAccountJpaMapper" as Mapper
 participant "OpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
 database "MySQL" as DB
@@ -18,15 +21,19 @@ end note
 
 note over Client, GEH
   Estados válidos: OPEN, CLOSE, CANCEL.
-  Una cuenta nace OPEN; el cierre/cancelación
-  NO borra la cuenta, solo cambia su status
-  (preservación contable de los registros).
+  Máquina de estados: solo OPEN -> CLOSE | CANCEL.
+  CLOSE y CANCEL son TERMINALES (no se reabre).
+  El cierre/cancelación NO borra la cuenta, solo cambia el status
+  y registra closedBy / closedAt / closeReason (trazabilidad contable).
 end note
 
-Client -> Controller : PATCH /open-accounts/{id}/status\n+ ChangeOpenAccountStatusRequest { status }
+Client -> Controller : PATCH /open-accounts/{id}/status\n+ ChangeOpenAccountStatusRequest { status, reason? }
 activate Controller
 
-Controller -> UseCase : execute(ChangeOpenAccountStatusCommand)
+Controller -> Authz : currentEmployeeId()
+Authz --> Controller : employeeId
+
+Controller -> UseCase : execute(ChangeOpenAccountStatusCommand{id, status, employeeId, reason})
 note right of UseCase
   @PreAuthorize:
   admin.all OR openAccount.update OR hasRole('SYSTEM')
@@ -36,35 +43,52 @@ UseCase -> Service : execute(command)
 activate Service
 
 Service -> Repo : findById(command.id())
-Repo -> JpaRepo : findById(id)
-JpaRepo -> DB : SELECT open_account (JOIN FETCH owner, company, createdBy)
-DB --> JpaRepo : row | empty
-JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
+Repo --> Service : Optional<OpenAccount>
 alt open account no existe
-  Repo --> Service : Optional.empty()
   Service --> GEH : OpenAccountNotFoundException
   GEH --> Client : 404 Not Found
 end
-Repo -> Mapper : toDomain(entity)
-Mapper --> Repo : OpenAccount
-Repo --> Service : Optional<OpenAccount>
 
-Service -> Service : OpenAccountStatus.valueOf(status.toUpperCase())
-alt status inválido
+Service -> EmployeeQP : findById(command.employeeId())
+EmployeeQP --> Service : Optional<EmployeeRef> (closedBy)
+alt empleado no existe
   Service --> GEH : IllegalArgumentException
   GEH --> Client : 400 Bad Request
 end
 
-Service -> Service : openAccount.changeStatus(newStatus)\n(invariantes de dominio)
+Service -> Service : OpenAccountStatus.valueOf(status.toUpperCase())
+alt status no parseable
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Domain : changeStatus(newStatus, closedBy, reason)
+activate Domain
+alt estado actual != OPEN  ||  newStatus ∉ {CLOSE, CANCEL}
+  Domain --> GEH : InvalidOpenAccountStatusTransitionException
+  GEH --> Client : 409 Conflict
+end
+alt newStatus == CANCEL && reason en blanco
+  Domain --> GEH : IllegalArgumentException ("reason is required to cancel")
+  GEH --> Client : 400 Bad Request
+end
+Domain -> Domain : status = newStatus\nclosedBy = closedBy\nclosedAt = now()\ncloseReason = reason
+Domain --> Service : (mutado)
+deactivate Domain
 
 Service -> Repo : save(openAccount)
-Repo -> Mapper : toJpa(openAccount, owner, company, createdBy)
-Mapper --> Repo : OpenAccountJpaEntity
+Repo -> Mapper : toJpa(openAccount, owner, company, createdBy, closedBy)
+Mapper --> Repo : OpenAccountJpaEntity (incl. version)
 Repo -> JpaRepo : save(entity)
-JpaRepo -> DB : UPDATE open_accounts SET status = ?
+JpaRepo -> DB : UPDATE open_accounts SET status, closed_by_id, closed_at,\nclose_reason, version = version + 1 WHERE id = ? AND version = ?
+alt versión cambiada por otra transacción (optimistic lock)
+  DB --> JpaRepo : 0 filas
+  JpaRepo --> GEH : OptimisticLockException
+  GEH --> Client : 409 Conflict
+end
 DB --> JpaRepo : ok
 JpaRepo --> Repo : OpenAccountJpaEntity
-Repo -> Mapper : toDomain(entity, ownerRef, companyRef, createdByRef)
+Repo -> Mapper : toDomain(entity, ownerRef, companyRef, createdByRef, closedByRef)
 Mapper --> Repo : OpenAccount
 Repo --> Service : OpenAccount
 
@@ -73,7 +97,7 @@ Service --> UseCase : OpenAccountDto
 UseCase --> Controller : OpenAccountDto
 deactivate Service
 
-Controller -> Controller : toResponse(dto)
+Controller -> Controller : toResponse(dto)\n(incl. closedBy, closedAt, closeReason)
 Controller --> Client : 200 OK\nOpenAccountResponse
 deactivate Controller
 

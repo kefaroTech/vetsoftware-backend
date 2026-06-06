@@ -104,5 +104,6 @@
     <include file="db/changelog/migrations/098_create_service_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/099_create_general_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/100_add_status_to_open_accounts.xml"/>
+    <include file="db/changelog/migrations/101_add_close_tracking_and_version_to_open_accounts.xml"/>
 
 </databaseChangeLog>

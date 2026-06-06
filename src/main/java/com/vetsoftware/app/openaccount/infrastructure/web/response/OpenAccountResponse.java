@@ -14,5 +14,8 @@ public record OpenAccountResponse(
         OpenAccountStatus status,
         EmployeeSummary createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        EmployeeSummary closedBy,
+        LocalDateTime closedAt,
+        String closeReason
 ) {}

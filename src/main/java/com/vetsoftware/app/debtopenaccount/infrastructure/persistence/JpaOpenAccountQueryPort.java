@@ -2,6 +2,7 @@ package com.vetsoftware.app.debtopenaccount.infrastructure.persistence;
 
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.debtopenaccount.domain.OpenAccountRef;
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpaRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -18,5 +19,12 @@ public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
     public Optional<OpenAccountRef> findById(Long openAccountId) {
         return openAccountJpaRepository.findById(openAccountId)
             .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
+    }
+
+    @Override
+    public boolean isOpen(Long openAccountId) {
+        return openAccountJpaRepository.findById(openAccountId)
+            .map(e -> e.getStatus() == OpenAccountStatus.OPEN)
+            .orElse(false);
     }
 }

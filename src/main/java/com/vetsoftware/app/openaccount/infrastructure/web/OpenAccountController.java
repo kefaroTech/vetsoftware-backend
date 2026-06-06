@@ -116,13 +116,14 @@ public class OpenAccountController {
     public OpenAccountResponse changeStatus(@PathVariable Long id,
                                             @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeOpenAccountStatusCommand(id, request.status())));
+            new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(), request.reason())));
     }
 
     private OpenAccountResponse toResponse(OpenAccountDto dto) {
         OwnerSummaryDto o = dto.owner();
         CompanySummaryDto c = dto.company();
         EmployeeSummaryDto cb = dto.createdBy();
+        EmployeeSummaryDto closed = dto.closedBy();
         return new OpenAccountResponse(
             dto.id(),
             new OwnerSummary(o.id(), o.name(), o.document()),
@@ -130,6 +131,8 @@ public class OpenAccountController {
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.status(),
             new EmployeeSummary(cb.id(), cb.name()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.enabled(),
+            closed != null ? new EmployeeSummary(closed.id(), closed.name()) : null,
+            dto.closedAt(), dto.closeReason());
     }
 }

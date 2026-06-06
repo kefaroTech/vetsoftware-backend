@@ -14,10 +14,15 @@ public class OpenAccount {
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
     private boolean enabled;
+    private EmployeeRef closedBy;
+    private LocalDateTime closedAt;
+    private String closeReason;
+    private Long version;
 
     public OpenAccount(Long id, OwnerRef owner, BigDecimal totalAmount, BigDecimal paidAmount,
                        BigDecimal outstandingAmount, CompanyRef company, OpenAccountStatus status,
-                       EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
+                       EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled,
+                       EmployeeRef closedBy, LocalDateTime closedAt, String closeReason, Long version) {
         validate(owner, totalAmount, paidAmount, outstandingAmount, company, status, createdBy);
         this.id = id;
         this.owner = owner;
@@ -29,11 +34,16 @@ public class OpenAccount {
         this.createdBy = createdBy;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.closedBy = closedBy;
+        this.closedAt = closedAt;
+        this.closeReason = closeReason;
+        this.version = version;
     }
 
     public static OpenAccount create(OwnerRef owner, CompanyRef company, EmployeeRef createdBy) {
         return new OpenAccount(null, owner, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                               company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true);
+                               company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true,
+                               null, null, null, null);
     }
 
     public void update(OwnerRef owner) {
@@ -41,9 +51,26 @@ public class OpenAccount {
         this.owner = owner;
     }
 
-    public void changeStatus(OpenAccountStatus status) {
-        if (status == null) throw new IllegalArgumentException("status is required");
-        this.status = status;
+    /**
+     * Cambia el estado de la cuenta. Reglas de negocio:
+     * - Solo desde OPEN (CLOSE y CANCEL son terminales).
+     * - Solo hacia CLOSE o CANCEL.
+     * - CANCEL exige motivo (anulación/incobrable = pérdida, debe justificarse). CLOSE no.
+     * Registra quién, cuándo y por qué (trazabilidad contable).
+     */
+    public void changeStatus(OpenAccountStatus newStatus, EmployeeRef closedBy, String reason) {
+        if (newStatus == null) throw new IllegalArgumentException("status is required");
+        if (this.status != OpenAccountStatus.OPEN
+                || (newStatus != OpenAccountStatus.CLOSE && newStatus != OpenAccountStatus.CANCEL)) {
+            throw new InvalidOpenAccountStatusTransitionException(this.status, newStatus);
+        }
+        if (newStatus == OpenAccountStatus.CANCEL && (reason == null || reason.isBlank())) {
+            throw new IllegalArgumentException("reason is required to cancel");
+        }
+        this.status = newStatus;
+        this.closedBy = closedBy;
+        this.closedAt = LocalDateTime.now();
+        this.closeReason = reason;
     }
 
     public void recalculate(BigDecimal total, BigDecimal paid) {
@@ -80,6 +107,10 @@ public class OpenAccount {
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
+    public EmployeeRef getClosedBy() { return closedBy; }
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public String getCloseReason() { return closeReason; }
+    public Long getVersion() { return version; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }
 }

@@ -45,6 +45,9 @@ public class CreateGeneralChargeOpenAccountService implements CreateGeneralCharg
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        if (!openAccountQueryPort.isOpen(command.openAccountId())) {
+            throw new IllegalStateException("open account is not OPEN");
+        }
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));

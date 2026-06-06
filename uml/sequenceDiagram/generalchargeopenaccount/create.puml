@@ -65,6 +65,15 @@ alt no pertenece a la company
   GEH --> Client : 400 Bad Request
 end
 
+Service -> OpenAccountQP : isOpen(openAccountId)
+OpenAccountQP -> DB : SELECT status FROM open_account WHERE id=?
+DB --> OpenAccountQP : status
+OpenAccountQP --> Service : boolean (status == OPEN)
+alt cuenta no está OPEN (cerrada/cancelada → inmutable)
+  Service --> GEH : IllegalStateException\n"open account is not OPEN"
+  GEH --> Client : 409 Conflict
+end
+
 alt taxId != null
   Service -> TaxQP : findById(taxId)
   TaxQP --> Service : Optional<TaxRef>

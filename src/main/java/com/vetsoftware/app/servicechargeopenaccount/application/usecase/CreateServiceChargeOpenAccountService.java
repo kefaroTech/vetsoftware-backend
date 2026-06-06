@@ -50,6 +50,9 @@ public class CreateServiceChargeOpenAccountService implements CreateServiceCharg
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        if (!openAccountQueryPort.isOpen(command.openAccountId())) {
+            throw new IllegalStateException("open account is not OPEN");
+        }
         AnimalRef animal = animalQueryPort.findById(command.animalId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         ServiceRef service = serviceQueryPort.findById(command.serviceId())

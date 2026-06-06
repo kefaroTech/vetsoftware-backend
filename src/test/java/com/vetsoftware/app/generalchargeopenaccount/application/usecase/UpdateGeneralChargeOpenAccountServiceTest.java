@@ -48,7 +48,12 @@ class UpdateGeneralChargeOpenAccountServiceTest {
 
     private final OpenAccountRefresher refresher = openAccountId -> { };
 
-    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) { return id -> result; }
+    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) {
+        return new OpenAccountQueryPort() {
+            @Override public Optional<OpenAccountRef> findById(Long id) { return result; }
+            @Override public boolean isOpen(Long id) { return result.isPresent(); }
+        };
+    }
     private TaxQueryPort taxQueryPort(Optional<TaxRef> result) { return id -> result; }
 
     private UpdateGeneralChargeOpenAccountCommand command(Long taxId, Long companyId) {

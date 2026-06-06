@@ -5,4 +5,6 @@ import java.util.Optional;
 
 public interface OpenAccountQueryPort {
     Optional<OpenAccountRef> findById(Long openAccountId);
+
+    boolean isOpen(Long openAccountId);
 }

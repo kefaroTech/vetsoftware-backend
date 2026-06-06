@@ -43,7 +43,12 @@ class UpdateDebtOpenAccountServiceTest {
 
     private final OpenAccountRefresher refresher = refreshed::add;
 
-    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) { return id -> result; }
+    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) {
+        return new OpenAccountQueryPort() {
+            @Override public Optional<OpenAccountRef> findById(Long id) { return result; }
+            @Override public boolean isOpen(Long id) { return result.isPresent(); }
+        };
+    }
 
     @Test
     void updates_debt_open_account_and_refreshes_same_account() {

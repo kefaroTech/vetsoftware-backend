@@ -50,6 +50,20 @@ public class OpenAccountJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "closed_by_id")
+    private EmployeeJpaEntity closedBy;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
+    @Column(name = "close_reason", length = 255)
+    private String closeReason;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     protected OpenAccountJpaEntity() {}
 
     public Long getId() { return id; }
@@ -72,4 +86,12 @@ public class OpenAccountJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public EmployeeJpaEntity getClosedBy() { return closedBy; }
+    public void setClosedBy(EmployeeJpaEntity closedBy) { this.closedBy = closedBy; }
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
+    public String getCloseReason() { return closeReason; }
+    public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

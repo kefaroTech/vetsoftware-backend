@@ -52,6 +52,7 @@ import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransitionException;
 import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
@@ -100,6 +101,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -207,6 +209,27 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleOwnerAlreadyHasOpenAccount(OwnerAlreadyHasOpenAccountException ex) {
         log.warn("Owner already has an open account: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidOpenAccountStatusTransitionException.class)
+    public ProblemDetail handleInvalidOpenAccountStatusTransition(InvalidOpenAccountStatusTransitionException ex) {
+        log.warn("Invalid open account status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_OPEN_ACCOUNT_STATUS_TRANSITION", ex.getMessage());
+    }
+
+    // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).
+    @ExceptionHandler(IllegalStateException.class)
+    public ProblemDetail handleConflictState(IllegalStateException ex) {
+        log.warn("Illegal state: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_STATE", ex.getMessage());
+    }
+
+    // Concurrencia: dos transacciones tocaron la misma entidad versionada (optimistic lock).
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+            "El registro fue modificado por otra operación. Reintenta.");
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)

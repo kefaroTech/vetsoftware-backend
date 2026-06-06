@@ -15,7 +15,10 @@ public record OpenAccountDto(
         OpenAccountStatus status,
         EmployeeSummaryDto createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        EmployeeSummaryDto closedBy,
+        LocalDateTime closedAt,
+        String closeReason
 ) {
     public static OpenAccountDto from(OpenAccount openAccount) {
         return new OpenAccountDto(
@@ -28,6 +31,9 @@ public record OpenAccountDto(
                 openAccount.getStatus(),
                 EmployeeSummaryDto.from(openAccount.getCreatedBy()),
                 openAccount.getCreatedDate(),
-                openAccount.isEnabled());
+                openAccount.isEnabled(),
+                openAccount.getClosedBy() != null ? EmployeeSummaryDto.from(openAccount.getClosedBy()) : null,
+                openAccount.getClosedAt(),
+                openAccount.getCloseReason());
     }
 }

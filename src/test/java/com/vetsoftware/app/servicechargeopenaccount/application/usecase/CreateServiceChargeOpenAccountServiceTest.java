@@ -44,7 +44,12 @@ class CreateServiceChargeOpenAccountServiceTest {
 
     private AnimalQueryPort animalQueryPort(Optional<AnimalRef> result) { return id -> result; }
     private ServiceQueryPort serviceQueryPort(Optional<ServiceRef> result) { return id -> result; }
-    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) { return id -> result; }
+    private OpenAccountQueryPort openAccountQueryPort(Optional<OpenAccountRef> result) {
+        return new OpenAccountQueryPort() {
+            @Override public Optional<OpenAccountRef> findById(Long id) { return result; }
+            @Override public boolean isOpen(Long id) { return result.isPresent(); }
+        };
+    }
     private EmployeeQueryPort employeeQueryPort(Optional<EmployeeRef> result) { return id -> result; }
     private final OpenAccountRefresher refresher = openAccountId -> { };
 

@@ -55,7 +55,8 @@ class RecalculateOpenAccountServiceTest {
 
     private OpenAccount existingAccount() {
         return new OpenAccount(1L, owner, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true);
+                company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true,
+                null, null, null, null);
     }
 
     @Test

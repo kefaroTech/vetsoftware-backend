@@ -35,7 +35,9 @@ class CreateOpenAccountServiceTest {
                     openAccount.getTotalAmount(), openAccount.getPaidAmount(),
                     openAccount.getOutstandingAmount(), openAccount.getCompany(),
                     openAccount.getStatus(), openAccount.getCreatedBy(),
-                    openAccount.getCreatedDate(), openAccount.isEnabled());
+                    openAccount.getCreatedDate(), openAccount.isEnabled(),
+                    openAccount.getClosedBy(), openAccount.getClosedAt(),
+                    openAccount.getCloseReason(), openAccount.getVersion());
             return savedOpenAccount;
         }
         @Override public Optional<OpenAccount> findById(Long id) { return Optional.ofNullable(savedOpenAccount); }

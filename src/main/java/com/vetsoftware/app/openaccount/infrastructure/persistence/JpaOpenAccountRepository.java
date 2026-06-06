@@ -47,8 +47,12 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
         OwnerJpaEntity owner = ownerJpaRepository.getReferenceById(openAccount.getOwner().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(openAccount.getCompany().id());
         EmployeeJpaEntity createdBy = employeeJpaRepository.getReferenceById(openAccount.getCreatedBy().id());
-        OpenAccountJpaEntity saved = jpaRepository.save(mapper.toJpa(openAccount, owner, company, createdBy));
-        return mapper.toDomain(saved, openAccount.getOwner(), openAccount.getCompany(), openAccount.getCreatedBy());
+        EmployeeJpaEntity closedBy = openAccount.getClosedBy() != null
+            ? employeeJpaRepository.getReferenceById(openAccount.getClosedBy().id())
+            : null;
+        OpenAccountJpaEntity saved = jpaRepository.save(mapper.toJpa(openAccount, owner, company, createdBy, closedBy));
+        return mapper.toDomain(saved, openAccount.getOwner(), openAccount.getCompany(),
+            openAccount.getCreatedBy(), openAccount.getClosedBy());
     }
 
     @Override

@@ -15,7 +15,8 @@ public class OpenAccountJpaMapper {
     public OpenAccountJpaEntity toJpa(OpenAccount openAccount,
                                       OwnerJpaEntity owner,
                                       CompanyJpaEntity company,
-                                      EmployeeJpaEntity createdBy) {
+                                      EmployeeJpaEntity createdBy,
+                                      EmployeeJpaEntity closedBy) {
         OpenAccountJpaEntity entity = new OpenAccountJpaEntity();
         entity.setId(openAccount.getId());
         entity.setOwner(owner);
@@ -27,6 +28,10 @@ public class OpenAccountJpaMapper {
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(openAccount.getCreatedDate());
         entity.setEnabled(openAccount.isEnabled());
+        entity.setClosedBy(closedBy);
+        entity.setClosedAt(openAccount.getClosedAt());
+        entity.setCloseReason(openAccount.getCloseReason());
+        entity.setVersion(openAccount.getVersion());
         return entity;
     }
 
@@ -34,14 +39,20 @@ public class OpenAccountJpaMapper {
         OwnerJpaEntity o = entity.getOwner();
         CompanyJpaEntity c = entity.getCompany();
         EmployeeJpaEntity cb = entity.getCreatedBy();
+        EmployeeJpaEntity closedBy = entity.getClosedBy();
+        EmployeeRef closedByRef = closedBy != null
+            ? new EmployeeRef(closedBy.getId(), closedBy.getName())
+            : null;
         return toDomain(entity,
             new OwnerRef(o.getId(), o.getName(), o.getDocument()),
             new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            new EmployeeRef(cb.getId(), cb.getName()));
+            new EmployeeRef(cb.getId(), cb.getName()),
+            closedByRef);
     }
 
     public OpenAccount toDomain(OpenAccountJpaEntity entity, OwnerRef ownerRef,
-                                CompanyRef companyRef, EmployeeRef createdByRef) {
+                                CompanyRef companyRef, EmployeeRef createdByRef,
+                                EmployeeRef closedByRef) {
         return new OpenAccount(
             entity.getId(),
             ownerRef,
@@ -52,6 +63,10 @@ public class OpenAccountJpaMapper {
             entity.getStatus(),
             createdByRef,
             entity.getCreatedDate(),
-            entity.isEnabled());
+            entity.isEnabled(),
+            closedByRef,
+            entity.getClosedAt(),
+            entity.getCloseReason(),
+            entity.getVersion());
     }
 }
