@@ -57,8 +57,8 @@ alt owner no encontrado
 end
 
 Service -> Repo : existsActiveByOwnerId(ownerId)
-Repo -> JpaRepo : existsByOwnerIdAndEnabledTrue(ownerId)
-JpaRepo -> DB : SELECT EXISTS(... WHERE owner_id=? AND enabled=true)
+Repo -> JpaRepo : existsByOwnerIdAndStatusAndEnabledTrue(ownerId, OPEN)
+JpaRepo -> DB : SELECT EXISTS(... WHERE owner_id=? AND status='OPEN' AND enabled=true)
 DB --> JpaRepo : boolean
 JpaRepo --> Repo : boolean
 Repo --> Service : boolean

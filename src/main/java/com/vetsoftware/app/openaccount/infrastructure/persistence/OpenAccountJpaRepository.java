@@ -1,5 +1,6 @@
 package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -20,9 +21,9 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
     List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
 
-    // @SQLRestriction("enabled = true") ya limita a cuentas habilitadas; el AndEnabledTrue
-    // es explícito (no depender del filtro implícito para una validación de negocio).
-    boolean existsByOwnerIdAndEnabledTrue(Long ownerId);
+    // Regla "1 cuenta abierta por propietario": cuenta el estado OPEN (las CLOSE/CANCEL
+    // siguen enabled=true pero ya no bloquean). AndEnabledTrue explícito (no depender del @SQLRestriction).
+    boolean existsByOwnerIdAndStatusAndEnabledTrue(Long ownerId, OpenAccountStatus status);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

@@ -8,6 +8,7 @@ import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCom
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaRepository;
 import jakarta.persistence.criteria.JoinType;
@@ -67,7 +68,7 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
 
     @Override
     public boolean existsActiveByOwnerId(Long ownerId) {
-        return jpaRepository.existsByOwnerIdAndEnabledTrue(ownerId);
+        return jpaRepository.existsByOwnerIdAndStatusAndEnabledTrue(ownerId, OpenAccountStatus.OPEN);
     }
 
     @Override
