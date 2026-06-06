@@ -11,6 +11,7 @@ import com.vetsoftware.app.generalchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import io.micrometer.observation.annotation.Observed;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,14 @@ public class VoidGeneralChargeOpenAccountService implements VoidGeneralChargeOpe
         }
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
+        }
+        // No se puede anular un cargo si eso dejaría el saldo pendiente negativo (hay abonos que
+        // ya cubren más de lo que quedaría). Regla: monto efectivo del cargo <= saldo pendiente.
+        BigDecimal outstanding = openAccountQueryPort.outstandingAmount(openAccountId);
+        if (charge.effectiveAmount().compareTo(outstanding) > 0) {
+            throw new IllegalStateException(
+                "No se puede anular el cargo: el saldo pendiente quedaría negativo. "
+                + "Hay abonos que lo cubren; anula primero los abonos necesarios.");
         }
         EmployeeRef voidedBy = employeeQueryPort.findById(command.voidedById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));

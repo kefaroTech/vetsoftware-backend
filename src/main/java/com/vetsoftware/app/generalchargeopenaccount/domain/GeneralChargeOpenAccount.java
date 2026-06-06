@@ -1,6 +1,7 @@
 package com.vetsoftware.app.generalchargeopenaccount.domain;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class GeneralChargeOpenAccount {
@@ -83,6 +84,20 @@ public class GeneralChargeOpenAccount {
     /** Congela el % de impuesto vigente: el total no debe cambiar si el catálogo de impuestos se edita. */
     private static BigDecimal snapshotTaxPercentage(TaxRef tax, boolean hasTax) {
         return hasTax && tax != null ? tax.percentage() : null;
+    }
+
+    /**
+     * Monto efectivo que el cargo aporta al total de la cuenta: unitAmount * quantity, con el
+     * impuesto congelado aplicado cuando corresponde (misma fórmula que la query de suma).
+     */
+    public BigDecimal effectiveAmount() {
+        BigDecimal base = unitAmount.multiply(quantity);
+        if (hasTax && taxPercentage != null) {
+            BigDecimal factor = BigDecimal.ONE.add(
+                taxPercentage.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
+            return base.multiply(factor).setScale(2, RoundingMode.HALF_UP);
+        }
+        return base.setScale(2, RoundingMode.HALF_UP);
     }
 
     private static void validate(String name, BigDecimal unitAmount, BigDecimal quantity,

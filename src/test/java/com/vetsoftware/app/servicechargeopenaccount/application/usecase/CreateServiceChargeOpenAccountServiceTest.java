@@ -50,6 +50,7 @@ class CreateServiceChargeOpenAccountServiceTest {
         return new OpenAccountQueryPort() {
             @Override public Optional<OpenAccountRef> findById(Long id) { return result; }
             @Override public boolean isOpen(Long id) { return result.isPresent(); }
+            @Override public java.math.BigDecimal outstandingAmount(Long id) { return java.math.BigDecimal.ZERO; }
         };
     }
     private EmployeeQueryPort employeeQueryPort(Optional<EmployeeRef> result) { return id -> result; }
