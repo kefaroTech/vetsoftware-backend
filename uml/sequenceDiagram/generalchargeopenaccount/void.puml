@@ -1,0 +1,99 @@
+@startuml general_charge_open_account_void
+title PATCH /general-charge-open-accounts/{id}/void — Anular un cargo general (con motivo + autoría)
+
+actor Client
+participant "GeneralChargeOpenAccountController" as Controller
+participant "VoidGeneralChargeOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "VoidGeneralChargeOpenAccountService" as Service
+participant "GeneralChargeOpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountQueryPort\n<<port.out>>" as OAQuery
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQuery
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "GeneralChargeOpenAccount\n<<domain>>" as Domain
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  El cargo anulado NO se borra: queda enabled=true con voided=true.
+end note
+
+Client -> Controller : PATCH /general-charge-open-accounts/{id}/void\n+ VoidGeneralChargeOpenAccountRequest{reason}
+activate Controller
+
+Controller -> UseCase : execute(VoidGeneralChargeOpenAccountCommand\n{id, currentCompanyId, currentEmployeeId, reason})
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (chargeOpenAccount.delete AND @authz.isMyCompany(companyId)) OR
+  SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> DB : SELECT general_charge_open_account (JOIN FETCH refs)
+DB --> Repo : row | empty
+alt cargo no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : GeneralChargeOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : GeneralChargeOpenAccount
+
+alt company no coincide
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> OAQuery : isOpen(openAccountId)
+OAQuery -> DB : SELECT open_account.status
+DB --> OAQuery : status
+OAQuery --> Service : boolean
+alt cuenta no OPEN
+  Service --> GEH : IllegalStateException
+  GEH --> Client : 409 Conflict (INVALID_STATE)
+end
+
+Service -> EmpQuery : findById(command.voidedById())
+EmpQuery -> DB : SELECT employee
+DB --> EmpQuery : row | empty
+EmpQuery --> Service : Optional<EmployeeRef>
+alt empleado no existe
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Domain : voidCharge(voidedBy, reason)
+note right of Domain
+  Invariantes:
+  - reason obligatorio → IllegalArgumentException (400)
+  - ya anulado → GeneralChargeOpenAccountAlreadyVoidedException (409)
+  Setea voided=true, voidedBy, voidedAt=now, voidReason.
+end note
+
+Service -> Repo : save(charge)
+Repo -> DB : UPDATE general_charge_open_accounts (voided, voided_by_id, voided_at, void_reason)
+DB --> Repo : ok
+Repo --> Service : GeneralChargeOpenAccount
+
+Service -> Refresher : refresh(openAccountId)
+note right of Refresher
+  Recalcula totales de la cuenta.
+  El SUM de cargos excluye voided=true,
+  así baja totalAmount / sube saldo.
+end note
+Refresher -> DB : UPDATE open_accounts (total/outstanding)
+
+Service -> Service : GeneralChargeOpenAccountDto.from(charge)
+Service --> UseCase : GeneralChargeOpenAccountDto
+UseCase --> Controller : GeneralChargeOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nGeneralChargeOpenAccountResponse (voided, voidedBy, voidedAt, voidReason)
+deactivate Controller
+
+@enduml

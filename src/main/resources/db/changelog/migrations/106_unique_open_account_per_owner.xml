@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Garantía dura de "1 cuenta abierta por propietario" (antes solo había check en el service
+         → ventana de carrera). MySQL no soporta índices únicos parciales, así que se usa una
+         columna generada que vale owner_id solo cuando la cuenta está OPEN y enabled, y NULL en
+         otro caso. Un índice único sobre ella deduplica únicamente cuentas activas (MySQL permite
+         múltiples NULL), dejando libres las cerradas/canceladas/deshabilitadas.
+         Requiere que no existan duplicados activos previos; si los hubiera, limpiarlos antes. -->
+    <changeSet id="106_unique_open_account_per_owner" author="orlando">
+        <sql>
+            ALTER TABLE open_accounts
+                ADD COLUMN active_open_owner_id BIGINT
+                GENERATED ALWAYS AS (
+                    CASE WHEN status = 'OPEN' AND enabled = TRUE THEN owner_id ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_open_accounts_active_owner UNIQUE (active_open_owner_id)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE open_accounts
+                    DROP INDEX uq_open_accounts_active_owner,
+                    DROP COLUMN active_open_owner_id
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

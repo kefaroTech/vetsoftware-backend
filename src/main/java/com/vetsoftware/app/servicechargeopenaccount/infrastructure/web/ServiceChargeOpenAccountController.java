@@ -3,6 +3,7 @@ package com.vetsoftware.app.servicechargeopenaccount.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.CreateServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.UpdateServiceChargeOpenAccountCommand;
+import com.vetsoftware.app.servicechargeopenaccount.application.command.VoidServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.OpenAccountSummaryDto;
@@ -15,8 +16,10 @@ import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServ
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ReactivateServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.UpdateServiceChargeOpenAccountUseCase;
+import com.vetsoftware.app.servicechargeopenaccount.application.port.in.VoidServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.CreateServiceChargeOpenAccountRequest;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.UpdateServiceChargeOpenAccountRequest;
+import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.VoidServiceChargeOpenAccountRequest;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.OpenAccountSummary;
@@ -37,6 +40,7 @@ public class ServiceChargeOpenAccountController {
     private final ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
     private final DeleteServiceChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateServiceChargeOpenAccountUseCase reactivateUseCase;
+    private final VoidServiceChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
 
     public ServiceChargeOpenAccountController(CreateServiceChargeOpenAccountUseCase createUseCase,
@@ -46,6 +50,7 @@ public class ServiceChargeOpenAccountController {
                                               ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
                                               DeleteServiceChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateServiceChargeOpenAccountUseCase reactivateUseCase,
+                                              VoidServiceChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -54,6 +59,7 @@ public class ServiceChargeOpenAccountController {
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.voidUseCase = voidUseCase;
         this.authz = authz;
     }
 
@@ -103,18 +109,32 @@ public class ServiceChargeOpenAccountController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/void")
+    public ServiceChargeOpenAccountResponse voidCharge(
+            @PathVariable Long id, @Valid @RequestBody VoidServiceChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase.execute(
+            new VoidServiceChargeOpenAccountCommand(
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+    }
+
     private ServiceChargeOpenAccountResponse toResponse(ServiceChargeOpenAccountDto dto) {
         AnimalSummaryDto a = dto.animal();
         ServiceSummaryDto s = dto.service();
         OpenAccountSummaryDto o = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
+        EmployeeSummaryDto v = dto.voidedBy();
         return new ServiceChargeOpenAccountResponse(
             dto.id(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new ServiceSummary(s.id(), s.name(), s.price()),
+            dto.unitPrice(),
             new OpenAccountSummary(o.id(), o.companyId()),
             e == null ? null : new EmployeeSummary(e.id(), e.name()),
             dto.createdDate(),
-            dto.enabled());
+            dto.enabled(),
+            dto.voided(),
+            v == null ? null : new EmployeeSummary(v.id(), v.name()),
+            dto.voidedAt(),
+            dto.voidReason());
     }
 }

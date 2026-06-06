@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Anulación de cargos de servicio (como los abonos): el cargo queda visible tachado con
+         auditoría (voided_by, voided_at, void_reason) y deja de contar en el total. -->
+    <changeSet id="108_add_void_tracking_to_service_charge_open_accounts" author="orlando">
+        <addColumn tableName="service_charge_open_accounts">
+            <column name="voided" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="voided_by_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_service_charge_open_accounts_voided_by"
+                             references="employees(id)"/>
+            </column>
+            <column name="voided_at" type="DATETIME"/>
+            <column name="void_reason" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

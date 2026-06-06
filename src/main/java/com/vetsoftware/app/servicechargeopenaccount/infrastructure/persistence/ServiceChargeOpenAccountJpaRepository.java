@@ -9,14 +9,14 @@ public interface ServiceChargeOpenAccountJpaRepository
         extends JpaRepository<ServiceChargeOpenAccountJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy"})
+    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy", "voidedBy"})
     List<ServiceChargeOpenAccountJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy"})
+    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy", "voidedBy"})
     Optional<ServiceChargeOpenAccountJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy"})
+    @EntityGraph(attributePaths = {"animal", "service", "openAccount", "createdBy", "voidedBy"})
     List<ServiceChargeOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
@@ -25,11 +25,12 @@ public interface ServiceChargeOpenAccountJpaRepository
         value = "UPDATE service_charge_open_accounts SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
-    // Total service charges for an open account = sum of each service's price.
+    // Total service charges for an open account = sum of each charge's frozen unit price
+    // (snapshot at creation time), NOT the current catalog price. Voided charges are excluded.
     // enabled = true is filtered explicitly (do not rely on @SQLRestriction for aggregates).
     @org.springframework.data.jpa.repository.Query(
-        "SELECT COALESCE(SUM(c.service.price), 0) FROM ServiceChargeOpenAccountJpaEntity c "
-        + "WHERE c.openAccount.id = :openAccountId AND c.enabled = true")
+        "SELECT COALESCE(SUM(c.unitPrice), 0) FROM ServiceChargeOpenAccountJpaEntity c "
+        + "WHERE c.openAccount.id = :openAccountId AND c.enabled = true AND c.voided = false")
     java.math.BigDecimal sumChargesByOpenAccountId(
         @org.springframework.data.repository.query.Param("openAccountId") Long openAccountId);
 }

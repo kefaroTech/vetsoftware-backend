@@ -34,6 +34,9 @@ public class GeneralChargeOpenAccountJpaEntity {
     @Column(name = "has_tax", nullable = false)
     private boolean hasTax;
 
+    @Column(name = "tax_percentage", precision = 5, scale = 2)
+    private BigDecimal taxPercentage;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "open_account_id", nullable = false)
     private OpenAccountJpaEntity openAccount;
@@ -47,6 +50,19 @@ public class GeneralChargeOpenAccountJpaEntity {
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
+
+    @Column(name = "voided", nullable = false)
+    private boolean voided = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voided_by_id")
+    private EmployeeJpaEntity voidedBy;
+
+    @Column(name = "voided_at")
+    private LocalDateTime voidedAt;
+
+    @Column(name = "void_reason", length = 255)
+    private String voidReason;
 
     protected GeneralChargeOpenAccountJpaEntity() {}
 
@@ -62,6 +78,8 @@ public class GeneralChargeOpenAccountJpaEntity {
     public void setTax(TaxJpaEntity tax) { this.tax = tax; }
     public boolean isHasTax() { return hasTax; }
     public void setHasTax(boolean hasTax) { this.hasTax = hasTax; }
+    public BigDecimal getTaxPercentage() { return taxPercentage; }
+    public void setTaxPercentage(BigDecimal taxPercentage) { this.taxPercentage = taxPercentage; }
     public OpenAccountJpaEntity getOpenAccount() { return openAccount; }
     public void setOpenAccount(OpenAccountJpaEntity openAccount) { this.openAccount = openAccount; }
     public EmployeeJpaEntity getCreatedBy() { return createdBy; }
@@ -70,4 +88,12 @@ public class GeneralChargeOpenAccountJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isVoided() { return voided; }
+    public void setVoided(boolean voided) { this.voided = voided; }
+    public EmployeeJpaEntity getVoidedBy() { return voidedBy; }
+    public void setVoidedBy(EmployeeJpaEntity voidedBy) { this.voidedBy = voidedBy; }
+    public LocalDateTime getVoidedAt() { return voidedAt; }
+    public void setVoidedAt(LocalDateTime voidedAt) { this.voidedAt = voidedAt; }
+    public String getVoidReason() { return voidReason; }
+    public void setVoidReason(String voidReason) { this.voidReason = voidReason; }
 }

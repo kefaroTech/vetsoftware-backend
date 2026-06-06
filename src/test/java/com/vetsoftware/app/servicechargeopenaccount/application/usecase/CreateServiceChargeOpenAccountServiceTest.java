@@ -32,7 +32,9 @@ class CreateServiceChargeOpenAccountServiceTest {
     private final ServiceChargeOpenAccountRepository repository = new ServiceChargeOpenAccountRepository() {
         @Override public ServiceChargeOpenAccount save(ServiceChargeOpenAccount charge) {
             savedCharge = new ServiceChargeOpenAccount(1L, charge.getAnimal(), charge.getService(),
-                    charge.getOpenAccount(), charge.getCreatedBy(), charge.getCreatedDate(), charge.isEnabled());
+                    charge.getUnitPrice(), charge.getOpenAccount(), charge.getCreatedBy(),
+                    charge.getCreatedDate(), charge.isEnabled(), charge.isVoided(),
+                    charge.getVoidedBy(), charge.getVoidedAt(), charge.getVoidReason());
             return savedCharge;
         }
         @Override public Optional<ServiceChargeOpenAccount> findById(Long id) { return Optional.ofNullable(savedCharge); }
@@ -71,6 +73,7 @@ class CreateServiceChargeOpenAccountServiceTest {
         assertEquals(1L, dto.id());
         assertEquals(10L, dto.animal().id());
         assertEquals(20L, dto.service().id());
+        assertEquals(new BigDecimal("50.00"), dto.unitPrice());
         assertEquals(30L, dto.openAccount().id());
         assertEquals(40L, dto.createdBy().id());
         assertTrue(dto.enabled());

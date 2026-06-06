@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Porcentaje de impuesto congelado (snapshot) por cargo general. El total deja de leer
+         taxes.percentage en vivo. Queda NULL cuando el cargo no aplica impuesto (has_tax = false). -->
+    <changeSet id="104_add_tax_percentage_to_general_charge_open_accounts" author="orlando">
+        <addColumn tableName="general_charge_open_accounts">
+            <column name="tax_percentage" type="DECIMAL(5,2)"/>
+        </addColumn>
+        <!-- Backfill de filas con impuesto: porcentaje vigente del impuesto referenciado. -->
+        <sql>
+            UPDATE general_charge_open_accounts c
+            JOIN taxes t ON t.id = c.tax_id
+            SET c.tax_percentage = t.percentage
+            WHERE c.has_tax = 1 AND c.tax_id IS NOT NULL
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

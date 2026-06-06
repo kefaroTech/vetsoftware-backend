@@ -29,7 +29,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
     private final EmployeeRef employee = new EmployeeRef(40L, "Dr. House");
 
     private final ServiceChargeOpenAccount existing = new ServiceChargeOpenAccount(
-            1L, animal, service, openAccount, employee, LocalDateTime.now(), true);
+            1L, animal, service, new BigDecimal("50.00"), openAccount, employee, LocalDateTime.now(), true,
+            false, null, null, null);
 
     private ServiceChargeOpenAccount savedCharge;
 
@@ -37,8 +38,9 @@ class UpdateServiceChargeOpenAccountServiceTest {
         return new ServiceChargeOpenAccountRepository() {
             @Override public ServiceChargeOpenAccount save(ServiceChargeOpenAccount charge) {
                 savedCharge = new ServiceChargeOpenAccount(charge.getId(), charge.getAnimal(),
-                        charge.getService(), charge.getOpenAccount(), charge.getCreatedBy(),
-                        charge.getCreatedDate(), charge.isEnabled());
+                        charge.getService(), charge.getUnitPrice(), charge.getOpenAccount(),
+                        charge.getCreatedBy(), charge.getCreatedDate(), charge.isEnabled(),
+                        charge.isVoided(), charge.getVoidedBy(), charge.getVoidedAt(), charge.getVoidReason());
                 return savedCharge;
             }
             @Override public Optional<ServiceChargeOpenAccount> findById(Long id) {

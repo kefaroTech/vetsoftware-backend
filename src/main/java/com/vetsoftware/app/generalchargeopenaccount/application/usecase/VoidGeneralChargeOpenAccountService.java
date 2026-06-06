@@ -1,0 +1,55 @@
+package com.vetsoftware.app.generalchargeopenaccount.application.usecase;
+
+import com.vetsoftware.app.generalchargeopenaccount.application.command.VoidGeneralChargeOpenAccountCommand;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.VoidGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.EmployeeQueryPort;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountQueryPort;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.generalchargeopenaccount.domain.EmployeeRef;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
+import io.micrometer.observation.annotation.Observed;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Observed(name = "general_charge_open_account.void")
+@Service
+public class VoidGeneralChargeOpenAccountService implements VoidGeneralChargeOpenAccountUseCase {
+    private final GeneralChargeOpenAccountRepository repository;
+    private final OpenAccountQueryPort openAccountQueryPort;
+    private final EmployeeQueryPort employeeQueryPort;
+    private final OpenAccountRefresher refresher;
+
+    public VoidGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
+                                               OpenAccountQueryPort openAccountQueryPort,
+                                               EmployeeQueryPort employeeQueryPort,
+                                               OpenAccountRefresher refresher) {
+        this.repository = repository;
+        this.openAccountQueryPort = openAccountQueryPort;
+        this.employeeQueryPort = employeeQueryPort;
+        this.refresher = refresher;
+    }
+
+    @Override
+    @Transactional
+    public GeneralChargeOpenAccountDto execute(VoidGeneralChargeOpenAccountCommand command) {
+        GeneralChargeOpenAccount charge = repository.findById(command.id())
+            .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(command.id()));
+        Long openAccountId = charge.getOpenAccount().id();
+        if (!charge.getOpenAccount().companyId().equals(command.companyId())) {
+            throw new IllegalArgumentException("general charge does not belong to company");
+        }
+        if (!openAccountQueryPort.isOpen(openAccountId)) {
+            throw new IllegalStateException("open account is not OPEN");
+        }
+        EmployeeRef voidedBy = employeeQueryPort.findById(command.voidedById())
+            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
+
+        charge.voidCharge(voidedBy, command.reason());
+        GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
+        refresher.refresh(openAccountId);
+        return dto;
+    }
+}

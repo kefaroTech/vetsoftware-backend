@@ -40,9 +40,12 @@ public class JpaGeneralChargeOpenAccountRepository implements GeneralChargeOpenA
             openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
         EmployeeJpaEntity createdBy =
             employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
+            : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
         GeneralChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, tax, openAccount, createdBy));
-        return mapper.toDomain(saved, charge.getTax(), charge.getOpenAccount(), charge.getCreatedBy());
+            jpaRepository.save(mapper.toJpa(charge, tax, openAccount, createdBy, voidedBy));
+        return mapper.toDomain(saved, charge.getTax(), charge.getOpenAccount(), charge.getCreatedBy(),
+            charge.getVoidedBy());
     }
 
     @Override

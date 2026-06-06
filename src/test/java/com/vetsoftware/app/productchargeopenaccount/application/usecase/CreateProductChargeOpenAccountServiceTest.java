@@ -33,8 +33,9 @@ class CreateProductChargeOpenAccountServiceTest {
     private final ProductChargeOpenAccountRepository repository = new ProductChargeOpenAccountRepository() {
         @Override public ProductChargeOpenAccount save(ProductChargeOpenAccount charge) {
             saved = new ProductChargeOpenAccount(1L, charge.getAnimal(), charge.getProduct(),
-                    charge.getOpenAccount(), charge.getCreatedBy(), charge.getCreatedDate(),
-                    charge.isEnabled());
+                    charge.getUnitPrice(), charge.getOpenAccount(), charge.getCreatedBy(),
+                    charge.getCreatedDate(), charge.isEnabled(), charge.isVoided(),
+                    charge.getVoidedBy(), charge.getVoidedAt(), charge.getVoidReason());
             return saved;
         }
         @Override public Optional<ProductChargeOpenAccount> findById(Long id) { return Optional.ofNullable(saved); }
@@ -74,6 +75,7 @@ class CreateProductChargeOpenAccountServiceTest {
         assertEquals(1L, dto.id());
         assertEquals(2L, dto.animal().id());
         assertEquals(3L, dto.product().id());
+        assertEquals(new BigDecimal("20.00"), dto.unitPrice());
         assertEquals(10L, dto.openAccount().id());
         assertEquals(7L, dto.createdBy().id());
         assertTrue(dto.enabled());

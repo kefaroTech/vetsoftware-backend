@@ -23,7 +23,8 @@ class UpdateDebtOpenAccountServiceTest {
     private final EmployeeRef createdBy = new EmployeeRef(7L, "Dr. House");
 
     private DebtOpenAccount existing = new DebtOpenAccount(1L, new BigDecimal("50.00"),
-            PaymentMethod.CASH, new OpenAccountRef(10L, 5L), createdBy, LocalDateTime.now(), true);
+            PaymentMethod.CASH, new OpenAccountRef(10L, 5L), createdBy, LocalDateTime.now(), true,
+            false, null, null, null);
     private DebtOpenAccount saved;
     private final List<Long> refreshed = new ArrayList<>();
 

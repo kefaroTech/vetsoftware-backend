@@ -105,9 +105,12 @@ enum AppliedStatus {
 }
 
 enum LaboratoryTestStatus {
-  PENDIENTE
-  COMPLETADO
-  CANCELADO
+  PENDING_COLLECTION
+  PENDING_PROCESSING
+  IN_PROGRESS
+  PENDING_VALIDATION
+  COMPLETED
+  CANCELLED
 }
 
 enum LaboratoryTestPriority {
@@ -116,6 +119,7 @@ enum LaboratoryTestPriority {
 }
 
 enum SurgeryStatus {
+  PROGRAMADA
   PENDIENTE
   COMPLETADO
   CANCELADO
@@ -123,6 +127,12 @@ enum SurgeryStatus {
 
 enum DiagnosticImagingStatus {
   PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum SpaStatus {
+  AGENDADA
   COMPLETADO
   CANCELADO
 }
@@ -490,6 +500,7 @@ class HospitalizationProgressNote {
 }
 
 class HospitalizationMedication {
+  -hospitalization: Hospitalization
   -name: String
   -dose: String
   -frequency: Frequency
@@ -507,6 +518,7 @@ class HospitalizationMedication {
 }
 
 class HospitalizationProcedure {
+  -hospitalization: Hospitalization
   -name: String
   -dose: String
   -frequency: Frequency
@@ -623,9 +635,9 @@ class Promotion {
   -name: String
   -promotionType: PromotionType
   -applicationType: ApplicationType
-  -applicationItem: Integer
+  -applicationItem: Long
   -valueType: ValueType
-  -value: Double
+  -value: BigDecimal
   -startDate: LocalDateTime
   -endDate: LocalDateTime
   -promotionStatus: PromotionStatus
@@ -650,7 +662,7 @@ class LaboratoryTestType {
 
 class LaboratoryTest {
   -date: LocalDate
-  -type: LaboratoryTestType
+  -testType: LaboratoryTestType
   -quantity: Integer
   -diagnosis: String
   -status: LaboratoryTestStatus
@@ -670,7 +682,7 @@ class LaboratoryTestFile {
   - bucket: String
   - originalFileName: String
   - contentType: String
-  - sizeBytes: String
+  - sizeBytes: Long
   - eTag: String
   - uploadedBy: Employee
   - createdDate: LocalDateTime
@@ -756,6 +768,7 @@ class Spa {
   -reason: String
   -details: String
   -observations: String
+  -status: SpaStatus
   -animal: Animal
   -company: Company
   -createdDate: LocalDateTime
@@ -769,52 +782,63 @@ class Spa {
 
 class OpenAccount {
   -owner: Owner
-  -totalAmount: Double
-  -paidAmount: Double
-  -outstandingAmount: Double
+  -totalAmount: BigDecimal
+  -paidAmount: BigDecimal
+  -outstandingAmount: BigDecimal
   -company: Company
   -status: OpenAccountStatus
   -createdDate: LocalDateTime
   -createdBy: Employee
+  -closedBy: Employee
+  -closedAt: LocalDateTime
+  -closeReason: String
+  -version: Long
   -enabled: boolean
 }
 
 class DebtOpenAccount {
-  -amount: Double
+  -amount: BigDecimal
   -paymentMethod: PaymentMethod
   -openAccount: OpenAccount
-  -createdDate: LocalDateTime
   -createdBy: Employee
+  -createdDate: LocalDateTime
   -enabled: boolean
+  -voided: boolean
+  -voidedBy: Employee
+  -voidedAt: LocalDateTime
+  -voidReason: String
 }
 
 class ProductChargeOpenAccount {
   -animal: Animal
   -product: Product
+  -unitPrice: BigDecimal
   -openAccount: OpenAccount
-  -createdDate: LocalDateTime
   -createdBy: Employee
+  -createdDate: LocalDateTime
   -enabled: boolean
 }
 
 class ServiceChargeOpenAccount {
   -animal: Animal
   -service: Service
+  -unitPrice: BigDecimal
   -openAccount: OpenAccount
-  -createdDate: LocalDateTime
   -createdBy: Employee
+  -createdDate: LocalDateTime
   -enabled: boolean
 }
 
 class GeneralChargeOpenAccount {
   -name: String
-  -unitAmount: Double
-  -quantity: Double
+  -unitAmount: BigDecimal
+  -quantity: BigDecimal
   -tax: Tax
   -hasTax: Boolean
+  -taxPercentage: BigDecimal
   -openAccount: OpenAccount
-  -createdDate: LocalDateTime
   -createdBy: Employee
+  -createdDate: LocalDateTime
   -enabled: boolean
 }
 
@@ -938,6 +962,7 @@ DiagnosticImaging     --> DiagnosticImagingStatus
 DiagnosticImaging     "0..*" --> "0..1" Consultation
 
 Spa                   --> SpaType
+Spa                   --> SpaStatus
 Spa                   --> Animal
 Spa                   --> Company
 

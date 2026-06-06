@@ -44,10 +44,12 @@ public class JpaServiceChargeOpenAccountRepository implements ServiceChargeOpenA
         OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
         EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
+            : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
         ServiceChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, service, openAccount, createdBy));
+            jpaRepository.save(mapper.toJpa(charge, animal, service, openAccount, createdBy, voidedBy));
         return mapper.toDomain(saved, charge.getAnimal(), charge.getService(),
-            charge.getOpenAccount(), charge.getCreatedBy());
+            charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
     }
 
     @Override

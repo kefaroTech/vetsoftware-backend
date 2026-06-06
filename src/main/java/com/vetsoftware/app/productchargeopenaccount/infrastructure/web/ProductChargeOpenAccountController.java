@@ -3,6 +3,7 @@ package com.vetsoftware.app.productchargeopenaccount.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.productchargeopenaccount.application.command.CreateProductChargeOpenAccountCommand;
 import com.vetsoftware.app.productchargeopenaccount.application.command.UpdateProductChargeOpenAccountCommand;
+import com.vetsoftware.app.productchargeopenaccount.application.command.VoidProductChargeOpenAccountCommand;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.OpenAccountSummaryDto;
@@ -15,8 +16,10 @@ import com.vetsoftware.app.productchargeopenaccount.application.port.in.ListProd
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.ListProductChargeOpenAccountsUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.ReactivateProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.UpdateProductChargeOpenAccountUseCase;
+import com.vetsoftware.app.productchargeopenaccount.application.port.in.VoidProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.request.CreateProductChargeOpenAccountRequest;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.request.UpdateProductChargeOpenAccountRequest;
+import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.request.VoidProductChargeOpenAccountRequest;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.web.response.OpenAccountSummary;
@@ -37,6 +40,7 @@ public class ProductChargeOpenAccountController {
     private final ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
     private final DeleteProductChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateProductChargeOpenAccountUseCase reactivateUseCase;
+    private final VoidProductChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
 
     public ProductChargeOpenAccountController(CreateProductChargeOpenAccountUseCase createUseCase,
@@ -46,6 +50,7 @@ public class ProductChargeOpenAccountController {
                                               ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
                                               DeleteProductChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
+                                              VoidProductChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -54,6 +59,7 @@ public class ProductChargeOpenAccountController {
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.voidUseCase = voidUseCase;
         this.authz = authz;
     }
 
@@ -103,18 +109,32 @@ public class ProductChargeOpenAccountController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/void")
+    public ProductChargeOpenAccountResponse voidCharge(
+            @PathVariable Long id, @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase.execute(
+            new VoidProductChargeOpenAccountCommand(
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+    }
+
     private ProductChargeOpenAccountResponse toResponse(ProductChargeOpenAccountDto dto) {
         AnimalSummaryDto a = dto.animal();
         ProductSummaryDto p = dto.product();
         OpenAccountSummaryDto o = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
+        EmployeeSummaryDto v = dto.voidedBy();
         return new ProductChargeOpenAccountResponse(
             dto.id(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()),
+            dto.unitPrice(),
             new OpenAccountSummary(o.id(), o.companyId()),
             e == null ? null : new EmployeeSummary(e.id(), e.name()),
             dto.createdDate(),
-            dto.enabled());
+            dto.enabled(),
+            dto.voided(),
+            v == null ? null : new EmployeeSummary(v.id(), v.name()),
+            dto.voidedAt(),
+            dto.voidReason());
     }
 }

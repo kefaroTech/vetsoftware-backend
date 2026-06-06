@@ -49,6 +49,10 @@ import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
@@ -217,6 +221,22 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "INVALID_OPEN_ACCOUNT_STATUS_TRANSITION", ex.getMessage());
     }
 
+    @ExceptionHandler(DebtOpenAccountAlreadyVoidedException.class)
+    public ProblemDetail handleDebtOpenAccountAlreadyVoided(DebtOpenAccountAlreadyVoidedException ex) {
+        log.warn("Debt open account payment already voided: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DEBT_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
+    }
+
+    @ExceptionHandler({
+        ProductChargeOpenAccountAlreadyVoidedException.class,
+        ServiceChargeOpenAccountAlreadyVoidedException.class,
+        GeneralChargeOpenAccountAlreadyVoidedException.class
+    })
+    public ProblemDetail handleChargeOpenAccountAlreadyVoided(RuntimeException ex) {
+        log.warn("Charge open account already voided: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CHARGE_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
+    }
+
     // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleConflictState(IllegalStateException ex) {
@@ -275,6 +295,14 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
         // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no ERROR.
         log.warn("Data integrity violation: {}", ex.getMessage());
+        String cause = ex.getMostSpecificCause().getMessage();
+        // Carrera en "1 cuenta abierta por propietario": la constraint única (migración 106) atrapa
+        // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo código que
+        // el guard de negocio para que el front lo trate igual.
+        if (cause != null && cause.contains("uq_open_accounts_active_owner")) {
+            return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT",
+                "El propietario ya tiene una cuenta abierta.");
+        }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }
 

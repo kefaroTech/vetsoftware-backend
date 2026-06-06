@@ -15,7 +15,8 @@ public class GeneralChargeOpenAccountJpaMapper {
     public GeneralChargeOpenAccountJpaEntity toJpa(GeneralChargeOpenAccount charge,
                                                    TaxJpaEntity tax,
                                                    OpenAccountJpaEntity openAccount,
-                                                   EmployeeJpaEntity createdBy) {
+                                                   EmployeeJpaEntity createdBy,
+                                                   EmployeeJpaEntity voidedBy) {
         GeneralChargeOpenAccountJpaEntity entity = new GeneralChargeOpenAccountJpaEntity();
         entity.setId(charge.getId());
         entity.setName(charge.getName());
@@ -23,10 +24,15 @@ public class GeneralChargeOpenAccountJpaMapper {
         entity.setQuantity(charge.getQuantity());
         entity.setTax(tax);
         entity.setHasTax(charge.isHasTax());
+        entity.setTaxPercentage(charge.getTaxPercentage());
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(charge.getCreatedDate());
         entity.setEnabled(charge.isEnabled());
+        entity.setVoided(charge.isVoided());
+        entity.setVoidedBy(voidedBy);
+        entity.setVoidedAt(charge.getVoidedAt());
+        entity.setVoidReason(charge.getVoidReason());
         return entity;
     }
 
@@ -34,14 +40,17 @@ public class GeneralChargeOpenAccountJpaMapper {
         TaxJpaEntity t = entity.getTax();
         OpenAccountJpaEntity oa = entity.getOpenAccount();
         EmployeeJpaEntity emp = entity.getCreatedBy();
+        EmployeeJpaEntity v = entity.getVoidedBy();
         return toDomain(entity,
             t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
             new OpenAccountRef(oa.getId(), oa.getCompany().getId()),
-            new EmployeeRef(emp.getId(), emp.getName()));
+            new EmployeeRef(emp.getId(), emp.getName()),
+            v == null ? null : new EmployeeRef(v.getId(), v.getName()));
     }
 
     public GeneralChargeOpenAccount toDomain(GeneralChargeOpenAccountJpaEntity entity, TaxRef taxRef,
-                                             OpenAccountRef openAccountRef, EmployeeRef createdByRef) {
+                                             OpenAccountRef openAccountRef, EmployeeRef createdByRef,
+                                             EmployeeRef voidedByRef) {
         return new GeneralChargeOpenAccount(
             entity.getId(),
             entity.getName(),
@@ -49,9 +58,14 @@ public class GeneralChargeOpenAccountJpaMapper {
             entity.getQuantity(),
             taxRef,
             entity.isHasTax(),
+            entity.getTaxPercentage(),
             openAccountRef,
             createdByRef,
             entity.getCreatedDate(),
-            entity.isEnabled());
+            entity.isEnabled(),
+            entity.isVoided(),
+            voidedByRef,
+            entity.getVoidedAt(),
+            entity.getVoidReason());
     }
 }

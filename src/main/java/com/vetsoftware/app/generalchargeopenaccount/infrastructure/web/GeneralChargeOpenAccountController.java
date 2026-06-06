@@ -3,6 +3,7 @@ package com.vetsoftware.app.generalchargeopenaccount.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.CreateGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
+import com.vetsoftware.app.generalchargeopenaccount.application.command.VoidGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.OpenAccountSummaryDto;
@@ -14,8 +15,10 @@ import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGene
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ReactivateGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.UpdateGeneralChargeOpenAccountUseCase;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.in.VoidGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.request.CreateGeneralChargeOpenAccountRequest;
 import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.request.UpdateGeneralChargeOpenAccountRequest;
+import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.request.VoidGeneralChargeOpenAccountRequest;
 import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.GeneralChargeOpenAccountResponse;
 import com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response.OpenAccountSummary;
@@ -35,6 +38,7 @@ public class GeneralChargeOpenAccountController {
     private final ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
     private final DeleteGeneralChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase;
+    private final VoidGeneralChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
 
     public GeneralChargeOpenAccountController(CreateGeneralChargeOpenAccountUseCase createUseCase,
@@ -44,6 +48,7 @@ public class GeneralChargeOpenAccountController {
                                               ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
                                               DeleteGeneralChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase,
+                                              VoidGeneralChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -52,6 +57,7 @@ public class GeneralChargeOpenAccountController {
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.voidUseCase = voidUseCase;
         this.authz = authz;
     }
 
@@ -102,16 +108,29 @@ public class GeneralChargeOpenAccountController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/void")
+    public GeneralChargeOpenAccountResponse voidCharge(
+            @PathVariable Long id, @Valid @RequestBody VoidGeneralChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase.execute(
+            new VoidGeneralChargeOpenAccountCommand(
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+    }
+
     private GeneralChargeOpenAccountResponse toResponse(GeneralChargeOpenAccountDto dto) {
         TaxSummaryDto t = dto.tax();
         OpenAccountSummaryDto oa = dto.openAccount();
         EmployeeSummaryDto emp = dto.createdBy();
+        EmployeeSummaryDto v = dto.voidedBy();
         return new GeneralChargeOpenAccountResponse(
             dto.id(), dto.name(), dto.unitAmount(), dto.quantity(),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             dto.hasTax(),
+            dto.taxPercentage(),
             new OpenAccountSummary(oa.id(), oa.companyId()),
             new EmployeeSummary(emp.id(), emp.name()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.enabled(),
+            dto.voided(),
+            v == null ? null : new EmployeeSummary(v.id(), v.name()),
+            dto.voidedAt(), dto.voidReason());
     }
 }

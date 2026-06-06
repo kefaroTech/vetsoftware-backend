@@ -12,7 +12,8 @@ public class DebtOpenAccountJpaMapper {
 
     public DebtOpenAccountJpaEntity toJpa(DebtOpenAccount debtOpenAccount,
                                           OpenAccountJpaEntity openAccount,
-                                          EmployeeJpaEntity createdBy) {
+                                          EmployeeJpaEntity createdBy,
+                                          EmployeeJpaEntity voidedBy) {
         DebtOpenAccountJpaEntity entity = new DebtOpenAccountJpaEntity();
         entity.setId(debtOpenAccount.getId());
         entity.setAmount(debtOpenAccount.getAmount());
@@ -21,19 +22,27 @@ public class DebtOpenAccountJpaMapper {
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(debtOpenAccount.getCreatedDate());
         entity.setEnabled(debtOpenAccount.isEnabled());
+        entity.setVoided(debtOpenAccount.isVoided());
+        entity.setVoidedBy(voidedBy);
+        entity.setVoidedAt(debtOpenAccount.getVoidedAt());
+        entity.setVoidReason(debtOpenAccount.getVoidReason());
         return entity;
     }
 
     public DebtOpenAccount toDomain(DebtOpenAccountJpaEntity entity) {
         OpenAccountJpaEntity oa = entity.getOpenAccount();
         EmployeeJpaEntity e = entity.getCreatedBy();
+        EmployeeJpaEntity v = entity.getVoidedBy();
+        EmployeeRef voidedByRef = v == null ? null : new EmployeeRef(v.getId(), v.getName());
         return toDomain(entity,
             new OpenAccountRef(oa.getId(), oa.getCompany().getId()),
-            new EmployeeRef(e.getId(), e.getName()));
+            new EmployeeRef(e.getId(), e.getName()),
+            voidedByRef);
     }
 
     public DebtOpenAccount toDomain(DebtOpenAccountJpaEntity entity,
-                                    OpenAccountRef openAccountRef, EmployeeRef createdByRef) {
+                                    OpenAccountRef openAccountRef, EmployeeRef createdByRef,
+                                    EmployeeRef voidedByRef) {
         return new DebtOpenAccount(
             entity.getId(),
             entity.getAmount(),
@@ -41,6 +50,10 @@ public class DebtOpenAccountJpaMapper {
             openAccountRef,
             createdByRef,
             entity.getCreatedDate(),
-            entity.isEnabled());
+            entity.isEnabled(),
+            entity.isVoided(),
+            voidedByRef,
+            entity.getVoidedAt(),
+            entity.getVoidReason());
     }
 }

@@ -33,9 +33,12 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
             openAccountJpaRepository.getReferenceById(debtOpenAccount.getOpenAccount().id());
         EmployeeJpaEntity createdBy =
             employeeJpaRepository.getReferenceById(debtOpenAccount.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = debtOpenAccount.getVoidedBy() == null ? null
+            : employeeJpaRepository.getReferenceById(debtOpenAccount.getVoidedBy().id());
         DebtOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(debtOpenAccount, openAccount, createdBy));
-        return mapper.toDomain(saved, debtOpenAccount.getOpenAccount(), debtOpenAccount.getCreatedBy());
+            jpaRepository.save(mapper.toJpa(debtOpenAccount, openAccount, createdBy, voidedBy));
+        return mapper.toDomain(saved, debtOpenAccount.getOpenAccount(),
+            debtOpenAccount.getCreatedBy(), debtOpenAccount.getVoidedBy());
     }
 
     @Override

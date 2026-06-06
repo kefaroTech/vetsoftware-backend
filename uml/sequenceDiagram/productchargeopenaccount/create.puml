@@ -95,6 +95,11 @@ alt employee no encontrado
 end
 
 Service -> Service : ProductChargeOpenAccount.create(\nanimal, product, openAccount, createdBy)
+note right of Service
+  La factory congela unit_price = product.salePrice (snapshot).
+  El total de la cuenta se calcula con ese valor, no con el
+  precio vigente del catálogo (histórico inmutable).
+end note
 Service -> Repo : save(charge)
 activate Repo
 Repo -> JpaRepo : getReferenceById(animal, product, openAccount, createdBy)
@@ -119,7 +124,7 @@ activate RecalcSvc
 RecalcSvc -> OARepo : findById(openAccountId)
 OARepo --> RecalcSvc : OpenAccount
 RecalcSvc -> TotalsPort : totalCharges(openAccountId)
-TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+TotalsPort -> DB : SUM(product/service unit_price congelado\n+ general unit_amount*qty*(1+tax_percentage congelado)) WHERE enabled=true
 DB --> TotalsPort : total
 RecalcSvc -> TotalsPort : totalPayments(openAccountId)
 TotalsPort -> DB : SUM(debt payments) WHERE enabled=true

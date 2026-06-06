@@ -8,6 +8,8 @@ participant "DeleteGeneralChargeOpenAccountService" as Service
 participant "GeneralChargeOpenAccountRepository\n<<port.out>>" as Repo
 participant "GeneralChargeOpenAccountJpaRepository\n<<spring-data>>" as JpaRepo
 database "MySQL" as DB
+participant "OpenAccountTotalsQueryPort\n<<port.out>>" as TotalsQuery
+participant "OpenAccountTotalsQueryAdapter" as TotalsQueryAdapter
 participant "OpenAccountRefresher\n<<port.out>>" as Refresher
 participant "RecalculateOpenAccountUseCase\n(openaccount <<port.in>>)" as Recalc
 participant "RecalculateOpenAccountService" as RecalcSvc
@@ -55,6 +57,31 @@ Repo -> JpaRepo : deleteById(id)
 JpaRepo -> DB : UPDATE general_charge_open_accounts SET enabled=false WHERE id=?
 DB --> JpaRepo : ok
 Repo --> Service : void
+
+== Validación: los abonos no pueden superar los cargos restantes ==
+note over Service, DB
+  Hibernate hace flush del soft-delete antes de ejecutar los SUM,
+  así que totalCharges ya excluye este cargo.
+end note
+Service -> TotalsQuery : totalCharges(openAccountId)
+TotalsQuery -> TotalsQueryAdapter : totalCharges(openAccountId)
+TotalsQueryAdapter -> TotalsPort : totalCharges(openAccountId)
+TotalsPort -> DB : SUM(product+service+general charges) WHERE enabled=true
+DB --> TotalsPort : remainingCharges
+TotalsPort --> Service : remainingCharges
+Service -> TotalsQuery : totalPayments(openAccountId)
+TotalsQuery -> TotalsQueryAdapter : totalPayments(openAccountId)
+TotalsQueryAdapter -> TotalsPort : totalPayments(openAccountId)
+TotalsPort -> DB : SUM(debt payments) WHERE enabled=true
+DB --> TotalsPort : payments
+TotalsPort --> Service : payments
+alt payments > remainingCharges
+  Service --> GEH : IllegalStateException("Anula primero los abonos")
+  note right of GEH
+    El rollback de la transacción revierte el soft-delete del cargo.
+  end note
+  GEH --> Client : 409 Conflict (INVALID_STATE)
+end
 
 == Recálculo de la Open Account padre ==
 Service -> Refresher : refresh(openAccountId)

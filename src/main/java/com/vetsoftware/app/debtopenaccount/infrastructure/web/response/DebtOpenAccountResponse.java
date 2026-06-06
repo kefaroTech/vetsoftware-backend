@@ -11,5 +11,9 @@ public record DebtOpenAccountResponse(
         OpenAccountSummary openAccount,
         EmployeeSummary createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        boolean voided,
+        EmployeeSummary voidedBy,
+        LocalDateTime voidedAt,
+        String voidReason
 ) {}

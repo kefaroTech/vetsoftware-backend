@@ -10,8 +10,13 @@ public record GeneralChargeOpenAccountResponse(
         BigDecimal quantity,
         TaxSummary tax,
         boolean hasTax,
+        BigDecimal taxPercentage,
         OpenAccountSummary openAccount,
         EmployeeSummary createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        boolean voided,
+        EmployeeSummary voidedBy,
+        LocalDateTime voidedAt,
+        String voidReason
 ) {}

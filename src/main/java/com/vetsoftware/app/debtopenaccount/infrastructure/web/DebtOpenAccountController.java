@@ -3,6 +3,7 @@ package com.vetsoftware.app.debtopenaccount.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
 import com.vetsoftware.app.debtopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.debtopenaccount.application.dto.OpenAccountSummaryDto;
@@ -13,8 +14,10 @@ import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccou
 import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.ReactivateDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.UpdateDebtOpenAccountUseCase;
+import com.vetsoftware.app.debtopenaccount.application.port.in.VoidDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.CreateDebtOpenAccountRequest;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.UpdateDebtOpenAccountRequest;
+import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.VoidDebtOpenAccountRequest;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.response.DebtOpenAccountResponse;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.response.OpenAccountSummary;
@@ -33,6 +36,7 @@ public class DebtOpenAccountController {
     private final ListDebtOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
     private final DeleteDebtOpenAccountUseCase deleteUseCase;
     private final ReactivateDebtOpenAccountUseCase reactivateUseCase;
+    private final VoidDebtOpenAccountUseCase voidUseCase;
     private final Authz authz;
 
     public DebtOpenAccountController(CreateDebtOpenAccountUseCase createUseCase,
@@ -42,6 +46,7 @@ public class DebtOpenAccountController {
                                      ListDebtOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
                                      DeleteDebtOpenAccountUseCase deleteUseCase,
                                      ReactivateDebtOpenAccountUseCase reactivateUseCase,
+                                     VoidDebtOpenAccountUseCase voidUseCase,
                                      Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -50,6 +55,7 @@ public class DebtOpenAccountController {
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.voidUseCase = voidUseCase;
         this.authz = authz;
     }
 
@@ -98,13 +104,25 @@ public class DebtOpenAccountController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @PatchMapping("/{id}/void")
+    public DebtOpenAccountResponse voidPayment(@PathVariable Long id,
+                                               @Valid @RequestBody VoidDebtOpenAccountRequest request) {
+        return toResponse(voidUseCase.execute(
+            new VoidDebtOpenAccountCommand(id, authz.currentCompanyId(),
+                authz.currentEmployeeId(), request.reason())));
+    }
+
     private DebtOpenAccountResponse toResponse(DebtOpenAccountDto dto) {
         OpenAccountSummaryDto oa = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
+        EmployeeSummaryDto v = dto.voidedBy();
         return new DebtOpenAccountResponse(
             dto.id(), dto.amount(), dto.paymentMethod(),
             new OpenAccountSummary(oa.id(), oa.companyId()),
             e == null ? null : new EmployeeSummary(e.id(), e.name()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.enabled(),
+            dto.voided(),
+            v == null ? null : new EmployeeSummary(v.id(), v.name()),
+            dto.voidedAt(), dto.voidReason());
     }
 }

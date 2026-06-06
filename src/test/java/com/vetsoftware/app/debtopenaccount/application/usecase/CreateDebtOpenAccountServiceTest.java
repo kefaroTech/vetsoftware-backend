@@ -30,7 +30,9 @@ class CreateDebtOpenAccountServiceTest {
             saved = new DebtOpenAccount(1L, debtOpenAccount.getAmount(),
                     debtOpenAccount.getPaymentMethod(), debtOpenAccount.getOpenAccount(),
                     debtOpenAccount.getCreatedBy(), debtOpenAccount.getCreatedDate(),
-                    debtOpenAccount.isEnabled());
+                    debtOpenAccount.isEnabled(), debtOpenAccount.isVoided(),
+                    debtOpenAccount.getVoidedBy(), debtOpenAccount.getVoidedAt(),
+                    debtOpenAccount.getVoidReason());
             return saved;
         }
         @Override public Optional<DebtOpenAccount> findById(Long id) { return Optional.ofNullable(saved); }

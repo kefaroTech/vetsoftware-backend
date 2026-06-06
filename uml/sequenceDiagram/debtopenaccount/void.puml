@@ -1,0 +1,99 @@
+@startuml debt_open_account_void
+title PATCH /debt-open-accounts/{id}/void — Anular un abono (con motivo + autoría)
+
+actor Client
+participant "DebtOpenAccountController" as Controller
+participant "VoidDebtOpenAccountUseCase\n<<port.in>>" as UseCase
+participant "VoidDebtOpenAccountService" as Service
+participant "DebtOpenAccountRepository\n<<port.out>>" as Repo
+participant "OpenAccountQueryPort\n<<port.out>>" as OAQuery
+participant "EmployeeQueryPort\n<<port.out>>" as EmpQuery
+participant "OpenAccountRefresher\n<<port.out>>" as Refresher
+participant "DebtOpenAccount\n<<domain>>" as Domain
+database "MySQL" as DB
+participant "GlobalExceptionHandler" as GEH
+
+note over Client, GEH
+  AuthFilter ya validó el JWT y puso EmployeeContext
+  en SecurityContextHolder antes de llegar al controller.
+  El abono anulado NO se borra: queda enabled=true con voided=true.
+end note
+
+Client -> Controller : PATCH /debt-open-accounts/{id}/void\n+ VoidDebtOpenAccountRequest{reason}
+activate Controller
+
+Controller -> UseCase : execute(VoidDebtOpenAccountCommand\n{id, currentCompanyId, currentEmployeeId, reason})
+note right of UseCase
+  @PreAuthorize:
+  admin.all OR
+  (debtOpenAccount.delete AND @authz.isMyCompany(companyId)) OR
+  SYSTEM
+end note
+
+UseCase -> Service : execute(command)
+activate Service
+
+Service -> Repo : findById(command.id())
+Repo -> DB : SELECT debt_open_account (JOIN FETCH refs)
+DB --> Repo : row | empty
+alt abono no existe
+  Repo --> Service : Optional.empty()
+  Service --> GEH : DebtOpenAccountNotFoundException
+  GEH --> Client : 404 Not Found
+end
+Repo --> Service : DebtOpenAccount
+
+alt company no coincide
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> OAQuery : isOpen(openAccountId)
+OAQuery -> DB : SELECT open_account.status
+DB --> OAQuery : status
+OAQuery --> Service : boolean
+alt cuenta no OPEN
+  Service --> GEH : IllegalStateException
+  GEH --> Client : 409 Conflict (INVALID_STATE)
+end
+
+Service -> EmpQuery : findById(command.voidedById())
+EmpQuery -> DB : SELECT employee
+DB --> EmpQuery : row | empty
+EmpQuery --> Service : Optional<EmployeeRef>
+alt empleado no existe
+  Service --> GEH : IllegalArgumentException
+  GEH --> Client : 400 Bad Request
+end
+
+Service -> Domain : voidPayment(voidedBy, reason)
+note right of Domain
+  Invariantes:
+  - reason obligatorio → IllegalArgumentException (400)
+  - ya anulado → DebtOpenAccountAlreadyVoidedException (409)
+  Setea voided=true, voidedBy, voidedAt=now, voidReason.
+end note
+
+Service -> Repo : save(debtOpenAccount)
+Repo -> DB : UPDATE debt_open_accounts (voided, voided_by_id, voided_at, void_reason)
+DB --> Repo : ok
+Repo --> Service : DebtOpenAccount
+
+Service -> Refresher : refresh(openAccountId)
+note right of Refresher
+  Recalcula totales de la cuenta.
+  El SUM de abonos excluye voided=true,
+  así baja paidAmount / sube saldo.
+end note
+Refresher -> DB : UPDATE open_accounts (paid/outstanding)
+
+Service -> Service : DebtOpenAccountDto.from(debtOpenAccount)
+Service --> UseCase : DebtOpenAccountDto
+UseCase --> Controller : DebtOpenAccountDto
+deactivate Service
+
+Controller -> Controller : toResponse(dto)
+Controller --> Client : 200 OK\nDebtOpenAccountResponse (voided, voidedBy, voidedAt, voidReason)
+deactivate Controller
+
+@enduml

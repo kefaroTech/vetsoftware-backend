@@ -11,10 +11,15 @@ public record GeneralChargeOpenAccountDto(
         BigDecimal quantity,
         TaxSummaryDto tax,
         boolean hasTax,
+        BigDecimal taxPercentage,
         OpenAccountSummaryDto openAccount,
         EmployeeSummaryDto createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        boolean voided,
+        EmployeeSummaryDto voidedBy,
+        LocalDateTime voidedAt,
+        String voidReason
 ) {
     public static GeneralChargeOpenAccountDto from(GeneralChargeOpenAccount charge) {
         return new GeneralChargeOpenAccountDto(
@@ -24,9 +29,14 @@ public record GeneralChargeOpenAccountDto(
                 charge.getQuantity(),
                 charge.getTax() == null ? null : TaxSummaryDto.from(charge.getTax()),
                 charge.isHasTax(),
+                charge.getTaxPercentage(),
                 OpenAccountSummaryDto.from(charge.getOpenAccount()),
                 EmployeeSummaryDto.from(charge.getCreatedBy()),
                 charge.getCreatedDate(),
-                charge.isEnabled());
+                charge.isEnabled(),
+                charge.isVoided(),
+                charge.getVoidedBy() == null ? null : EmployeeSummaryDto.from(charge.getVoidedBy()),
+                charge.getVoidedAt(),
+                charge.getVoidReason());
     }
 }

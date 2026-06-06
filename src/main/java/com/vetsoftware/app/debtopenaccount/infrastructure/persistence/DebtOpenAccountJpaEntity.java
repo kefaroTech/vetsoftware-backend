@@ -39,6 +39,19 @@ public class DebtOpenAccountJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "voided", nullable = false)
+    private boolean voided = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voided_by_id")
+    private EmployeeJpaEntity voidedBy;
+
+    @Column(name = "voided_at")
+    private LocalDateTime voidedAt;
+
+    @Column(name = "void_reason", length = 255)
+    private String voidReason;
+
     protected DebtOpenAccountJpaEntity() {}
 
     public Long getId() { return id; }
@@ -55,4 +68,12 @@ public class DebtOpenAccountJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isVoided() { return voided; }
+    public void setVoided(boolean voided) { this.voided = voided; }
+    public EmployeeJpaEntity getVoidedBy() { return voidedBy; }
+    public void setVoidedBy(EmployeeJpaEntity voidedBy) { this.voidedBy = voidedBy; }
+    public LocalDateTime getVoidedAt() { return voidedAt; }
+    public void setVoidedAt(LocalDateTime voidedAt) { this.voidedAt = voidedAt; }
+    public String getVoidReason() { return voidReason; }
+    public void setVoidReason(String voidReason) { this.voidReason = voidReason; }
 }

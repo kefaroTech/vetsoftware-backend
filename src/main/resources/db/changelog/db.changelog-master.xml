@@ -105,5 +105,13 @@
     <include file="db/changelog/migrations/099_create_general_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/100_add_status_to_open_accounts.xml"/>
     <include file="db/changelog/migrations/101_add_close_tracking_and_version_to_open_accounts.xml"/>
+    <include file="db/changelog/migrations/102_add_unit_price_to_product_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/103_add_unit_price_to_service_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/104_add_tax_percentage_to_general_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/105_add_void_tracking_to_debt_open_accounts.xml"/>
+    <include file="db/changelog/migrations/106_unique_open_account_per_owner.xml"/>
+    <include file="db/changelog/migrations/107_add_void_tracking_to_product_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/108_add_void_tracking_to_service_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/109_add_void_tracking_to_general_charge_open_accounts.xml"/>
 
 </databaseChangeLog>

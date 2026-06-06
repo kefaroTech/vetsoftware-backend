@@ -93,6 +93,11 @@ alt employee no encontrado
 end
 
 Service -> Service : GeneralChargeOpenAccount.create(\nname, unitAmount, quantity, tax, hasTax,\nopenAccount, createdBy)
+note right of Service
+  unitAmount/quantity ya son snapshot; además la factory congela
+  tax_percentage = tax.percentage cuando hasTax (null si no aplica).
+  El total usa ese % guardado, no el vigente del catálogo de impuestos.
+end note
 Service -> Repo : save(charge)
 activate Repo
 Repo -> JpaRepo : getReferenceById(openAccount, createdBy)

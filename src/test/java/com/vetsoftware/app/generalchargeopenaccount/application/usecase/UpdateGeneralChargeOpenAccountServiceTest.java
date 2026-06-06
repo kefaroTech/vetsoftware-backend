@@ -26,8 +26,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
     private final EmployeeRef employee = new EmployeeRef(3L, "Dr. House");
 
     private GeneralChargeOpenAccount stored = new GeneralChargeOpenAccount(1L, "Original",
-            new BigDecimal("10.00"), new BigDecimal("1.00"), tax, true, openAccount, employee,
-            LocalDateTime.now(), true);
+            new BigDecimal("10.00"), new BigDecimal("1.00"), tax, true, new BigDecimal("19.00"),
+            openAccount, employee, LocalDateTime.now(), true, false, null, null, null);
     private GeneralChargeOpenAccount savedCharge;
 
     private GeneralChargeOpenAccountRepository repository(GeneralChargeOpenAccount existing) {

@@ -29,8 +29,9 @@ class CreateGeneralChargeOpenAccountServiceTest {
     private final GeneralChargeOpenAccountRepository repository = new GeneralChargeOpenAccountRepository() {
         @Override public GeneralChargeOpenAccount save(GeneralChargeOpenAccount charge) {
             savedCharge = new GeneralChargeOpenAccount(1L, charge.getName(), charge.getUnitAmount(),
-                    charge.getQuantity(), charge.getTax(), charge.isHasTax(), charge.getOpenAccount(),
-                    charge.getCreatedBy(), charge.getCreatedDate(), charge.isEnabled());
+                    charge.getQuantity(), charge.getTax(), charge.isHasTax(), charge.getTaxPercentage(),
+                    charge.getOpenAccount(), charge.getCreatedBy(), charge.getCreatedDate(), charge.isEnabled(),
+                    charge.isVoided(), charge.getVoidedBy(), charge.getVoidedAt(), charge.getVoidReason());
             return savedCharge;
         }
         @Override public Optional<GeneralChargeOpenAccount> findById(Long id) { return Optional.ofNullable(savedCharge); }
@@ -70,6 +71,7 @@ class CreateGeneralChargeOpenAccountServiceTest {
         assertEquals("Consulta extra", dto.name());
         assertNotNull(dto.tax());
         assertEquals(7L, dto.tax().id());
+        assertEquals(new BigDecimal("19.00"), dto.taxPercentage());
         assertEquals(10L, dto.openAccount().id());
         assertEquals(3L, dto.createdBy().id());
         assertTrue(dto.enabled());

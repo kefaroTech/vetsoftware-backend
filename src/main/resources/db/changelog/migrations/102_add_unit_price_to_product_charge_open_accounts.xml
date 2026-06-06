@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Precio unitario congelado (snapshot) por cargo de producto. El total de la cuenta deja
+         de leer products.sale_price en vivo, evitando que el histórico cambie al editar el catálogo. -->
+    <changeSet id="102_add_unit_price_to_product_charge_open_accounts" author="orlando">
+        <addColumn tableName="product_charge_open_accounts">
+            <column name="unit_price" type="DECIMAL(12,2)"/>
+        </addColumn>
+        <!-- Backfill de filas existentes con el precio de venta vigente (único dato disponible). -->
+        <sql>
+            UPDATE product_charge_open_accounts c
+            JOIN products p ON p.id = c.product_id
+            SET c.unit_price = p.sale_price
+            WHERE c.unit_price IS NULL
+        </sql>
+        <addNotNullConstraint tableName="product_charge_open_accounts" columnName="unit_price"
+                              columnDataType="DECIMAL(12,2)" defaultNullValue="0"/>
+    </changeSet>
+
+</databaseChangeLog>

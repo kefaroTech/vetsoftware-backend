@@ -95,6 +95,11 @@ alt employee no encontrado
 end
 
 Service -> Service : ServiceChargeOpenAccount.create(\nanimal, service, openAccount, createdBy)
+note right of Service
+  La factory congela unit_price = service.price (snapshot).
+  El total de la cuenta se calcula con ese valor, no con el
+  precio vigente del catálogo (histórico inmutable).
+end note
 Service -> Repo : save(charge)
 activate Repo
 Repo -> JpaRepo : getReferenceById(animal, service, openAccount, createdBy)

@@ -12,7 +12,11 @@ public record DebtOpenAccountDto(
         OpenAccountSummaryDto openAccount,
         EmployeeSummaryDto createdBy,
         LocalDateTime createdDate,
-        boolean enabled
+        boolean enabled,
+        boolean voided,
+        EmployeeSummaryDto voidedBy,
+        LocalDateTime voidedAt,
+        String voidReason
 ) {
     public static DebtOpenAccountDto from(DebtOpenAccount debtOpenAccount) {
         return new DebtOpenAccountDto(
@@ -23,6 +27,11 @@ public record DebtOpenAccountDto(
                 debtOpenAccount.getCreatedBy() == null ? null
                     : EmployeeSummaryDto.from(debtOpenAccount.getCreatedBy()),
                 debtOpenAccount.getCreatedDate(),
-                debtOpenAccount.isEnabled());
+                debtOpenAccount.isEnabled(),
+                debtOpenAccount.isVoided(),
+                debtOpenAccount.getVoidedBy() == null ? null
+                    : EmployeeSummaryDto.from(debtOpenAccount.getVoidedBy()),
+                debtOpenAccount.getVoidedAt(),
+                debtOpenAccount.getVoidReason());
     }
 }

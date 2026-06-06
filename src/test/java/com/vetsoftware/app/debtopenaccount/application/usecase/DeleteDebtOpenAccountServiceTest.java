@@ -19,7 +19,7 @@ class DeleteDebtOpenAccountServiceTest {
 
     private final DebtOpenAccount existing = new DebtOpenAccount(1L, new BigDecimal("50.00"),
             PaymentMethod.CASH, new OpenAccountRef(10L, 5L), new EmployeeRef(7L, "Dr. House"),
-            LocalDateTime.now(), true);
+            LocalDateTime.now(), true, false, null, null, null);
 
     private Long deletedId;
     private Long refreshedOpenAccountId;

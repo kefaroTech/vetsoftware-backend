@@ -10,14 +10,23 @@ public class GeneralChargeOpenAccount {
     private BigDecimal quantity;
     private TaxRef tax;
     private boolean hasTax;
+    /** Porcentaje de impuesto congelado al crear/actualizar el cargo; null si no aplica impuesto. */
+    private BigDecimal taxPercentage;
     private OpenAccountRef openAccount;
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
     private boolean enabled;
+    private boolean voided;
+    private EmployeeRef voidedBy;
+    private LocalDateTime voidedAt;
+    private String voidReason;
 
     public GeneralChargeOpenAccount(Long id, String name, BigDecimal unitAmount, BigDecimal quantity,
-                                    TaxRef tax, boolean hasTax, OpenAccountRef openAccount,
-                                    EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
+                                    TaxRef tax, boolean hasTax, BigDecimal taxPercentage,
+                                    OpenAccountRef openAccount, EmployeeRef createdBy,
+                                    LocalDateTime createdDate, boolean enabled,
+                                    boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
+                                    String voidReason) {
         validate(name, unitAmount, quantity, openAccount);
         this.id = id;
         this.name = name;
@@ -25,17 +34,38 @@ public class GeneralChargeOpenAccount {
         this.quantity = quantity;
         this.tax = tax;
         this.hasTax = hasTax;
+        this.taxPercentage = taxPercentage;
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.voided = voided;
+        this.voidedBy = voidedBy;
+        this.voidedAt = voidedAt;
+        this.voidReason = voidReason;
     }
 
     public static GeneralChargeOpenAccount create(String name, BigDecimal unitAmount, BigDecimal quantity,
                                                   TaxRef tax, boolean hasTax, OpenAccountRef openAccount,
                                                   EmployeeRef createdBy) {
-        return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, openAccount,
-                createdBy, LocalDateTime.now(), true);
+        return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax,
+                snapshotTaxPercentage(tax, hasTax), openAccount, createdBy, LocalDateTime.now(), true,
+                false, null, null, null);
+    }
+
+    /**
+     * Anula el cargo dejando la fila visible (no toca {@code enabled}): registra quién lo anuló,
+     * cuándo y el motivo obligatorio. Un cargo ya anulado no puede volver a anularse. El total de
+     * la cuenta deja de contar este cargo (lo excluye la query de suma con voided = false).
+     */
+    public void voidCharge(EmployeeRef voidedBy, String reason) {
+        if (this.voided) throw new GeneralChargeOpenAccountAlreadyVoidedException(this.id);
+        if (voidedBy == null) throw new IllegalArgumentException("voidedBy is required");
+        if (reason == null || reason.isBlank()) throw new IllegalArgumentException("reason is required to void");
+        this.voided = true;
+        this.voidedBy = voidedBy;
+        this.voidedAt = LocalDateTime.now();
+        this.voidReason = reason;
     }
 
     public void update(String name, BigDecimal unitAmount, BigDecimal quantity, TaxRef tax,
@@ -46,7 +76,13 @@ public class GeneralChargeOpenAccount {
         this.quantity = quantity;
         this.tax = tax;
         this.hasTax = hasTax;
+        this.taxPercentage = snapshotTaxPercentage(tax, hasTax);
         this.openAccount = openAccount;
+    }
+
+    /** Congela el % de impuesto vigente: el total no debe cambiar si el catálogo de impuestos se edita. */
+    private static BigDecimal snapshotTaxPercentage(TaxRef tax, boolean hasTax) {
+        return hasTax && tax != null ? tax.percentage() : null;
     }
 
     private static void validate(String name, BigDecimal unitAmount, BigDecimal quantity,
@@ -66,10 +102,15 @@ public class GeneralChargeOpenAccount {
     public BigDecimal getQuantity() { return quantity; }
     public TaxRef getTax() { return tax; }
     public boolean isHasTax() { return hasTax; }
+    public BigDecimal getTaxPercentage() { return taxPercentage; }
     public OpenAccountRef getOpenAccount() { return openAccount; }
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }
+    public boolean isVoided() { return voided; }
+    public EmployeeRef getVoidedBy() { return voidedBy; }
+    public LocalDateTime getVoidedAt() { return voidedAt; }
+    public String getVoidReason() { return voidReason; }
 }

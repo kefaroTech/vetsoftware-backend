@@ -44,10 +44,12 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
         OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
         EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
+            : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
         ProductChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, product, openAccount, createdBy));
+            jpaRepository.save(mapper.toJpa(charge, animal, product, openAccount, createdBy, voidedBy));
         return mapper.toDomain(saved, charge.getAnimal(), charge.getProduct(),
-            charge.getOpenAccount(), charge.getCreatedBy());
+            charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
     }
 
     @Override

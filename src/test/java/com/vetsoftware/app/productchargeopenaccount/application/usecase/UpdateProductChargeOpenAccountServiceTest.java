@@ -28,7 +28,8 @@ class UpdateProductChargeOpenAccountServiceTest {
     private final EmployeeRef createdBy = new EmployeeRef(7L, "Dr. House");
 
     private final ProductChargeOpenAccount existing = new ProductChargeOpenAccount(1L, animal, product,
-            new OpenAccountRef(10L, 5L), createdBy, LocalDateTime.now(), true);
+            new BigDecimal("20.00"), new OpenAccountRef(10L, 5L), createdBy, LocalDateTime.now(), true,
+            false, null, null, null);
     private ProductChargeOpenAccount saved;
     private final List<Long> refreshed = new ArrayList<>();
 
