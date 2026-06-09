@@ -10,6 +10,8 @@ import com.vetsoftware.app.service.infrastructure.persistence.ServiceJpaEntity;
 import com.vetsoftware.app.service.infrastructure.persistence.ServiceJpaRepository;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.ServiceChargeOpenAccountRepository;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccount;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -20,6 +22,7 @@ public class JpaServiceChargeOpenAccountRepository implements ServiceChargeOpenA
     private final ServiceChargeOpenAccountJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
     private final ServiceJpaRepository serviceJpaRepository;
+    private final TaxJpaRepository taxJpaRepository;
     private final OpenAccountJpaRepository openAccountJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
@@ -27,12 +30,14 @@ public class JpaServiceChargeOpenAccountRepository implements ServiceChargeOpenA
                                                  ServiceChargeOpenAccountJpaMapper mapper,
                                                  AnimalJpaRepository animalJpaRepository,
                                                  ServiceJpaRepository serviceJpaRepository,
+                                                 TaxJpaRepository taxJpaRepository,
                                                  OpenAccountJpaRepository openAccountJpaRepository,
                                                  EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
         this.serviceJpaRepository = serviceJpaRepository;
+        this.taxJpaRepository = taxJpaRepository;
         this.openAccountJpaRepository = openAccountJpaRepository;
         this.employeeJpaRepository = employeeJpaRepository;
     }
@@ -41,14 +46,16 @@ public class JpaServiceChargeOpenAccountRepository implements ServiceChargeOpenA
     public ServiceChargeOpenAccount save(ServiceChargeOpenAccount charge) {
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(charge.getAnimal().id());
         ServiceJpaEntity service = serviceJpaRepository.getReferenceById(charge.getService().id());
+        TaxJpaEntity tax = charge.getTax() == null ? null
+            : taxJpaRepository.getReferenceById(charge.getTax().id());
         OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
         EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
         EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
         ServiceChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, service, openAccount, createdBy, voidedBy));
-        return mapper.toDomain(saved, charge.getAnimal(), charge.getService(),
+            jpaRepository.save(mapper.toJpa(charge, animal, service, tax, openAccount, createdBy, voidedBy));
+        return mapper.toDomain(saved, charge.getAnimal(), charge.getService(), charge.getTax(),
             charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
     }
 

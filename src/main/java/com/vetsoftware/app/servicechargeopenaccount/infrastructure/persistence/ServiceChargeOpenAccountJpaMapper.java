@@ -9,6 +9,8 @@ import com.vetsoftware.app.servicechargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.servicechargeopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccount;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceRef;
+import com.vetsoftware.app.servicechargeopenaccount.domain.TaxRef;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,6 +19,7 @@ public class ServiceChargeOpenAccountJpaMapper {
     public ServiceChargeOpenAccountJpaEntity toJpa(ServiceChargeOpenAccount charge,
                                                    AnimalJpaEntity animal,
                                                    ServiceJpaEntity service,
+                                                   TaxJpaEntity tax,
                                                    OpenAccountJpaEntity openAccount,
                                                    EmployeeJpaEntity createdBy,
                                                    EmployeeJpaEntity voidedBy) {
@@ -25,6 +28,13 @@ public class ServiceChargeOpenAccountJpaMapper {
         entity.setAnimal(animal);
         entity.setService(service);
         entity.setUnitPrice(charge.getUnitPrice());
+        entity.setTax(tax);
+        entity.setHasTax(charge.isHasTax());
+        entity.setTaxPercentage(charge.getTaxPercentage());
+        entity.setTaxName(charge.getTaxName());
+        entity.setBaseAmount(charge.getBaseAmount());
+        entity.setTaxAmount(charge.getTaxAmount());
+        entity.setTotalAmount(charge.getTotalAmount());
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(charge.getCreatedDate());
@@ -39,19 +49,21 @@ public class ServiceChargeOpenAccountJpaMapper {
     public ServiceChargeOpenAccount toDomain(ServiceChargeOpenAccountJpaEntity entity) {
         AnimalJpaEntity a = entity.getAnimal();
         ServiceJpaEntity s = entity.getService();
+        TaxJpaEntity t = entity.getTax();
         OpenAccountJpaEntity o = entity.getOpenAccount();
         EmployeeJpaEntity e = entity.getCreatedBy();
         EmployeeJpaEntity v = entity.getVoidedBy();
         return toDomain(entity,
             new AnimalRef(a.getId(), a.getName(), a.getCode()),
             new ServiceRef(s.getId(), s.getName(), s.getPrice()),
+            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
             new OpenAccountRef(o.getId(), o.getCompany().getId()),
             e == null ? null : new EmployeeRef(e.getId(), e.getName()),
             v == null ? null : new EmployeeRef(v.getId(), v.getName()));
     }
 
     public ServiceChargeOpenAccount toDomain(ServiceChargeOpenAccountJpaEntity entity,
-                                             AnimalRef animalRef, ServiceRef serviceRef,
+                                             AnimalRef animalRef, ServiceRef serviceRef, TaxRef taxRef,
                                              OpenAccountRef openAccountRef, EmployeeRef createdByRef,
                                              EmployeeRef voidedByRef) {
         return new ServiceChargeOpenAccount(
@@ -59,6 +71,13 @@ public class ServiceChargeOpenAccountJpaMapper {
             animalRef,
             serviceRef,
             entity.getUnitPrice(),
+            taxRef,
+            entity.isHasTax(),
+            entity.getTaxPercentage(),
+            entity.getTaxName(),
+            entity.getBaseAmount(),
+            entity.getTaxAmount(),
+            entity.getTotalAmount(),
             openAccountRef,
             createdByRef,
             entity.getCreatedDate(),

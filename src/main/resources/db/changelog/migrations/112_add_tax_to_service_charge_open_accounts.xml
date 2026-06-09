@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Impuesto por línea en cargos de servicio. El precio (unit_price) se interpreta CON IVA
+         incluido: total_amount = unit_price, base_amount = unit_price / (1 + tax_percentage/100),
+         tax_amount = total - base. El impuesto se hereda del catálogo (services.has_tax / tax) y se
+         congela al crear el cargo. tax_id es informativo; el snapshot (tax_percentage + tax_name) es
+         autoritativo. Las filas existentes no tenían impuesto: has_tax = false, base = total = unit_price. -->
+    <changeSet id="112_add_tax_to_service_charge_open_accounts" author="orlando">
+        <addColumn tableName="service_charge_open_accounts">
+            <column name="has_tax" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_service_charge_open_accounts_tax"
+                             references="taxes(id)"/>
+            </column>
+            <column name="tax_percentage" type="DECIMAL(5,2)"/>
+            <column name="tax_name" type="VARCHAR(100)"/>
+            <column name="base_amount" type="DECIMAL(12,2)"/>
+            <column name="tax_amount" type="DECIMAL(12,2)"/>
+            <column name="total_amount" type="DECIMAL(12,2)"/>
+        </addColumn>
+
+        <!-- Backfill: las filas históricas no aplicaban impuesto. No se reescribe el saldo. -->
+        <sql>
+            UPDATE service_charge_open_accounts
+            SET base_amount = unit_price, tax_amount = 0, total_amount = unit_price
+        </sql>
+
+        <addNotNullConstraint tableName="service_charge_open_accounts"
+                              columnName="base_amount" columnDataType="DECIMAL(12,2)"/>
+        <addNotNullConstraint tableName="service_charge_open_accounts"
+                              columnName="tax_amount" columnDataType="DECIMAL(12,2)"/>
+        <addNotNullConstraint tableName="service_charge_open_accounts"
+                              columnName="total_amount" columnDataType="DECIMAL(12,2)"/>
+    </changeSet>
+
+</databaseChangeLog>

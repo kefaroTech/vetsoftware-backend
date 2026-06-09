@@ -1,8 +1,11 @@
 package com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaEntity;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductRef;
+import com.vetsoftware.app.productchargeopenaccount.domain.TaxRef;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +19,12 @@ public class JpaProductQueryPort implements ProductQueryPort {
 
     @Override
     public Optional<ProductRef> findById(Long productId) {
-        return productJpaRepository.findById(productId)
-            .map(e -> new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice()));
+        return productJpaRepository.findById(productId).map(JpaProductQueryPort::toRef);
+    }
+
+    private static ProductRef toRef(ProductJpaEntity e) {
+        TaxJpaEntity t = e.getTax();
+        TaxRef tax = e.isHasTax() && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
+        return new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice(), e.isHasTax(), tax);
     }
 }

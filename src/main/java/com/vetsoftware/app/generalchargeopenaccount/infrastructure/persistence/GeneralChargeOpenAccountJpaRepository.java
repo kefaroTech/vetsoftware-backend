@@ -25,13 +25,11 @@ public interface GeneralChargeOpenAccountJpaRepository
         value = "UPDATE general_charge_open_accounts SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
-    // Total general charges for an open account = unitAmount * quantity, plus tax computed from the
-    // FROZEN tax percentage (snapshot at creation), NOT the current catalog percentage.
-    // enabled = true is filtered explicitly (no @SQLRestriction for aggregates).
+    // Total general charges for an open account = SUM(total_amount), the per-line gross already
+    // computed and frozen at create/update (base + tax). No tax math here: the breakdown is
+    // persisted. enabled = true is filtered explicitly (no @SQLRestriction for aggregates).
     @org.springframework.data.jpa.repository.Query(
-        "SELECT COALESCE(SUM(CASE WHEN c.hasTax = true AND c.taxPercentage IS NOT NULL "
-        + "THEN c.unitAmount * c.quantity * (1 + c.taxPercentage / 100) "
-        + "ELSE c.unitAmount * c.quantity END), 0) FROM GeneralChargeOpenAccountJpaEntity c "
+        "SELECT COALESCE(SUM(c.totalAmount), 0) FROM GeneralChargeOpenAccountJpaEntity c "
         + "WHERE c.openAccount.id = :openAccountId AND c.enabled = true AND c.voided = false")
     java.math.BigDecimal sumChargesByOpenAccountId(
         @org.springframework.data.repository.query.Param("openAccountId") Long openAccountId);

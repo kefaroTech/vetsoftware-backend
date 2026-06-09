@@ -113,5 +113,8 @@
     <include file="db/changelog/migrations/107_add_void_tracking_to_product_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/108_add_void_tracking_to_service_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/109_add_void_tracking_to_general_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/110_add_tax_breakdown_to_general_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/111_add_tax_to_product_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/112_add_tax_to_service_charge_open_accounts.xml"/>
 
 </databaseChangeLog>

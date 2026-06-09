@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Desglose tributario persistido por línea: el total de la cuenta deja de calcular el IVA
+         dentro de un SUM y pasa a sumar total_amount. base_amount = unit_amount * quantity (neto,
+         el IVA va por encima); tax_amount = base * tax_percentage / 100 (snapshot congelado);
+         total_amount = base + tax. tax_name congela el nombre del impuesto para auditoría. -->
+    <changeSet id="110_add_tax_breakdown_to_general_charge_open_accounts" author="orlando">
+        <addColumn tableName="general_charge_open_accounts">
+            <column name="base_amount" type="DECIMAL(12,2)"/>
+            <column name="tax_amount" type="DECIMAL(12,2)"/>
+            <column name="total_amount" type="DECIMAL(12,2)"/>
+            <column name="tax_name" type="VARCHAR(100)"/>
+        </addColumn>
+
+        <!-- Backfill: reproduce el total actual con redondeo por línea (HALF_UP, 2 decimales). -->
+        <sql>
+            UPDATE general_charge_open_accounts c
+            LEFT JOIN taxes t ON t.id = c.tax_id
+            SET c.base_amount = ROUND(c.unit_amount * c.quantity, 2),
+                c.tax_amount = CASE WHEN c.has_tax = 1 AND c.tax_percentage IS NOT NULL
+                                    THEN ROUND(c.unit_amount * c.quantity * c.tax_percentage / 100, 2)
+                                    ELSE 0 END,
+                c.tax_name = CASE WHEN c.has_tax = 1 THEN t.name ELSE NULL END
+        </sql>
+        <sql>
+            UPDATE general_charge_open_accounts SET total_amount = base_amount + tax_amount
+        </sql>
+
+        <addNotNullConstraint tableName="general_charge_open_accounts"
+                              columnName="base_amount" columnDataType="DECIMAL(12,2)"/>
+        <addNotNullConstraint tableName="general_charge_open_accounts"
+                              columnName="tax_amount" columnDataType="DECIMAL(12,2)"/>
+        <addNotNullConstraint tableName="general_charge_open_accounts"
+                              columnName="total_amount" columnDataType="DECIMAL(12,2)"/>
+    </changeSet>
+
+</databaseChangeLog>

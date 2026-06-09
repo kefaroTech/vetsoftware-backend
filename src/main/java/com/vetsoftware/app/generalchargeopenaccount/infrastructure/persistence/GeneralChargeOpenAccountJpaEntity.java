@@ -37,6 +37,18 @@ public class GeneralChargeOpenAccountJpaEntity {
     @Column(name = "tax_percentage", precision = 5, scale = 2)
     private BigDecimal taxPercentage;
 
+    @Column(name = "tax_name", length = 100)
+    private String taxName;
+
+    @Column(name = "base_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal baseAmount;
+
+    @Column(name = "tax_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal taxAmount;
+
+    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "open_account_id", nullable = false)
     private OpenAccountJpaEntity openAccount;
@@ -80,6 +92,14 @@ public class GeneralChargeOpenAccountJpaEntity {
     public void setHasTax(boolean hasTax) { this.hasTax = hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }
     public void setTaxPercentage(BigDecimal taxPercentage) { this.taxPercentage = taxPercentage; }
+    public String getTaxName() { return taxName; }
+    public void setTaxName(String taxName) { this.taxName = taxName; }
+    public BigDecimal getBaseAmount() { return baseAmount; }
+    public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public OpenAccountJpaEntity getOpenAccount() { return openAccount; }
     public void setOpenAccount(OpenAccountJpaEntity openAccount) { this.openAccount = openAccount; }
     public EmployeeJpaEntity getCreatedBy() { return createdBy; }

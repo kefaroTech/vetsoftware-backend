@@ -5,6 +5,9 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class GeneralChargeOpenAccount {
+    private static final int MONEY_SCALE = 2;
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+
     private Long id;
     private String name;
     private BigDecimal unitAmount;
@@ -13,6 +16,12 @@ public class GeneralChargeOpenAccount {
     private boolean hasTax;
     /** Porcentaje de impuesto congelado al crear/actualizar el cargo; null si no aplica impuesto. */
     private BigDecimal taxPercentage;
+    /** Nombre del impuesto congelado: sobrevive aunque el catálogo deshabilite el impuesto. */
+    private String taxName;
+    /** Desglose tributario persistido (cargo general = base SIN IVA, el impuesto va por encima). */
+    private BigDecimal baseAmount;
+    private BigDecimal taxAmount;
+    private BigDecimal totalAmount;
     private OpenAccountRef openAccount;
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
@@ -23,7 +32,8 @@ public class GeneralChargeOpenAccount {
     private String voidReason;
 
     public GeneralChargeOpenAccount(Long id, String name, BigDecimal unitAmount, BigDecimal quantity,
-                                    TaxRef tax, boolean hasTax, BigDecimal taxPercentage,
+                                    TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
+                                    BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
@@ -36,6 +46,10 @@ public class GeneralChargeOpenAccount {
         this.tax = tax;
         this.hasTax = hasTax;
         this.taxPercentage = taxPercentage;
+        this.taxName = taxName;
+        this.baseAmount = baseAmount;
+        this.taxAmount = taxAmount;
+        this.totalAmount = totalAmount;
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
@@ -49,8 +63,12 @@ public class GeneralChargeOpenAccount {
     public static GeneralChargeOpenAccount create(String name, BigDecimal unitAmount, BigDecimal quantity,
                                                   TaxRef tax, boolean hasTax, OpenAccountRef openAccount,
                                                   EmployeeRef createdBy) {
-        return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax,
-                snapshotTaxPercentage(tax, hasTax), openAccount, createdBy, LocalDateTime.now(), true,
+        BigDecimal pct = snapshotTaxPercentage(tax, hasTax);
+        BigDecimal base = baseAmount(unitAmount, quantity);
+        BigDecimal taxAmt = taxAmount(base, pct);
+        return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, pct,
+                snapshotTaxName(tax, hasTax), base, taxAmt, base.add(taxAmt),
+                openAccount, createdBy, LocalDateTime.now(), true,
                 false, null, null, null);
     }
 
@@ -78,6 +96,10 @@ public class GeneralChargeOpenAccount {
         this.tax = tax;
         this.hasTax = hasTax;
         this.taxPercentage = snapshotTaxPercentage(tax, hasTax);
+        this.taxName = snapshotTaxName(tax, hasTax);
+        this.baseAmount = baseAmount(unitAmount, quantity);
+        this.taxAmount = taxAmount(this.baseAmount, this.taxPercentage);
+        this.totalAmount = this.baseAmount.add(this.taxAmount);
         this.openAccount = openAccount;
     }
 
@@ -86,18 +108,24 @@ public class GeneralChargeOpenAccount {
         return hasTax && tax != null ? tax.percentage() : null;
     }
 
-    /**
-     * Monto efectivo que el cargo aporta al total de la cuenta: unitAmount * quantity, con el
-     * impuesto congelado aplicado cuando corresponde (misma fórmula que la query de suma).
-     */
+    private static String snapshotTaxName(TaxRef tax, boolean hasTax) {
+        return hasTax && tax != null ? tax.name() : null;
+    }
+
+    /** Base gravable = unitAmount * quantity (cargo general: el IVA se aplica por encima). */
+    private static BigDecimal baseAmount(BigDecimal unitAmount, BigDecimal quantity) {
+        return unitAmount.multiply(quantity).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** Impuesto en pesos, redondeado por línea (HALF_UP, 2 decimales). */
+    private static BigDecimal taxAmount(BigDecimal base, BigDecimal percentage) {
+        if (percentage == null) return BigDecimal.ZERO.setScale(MONEY_SCALE);
+        return base.multiply(percentage).divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** Monto efectivo que el cargo aporta al total de la cuenta (= total_amount persistido). */
     public BigDecimal effectiveAmount() {
-        BigDecimal base = unitAmount.multiply(quantity);
-        if (hasTax && taxPercentage != null) {
-            BigDecimal factor = BigDecimal.ONE.add(
-                taxPercentage.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
-            return base.multiply(factor).setScale(2, RoundingMode.HALF_UP);
-        }
-        return base.setScale(2, RoundingMode.HALF_UP);
+        return totalAmount;
     }
 
     private static void validate(String name, BigDecimal unitAmount, BigDecimal quantity,
@@ -118,6 +146,10 @@ public class GeneralChargeOpenAccount {
     public TaxRef getTax() { return tax; }
     public boolean isHasTax() { return hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }
+    public String getTaxName() { return taxName; }
+    public BigDecimal getBaseAmount() { return baseAmount; }
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
     public OpenAccountRef getOpenAccount() { return openAccount; }
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }

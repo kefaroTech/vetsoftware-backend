@@ -25,6 +25,10 @@ public class GeneralChargeOpenAccountJpaMapper {
         entity.setTax(tax);
         entity.setHasTax(charge.isHasTax());
         entity.setTaxPercentage(charge.getTaxPercentage());
+        entity.setTaxName(charge.getTaxName());
+        entity.setBaseAmount(charge.getBaseAmount());
+        entity.setTaxAmount(charge.getTaxAmount());
+        entity.setTotalAmount(charge.getTotalAmount());
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(charge.getCreatedDate());
@@ -59,6 +63,10 @@ public class GeneralChargeOpenAccountJpaMapper {
             taxRef,
             entity.isHasTax(),
             entity.getTaxPercentage(),
+            entity.getTaxName(),
+            entity.getBaseAmount(),
+            entity.getTaxAmount(),
+            entity.getTotalAmount(),
             openAccountRef,
             createdByRef,
             entity.getCreatedDate(),

@@ -9,6 +9,8 @@ import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductRef;
+import com.vetsoftware.app.productchargeopenaccount.domain.TaxRef;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,6 +19,7 @@ public class ProductChargeOpenAccountJpaMapper {
     public ProductChargeOpenAccountJpaEntity toJpa(ProductChargeOpenAccount charge,
                                                    AnimalJpaEntity animal,
                                                    ProductJpaEntity product,
+                                                   TaxJpaEntity tax,
                                                    OpenAccountJpaEntity openAccount,
                                                    EmployeeJpaEntity createdBy,
                                                    EmployeeJpaEntity voidedBy) {
@@ -25,6 +28,13 @@ public class ProductChargeOpenAccountJpaMapper {
         entity.setAnimal(animal);
         entity.setProduct(product);
         entity.setUnitPrice(charge.getUnitPrice());
+        entity.setTax(tax);
+        entity.setHasTax(charge.isHasTax());
+        entity.setTaxPercentage(charge.getTaxPercentage());
+        entity.setTaxName(charge.getTaxName());
+        entity.setBaseAmount(charge.getBaseAmount());
+        entity.setTaxAmount(charge.getTaxAmount());
+        entity.setTotalAmount(charge.getTotalAmount());
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(charge.getCreatedDate());
@@ -39,12 +49,14 @@ public class ProductChargeOpenAccountJpaMapper {
     public ProductChargeOpenAccount toDomain(ProductChargeOpenAccountJpaEntity entity) {
         AnimalJpaEntity a = entity.getAnimal();
         ProductJpaEntity p = entity.getProduct();
+        TaxJpaEntity t = entity.getTax();
         OpenAccountJpaEntity o = entity.getOpenAccount();
         EmployeeJpaEntity e = entity.getCreatedBy();
         EmployeeJpaEntity v = entity.getVoidedBy();
         return toDomain(entity,
             new AnimalRef(a.getId(), a.getName(), a.getCode()),
             new ProductRef(p.getId(), p.getName(), p.getCode(), p.getSalePrice()),
+            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
             new OpenAccountRef(o.getId(), o.getCompany().getId()),
             e == null ? null : new EmployeeRef(e.getId(), e.getName()),
             v == null ? null : new EmployeeRef(v.getId(), v.getName()));
@@ -53,6 +65,7 @@ public class ProductChargeOpenAccountJpaMapper {
     public ProductChargeOpenAccount toDomain(ProductChargeOpenAccountJpaEntity entity,
                                              AnimalRef animalRef,
                                              ProductRef productRef,
+                                             TaxRef taxRef,
                                              OpenAccountRef openAccountRef,
                                              EmployeeRef createdByRef,
                                              EmployeeRef voidedByRef) {
@@ -61,6 +74,13 @@ public class ProductChargeOpenAccountJpaMapper {
             animalRef,
             productRef,
             entity.getUnitPrice(),
+            taxRef,
+            entity.isHasTax(),
+            entity.getTaxPercentage(),
+            entity.getTaxName(),
+            entity.getBaseAmount(),
+            entity.getTaxAmount(),
+            entity.getTotalAmount(),
             openAccountRef,
             createdByRef,
             entity.getCreatedDate(),

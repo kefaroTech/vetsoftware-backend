@@ -10,6 +10,8 @@ import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaEntity;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
+import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -20,6 +22,7 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     private final ProductChargeOpenAccountJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
     private final ProductJpaRepository productJpaRepository;
+    private final TaxJpaRepository taxJpaRepository;
     private final OpenAccountJpaRepository openAccountJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
@@ -27,12 +30,14 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
                                                  ProductChargeOpenAccountJpaMapper mapper,
                                                  AnimalJpaRepository animalJpaRepository,
                                                  ProductJpaRepository productJpaRepository,
+                                                 TaxJpaRepository taxJpaRepository,
                                                  OpenAccountJpaRepository openAccountJpaRepository,
                                                  EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
         this.productJpaRepository = productJpaRepository;
+        this.taxJpaRepository = taxJpaRepository;
         this.openAccountJpaRepository = openAccountJpaRepository;
         this.employeeJpaRepository = employeeJpaRepository;
     }
@@ -41,14 +46,16 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     public ProductChargeOpenAccount save(ProductChargeOpenAccount charge) {
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(charge.getAnimal().id());
         ProductJpaEntity product = productJpaRepository.getReferenceById(charge.getProduct().id());
+        TaxJpaEntity tax = charge.getTax() == null ? null
+            : taxJpaRepository.getReferenceById(charge.getTax().id());
         OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
         EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
         EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
             : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
         ProductChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, product, openAccount, createdBy, voidedBy));
-        return mapper.toDomain(saved, charge.getAnimal(), charge.getProduct(),
+            jpaRepository.save(mapper.toJpa(charge, animal, product, tax, openAccount, createdBy, voidedBy));
+        return mapper.toDomain(saved, charge.getAnimal(), charge.getProduct(), charge.getTax(),
             charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
     }
 
