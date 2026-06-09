@@ -18,7 +18,7 @@ public class GeneralChargeOpenAccount {
     private BigDecimal taxPercentage;
     /** Nombre del impuesto congelado: sobrevive aunque el catálogo deshabilite el impuesto. */
     private String taxName;
-    /** Desglose tributario persistido (cargo general = base SIN IVA, el impuesto va por encima). */
+    /** Desglose tributario persistido: el monto incluye IVA → base = total / (1 + tasa), iva = total - base. */
     private BigDecimal baseAmount;
     private BigDecimal taxAmount;
     private BigDecimal totalAmount;
@@ -64,10 +64,10 @@ public class GeneralChargeOpenAccount {
                                                   TaxRef tax, boolean hasTax, OpenAccountRef openAccount,
                                                   EmployeeRef createdBy) {
         BigDecimal pct = snapshotTaxPercentage(tax, hasTax);
-        BigDecimal base = baseAmount(unitAmount, quantity);
-        BigDecimal taxAmt = taxAmount(base, pct);
+        BigDecimal total = grossTotal(unitAmount, quantity);
+        BigDecimal base = extractBase(total, pct);
         return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, pct,
-                snapshotTaxName(tax, hasTax), base, taxAmt, base.add(taxAmt),
+                snapshotTaxName(tax, hasTax), base, total.subtract(base), total,
                 openAccount, createdBy, LocalDateTime.now(), true,
                 false, null, null, null);
     }
@@ -97,9 +97,9 @@ public class GeneralChargeOpenAccount {
         this.hasTax = hasTax;
         this.taxPercentage = snapshotTaxPercentage(tax, hasTax);
         this.taxName = snapshotTaxName(tax, hasTax);
-        this.baseAmount = baseAmount(unitAmount, quantity);
-        this.taxAmount = taxAmount(this.baseAmount, this.taxPercentage);
-        this.totalAmount = this.baseAmount.add(this.taxAmount);
+        this.totalAmount = grossTotal(unitAmount, quantity);
+        this.baseAmount = extractBase(this.totalAmount, this.taxPercentage);
+        this.taxAmount = this.totalAmount.subtract(this.baseAmount);
         this.openAccount = openAccount;
     }
 
@@ -112,15 +112,16 @@ public class GeneralChargeOpenAccount {
         return hasTax && tax != null ? tax.name() : null;
     }
 
-    /** Base gravable = unitAmount * quantity (cargo general: el IVA se aplica por encima). */
-    private static BigDecimal baseAmount(BigDecimal unitAmount, BigDecimal quantity) {
+    /** Total bruto (IVA incluido) = unitAmount * quantity. */
+    private static BigDecimal grossTotal(BigDecimal unitAmount, BigDecimal quantity) {
         return unitAmount.multiply(quantity).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    /** Impuesto en pesos, redondeado por línea (HALF_UP, 2 decimales). */
-    private static BigDecimal taxAmount(BigDecimal base, BigDecimal percentage) {
-        if (percentage == null) return BigDecimal.ZERO.setScale(MONEY_SCALE);
-        return base.multiply(percentage).divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
+    /** Extrae la base gravable de un total CON IVA incluido: base = total / (1 + tasa/100). */
+    private static BigDecimal extractBase(BigDecimal total, BigDecimal percentage) {
+        if (percentage == null || percentage.signum() == 0) return total;
+        BigDecimal factor = BigDecimal.ONE.add(percentage.divide(HUNDRED, 6, RoundingMode.HALF_UP));
+        return total.divide(factor, MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
     /** Monto efectivo que el cargo aporta al total de la cuenta (= total_amount persistido). */
