@@ -10,7 +10,6 @@ import com.vetsoftware.app.productchargeopenaccount.application.dto.OpenAccountS
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.CreateProductChargeOpenAccountUseCase;
-import com.vetsoftware.app.productchargeopenaccount.application.port.in.DeleteProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.FindProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.ListProductChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.ListProductChargeOpenAccountsUseCase;
@@ -38,7 +37,6 @@ public class ProductChargeOpenAccountController {
     private final FindProductChargeOpenAccountUseCase findUseCase;
     private final ListProductChargeOpenAccountsUseCase listUseCase;
     private final ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    private final DeleteProductChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateProductChargeOpenAccountUseCase reactivateUseCase;
     private final VoidProductChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
@@ -48,7 +46,6 @@ public class ProductChargeOpenAccountController {
                                               FindProductChargeOpenAccountUseCase findUseCase,
                                               ListProductChargeOpenAccountsUseCase listUseCase,
                                               ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              DeleteProductChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
                                               VoidProductChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
@@ -57,7 +54,6 @@ public class ProductChargeOpenAccountController {
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
-        this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.voidUseCase = voidUseCase;
         this.authz = authz;
@@ -96,12 +92,6 @@ public class ProductChargeOpenAccountController {
             new UpdateProductChargeOpenAccountCommand(
                 id, request.animalId(), request.productId(), request.openAccountId(),
                 authz.currentCompanyId())));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")

@@ -9,7 +9,6 @@ import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralCharg
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.OpenAccountSummaryDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.TaxSummaryDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.CreateGeneralChargeOpenAccountUseCase;
-import com.vetsoftware.app.generalchargeopenaccount.application.port.in.DeleteGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.FindGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsUseCase;
@@ -36,7 +35,6 @@ public class GeneralChargeOpenAccountController {
     private final FindGeneralChargeOpenAccountUseCase findUseCase;
     private final ListGeneralChargeOpenAccountsUseCase listUseCase;
     private final ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    private final DeleteGeneralChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase;
     private final VoidGeneralChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
@@ -46,7 +44,6 @@ public class GeneralChargeOpenAccountController {
                                               FindGeneralChargeOpenAccountUseCase findUseCase,
                                               ListGeneralChargeOpenAccountsUseCase listUseCase,
                                               ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              DeleteGeneralChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase,
                                               VoidGeneralChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
@@ -55,7 +52,6 @@ public class GeneralChargeOpenAccountController {
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
-        this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.voidUseCase = voidUseCase;
         this.authz = authz;
@@ -95,12 +91,6 @@ public class GeneralChargeOpenAccountController {
             new UpdateGeneralChargeOpenAccountCommand(
                 id, request.name(), request.unitAmount(), request.quantity(), request.taxId(),
                 request.hasTax(), request.openAccountId(), authz.currentCompanyId())));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")

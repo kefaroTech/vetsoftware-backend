@@ -10,7 +10,6 @@ import com.vetsoftware.app.servicechargeopenaccount.application.dto.OpenAccountS
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceChargeOpenAccountDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.CreateServiceChargeOpenAccountUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.DeleteServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.FindServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsUseCase;
@@ -38,7 +37,6 @@ public class ServiceChargeOpenAccountController {
     private final FindServiceChargeOpenAccountUseCase findUseCase;
     private final ListServiceChargeOpenAccountsUseCase listUseCase;
     private final ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    private final DeleteServiceChargeOpenAccountUseCase deleteUseCase;
     private final ReactivateServiceChargeOpenAccountUseCase reactivateUseCase;
     private final VoidServiceChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
@@ -48,7 +46,6 @@ public class ServiceChargeOpenAccountController {
                                               FindServiceChargeOpenAccountUseCase findUseCase,
                                               ListServiceChargeOpenAccountsUseCase listUseCase,
                                               ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              DeleteServiceChargeOpenAccountUseCase deleteUseCase,
                                               ReactivateServiceChargeOpenAccountUseCase reactivateUseCase,
                                               VoidServiceChargeOpenAccountUseCase voidUseCase,
                                               Authz authz) {
@@ -57,7 +54,6 @@ public class ServiceChargeOpenAccountController {
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
-        this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.voidUseCase = voidUseCase;
         this.authz = authz;
@@ -96,12 +92,6 @@ public class ServiceChargeOpenAccountController {
             new UpdateServiceChargeOpenAccountCommand(
                 id, request.animalId(), request.serviceId(), request.openAccountId(),
                 authz.currentCompanyId())));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")

@@ -8,6 +8,12 @@ public class OpenAccount {
     private OwnerRef owner;
     private BigDecimal totalAmount;
     private BigDecimal paidAmount;
+    // Saldo = totalAmount - paidAmount. Su significado depende del estado:
+    //  - OPEN:   saldo realmente pendiente de cobro (cuenta por cobrar).
+    //  - CLOSE:  siempre 0 (el cierre cobrado exige saldo cero; ver changeStatus).
+    //  - CANCEL: monto dado de baja / incobrable (pérdida), NO una cuenta por cobrar.
+    // SALVAGUARDA: cualquier agregado de "cuentas por cobrar" debe sumar SOLO cuentas OPEN
+    // (filtrar por status), nunca todas, o contaría como cobrable la pérdida de las canceladas.
     private BigDecimal outstandingAmount;
     private CompanyRef company;
     private OpenAccountStatus status;
@@ -63,6 +69,15 @@ public class OpenAccount {
         if (this.status != OpenAccountStatus.OPEN
                 || (newStatus != OpenAccountStatus.CLOSE && newStatus != OpenAccountStatus.CANCEL)) {
             throw new InvalidOpenAccountStatusTransitionException(this.status, newStatus);
+        }
+        // CLOSE = cobrada: invariante contable, el saldo debe estar en cero. El cobro del saldo se
+        // registra como abono ANTES del cierre (el front lo hace; el recálculo deja outstanding=0).
+        // CANCEL (incobrable/anulada) sí permite saldo > 0.
+        if (newStatus == OpenAccountStatus.CLOSE
+                && this.outstandingAmount.compareTo(BigDecimal.ZERO) != 0) {
+            throw new IllegalStateException(
+                "No se puede cerrar como cobrada una cuenta con saldo pendiente; "
+                + "registra el cobro del saldo o cancélala.");
         }
         if (newStatus == OpenAccountStatus.CANCEL && (reason == null || reason.isBlank())) {
             throw new IllegalArgumentException("reason is required to cancel");
