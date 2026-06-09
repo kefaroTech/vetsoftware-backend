@@ -813,20 +813,42 @@ class ProductChargeOpenAccount {
   -animal: Animal
   -product: Product
   -unitPrice: BigDecimal
+  -tax: Tax
+  -hasTax: Boolean
+  -taxPercentage: BigDecimal
+  -taxName: String
+  -baseAmount: BigDecimal
+  -taxAmount: BigDecimal
+  -totalAmount: BigDecimal
   -openAccount: OpenAccount
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
+  -voided: boolean
+  -voidedBy: Employee
+  -voidedAt: LocalDateTime
+  -voidReason: String
 }
 
 class ServiceChargeOpenAccount {
   -animal: Animal
   -service: Service
   -unitPrice: BigDecimal
+  -tax: Tax
+  -hasTax: Boolean
+  -taxPercentage: BigDecimal
+  -taxName: String
+  -baseAmount: BigDecimal
+  -taxAmount: BigDecimal
+  -totalAmount: BigDecimal
   -openAccount: OpenAccount
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
+  -voided: boolean
+  -voidedBy: Employee
+  -voidedAt: LocalDateTime
+  -voidReason: String
 }
 
 class GeneralChargeOpenAccount {
@@ -836,10 +858,18 @@ class GeneralChargeOpenAccount {
   -tax: Tax
   -hasTax: Boolean
   -taxPercentage: BigDecimal
+  -taxName: String
+  -baseAmount: BigDecimal
+  -taxAmount: BigDecimal
+  -totalAmount: BigDecimal
   -openAccount: OpenAccount
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
+  -voided: boolean
+  -voidedBy: Employee
+  -voidedAt: LocalDateTime
+  -voidReason: String
 }
 
 ' =========================
@@ -990,9 +1020,11 @@ DebtOpenAccount            --> PaymentMethod
 DebtOpenAccount            --> OpenAccount
 ProductChargeOpenAccount   --> Animal
 ProductChargeOpenAccount   --> Product
+ProductChargeOpenAccount   "0..*" --> "0..1" Tax
 ProductChargeOpenAccount   --> OpenAccount
 ServiceChargeOpenAccount   --> Animal
 ServiceChargeOpenAccount   --> Service
+ServiceChargeOpenAccount   "0..*" --> "0..1" Tax
 ServiceChargeOpenAccount   --> OpenAccount
 GeneralChargeOpenAccount   "0..*" --> "0..1" Tax
 GeneralChargeOpenAccount   --> OpenAccount
