@@ -63,7 +63,7 @@ public class ServiceController {
     public ServiceResponse create(@Valid @RequestBody CreateServiceRequest request) {
         return toResponse(createUseCase.execute(
             new CreateServiceCommand(
-                request.name(), request.price(), request.hasTax(), request.notes(),
+                request.name(), request.price(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 
@@ -97,7 +97,7 @@ public class ServiceController {
                                   @Valid @RequestBody UpdateServiceRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateServiceCommand(
-                id, request.name(), request.price(), request.hasTax(), request.notes(),
+                id, request.name(), request.price(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 

@@ -64,7 +64,7 @@ public class GeneralChargeOpenAccountController {
         return toResponse(createUseCase.execute(
             new CreateGeneralChargeOpenAccountCommand(
                 request.name(), request.unitAmount(), request.quantity(), request.taxId(),
-                request.hasTax(), request.openAccountId(), authz.currentCompanyId(),
+                request.openAccountId(), authz.currentCompanyId(),
                 authz.currentEmployeeId())));
     }
 
@@ -90,7 +90,7 @@ public class GeneralChargeOpenAccountController {
         return toResponse(updateUseCase.execute(
             new UpdateGeneralChargeOpenAccountCommand(
                 id, request.name(), request.unitAmount(), request.quantity(), request.taxId(),
-                request.hasTax(), request.openAccountId(), authz.currentCompanyId())));
+                request.openAccountId(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/enable")

@@ -39,12 +39,12 @@ public class CreateProductService implements CreateProductUseCase {
         ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId())
+            : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
 
         Product product = Product.create(
             command.name(), command.code(), command.purchasePrice(), command.salePrice(),
-            command.currentStock(), command.minStock(), command.provider(), command.hasTax(),
+            command.currentStock(), command.minStock(), command.provider(),
             command.expireDate(), command.notes(), productCategory, tax, company);
         return ProductDto.from(repository.save(product));
     }

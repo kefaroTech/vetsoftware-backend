@@ -61,8 +61,10 @@ public class GeneralChargeOpenAccount {
     }
 
     public static GeneralChargeOpenAccount create(String name, BigDecimal unitAmount, BigDecimal quantity,
-                                                  TaxRef tax, boolean hasTax, OpenAccountRef openAccount,
+                                                  TaxRef tax, OpenAccountRef openAccount,
                                                   EmployeeRef createdBy) {
+        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
+        boolean hasTax = tax != null;
         BigDecimal pct = snapshotTaxPercentage(tax, hasTax);
         BigDecimal total = grossTotal(unitAmount, quantity);
         BigDecimal base = extractBase(total, pct);
@@ -88,8 +90,10 @@ public class GeneralChargeOpenAccount {
     }
 
     public void update(String name, BigDecimal unitAmount, BigDecimal quantity, TaxRef tax,
-                       boolean hasTax, OpenAccountRef openAccount) {
+                       OpenAccountRef openAccount) {
         validate(name, unitAmount, quantity, openAccount);
+        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
+        boolean hasTax = tax != null;
         this.name = name;
         this.unitAmount = unitAmount;
         this.quantity = quantity;

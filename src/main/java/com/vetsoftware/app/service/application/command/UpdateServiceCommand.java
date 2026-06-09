@@ -6,7 +6,6 @@ public record UpdateServiceCommand(
         Long id,
         String name,
         BigDecimal price,
-        boolean hasTax,
         String notes,
         Long serviceCategoryId,
         Long taxId,

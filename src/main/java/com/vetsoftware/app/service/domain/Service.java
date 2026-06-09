@@ -31,18 +31,19 @@ public class Service {
         this.enabled = enabled;
     }
 
-    public static Service create(String name, BigDecimal price, boolean hasTax, String notes,
+    public static Service create(String name, BigDecimal price, String notes,
                                  ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
-        return new Service(null, name, price, hasTax, notes, serviceCategory, tax, company,
+        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
+        return new Service(null, name, price, tax != null, notes, serviceCategory, tax, company,
                 LocalDateTime.now(), true);
     }
 
-    public void update(String name, BigDecimal price, boolean hasTax, String notes,
+    public void update(String name, BigDecimal price, String notes,
                        ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
         validate(name, price, notes, serviceCategory, company);
         this.name = name;
         this.price = price;
-        this.hasTax = hasTax;
+        this.hasTax = tax != null;
         this.notes = notes;
         this.serviceCategory = serviceCategory;
         this.tax = tax;

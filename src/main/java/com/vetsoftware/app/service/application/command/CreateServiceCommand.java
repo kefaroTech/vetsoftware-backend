@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 public record CreateServiceCommand(
         String name,
         BigDecimal price,
-        boolean hasTax,
         String notes,
         Long serviceCategoryId,
         Long taxId,

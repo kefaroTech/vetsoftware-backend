@@ -12,6 +12,5 @@ public record CreateGeneralChargeOpenAccountRequest(
         @NotNull @PositiveOrZero BigDecimal unitAmount,
         @NotNull @Positive BigDecimal quantity,
         Long taxId,
-        boolean hasTax,
         @NotNull Long openAccountId
 ) {}

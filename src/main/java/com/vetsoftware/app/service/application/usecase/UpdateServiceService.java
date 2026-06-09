@@ -43,9 +43,9 @@ public class UpdateServiceService implements UpdateServiceUseCase {
         ServiceCategoryRef serviceCategory = serviceCategoryQueryPort.findById(command.serviceCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found: " + command.serviceCategoryId()));
         TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId())
+            : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
-        service.update(command.name(), command.price(), command.hasTax(),
+        service.update(command.name(), command.price(),
             command.notes(), serviceCategory, tax, company);
         return ServiceDto.from(repository.save(service));
     }

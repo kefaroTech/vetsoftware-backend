@@ -46,11 +46,11 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
             throw new IllegalArgumentException("open account does not belong to company");
         }
         TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId())
+            : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
 
         charge.update(command.name(), command.unitAmount(), command.quantity(), tax,
-            command.hasTax(), openAccount);
+            openAccount);
         GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
         refresher.refresh(openAccount.id());
         if (!openAccount.id().equals(previousOpenAccountId)) {

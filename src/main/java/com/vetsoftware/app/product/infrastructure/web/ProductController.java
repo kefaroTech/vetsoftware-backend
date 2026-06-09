@@ -64,7 +64,7 @@ public class ProductController {
         return toResponse(createUseCase.execute(
             new CreateProductCommand(
                 request.name(), request.code(), request.purchasePrice(), request.salePrice(),
-                request.currentStock(), request.minStock(), request.provider(), request.hasTax(),
+                request.currentStock(), request.minStock(), request.provider(),
                 request.expireDate(), request.notes(), request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
@@ -100,7 +100,7 @@ public class ProductController {
         return toResponse(updateUseCase.execute(
             new UpdateProductCommand(
                 id, request.name(), request.code(), request.purchasePrice(), request.salePrice(),
-                request.currentStock(), request.minStock(), request.provider(), request.hasTax(),
+                request.currentStock(), request.minStock(), request.provider(),
                 request.expireDate(), request.notes(), request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }

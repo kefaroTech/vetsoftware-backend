@@ -15,7 +15,6 @@ public record CreateProductRequest(
         @NotNull @Min(0) Integer currentStock,
         @NotNull @Min(0) Integer minStock,
         @Size(max = 150) String provider,
-        boolean hasTax,
         boolean expireDate,
         @Size(max = 500) String notes,
         @NotNull Long productCategoryId,

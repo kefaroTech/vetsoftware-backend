@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 public record UpdateServiceRequest(
         @NotBlank @Size(max = 100) String name,
         @NotNull @DecimalMin("0.0") BigDecimal price,
-        boolean hasTax,
         @Size(max = 500) String notes,
         @NotNull Long serviceCategoryId,
         Long taxId

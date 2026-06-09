@@ -46,16 +46,17 @@ public class Product {
     }
 
     public static Product create(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
-                                 Integer currentStock, Integer minStock, String provider, boolean hasTax,
+                                 Integer currentStock, Integer minStock, String provider,
                                  boolean expireDate, String notes, ProductCategoryRef productCategory,
                                  TaxRef tax, CompanyRef company) {
+        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
         return new Product(null, name, code, purchasePrice, salePrice, currentStock, minStock, provider,
-                           hasTax, expireDate, notes, productCategory, tax, company,
+                           tax != null, expireDate, notes, productCategory, tax, company,
                            LocalDateTime.now(), true);
     }
 
     public void update(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
-                       Integer currentStock, Integer minStock, String provider, boolean hasTax,
+                       Integer currentStock, Integer minStock, String provider,
                        boolean expireDate, String notes, ProductCategoryRef productCategory,
                        TaxRef tax, CompanyRef company) {
         validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
@@ -67,7 +68,7 @@ public class Product {
         this.currentStock = currentStock;
         this.minStock = minStock;
         this.provider = provider;
-        this.hasTax = hasTax;
+        this.hasTax = tax != null;
         this.expireDate = expireDate;
         this.notes = notes;
         this.productCategory = productCategory;

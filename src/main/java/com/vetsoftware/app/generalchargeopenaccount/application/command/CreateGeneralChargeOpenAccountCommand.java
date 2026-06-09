@@ -7,7 +7,6 @@ public record CreateGeneralChargeOpenAccountCommand(
         BigDecimal unitAmount,
         BigDecimal quantity,
         Long taxId,
-        boolean hasTax,
         Long openAccountId,
         Long companyId,
         Long createdById

@@ -38,6 +38,7 @@ public class Tax {
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (percentage == null) throw new IllegalArgumentException("percentage is required");
         if (percentage.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("percentage cannot be negative");
+        if (percentage.compareTo(BigDecimal.valueOf(100)) > 0) throw new IllegalArgumentException("percentage cannot exceed 100");
         if (company == null) throw new IllegalArgumentException("company is required");
     }
 

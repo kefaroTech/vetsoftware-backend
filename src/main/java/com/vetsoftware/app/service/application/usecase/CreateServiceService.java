@@ -38,9 +38,9 @@ public class CreateServiceService implements CreateServiceUseCase {
         ServiceCategoryRef serviceCategory = serviceCategoryQueryPort.findById(command.serviceCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found: " + command.serviceCategoryId()));
         TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId())
+            : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
-        Service service = Service.create(command.name(), command.price(), command.hasTax(),
+        Service service = Service.create(command.name(), command.price(),
             command.notes(), serviceCategory, tax, company);
         return ServiceDto.from(repository.save(service));
     }

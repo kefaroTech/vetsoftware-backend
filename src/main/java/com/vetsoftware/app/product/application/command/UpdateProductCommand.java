@@ -11,7 +11,6 @@ public record UpdateProductCommand(
         Integer currentStock,
         Integer minStock,
         String provider,
-        boolean hasTax,
         boolean expireDate,
         String notes,
         Long productCategoryId,

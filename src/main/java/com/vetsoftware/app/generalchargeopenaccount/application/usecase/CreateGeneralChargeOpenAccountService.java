@@ -49,13 +49,13 @@ public class CreateGeneralChargeOpenAccountService implements CreateGeneralCharg
             throw new IllegalStateException("open account is not OPEN");
         }
         TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId())
+            : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         GeneralChargeOpenAccount charge = GeneralChargeOpenAccount.create(
-            command.name(), command.unitAmount(), command.quantity(), tax, command.hasTax(),
+            command.name(), command.unitAmount(), command.quantity(), tax,
             openAccount, createdBy);
         GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
         refresher.refresh(openAccount.id());

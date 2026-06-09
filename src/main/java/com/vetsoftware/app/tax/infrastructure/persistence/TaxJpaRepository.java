@@ -18,6 +18,9 @@ public interface TaxJpaRepository extends JpaRepository<TaxJpaEntity, Long> {
     @EntityGraph(attributePaths = "company")
     List<TaxJpaEntity> findAllByCompanyId(Long companyId);
 
+    @EntityGraph(attributePaths = "company")
+    Optional<TaxJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
