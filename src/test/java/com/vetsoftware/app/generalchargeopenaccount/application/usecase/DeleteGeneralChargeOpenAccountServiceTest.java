@@ -55,7 +55,7 @@ class DeleteGeneralChargeOpenAccountServiceTest {
     void deletes_and_refreshes_when_payments_within_remaining_charges() {
         var svc = new DeleteGeneralChargeOpenAccountService(repository, totals("80.00", "50.00"), refresher);
 
-        svc.execute(1L);
+        svc.execute(1L, 5L);
 
         assertEquals(List.of(1L), deleted);
         assertEquals(List.of(10L), refreshed);
@@ -65,7 +65,7 @@ class DeleteGeneralChargeOpenAccountServiceTest {
     void allows_delete_when_payments_equal_remaining_charges() {
         var svc = new DeleteGeneralChargeOpenAccountService(repository, totals("50.00", "50.00"), refresher);
 
-        svc.execute(1L);
+        svc.execute(1L, 5L);
 
         assertEquals(List.of(10L), refreshed);
     }
@@ -74,7 +74,7 @@ class DeleteGeneralChargeOpenAccountServiceTest {
     void rejects_delete_when_payments_would_exceed_remaining_charges() {
         var svc = new DeleteGeneralChargeOpenAccountService(repository, totals("30.00", "50.00"), refresher);
 
-        assertThrows(IllegalStateException.class, () -> svc.execute(1L));
+        assertThrows(IllegalStateException.class, () -> svc.execute(1L, 5L));
         assertTrue(refreshed.isEmpty(), "no debe refrescar cuando se rechaza el borrado");
     }
 
@@ -82,6 +82,14 @@ class DeleteGeneralChargeOpenAccountServiceTest {
     void fails_when_charge_not_found() {
         var svc = new DeleteGeneralChargeOpenAccountService(repository, totals("0", "0"), refresher);
 
-        assertThrows(GeneralChargeOpenAccountNotFoundException.class, () -> svc.execute(99L));
+        assertThrows(GeneralChargeOpenAccountNotFoundException.class, () -> svc.execute(99L, 5L));
+    }
+
+    @Test
+    void rejects_delete_when_charge_belongs_to_other_company() {
+        var svc = new DeleteGeneralChargeOpenAccountService(repository, totals("80.00", "0"), refresher);
+
+        assertThrows(IllegalArgumentException.class, () -> svc.execute(1L, 999L));
+        assertTrue(deleted.isEmpty(), "no debe borrar un cargo de otra empresa");
     }
 }

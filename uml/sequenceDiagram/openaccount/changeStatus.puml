@@ -32,11 +32,13 @@ activate Controller
 
 Controller -> Authz : currentEmployeeId()
 Authz --> Controller : employeeId
+Controller -> Authz : currentCompanyId()
+Authz --> Controller : companyId
 
-Controller -> UseCase : execute(ChangeOpenAccountStatusCommand{id, status, employeeId, reason})
+Controller -> UseCase : execute(ChangeOpenAccountStatusCommand{id, status, employeeId, reason, companyId})
 note right of UseCase
   @PreAuthorize:
-  admin.all OR openAccount.update OR hasRole('SYSTEM')
+  admin.all OR (openAccount.update AND @authz.isMyCompany(#command.companyId)) OR hasRole('SYSTEM')
 end note
 
 UseCase -> Service : execute(command)
@@ -47,6 +49,10 @@ Repo --> Service : Optional<OpenAccount>
 alt open account no existe
   Service --> GEH : OpenAccountNotFoundException
   GEH --> Client : 404 Not Found
+end
+alt openAccount.company.id != command.companyId
+  Service --> GEH : IllegalArgumentException ("open account does not belong to company")
+  GEH --> Client : 400 Bad Request
 end
 
 Service -> EmployeeQP : findById(command.employeeId())

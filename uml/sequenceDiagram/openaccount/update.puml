@@ -36,7 +36,7 @@ Authz --> Controller : companyId
 Controller -> UseCase : execute(UpdateOpenAccountCommand)
 note right of UseCase
   @PreAuthorize:
-  admin.all OR openAccount.update OR hasRole('SYSTEM')
+  admin.all OR (openAccount.update AND @authz.isMyCompany(#command.companyId)) OR hasRole('SYSTEM')
 end note
 
 UseCase -> Service : execute(command)
@@ -55,6 +55,10 @@ end
 Repo -> Mapper : toDomain(entity)
 Mapper --> Repo : OpenAccount
 Repo --> Service : Optional<OpenAccount>
+alt openAccount.company.id != command.companyId
+  Service --> GEH : IllegalArgumentException ("open account does not belong to company")
+  GEH --> Client : 400 Bad Request
+end
 
 Service -> OwnerQP : findById(ownerId)
 OwnerQP --> Service : Optional<OwnerRef>

@@ -28,9 +28,12 @@ public class DeleteServiceChargeOpenAccountService implements DeleteServiceCharg
 
     @Override
     @Transactional
-    public void execute(Long id) {
+    public void execute(Long id, Long companyId) {
         ServiceChargeOpenAccount charge = repository.findById(id)
             .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id));
+        if (!charge.getOpenAccount().companyId().equals(companyId)) {
+            throw new IllegalArgumentException("service charge does not belong to company");
+        }
         Long openAccountId = charge.getOpenAccount().id();
 
         // Soft-delete (enabled=false). Hibernate hace flush antes de los SUM de abajo,

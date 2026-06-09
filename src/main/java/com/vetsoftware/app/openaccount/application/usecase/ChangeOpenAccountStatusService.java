@@ -30,6 +30,9 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
     public OpenAccountDto execute(ChangeOpenAccountStatusCommand command) {
         OpenAccount openAccount = repository.findById(command.id())
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
+        if (!openAccount.getCompany().id().equals(command.companyId())) {
+            throw new IllegalArgumentException("open account does not belong to company");
+        }
         EmployeeRef closedBy = employeeQueryPort.findById(command.employeeId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
         OpenAccountStatus newStatus = OpenAccountStatus.valueOf(command.status().toUpperCase());

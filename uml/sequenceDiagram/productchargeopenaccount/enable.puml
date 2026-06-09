@@ -29,12 +29,12 @@ end note
 Client -> Controller : PATCH /product-charge-open-accounts/{id}/enable
 activate Controller
 
-Controller -> UseCase : execute(id)
+Controller -> UseCase : execute(id, companyId)\n(companyId = authz.currentCompanyId())
 note right of UseCase
   @PreAuthorize:
-  admin.all OR productChargeOpenAccount.delete OR hasRole('SYSTEM')
+  admin.all OR (chargeOpenAccount.delete AND @authz.isMyCompany(#companyId)) OR hasRole('SYSTEM')
 end note
-UseCase -> Service : execute(id)
+UseCase -> Service : execute(id, companyId)
 activate Service
 
 Service -> Repo : reactivate(id)
@@ -56,6 +56,10 @@ JpaRepo --> Repo : Optional<ProductChargeOpenAccountJpaEntity>
 Repo -> Mapper : toDomain(entity)
 Mapper --> Repo : ProductChargeOpenAccount
 Repo --> Service : ProductChargeOpenAccount
+alt charge.openAccount.companyId != companyId del caller
+  Service --> GEH : IllegalArgumentException ("product charge does not belong to company")\n(el rollback revierte el enabled=true)
+  GEH --> Client : 400 Bad Request
+end
 Service -> Service : openAccountId = charge.openAccount.id
 
 == Recálculo de la Open Account padre ==

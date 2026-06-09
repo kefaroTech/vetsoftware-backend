@@ -4,5 +4,6 @@ public record ChangeOpenAccountStatusCommand(
         Long id,
         String status,
         Long employeeId,
-        String reason
+        String reason,
+        Long companyId
 ) {}

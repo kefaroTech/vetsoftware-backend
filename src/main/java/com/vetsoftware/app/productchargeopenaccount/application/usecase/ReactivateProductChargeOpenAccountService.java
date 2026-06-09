@@ -24,11 +24,14 @@ public class ReactivateProductChargeOpenAccountService implements ReactivateProd
 
     @Override
     @Transactional
-    public ProductChargeOpenAccountDto execute(Long id) {
+    public ProductChargeOpenAccountDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id);
         if (rows == 0) throw new ProductChargeOpenAccountNotFoundException(id);
         ProductChargeOpenAccount charge = repository.findById(id)
             .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(id));
+        if (!charge.getOpenAccount().companyId().equals(companyId)) {
+            throw new IllegalArgumentException("product charge does not belong to company");
+        }
         refresher.refresh(charge.getOpenAccount().id());
         return ProductChargeOpenAccountDto.from(charge);
     }

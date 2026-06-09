@@ -23,9 +23,12 @@ public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCas
 
     @Override
     @Transactional
-    public void execute(Long id) {
+    public void execute(Long id, Long companyId) {
         DebtOpenAccount debtOpenAccount = repository.findById(id)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
+        if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
+            throw new IllegalArgumentException("debt open account does not belong to company");
+        }
         Long openAccountId = debtOpenAccount.getOpenAccount().id();
         repository.delete(id);
         refresher.refresh(openAccountId);

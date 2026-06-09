@@ -41,7 +41,7 @@ class DeleteDebtOpenAccountServiceTest {
     void deletes_and_refreshes_open_account() {
         var service = new DeleteDebtOpenAccountService(repository, refresher);
 
-        service.execute(1L);
+        service.execute(1L, 5L);
 
         assertEquals(1L, deletedId);
         assertEquals(10L, refreshedOpenAccountId);
@@ -51,6 +51,14 @@ class DeleteDebtOpenAccountServiceTest {
     void fails_when_not_found() {
         var service = new DeleteDebtOpenAccountService(repository, refresher);
 
-        assertThrows(DebtOpenAccountNotFoundException.class, () -> service.execute(99L));
+        assertThrows(DebtOpenAccountNotFoundException.class, () -> service.execute(99L, 5L));
+    }
+
+    @Test
+    void rejects_delete_when_payment_belongs_to_other_company() {
+        var service = new DeleteDebtOpenAccountService(repository, refresher);
+
+        assertThrows(IllegalArgumentException.class, () -> service.execute(1L, 999L));
+        assertNull(deletedId, "no debe borrar un abono de otra empresa");
     }
 }

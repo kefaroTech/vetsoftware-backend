@@ -29,12 +29,12 @@ end note
 Client -> Controller : DELETE /debt-open-accounts/{id}
 activate Controller
 
-Controller -> UseCase : execute(id)
+Controller -> UseCase : execute(id, companyId)\n(companyId = authz.currentCompanyId())
 note right of UseCase
   @PreAuthorize:
-  admin.all OR debtOpenAccount.delete OR hasRole('SYSTEM')
+  admin.all OR (debtOpenAccount.delete AND @authz.isMyCompany(#companyId)) OR hasRole('SYSTEM')
 end note
-UseCase -> Service : execute(id)
+UseCase -> Service : execute(id, companyId)
 activate Service
 
 Service -> Repo : findById(id)
@@ -48,6 +48,10 @@ alt debt no existe
   GEH --> Client : 404 Not Found
 end
 Repo --> Service : DebtOpenAccount
+alt debt.openAccount.companyId != companyId del caller
+  Service --> GEH : IllegalArgumentException ("debt open account does not belong to company")
+  GEH --> Client : 400 Bad Request
+end
 Service -> Service : openAccountId = debt.openAccount.id
 
 Service -> Repo : delete(id)

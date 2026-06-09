@@ -24,11 +24,14 @@ public class ReactivateServiceChargeOpenAccountService implements ReactivateServ
 
     @Override
     @Transactional
-    public ServiceChargeOpenAccountDto execute(Long id) {
+    public ServiceChargeOpenAccountDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id);
         if (rows == 0) throw new ServiceChargeOpenAccountNotFoundException(id);
         ServiceChargeOpenAccount charge = repository.findById(id)
             .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id));
+        if (!charge.getOpenAccount().companyId().equals(companyId)) {
+            throw new IllegalArgumentException("service charge does not belong to company");
+        }
         refresher.refresh(charge.getOpenAccount().id());
         return ServiceChargeOpenAccountDto.from(charge);
     }

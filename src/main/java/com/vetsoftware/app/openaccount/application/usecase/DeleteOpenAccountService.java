@@ -2,6 +2,7 @@ package com.vetsoftware.app.openaccount.application.usecase;
 
 import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
+import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,12 @@ public class DeleteOpenAccountService implements DeleteOpenAccountUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new OpenAccountNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        OpenAccount openAccount = repository.findById(id)
+            .orElseThrow(() -> new OpenAccountNotFoundException(id));
+        if (!openAccount.getCompany().id().equals(companyId)) {
+            throw new IllegalArgumentException("open account does not belong to company");
+        }
         repository.delete(id);
     }
 }

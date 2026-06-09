@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Reglas activas (override temporal — vigentes hasta que el usuario las revoque)
+
+> Pausa indicada por el usuario el 2026-06-06. Mantener hasta que el usuario diga explícitamente lo contrario.
+
+- ❌ **No actualizar ni crear diagramas `.puml`** (ni `uml/Veterinaria.puml` ni los `uml/sequenceDiagram/**`). Aunque se toque un endpoint, NO sincronizar su diagrama.
+- ❌ **No crear ni modificar tests unitarios** al manipular endpoints (ni nuevos `*ServiceTest`, ni ajustar stubs/firmas en los existentes). Dejar los tests como están.
+
+Estas dos reglas suspenden temporalmente las convenciones de "diagramas sincronizados" y "un test por service" descritas más abajo. El resto del documento sigue vigente.
+
 ## Commands
 
 ```bash

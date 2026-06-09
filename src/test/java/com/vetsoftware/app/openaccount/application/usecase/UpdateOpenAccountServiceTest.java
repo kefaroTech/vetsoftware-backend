@@ -89,4 +89,14 @@ class UpdateOpenAccountServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> service.execute(new UpdateOpenAccountCommand(1L, 22L, 5L)));
     }
+
+    @Test
+    void rejects_update_when_account_belongs_to_other_company() {
+        var service = new UpdateOpenAccountService(
+                repository(existingAccount()), ownerQueryPort(Optional.of(newOwner)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.execute(new UpdateOpenAccountCommand(1L, 22L, 999L)));
+        assertNull(savedOpenAccount, "no debe guardar una cuenta de otra empresa");
+    }
 }

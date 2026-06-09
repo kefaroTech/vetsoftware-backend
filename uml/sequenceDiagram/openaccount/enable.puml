@@ -24,12 +24,12 @@ end note
 Client -> Controller : PATCH /open-accounts/{id}/enable
 activate Controller
 
-Controller -> UseCase : execute(id)
+Controller -> UseCase : execute(id, companyId)\n(companyId = authz.currentCompanyId())
 note right of UseCase
   @PreAuthorize:
-  admin.all OR openAccount.delete OR hasRole('SYSTEM')
+  admin.all OR (openAccount.delete AND @authz.isMyCompany(#companyId)) OR hasRole('SYSTEM')
 end note
-UseCase -> Service : execute(id)
+UseCase -> Service : execute(id, companyId)
 activate Service
 
 Service -> Repo : reactivate(id)
@@ -51,6 +51,10 @@ JpaRepo --> Repo : Optional<OpenAccountJpaEntity>
 Repo -> Mapper : toDomain(entity)
 Mapper --> Repo : OpenAccount
 Repo --> Service : Optional<OpenAccount>
+alt openAccount.company.id != companyId del caller
+  Service --> GEH : IllegalArgumentException ("open account does not belong to company")\n(el rollback revierte el enabled=true)
+  GEH --> Client : 400 Bad Request
+end
 
 Service -> Service : OpenAccountDto.from(openAccount)
 Service --> UseCase : OpenAccountDto

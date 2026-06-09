@@ -104,19 +104,20 @@ public class OpenAccountController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public OpenAccountResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     @PatchMapping("/{id}/status")
     public OpenAccountResponse changeStatus(@PathVariable Long id,
                                             @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(), request.reason())));
+            new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(),
+                request.reason(), authz.currentCompanyId())));
     }
 
     private OpenAccountResponse toResponse(OpenAccountDto dto) {

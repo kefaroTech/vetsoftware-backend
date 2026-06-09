@@ -29,12 +29,12 @@ end note
 Client -> Controller : PATCH /debt-open-accounts/{id}/enable
 activate Controller
 
-Controller -> UseCase : execute(id)
+Controller -> UseCase : execute(id, companyId)\n(companyId = authz.currentCompanyId())
 note right of UseCase
   @PreAuthorize:
-  admin.all OR debtOpenAccount.delete OR hasRole('SYSTEM')
+  admin.all OR (debtOpenAccount.delete AND @authz.isMyCompany(#companyId)) OR hasRole('SYSTEM')
 end note
-UseCase -> Service : execute(id)
+UseCase -> Service : execute(id, companyId)
 activate Service
 
 Service -> Repo : reactivate(id)
@@ -56,6 +56,10 @@ JpaRepo --> Repo : Optional<DebtOpenAccountJpaEntity>
 Repo -> Mapper : toDomain(entity)
 Mapper --> Repo : DebtOpenAccount
 Repo --> Service : DebtOpenAccount
+alt debt.openAccount.companyId != companyId del caller
+  Service --> GEH : IllegalArgumentException ("debt open account does not belong to company")\n(el rollback revierte el enabled=true)
+  GEH --> Client : 400 Bad Request
+end
 Service -> Service : openAccountId = debt.openAccount.id
 
 == Recálculo de la Open Account padre ==

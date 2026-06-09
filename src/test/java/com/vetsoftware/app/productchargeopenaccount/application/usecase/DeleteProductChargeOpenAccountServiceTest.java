@@ -55,7 +55,7 @@ class DeleteProductChargeOpenAccountServiceTest {
     void deletes_and_refreshes_when_payments_within_remaining_charges() {
         var service = new DeleteProductChargeOpenAccountService(repository, totals("80.00", "50.00"), refresher);
 
-        service.execute(1L);
+        service.execute(1L, 5L);
 
         assertEquals(List.of(1L), deleted);
         assertEquals(List.of(10L), refreshed);
@@ -65,7 +65,7 @@ class DeleteProductChargeOpenAccountServiceTest {
     void allows_delete_when_payments_equal_remaining_charges() {
         var service = new DeleteProductChargeOpenAccountService(repository, totals("50.00", "50.00"), refresher);
 
-        service.execute(1L);
+        service.execute(1L, 5L);
 
         assertEquals(List.of(10L), refreshed);
     }
@@ -74,7 +74,7 @@ class DeleteProductChargeOpenAccountServiceTest {
     void rejects_delete_when_payments_would_exceed_remaining_charges() {
         var service = new DeleteProductChargeOpenAccountService(repository, totals("30.00", "50.00"), refresher);
 
-        assertThrows(IllegalStateException.class, () -> service.execute(1L));
+        assertThrows(IllegalStateException.class, () -> service.execute(1L, 5L));
         assertTrue(refreshed.isEmpty(), "no debe refrescar cuando se rechaza el borrado");
     }
 
@@ -82,6 +82,14 @@ class DeleteProductChargeOpenAccountServiceTest {
     void fails_when_charge_not_found() {
         var service = new DeleteProductChargeOpenAccountService(repository, totals("0", "0"), refresher);
 
-        assertThrows(ProductChargeOpenAccountNotFoundException.class, () -> service.execute(99L));
+        assertThrows(ProductChargeOpenAccountNotFoundException.class, () -> service.execute(99L, 5L));
+    }
+
+    @Test
+    void rejects_delete_when_charge_belongs_to_other_company() {
+        var service = new DeleteProductChargeOpenAccountService(repository, totals("80.00", "0"), refresher);
+
+        assertThrows(IllegalArgumentException.class, () -> service.execute(1L, 999L));
+        assertTrue(deleted.isEmpty(), "no debe borrar un cargo de otra empresa");
     }
 }

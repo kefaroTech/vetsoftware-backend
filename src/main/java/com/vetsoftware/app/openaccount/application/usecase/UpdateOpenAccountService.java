@@ -29,6 +29,9 @@ public class UpdateOpenAccountService implements UpdateOpenAccountUseCase {
     public OpenAccountDto execute(UpdateOpenAccountCommand command) {
         OpenAccount openAccount = repository.findById(command.id())
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
+        if (!openAccount.getCompany().id().equals(command.companyId())) {
+            throw new IllegalArgumentException("open account does not belong to company");
+        }
         OwnerRef owner = ownerQueryPort.findById(command.ownerId())
             .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
 
