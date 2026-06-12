@@ -34,8 +34,9 @@ public class CreateOwnerService implements CreateOwnerUseCase {
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         Owner owner = Owner.create(
-            command.name(), command.email(), command.document(), command.address(),
-            command.phone(), city, company
+            command.name(), command.email(), command.document(), command.documentType(),
+            command.personType(), command.verificationDigit(), command.legalName(),
+            command.address(), command.phone(), city, company
         );
         return OwnerDto.from(repository.save(owner));
     }

@@ -38,8 +38,9 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        owner.update(command.name(), command.email(), command.document(), command.address(),
-                     command.phone(), city, company);
+        owner.update(command.name(), command.email(), command.document(), command.documentType(),
+                     command.personType(), command.verificationDigit(), command.legalName(),
+                     command.address(), command.phone(), city, company);
         return OwnerDto.from(repository.save(owner));
     }
 }

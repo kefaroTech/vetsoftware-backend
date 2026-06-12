@@ -2,6 +2,8 @@ package com.vetsoftware.app.owner.infrastructure.persistence;
 
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.owner.domain.OwnerDocumentType;
+import com.vetsoftware.app.owner.domain.PersonType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,6 +28,20 @@ public class OwnerJpaEntity {
 
     @Column(nullable = false, length = 50)
     private String document;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "document_type", nullable = false, length = 30)
+    private OwnerDocumentType documentType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "person_type", nullable = false, length = 20)
+    private PersonType personType;
+
+    @Column(name = "verification_digit", length = 1)
+    private String verificationDigit;
+
+    @Column(name = "legal_name", length = 255)
+    private String legalName;
 
     @Column(length = 255)
     private String address;
@@ -57,6 +73,14 @@ public class OwnerJpaEntity {
     public void setEmail(String email) { this.email = email; }
     public String getDocument() { return document; }
     public void setDocument(String document) { this.document = document; }
+    public OwnerDocumentType getDocumentType() { return documentType; }
+    public void setDocumentType(OwnerDocumentType documentType) { this.documentType = documentType; }
+    public PersonType getPersonType() { return personType; }
+    public void setPersonType(PersonType personType) { this.personType = personType; }
+    public String getVerificationDigit() { return verificationDigit; }
+    public void setVerificationDigit(String verificationDigit) { this.verificationDigit = verificationDigit; }
+    public String getLegalName() { return legalName; }
+    public void setLegalName(String legalName) { this.legalName = legalName; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public String getPhone() { return phone; }

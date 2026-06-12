@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Identidad fiscal del adquiriente para la factura electrónica (DIAN, Anexo Técnico FE v1.9).
+         document_type: tipo de documento codificado (CC=13, NIT=31, CE=22, PA=41, PEP=47).
+         person_type: NATURAL / JURIDICA. verification_digit: DV del NIT (un dígito).
+         legal_name: razón social (persona jurídica).
+         Columnas nuevas: se agregan nullable, se backfillean filas existentes y luego se fuerza NOT NULL
+         en document_type/person_type (CC/NATURAL como valores por defecto históricos). -->
+    <changeSet id="117_add_fiscal_fields_to_owners" author="orlando">
+        <addColumn tableName="owners">
+            <column name="document_type" type="VARCHAR(30)"/>
+            <column name="person_type" type="VARCHAR(20)"/>
+            <column name="verification_digit" type="VARCHAR(1)"/>
+            <column name="legal_name" type="VARCHAR(255)"/>
+        </addColumn>
+
+        <update tableName="owners">
+            <column name="document_type" value="CEDULA_CIUDADANIA"/>
+            <where>document_type IS NULL</where>
+        </update>
+        <update tableName="owners">
+            <column name="person_type" value="NATURAL"/>
+            <where>person_type IS NULL</where>
+        </update>
+
+        <addNotNullConstraint tableName="owners" columnName="document_type" columnDataType="VARCHAR(30)"/>
+        <addNotNullConstraint tableName="owners" columnName="person_type" columnDataType="VARCHAR(20)"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -120,5 +120,6 @@
     <include file="db/changelog/migrations/114_backfill_dane_code_colombia.xml"/>
     <include file="db/changelog/migrations/115_create_economic_activities.xml"/>
     <include file="db/changelog/migrations/116_create_company_tax_profiles.xml"/>
+    <include file="db/changelog/migrations/117_add_fiscal_fields_to_owners.xml"/>
 
 </databaseChangeLog>

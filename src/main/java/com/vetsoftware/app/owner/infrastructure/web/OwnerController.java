@@ -54,7 +54,9 @@ public class OwnerController {
     public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request) {
         return toResponse(createUseCase.execute(
             new CreateOwnerCommand(request.name(), request.email(), request.document(),
-                request.address(), request.phone(), request.cityId(), authz.currentCompanyId())));
+                request.documentType(), request.personType(), request.verificationDigit(),
+                request.legalName(), request.address(), request.phone(), request.cityId(),
+                authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -77,7 +79,9 @@ public class OwnerController {
     public OwnerResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOwnerRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateOwnerCommand(id, request.name(), request.email(), request.document(),
-                request.address(), request.phone(), request.cityId(), request.companyId())));
+                request.documentType(), request.personType(), request.verificationDigit(),
+                request.legalName(), request.address(), request.phone(), request.cityId(),
+                request.companyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -95,7 +99,8 @@ public class OwnerController {
         CitySummaryDto c = dto.city();
         CompanySummaryDto co = dto.company();
         return new OwnerResponse(
-            dto.id(), dto.name(), dto.email(), dto.document(), dto.address(), dto.phone(),
+            dto.id(), dto.name(), dto.email(), dto.document(), dto.documentType(),
+            dto.personType(), dto.verificationDigit(), dto.legalName(), dto.address(), dto.phone(),
             new CitySummary(c.id(), c.name()),
             new CompanySummary(co.id(), co.name(), co.identifier()),
             dto.createdDate(), dto.enabled()

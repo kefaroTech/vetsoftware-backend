@@ -16,6 +16,10 @@ public class OwnerJpaMapper {
         entity.setName(owner.getName());
         entity.setEmail(owner.getEmail());
         entity.setDocument(owner.getDocument());
+        entity.setDocumentType(owner.getDocumentType());
+        entity.setPersonType(owner.getPersonType());
+        entity.setVerificationDigit(owner.getVerificationDigit());
+        entity.setLegalName(owner.getLegalName());
         entity.setAddress(owner.getAddress());
         entity.setPhone(owner.getPhone());
         entity.setCity(city);
@@ -36,8 +40,9 @@ public class OwnerJpaMapper {
     public Owner toDomain(OwnerJpaEntity entity, CityRef cityRef, CompanyRef companyRef) {
         return new Owner(
             entity.getId(), entity.getName(), entity.getEmail(), entity.getDocument(),
-            entity.getAddress(), entity.getPhone(), cityRef, companyRef, entity.getCreatedDate(),
-            entity.isEnabled()
+            entity.getDocumentType(), entity.getPersonType(), entity.getVerificationDigit(),
+            entity.getLegalName(), entity.getAddress(), entity.getPhone(), cityRef, companyRef,
+            entity.getCreatedDate(), entity.isEnabled()
         );
     }
 }
