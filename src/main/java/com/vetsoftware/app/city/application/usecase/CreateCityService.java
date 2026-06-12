@@ -25,7 +25,7 @@ public class CreateCityService implements CreateCityUseCase {
     public CityDto execute(CreateCityCommand command) {
         StateRef state = stateQueryPort.findById(command.stateId())
             .orElseThrow(() -> new IllegalArgumentException("State not found: " + command.stateId()));
-        City city = City.create(command.name(), state);
+        City city = City.create(command.name(), state, command.daneCode());
         return CityDto.from(repository.save(city));
     }
 }

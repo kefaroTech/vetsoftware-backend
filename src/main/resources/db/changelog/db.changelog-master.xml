@@ -116,5 +116,9 @@
     <include file="db/changelog/migrations/110_add_tax_breakdown_to_general_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/111_add_tax_to_product_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/112_add_tax_to_service_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/113_add_dane_code_to_states_and_cities.xml"/>
+    <include file="db/changelog/migrations/114_backfill_dane_code_colombia.xml"/>
+    <include file="db/changelog/migrations/115_create_economic_activities.xml"/>
+    <include file="db/changelog/migrations/116_create_company_tax_profiles.xml"/>
 
 </databaseChangeLog>

@@ -13,6 +13,7 @@ public class CityJpaMapper {
         entity.setId(city.getId());
         entity.setName(city.getName());
         entity.setState(state);
+        entity.setDaneCode(city.getDaneCode());
         entity.setCreatedDate(city.getCreatedDate());
         entity.setEnabled(city.isEnabled());
         return entity;
@@ -24,6 +25,6 @@ public class CityJpaMapper {
     }
 
     public City toDomain(CityJpaEntity entity, StateRef ref) {
-        return new City(entity.getId(), entity.getName(), ref, entity.getCreatedDate(), entity.isEnabled());
+        return new City(entity.getId(), entity.getName(), ref, entity.getDaneCode(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

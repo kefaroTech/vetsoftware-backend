@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Perfil fiscal del emisor (identidad DIAN). 0-o-1 por empresa: company_id es UNIQUE.
+         El municipio/depto fiscal se derivan de company.city -> cities.dane_code / states.dane_code. -->
+    <changeSet id="116_create_company_tax_profiles" author="orlando">
+        <createTable tableName="company_tax_profiles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_company_tax_profiles_company"
+                             foreignKeyName="fk_company_tax_profiles_company" references="companies(id)"/>
+            </column>
+            <column name="company_document_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="company_document_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="company_document_verification_digit" type="VARCHAR(1)"/>
+            <column name="legal_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_regime" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fiscal_email" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="commercial_name" type="VARCHAR(150)"/>
+            <column name="economic_activity_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_company_tax_profiles_economic_activity"
+                             references="economic_activities(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="company_tax_profile_responsibilities">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_tax_profile_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ctp_responsibilities_profile"
+                             references="company_tax_profiles(id)"/>
+            </column>
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="company_tax_profile_responsibilities"
+                             columnNames="company_tax_profile_id, code"
+                             constraintName="uq_ctp_responsibilities_profile_code"/>
+    </changeSet>
+
+</databaseChangeLog>

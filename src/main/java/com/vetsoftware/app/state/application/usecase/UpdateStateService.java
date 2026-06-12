@@ -30,7 +30,7 @@ public class UpdateStateService implements UpdateStateUseCase {
             .orElseThrow(() -> new StateNotFoundException(command.id()));
         CountryRef country = countryQueryPort.findById(command.countryId())
             .orElseThrow(() -> new IllegalArgumentException("Country not found: " + command.countryId()));
-        state.update(command.name(), country);
+        state.update(command.name(), country, command.daneCode());
         return StateDto.from(repository.save(state));
     }
 }

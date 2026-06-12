@@ -30,7 +30,7 @@ public class UpdateCityService implements UpdateCityUseCase {
             .orElseThrow(() -> new CityNotFoundException(command.id()));
         StateRef state = stateQueryPort.findById(command.stateId())
             .orElseThrow(() -> new IllegalArgumentException("State not found: " + command.stateId()));
-        city.update(command.name(), state);
+        city.update(command.name(), state, command.daneCode());
         return CityDto.from(repository.save(city));
     }
 }

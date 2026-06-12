@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Código DANE (DIVIPOLA) para identidad fiscal del emisor/adquiriente en la factura electrónica.
+         Departamento = 2 dígitos; municipio = 5 dígitos (2 de depto + 3 de municipio).
+         Nullable: solo aplica a Colombia; las filas de otros países quedan en NULL. -->
+    <changeSet id="113_add_dane_code_to_states_and_cities" author="orlando">
+        <addColumn tableName="states">
+            <column name="dane_code" type="VARCHAR(2)"/>
+        </addColumn>
+        <addColumn tableName="cities">
+            <column name="dane_code" type="VARCHAR(5)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

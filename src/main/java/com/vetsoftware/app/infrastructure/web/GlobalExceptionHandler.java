@@ -16,6 +16,9 @@ import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
+import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -159,7 +162,8 @@ public class GlobalExceptionHandler {
             ServiceNotFoundException.class, PromotionNotFoundException.class,
             OpenAccountNotFoundException.class, DebtOpenAccountNotFoundException.class,
             ProductChargeOpenAccountNotFoundException.class, ServiceChargeOpenAccountNotFoundException.class,
-            GeneralChargeOpenAccountNotFoundException.class
+            GeneralChargeOpenAccountNotFoundException.class,
+            EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -207,6 +211,12 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleAdminEmployeeCannotBeDisabled(AdminEmployeeCannotBeDisabledException ex) {
         log.warn("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
+    }
+
+    @ExceptionHandler(CompanyTaxProfileAlreadyExistsException.class)
+    public ProblemDetail handleCompanyTaxProfileAlreadyExists(CompanyTaxProfileAlreadyExistsException ex) {
+        log.warn("Company tax profile already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "COMPANY_TAX_PROFILE_ALREADY_EXISTS", ex.getMessage());
     }
 
     @ExceptionHandler(OwnerAlreadyHasOpenAccountException.class)

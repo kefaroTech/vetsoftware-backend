@@ -6,5 +6,6 @@ import jakarta.validation.constraints.Size;
 
 public record CreateCityRequest(
         @NotBlank @Size(max = 100) String name,
-        @NotNull Long stateId
+        @NotNull Long stateId,
+        @Size(max = 5) String daneCode
 ) {}

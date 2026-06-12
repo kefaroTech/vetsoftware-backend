@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Backfill del código DANE (DIVIPOLA marzo 2026) para los departamentos y municipios de Colombia
+         sembrados en 022_seed_americas_geography. Se referencia por nombre + país (no por id) para no
+         afectar homónimos de otros países (p.ej. 'Córdoba' en Argentina). Códigos verificados contra
+         el archivo oficial DIVIPOLA del DANE. -->
+    <changeSet id="114_backfill_dane_code_colombia" author="orlando">
+
+        <!-- Departamentos (33) -->
+        <sql splitStatements="true">
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '91' WHERE c.name = 'Colombia' AND s.name = 'Amazonas';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '05' WHERE c.name = 'Colombia' AND s.name = 'Antioquia';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '81' WHERE c.name = 'Colombia' AND s.name = 'Arauca';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '08' WHERE c.name = 'Colombia' AND s.name = 'Atlántico';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '11' WHERE c.name = 'Colombia' AND s.name = 'Bogotá D.C.';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '13' WHERE c.name = 'Colombia' AND s.name = 'Bolívar';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '15' WHERE c.name = 'Colombia' AND s.name = 'Boyacá';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '17' WHERE c.name = 'Colombia' AND s.name = 'Caldas';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '18' WHERE c.name = 'Colombia' AND s.name = 'Caquetá';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '85' WHERE c.name = 'Colombia' AND s.name = 'Casanare';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '19' WHERE c.name = 'Colombia' AND s.name = 'Cauca';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '20' WHERE c.name = 'Colombia' AND s.name = 'Cesar';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '27' WHERE c.name = 'Colombia' AND s.name = 'Chocó';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '23' WHERE c.name = 'Colombia' AND s.name = 'Córdoba';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '25' WHERE c.name = 'Colombia' AND s.name = 'Cundinamarca';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '94' WHERE c.name = 'Colombia' AND s.name = 'Guainía';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '95' WHERE c.name = 'Colombia' AND s.name = 'Guaviare';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '41' WHERE c.name = 'Colombia' AND s.name = 'Huila';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '44' WHERE c.name = 'Colombia' AND s.name = 'La Guajira';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '47' WHERE c.name = 'Colombia' AND s.name = 'Magdalena';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '50' WHERE c.name = 'Colombia' AND s.name = 'Meta';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '52' WHERE c.name = 'Colombia' AND s.name = 'Nariño';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '54' WHERE c.name = 'Colombia' AND s.name = 'Norte de Santander';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '86' WHERE c.name = 'Colombia' AND s.name = 'Putumayo';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '63' WHERE c.name = 'Colombia' AND s.name = 'Quindío';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '66' WHERE c.name = 'Colombia' AND s.name = 'Risaralda';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '88' WHERE c.name = 'Colombia' AND s.name = 'San Andrés y Providencia';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '68' WHERE c.name = 'Colombia' AND s.name = 'Santander';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '70' WHERE c.name = 'Colombia' AND s.name = 'Sucre';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '73' WHERE c.name = 'Colombia' AND s.name = 'Tolima';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '76' WHERE c.name = 'Colombia' AND s.name = 'Valle del Cauca';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '97' WHERE c.name = 'Colombia' AND s.name = 'Vaupés';
+            UPDATE states s JOIN countries c ON s.country_id = c.id SET s.dane_code = '99' WHERE c.name = 'Colombia' AND s.name = 'Vichada';
+        </sql>
+
+        <!-- Municipios (47) -->
+        <sql splitStatements="true">
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '91001' WHERE c.name = 'Colombia' AND s.name = 'Amazonas' AND ci.name = 'Leticia';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '05001' WHERE c.name = 'Colombia' AND s.name = 'Antioquia' AND ci.name = 'Medellín';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '05088' WHERE c.name = 'Colombia' AND s.name = 'Antioquia' AND ci.name = 'Bello';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '05360' WHERE c.name = 'Colombia' AND s.name = 'Antioquia' AND ci.name = 'Itagüí';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '05266' WHERE c.name = 'Colombia' AND s.name = 'Antioquia' AND ci.name = 'Envigado';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '81001' WHERE c.name = 'Colombia' AND s.name = 'Arauca' AND ci.name = 'Arauca';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '08001' WHERE c.name = 'Colombia' AND s.name = 'Atlántico' AND ci.name = 'Barranquilla';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '08758' WHERE c.name = 'Colombia' AND s.name = 'Atlántico' AND ci.name = 'Soledad';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '11001' WHERE c.name = 'Colombia' AND s.name = 'Bogotá D.C.' AND ci.name = 'Bogotá';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '13001' WHERE c.name = 'Colombia' AND s.name = 'Bolívar' AND ci.name = 'Cartagena';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '13430' WHERE c.name = 'Colombia' AND s.name = 'Bolívar' AND ci.name = 'Magangué';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '15001' WHERE c.name = 'Colombia' AND s.name = 'Boyacá' AND ci.name = 'Tunja';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '15238' WHERE c.name = 'Colombia' AND s.name = 'Boyacá' AND ci.name = 'Duitama';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '17001' WHERE c.name = 'Colombia' AND s.name = 'Caldas' AND ci.name = 'Manizales';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '18001' WHERE c.name = 'Colombia' AND s.name = 'Caquetá' AND ci.name = 'Florencia';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '85001' WHERE c.name = 'Colombia' AND s.name = 'Casanare' AND ci.name = 'Yopal';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '19001' WHERE c.name = 'Colombia' AND s.name = 'Cauca' AND ci.name = 'Popayán';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '20001' WHERE c.name = 'Colombia' AND s.name = 'Cesar' AND ci.name = 'Valledupar';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '27001' WHERE c.name = 'Colombia' AND s.name = 'Chocó' AND ci.name = 'Quibdó';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '23001' WHERE c.name = 'Colombia' AND s.name = 'Córdoba' AND ci.name = 'Montería';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '25754' WHERE c.name = 'Colombia' AND s.name = 'Cundinamarca' AND ci.name = 'Soacha';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '25899' WHERE c.name = 'Colombia' AND s.name = 'Cundinamarca' AND ci.name = 'Zipaquirá';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '25269' WHERE c.name = 'Colombia' AND s.name = 'Cundinamarca' AND ci.name = 'Facatativá';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '94001' WHERE c.name = 'Colombia' AND s.name = 'Guainía' AND ci.name = 'Inírida';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '95001' WHERE c.name = 'Colombia' AND s.name = 'Guaviare' AND ci.name = 'San José del Guaviare';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '41001' WHERE c.name = 'Colombia' AND s.name = 'Huila' AND ci.name = 'Neiva';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '44001' WHERE c.name = 'Colombia' AND s.name = 'La Guajira' AND ci.name = 'Riohacha';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '44430' WHERE c.name = 'Colombia' AND s.name = 'La Guajira' AND ci.name = 'Maicao';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '47001' WHERE c.name = 'Colombia' AND s.name = 'Magdalena' AND ci.name = 'Santa Marta';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '50001' WHERE c.name = 'Colombia' AND s.name = 'Meta' AND ci.name = 'Villavicencio';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '52001' WHERE c.name = 'Colombia' AND s.name = 'Nariño' AND ci.name = 'Pasto';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '52835' WHERE c.name = 'Colombia' AND s.name = 'Nariño' AND ci.name = 'Tumaco';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '54001' WHERE c.name = 'Colombia' AND s.name = 'Norte de Santander' AND ci.name = 'Cúcuta';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '86001' WHERE c.name = 'Colombia' AND s.name = 'Putumayo' AND ci.name = 'Mocoa';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '63001' WHERE c.name = 'Colombia' AND s.name = 'Quindío' AND ci.name = 'Armenia';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '66001' WHERE c.name = 'Colombia' AND s.name = 'Risaralda' AND ci.name = 'Pereira';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '88001' WHERE c.name = 'Colombia' AND s.name = 'San Andrés y Providencia' AND ci.name = 'San Andrés';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '68001' WHERE c.name = 'Colombia' AND s.name = 'Santander' AND ci.name = 'Bucaramanga';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '68276' WHERE c.name = 'Colombia' AND s.name = 'Santander' AND ci.name = 'Floridablanca';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '68081' WHERE c.name = 'Colombia' AND s.name = 'Santander' AND ci.name = 'Barrancabermeja';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '70001' WHERE c.name = 'Colombia' AND s.name = 'Sucre' AND ci.name = 'Sincelejo';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '73001' WHERE c.name = 'Colombia' AND s.name = 'Tolima' AND ci.name = 'Ibagué';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '76001' WHERE c.name = 'Colombia' AND s.name = 'Valle del Cauca' AND ci.name = 'Cali';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '76520' WHERE c.name = 'Colombia' AND s.name = 'Valle del Cauca' AND ci.name = 'Palmira';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '76109' WHERE c.name = 'Colombia' AND s.name = 'Valle del Cauca' AND ci.name = 'Buenaventura';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '97001' WHERE c.name = 'Colombia' AND s.name = 'Vaupés' AND ci.name = 'Mitú';
+            UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '99001' WHERE c.name = 'Colombia' AND s.name = 'Vichada' AND ci.name = 'Puerto Carreño';
+        </sql>
+
+    </changeSet>
+
+</databaseChangeLog>

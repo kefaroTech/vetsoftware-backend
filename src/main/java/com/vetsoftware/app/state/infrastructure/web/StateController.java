@@ -49,7 +49,7 @@ public class StateController {
     @ResponseStatus(HttpStatus.CREATED)
     public StateResponse create(@Valid @RequestBody CreateStateRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateStateCommand(request.name(), request.countryId())));
+            new CreateStateCommand(request.name(), request.countryId(), request.daneCode())));
     }
 
     @GetMapping("/states")
@@ -71,7 +71,7 @@ public class StateController {
     @PutMapping("/states/{id}")
     public StateResponse update(@PathVariable Long id, @Valid @RequestBody UpdateStateRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateStateCommand(id, request.name(), request.countryId())));
+            new UpdateStateCommand(id, request.name(), request.countryId(), request.daneCode())));
     }
 
     @DeleteMapping("/states/{id}")
@@ -91,6 +91,7 @@ public class StateController {
             dto.id(),
             dto.name(),
             new CountrySummary(c.id(), c.name()),
+            dto.daneCode(),
             dto.createdDate(),
             dto.enabled()
         );

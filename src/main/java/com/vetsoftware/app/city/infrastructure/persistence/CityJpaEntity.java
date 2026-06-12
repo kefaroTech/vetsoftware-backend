@@ -24,6 +24,9 @@ public class CityJpaEntity {
     @JoinColumn(name = "state_id", nullable = false)
     private StateJpaEntity state;
 
+    @Column(name = "dane_code", length = 5)
+    private String daneCode;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -38,6 +41,8 @@ public class CityJpaEntity {
     public void setName(String name) { this.name = name; }
     public StateJpaEntity getState() { return state; }
     public void setState(StateJpaEntity state) { this.state = state; }
+    public String getDaneCode() { return daneCode; }
+    public void setDaneCode(String daneCode) { this.daneCode = daneCode; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }

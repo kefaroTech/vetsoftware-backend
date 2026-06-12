@@ -49,7 +49,7 @@ public class CityController {
     @ResponseStatus(HttpStatus.CREATED)
     public CityResponse create(@Valid @RequestBody CreateCityRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateCityCommand(request.name(), request.stateId())));
+            new CreateCityCommand(request.name(), request.stateId(), request.daneCode())));
     }
 
     @GetMapping("/cities")
@@ -71,7 +71,7 @@ public class CityController {
     @PutMapping("/cities/{id}")
     public CityResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCityRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateCityCommand(id, request.name(), request.stateId())));
+            new UpdateCityCommand(id, request.name(), request.stateId(), request.daneCode())));
     }
 
     @DeleteMapping("/cities/{id}")
@@ -91,6 +91,7 @@ public class CityController {
             dto.id(),
             dto.name(),
             new StateSummary(s.id(), s.name()),
+            dto.daneCode(),
             dto.createdDate(),
             dto.enabled()
         );

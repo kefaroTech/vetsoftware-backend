@@ -158,6 +158,18 @@ enum PromotionStatus {
   INACTIVE
 }
 
+enum CompanyDocumentType {
+  NIT(31)
+  CEDULA_CIUDADANIA(13)
+  CEDULA_EXTRANJERIA(22)
+  PASAPORTE(41)
+}
+
+enum TaxRegime {
+  RESPONSABLE_IVA
+  NO_RESPONSABLE_IVA
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -253,6 +265,38 @@ class Employee {
 }
 
 ' =========================
+' Company Tax Profile (DIAN)
+' =========================
+
+class EconomicActivity {
+  -code: String
+  -name: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class CompanyTaxProfile {
+  -company: Company
+  -companyDocumentType: CompanyDocumentType
+  -companyDocumentId: String
+  -companyDocumentVerificationDigit: String
+  -legalName: String
+  -taxRegime: TaxRegime
+  -fiscalEmail: String
+  -commercialName: String
+  -economicActivity: EconomicActivity
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class CompanyTaxProfileResponsibility {
+  -companyTaxProfile: CompanyTaxProfile
+  -code: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' =========================
 ' Authorization
 ' =========================
 
@@ -318,6 +362,7 @@ class Country {
 class State {
   -name: String
   -country: Country
+  -daneCode: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -325,6 +370,7 @@ class State {
 class City {
   -name: String
   -state: State
+  -daneCode: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -892,6 +938,13 @@ Company  --> Membership
 Company  --> City
 Employee --> Company
 Employee --> EmployeeStatus
+
+' --- Company Tax Profile (DIAN) ---
+CompanyTaxProfile               --> Company
+CompanyTaxProfile               --> CompanyDocumentType
+CompanyTaxProfile               --> TaxRegime
+CompanyTaxProfile               "0..*" --> "0..1" EconomicActivity
+CompanyTaxProfileResponsibility --> CompanyTaxProfile
 
 ' --- Authorization ---
 Role               --> Company
