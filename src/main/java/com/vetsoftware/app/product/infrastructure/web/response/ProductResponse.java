@@ -1,5 +1,6 @@
 package com.vetsoftware.app.product.infrastructure.web.response;
 
+import com.vetsoftware.app.product.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -12,7 +13,7 @@ public record ProductResponse(
         Integer currentStock,
         Integer minStock,
         String provider,
-        boolean hasTax,
+        TaxTreatment taxTreatment,
         boolean expireDate,
         String notes,
         ProductCategorySummary productCategory,

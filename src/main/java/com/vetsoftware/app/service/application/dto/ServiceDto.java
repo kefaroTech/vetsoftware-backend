@@ -1,6 +1,7 @@
 package com.vetsoftware.app.service.application.dto;
 
 import com.vetsoftware.app.service.domain.Service;
+import com.vetsoftware.app.service.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -8,7 +9,7 @@ public record ServiceDto(
         Long id,
         String name,
         BigDecimal price,
-        boolean hasTax,
+        TaxTreatment taxTreatment,
         String notes,
         ServiceCategorySummaryDto serviceCategory,
         TaxSummaryDto tax,
@@ -21,7 +22,7 @@ public record ServiceDto(
                 service.getId(),
                 service.getName(),
                 service.getPrice(),
-                service.isHasTax(),
+                service.getTaxTreatment(),
                 service.getNotes(),
                 ServiceCategorySummaryDto.from(service.getServiceCategory()),
                 service.getTax() == null ? null : TaxSummaryDto.from(service.getTax()),

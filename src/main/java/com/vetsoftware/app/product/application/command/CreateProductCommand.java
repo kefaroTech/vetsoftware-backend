@@ -1,5 +1,6 @@
 package com.vetsoftware.app.product.application.command;
 
+import com.vetsoftware.app.product.domain.TaxTreatment;
 import java.math.BigDecimal;
 
 public record CreateProductCommand(
@@ -12,6 +13,7 @@ public record CreateProductCommand(
         String provider,
         boolean expireDate,
         String notes,
+        TaxTreatment taxTreatment,
         Long productCategoryId,
         Long taxId,
         Long companyId

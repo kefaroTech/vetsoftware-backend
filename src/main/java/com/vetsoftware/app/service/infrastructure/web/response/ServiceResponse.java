@@ -1,5 +1,6 @@
 package com.vetsoftware.app.service.infrastructure.web.response;
 
+import com.vetsoftware.app.service.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -7,7 +8,7 @@ public record ServiceResponse(
         Long id,
         String name,
         BigDecimal price,
-        boolean hasTax,
+        TaxTreatment taxTreatment,
         String notes,
         ServiceCategorySummary serviceCategory,
         TaxSummary tax,

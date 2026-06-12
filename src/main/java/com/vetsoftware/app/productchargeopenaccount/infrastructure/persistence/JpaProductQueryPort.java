@@ -1,5 +1,6 @@
 package com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.product.domain.TaxTreatment;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaEntity;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
@@ -23,8 +24,9 @@ public class JpaProductQueryPort implements ProductQueryPort {
     }
 
     private static ProductRef toRef(ProductJpaEntity e) {
+        boolean hasTax = e.getTaxTreatment() == TaxTreatment.GRAVADO;
         TaxJpaEntity t = e.getTax();
-        TaxRef tax = e.isHasTax() && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
-        return new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice(), e.isHasTax(), tax);
+        TaxRef tax = hasTax && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
+        return new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice(), hasTax, tax);
     }
 }

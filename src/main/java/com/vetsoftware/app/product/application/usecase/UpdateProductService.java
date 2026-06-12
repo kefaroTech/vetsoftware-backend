@@ -50,7 +50,7 @@ public class UpdateProductService implements UpdateProductUseCase {
         product.update(
             command.name(), command.code(), command.purchasePrice(), command.salePrice(),
             command.currentStock(), command.minStock(), command.provider(),
-            command.expireDate(), command.notes(), productCategory, tax, company);
+            command.taxTreatment(), command.expireDate(), command.notes(), productCategory, tax, company);
         return ProductDto.from(repository.save(product));
     }
 }

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.service.domain.TaxTreatment;
 import com.vetsoftware.app.service.infrastructure.persistence.ServiceJpaEntity;
 import com.vetsoftware.app.service.infrastructure.persistence.ServiceJpaRepository;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.ServiceQueryPort;
@@ -23,8 +24,9 @@ public class JpaServiceQueryPort implements ServiceQueryPort {
     }
 
     private static ServiceRef toRef(ServiceJpaEntity e) {
+        boolean hasTax = e.getTaxTreatment() == TaxTreatment.GRAVADO;
         TaxJpaEntity t = e.getTax();
-        TaxRef tax = e.isHasTax() && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
-        return new ServiceRef(e.getId(), e.getName(), e.getPrice(), e.isHasTax(), tax);
+        TaxRef tax = hasTax && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
+        return new ServiceRef(e.getId(), e.getName(), e.getPrice(), hasTax, tax);
     }
 }

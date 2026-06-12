@@ -12,7 +12,7 @@ public class Product {
     private Integer currentStock;
     private Integer minStock;
     private String provider;
-    private boolean hasTax;
+    private TaxTreatment taxTreatment;
     private boolean expireDate;
     private String notes;
     private ProductCategoryRef productCategory;
@@ -22,11 +22,12 @@ public class Product {
     private boolean enabled;
 
     public Product(Long id, String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
-                   Integer currentStock, Integer minStock, String provider, boolean hasTax,
+                   Integer currentStock, Integer minStock, String provider, TaxTreatment taxTreatment,
                    boolean expireDate, String notes, ProductCategoryRef productCategory, TaxRef tax,
                    CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
                  productCategory, company);
+        validateTaxTreatment(taxTreatment, tax);
         this.id = id;
         this.name = name;
         this.code = code;
@@ -35,7 +36,7 @@ public class Product {
         this.currentStock = currentStock;
         this.minStock = minStock;
         this.provider = provider;
-        this.hasTax = hasTax;
+        this.taxTreatment = taxTreatment;
         this.expireDate = expireDate;
         this.notes = notes;
         this.productCategory = productCategory;
@@ -47,20 +48,20 @@ public class Product {
 
     public static Product create(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                                  Integer currentStock, Integer minStock, String provider,
-                                 boolean expireDate, String notes, ProductCategoryRef productCategory,
-                                 TaxRef tax, CompanyRef company) {
-        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
+                                 TaxTreatment taxTreatment, boolean expireDate, String notes,
+                                 ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
         return new Product(null, name, code, purchasePrice, salePrice, currentStock, minStock, provider,
-                           tax != null, expireDate, notes, productCategory, tax, company,
+                           taxTreatment, expireDate, notes, productCategory, tax, company,
                            LocalDateTime.now(), true);
     }
 
     public void update(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                        Integer currentStock, Integer minStock, String provider,
-                       boolean expireDate, String notes, ProductCategoryRef productCategory,
-                       TaxRef tax, CompanyRef company) {
+                       TaxTreatment taxTreatment, boolean expireDate, String notes,
+                       ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
         validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
                  productCategory, company);
+        validateTaxTreatment(taxTreatment, tax);
         this.name = name;
         this.code = code;
         this.purchasePrice = purchasePrice;
@@ -68,7 +69,7 @@ public class Product {
         this.currentStock = currentStock;
         this.minStock = minStock;
         this.provider = provider;
-        this.hasTax = tax != null;
+        this.taxTreatment = taxTreatment;
         this.expireDate = expireDate;
         this.notes = notes;
         this.productCategory = productCategory;
@@ -97,6 +98,22 @@ public class Product {
         if (company == null) throw new IllegalArgumentException("company is required");
     }
 
+    private static void validateTaxTreatment(TaxTreatment taxTreatment, TaxRef tax) {
+        if (taxTreatment == null) throw new IllegalArgumentException("taxTreatment is required");
+        switch (taxTreatment) {
+            case GRAVADO, INC -> {
+                if (tax == null)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " requires a tax");
+                if (tax.percentage().signum() <= 0)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " requires a tax percentage greater than 0");
+            }
+            case EXENTO, EXCLUIDO -> {
+                if (tax != null)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " must not have a tax");
+            }
+        }
+    }
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getCode() { return code; }
@@ -105,7 +122,7 @@ public class Product {
     public Integer getCurrentStock() { return currentStock; }
     public Integer getMinStock() { return minStock; }
     public String getProvider() { return provider; }
-    public boolean isHasTax() { return hasTax; }
+    public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public boolean isExpireDate() { return expireDate; }
     public String getNotes() { return notes; }
     public ProductCategoryRef getProductCategory() { return productCategory; }

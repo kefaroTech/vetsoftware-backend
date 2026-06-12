@@ -41,7 +41,7 @@ public class CreateServiceService implements CreateServiceUseCase {
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
         Service service = Service.create(command.name(), command.price(),
-            command.notes(), serviceCategory, tax, company);
+            command.taxTreatment(), command.notes(), serviceCategory, tax, company);
         return ServiceDto.from(repository.save(service));
     }
 }

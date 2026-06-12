@@ -7,7 +7,7 @@ public class Service {
     private Long id;
     private String name;
     private BigDecimal price;
-    private boolean hasTax;
+    private TaxTreatment taxTreatment;
     private String notes;
     private ServiceCategoryRef serviceCategory;
     private TaxRef tax;
@@ -15,14 +15,15 @@ public class Service {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public Service(Long id, String name, BigDecimal price, boolean hasTax, String notes,
+    public Service(Long id, String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
                    ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company,
                    LocalDateTime createdDate, boolean enabled) {
         validate(name, price, notes, serviceCategory, company);
+        validateTaxTreatment(taxTreatment, tax);
         this.id = id;
         this.name = name;
         this.price = price;
-        this.hasTax = hasTax;
+        this.taxTreatment = taxTreatment;
         this.notes = notes;
         this.serviceCategory = serviceCategory;
         this.tax = tax;
@@ -31,19 +32,19 @@ public class Service {
         this.enabled = enabled;
     }
 
-    public static Service create(String name, BigDecimal price, String notes,
+    public static Service create(String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
                                  ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
-        // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
-        return new Service(null, name, price, tax != null, notes, serviceCategory, tax, company,
+        return new Service(null, name, price, taxTreatment, notes, serviceCategory, tax, company,
                 LocalDateTime.now(), true);
     }
 
-    public void update(String name, BigDecimal price, String notes,
+    public void update(String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
                        ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
         validate(name, price, notes, serviceCategory, company);
+        validateTaxTreatment(taxTreatment, tax);
         this.name = name;
         this.price = price;
-        this.hasTax = tax != null;
+        this.taxTreatment = taxTreatment;
         this.notes = notes;
         this.serviceCategory = serviceCategory;
         this.tax = tax;
@@ -61,10 +62,26 @@ public class Service {
         if (company == null) throw new IllegalArgumentException("company is required");
     }
 
+    private static void validateTaxTreatment(TaxTreatment taxTreatment, TaxRef tax) {
+        if (taxTreatment == null) throw new IllegalArgumentException("taxTreatment is required");
+        switch (taxTreatment) {
+            case GRAVADO, INC -> {
+                if (tax == null)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " requires a tax");
+                if (tax.percentage().signum() <= 0)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " requires a tax percentage greater than 0");
+            }
+            case EXENTO, EXCLUIDO -> {
+                if (tax != null)
+                    throw new IllegalArgumentException("taxTreatment " + taxTreatment + " must not have a tax");
+            }
+        }
+    }
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public BigDecimal getPrice() { return price; }
-    public boolean isHasTax() { return hasTax; }
+    public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public String getNotes() { return notes; }
     public ServiceCategoryRef getServiceCategory() { return serviceCategory; }
     public TaxRef getTax() { return tax; }

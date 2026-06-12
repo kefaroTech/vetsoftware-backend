@@ -1,6 +1,7 @@
 package com.vetsoftware.app.product.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.product.domain.TaxTreatment;
 import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCategoryJpaEntity;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import jakarta.persistence.*;
@@ -39,8 +40,9 @@ public class ProductJpaEntity {
     @Column(length = 150)
     private String provider;
 
-    @Column(name = "has_tax", nullable = false)
-    private boolean hasTax;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_treatment", nullable = false, length = 20)
+    private TaxTreatment taxTreatment;
 
     @Column(name = "expire_date", nullable = false)
     private boolean expireDate;
@@ -84,8 +86,8 @@ public class ProductJpaEntity {
     public void setMinStock(Integer minStock) { this.minStock = minStock; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
-    public boolean isHasTax() { return hasTax; }
-    public void setHasTax(boolean hasTax) { this.hasTax = hasTax; }
+    public TaxTreatment getTaxTreatment() { return taxTreatment; }
+    public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
     public boolean isExpireDate() { return expireDate; }
     public void setExpireDate(boolean expireDate) { this.expireDate = expireDate; }
     public String getNotes() { return notes; }

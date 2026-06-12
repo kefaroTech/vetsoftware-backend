@@ -20,7 +20,7 @@ public class ServiceJpaMapper {
         entity.setId(service.getId());
         entity.setName(service.getName());
         entity.setPrice(service.getPrice());
-        entity.setHasTax(service.isHasTax());
+        entity.setTaxTreatment(service.getTaxTreatment());
         entity.setNotes(service.getNotes());
         entity.setServiceCategory(serviceCategory);
         entity.setTax(tax);
@@ -46,7 +46,7 @@ public class ServiceJpaMapper {
             entity.getId(),
             entity.getName(),
             entity.getPrice(),
-            entity.isHasTax(),
+            entity.getTaxTreatment(),
             entity.getNotes(),
             serviceCategoryRef,
             taxRef,

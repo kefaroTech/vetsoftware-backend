@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Clasificación tributaria explícita (DIAN §2.3.F): reemplaza el booleano has_tax por
+         tax_treatment (GRAVADO/EXENTO/EXCLUIDO/INC) en el catálogo de productos y servicios.
+         Backfill: con impuesto -> GRAVADO; sin impuesto -> EXCLUIDO. La columna queda NOT NULL
+         y se elimina has_tax. (Los cargos congelados conservan su propio has_tax; no se tocan.) -->
+    <changeSet id="118_replace_has_tax_with_tax_treatment_in_catalog" author="orlando">
+        <addColumn tableName="products">
+            <column name="tax_treatment" type="VARCHAR(20)"/>
+        </addColumn>
+        <addColumn tableName="services">
+            <column name="tax_treatment" type="VARCHAR(20)"/>
+        </addColumn>
+
+        <sql>
+            UPDATE products SET tax_treatment = CASE WHEN has_tax THEN 'GRAVADO' ELSE 'EXCLUIDO' END;
+            UPDATE services SET tax_treatment = CASE WHEN has_tax THEN 'GRAVADO' ELSE 'EXCLUIDO' END;
+        </sql>
+
+        <addNotNullConstraint tableName="products" columnName="tax_treatment" columnDataType="VARCHAR(20)"/>
+        <addNotNullConstraint tableName="services" columnName="tax_treatment" columnDataType="VARCHAR(20)"/>
+
+        <dropColumn tableName="products" columnName="has_tax"/>
+        <dropColumn tableName="services" columnName="has_tax"/>
+    </changeSet>
+
+</databaseChangeLog>

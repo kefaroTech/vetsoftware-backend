@@ -1,6 +1,7 @@
 package com.vetsoftware.app.product.application.dto;
 
 import com.vetsoftware.app.product.domain.Product;
+import com.vetsoftware.app.product.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -13,7 +14,7 @@ public record ProductDto(
         Integer currentStock,
         Integer minStock,
         String provider,
-        boolean hasTax,
+        TaxTreatment taxTreatment,
         boolean expireDate,
         String notes,
         ProductCategorySummaryDto productCategory,
@@ -32,7 +33,7 @@ public record ProductDto(
                 product.getCurrentStock(),
                 product.getMinStock(),
                 product.getProvider(),
-                product.isHasTax(),
+                product.getTaxTreatment(),
                 product.isExpireDate(),
                 product.getNotes(),
                 ProductCategorySummaryDto.from(product.getProductCategory()),

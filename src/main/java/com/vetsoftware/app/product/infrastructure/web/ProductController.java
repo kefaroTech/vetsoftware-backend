@@ -65,7 +65,8 @@ public class ProductController {
             new CreateProductCommand(
                 request.name(), request.code(), request.purchasePrice(), request.salePrice(),
                 request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.notes(), request.productCategoryId(), request.taxId(),
+                request.expireDate(), request.notes(), request.taxTreatment(),
+                request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
 
@@ -101,7 +102,8 @@ public class ProductController {
             new UpdateProductCommand(
                 id, request.name(), request.code(), request.purchasePrice(), request.salePrice(),
                 request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.notes(), request.productCategoryId(), request.taxId(),
+                request.expireDate(), request.notes(), request.taxTreatment(),
+                request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
 
@@ -122,7 +124,7 @@ public class ProductController {
         CompanySummaryDto c = dto.company();
         return new ProductResponse(
             dto.id(), dto.name(), dto.code(), dto.purchasePrice(), dto.salePrice(),
-            dto.currentStock(), dto.minStock(), dto.provider(), dto.hasTax(), dto.expireDate(),
+            dto.currentStock(), dto.minStock(), dto.provider(), dto.taxTreatment(), dto.expireDate(),
             dto.notes(),
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),

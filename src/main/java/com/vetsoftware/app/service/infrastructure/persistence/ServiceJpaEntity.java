@@ -1,6 +1,7 @@
 package com.vetsoftware.app.service.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.service.domain.TaxTreatment;
 import com.vetsoftware.app.servicecategory.infrastructure.persistence.ServiceCategoryJpaEntity;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import jakarta.persistence.*;
@@ -24,8 +25,9 @@ public class ServiceJpaEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "has_tax", nullable = false)
-    private boolean hasTax;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_treatment", nullable = false, length = 20)
+    private TaxTreatment taxTreatment;
 
     @Column(length = 500)
     private String notes;
@@ -56,8 +58,8 @@ public class ServiceJpaEntity {
     public void setName(String name) { this.name = name; }
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
-    public boolean isHasTax() { return hasTax; }
-    public void setHasTax(boolean hasTax) { this.hasTax = hasTax; }
+    public TaxTreatment getTaxTreatment() { return taxTreatment; }
+    public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     public ServiceCategoryJpaEntity getServiceCategory() { return serviceCategory; }

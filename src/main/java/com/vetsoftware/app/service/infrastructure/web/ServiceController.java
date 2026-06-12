@@ -63,7 +63,7 @@ public class ServiceController {
     public ServiceResponse create(@Valid @RequestBody CreateServiceRequest request) {
         return toResponse(createUseCase.execute(
             new CreateServiceCommand(
-                request.name(), request.price(), request.notes(),
+                request.name(), request.price(), request.taxTreatment(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 
@@ -97,7 +97,7 @@ public class ServiceController {
                                   @Valid @RequestBody UpdateServiceRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateServiceCommand(
-                id, request.name(), request.price(), request.notes(),
+                id, request.name(), request.price(), request.taxTreatment(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 
@@ -117,7 +117,7 @@ public class ServiceController {
         TaxSummaryDto t = dto.tax();
         CompanySummaryDto c = dto.company();
         return new ServiceResponse(
-            dto.id(), dto.name(), dto.price(), dto.hasTax(), dto.notes(),
+            dto.id(), dto.name(), dto.price(), dto.taxTreatment(), dto.notes(),
             new ServiceCategorySummary(sc.id(), sc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
