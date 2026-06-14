@@ -202,6 +202,32 @@ enum TaxScheme {
   INC(04)
 }
 
+enum DianStatus {
+  PENDIENTE
+  VALIDADO
+  RECHAZADO
+  CONTINGENCIA
+}
+
+enum PaymentForm {
+  CONTADO(1)
+  CREDITO(2)
+}
+
+enum PaymentMeans {
+  EFECTIVO(10)
+  TARJETA_DEBITO(48)
+  TARJETA_CREDITO(49)
+  TRANSFERENCIA(42)
+}
+
+enum TaxCategory {
+  GRAVADO
+  EXENTO
+  EXCLUIDO
+  INC
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -972,6 +998,78 @@ class GeneralChargeOpenAccount {
 }
 
 ' =========================
+' Electronic Document (DIAN) - F2
+' =========================
+
+class IssuerSnapshot {
+  -documentType: String
+  -documentId: String
+  -verificationDigit: String
+  -legalName: String
+  -taxRegime: String
+  -email: String
+}
+
+class CustomerSnapshot {
+  -documentType: String
+  -documentId: String
+  -verificationDigit: String
+  -personType: String
+  -legalName: String
+  -name: String
+}
+
+class ElectronicDocument {
+  -company: Company
+  -openAccount: OpenAccount
+  -documentType: ElectronicDocumentType
+  -prefix: String
+  -consecutive: Long
+  -issueDate: LocalDate
+  -issueTime: String
+  -cufe: String
+  -cude: String
+  -uuid: String
+  -qrData: String
+  -qrUrl: String
+  -xmlSigned: String
+  -pdfRepresentation: String
+  -dianStatus: DianStatus
+  -dianValidationDate: LocalDateTime
+  -issuer: IssuerSnapshot
+  -customer: CustomerSnapshot
+  -lineExtensionAmount: BigDecimal
+  -taxExclusiveAmount: BigDecimal
+  -taxInclusiveAmount: BigDecimal
+  -payableAmount: BigDecimal
+  -paymentForm: PaymentForm
+  -paymentDueDate: LocalDate
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class ElectronicDocumentLine {
+  -electronicDocument: ElectronicDocument
+  -lineNumber: int
+  -description: String
+  -quantity: BigDecimal
+  -unitMeasureCode: String
+  -unitPrice: BigDecimal
+  -lineExtensionAmount: BigDecimal
+  -taxCategory: TaxCategory
+  -taxScheme: TaxScheme
+  -taxRate: BigDecimal
+  -taxAmount: BigDecimal
+  -totalAmount: BigDecimal
+}
+
+class ElectronicDocumentPayment {
+  -electronicDocument: ElectronicDocument
+  -paymentMeans: PaymentMeans
+  -amount: BigDecimal
+}
+
+' =========================
 ' Relationships
 ' =========================
 
@@ -1141,5 +1239,19 @@ ServiceChargeOpenAccount   "0..*" --> "0..1" Tax
 ServiceChargeOpenAccount   --> OpenAccount
 GeneralChargeOpenAccount   "0..*" --> "0..1" Tax
 GeneralChargeOpenAccount   --> OpenAccount
+
+' --- Electronic Document (DIAN) ---
+ElectronicDocument         --> Company
+ElectronicDocument         "0..*" --> "0..1" OpenAccount
+ElectronicDocument         --> ElectronicDocumentType
+ElectronicDocument         --> DianStatus
+ElectronicDocument         --> PaymentForm
+ElectronicDocument         --> IssuerSnapshot
+ElectronicDocument         --> CustomerSnapshot
+ElectronicDocumentLine     --> ElectronicDocument
+ElectronicDocumentLine     --> TaxCategory
+ElectronicDocumentLine     "0..*" --> "0..1" TaxScheme
+ElectronicDocumentPayment  --> ElectronicDocument
+ElectronicDocumentPayment  --> PaymentMeans
 
 @enduml
