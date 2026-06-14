@@ -44,14 +44,21 @@ public record ElectronicDocumentDto(
         List<LineDto> lines,
         List<PaymentDto> payments,
         List<TaxTotalDto> taxTotalsByRate,
+        ReferenceDto reference,
+        String noteReasonCode,
+        String noteReasonText,
+        boolean reversed,
         LocalDateTime createdDate,
         boolean enabled
 ) {
     public record IssuerDto(String documentType, String documentId, String verificationDigit,
                             String legalName, String taxRegime, String email) {}
 
+    /** Referencia al documento corregido (solo en notas credito/debito). */
+    public record ReferenceDto(String cufe, String prefix, Long number, LocalDate issueDate) {}
+
     public record CustomerDto(String documentType, String documentId, String verificationDigit,
-                              String personType, String legalName, String name) {}
+                              String personType, String legalName, String name, String email) {}
 
     public record LineDto(Long id, int lineNumber, String description, BigDecimal quantity,
                           String unitMeasureCode, BigDecimal unitPrice, BigDecimal lineExtensionAmount,
@@ -76,7 +83,13 @@ public record ElectronicDocumentDto(
                 doc.getTaxInclusiveAmount(), doc.getPayableAmount(),
                 doc.getPaymentForm(), doc.getPaymentDueDate(),
                 lines, payments, taxTotals(doc.getLines()),
+                referenceFrom(doc), doc.getNoteReasonCode(), doc.getNoteReasonText(), doc.isReversed(),
                 doc.getCreatedDate(), doc.isEnabled());
+    }
+
+    private static ReferenceDto referenceFrom(ElectronicDocument doc) {
+        var r = doc.getReference();
+        return r == null ? null : new ReferenceDto(r.cufe(), r.prefix(), r.number(), r.issueDate());
     }
 
     private static IssuerDto issuerFrom(ElectronicDocument doc) {
@@ -88,7 +101,7 @@ public record ElectronicDocumentDto(
     private static CustomerDto customerFrom(ElectronicDocument doc) {
         var c = doc.getCustomer();
         return new CustomerDto(c.documentType(), c.documentId(), c.verificationDigit(),
-                c.personType(), c.legalName(), c.name());
+                c.personType(), c.legalName(), c.name(), c.email());
     }
 
     private static LineDto lineFrom(ElectronicDocumentLine l) {

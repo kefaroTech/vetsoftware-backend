@@ -54,6 +54,8 @@ import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoundException;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
+import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
+import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
@@ -250,6 +252,19 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleChargeOpenAccountAlreadyVoided(RuntimeException ex) {
         log.warn("Charge open account already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CHARGE_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
+    }
+
+    // F5: correccion por nota credito/debito sobre un documento en estado invalido (no VALIDADO o ya reversado).
+    @ExceptionHandler(DocumentNotValidatedException.class)
+    public ProblemDetail handleDocumentNotValidated(DocumentNotValidatedException ex) {
+        log.warn("Document not validated for correction: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DOCUMENT_NOT_VALIDATED", ex.getMessage());
+    }
+
+    @ExceptionHandler(DocumentAlreadyReversedException.class)
+    public ProblemDetail handleDocumentAlreadyReversed(DocumentAlreadyReversedException ex) {
+        log.warn("Document already reversed: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_REVERSED", ex.getMessage());
     }
 
     // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).

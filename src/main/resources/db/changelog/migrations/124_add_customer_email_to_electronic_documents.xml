@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F4 - email del adquiriente congelado en el documento, para enviar la representación gráfica
+         (PDF) por correo. Snapshot del Owner.email al emitir. -->
+    <changeSet id="124_add_customer_email_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="customer_email" type="VARCHAR(150)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

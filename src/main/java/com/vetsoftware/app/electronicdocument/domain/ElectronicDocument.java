@@ -59,6 +59,14 @@ public class ElectronicDocument {
     private final List<ElectronicDocumentLine> lines;
     private final List<ElectronicDocumentPayment> payments;
 
+    // F5 - correcciones. Solo poblados en notas (NOTA_CREDITO/NOTA_DEBITO): referencia al documento
+    // corregido + concepto DIAN (codigo + texto). En facturas son null. `reversed` marca que ESTA
+    // factura fue anulada por una nota credito validada (no final: lo estampa la validacion DIAN).
+    private final DocumentReference reference;
+    private final String noteReasonCode;
+    private final String noteReasonText;
+    private boolean reversed;
+
     private final LocalDateTime createdDate;
     private final boolean enabled;
 
@@ -70,9 +78,12 @@ public class ElectronicDocument {
                               BigDecimal lineExtensionAmount, BigDecimal taxExclusiveAmount,
                               BigDecimal taxInclusiveAmount, BigDecimal payableAmount, PaymentForm paymentForm,
                               LocalDate paymentDueDate, List<ElectronicDocumentLine> lines,
-                              List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled) {
+                              List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
+                              DocumentReference reference, String noteReasonCode, String noteReasonText,
+                              boolean reversed) {
         validate(companyId, documentType, issueDate, issueTime, dianStatus, issuer, customer,
                 lineExtensionAmount, taxExclusiveAmount, taxInclusiveAmount, payableAmount, paymentForm, lines);
+        validateNoteConsistency(documentType, reference, noteReasonCode);
         this.id = id;
         this.companyId = companyId;
         this.openAccountId = openAccountId;
@@ -100,6 +111,10 @@ public class ElectronicDocument {
         this.paymentDueDate = paymentDueDate;
         this.lines = List.copyOf(lines);
         this.payments = payments == null ? List.of() : List.copyOf(payments);
+        this.reference = reference;
+        this.noteReasonCode = noteReasonCode;
+        this.noteReasonText = noteReasonText;
+        this.reversed = reversed;
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
@@ -123,7 +138,50 @@ public class ElectronicDocument {
                 null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 issuer, customer, base, base, totalWithTax, totalWithTax,
-                paymentForm, paymentDueDate, lines, payments, LocalDateTime.now(), true);
+                paymentForm, paymentDueDate, lines, payments, LocalDateTime.now(), true,
+                null, null, null, false);
+    }
+
+    /**
+     * Construye una NOTA CREDITO PENDIENTE que corrige (anula, total) una factura VALIDADA. Clona el
+     * contenido fiscal del original (lineas, snapshots, totales) y fija la referencia + concepto DIAN.
+     * La nota usa CUDE propio y consecutivo de su resolucion (los estampa la validacion DIAN, F3).
+     */
+    public static ElectronicDocument createCreditNote(ElectronicDocument original,
+                                                      String reasonCode, String reasonText) {
+        return createNote(original, ElectronicDocumentType.NOTA_CREDITO, reasonCode, reasonText);
+    }
+
+    /** Construye una NOTA DEBITO PENDIENTE (aumentos) que referencia una factura VALIDADA. */
+    public static ElectronicDocument createDebitNote(ElectronicDocument original,
+                                                     String reasonCode, String reasonText) {
+        return createNote(original, ElectronicDocumentType.NOTA_DEBITO, reasonCode, reasonText);
+    }
+
+    private static ElectronicDocument createNote(ElectronicDocument original, ElectronicDocumentType type,
+                                                 String reasonCode, String reasonText) {
+        if (original == null) throw new IllegalArgumentException("original document is required");
+        if (original.cufe == null || original.cufe.isBlank())
+            throw new IllegalArgumentException("original document has no CUFE to reference");
+        DocumentReference ref = new DocumentReference(original.cufe, original.prefix,
+                original.consecutive, original.issueDate);
+        List<ElectronicDocumentLine> clonedLines = original.lines.stream()
+                .map(l -> new ElectronicDocumentLine(null, l.getLineNumber(), l.getDescription(), l.getQuantity(),
+                        l.getUnitMeasureCode(), l.getUnitPrice(), l.getLineExtensionAmount(), l.getTaxCategory(),
+                        l.getTaxScheme(), l.getTaxRate(), l.getTaxAmount(), l.getTotalAmount()))
+                .toList();
+        List<ElectronicDocumentPayment> clonedPayments = original.payments.stream()
+                .map(p -> new ElectronicDocumentPayment(null, p.getPaymentMeans(), p.getAmount()))
+                .toList();
+        ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
+        String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
+        return new ElectronicDocument(null, original.companyId, original.openAccountId, type,
+                null, null, now.toLocalDate(), issueTime,
+                null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
+                original.issuer, original.customer, original.lineExtensionAmount, original.taxExclusiveAmount,
+                original.taxInclusiveAmount, original.payableAmount, original.paymentForm, original.paymentDueDate,
+                clonedLines, clonedPayments, LocalDateTime.now(), true,
+                ref, reasonCode, reasonText, false);
     }
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
@@ -152,6 +210,26 @@ public class ElectronicDocument {
         if (paymentForm == null) throw new IllegalArgumentException("paymentForm is required");
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
+    }
+
+    /** Una nota (credito/debito) exige referencia + concepto; una factura no puede llevarlos. */
+    private static void validateNoteConsistency(ElectronicDocumentType documentType,
+                                                DocumentReference reference, String noteReasonCode) {
+        boolean isNote = documentType == ElectronicDocumentType.NOTA_CREDITO
+                || documentType == ElectronicDocumentType.NOTA_DEBITO;
+        if (isNote) {
+            if (reference == null)
+                throw new IllegalArgumentException("a credit/debit note requires a document reference");
+            if (noteReasonCode == null || noteReasonCode.isBlank())
+                throw new IllegalArgumentException("a credit/debit note requires a reason code");
+        } else if (reference != null) {
+            throw new IllegalArgumentException("an invoice cannot reference another document");
+        }
+    }
+
+    public boolean isNote() {
+        return documentType == ElectronicDocumentType.NOTA_CREDITO
+                || documentType == ElectronicDocumentType.NOTA_DEBITO;
     }
 
     /**
@@ -185,6 +263,19 @@ public class ElectronicDocument {
     public void markContingency() {
         ensureNotTerminal();
         this.dianStatus = DianStatus.CONTINGENCIA;
+    }
+
+    /** Adjunta la referencia (clave/URL S3) de la representación gráfica PDF ya generada. */
+    public void attachRepresentation(String pdfRepresentation) {
+        this.pdfRepresentation = pdfRepresentation;
+    }
+
+    /**
+     * Marca esta factura como reversada por una nota credito ya VALIDADA. Idempotente. Es la marca
+     * fiscal que subordina el void de cartera a la validacion DIAN de la nota (no es soft-delete).
+     */
+    public void markReversed() {
+        this.reversed = true;
     }
 
     private void ensureNotTerminal() {
@@ -222,6 +313,10 @@ public class ElectronicDocument {
     public LocalDate getPaymentDueDate() { return paymentDueDate; }
     public List<ElectronicDocumentLine> getLines() { return lines; }
     public List<ElectronicDocumentPayment> getPayments() { return payments; }
+    public DocumentReference getReference() { return reference; }
+    public String getNoteReasonCode() { return noteReasonCode; }
+    public String getNoteReasonText() { return noteReasonText; }
+    public boolean isReversed() { return reversed; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
 }

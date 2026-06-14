@@ -35,6 +35,11 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public Optional<ElectronicDocument> findByCufe(String cufe, Long companyId) {
+        return jpaRepository.findByCufeAndCompany_Id(cufe, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public ElectronicDocument updateDianResult(ElectronicDocument document) {
         ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
                 .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain
@@ -51,6 +56,8 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
         entity.setPdfRepresentation(document.getPdfRepresentation());
         entity.setDianStatus(document.getDianStatus());
         entity.setDianValidationDate(document.getDianValidationDate());
+        // F5: el reverso contable de la factura (marcado al validar su nota credito) tambien se persiste aqui.
+        entity.setReversed(document.isReversed());
         return mapper.toDomain(jpaRepository.save(entity));
     }
 

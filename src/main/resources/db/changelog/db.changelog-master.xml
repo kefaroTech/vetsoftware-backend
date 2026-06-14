@@ -127,5 +127,8 @@
     <include file="db/changelog/migrations/121_create_electronic_documents.xml"/>
     <include file="db/changelog/migrations/122_create_dian_provider_configs.xml"/>
     <include file="db/changelog/migrations/123_create_electronic_document_transmissions.xml"/>
+    <include file="db/changelog/migrations/124_add_customer_email_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/125_add_note_fields_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/126_add_reversal_to_open_accounts.xml"/>
 
 </databaseChangeLog>

@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
+import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
@@ -48,6 +49,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setCustomerPersonType(c.personType());
         entity.setCustomerLegalName(c.legalName());
         entity.setCustomerName(c.name());
+        entity.setCustomerEmail(c.email());
 
         entity.setLineExtensionAmount(doc.getLineExtensionAmount());
         entity.setTaxExclusiveAmount(doc.getTaxExclusiveAmount());
@@ -57,6 +59,17 @@ public class ElectronicDocumentJpaMapper {
         entity.setPaymentDueDate(doc.getPaymentDueDate());
         entity.setCreatedDate(doc.getCreatedDate());
         entity.setEnabled(doc.isEnabled());
+
+        DocumentReference ref = doc.getReference();
+        if (ref != null) {
+            entity.setReferencedCufe(ref.cufe());
+            entity.setReferencedPrefix(ref.prefix());
+            entity.setReferencedNumber(ref.number());
+            entity.setReferencedIssueDate(ref.issueDate());
+        }
+        entity.setNoteReasonCode(doc.getNoteReasonCode());
+        entity.setNoteReasonText(doc.getNoteReasonText());
+        entity.setReversed(doc.isReversed());
 
         for (ElectronicDocumentLine l : doc.getLines()) {
             ElectronicDocumentLineJpaEntity le = new ElectronicDocumentLineJpaEntity();
@@ -102,7 +115,12 @@ public class ElectronicDocumentJpaMapper {
                 entity.getIssuerEmail());
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
-                entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName());
+                entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
+                entity.getCustomerEmail());
+
+        DocumentReference reference = entity.getReferencedCufe() == null ? null
+                : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),
+                        entity.getReferencedNumber(), entity.getReferencedIssueDate());
 
         return new ElectronicDocument(entity.getId(), companyId, entity.getOpenAccountId(),
                 entity.getDocumentType(), entity.getPrefix(), entity.getConsecutive(), entity.getIssueDate(),
@@ -111,6 +129,7 @@ public class ElectronicDocumentJpaMapper {
                 entity.getDianValidationDate(), issuer, customer, entity.getLineExtensionAmount(),
                 entity.getTaxExclusiveAmount(), entity.getTaxInclusiveAmount(), entity.getPayableAmount(),
                 entity.getPaymentForm(), entity.getPaymentDueDate(), lines, payments, entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
+                entity.isReversed());
     }
 }

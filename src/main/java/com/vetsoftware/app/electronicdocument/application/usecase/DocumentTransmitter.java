@@ -28,15 +28,18 @@ public class DocumentTransmitter {
     private final ElectronicDocumentRepository repository;
     private final ProviderConfigQueryPort configQueryPort;
     private final TransmissionLogPort transmissionLog;
+    private final CreditNoteReversalApplier reversalApplier;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
                                ProviderConfigQueryPort configQueryPort,
                                TransmissionLogPort transmissionLog,
+                               CreditNoteReversalApplier reversalApplier,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
+        this.reversalApplier = reversalApplier;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
@@ -57,6 +60,10 @@ public class DocumentTransmitter {
 
         transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
                 result.providerDocumentKey(), toTransmissionResult(result.status()), result.rejectionReason());
+
+        // Subordinacion del void: si esta transmision dejo VALIDADA una nota credito (proveedor sincrono),
+        // reversa la factura referenciada y la cartera en el acto. Para async no pasa nada aqui (PENDIENTE).
+        reversalApplier.applyIfCreditNoteValidated(saved);
         return saved;
     }
 

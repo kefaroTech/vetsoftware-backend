@@ -81,7 +81,7 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 owner.getDocumentType() == null ? null : owner.getDocumentType().name(),
                 owner.getDocument(), owner.getVerificationDigit(),
                 owner.getPersonType() == null ? null : owner.getPersonType().name(),
-                owner.getLegalName(), owner.getName());
+                owner.getLegalName(), owner.getName(), owner.getEmail());
 
         List<ElectronicDocumentLine> lines = buildLines(openAccountId);
         List<ElectronicDocumentPayment> payments = buildPayments(openAccountId);

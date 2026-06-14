@@ -5,8 +5,10 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInv
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderResult;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
+import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,7 +52,7 @@ public class FactusInvoiceProvider implements ElectronicInvoiceProviderPort {
             String token = authenticate(config);
             Map<String, Object> body = buildBillRequest(document, config);
             JsonNode response = restClient.post()
-                    .uri(base(config) + "/v1/bills/validate")
+                    .uri(base(config) + endpoint(document.getDocumentType()))
                     .header("Authorization", "Bearer " + token)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
@@ -128,7 +130,31 @@ public class FactusInvoiceProvider implements ElectronicInvoiceProviderPort {
             items.add(item);
         }
         body.put("items", items);
+
+        // Nota credito/debito: referencia a la factura corregida + concepto DIAN. TODO(schema): confirmar
+        // nombres exactos del bloque de referencia contra la doc/Postman de Factus para notas.
+        if (doc.isNote()) {
+            DocumentReference ref = doc.getReference();
+            Map<String, Object> billingReference = new LinkedHashMap<>();
+            if (ref != null) {
+                billingReference.put("cufe", ref.cufe());
+                billingReference.put("number", (ref.prefix() == null ? "" : ref.prefix())
+                        + (ref.number() == null ? "" : ref.number()));
+                billingReference.put("issue_date", ref.issueDate() == null ? null : ref.issueDate().toString());
+            }
+            body.put("billing_reference", billingReference);
+            body.put("correction_concept_code", doc.getNoteReasonCode());
+        }
         return body;
+    }
+
+    /** Endpoint Factus por tipo: factura vs notas. TODO(schema): confirmar rutas reales de notas. */
+    private static String endpoint(ElectronicDocumentType type) {
+        return switch (type) {
+            case NOTA_CREDITO -> "/v1/credit-notes/validate";
+            case NOTA_DEBITO -> "/v1/debit-notes/validate";
+            default -> "/v1/bills/validate";
+        };
     }
 
     /** Parseo defensivo de la respuesta síncrona: cufe presente => VALIDADO. */

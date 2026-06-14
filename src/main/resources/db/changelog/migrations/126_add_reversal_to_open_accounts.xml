@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F5 - reverso de cartera subordinado a la nota credito. `reversed` se marca SOLO cuando la nota
+         credito que corrige la factura de esta cuenta es VALIDADA por la DIAN (no antes). No es un
+         soft-delete: la cuenta sigue existiendo, queda anulada contablemente con su fecha de reverso. -->
+    <changeSet id="126_add_reversal_to_open_accounts" author="orlando">
+        <addColumn tableName="open_accounts">
+            <column name="reversed" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reversed_at" type="DATETIME"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

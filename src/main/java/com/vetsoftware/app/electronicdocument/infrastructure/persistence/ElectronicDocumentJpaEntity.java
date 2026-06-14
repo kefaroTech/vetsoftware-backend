@@ -98,6 +98,8 @@ public class ElectronicDocumentJpaEntity {
     private String customerLegalName;
     @Column(name = "customer_name", length = 150)
     private String customerName;
+    @Column(name = "customer_email", length = 150)
+    private String customerEmail;
 
     @Column(name = "line_extension_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal lineExtensionAmount;
@@ -122,6 +124,23 @@ public class ElectronicDocumentJpaEntity {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<ElectronicDocumentPaymentJpaEntity> payments = new LinkedHashSet<>();
+
+    // F5 - correcciones. Referencia al documento corregido (UBL BillingReference) + concepto DIAN.
+    // Pobladas solo en notas. `reversed` marca esta factura como anulada por una nota credito validada.
+    @Column(name = "referenced_cufe", length = 100)
+    private String referencedCufe;
+    @Column(name = "referenced_prefix", length = 10)
+    private String referencedPrefix;
+    @Column(name = "referenced_number")
+    private Long referencedNumber;
+    @Column(name = "referenced_issue_date")
+    private LocalDate referencedIssueDate;
+    @Column(name = "note_reason_code", length = 5)
+    private String noteReasonCode;
+    @Column(name = "note_reason_text", length = 255)
+    private String noteReasonText;
+    @Column(name = "reversed", nullable = false)
+    private boolean reversed = false;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -189,6 +208,8 @@ public class ElectronicDocumentJpaEntity {
     public void setCustomerLegalName(String v) { this.customerLegalName = v; }
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String v) { this.customerName = v; }
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String v) { this.customerEmail = v; }
     public BigDecimal getLineExtensionAmount() { return lineExtensionAmount; }
     public void setLineExtensionAmount(BigDecimal v) { this.lineExtensionAmount = v; }
     public BigDecimal getTaxExclusiveAmount() { return taxExclusiveAmount; }
@@ -205,6 +226,20 @@ public class ElectronicDocumentJpaEntity {
     public void setLines(Set<ElectronicDocumentLineJpaEntity> lines) { this.lines = lines; }
     public Set<ElectronicDocumentPaymentJpaEntity> getPayments() { return payments; }
     public void setPayments(Set<ElectronicDocumentPaymentJpaEntity> payments) { this.payments = payments; }
+    public String getReferencedCufe() { return referencedCufe; }
+    public void setReferencedCufe(String referencedCufe) { this.referencedCufe = referencedCufe; }
+    public String getReferencedPrefix() { return referencedPrefix; }
+    public void setReferencedPrefix(String referencedPrefix) { this.referencedPrefix = referencedPrefix; }
+    public Long getReferencedNumber() { return referencedNumber; }
+    public void setReferencedNumber(Long referencedNumber) { this.referencedNumber = referencedNumber; }
+    public LocalDate getReferencedIssueDate() { return referencedIssueDate; }
+    public void setReferencedIssueDate(LocalDate referencedIssueDate) { this.referencedIssueDate = referencedIssueDate; }
+    public String getNoteReasonCode() { return noteReasonCode; }
+    public void setNoteReasonCode(String noteReasonCode) { this.noteReasonCode = noteReasonCode; }
+    public String getNoteReasonText() { return noteReasonText; }
+    public void setNoteReasonText(String noteReasonText) { this.noteReasonText = noteReasonText; }
+    public boolean isReversed() { return reversed; }
+    public void setReversed(boolean reversed) { this.reversed = reversed; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }

@@ -11,6 +11,10 @@ import java.util.Optional;
 public interface ElectronicDocumentRepository {
     ElectronicDocument save(ElectronicDocument document);
     Optional<ElectronicDocument> findById(Long id);
+
+    /** Ubica una factura por su CUFE dentro de la empresa (para enlazar la nota credito con el original). */
+    Optional<ElectronicDocument> findByCufe(String cufe, Long companyId);
+
     List<ElectronicDocument> findAllByCompanyId(Long companyId);
 
     /** Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de reintento). */

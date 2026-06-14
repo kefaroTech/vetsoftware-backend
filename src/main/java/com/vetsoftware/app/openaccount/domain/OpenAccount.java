@@ -23,12 +23,17 @@ public class OpenAccount {
     private EmployeeRef closedBy;
     private LocalDateTime closedAt;
     private String closeReason;
+    // Reverso contable de una cuenta ya facturada: solo se marca tras la validacion DIAN de la nota
+    // credito que la corrige (subordinacion fiscal del void). NUNCA se setea antes de esa validacion.
+    private boolean reversed;
+    private LocalDateTime reversedAt;
     private Long version;
 
     public OpenAccount(Long id, OwnerRef owner, BigDecimal totalAmount, BigDecimal paidAmount,
                        BigDecimal outstandingAmount, CompanyRef company, OpenAccountStatus status,
                        EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled,
-                       EmployeeRef closedBy, LocalDateTime closedAt, String closeReason, Long version) {
+                       EmployeeRef closedBy, LocalDateTime closedAt, String closeReason,
+                       boolean reversed, LocalDateTime reversedAt, Long version) {
         validate(owner, totalAmount, paidAmount, outstandingAmount, company, status, createdBy);
         this.id = id;
         this.owner = owner;
@@ -43,13 +48,25 @@ public class OpenAccount {
         this.closedBy = closedBy;
         this.closedAt = closedAt;
         this.closeReason = closeReason;
+        this.reversed = reversed;
+        this.reversedAt = reversedAt;
         this.version = version;
     }
 
     public static OpenAccount create(OwnerRef owner, CompanyRef company, EmployeeRef createdBy) {
         return new OpenAccount(null, owner, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                                company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true,
-                               null, null, null, null);
+                               null, null, null, false, null, null);
+    }
+
+    /**
+     * Marca la cuenta como reversada por nota credito validada. Idempotente: si ya estaba reversada
+     * no la vuelve a estampar. Es el efecto en cartera del void subordinado a la nota electronica.
+     */
+    public void markReversed(LocalDateTime when) {
+        if (this.reversed) return;
+        this.reversed = true;
+        this.reversedAt = when != null ? when : LocalDateTime.now();
     }
 
     public void update(OwnerRef owner) {
@@ -125,6 +142,8 @@ public class OpenAccount {
     public EmployeeRef getClosedBy() { return closedBy; }
     public LocalDateTime getClosedAt() { return closedAt; }
     public String getCloseReason() { return closeReason; }
+    public boolean isReversed() { return reversed; }
+    public LocalDateTime getReversedAt() { return reversedAt; }
     public Long getVersion() { return version; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }

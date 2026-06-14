@@ -31,6 +31,8 @@ public class OpenAccountJpaMapper {
         entity.setClosedBy(closedBy);
         entity.setClosedAt(openAccount.getClosedAt());
         entity.setCloseReason(openAccount.getCloseReason());
+        entity.setReversed(openAccount.isReversed());
+        entity.setReversedAt(openAccount.getReversedAt());
         entity.setVersion(openAccount.getVersion());
         return entity;
     }
@@ -67,6 +69,8 @@ public class OpenAccountJpaMapper {
             closedByRef,
             entity.getClosedAt(),
             entity.getCloseReason(),
+            entity.isReversed(),
+            entity.getReversedAt(),
             entity.getVersion());
     }
 }

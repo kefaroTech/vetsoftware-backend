@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Factura electrónica</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #222; margin: 0; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .doc-title { text-align: right; }
+        .doc-title h1 { font-size: 16px; margin: 0; }
+        .doc-title .number { font-size: 14px; font-weight: bold; color: #0a5; }
+        .parties { display: flex; justify-content: space-between; margin-top: 12px; gap: 16px; }
+        .party { width: 50%; }
+        .party h3 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+        th { background: #f2f2f2; }
+        td.num, th.num { text-align: right; }
+        .totals { margin-top: 12px; width: 45%; margin-left: 55%; }
+        .totals td { border: none; padding: 2px 6px; }
+        .totals .grand { font-weight: bold; border-top: 1px solid #333; }
+        .footer { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .cufe { font-size: 9px; word-break: break-all; width: 70%; }
+        .qr img { width: 120px; height: 120px; }
+        .status { font-size: 10px; color: #0a5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h2 th:text="${issuerLegalName}">Emisor</h2>
+            <div>NIT: <span th:text="${issuerDocumentId}">—</span></div>
+            <div>Régimen: <span th:text="${issuerTaxRegime}">—</span></div>
+            <div th:text="${issuerEmail}">correo</div>
+        </div>
+        <div class="doc-title">
+            <h1>Factura electrónica</h1>
+            <div class="number" th:text="${number}">FE-0</div>
+            <div th:text="${documentType}">FE_VENTA</div>
+            <div>Fecha: <span th:text="${issueDate}">—</span> <span th:text="${issueTime}"></span></div>
+            <div class="status">Estado DIAN: <span th:text="${dianStatus}">—</span></div>
+        </div>
+    </div>
+
+    <div class="parties">
+        <div class="party">
+            <h3>Adquiriente</h3>
+            <div th:text="${customerLegalName != null ? customerLegalName : customerName}">Cliente</div>
+            <div>Doc: <span th:text="${customerDocumentId}">—</span></div>
+            <div th:text="${customerEmail}">correo</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th><th>Descripción</th><th class="num">Cant.</th><th class="num">V. unit.</th>
+                <th class="num">Base</th><th>Trib.</th><th class="num">% Imp.</th>
+                <th class="num">Impuesto</th><th class="num">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="line, it : ${lines}">
+                <td th:text="${it.count}">1</td>
+                <td th:text="${line.description}">Item</td>
+                <td class="num" th:text="${line.quantity}">1</td>
+                <td class="num" th:text="${line.unitPrice}">0</td>
+                <td class="num" th:text="${line.base}">0</td>
+                <td th:text="${line.taxCategory}">—</td>
+                <td class="num" th:text="${line.taxRate}">0</td>
+                <td class="num" th:text="${line.taxAmount}">0</td>
+                <td class="num" th:text="${line.total}">0</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="totals">
+        <tr><td>Subtotal (base)</td><td class="num" th:text="${lineExtension}">0</td></tr>
+        <tr th:each="t : ${taxTotals}">
+            <td th:text="'Impuesto ' + ${t.label}">IVA</td>
+            <td class="num" th:text="${t.tax}">0</td>
+        </tr>
+        <tr class="grand"><td>Total a pagar</td><td class="num" th:text="${payable}">0</td></tr>
+    </table>
+
+    <div class="footer">
+        <div class="cufe">
+            <strong>CUFE/CUDE:</strong>
+            <span th:text="${cufe != null ? cufe : cude}">—</span>
+        </div>
+        <div class="qr">
+            <img th:src="${qr}" alt="QR DIAN"/>
+        </div>
+    </div>
+</body>
+</html>

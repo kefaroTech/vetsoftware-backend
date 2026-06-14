@@ -134,6 +134,7 @@ public class OpenAccountController {
             new EmployeeSummary(cb.id(), cb.name()),
             dto.createdDate(), dto.enabled(),
             closed != null ? new EmployeeSummary(closed.id(), closed.name()) : null,
-            dto.closedAt(), dto.closeReason());
+            dto.closedAt(), dto.closeReason(),
+            dto.reversed(), dto.reversedAt());
     }
 }

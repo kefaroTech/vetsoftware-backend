@@ -5,6 +5,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInv
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderResult;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
+import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
@@ -103,6 +104,24 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
             items.add(item);
         }
         body.put("items", items);
+
+        // Nota credito/debito: referencia a la factura corregida (billing_reference) + concepto de
+        // correccion (discrepancy_response). TODO(schema): confirmar nombres contra la Postman de MATIAS.
+        if (doc.isNote()) {
+            DocumentReference ref = doc.getReference();
+            if (ref != null) {
+                Map<String, Object> billingReference = new LinkedHashMap<>();
+                billingReference.put("cufe", ref.cufe());
+                billingReference.put("prefix", ref.prefix());
+                billingReference.put("number", ref.number());
+                billingReference.put("issue_date", ref.issueDate() == null ? null : ref.issueDate().toString());
+                body.put("billing_reference", billingReference);
+            }
+            Map<String, Object> discrepancy = new LinkedHashMap<>();
+            discrepancy.put("correction_concept_code", doc.getNoteReasonCode());
+            discrepancy.put("description", doc.getNoteReasonText());
+            body.put("discrepancy_response", discrepancy);
+        }
         return body;
     }
 

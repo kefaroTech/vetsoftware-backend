@@ -33,15 +33,21 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final ElectronicDocumentRepository repository;
     private final ProviderConfigQueryPort configQueryPort;
     private final TransmissionLogPort transmissionLog;
+    private final DeliverElectronicDocumentService deliverService;
+    private final CreditNoteReversalApplier reversalApplier;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
                                          ProviderConfigQueryPort configQueryPort,
                                          TransmissionLogPort transmissionLog,
+                                         DeliverElectronicDocumentService deliverService,
+                                         CreditNoteReversalApplier reversalApplier,
                                          List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
+        this.deliverService = deliverService;
+        this.reversalApplier = reversalApplier;
         this.parsers = webhookParsers.stream()
                 .collect(Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
@@ -98,5 +104,11 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         repository.updateDianResult(document);
         transmissionLog.record(document.getId(), config.provider(), 200, parsed.providerDocumentKey(),
                 logResult, parsed.rejectionReason());
+
+        // Subordinacion del void: si el webhook valido una nota credito, reversa la factura y la cartera ahora.
+        reversalApplier.applyIfCreditNoteValidated(document);
+
+        // Tras validar por webhook (async), genera y envía la representación gráfica.
+        deliverService.deliverIfValidated(document);
     }
 }

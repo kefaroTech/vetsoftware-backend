@@ -60,6 +60,12 @@ public class OpenAccountJpaEntity {
     @Column(name = "close_reason", length = 255)
     private String closeReason;
 
+    @Column(name = "reversed", nullable = false)
+    private boolean reversed = false;
+
+    @Column(name = "reversed_at")
+    private LocalDateTime reversedAt;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -92,6 +98,10 @@ public class OpenAccountJpaEntity {
     public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
     public String getCloseReason() { return closeReason; }
     public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
+    public boolean isReversed() { return reversed; }
+    public void setReversed(boolean reversed) { this.reversed = reversed; }
+    public LocalDateTime getReversedAt() { return reversedAt; }
+    public void setReversedAt(LocalDateTime reversedAt) { this.reversedAt = reversedAt; }
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
 }

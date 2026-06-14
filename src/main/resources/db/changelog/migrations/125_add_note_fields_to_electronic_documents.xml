@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F5 - correcciones (notas crédito/débito). Referencia al documento corregido (UBL BillingReference)
+         + concepto DIAN; pobladas solo en notas. `reversed` marca una factura anulada por una nota crédito
+         validada (subordina el void de cartera a la validación DIAN, no es soft-delete). -->
+    <changeSet id="125_add_note_fields_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="referenced_cufe" type="VARCHAR(100)"/>
+            <column name="referenced_prefix" type="VARCHAR(10)"/>
+            <column name="referenced_number" type="BIGINT"/>
+            <column name="referenced_issue_date" type="DATE"/>
+            <column name="note_reason_code" type="VARCHAR(5)"/>
+            <column name="note_reason_text" type="VARCHAR(255)"/>
+            <column name="reversed" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- La nota credito ubica su factura original por CUFE (CreditNoteReversalApplier). -->
+        <createIndex tableName="electronic_documents" indexName="idx_electronic_documents_cufe">
+            <column name="cufe"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
