@@ -170,6 +170,38 @@ enum TaxRegime {
   NO_RESPONSABLE_IVA
 }
 
+enum ElectronicDocumentType {
+  FE_VENTA
+  DOC_EQUIV_POS
+  NOTA_CREDITO
+  NOTA_DEBITO
+}
+
+enum OwnerDocumentType {
+  CEDULA_CIUDADANIA(13)
+  NIT(31)
+  CEDULA_EXTRANJERIA(22)
+  PASAPORTE(41)
+  PEP(47)
+}
+
+enum PersonType {
+  NATURAL
+  JURIDICA
+}
+
+enum TaxTreatment {
+  GRAVADO
+  EXENTO
+  EXCLUIDO
+  INC
+}
+
+enum TaxScheme {
+  IVA(01)
+  INC(04)
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -296,6 +328,22 @@ class CompanyTaxProfileResponsibility {
   -enabled: boolean
 }
 
+class NumberingResolution {
+  -company: Company
+  -documentType: ElectronicDocumentType
+  -resolutionNumber: String
+  -resolutionDate: LocalDate
+  -prefix: String
+  -rangeFrom: Long
+  -rangeTo: Long
+  -validFrom: LocalDate
+  -validTo: LocalDate
+  -technicalKey: String
+  -currentNumber: Long
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
 ' =========================
 ' Authorization
 ' =========================
@@ -383,6 +431,10 @@ class Owner {
   -name: String
   -email: String
   -document: String
+  -documentType: OwnerDocumentType
+  -personType: PersonType
+  -verificationDigit: String
+  -legalName: String
   -address: String
   -phone: String
   -city: City
@@ -631,7 +683,7 @@ class Product {
   -currentStock: Integer
   -minStock: Integer
   -provider: String
-  -hasTax: Boolean
+  -taxTreatment: TaxTreatment
   -expireDate: Boolean
   -notes: String
   -productCategory: ProductCategory
@@ -644,7 +696,7 @@ class Product {
 class Service {
   -name: String
   -price: BigDecimal
-  -hasTax: Boolean
+  -taxTreatment: TaxTreatment
   -notes: String
   -serviceCategory: ServiceCategory
   -tax: Tax
@@ -672,6 +724,7 @@ class ServiceCategory {
 class Tax {
   -name: String
   -percentage: BigDecimal
+  -taxScheme: TaxScheme
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -945,6 +998,8 @@ CompanyTaxProfile               --> CompanyDocumentType
 CompanyTaxProfile               --> TaxRegime
 CompanyTaxProfile               "0..*" --> "0..1" EconomicActivity
 CompanyTaxProfileResponsibility --> CompanyTaxProfile
+NumberingResolution             --> Company
+NumberingResolution             --> ElectronicDocumentType
 
 ' --- Authorization ---
 Role               --> Company
@@ -964,6 +1019,8 @@ State --> Country
 ' --- Owner / Animal ---
 Owner  "0..*" --> "1" City
 Owner         --> Company
+Owner         --> OwnerDocumentType
+Owner         --> PersonType
 Breed         --> Specie
 Animal        --> Specie
 Animal        --> Breed
@@ -1052,12 +1109,15 @@ Spa                   --> Company
 ' --- Inventory / Catalog ---
 Product               --> ProductCategory
 Product               "0..*" --> "0..1" Tax
+Product               --> TaxTreatment
 Product               --> Company
 Service               --> ServiceCategory
 Service               "0..*" --> "0..1" Tax
+Service               --> TaxTreatment
 Service               --> Company
 ProductCategory       --> Company
 ServiceCategory       --> Company
+Tax                   --> TaxScheme
 Tax                   --> Company
 
 Promotion             --> PromotionType

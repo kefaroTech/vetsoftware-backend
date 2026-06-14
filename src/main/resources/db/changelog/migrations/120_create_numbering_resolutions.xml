@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Resoluciones de numeración DIAN por empresa y tipo de documento electrónico (FE_VENTA,
+         DOC_EQUIV_POS, NOTA_CREDITO, NOTA_DEBITO). Define el rango autorizado [range_from, range_to],
+         la vigencia [valid_from, valid_to] y la clave técnica; current_number lleva el consecutivo. -->
+    <changeSet id="120_create_numbering_resolutions" author="orlando">
+        <createTable tableName="numbering_resolutions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_numbering_resolutions_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="document_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolution_number" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolution_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prefix" type="VARCHAR(10)"/>
+            <column name="range_from" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="range_to" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_from" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_to" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="technical_key" type="VARCHAR(255)"/>
+            <column name="current_number" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
