@@ -26,21 +26,24 @@ public class ElectronicDocument {
     private final Long openAccountId;
     private final ElectronicDocumentType documentType;
 
-    private final String prefix;
-    private final Long consecutive;
+    // Campos del ciclo de vida DIAN: NO finales. Los rellena la transmisión (F3) mediante la máquina
+    // de estados forward-only (markValidated/markRejected/markContingency). El contenido fiscal (líneas,
+    // totales, snapshots) sí es inmutable.
+    private String prefix;
+    private Long consecutive;
 
     private final LocalDate issueDate;
     private final String issueTime;
 
-    private final String cufe;
-    private final String cude;
-    private final String uuid;
-    private final String qrData;
-    private final String qrUrl;
-    private final String xmlSigned;
-    private final String pdfRepresentation;
-    private final DianStatus dianStatus;
-    private final LocalDateTime dianValidationDate;
+    private String cufe;
+    private String cude;
+    private String uuid;
+    private String qrData;
+    private String qrUrl;
+    private String xmlSigned;
+    private String pdfRepresentation;
+    private DianStatus dianStatus;
+    private LocalDateTime dianValidationDate;
 
     private final IssuerSnapshot issuer;
     private final CustomerSnapshot customer;
@@ -149,6 +152,47 @@ public class ElectronicDocument {
         if (paymentForm == null) throw new IllegalArgumentException("paymentForm is required");
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
+    }
+
+    /**
+     * Sella el documento como VALIDADO por la DIAN: número fiscal + sellos del proveedor. Forward-only:
+     * solo desde PENDIENTE/CONTINGENCIA. No toca el contenido fiscal.
+     */
+    public void markValidated(String prefix, Long consecutive, String cufe, String cude, String uuid,
+                              String xmlSigned, String qrData, String qrUrl, String pdfRepresentation,
+                              LocalDateTime validationDate) {
+        ensureNotTerminal();
+        this.prefix = prefix;
+        this.consecutive = consecutive;
+        this.cufe = cufe;
+        this.cude = cude;
+        this.uuid = uuid;
+        this.xmlSigned = xmlSigned;
+        this.qrData = qrData;
+        this.qrUrl = qrUrl;
+        this.pdfRepresentation = pdfRepresentation;
+        this.dianValidationDate = validationDate;
+        this.dianStatus = DianStatus.VALIDADO;
+    }
+
+    /** La DIAN rechazó el documento. El motivo se registra en la bitácora de transmisión. */
+    public void markRejected() {
+        ensureNotTerminal();
+        this.dianStatus = DianStatus.RECHAZADO;
+    }
+
+    /** Proveedor/DIAN indisponible: queda en contingencia para retransmitir dentro del plazo. */
+    public void markContingency() {
+        ensureNotTerminal();
+        this.dianStatus = DianStatus.CONTINGENCIA;
+    }
+
+    private void ensureNotTerminal() {
+        if (dianStatus == DianStatus.VALIDADO || dianStatus == DianStatus.RECHAZADO) {
+            throw new IllegalStateException(
+                    "El documento ya está en estado terminal (" + dianStatus
+                            + ") y no puede transicionar; corrige por nota crédito/débito.");
+        }
     }
 
     public Long getId() { return id; }

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F3 - Bitacora agnostica de transmision a la DIAN: un registro por intento de envio de un
+         documento electronico a cualquier proveedor. Auditoria + reintentos + insumo de conciliacion (F6). -->
+    <changeSet id="123_create_electronic_document_transmissions" author="orlando">
+        <createTable tableName="electronic_document_transmissions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="electronic_document_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_edoc_transmissions_document"
+                             references="electronic_documents(id)"/>
+            </column>
+            <column name="provider" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempt" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="http_status" type="INT"/>
+            <column name="provider_document_key" type="VARCHAR(255)"/>
+            <column name="result" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="VARCHAR(2000)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

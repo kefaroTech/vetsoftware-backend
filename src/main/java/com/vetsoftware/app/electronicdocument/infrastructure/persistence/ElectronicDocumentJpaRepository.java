@@ -1,5 +1,6 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
+import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -13,4 +14,7 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByCompanyId(Long companyId);
+
+    @EntityGraph(attributePaths = {"company", "lines", "payments"})
+    List<ElectronicDocumentJpaEntity> findByDianStatus(DianStatus dianStatus);
 }

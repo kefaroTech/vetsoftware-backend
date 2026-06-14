@@ -125,5 +125,7 @@
     <include file="db/changelog/migrations/119_add_tax_scheme_to_taxes.xml"/>
     <include file="db/changelog/migrations/120_create_numbering_resolutions.xml"/>
     <include file="db/changelog/migrations/121_create_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/122_create_dian_provider_configs.xml"/>
+    <include file="db/changelog/migrations/123_create_electronic_document_transmissions.xml"/>
 
 </databaseChangeLog>

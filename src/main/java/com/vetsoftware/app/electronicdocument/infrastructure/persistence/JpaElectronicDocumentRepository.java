@@ -35,8 +35,37 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public ElectronicDocument updateDianResult(ElectronicDocument document) {
+        ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
+                .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain
+                        .ElectronicDocumentNotFoundException(document.getId()));
+        // Solo columnas del ciclo de vida DIAN; líneas y pagos no se tocan.
+        entity.setPrefix(document.getPrefix());
+        entity.setConsecutive(document.getConsecutive());
+        entity.setCufe(document.getCufe());
+        entity.setCude(document.getCude());
+        entity.setUuid(document.getUuid());
+        entity.setQrData(document.getQrData());
+        entity.setQrUrl(document.getQrUrl());
+        entity.setXmlSigned(document.getXmlSigned());
+        entity.setPdfRepresentation(document.getPdfRepresentation());
+        entity.setDianStatus(document.getDianStatus());
+        entity.setDianValidationDate(document.getDianValidationDate());
+        return mapper.toDomain(jpaRepository.save(entity));
+    }
+
+    @Override
     public List<ElectronicDocument> findAllByCompanyId(Long companyId) {
         return jpaRepository.findByCompanyId(companyId).stream()
+                .distinct()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<ElectronicDocument> findByDianStatus(
+            com.vetsoftware.app.electronicdocument.domain.DianStatus status) {
+        return jpaRepository.findByDianStatus(status).stream()
                 .distinct()
                 .map(mapper::toDomain)
                 .toList();

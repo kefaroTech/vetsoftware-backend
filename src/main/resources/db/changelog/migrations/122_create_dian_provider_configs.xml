@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F3 - Configuracion del proveedor tecnologico DIAN por empresa (agnostica: FACTUS para pruebas,
+         MATIAS como meta). 0-o-1 por empresa (company_id unique). Las credenciales/tokens se guardan
+         CIFRADOS (AES-GCM, EncryptedStringConverter) - nunca en claro. Las columnas cifradas son VARCHAR
+         porque el converter emite base64. -->
+    <changeSet id="122_create_dian_provider_configs" author="orlando">
+        <createTable tableName="dian_provider_configs">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_dian_provider_configs_company"
+                             foreignKeyName="fk_dian_provider_configs_company" references="companies(id)"/>
+            </column>
+            <column name="provider" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="environment" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_url" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Credenciales OAuth2 (Factus) - cifradas. -->
+            <column name="credential_client_id" type="VARCHAR(512)"/>
+            <column name="credential_client_secret" type="VARCHAR(512)"/>
+            <column name="credential_username" type="VARCHAR(512)"/>
+            <column name="credential_password" type="VARCHAR(512)"/>
+
+            <!-- Token estatico (MATIAS PAT) - cifrado. -->
+            <column name="api_token" type="VARCHAR(2000)"/>
+
+            <!-- Secret para verificar webhooks (solo proveedores async) - cifrado. -->
+            <column name="webhook_secret" type="VARCHAR(512)"/>
+
+            <!-- Cache del token vigente - cifrado. -->
+            <column name="access_token" type="VARCHAR(2000)"/>
+            <column name="token_expires_at" type="DATETIME"/>
+
+            <!-- Referencia de numeracion del proveedor (numbering_range_id Factus / resolucion MATIAS). -->
+            <column name="numbering_provider_ref" type="VARCHAR(100)"/>
+
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
