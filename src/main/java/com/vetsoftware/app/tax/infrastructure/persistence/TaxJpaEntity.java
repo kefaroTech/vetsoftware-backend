@@ -1,6 +1,7 @@
 package com.vetsoftware.app.tax.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.tax.domain.TaxScheme;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -22,6 +23,10 @@ public class TaxJpaEntity {
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal percentage;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_scheme", nullable = false, length = 20)
+    private TaxScheme taxScheme;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
@@ -40,6 +45,8 @@ public class TaxJpaEntity {
     public void setName(String name) { this.name = name; }
     public BigDecimal getPercentage() { return percentage; }
     public void setPercentage(BigDecimal percentage) { this.percentage = percentage; }
+    public TaxScheme getTaxScheme() { return taxScheme; }
+    public void setTaxScheme(TaxScheme taxScheme) { this.taxScheme = taxScheme; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }

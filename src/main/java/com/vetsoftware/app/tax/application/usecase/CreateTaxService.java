@@ -27,6 +27,6 @@ public class CreateTaxService implements CreateTaxUseCase {
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         return TaxDto.from(
-                repository.save(Tax.create(command.name(), command.percentage(), company)));
+                repository.save(Tax.create(command.name(), command.percentage(), command.taxScheme(), company)));
     }
 }

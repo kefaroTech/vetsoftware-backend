@@ -1,6 +1,7 @@
 package com.vetsoftware.app.tax.application.dto;
 
 import com.vetsoftware.app.tax.domain.Tax;
+import com.vetsoftware.app.tax.domain.TaxScheme;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -8,6 +9,7 @@ public record TaxDto(
         Long id,
         String name,
         BigDecimal percentage,
+        TaxScheme taxScheme,
         CompanySummaryDto company,
         LocalDateTime createdDate,
         boolean enabled
@@ -17,6 +19,7 @@ public record TaxDto(
                 tax.getId(),
                 tax.getName(),
                 tax.getPercentage(),
+                tax.getTaxScheme(),
                 tax.getCompany() == null ? null : CompanySummaryDto.from(tax.getCompany()),
                 tax.getCreatedDate(),
                 tax.isEnabled());

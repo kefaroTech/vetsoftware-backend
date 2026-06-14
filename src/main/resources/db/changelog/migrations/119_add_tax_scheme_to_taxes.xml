@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Codifica el tributo de cada tarifa (DIAN §2.3.F, brecha #6): IVA vs INC, para emitir el
+         TaxScheme correcto en el XML UBL. Backfill: las tarifas existentes son IVA (INC no existía). -->
+    <changeSet id="119_add_tax_scheme_to_taxes" author="orlando">
+        <addColumn tableName="taxes">
+            <column name="tax_scheme" type="VARCHAR(20)"/>
+        </addColumn>
+
+        <sql>
+            UPDATE taxes SET tax_scheme = 'IVA';
+        </sql>
+
+        <addNotNullConstraint tableName="taxes" columnName="tax_scheme" columnDataType="VARCHAR(20)"/>
+    </changeSet>
+
+</databaseChangeLog>

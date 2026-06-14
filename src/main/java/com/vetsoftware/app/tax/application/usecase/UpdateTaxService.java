@@ -31,7 +31,7 @@ public class UpdateTaxService implements UpdateTaxUseCase {
                 .orElseThrow(() -> new TaxNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        tax.update(command.name(), command.percentage(), company);
+        tax.update(command.name(), command.percentage(), command.taxScheme(), company);
         return TaxDto.from(repository.save(tax));
     }
 }

@@ -12,6 +12,7 @@ public class TaxJpaMapper {
         entity.setId(tax.getId());
         entity.setName(tax.getName());
         entity.setPercentage(tax.getPercentage());
+        entity.setTaxScheme(tax.getTaxScheme());
         entity.setCompany(company);
         entity.setCreatedDate(tax.getCreatedDate());
         entity.setEnabled(tax.isEnabled());
@@ -29,6 +30,7 @@ public class TaxJpaMapper {
                 entity.getId(),
                 entity.getName(),
                 entity.getPercentage(),
+                entity.getTaxScheme(),
                 companyRef,
                 entity.getCreatedDate(),
                 entity.isEnabled());

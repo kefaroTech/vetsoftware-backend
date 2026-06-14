@@ -51,7 +51,7 @@ public class TaxController {
     @ResponseStatus(HttpStatus.CREATED)
     public TaxResponse create(@Valid @RequestBody CreateTaxRequest request) {
         return toResponse(createUseCase.execute(
-                new CreateTaxCommand(request.name(), request.percentage(), authz.currentCompanyId())));
+                new CreateTaxCommand(request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -69,7 +69,7 @@ public class TaxController {
     public TaxResponse update(@PathVariable Long id,
                               @Valid @RequestBody UpdateTaxRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateTaxCommand(id, request.name(), request.percentage(), authz.currentCompanyId())));
+                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -86,7 +86,7 @@ public class TaxController {
     private TaxResponse toResponse(TaxDto dto) {
         CompanySummaryDto c = dto.company();
         return new TaxResponse(
-                dto.id(), dto.name(), dto.percentage(),
+                dto.id(), dto.name(), dto.percentage(), dto.taxScheme(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
                 dto.createdDate(),
                 dto.enabled());
