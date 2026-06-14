@@ -53,6 +53,7 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoun
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoundException;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
@@ -165,7 +166,7 @@ public class GlobalExceptionHandler {
             ProductChargeOpenAccountNotFoundException.class, ServiceChargeOpenAccountNotFoundException.class,
             GeneralChargeOpenAccountNotFoundException.class,
             EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class,
-            NumberingResolutionNotFoundException.class
+            NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

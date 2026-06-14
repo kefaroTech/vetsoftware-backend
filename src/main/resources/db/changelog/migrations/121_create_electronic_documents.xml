@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F2 - Modelo del documento electronico (DIAN). Entidad fiscal INMUTABLE, aparte de open_accounts:
+         se construye congelando una cuenta cerrada (snapshot de emisor, adquiriente, lineas y pagos).
+         En F2 el documento nace PENDIENTE: prefix/consecutive y los sellos DIAN (cufe/cude/uuid/qr/xml/pdf)
+         quedan vacios; los llena F4 (asignacion de consecutivo) y F3 (firma + envio DIAN).
+         Los campos xml_signed/qr_data son placeholders VARCHAR; F3 los ampliara a texto largo. -->
+    <changeSet id="121_create_electronic_documents" author="orlando">
+
+        <createTable tableName="electronic_documents">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_electronic_documents_company"
+                             references="companies(id)"/>
+            </column>
+            <!-- Cuenta origen del documento (referencia historica; null si nace de venta POS directa). -->
+            <column name="open_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_electronic_documents_open_account"
+                             references="open_accounts(id)"/>
+            </column>
+            <column name="document_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Numero fiscal: lo asigna F1/F4 al emitir; vacio en F2. -->
+            <column name="prefix" type="VARCHAR(10)"/>
+            <column name="consecutive" type="BIGINT"/>
+
+            <!-- Fecha/hora de emision. issue_time conserva el offset Colombia (-05:00) como texto. -->
+            <column name="issue_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="issue_time" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Sellos DIAN: vacios en F2, los llena F3. -->
+            <column name="cufe" type="VARCHAR(100)"/>
+            <column name="cude" type="VARCHAR(100)"/>
+            <column name="uuid" type="VARCHAR(64)"/>
+            <column name="qr_data" type="VARCHAR(2000)"/>
+            <column name="qr_url" type="VARCHAR(512)"/>
+            <column name="xml_signed" type="VARCHAR(2000)"/>
+            <column name="pdf_representation" type="VARCHAR(512)"/>
+            <column name="dian_status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="dian_validation_date" type="DATETIME"/>
+
+            <!-- Snapshot del emisor (congelado de company_tax_profiles al emitir). -->
+            <column name="issuer_document_type" type="VARCHAR(30)"/>
+            <column name="issuer_document_id" type="VARCHAR(20)"/>
+            <column name="issuer_verification_digit" type="VARCHAR(1)"/>
+            <column name="issuer_legal_name" type="VARCHAR(255)"/>
+            <column name="issuer_tax_regime" type="VARCHAR(30)"/>
+            <column name="issuer_email" type="VARCHAR(255)"/>
+
+            <!-- Snapshot del adquiriente (congelado de owners al emitir). -->
+            <column name="customer_document_type" type="VARCHAR(30)"/>
+            <column name="customer_document_id" type="VARCHAR(50)"/>
+            <column name="customer_verification_digit" type="VARCHAR(1)"/>
+            <column name="customer_person_type" type="VARCHAR(20)"/>
+            <column name="customer_legal_name" type="VARCHAR(255)"/>
+            <column name="customer_name" type="VARCHAR(150)"/>
+
+            <!-- Totales congelados. -->
+            <column name="line_extension_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_exclusive_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_inclusive_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payable_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Pago a nivel documento. -->
+            <column name="payment_form" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_due_date" type="DATE"/>
+
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Inmutabilidad fiscal: la columna existe por consistencia, pero el documento NO se
+                 soft-deletea ni edita (no hay @SQLDelete/@SQLRestriction en la entidad). -->
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="electronic_document_lines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="electronic_document_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_edoc_lines_document"
+                             references="electronic_documents(id)"/>
+            </column>
+            <column name="line_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_measure_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_price" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_extension_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Clasificacion tributaria de la linea (DIAN): categoria + esquema codificados. -->
+            <column name="tax_category" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_scheme" type="VARCHAR(20)"/>
+            <column name="tax_rate" type="DECIMAL(5,2)"/>
+            <column name="tax_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="electronic_document_payments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="electronic_document_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_edoc_payments_document"
+                             references="electronic_documents(id)"/>
+            </column>
+            <!-- Medio de pago codificado DIAN (10 efectivo, 48/49 tarjeta, 42 transferencia...). -->
+            <column name="payment_means" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+    </changeSet>
+
+</databaseChangeLog>

@@ -124,5 +124,6 @@
     <include file="db/changelog/migrations/118_replace_has_tax_with_tax_treatment_in_catalog.xml"/>
     <include file="db/changelog/migrations/119_add_tax_scheme_to_taxes.xml"/>
     <include file="db/changelog/migrations/120_create_numbering_resolutions.xml"/>
+    <include file="db/changelog/migrations/121_create_electronic_documents.xml"/>
 
 </databaseChangeLog>
