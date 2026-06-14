@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F6 - retenciones practicadas por el adquiriente (WithholdingTaxTotal), congeladas en el documento.
+         Cero cuando el adquiriente no es agente retenedor. El neto a pagar = total - (reteFuente+reteIva+reteIca). -->
+    <changeSet id="128_add_withholding_amounts_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="rete_fuente_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rete_iva_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rete_ica_amount" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

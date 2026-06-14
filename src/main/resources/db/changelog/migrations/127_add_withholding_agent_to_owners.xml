@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F6 - retenciones: marca si el adquiriente es agente retenedor (gran contribuyente / entidad
+         pública / etc.). Cuando lo es, la factura calcula y muestra las retenciones (ReteFuente/ReteIVA/
+         ReteICA) que el adquiriente practicará, reduciendo el neto a pagar. -->
+    <changeSet id="127_add_withholding_agent_to_owners" author="orlando">
+        <addColumn tableName="owners">
+            <column name="withholding_agent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -57,6 +57,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundE
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
+import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
@@ -170,7 +171,7 @@ public class GlobalExceptionHandler {
             GeneralChargeOpenAccountNotFoundException.class,
             EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class,
             NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class,
-            DianProviderConfigNotFoundException.class
+            DianProviderConfigNotFoundException.class, WithholdingConfigNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

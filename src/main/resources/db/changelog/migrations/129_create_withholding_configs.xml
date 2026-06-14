@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F6 - tarifas de retención del emisor (company-scoped, 0-o-1 por empresa). Las tarifas dependen de
+         la actividad del vendedor y del municipio (ICA); se configuran por empresa. reteFuente/reteIca en %
+         sobre la base; reteIva en % sobre el IVA generado. -->
+    <changeSet id="129_create_withholding_configs" author="orlando">
+        <createTable tableName="withholding_configs">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_withholding_configs_company"
+                             foreignKeyName="fk_withholding_configs_company" references="companies(id)"/>
+            </column>
+            <column name="rete_fuente_rate" type="DECIMAL(7,4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rete_iva_rate" type="DECIMAL(7,4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rete_ica_rate" type="DECIMAL(7,4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

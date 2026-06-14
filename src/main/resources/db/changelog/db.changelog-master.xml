@@ -130,5 +130,8 @@
     <include file="db/changelog/migrations/124_add_customer_email_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/125_add_note_fields_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/126_add_reversal_to_open_accounts.xml"/>
+    <include file="db/changelog/migrations/127_add_withholding_agent_to_owners.xml"/>
+    <include file="db/changelog/migrations/128_add_withholding_amounts_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/129_create_withholding_configs.xml"/>
 
 </databaseChangeLog>
