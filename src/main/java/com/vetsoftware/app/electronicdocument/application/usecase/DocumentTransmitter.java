@@ -12,6 +12,7 @@ import com.vetsoftware.app.electronicdocument.domain.TransmissionResult;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
@@ -29,17 +30,20 @@ public class DocumentTransmitter {
     private final ProviderConfigQueryPort configQueryPort;
     private final TransmissionLogPort transmissionLog;
     private final CreditNoteReversalApplier reversalApplier;
+    private final DeliverElectronicDocumentService deliverService;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
                                ProviderConfigQueryPort configQueryPort,
                                TransmissionLogPort transmissionLog,
                                CreditNoteReversalApplier reversalApplier,
+                               DeliverElectronicDocumentService deliverService,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
         this.reversalApplier = reversalApplier;
+        this.deliverService = deliverService;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
@@ -64,6 +68,42 @@ public class DocumentTransmitter {
         // Subordinacion del void: si esta transmision dejo VALIDADA una nota credito (proveedor sincrono),
         // reversa la factura referenciada y la cartera en el acto. Para async no pasa nada aqui (PENDIENTE).
         reversalApplier.applyIfCreditNoteValidated(saved);
+        return saved;
+    }
+
+    /**
+     * Reconcilia un documento PENDIENTE consultando al proveedor su estado actual (respaldo ante webhooks
+     * perdidos en proveedores asíncronos como MATIAS). Si el proveedor no soporta polling (síncronos) o el
+     * documento sigue en cola, no hace nada. Si el proveedor reporta un terminal, aplica la transición,
+     * deja bitácora, ejecuta el reverso de cartera y entrega la representación — igual que el webhook.
+     */
+    @Transactional
+    public ElectronicDocument reconcile(ElectronicDocument document) {
+        if (document.getDianStatus() != DianStatus.PENDIENTE) return document;
+
+        ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "La empresa no tiene un proveedor DIAN configurado."));
+        ElectronicInvoiceProviderPort provider = providers.get(config.provider());
+        if (provider == null) {
+            throw new IllegalStateException("No hay adaptador para el proveedor: " + config.provider());
+        }
+
+        String providerKey = transmissionLog.findLatestProviderKey(document.getId()).orElse(null);
+        if (providerKey == null) return document; // nunca se transmitió: nada que reconciliar
+
+        Optional<ProviderResult> maybeResult = provider.fetchStatus(providerKey, config);
+        if (maybeResult.isEmpty()) return document; // proveedor síncrono / sin polling
+        ProviderResult result = maybeResult.get();
+        if (result.status() == DianStatus.PENDIENTE) return document; // sigue en cola
+
+        applyResult(document, result);
+        ElectronicDocument saved = repository.updateDianResult(document);
+        transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
+                providerKey, toTransmissionResult(result.status()), result.rejectionReason());
+
+        reversalApplier.applyIfCreditNoteValidated(saved);
+        deliverService.deliverIfValidated(saved);
         return saved;
     }
 

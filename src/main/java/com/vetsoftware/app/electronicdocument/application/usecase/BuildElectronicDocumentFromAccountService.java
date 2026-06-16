@@ -20,6 +20,7 @@ public class BuildElectronicDocumentFromAccountService implements BuildElectroni
     @Transactional
     public ElectronicDocumentDto execute(BuildElectronicDocumentCommand command) {
         return ElectronicDocumentDto.from(documentBuilder.build(
-                command.openAccountId(), command.documentType(), command.companyId()));
+                command.openAccountId(), command.documentType(), command.companyId(),
+                command.finalConsumer()));
     }
 }

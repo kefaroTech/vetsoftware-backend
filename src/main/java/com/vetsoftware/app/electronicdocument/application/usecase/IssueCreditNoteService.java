@@ -15,9 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Emite una nota credito total (anulacion) sobre una factura VALIDADA y la transmite por el proveedor.
- * Para proveedores sincronos (Factus) la nota queda VALIDADA aqui y el reverso de cartera se aplica en
- * el acto (DocumentTransmitter -> CreditNoteReversalApplier); para async (MATIAS) queda PENDIENTE y el
- * reverso se aplica al llegar la validacion por webhook. NUNCA se reversa la cartera antes de validar.
+ * Con MATIAS (async) la nota queda PENDIENTE y el reverso de cartera se aplica al llegar la validacion
+ * (por webhook o por polling de estado) via CreditNoteReversalApplier. NUNCA se reversa antes de validar.
  */
 @Observed(name = "electronicDocument.creditNote")
 @Service

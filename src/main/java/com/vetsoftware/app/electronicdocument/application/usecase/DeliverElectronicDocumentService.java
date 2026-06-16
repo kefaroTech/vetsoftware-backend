@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /**
  * Entrega la representación gráfica de un documento VALIDADO: genera QR + PDF, lo guarda en S3 y lo
  * envía por correo al adquiriente (copia al emisor). Idempotente: no reprocesa si el documento ya tiene
- * PDF o no está VALIDADO. Reutilizable por la emisión síncrona (Factus) y por el webhook async (MATIAS).
+ * PDF o no está VALIDADO. Reutilizable por la emisión y por el cierre async de MATIAS (webhook/polling).
  */
 @Component
 public class DeliverElectronicDocumentService {

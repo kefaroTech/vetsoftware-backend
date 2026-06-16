@@ -1,11 +1,10 @@
 package com.vetsoftware.app.dianprovider.domain;
 
 /**
- * Proveedor tecnologico DIAN. La integracion es agnostica: se empieza con FACTUS (tiene sandbox,
- * validacion SINCRONA) y la meta es MATIAS (validacion ASINCRONA por webhooks).
+ * Proveedor tecnologico DIAN. Por ahora solo MATIAS (UBL 2.1; el documento se transmite y el estado DIAN
+ * se consulta luego). El puerto sigue siendo agnostico por si se agregan mas proveedores en el futuro.
  */
 public enum ProviderType {
-    FACTUS(false),
     MATIAS(true);
 
     private final boolean asynchronous;

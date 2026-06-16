@@ -3,6 +3,7 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleSnapshotQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleSnapshotQueryPort.SaleSnapshot;
+import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import org.springframework.stereotype.Component;
@@ -22,16 +23,19 @@ public class DocumentBuilder {
         this.repository = repository;
     }
 
-    public ElectronicDocument build(Long openAccountId, ElectronicDocumentType documentType, Long companyId) {
+    public ElectronicDocument build(Long openAccountId, ElectronicDocumentType documentType, Long companyId,
+                                    boolean finalConsumer) {
         SaleSnapshot snapshot = saleSnapshotQueryPort.findByOpenAccount(openAccountId, companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Open account not found: " + openAccountId));
         if (!snapshot.accountClosed()) {
             throw new IllegalStateException(
                     "La cuenta debe estar cerrada (CLOSE) para emitir el documento electronico.");
         }
+        // Consumidor final: el documento usa la identidad genérica DIAN en vez de los datos del Owner de la cuenta.
+        CustomerSnapshot customer = finalConsumer ? CustomerSnapshot.finalConsumer() : snapshot.customer();
         ElectronicDocument document = ElectronicDocument.createPending(
                 snapshot.companyId(), snapshot.openAccountId(), documentType,
-                snapshot.issuer(), snapshot.customer(), snapshot.lines(), snapshot.payments(),
+                snapshot.issuer(), customer, snapshot.lines(), snapshot.payments(),
                 snapshot.paymentForm(), null);
         return repository.save(document);
     }

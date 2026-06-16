@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -230,6 +231,17 @@ public class ElectronicDocument {
     public boolean isNote() {
         return documentType == ElectronicDocumentType.NOTA_CREDITO
                 || documentType == ElectronicDocumentType.NOTA_DEBITO;
+    }
+
+    /**
+     * Código DIAN del medio de pago predominante (el de mayor monto). Si el documento no tiene pagos
+     * registrados, asume EFECTIVO (10). Lo usan los adaptadores de proveedor para `payment_method_code`.
+     */
+    public String primaryPaymentMeansCode() {
+        return payments.stream()
+                .max(Comparator.comparing(ElectronicDocumentPayment::getAmount))
+                .map(p -> p.getPaymentMeans().dianCode())
+                .orElse(PaymentMeans.EFECTIVO.dianCode());
     }
 
     /**

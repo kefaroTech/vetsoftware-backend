@@ -10,4 +10,7 @@ public interface ElectronicDocumentTransmissionJpaRepository
 
     Optional<ElectronicDocumentTransmissionJpaEntity>
             findFirstByProviderDocumentKeyOrderByIdDesc(String providerDocumentKey);
+
+    Optional<ElectronicDocumentTransmissionJpaEntity>
+            findFirstByElectronicDocumentIdAndProviderDocumentKeyNotNullOrderByIdDesc(Long electronicDocumentId);
 }

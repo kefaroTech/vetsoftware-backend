@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 
 /**
  * Resultado normalizado de transmitir un documento a un proveedor. El `status` puede ser TERMINAL
- * (VALIDADO/RECHAZADO — proveedores síncronos como Factus) o PENDIENTE (proveedores async como MATIAS,
- * que completan luego por webhook). Campos de sellos vacíos hasta que el proveedor los devuelva.
+ * (VALIDADO/RECHAZADO) o PENDIENTE (proveedores async como MATIAS, que completan luego por webhook o por
+ * polling de estado). Campos de sellos vacíos hasta que el proveedor los devuelva.
  */
 public record ProviderResult(
         DianStatus status,

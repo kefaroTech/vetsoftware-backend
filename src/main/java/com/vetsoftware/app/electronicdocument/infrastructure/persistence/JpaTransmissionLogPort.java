@@ -36,4 +36,16 @@ public class JpaTransmissionLogPort implements TransmissionLogPort {
         return jpaRepository.findFirstByProviderDocumentKeyOrderByIdDesc(providerDocumentKey)
                 .map(ElectronicDocumentTransmissionJpaEntity::getElectronicDocumentId);
     }
+
+    @Override
+    public int countAttempts(Long electronicDocumentId) {
+        return jpaRepository.countByElectronicDocumentId(electronicDocumentId);
+    }
+
+    @Override
+    public Optional<String> findLatestProviderKey(Long electronicDocumentId) {
+        return jpaRepository
+                .findFirstByElectronicDocumentIdAndProviderDocumentKeyNotNullOrderByIdDesc(electronicDocumentId)
+                .map(ElectronicDocumentTransmissionJpaEntity::getProviderDocumentKey);
+    }
 }

@@ -11,4 +11,10 @@ public interface TransmissionLogPort {
 
     /** Resuelve a qué documento corresponde una clave del proveedor (para enrutar webhooks async). */
     Optional<Long> findDocumentIdByProviderKey(String providerDocumentKey);
+
+    /** Número de intentos de transmisión ya registrados (para el cap de reintentos de contingencia). */
+    int countAttempts(Long electronicDocumentId);
+
+    /** Última clave de proveedor registrada para un documento (para reconciliar PENDIENTE por polling). */
+    Optional<String> findLatestProviderKey(Long electronicDocumentId);
 }

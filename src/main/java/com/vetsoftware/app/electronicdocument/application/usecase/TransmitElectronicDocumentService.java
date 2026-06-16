@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transmite un documento a la DIAN a través del proveedor configurado para la empresa. Valida ownership
- * y delega el envío en {@link DocumentTransmitter}. Para proveedores síncronos (Factus) el documento
- * queda VALIDADO/RECHAZADO aquí; para async (MATIAS) queda PENDIENTE hasta el webhook.
+ * y delega el envío en {@link DocumentTransmitter}. Con MATIAS (async) el documento queda PENDIENTE
+ * tras transmitir; lo cierra el webhook o el polling de estado. (Un proveedor síncrono cerraría aquí.)
  */
 @Observed(name = "electronicDocument.transmit")
 @Service

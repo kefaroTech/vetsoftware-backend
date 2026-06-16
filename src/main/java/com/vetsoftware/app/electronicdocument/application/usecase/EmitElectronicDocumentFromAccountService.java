@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Emite end-to-end: construye el documento PENDIENTE desde la cuenta cerrada, lo transmite al proveedor
- * y, si queda VALIDADO (síncrono, p. ej. Factus), genera y envía la representación. Si el proveedor es
- * asíncrono (MATIAS), el documento queda PENDIENTE y la entrega la dispara el webhook al validar.
+ * Emite end-to-end: construye el documento PENDIENTE desde la cuenta cerrada y lo transmite al proveedor.
+ * Con MATIAS (asíncrono) el documento queda PENDIENTE y la entrega de la representación la dispara el
+ * cierre async (webhook o polling de estado) al validar. (Un proveedor síncrono entregaría en el acto.)
  */
 @Observed(name = "electronicDocument.emit")
 @Service
@@ -32,7 +32,8 @@ public class EmitElectronicDocumentFromAccountService implements EmitElectronicD
     @Transactional
     public ElectronicDocumentDto execute(EmitElectronicDocumentCommand command) {
         ElectronicDocument document = documentBuilder.build(
-                command.openAccountId(), command.documentType(), command.companyId());
+                command.openAccountId(), command.documentType(), command.companyId(),
+                command.finalConsumer());
         ElectronicDocument transmitted = documentTransmitter.transmit(document);
         deliverService.deliverIfValidated(transmitted);
         return ElectronicDocumentDto.from(transmitted);

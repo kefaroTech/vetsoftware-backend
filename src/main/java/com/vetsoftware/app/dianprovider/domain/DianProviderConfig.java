@@ -3,9 +3,10 @@ package com.vetsoftware.app.dianprovider.domain;
 import java.time.LocalDateTime;
 
 /**
- * Configuracion del proveedor DIAN de una empresa (0-o-1 por empresa). Agnostica: guarda credenciales
- * tanto OAuth2 (Factus) como token estatico (MATIAS); el adapter usa las que correspondan al provider.
- * Los secretos se cifran en la capa de persistencia (EncryptedStringConverter).
+ * Configuracion del proveedor DIAN de una empresa (0-o-1 por empresa). Hoy el unico proveedor es MATIAS,
+ * que autentica por login (username=email + password) o por PAT estatico (apiToken). El esquema es
+ * agnostico por si se agregan mas proveedores. Los secretos se cifran en la capa de persistencia
+ * (EncryptedStringConverter).
  */
 public class DianProviderConfig {
     private Long id;
@@ -13,12 +14,12 @@ public class DianProviderConfig {
     private ProviderType provider;
     private ProviderEnvironment environment;
     private String baseUrl;
-    // Credenciales OAuth2 (Factus); null para MATIAS.
+    // Credenciales de login MATIAS: username = email, password. (clientId/clientSecret reservados, sin uso hoy.)
     private String clientId;
     private String clientSecret;
     private String username;
     private String password;
-    // Token estatico (MATIAS PAT); null para Factus.
+    // PAT estatico opcional: si esta presente el adapter lo usa y omite el login.
     private String apiToken;
     // Verificacion de webhooks (solo proveedores async).
     private String webhookSecret;

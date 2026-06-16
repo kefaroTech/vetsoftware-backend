@@ -66,7 +66,8 @@ public class ElectronicDocumentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ElectronicDocumentDto buildFromAccount(@Valid @RequestBody BuildElectronicDocumentRequest request) {
         return buildUseCase.execute(new BuildElectronicDocumentCommand(
-                request.openAccountId(), request.documentType(), authz.currentCompanyId()));
+                request.openAccountId(), request.documentType(), authz.currentCompanyId(),
+                request.finalConsumer()));
     }
 
     /** F4: emite end-to-end (construir + transmitir + entregar PDF/QR/correo) desde una cuenta cerrada. */
@@ -74,7 +75,8 @@ public class ElectronicDocumentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ElectronicDocumentDto emit(@Valid @RequestBody BuildElectronicDocumentRequest request) {
         return emitUseCase.execute(new EmitElectronicDocumentCommand(
-                request.openAccountId(), request.documentType(), authz.currentCompanyId()));
+                request.openAccountId(), request.documentType(), authz.currentCompanyId(),
+                request.finalConsumer()));
     }
 
     /** F4: convierte un documento equivalente POS en factura electrónica de venta. */

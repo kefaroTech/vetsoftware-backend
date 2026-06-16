@@ -4,8 +4,8 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <!-- F3 - Configuracion del proveedor tecnologico DIAN por empresa (agnostica: FACTUS para pruebas,
-         MATIAS como meta). 0-o-1 por empresa (company_id unique). Las credenciales/tokens se guardan
+    <!-- F3 - Configuracion del proveedor tecnologico DIAN por empresa (hoy MATIAS; esquema agnostico por
+         si se agregan mas). 0-o-1 por empresa (company_id unique). Las credenciales/tokens se guardan
          CIFRADOS (AES-GCM, EncryptedStringConverter) - nunca en claro. Las columnas cifradas son VARCHAR
          porque el converter emite base64. -->
     <changeSet id="122_create_dian_provider_configs" author="orlando">
@@ -27,13 +27,13 @@
                 <constraints nullable="false"/>
             </column>
 
-            <!-- Credenciales OAuth2 (Factus) - cifradas. -->
+            <!-- Credenciales de login MATIAS (username=email + password) - cifradas. client_id/secret reservados. -->
             <column name="credential_client_id" type="VARCHAR(512)"/>
             <column name="credential_client_secret" type="VARCHAR(512)"/>
             <column name="credential_username" type="VARCHAR(512)"/>
             <column name="credential_password" type="VARCHAR(512)"/>
 
-            <!-- Token estatico (MATIAS PAT) - cifrado. -->
+            <!-- PAT estatico opcional (si esta, el adapter omite el login) - cifrado. -->
             <column name="api_token" type="VARCHAR(2000)"/>
 
             <!-- Secret para verificar webhooks (solo proveedores async) - cifrado. -->
@@ -43,7 +43,7 @@
             <column name="access_token" type="VARCHAR(2000)"/>
             <column name="token_expires_at" type="DATETIME"/>
 
-            <!-- Referencia de numeracion del proveedor (numbering_range_id Factus / resolucion MATIAS). -->
+            <!-- Referencia de numeracion del proveedor (resolucion MATIAS). -->
             <column name="numbering_provider_ref" type="VARCHAR(100)"/>
 
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">

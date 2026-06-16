@@ -5,5 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record BuildElectronicDocumentRequest(
         @NotNull Long openAccountId,
-        @NotNull ElectronicDocumentType documentType
+        @NotNull ElectronicDocumentType documentType,
+        boolean finalConsumer
 ) {}

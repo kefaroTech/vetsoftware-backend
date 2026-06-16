@@ -228,6 +228,44 @@ enum TaxCategory {
   INC
 }
 
+enum CreditNoteReason {
+  DEVOLUCION(1)
+  ANULACION(2)
+  REBAJA(3)
+  AJUSTE_PRECIO(4)
+  OTROS(5)
+}
+
+enum DebitNoteReason {
+  INTERESES(1)
+  GASTOS(2)
+  CAMBIO_VALOR(3)
+  OTROS(4)
+}
+
+enum ProviderType {
+  FACTUS
+  MATIAS
+}
+
+enum ProviderEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum TransmissionResult {
+  ACCEPTED
+  REJECTED
+  PENDING
+  ERROR
+}
+
+enum WebhookOutcome {
+  ACCEPTED
+  REJECTED
+  IGNORED
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -461,6 +499,7 @@ class Owner {
   -personType: PersonType
   -verificationDigit: String
   -legalName: String
+  -withholdingAgent: boolean
   -address: String
   -phone: String
   -city: City
@@ -917,6 +956,8 @@ class OpenAccount {
   -closedBy: Employee
   -closedAt: LocalDateTime
   -closeReason: String
+  -reversed: boolean
+  -reversedAt: LocalDateTime
   -version: Long
   -enabled: boolean
 }
@@ -1017,6 +1058,7 @@ class CustomerSnapshot {
   -personType: String
   -legalName: String
   -name: String
+  -email: String
 }
 
 class ElectronicDocument {
@@ -1044,6 +1086,58 @@ class ElectronicDocument {
   -payableAmount: BigDecimal
   -paymentForm: PaymentForm
   -paymentDueDate: LocalDate
+  -reference: DocumentReference
+  -noteReasonCode: String
+  -noteReasonText: String
+  -reversed: boolean
+  -reteFuenteAmount: BigDecimal
+  -reteIvaAmount: BigDecimal
+  -reteIcaAmount: BigDecimal
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class DocumentReference {
+  -cufe: String
+  -prefix: String
+  -number: Long
+  -issueDate: LocalDate
+}
+
+class ElectronicDocumentTransmission {
+  -electronicDocument: ElectronicDocument
+  -provider: String
+  -attempt: int
+  -httpStatus: Integer
+  -providerDocumentKey: String
+  -result: TransmissionResult
+  -errorMessage: String
+  -createdDate: LocalDateTime
+}
+
+class DianProviderConfig {
+  -company: Company
+  -provider: ProviderType
+  -environment: ProviderEnvironment
+  -baseUrl: String
+  -clientId: String
+  -clientSecret: String
+  -username: String
+  -password: String
+  -apiToken: String
+  -webhookSecret: String
+  -accessToken: String
+  -tokenExpiresAt: LocalDateTime
+  -numberingProviderRef: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class WithholdingConfig {
+  -company: Company
+  -reteFuenteRate: BigDecimal
+  -reteIvaRate: BigDecimal
+  -reteIcaRate: BigDecimal
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -1248,10 +1342,21 @@ ElectronicDocument         --> DianStatus
 ElectronicDocument         --> PaymentForm
 ElectronicDocument         --> IssuerSnapshot
 ElectronicDocument         --> CustomerSnapshot
+ElectronicDocument         "0..*" --> "0..1" DocumentReference
 ElectronicDocumentLine     --> ElectronicDocument
 ElectronicDocumentLine     --> TaxCategory
 ElectronicDocumentLine     "0..*" --> "0..1" TaxScheme
 ElectronicDocumentPayment  --> ElectronicDocument
 ElectronicDocumentPayment  --> PaymentMeans
+
+' --- Integración proveedor DIAN (F3) ---
+DianProviderConfig          --> Company
+DianProviderConfig          --> ProviderType
+DianProviderConfig          --> ProviderEnvironment
+ElectronicDocumentTransmission --> ElectronicDocument
+ElectronicDocumentTransmission --> TransmissionResult
+
+' --- Retenciones (F6) ---
+WithholdingConfig           --> Company
 
 @enduml

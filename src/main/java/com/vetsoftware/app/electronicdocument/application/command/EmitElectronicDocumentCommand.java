@@ -6,5 +6,6 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 public record EmitElectronicDocumentCommand(
         Long openAccountId,
         ElectronicDocumentType documentType,
-        Long companyId
+        Long companyId,
+        boolean finalConsumer
 ) {}
