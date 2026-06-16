@@ -1,5 +1,6 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingEntitlementQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigQueryPort;
@@ -31,6 +32,7 @@ public class DocumentTransmitter {
     private final TransmissionLogPort transmissionLog;
     private final CreditNoteReversalApplier reversalApplier;
     private final DeliverElectronicDocumentService deliverService;
+    private final BillingEntitlementQueryPort billingEntitlement;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
@@ -38,18 +40,30 @@ public class DocumentTransmitter {
                                TransmissionLogPort transmissionLog,
                                CreditNoteReversalApplier reversalApplier,
                                DeliverElectronicDocumentService deliverService,
+                               BillingEntitlementQueryPort billingEntitlement,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
         this.reversalApplier = reversalApplier;
         this.deliverService = deliverService;
+        this.billingEntitlement = billingEntitlement;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
 
     @Transactional
     public ElectronicDocument transmit(ElectronicDocument document) {
+        // Gate de facturación electrónica: sin submódulo BILLING nunca se contacta al proveedor (MATIAS).
+        // Un documento PENDIENTE se degrada a NO_ELECTRONICO (guardado local); cualquier otro estado es no-op.
+        if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) {
+            if (document.getDianStatus() == DianStatus.PENDIENTE) {
+                document.markLocal();
+                return repository.updateDianResult(document);
+            }
+            return document;
+        }
+
         ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene un proveedor DIAN configurado."));
@@ -80,6 +94,8 @@ public class DocumentTransmitter {
     @Transactional
     public ElectronicDocument reconcile(ElectronicDocument document) {
         if (document.getDianStatus() != DianStatus.PENDIENTE) return document;
+        // Sin BILLING: nunca se consulta al proveedor (los NO_ELECTRONICO ya quedan fuera por el filtro de estado).
+        if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) return document;
 
         ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
                 .orElseThrow(() -> new IllegalStateException(
@@ -124,6 +140,8 @@ public class DocumentTransmitter {
             case RECHAZADO -> TransmissionResult.REJECTED;
             case CONTINGENCIA -> TransmissionResult.ERROR;
             case PENDIENTE -> TransmissionResult.PENDING;
+            case NO_ELECTRONICO -> throw new IllegalStateException(
+                    "NO_ELECTRONICO no es un resultado de transmisión");
         };
     }
 }

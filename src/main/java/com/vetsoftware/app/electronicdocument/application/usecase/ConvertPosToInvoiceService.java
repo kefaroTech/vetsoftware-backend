@@ -23,19 +23,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
     private final ElectronicDocumentRepository repository;
     private final DocumentBuilder documentBuilder;
-    private final NumberAssigner numberAssigner;
-    private final DocumentTransmitter documentTransmitter;
+    private final ElectronicDocumentEmitter emitter;
     private final DeliverElectronicDocumentService deliverService;
 
     public ConvertPosToInvoiceService(ElectronicDocumentRepository repository,
                                       DocumentBuilder documentBuilder,
-                                      NumberAssigner numberAssigner,
-                                      DocumentTransmitter documentTransmitter,
+                                      ElectronicDocumentEmitter emitter,
                                       DeliverElectronicDocumentService deliverService) {
         this.repository = repository;
         this.documentBuilder = documentBuilder;
-        this.numberAssigner = numberAssigner;
-        this.documentTransmitter = documentTransmitter;
+        this.emitter = emitter;
         this.deliverService = deliverService;
     }
 
@@ -56,9 +53,8 @@ public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
 
         ElectronicDocument invoice = documentBuilder.build(
                 pos.getOpenAccountId(), ElectronicDocumentType.FE_VENTA, command.companyId(), false);
-        numberAssigner.assign(invoice);
-        ElectronicDocument transmitted = documentTransmitter.transmit(invoice);
-        deliverService.deliverIfValidated(transmitted);
-        return ElectronicDocumentDto.from(transmitted);
+        ElectronicDocument emitted = emitter.emit(invoice);
+        deliverService.deliverIfValidated(emitted);
+        return ElectronicDocumentDto.from(emitted);
     }
 }

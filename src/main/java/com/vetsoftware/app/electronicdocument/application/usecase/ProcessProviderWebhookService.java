@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.command.ProcessProviderWebhookCommand;
 import com.vetsoftware.app.electronicdocument.application.port.in.ProcessProviderWebhookUseCase;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingEntitlementQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ParsedWebhook;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigQueryPort;
@@ -35,6 +36,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final TransmissionLogPort transmissionLog;
     private final DeliverElectronicDocumentService deliverService;
     private final CreditNoteReversalApplier reversalApplier;
+    private final BillingEntitlementQueryPort billingEntitlement;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
@@ -42,12 +44,14 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
                                          TransmissionLogPort transmissionLog,
                                          DeliverElectronicDocumentService deliverService,
                                          CreditNoteReversalApplier reversalApplier,
+                                         BillingEntitlementQueryPort billingEntitlement,
                                          List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
         this.deliverService = deliverService;
         this.reversalApplier = reversalApplier;
+        this.billingEntitlement = billingEntitlement;
         this.parsers = webhookParsers.stream()
                 .collect(Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
@@ -70,6 +74,9 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         if (documentId.isEmpty()) return; // clave desconocida: ignorar (idempotente)
         ElectronicDocument document = repository.findById(documentId.get()).orElse(null);
         if (document == null) return;
+
+        // Sin BILLING la empresa no transmite, así que no debería recibir webhooks; ignóralo por seguridad.
+        if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) return;
 
         ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
                 .orElseThrow(() -> new IllegalStateException(

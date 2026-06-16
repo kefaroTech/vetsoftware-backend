@@ -37,4 +37,21 @@ public interface MembershipSubModuleJpaRepository extends JpaRepository<Membersh
     boolean existsByMembership_Id(Long membershipId);
 
     boolean existsBySubModule_Id(Long subModuleId);
+
+    /**
+     * ¿La membresía tiene habilitado (enabled) el submódulo con este código? Filtra enabled=true de forma
+     * explícita en ambos lados (el enlace y el submódulo) — no depende solo de @SQLRestriction. Base del
+     * gating de facturación electrónica por membresía.
+     */
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END
+          FROM MembershipSubModuleJpaEntity m
+         WHERE m.membership.id = :membershipId
+           AND m.subModule.code = :code
+           AND m.enabled = true
+           AND m.subModule.enabled = true
+        """)
+    boolean hasEnabledSubModuleCode(
+        @org.springframework.data.repository.query.Param("membershipId") Long membershipId,
+        @org.springframework.data.repository.query.Param("code") String code);
 }

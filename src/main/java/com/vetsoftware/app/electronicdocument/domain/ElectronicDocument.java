@@ -305,6 +305,18 @@ public class ElectronicDocument {
         this.dianStatus = DianStatus.VALIDADO;
     }
 
+    /**
+     * Marca el documento como NO_ELECTRONICO: la empresa no tiene facturación electrónica habilitada
+     * (sin submódulo BILLING). Queda guardado localmente, sin numeración fiscal ni sellos, y nunca se
+     * transmite al proveedor. Solo aplicable desde PENDIENTE (un documento ya numerado/validado no se
+     * degrada).
+     */
+    public void markLocal() {
+        if (dianStatus != DianStatus.PENDIENTE)
+            throw new IllegalStateException("solo un documento PENDIENTE puede marcarse como NO_ELECTRONICO");
+        this.dianStatus = DianStatus.NO_ELECTRONICO;
+    }
+
     /** La DIAN rechazó el documento. El motivo se registra en la bitácora de transmisión. */
     public void markRejected() {
         ensureNotTerminal();

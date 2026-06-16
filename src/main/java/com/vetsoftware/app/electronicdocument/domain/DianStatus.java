@@ -5,5 +5,6 @@ public enum DianStatus {
     PENDIENTE,
     VALIDADO,
     RECHAZADO,
-    CONTINGENCIA
+    CONTINGENCIA,
+    NO_ELECTRONICO
 }

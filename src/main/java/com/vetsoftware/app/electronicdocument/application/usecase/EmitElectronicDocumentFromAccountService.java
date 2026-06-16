@@ -17,17 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmitElectronicDocumentFromAccountService implements EmitElectronicDocumentFromAccountUseCase {
     private final DocumentBuilder documentBuilder;
-    private final NumberAssigner numberAssigner;
-    private final DocumentTransmitter documentTransmitter;
+    private final ElectronicDocumentEmitter emitter;
     private final DeliverElectronicDocumentService deliverService;
 
     public EmitElectronicDocumentFromAccountService(DocumentBuilder documentBuilder,
-                                                    NumberAssigner numberAssigner,
-                                                    DocumentTransmitter documentTransmitter,
+                                                    ElectronicDocumentEmitter emitter,
                                                     DeliverElectronicDocumentService deliverService) {
         this.documentBuilder = documentBuilder;
-        this.numberAssigner = numberAssigner;
-        this.documentTransmitter = documentTransmitter;
+        this.emitter = emitter;
         this.deliverService = deliverService;
     }
 
@@ -37,11 +34,10 @@ public class EmitElectronicDocumentFromAccountService implements EmitElectronicD
         ElectronicDocument document = documentBuilder.build(
                 command.openAccountId(), command.documentType(), command.companyId(),
                 command.finalConsumer());
-        // Numeración fiscal: se asigna al emitir (no al construir), justo antes de transmitir. Se persiste
-        // en updateDianResult dentro de transmit().
-        numberAssigner.assign(document);
-        ElectronicDocument transmitted = documentTransmitter.transmit(document);
-        deliverService.deliverIfValidated(transmitted);
-        return ElectronicDocumentDto.from(transmitted);
+        // Si la empresa tiene BILLING: numera (justo antes de transmitir) y transmite. Si no: el emisor lo
+        // marca NO_ELECTRONICO y lo guarda localmente, sin numeración ni MATIAS.
+        ElectronicDocument emitted = emitter.emit(document);
+        deliverService.deliverIfValidated(emitted);
+        return ElectronicDocumentDto.from(emitted);
     }
 }
