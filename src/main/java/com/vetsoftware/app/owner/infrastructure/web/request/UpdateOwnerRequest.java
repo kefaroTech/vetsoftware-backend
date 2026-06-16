@@ -18,5 +18,6 @@ public record UpdateOwnerRequest(
         @Size(max = 255) String address,
         @Size(max = 30) String phone,
         @NotNull Long cityId,
-        @NotNull Long companyId
+        @NotNull Long companyId,
+        boolean withholdingAgent
 ) {}

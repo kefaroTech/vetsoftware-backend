@@ -15,13 +15,15 @@ public class Owner {
     private String phone;
     private CityRef city;
     private CompanyRef company;
+    // F6 - agente retenedor: cuando el adquiriente lo es, la factura calcula y muestra sus retenciones.
+    private boolean withholdingAgent;
     private final LocalDateTime createdDate;
     private boolean enabled;
 
     public Owner(Long id, String name, String email, String document, OwnerDocumentType documentType,
                  PersonType personType, String verificationDigit, String legalName, String address,
-                 String phone, CityRef city, CompanyRef company, LocalDateTime createdDate,
-                 boolean enabled) {
+                 String phone, CityRef city, CompanyRef company, boolean withholdingAgent,
+                 LocalDateTime createdDate, boolean enabled) {
         validate(name, email, document, documentType, personType, verificationDigit, legalName,
                  address, phone, city, company);
         this.id = id;
@@ -36,20 +38,23 @@ public class Owner {
         this.phone = phone;
         this.city = city;
         this.company = company;
+        this.withholdingAgent = withholdingAgent;
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
 
     public static Owner create(String name, String email, String document, OwnerDocumentType documentType,
                                 PersonType personType, String verificationDigit, String legalName,
-                                String address, String phone, CityRef city, CompanyRef company) {
+                                String address, String phone, CityRef city, CompanyRef company,
+                                boolean withholdingAgent) {
         return new Owner(null, name, email, document, documentType, personType, verificationDigit,
-                legalName, address, phone, city, company, LocalDateTime.now(), true);
+                legalName, address, phone, city, company, withholdingAgent, LocalDateTime.now(), true);
     }
 
     public void update(String name, String email, String document, OwnerDocumentType documentType,
                        PersonType personType, String verificationDigit, String legalName,
-                       String address, String phone, CityRef city, CompanyRef company) {
+                       String address, String phone, CityRef city, CompanyRef company,
+                       boolean withholdingAgent) {
         validate(name, email, document, documentType, personType, verificationDigit, legalName,
                  address, phone, city, company);
         this.name = name;
@@ -63,6 +68,7 @@ public class Owner {
         this.phone = phone;
         this.city = city;
         this.company = company;
+        this.withholdingAgent = withholdingAgent;
     }
 
     private static void validate(String name, String email, String document, OwnerDocumentType documentType,
@@ -118,6 +124,7 @@ public class Owner {
     public String getPhone() { return phone; }
     public CityRef getCity() { return city; }
     public CompanyRef getCompany() { return company; }
+    public boolean isWithholdingAgent() { return withholdingAgent; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }

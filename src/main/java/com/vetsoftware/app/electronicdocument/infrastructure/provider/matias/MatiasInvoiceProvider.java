@@ -4,15 +4,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderResult;
+import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
+import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -48,28 +53,34 @@ import org.springframework.web.client.RestClientResponseException;
 @Component
 public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
-    // --- Valores de catálogo MATIAS PROVISIONALES (Colección Postman sandbox). TODO(catalog): mapear desde el dominio. ---
-    private static final String EX_RESOLUTION_NUMBER = "18764074347312";
-    private static final String EX_PREFIX = "SETP";
-    private static final int EX_OPERATION_TYPE_ID = 1;
-    private static final String EX_COUNTRY_ID = "45";
-    private static final String EX_CITY_ID = "836";
-    private static final String EX_IDENTITY_DOCUMENT_ID = "1"; // tipo de documento del adquiriente (ej. CC)
-    private static final int EX_TYPE_ORGANIZATION_ID = 2;      // 2 = persona natural (ej.)
-    private static final int EX_TAX_REGIME_ID = 2;
-    private static final int EX_TAX_LEVEL_ID = 5;
-    private static final String EX_QUANTITY_UNITS_ID = "1093";
-    private static final String EX_TYPE_ITEM_IDENT_ID = "4";
-    private static final String EX_REFERENCE_PRICE_ID = "1";
-    private static final String EX_TAX_ID = "1";              // IVA
-    private static final int EX_MEANS_PAYMENT_ID = 10;        // 10 = efectivo
-    private static final String EX_NC_RESPONSE_ID = "2";      // concepto de corrección de la nota (ej.)
+    // --- Catálogos MATIAS VERIFICADOS contra la API en vivo del sandbox (GET /document-type, /taxes, etc.). ---
+    private static final int OPERATION_TYPE_NACIONAL = 1; // Operación: Estándar (GET /operation-type id 1)
+    private static final String COUNTRY_COLOMBIA = "45";  // País: Colombia (GET /countries id 45)
+    private static final String UNIT_UNIDAD = "1093";     // Unidad genérica "mutuamente definido" (GET /quantity-units id 1093)
+    private static final int MEANS_PAYMENT_EFECTIVO = 10; // Medio de pago: Efectivo (GET /payment-means id 10) — fallback
+    private static final String TAX_ID_IVA = "1";         // Impuesto: IVA (GET /taxes id 1, code 01)
+    private static final String TAX_ID_INC = "4";         // Impuesto Nacional al Consumo (GET /taxes id 4, code 04)
+    private static final String TAX_ID_RETEIVA = "5";     // Retención: ReteIVA (GET /taxes id 5, code 05)
+    private static final String TAX_ID_RETEFUENTE = "6";  // Retención: ReteRenta/Fuente (GET /taxes id 6, code 06)
+    private static final String TAX_ID_RETEICA = "7";     // Retención: ReteICA (GET /taxes id 7, code 07)
+    private static final String ITEM_IDENT_CONTRIBUYENTE = "4"; // estándar del contribuyente (GET /type-item-identifications id 4)
 
-    /** TTL conservador del token de login mientras MATIAS no documente la expiración real. TODO: confirmar. */
+    // --- Defaults válidos pero no específicos del adquiriente (confirmados emitiendo en el sandbox). ---
+    private static final String EX_RESOLUTION_NUMBER = "18764074347312"; // TODO(F1): de la NumberingResolution de la empresa
+    private static final String EX_PREFIX = "SETP";                      // TODO(F1): de la NumberingResolution de la empresa
+    private static final String EX_CITY_ID = "959";          // default = ciudad de la empresa; TODO: city del adquiriente vía /cities (city_code=DANE)
+    private static final int EX_TAX_REGIME_ID = 2;           // No Responsable IVA — default válido (GET /company usa 2)
+    private static final int EX_TAX_LEVEL_ID = 5;            // default válido (GET /company usa 5)
+    private static final String EX_REFERENCE_PRICE_ID = "1"; // precio de referencia estándar (validado en el sandbox)
+    private static final String EX_NC_RESPONSE_ID = "2";     // concepto de corrección por defecto (2=Anulación); ideal: mapear desde noteReasonCode
+
+    /** Fallback de TTL del token si el login no devuelve {@code expires_at} (normalmente sí lo hace). */
     private static final long TOKEN_TTL_SECONDS = 50 * 60L;
 
     private final RestClient restClient;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
+    // Cache del catálogo de ciudades por base URL: DANE (city_code 5 díg.) → city_id interno de MATIAS.
+    private final Map<String, Map<String, String>> cityCacheByBase = new ConcurrentHashMap<>();
 
     public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient) {
         this.restClient = restClient;
@@ -85,27 +96,25 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         try {
             String token = authenticate(config);
             Map<String, Object> body = buildRequest(document, config);
-            JsonNode response = restClient.post()
+            ResponseEntity<JsonNode> response = restClient.post()
                     .uri(base(config) + endpoint(document.getDocumentType()))
                     .header("Authorization", "Bearer " + token)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(JsonNode.class);
-            String trackId = extractTrackId(response);
-            // El cierre VALIDADO/RECHAZADO llega por webhook (o por polling de /status como respaldo).
-            return new ProviderResult(DianStatus.PENDIENTE, null, null, null, null, null, null, null, null,
-                    null, trackId, null, null, 202, safe(response));
+                    .toEntity(JsonNode.class);
+            // MATIAS puede validar SÍNCRONO (HTTP 200, StatusCode 00) o encolar (HTTP 201) → webhook/polling.
+            return parseDocumentResult(response.getBody(), document, response.getStatusCode().value());
         } catch (RestClientResponseException e) {
             HttpStatusCode status = e.getStatusCode();
             String responseBody = e.getResponseBodyAsString();
             if (status.is5xxServerError()) {
-                return contingency(status.value(), responseBody);
+                return contingency(status.value(), responseBody); // DIAN caída (500/503/504) → reintentar
             }
-            return rejected(status.value(), responseBody);
+            return rejected(status.value(), responseBody);         // 4xx: 422 validación, 400 duplicado
         } catch (ResourceAccessException e) {
-            return contingency(null, e.getMessage());
+            return contingency(null, e.getMessage());              // timeout/conexión
         }
     }
 
@@ -119,15 +128,17 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         if (trackId == null || trackId.isBlank()) return Optional.empty();
         try {
             String token = authenticate(config);
-            JsonNode response = restClient.post()
+            ResponseEntity<JsonNode> response = restClient.post()
                     .uri(base(config) + "/status/document/" + trackId)
                     .header("Authorization", "Bearer " + token)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .body(JsonNode.class);
-            return Optional.of(parseStatus(response, trackId));
+                    .toEntity(JsonNode.class);
+            ProviderResult result = parseDocumentResult(response.getBody(), null, response.getStatusCode().value());
+            // Conserva el trackId mientras siga PENDIENTE para reintentar en el siguiente ciclo.
+            return Optional.of(result.status() == DianStatus.PENDIENTE ? pending(trackId) : result);
         } catch (RestClientResponseException | ResourceAccessException e) {
-            return Optional.of(pending(trackId));
+            return Optional.of(pending(trackId)); // no concluyente → reintentar, nunca un terminal especulativo
         }
     }
 
@@ -160,13 +171,66 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         if (token == null) {
             throw new IllegalStateException("MATIAS no devolvió access_token en /auth/login");
         }
-        tokenCache.put(cacheKey, new CachedToken(token, LocalDateTime.now().plusSeconds(TOKEN_TTL_SECONDS)));
+        String expiresRaw = firstNonNull(text(response, "expires_at"), text(at(response, "data"), "expires_at"));
+        tokenCache.put(cacheKey, new CachedToken(token, tokenExpiry(expiresRaw)));
         return token;
+    }
+
+    /**
+     * Expiración del token cacheado: usa el {@code expires_at} del login (formato {@code "yyyy-MM-dd HH:mm:ss"};
+     * en el sandbox el token dura ~3 meses) con 1 min de margen; si no viene o no parsea, cae al TTL por defecto.
+     */
+    private static LocalDateTime tokenExpiry(String expiresAt) {
+        if (expiresAt != null && !expiresAt.isBlank()) {
+            try {
+                return LocalDateTime.parse(expiresAt.trim().replace(" ", "T")).minusMinutes(1);
+            } catch (RuntimeException ignored) {
+                // formato inesperado → TTL por defecto
+            }
+        }
+        return LocalDateTime.now().plusSeconds(TOKEN_TTL_SECONDS);
     }
 
     private record CachedToken(String token, LocalDateTime expiresAt) {
         boolean isFresh() {
             return LocalDateTime.now().isBefore(expiresAt);
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Ciudades (DANE → city_id MATIAS)
+    // ---------------------------------------------------------------------------------------------
+
+    /** Traduce el código DANE del adquiriente al city_id interno de MATIAS (GET /cities, cacheado). Fallback al default. */
+    private String resolveCityId(ProviderConfigSnapshot config, String daneCode) {
+        if (daneCode == null || daneCode.isBlank()) return EX_CITY_ID;
+        Map<String, String> cities = cityCacheByBase.computeIfAbsent(base(config), b -> loadCities(config));
+        return cities.getOrDefault(daneCode, EX_CITY_ID);
+    }
+
+    /** Carga el catálogo de ciudades de MATIAS una vez por base URL: {@code dataRecords.data[].{city_code,id}}. */
+    private Map<String, String> loadCities(ProviderConfigSnapshot config) {
+        try {
+            String token = authenticate(config);
+            JsonNode response = restClient.get()
+                    .uri(base(config) + "/cities")
+                    .header("Authorization", "Bearer " + token)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(JsonNode.class);
+            JsonNode data = at(at(response, "dataRecords"), "data");
+            if (data == null) data = at(response, "data");
+            Map<String, String> map = new HashMap<>();
+            if (data != null && data.isArray()) {
+                for (JsonNode city : data) {
+                    String code = text(city, "city_code");
+                    String id = text(city, "id");
+                    if (code != null && id != null) map.put(code, id);
+                }
+            }
+            return map;
+        } catch (RuntimeException e) {
+            return Map.of(); // si el catálogo no carga, todo cae al city_id por defecto
         }
     }
 
@@ -184,29 +248,79 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         };
     }
 
-    /** type_document_id MATIAS (de los ejemplos del Postman). TODO(catalog): confirmar códigos reales. */
+    /** type_document_id MATIAS — confirmado contra el glosario (Códigos de Documentos, columna ID API). */
     private static int typeDocumentId(ElectronicDocumentType type) {
         return switch (type) {
-            case FE_VENTA -> 7;
-            case DOC_EQUIV_POS -> 20;
-            case NOTA_CREDITO -> 5;
-            case NOTA_DEBITO -> 4;
+            case FE_VENTA -> 7;       // Factura de Venta (DIAN 01)
+            case DOC_EQUIV_POS -> 20; // Documento Equivalente POS (DIAN 20)
+            case NOTA_CREDITO -> 5;   // Nota Crédito (DIAN 91)
+            case NOTA_DEBITO -> 4;    // Nota Débito (DIAN 92)
         };
+    }
+
+    /**
+     * identity_document_id MATIAS desde el tipo de documento del adquiriente. Valores VERIFICADOS contra el
+     * catálogo en vivo {@code GET /identity-documents} (el `code` es el código DIAN). El snapshot guarda el
+     * nombre del enum de Owner (CEDULA_CIUDADANIA=13, NIT=31, CEDULA_EXTRANJERIA=22, PASAPORTE=41, PEP=47).
+     */
+    private static String identityDocumentId(String documentType) {
+        if (documentType == null) return "1";
+        return switch (documentType) {
+            case "CEDULA_CIUDADANIA" -> "1";   // DIAN 13
+            case "CEDULA_EXTRANJERIA" -> "2";  // DIAN 22
+            case "NIT" -> "3";                 // DIAN 31
+            case "TARJETA_IDENTIDAD" -> "7";   // DIAN 12
+            case "PASAPORTE" -> "9";           // DIAN 41
+            case "PEP" -> "14";                // DIAN 47
+            default -> "1";
+        };
+    }
+
+    /** type_organization_id MATIAS: 1 = persona jurídica, 2 = persona natural. */
+    private static int typeOrganizationId(String personType) {
+        return "JURIDICA".equals(personType) ? 1 : 2;
+    }
+
+    /**
+     * operation_type_id MATIAS (verificado contra GET /operation-type): venta/POS estándar=1; las notas que
+     * referencian una factura usan NC=12 / ND=14 (nuestras notas siempre referencian la factura original).
+     */
+    private static int operationTypeId(ElectronicDocumentType type) {
+        return switch (type) {
+            case FE_VENTA, DOC_EQUIV_POS -> OPERATION_TYPE_NACIONAL; // "Estandar" = 1
+            case NOTA_CREDITO -> 12; // Nota Crédito que referencia una factura electrónica
+            case NOTA_DEBITO -> 14;  // Nota Débito que referencia una factura electrónica
+        };
+    }
+
+    /** Consumidor final = adquiriente genérico (NIT 222222222222): MATIAS espera el documento SIN customer. */
+    private static boolean isFinalConsumer(CustomerSnapshot customer) {
+        return customer != null && CustomerSnapshot.FINAL_CONSUMER_DOCUMENT.equals(customer.documentId());
+    }
+
+    /** tax_id MATIAS desde el esquema de la línea: IVA=1, INC=4 (verificados contra GET /taxes). */
+    private static String taxIdFor(TaxScheme scheme) {
+        return scheme == TaxScheme.INC ? TAX_ID_INC : TAX_ID_IVA;
     }
 
     private Map<String, Object> buildRequest(ElectronicDocument doc, ProviderConfigSnapshot config) {
         Map<String, Object> body = new LinkedHashMap<>();
-        // TODO: resolution_number/prefix/document_number reales vienen de la NumberingResolution de F1.
-        body.put("resolution_number", EX_RESOLUTION_NUMBER);
+        // Numeración fiscal asignada en la emisión desde la NumberingResolution de la empresa (F4/F1).
+        // El fallback EX_* solo cubre un documento sin numerar (no debería ocurrir en el flujo de emisión).
+        body.put("resolution_number", doc.getResolutionNumber() != null ? doc.getResolutionNumber() : EX_RESOLUTION_NUMBER);
         body.put("prefix", doc.getPrefix() != null ? doc.getPrefix() : EX_PREFIX);
         body.put("document_number", String.valueOf(doc.getConsecutive() != null ? doc.getConsecutive() : doc.getId()));
         body.put("notes", "Documento " + doc.getId());
-        body.put("operation_type_id", EX_OPERATION_TYPE_ID);
+        body.put("operation_type_id", operationTypeId(doc.getDocumentType()));
         body.put("type_document_id", typeDocumentId(doc.getDocumentType()));
         body.put("graphic_representation", 0);
         body.put("send_email", 0); // la representación/correo la genera el sistema (Gotenberg), no MATIAS.
         body.put("payments", buildPayments(doc));
-        body.put("customer", buildCustomer(doc));
+        // Consumidor final: los ejemplos oficiales (invoice-final-consumer / pos-final-consumer) OMITEN
+        // el bloque customer. Solo lo enviamos cuando el adquiriente está identificado.
+        if (!isFinalConsumer(doc.getCustomer())) {
+            body.put("customer", buildCustomer(doc, config));
+        }
         body.put("lines", buildLines(doc));
         body.put("legal_monetary_totals", buildMonetaryTotals(doc));
         body.put("tax_totals", buildTaxTotals(doc));
@@ -241,12 +355,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private List<Map<String, Object>> buildPayments(ElectronicDocument doc) {
         Map<String, Object> payment = new LinkedHashMap<>();
         payment.put("payment_method_id", doc.getPaymentForm() == PaymentForm.CREDITO ? 2 : 1);
-        payment.put("means_payment_id", parseIntOr(doc.primaryPaymentMeansCode(), EX_MEANS_PAYMENT_ID));
+        // Verificado contra GET /payment-means: efectivo=10, consignación=42, tarjeta crédito=48, débito=49
+        // (== nuestros códigos DIAN de PaymentMeans), así que primaryPaymentMeansCode() ya da el means_payment_id.
+        payment.put("means_payment_id", parseIntOr(doc.primaryPaymentMeansCode(), MEANS_PAYMENT_EFECTIVO));
         payment.put("value_paid", str(doc.getPayableAmount()));
         return List.of(payment);
     }
 
-    private Map<String, Object> buildCustomer(ElectronicDocument doc) {
+    private Map<String, Object> buildCustomer(ElectronicDocument doc, ProviderConfigSnapshot config) {
         Map<String, Object> customer = new LinkedHashMap<>();
         String companyName = doc.getCustomer().legalName() != null
                 ? doc.getCustomer().legalName() : doc.getCustomer().name();
@@ -255,13 +371,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         if (doc.getCustomer().email() != null) {
             customer.put("email", doc.getCustomer().email());
         }
-        // TODO(catalog): mapear estos IDs desde el dominio (City/tipo de documento/régimen). Provisionales:
-        customer.put("country_id", EX_COUNTRY_ID);
-        customer.put("city_id", EX_CITY_ID);
-        customer.put("identity_document_id", EX_IDENTITY_DOCUMENT_ID);
-        customer.put("type_organization_id", EX_TYPE_ORGANIZATION_ID);
-        customer.put("tax_regime_id", EX_TAX_REGIME_ID);
-        customer.put("tax_level_id", EX_TAX_LEVEL_ID);
+        // Verificados contra catálogos en vivo: país, tipo de documento del adquiriente y tipo de organización.
+        customer.put("country_id", COUNTRY_COLOMBIA);
+        // city_id = id de GET /cities cuyo city_code == DANE de la ciudad del adquiriente (cache por base URL).
+        customer.put("city_id", resolveCityId(config, doc.getCustomer().cityDaneCode()));
+        customer.put("identity_document_id", identityDocumentId(doc.getCustomer().documentType()));
+        customer.put("type_organization_id", typeOrganizationId(doc.getCustomer().personType()));
+        customer.put("tax_regime_id", EX_TAX_REGIME_ID); // TODO(catalog): régimen real del adquiriente
+        customer.put("tax_level_id", EX_TAX_LEVEL_ID);   // TODO(catalog): no aparece en el glosario
         return customer;
     }
 
@@ -270,12 +387,12 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         for (ElectronicDocumentLine line : doc.getLines()) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("invoiced_quantity", str(line.getQuantity()));
-            item.put("quantity_units_id", EX_QUANTITY_UNITS_ID);
+            item.put("quantity_units_id", UNIT_UNIDAD); // TODO(catalog): mapear otras unidades (kg/L/m…) si se requieren
             item.put("line_extension_amount", str(line.getLineExtensionAmount()));
             item.put("free_of_charge_indicator", false);
             item.put("description", line.getDescription());
             item.put("code", String.valueOf(line.getLineNumber()));
-            item.put("type_item_identifications_id", EX_TYPE_ITEM_IDENT_ID);
+            item.put("type_item_identifications_id", ITEM_IDENT_CONTRIBUYENTE);
             item.put("reference_price_id", EX_REFERENCE_PRICE_ID);
             item.put("price_amount", str(line.getUnitPrice()));
             item.put("base_quantity", str(line.getQuantity()));
@@ -291,20 +408,43 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
             return List.of();
         }
         Map<String, Object> tax = new LinkedHashMap<>();
-        tax.put("tax_id", EX_TAX_ID);
+        tax.put("tax_id", taxIdFor(line.getTaxScheme()));
         tax.put("tax_amount", line.getTaxAmount());
         tax.put("taxable_amount", line.getLineExtensionAmount());
         tax.put("percent", line.getTaxRate());
         return List.of(tax);
     }
 
-    /** tax_totals del documento: agrega las líneas que llevan impuesto (mismo formato que las de línea). */
+    /** tax_totals del documento: impuestos de las líneas (IVA/INC) + retenciones del adquiriente (F6). */
     private List<Map<String, Object>> buildTaxTotals(ElectronicDocument doc) {
         List<Map<String, Object>> totals = new ArrayList<>();
         for (ElectronicDocumentLine line : doc.getLines()) {
             totals.addAll(lineTaxTotals(line));
         }
+        // F6 - retenciones del adquiriente (agente retenedor) como tax_totals adicionales. ReteFuente/ReteICA
+        // sobre la base; ReteIVA sobre el IVA generado. Solo se incluyen las que tienen monto.
+        BigDecimal base = doc.getLineExtensionAmount();
+        BigDecimal iva = doc.getTaxInclusiveAmount().subtract(doc.getTaxExclusiveAmount());
+        addRetention(totals, TAX_ID_RETEIVA, doc.getReteIvaAmount(), iva);
+        addRetention(totals, TAX_ID_RETEFUENTE, doc.getReteFuenteAmount(), base);
+        addRetention(totals, TAX_ID_RETEICA, doc.getReteIcaAmount(), base);
         return totals;
+    }
+
+    private static void addRetention(List<Map<String, Object>> totals, String taxId,
+                                     BigDecimal amount, BigDecimal base) {
+        if (amount == null || amount.signum() <= 0) return;
+        Map<String, Object> tax = new LinkedHashMap<>();
+        tax.put("tax_id", taxId);
+        tax.put("tax_amount", amount);
+        tax.put("taxable_amount", base);
+        tax.put("percent", retentionPercent(amount, base));
+        totals.add(tax);
+    }
+
+    private static BigDecimal retentionPercent(BigDecimal amount, BigDecimal base) {
+        if (base == null || base.signum() == 0) return BigDecimal.ZERO;
+        return amount.multiply(BigDecimal.valueOf(100)).divide(base, 2, RoundingMode.HALF_UP);
     }
 
     private Map<String, Object> buildMonetaryTotals(ElectronicDocument doc) {
@@ -346,26 +486,42 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     // Status parsing
     // ---------------------------------------------------------------------------------------------
 
-    /** Mapea la respuesta de {@code /status/document/{trackId}} a un ProviderResult. TODO(schema): confirmar campos. */
-    private ProviderResult parseStatus(JsonNode response, String trackId) {
-        JsonNode data = at(response, "data");
-        if (data == null) data = response;
-        String status = firstNonNull(text(data, "status"), text(data, "dian_status"), text(response, "status"));
-        String s = status == null ? "" : status.toLowerCase();
-        if (s.contains("accept") || s.contains("valid") || s.contains("aprob")) {
-            return new ProviderResult(DianStatus.VALIDADO, text(data, "prefix"),
-                    parseLong(firstNonNull(text(data, "consecutive"), text(data, "number"))),
-                    text(data, "cufe"), text(data, "cude"), text(data, "uuid"),
-                    text(data, "xml"), text(data, "qr"),
-                    firstNonNull(text(data, "qr_url"), text(data, "public_url")), text(data, "pdf_url"),
-                    trackId, null, LocalDateTime.now(), 200, safe(response));
+    /**
+     * Interpreta la respuesta de emisión/estado de MATIAS (docs: response-json). Campos reales:
+     * {@code response.StatusCode} ("00"=autorizado, "98"=en proceso, "02"=duplicado), {@code success},
+     * {@code XmlDocumentKey}=CUFE/CUDE, objetos {@code qr/pdf/AttachedDocument}. HTTP 201 / send_to_queue=1
+     * = encolado (async). {@code doc} puede ser null (polling sin contexto de tipo): el sello va en cufe.
+     */
+    private ProviderResult parseDocumentResult(JsonNode body, ElectronicDocument doc, int http) {
+        JsonNode response = at(body, "response");
+        String statusCode = text(response, "StatusCode");
+        String key = firstNonNull(text(body, "XmlDocumentKey"), text(response, "XmlDocumentKey"));
+        boolean queued = http == 201 || intOf(body, "send_to_queue") == 1 || "98".equals(statusCode);
+
+        if ("00".equals(statusCode)) {
+            JsonNode qr = at(body, "qr");
+            JsonNode attached = at(body, "AttachedDocument");
+            boolean isInvoice = doc == null || doc.getDocumentType() == ElectronicDocumentType.FE_VENTA;
+            String cufe = isInvoice ? key : null;   // FE → CUFE
+            String cude = isInvoice ? null : key;   // POS/notas → CUDE
+            return new ProviderResult(DianStatus.VALIDADO, null, null, cufe, cude, null,
+                    text(attached, "url"),                                // xmlSigned: URL del XML firmado
+                    firstNonNull(text(qr, "qrDian"), text(qr, "data")),   // qrData: contenido/URL DIAN
+                    text(qr, "url"),                                      // qrUrl: imagen QR
+                    null,                                                 // pdf: lo genera nuestra entrega (Gotenberg)
+                    key, null, LocalDateTime.now(), http, safe(body));
         }
-        if (s.contains("reject") || s.contains("rechaz")) {
-            return new ProviderResult(DianStatus.RECHAZADO, null, null, null, null, null, null, null, null, null,
-                    trackId, firstNonNull(text(data, "message"), text(data, "error")),
-                    null, 200, safe(response));
+        if (queued) {
+            String trackId = firstNonNull(key, text(response, "XmlFileName"), extractTrackId(body));
+            return pending(trackId);
         }
-        return pending(trackId);
+        // Negativo concluyente (success=false o StatusCode distinto de 00/98) → rechazo; sin señal → pendiente.
+        boolean negative = (body != null && !body.path("success").asBoolean(true)) || statusCode != null;
+        if (!negative) return pending(key);
+        String reason = firstNonNull(text(response, "StatusMessage"), text(body, "message"),
+                text(response, "StatusDescription"));
+        return new ProviderResult(DianStatus.RECHAZADO, null, null, null, null, null, null, null, null, null,
+                key, reason, null, http, safe(body));
     }
 
     private ProviderResult pending(String trackId) {
@@ -423,18 +579,15 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         return value == null || value.isNull() ? null : value.asText();
     }
 
+    private static int intOf(JsonNode node, String key) {
+        if (node == null) return 0;
+        JsonNode value = node.get(key);
+        return value == null || value.isNull() ? 0 : value.asInt(0);
+    }
+
     private static String firstNonNull(String... values) {
         for (String v : values) if (v != null && !v.isBlank()) return v;
         return null;
-    }
-
-    private static Long parseLong(String value) {
-        if (value == null) return null;
-        try {
-            return Long.parseLong(value.replaceAll("[^0-9]", ""));
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 
     private static String safe(JsonNode node) {

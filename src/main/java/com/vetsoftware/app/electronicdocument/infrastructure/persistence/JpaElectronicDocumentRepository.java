@@ -44,9 +44,10 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
         ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
                 .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain
                         .ElectronicDocumentNotFoundException(document.getId()));
-        // Solo columnas del ciclo de vida DIAN; líneas y pagos no se tocan.
+        // Solo columnas del ciclo de vida DIAN + numeración fiscal; líneas y pagos no se tocan.
         entity.setPrefix(document.getPrefix());
         entity.setConsecutive(document.getConsecutive());
+        entity.setResolutionNumber(document.getResolutionNumber());
         entity.setCufe(document.getCufe());
         entity.setCude(document.getCude());
         entity.setUuid(document.getUuid());

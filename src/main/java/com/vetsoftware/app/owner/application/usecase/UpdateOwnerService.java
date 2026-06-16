@@ -40,7 +40,7 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         owner.update(command.name(), command.email(), command.document(), command.documentType(),
                      command.personType(), command.verificationDigit(), command.legalName(),
-                     command.address(), command.phone(), city, company);
+                     command.address(), command.phone(), city, company, command.withholdingAgent());
         return OwnerDto.from(repository.save(owner));
     }
 }

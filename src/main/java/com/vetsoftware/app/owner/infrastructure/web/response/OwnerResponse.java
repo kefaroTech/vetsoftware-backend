@@ -7,6 +7,6 @@ import java.time.LocalDateTime;
 public record OwnerResponse(
         Long id, String name, String email, String document, OwnerDocumentType documentType,
         PersonType personType, String verificationDigit, String legalName, String address,
-        String phone, CitySummary city, CompanySummary company, LocalDateTime createdDate,
-        boolean enabled
+        String phone, CitySummary city, CompanySummary company, boolean withholdingAgent,
+        LocalDateTime createdDate, boolean enabled
 ) {}

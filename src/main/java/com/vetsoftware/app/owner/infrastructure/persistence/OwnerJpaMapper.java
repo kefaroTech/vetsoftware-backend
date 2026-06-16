@@ -24,6 +24,7 @@ public class OwnerJpaMapper {
         entity.setPhone(owner.getPhone());
         entity.setCity(city);
         entity.setCompany(company);
+        entity.setWithholdingAgent(owner.isWithholdingAgent());
         entity.setCreatedDate(owner.getCreatedDate());
         entity.setEnabled(owner.isEnabled());
         return entity;
@@ -42,7 +43,7 @@ public class OwnerJpaMapper {
             entity.getId(), entity.getName(), entity.getEmail(), entity.getDocument(),
             entity.getDocumentType(), entity.getPersonType(), entity.getVerificationDigit(),
             entity.getLegalName(), entity.getAddress(), entity.getPhone(), cityRef, companyRef,
-            entity.getCreatedDate(), entity.isEnabled()
+            entity.isWithholdingAgent(), entity.getCreatedDate(), entity.isEnabled()
         );
     }
 }

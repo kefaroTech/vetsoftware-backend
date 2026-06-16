@@ -12,7 +12,8 @@ public record CustomerSnapshot(
         String personType,
         String legalName,
         String name,
-        String email
+        String email,
+        String cityDaneCode
 ) {
     public CustomerSnapshot {
         if (documentId == null || documentId.isBlank())
@@ -38,6 +39,7 @@ public record CustomerSnapshot(
                 "NATURAL",
                 null,
                 "Consumidor final",
+                null,
                 null);
     }
 }

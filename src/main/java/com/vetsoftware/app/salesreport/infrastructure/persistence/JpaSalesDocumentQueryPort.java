@@ -50,6 +50,7 @@ public class JpaSalesDocumentQueryPort implements SalesDocumentQueryPort {
                 e.getDianStatus() == null ? null : e.getDianStatus().name(),
                 e.getCufe(), e.getCude(),
                 e.getLineExtensionAmount(), e.getTaxInclusiveAmount(), e.getPayableAmount(),
+                e.getReteFuenteAmount(), e.getReteIvaAmount(), e.getReteIcaAmount(),
                 taxLines, paymentLines);
     }
 

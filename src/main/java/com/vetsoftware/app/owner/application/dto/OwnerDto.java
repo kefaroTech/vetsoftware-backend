@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 public record OwnerDto(
         Long id, String name, String email, String document, OwnerDocumentType documentType,
         PersonType personType, String verificationDigit, String legalName, String address,
-        String phone, CitySummaryDto city, CompanySummaryDto company, LocalDateTime createdDate,
-        boolean enabled
+        String phone, CitySummaryDto city, CompanySummaryDto company, boolean withholdingAgent,
+        LocalDateTime createdDate, boolean enabled
 ) {
     public static OwnerDto from(Owner owner) {
         return new OwnerDto(
@@ -18,7 +18,7 @@ public record OwnerDto(
             owner.getLegalName(), owner.getAddress(), owner.getPhone(),
             CitySummaryDto.from(owner.getCity()),
             CompanySummaryDto.from(owner.getCompany()),
-            owner.getCreatedDate(), owner.isEnabled()
+            owner.isWithholdingAgent(), owner.getCreatedDate(), owner.isEnabled()
         );
     }
 }

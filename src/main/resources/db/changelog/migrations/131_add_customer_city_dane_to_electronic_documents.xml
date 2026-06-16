@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F3 - codigo DANE (5 dig.) de la ciudad del adquiriente, congelado en el snapshot del documento. El
+         adaptador del proveedor lo traduce al id de ciudad interno del proveedor (MATIAS city_id) al transmitir. -->
+    <changeSet id="131_add_customer_city_dane_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="customer_city_dane" type="VARCHAR(5)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

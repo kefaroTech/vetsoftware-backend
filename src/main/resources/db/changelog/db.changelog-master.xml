@@ -133,5 +133,7 @@
     <include file="db/changelog/migrations/127_add_withholding_agent_to_owners.xml"/>
     <include file="db/changelog/migrations/128_add_withholding_amounts_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/129_create_withholding_configs.xml"/>
+    <include file="db/changelog/migrations/130_add_resolution_number_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/131_add_customer_city_dane_to_electronic_documents.xml"/>
 
 </databaseChangeLog>

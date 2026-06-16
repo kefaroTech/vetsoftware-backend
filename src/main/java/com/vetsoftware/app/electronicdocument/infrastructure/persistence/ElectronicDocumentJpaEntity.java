@@ -39,6 +39,9 @@ public class ElectronicDocumentJpaEntity {
     @Column(name = "consecutive")
     private Long consecutive;
 
+    @Column(name = "resolution_number", length = 50)
+    private String resolutionNumber;
+
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
 
@@ -100,6 +103,8 @@ public class ElectronicDocumentJpaEntity {
     private String customerName;
     @Column(name = "customer_email", length = 150)
     private String customerEmail;
+    @Column(name = "customer_city_dane", length = 5)
+    private String customerCityDane;
 
     @Column(name = "line_extension_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal lineExtensionAmount;
@@ -109,6 +114,13 @@ public class ElectronicDocumentJpaEntity {
     private BigDecimal taxInclusiveAmount;
     @Column(name = "payable_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal payableAmount;
+
+    @Column(name = "rete_fuente_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal reteFuenteAmount = BigDecimal.ZERO;
+    @Column(name = "rete_iva_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal reteIvaAmount = BigDecimal.ZERO;
+    @Column(name = "rete_ica_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal reteIcaAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_form", nullable = false, length = 20)
@@ -162,6 +174,8 @@ public class ElectronicDocumentJpaEntity {
     public void setPrefix(String prefix) { this.prefix = prefix; }
     public Long getConsecutive() { return consecutive; }
     public void setConsecutive(Long consecutive) { this.consecutive = consecutive; }
+    public String getResolutionNumber() { return resolutionNumber; }
+    public void setResolutionNumber(String resolutionNumber) { this.resolutionNumber = resolutionNumber; }
     public LocalDate getIssueDate() { return issueDate; }
     public void setIssueDate(LocalDate issueDate) { this.issueDate = issueDate; }
     public String getIssueTime() { return issueTime; }
@@ -210,6 +224,8 @@ public class ElectronicDocumentJpaEntity {
     public void setCustomerName(String v) { this.customerName = v; }
     public String getCustomerEmail() { return customerEmail; }
     public void setCustomerEmail(String v) { this.customerEmail = v; }
+    public String getCustomerCityDane() { return customerCityDane; }
+    public void setCustomerCityDane(String v) { this.customerCityDane = v; }
     public BigDecimal getLineExtensionAmount() { return lineExtensionAmount; }
     public void setLineExtensionAmount(BigDecimal v) { this.lineExtensionAmount = v; }
     public BigDecimal getTaxExclusiveAmount() { return taxExclusiveAmount; }
@@ -218,6 +234,12 @@ public class ElectronicDocumentJpaEntity {
     public void setTaxInclusiveAmount(BigDecimal v) { this.taxInclusiveAmount = v; }
     public BigDecimal getPayableAmount() { return payableAmount; }
     public void setPayableAmount(BigDecimal v) { this.payableAmount = v; }
+    public BigDecimal getReteFuenteAmount() { return reteFuenteAmount; }
+    public void setReteFuenteAmount(BigDecimal v) { this.reteFuenteAmount = v; }
+    public BigDecimal getReteIvaAmount() { return reteIvaAmount; }
+    public void setReteIvaAmount(BigDecimal v) { this.reteIvaAmount = v; }
+    public BigDecimal getReteIcaAmount() { return reteIcaAmount; }
+    public void setReteIcaAmount(BigDecimal v) { this.reteIcaAmount = v; }
     public PaymentForm getPaymentForm() { return paymentForm; }
     public void setPaymentForm(PaymentForm paymentForm) { this.paymentForm = paymentForm; }
     public LocalDate getPaymentDueDate() { return paymentDueDate; }

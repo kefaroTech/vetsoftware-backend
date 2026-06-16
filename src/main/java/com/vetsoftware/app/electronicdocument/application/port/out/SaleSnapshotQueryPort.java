@@ -5,6 +5,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,11 @@ public interface SaleSnapshotQueryPort {
             CustomerSnapshot customer,
             List<ElectronicDocumentLine> lines,
             List<ElectronicDocumentPayment> payments,
-            PaymentForm paymentForm
+            PaymentForm paymentForm,
+            // F6 - retenciones: si el adquiriente es agente retenedor y las tarifas del emisor (cero/null si no aplica).
+            boolean customerWithholdingAgent,
+            BigDecimal reteFuenteRate,
+            BigDecimal reteIvaRate,
+            BigDecimal reteIcaRate
     ) {}
 }

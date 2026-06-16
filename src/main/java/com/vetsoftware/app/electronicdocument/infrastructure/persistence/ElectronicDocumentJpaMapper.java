@@ -22,6 +22,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setDocumentType(doc.getDocumentType());
         entity.setPrefix(doc.getPrefix());
         entity.setConsecutive(doc.getConsecutive());
+        entity.setResolutionNumber(doc.getResolutionNumber());
         entity.setIssueDate(doc.getIssueDate());
         entity.setIssueTime(doc.getIssueTime());
         entity.setCufe(doc.getCufe());
@@ -50,11 +51,15 @@ public class ElectronicDocumentJpaMapper {
         entity.setCustomerLegalName(c.legalName());
         entity.setCustomerName(c.name());
         entity.setCustomerEmail(c.email());
+        entity.setCustomerCityDane(c.cityDaneCode());
 
         entity.setLineExtensionAmount(doc.getLineExtensionAmount());
         entity.setTaxExclusiveAmount(doc.getTaxExclusiveAmount());
         entity.setTaxInclusiveAmount(doc.getTaxInclusiveAmount());
         entity.setPayableAmount(doc.getPayableAmount());
+        entity.setReteFuenteAmount(doc.getReteFuenteAmount());
+        entity.setReteIvaAmount(doc.getReteIvaAmount());
+        entity.setReteIcaAmount(doc.getReteIcaAmount());
         entity.setPaymentForm(doc.getPaymentForm());
         entity.setPaymentDueDate(doc.getPaymentDueDate());
         entity.setCreatedDate(doc.getCreatedDate());
@@ -116,20 +121,22 @@ public class ElectronicDocumentJpaMapper {
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
-                entity.getCustomerEmail());
+                entity.getCustomerEmail(), entity.getCustomerCityDane());
 
         DocumentReference reference = entity.getReferencedCufe() == null ? null
                 : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),
                         entity.getReferencedNumber(), entity.getReferencedIssueDate());
 
         return new ElectronicDocument(entity.getId(), companyId, entity.getOpenAccountId(),
-                entity.getDocumentType(), entity.getPrefix(), entity.getConsecutive(), entity.getIssueDate(),
+                entity.getDocumentType(), entity.getPrefix(), entity.getConsecutive(),
+                entity.getResolutionNumber(), entity.getIssueDate(),
                 entity.getIssueTime(), entity.getCufe(), entity.getCude(), entity.getUuid(), entity.getQrData(),
                 entity.getQrUrl(), entity.getXmlSigned(), entity.getPdfRepresentation(), entity.getDianStatus(),
                 entity.getDianValidationDate(), issuer, customer, entity.getLineExtensionAmount(),
                 entity.getTaxExclusiveAmount(), entity.getTaxInclusiveAmount(), entity.getPayableAmount(),
                 entity.getPaymentForm(), entity.getPaymentDueDate(), lines, payments, entity.getCreatedDate(),
                 entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
-                entity.isReversed());
+                entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
+                entity.getReteIcaAmount());
     }
 }

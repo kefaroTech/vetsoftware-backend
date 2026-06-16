@@ -22,10 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class IssueDebitNoteService implements IssueDebitNoteUseCase {
     private final ElectronicDocumentRepository repository;
     private final DocumentTransmitter transmitter;
+    private final NumberAssigner numberAssigner;
 
-    public IssueDebitNoteService(ElectronicDocumentRepository repository, DocumentTransmitter transmitter) {
+    public IssueDebitNoteService(ElectronicDocumentRepository repository, DocumentTransmitter transmitter,
+                                 NumberAssigner numberAssigner) {
         this.repository = repository;
         this.transmitter = transmitter;
+        this.numberAssigner = numberAssigner;
     }
 
     @Override
@@ -47,6 +50,8 @@ public class IssueDebitNoteService implements IssueDebitNoteUseCase {
         }
         ElectronicDocument note = ElectronicDocument.createDebitNote(
                 original, command.reason().dianCode(), command.reason().description());
+        // Numera la nota desde la resolución de NOTA_DEBITO de la empresa antes de transmitir.
+        numberAssigner.assign(note);
         ElectronicDocument saved = repository.save(note);
         return ElectronicDocumentDto.from(transmitter.transmit(saved));
     }

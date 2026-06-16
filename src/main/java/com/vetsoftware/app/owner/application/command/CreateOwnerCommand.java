@@ -6,5 +6,5 @@ import com.vetsoftware.app.owner.domain.PersonType;
 public record CreateOwnerCommand(
         String name, String email, String document, OwnerDocumentType documentType,
         PersonType personType, String verificationDigit, String legalName, String address,
-        String phone, Long cityId, Long companyId
+        String phone, Long cityId, Long companyId, boolean withholdingAgent
 ) {}

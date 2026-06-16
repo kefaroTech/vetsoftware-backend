@@ -36,7 +36,12 @@ public class DocumentBuilder {
         ElectronicDocument document = ElectronicDocument.createPending(
                 snapshot.companyId(), snapshot.openAccountId(), documentType,
                 snapshot.issuer(), customer, snapshot.lines(), snapshot.payments(),
-                snapshot.paymentForm(), null);
+                snapshot.paymentForm(), null,
+                snapshot.customerWithholdingAgent(), snapshot.reteFuenteRate(),
+                snapshot.reteIvaRate(), snapshot.reteIcaRate());
+        // El documento nace SIN numerar (PENDIENTE). La numeración fiscal (consecutivo) se asigna en la
+        // EMISIÓN (justo antes de transmitir), no aquí: así el endpoint provisional /from-account no quema
+        // consecutivos (un consecutivo sin transmitir dejaría un hueco que la DIAN penaliza).
         return repository.save(document);
     }
 }

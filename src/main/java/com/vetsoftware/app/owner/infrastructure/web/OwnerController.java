@@ -56,7 +56,7 @@ public class OwnerController {
             new CreateOwnerCommand(request.name(), request.email(), request.document(),
                 request.documentType(), request.personType(), request.verificationDigit(),
                 request.legalName(), request.address(), request.phone(), request.cityId(),
-                authz.currentCompanyId())));
+                authz.currentCompanyId(), request.withholdingAgent())));
     }
 
     @GetMapping
@@ -81,7 +81,7 @@ public class OwnerController {
             new UpdateOwnerCommand(id, request.name(), request.email(), request.document(),
                 request.documentType(), request.personType(), request.verificationDigit(),
                 request.legalName(), request.address(), request.phone(), request.cityId(),
-                request.companyId())));
+                request.companyId(), request.withholdingAgent())));
     }
 
     @DeleteMapping("/{id}")
@@ -103,7 +103,7 @@ public class OwnerController {
             dto.personType(), dto.verificationDigit(), dto.legalName(), dto.address(), dto.phone(),
             new CitySummary(c.id(), c.name()),
             new CompanySummary(co.id(), co.name(), co.identifier()),
-            dto.createdDate(), dto.enabled()
+            dto.withholdingAgent(), dto.createdDate(), dto.enabled()
         );
     }
 }

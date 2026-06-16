@@ -20,6 +20,8 @@ import com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpa
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.ProductChargeOpenAccountJpaRepository;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence.ServiceChargeOpenAccountJpaRepository;
+import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaEntity;
+import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,19 +45,22 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
     private final GeneralChargeOpenAccountJpaRepository generalChargeRepository;
     private final DebtOpenAccountJpaRepository debtRepository;
     private final CompanyTaxProfileJpaRepository companyTaxProfileRepository;
+    private final WithholdingConfigJpaRepository withholdingConfigRepository;
 
     public JpaSaleSnapshotQueryPort(OpenAccountJpaRepository openAccountRepository,
                                     ProductChargeOpenAccountJpaRepository productChargeRepository,
                                     ServiceChargeOpenAccountJpaRepository serviceChargeRepository,
                                     GeneralChargeOpenAccountJpaRepository generalChargeRepository,
                                     DebtOpenAccountJpaRepository debtRepository,
-                                    CompanyTaxProfileJpaRepository companyTaxProfileRepository) {
+                                    CompanyTaxProfileJpaRepository companyTaxProfileRepository,
+                                    WithholdingConfigJpaRepository withholdingConfigRepository) {
         this.openAccountRepository = openAccountRepository;
         this.productChargeRepository = productChargeRepository;
         this.serviceChargeRepository = serviceChargeRepository;
         this.generalChargeRepository = generalChargeRepository;
         this.debtRepository = debtRepository;
         this.companyTaxProfileRepository = companyTaxProfileRepository;
+        this.withholdingConfigRepository = withholdingConfigRepository;
     }
 
     @Override
@@ -81,14 +86,23 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 owner.getDocumentType() == null ? null : owner.getDocumentType().name(),
                 owner.getDocument(), owner.getVerificationDigit(),
                 owner.getPersonType() == null ? null : owner.getPersonType().name(),
-                owner.getLegalName(), owner.getName(), owner.getEmail());
+                owner.getLegalName(), owner.getName(), owner.getEmail(),
+                owner.getCity() == null ? null : owner.getCity().getDaneCode());
 
         List<ElectronicDocumentLine> lines = buildLines(openAccountId);
         List<ElectronicDocumentPayment> payments = buildPayments(openAccountId);
         boolean closed = account.getStatus() == OpenAccountStatus.CLOSE;
 
+        // F6 - retenciones: el adquiriente es agente retenedor + las tarifas configuradas por el emisor.
+        boolean withholdingAgent = owner.isWithholdingAgent();
+        WithholdingConfigJpaEntity wc = withholdingConfigRepository.findByCompany_Id(companyId).orElse(null);
+        BigDecimal reteFuenteRate = wc == null ? null : wc.getReteFuenteRate();
+        BigDecimal reteIvaRate = wc == null ? null : wc.getReteIvaRate();
+        BigDecimal reteIcaRate = wc == null ? null : wc.getReteIcaRate();
+
         return Optional.of(new SaleSnapshot(companyId, openAccountId, closed, issuer, customer,
-                lines, payments, PaymentForm.CONTADO));
+                lines, payments, PaymentForm.CONTADO,
+                withholdingAgent, reteFuenteRate, reteIvaRate, reteIcaRate));
     }
 
     private List<ElectronicDocumentLine> buildLines(Long openAccountId) {

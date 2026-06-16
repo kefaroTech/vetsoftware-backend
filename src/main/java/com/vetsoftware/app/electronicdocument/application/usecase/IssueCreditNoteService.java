@@ -23,10 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class IssueCreditNoteService implements IssueCreditNoteUseCase {
     private final ElectronicDocumentRepository repository;
     private final DocumentTransmitter transmitter;
+    private final NumberAssigner numberAssigner;
 
-    public IssueCreditNoteService(ElectronicDocumentRepository repository, DocumentTransmitter transmitter) {
+    public IssueCreditNoteService(ElectronicDocumentRepository repository, DocumentTransmitter transmitter,
+                                  NumberAssigner numberAssigner) {
         this.repository = repository;
         this.transmitter = transmitter;
+        this.numberAssigner = numberAssigner;
     }
 
     @Override
@@ -49,6 +52,8 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
         }
         ElectronicDocument note = ElectronicDocument.createCreditNote(
                 original, command.reason().dianCode(), command.reason().description());
+        // Numera la nota desde la resolución de NOTA_CREDITO de la empresa antes de transmitir.
+        numberAssigner.assign(note);
         ElectronicDocument saved = repository.save(note);
         return ElectronicDocumentDto.from(transmitter.transmit(saved));
     }

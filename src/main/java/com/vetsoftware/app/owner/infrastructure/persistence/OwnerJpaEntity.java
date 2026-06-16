@@ -43,6 +43,10 @@ public class OwnerJpaEntity {
     @Column(name = "legal_name", length = 255)
     private String legalName;
 
+    // F6 - adquiriente agente retenedor: cuando lo es, la factura calcula y muestra sus retenciones.
+    @Column(name = "withholding_agent", nullable = false)
+    private boolean withholdingAgent = false;
+
     @Column(length = 255)
     private String address;
 
@@ -81,6 +85,8 @@ public class OwnerJpaEntity {
     public void setVerificationDigit(String verificationDigit) { this.verificationDigit = verificationDigit; }
     public String getLegalName() { return legalName; }
     public void setLegalName(String legalName) { this.legalName = legalName; }
+    public boolean isWithholdingAgent() { return withholdingAgent; }
+    public void setWithholdingAgent(boolean withholdingAgent) { this.withholdingAgent = withholdingAgent; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public String getPhone() { return phone; }

@@ -20,6 +20,7 @@ public record SalesBookDto(
             Long id, String documentType, String prefix, Long consecutive, LocalDate issueDate,
             String customerDocumentId, String customerName,
             BigDecimal base, BigDecimal iva, BigDecimal inc, BigDecimal total, BigDecimal payable,
+            BigDecimal reteFuente, BigDecimal reteIva, BigDecimal reteIca,
             String dianStatus, String cufe, String cude) {}
 
     public record TaxByRateDto(String taxScheme, BigDecimal taxRate,
@@ -28,5 +29,6 @@ public record SalesBookDto(
     public record RecaudoDto(String paymentMeans, String dianCode, BigDecimal amount) {}
 
     public record TotalsDto(long documentCount, BigDecimal base, BigDecimal iva, BigDecimal inc,
-                            BigDecimal total, BigDecimal payable) {}
+                            BigDecimal total, BigDecimal payable,
+                            BigDecimal reteFuente, BigDecimal reteIva, BigDecimal reteIca) {}
 }

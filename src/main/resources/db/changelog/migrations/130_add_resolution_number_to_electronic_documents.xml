@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F4/F1 - numero de resolucion DIAN que autorizo este documento, congelado en el documento (inmutabilidad
+         fiscal). Se asigna al emitir junto con prefix/consecutive desde la NumberingResolution activa de la empresa.
+         Nullable: los documentos PENDIENTE nacen sin numerar; se numera en la emision antes de transmitir. -->
+    <changeSet id="130_add_resolution_number_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="resolution_number" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

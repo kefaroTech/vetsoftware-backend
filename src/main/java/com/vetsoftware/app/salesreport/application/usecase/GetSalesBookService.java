@@ -39,14 +39,17 @@ public class GetSalesBookService implements GetSalesBookUseCase {
         Map<String, TaxByRateDto> taxByRate = new LinkedHashMap<>();
         Map<String, RecaudoDto> recaudo = new LinkedHashMap<>();
         BigDecimal tBase = BigDecimal.ZERO, tIva = BigDecimal.ZERO, tInc = BigDecimal.ZERO,
-                tTotal = BigDecimal.ZERO, tPayable = BigDecimal.ZERO;
+                tTotal = BigDecimal.ZERO, tPayable = BigDecimal.ZERO,
+                tReteFuente = BigDecimal.ZERO, tReteIva = BigDecimal.ZERO, tReteIca = BigDecimal.ZERO;
 
         for (SalesDocumentView d : docs) {
             BigDecimal iva = sumScheme(d.taxLines(), IVA);
             BigDecimal inc = sumScheme(d.taxLines(), INC);
             entries.add(new EntryDto(d.id(), d.documentType(), d.prefix(), d.consecutive(), d.issueDate(),
                     d.customerDocumentId(), d.customerName(), d.lineExtensionAmount(), iva, inc,
-                    d.taxInclusiveAmount(), d.payableAmount(), d.dianStatus(), d.cufe(), d.cude()));
+                    d.taxInclusiveAmount(), d.payableAmount(),
+                    nz(d.reteFuente()), nz(d.reteIva()), nz(d.reteIca()),
+                    d.dianStatus(), d.cufe(), d.cude()));
 
             for (TaxLineView t : d.taxLines()) {
                 String key = t.taxScheme() + "@" + t.taxRate();
@@ -67,9 +70,13 @@ public class GetSalesBookService implements GetSalesBookUseCase {
             tInc = tInc.add(inc);
             tTotal = tTotal.add(nz(d.taxInclusiveAmount()));
             tPayable = tPayable.add(nz(d.payableAmount()));
+            tReteFuente = tReteFuente.add(nz(d.reteFuente()));
+            tReteIva = tReteIva.add(nz(d.reteIva()));
+            tReteIca = tReteIca.add(nz(d.reteIca()));
         }
 
-        TotalsDto totals = new TotalsDto(entries.size(), tBase, tIva, tInc, tTotal, tPayable);
+        TotalsDto totals = new TotalsDto(entries.size(), tBase, tIva, tInc, tTotal, tPayable,
+                tReteFuente, tReteIva, tReteIca);
         return new SalesBookDto(from, to, entries,
                 new ArrayList<>(taxByRate.values()), new ArrayList<>(recaudo.values()), totals);
     }

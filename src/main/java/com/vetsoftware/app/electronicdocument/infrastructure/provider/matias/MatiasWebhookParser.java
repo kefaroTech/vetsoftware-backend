@@ -12,9 +12,16 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
 
 /**
- * Webhook de MATIAS: payload {@code { id, event, created_at, data:{...} }} con firma HMAC-SHA256 en el
- * header {@code X-Webhook-Signature}. Eventos de interés: {@code document.accepted} / {@code document.rejected}.
- * NOTA(schema): nombres de campos de {@code data} según doc pública; confirmar contra MATIAS real (TODO).
+ * Webhook de MATIAS (docs: endpoints/webhooks). Payload:
+ * {@code { id, event, created_at, data:{ document_id, track_id, document_type, customer_name, total, status } }}
+ * con firma HMAC-SHA256 (sobre el JSON del payload) en el header {@code X-Webhook-Signature: sha256=...}
+ * (además {@code X-Webhook-ID}, {@code X-Event-Type}). Eventos: {@code document.created/emitted/accepted/rejected/voided};
+ * solo actuamos sobre {@code document.accepted} / {@code document.rejected}.
+ *
+ * <p>NOTA: el payload del webhook NO trae los sellos (CUFE/CUDE/XML/QR), solo {@code track_id} + {@code status}.
+ * El cierre con CUFE viene de la respuesta SÍNCRONA de la emisión (HTTP 200); para el caso encolado, el CUFE
+ * se obtiene del polling de estado ({@code MatiasInvoiceProvider.fetchStatus}). TODO: que el servicio de
+ * webhook dispare un fetch de estado tras un {@code accepted} para poblar el CUFE.
  */
 @Component
 public class MatiasWebhookParser implements ProviderWebhookParser {
@@ -48,7 +55,8 @@ public class MatiasWebhookParser implements ProviderWebhookParser {
             String event = text(root, "event");
             JsonNode data = root.get("data");
             WebhookOutcome outcome = outcomeOf(event);
-            String key = firstNonNull(text(data, "document_key"), text(data, "id"), text(data, "uuid"));
+            // El identificador real del webhook es track_id (coincide con el provider_document_key de la bitácora).
+            String key = firstNonNull(text(data, "track_id"), text(data, "document_key"), text(data, "id"), text(data, "uuid"));
             return new ParsedWebhook(
                     outcome, key,
                     text(data, "prefix"), parseLong(firstNonNull(text(data, "consecutive"), text(data, "number"))),

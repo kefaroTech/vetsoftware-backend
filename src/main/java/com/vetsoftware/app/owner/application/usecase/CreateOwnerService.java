@@ -36,7 +36,7 @@ public class CreateOwnerService implements CreateOwnerUseCase {
         Owner owner = Owner.create(
             command.name(), command.email(), command.document(), command.documentType(),
             command.personType(), command.verificationDigit(), command.legalName(),
-            command.address(), command.phone(), city, company
+            command.address(), command.phone(), city, company, command.withholdingAgent()
         );
         return OwnerDto.from(repository.save(owner));
     }

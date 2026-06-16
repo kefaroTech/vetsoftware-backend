@@ -17,5 +17,6 @@ public record CreateOwnerRequest(
         @Size(max = 255) String legalName,
         @Size(max = 255) String address,
         @Size(max = 30) String phone,
-        @NotNull Long cityId
+        @NotNull Long cityId,
+        boolean withholdingAgent
 ) {}

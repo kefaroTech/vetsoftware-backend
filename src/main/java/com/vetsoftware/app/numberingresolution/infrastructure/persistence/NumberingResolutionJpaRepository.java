@@ -18,6 +18,20 @@ public interface NumberingResolutionJpaRepository extends JpaRepository<Numberin
     @EntityGraph(attributePaths = "company")
     List<NumberingResolutionJpaEntity> findAllByCompanyId(Long companyId);
 
+    /**
+     * Resolución activa de la empresa para un tipo de documento, BLOQUEADA para actualización (FOR UPDATE):
+     * serializa la asignación concurrente del consecutivo entre emisiones de la misma empresa+tipo. Nativa
+     * para poder usar FOR UPDATE; filtra enabled=true explícitamente (la @SQLRestriction no aplica a nativas).
+     * {@code documentType} es el nombre del enum (columna document_type se persiste como STRING).
+     */
+    @org.springframework.data.jpa.repository.Query(
+        value = "SELECT * FROM numbering_resolutions WHERE company_id = :companyId "
+              + "AND document_type = :documentType AND enabled = true ORDER BY id LIMIT 1 FOR UPDATE",
+        nativeQuery = true)
+    Optional<NumberingResolutionJpaEntity> lockActiveForUpdate(
+        @org.springframework.data.repository.query.Param("companyId") Long companyId,
+        @org.springframework.data.repository.query.Param("documentType") String documentType);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(

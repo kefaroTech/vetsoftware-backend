@@ -26,6 +26,9 @@ public interface SalesDocumentQueryPort {
             BigDecimal lineExtensionAmount,
             BigDecimal taxInclusiveAmount,
             BigDecimal payableAmount,
+            BigDecimal reteFuente,
+            BigDecimal reteIva,
+            BigDecimal reteIca,
             List<TaxLineView> taxLines,
             List<PaymentLineView> paymentLines
     ) {}

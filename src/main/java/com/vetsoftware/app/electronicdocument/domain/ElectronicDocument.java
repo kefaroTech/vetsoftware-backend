@@ -32,6 +32,9 @@ public class ElectronicDocument {
     // totales, snapshots) sí es inmutable.
     private String prefix;
     private Long consecutive;
+    // Numero de la resolucion DIAN que autoriza el consecutivo. Se asigna al emitir (F4) desde la
+    // NumberingResolution activa de la empresa, junto con prefix/consecutive.
+    private String resolutionNumber;
 
     private final LocalDate issueDate;
     private final String issueTime;
@@ -54,6 +57,11 @@ public class ElectronicDocument {
     private final BigDecimal taxInclusiveAmount;
     private final BigDecimal payableAmount;
 
+    // F6 - retenciones que el adquiriente (agente retenedor) practica, congeladas. Cero cuando no aplica.
+    private final BigDecimal reteFuenteAmount;
+    private final BigDecimal reteIvaAmount;
+    private final BigDecimal reteIcaAmount;
+
     private final PaymentForm paymentForm;
     private final LocalDate paymentDueDate;
 
@@ -72,7 +80,7 @@ public class ElectronicDocument {
     private final boolean enabled;
 
     public ElectronicDocument(Long id, Long companyId, Long openAccountId, ElectronicDocumentType documentType,
-                              String prefix, Long consecutive, LocalDate issueDate, String issueTime,
+                              String prefix, Long consecutive, String resolutionNumber, LocalDate issueDate, String issueTime,
                               String cufe, String cude, String uuid, String qrData, String qrUrl,
                               String xmlSigned, String pdfRepresentation, DianStatus dianStatus,
                               LocalDateTime dianValidationDate, IssuerSnapshot issuer, CustomerSnapshot customer,
@@ -81,7 +89,8 @@ public class ElectronicDocument {
                               LocalDate paymentDueDate, List<ElectronicDocumentLine> lines,
                               List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
                               DocumentReference reference, String noteReasonCode, String noteReasonText,
-                              boolean reversed) {
+                              boolean reversed, BigDecimal reteFuenteAmount, BigDecimal reteIvaAmount,
+                              BigDecimal reteIcaAmount) {
         validate(companyId, documentType, issueDate, issueTime, dianStatus, issuer, customer,
                 lineExtensionAmount, taxExclusiveAmount, taxInclusiveAmount, payableAmount, paymentForm, lines);
         validateNoteConsistency(documentType, reference, noteReasonCode);
@@ -91,6 +100,7 @@ public class ElectronicDocument {
         this.documentType = documentType;
         this.prefix = prefix;
         this.consecutive = consecutive;
+        this.resolutionNumber = resolutionNumber;
         this.issueDate = issueDate;
         this.issueTime = issueTime;
         this.cufe = cufe;
@@ -116,6 +126,9 @@ public class ElectronicDocument {
         this.noteReasonCode = noteReasonCode;
         this.noteReasonText = noteReasonText;
         this.reversed = reversed;
+        this.reteFuenteAmount = reteFuenteAmount == null ? BigDecimal.ZERO : reteFuenteAmount;
+        this.reteIvaAmount = reteIvaAmount == null ? BigDecimal.ZERO : reteIvaAmount;
+        this.reteIcaAmount = reteIcaAmount == null ? BigDecimal.ZERO : reteIcaAmount;
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
@@ -128,19 +141,25 @@ public class ElectronicDocument {
                                                    ElectronicDocumentType documentType, IssuerSnapshot issuer,
                                                    CustomerSnapshot customer, List<ElectronicDocumentLine> lines,
                                                    List<ElectronicDocumentPayment> payments,
-                                                   PaymentForm paymentForm, LocalDate paymentDueDate) {
+                                                   PaymentForm paymentForm, LocalDate paymentDueDate,
+                                                   boolean withholdingAgent, BigDecimal reteFuenteRate,
+                                                   BigDecimal reteIvaRate, BigDecimal reteIcaRate) {
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
         String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
         BigDecimal base = sum(lines, ElectronicDocumentLine::getLineExtensionAmount);
         BigDecimal totalWithTax = sum(lines, ElectronicDocumentLine::getTotalAmount);
+        BigDecimal iva = totalWithTax.subtract(base);
+        // F6: si el adquiriente es agente retenedor, calcula las retenciones con las tarifas del emisor.
+        WithholdingAmounts wh = WithholdingCalculator.compute(withholdingAgent, base, iva,
+                reteFuenteRate, reteIvaRate, reteIcaRate);
         return new ElectronicDocument(null, companyId, openAccountId, documentType,
-                null, null, now.toLocalDate(), issueTime,
+                null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 issuer, customer, base, base, totalWithTax, totalWithTax,
                 paymentForm, paymentDueDate, lines, payments, LocalDateTime.now(), true,
-                null, null, null, false);
+                null, null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca());
     }
 
     /**
@@ -177,12 +196,13 @@ public class ElectronicDocument {
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
         String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
         return new ElectronicDocument(null, original.companyId, original.openAccountId, type,
-                null, null, now.toLocalDate(), issueTime,
+                null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 original.issuer, original.customer, original.lineExtensionAmount, original.taxExclusiveAmount,
                 original.taxInclusiveAmount, original.payableAmount, original.paymentForm, original.paymentDueDate,
                 clonedLines, clonedPayments, LocalDateTime.now(), true,
-                ref, reasonCode, reasonText, false);
+                ref, reasonCode, reasonText, false,
+                original.reteFuenteAmount, original.reteIvaAmount, original.reteIcaAmount);
     }
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
@@ -245,6 +265,24 @@ public class ElectronicDocument {
     }
 
     /**
+     * Asigna la numeración fiscal (resolución DIAN + prefijo + consecutivo) al emitir, antes de transmitir.
+     * Tomada de la {@code NumberingResolution} activa de la empresa. Solo sobre un documento PENDIENTE y
+     * aún sin numerar (idempotencia/seguridad fiscal: el consecutivo no se reasigna).
+     */
+    public void assignNumber(String resolutionNumber, String prefix, Long consecutive) {
+        if (dianStatus != DianStatus.PENDIENTE)
+            throw new IllegalStateException("solo se puede numerar un documento PENDIENTE");
+        if (this.consecutive != null)
+            throw new IllegalStateException("el documento ya tiene consecutivo asignado");
+        if (resolutionNumber == null || resolutionNumber.isBlank())
+            throw new IllegalArgumentException("resolutionNumber is required");
+        if (consecutive == null) throw new IllegalArgumentException("consecutive is required");
+        this.resolutionNumber = resolutionNumber;
+        this.prefix = prefix;
+        this.consecutive = consecutive;
+    }
+
+    /**
      * Sella el documento como VALIDADO por la DIAN: número fiscal + sellos del proveedor. Forward-only:
      * solo desde PENDIENTE/CONTINGENCIA. No toca el contenido fiscal.
      */
@@ -252,8 +290,10 @@ public class ElectronicDocument {
                               String xmlSigned, String qrData, String qrUrl, String pdfRepresentation,
                               LocalDateTime validationDate) {
         ensureNotTerminal();
-        this.prefix = prefix;
-        this.consecutive = consecutive;
+        // El numero fiscal lo asignamos nosotros al emitir (assignNumber); no lo sobreescribas si el
+        // proveedor no lo devuelve (MATIAS no lo regresa en /invoice). Solo lo aplica si viene poblado.
+        if (prefix != null) this.prefix = prefix;
+        if (consecutive != null) this.consecutive = consecutive;
         this.cufe = cufe;
         this.cude = cude;
         this.uuid = uuid;
@@ -304,6 +344,7 @@ public class ElectronicDocument {
     public ElectronicDocumentType getDocumentType() { return documentType; }
     public String getPrefix() { return prefix; }
     public Long getConsecutive() { return consecutive; }
+    public String getResolutionNumber() { return resolutionNumber; }
     public LocalDate getIssueDate() { return issueDate; }
     public String getIssueTime() { return issueTime; }
     public String getCufe() { return cufe; }
@@ -321,6 +362,13 @@ public class ElectronicDocument {
     public BigDecimal getTaxExclusiveAmount() { return taxExclusiveAmount; }
     public BigDecimal getTaxInclusiveAmount() { return taxInclusiveAmount; }
     public BigDecimal getPayableAmount() { return payableAmount; }
+    public BigDecimal getReteFuenteAmount() { return reteFuenteAmount; }
+    public BigDecimal getReteIvaAmount() { return reteIvaAmount; }
+    public BigDecimal getReteIcaAmount() { return reteIcaAmount; }
+    /** Neto a pagar tras restar las retenciones del adquiriente (total − reteFuente − reteIva − reteIca). */
+    public BigDecimal getNetPayableAmount() {
+        return payableAmount.subtract(reteFuenteAmount).subtract(reteIvaAmount).subtract(reteIcaAmount);
+    }
     public PaymentForm getPaymentForm() { return paymentForm; }
     public LocalDate getPaymentDueDate() { return paymentDueDate; }
     public List<ElectronicDocumentLine> getLines() { return lines; }
