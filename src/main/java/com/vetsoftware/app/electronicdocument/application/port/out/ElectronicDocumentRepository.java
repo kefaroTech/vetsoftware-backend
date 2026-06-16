@@ -15,6 +15,9 @@ public interface ElectronicDocumentRepository {
     /** Ubica una factura por su CUFE dentro de la empresa (para enlazar la nota credito con el original). */
     Optional<ElectronicDocument> findByCufe(String cufe, Long companyId);
 
+    /** ¿Ya existe un documento para esta cuenta? Idempotencia de la auto-emisión al cerrar la cuenta. */
+    boolean existsByOpenAccountId(Long openAccountId);
+
     List<ElectronicDocument> findAllByCompanyId(Long companyId);
 
     /** Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de reintento). */

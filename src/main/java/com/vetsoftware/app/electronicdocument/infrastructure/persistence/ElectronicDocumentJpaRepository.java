@@ -20,4 +20,6 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByDianStatus(DianStatus dianStatus);
+
+    boolean existsByOpenAccountId(Long openAccountId);
 }

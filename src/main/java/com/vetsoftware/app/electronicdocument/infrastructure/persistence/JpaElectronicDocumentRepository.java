@@ -40,6 +40,11 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public boolean existsByOpenAccountId(Long openAccountId) {
+        return jpaRepository.existsByOpenAccountId(openAccountId);
+    }
+
+    @Override
     public ElectronicDocument updateDianResult(ElectronicDocument document) {
         ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
                 .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain

@@ -117,7 +117,8 @@ public class OpenAccountController {
                                             @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
             new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(),
-                request.reason(), authz.currentCompanyId())));
+                request.reason(), authz.currentCompanyId(),
+                request.documentType(), request.finalConsumer())));
     }
 
     private OpenAccountResponse toResponse(OpenAccountDto dto) {
