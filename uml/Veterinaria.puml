@@ -4,11 +4,6 @@
 ' Enums
 ' =========================
 
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-}
-
 enum OpenAccountStatus {
   OPEN
   CLOSE
@@ -135,6 +130,18 @@ enum SpaStatus {
   AGENDADA
   COMPLETADO
   CANCELADO
+}
+
+enum ClinicalEventType {
+  CONSULTATION
+  SURGERY
+  VACCINATION
+  DEWORMING
+  HOSPITALIZATION
+  LABORATORY_TEST
+  DIAGNOSTIC_IMAGING
+  PRESCRIPTION
+  SPA
 }
 
 enum PromotionType {
@@ -300,7 +307,6 @@ class Membership {
   -status: MembershipStatus
   -mandatory: Boolean
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -354,7 +360,6 @@ class Employee {
   -hashPassword: String
   -name: String
   -email: String
-  -status: EmployeeStatus
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -425,7 +430,6 @@ class Role {
   -code: String
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -442,7 +446,6 @@ class RolePermission {
   -role: Role
   -permission: Permission
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -457,7 +460,6 @@ class EmployeeRole {
   -employee: Employee
   -role: Role
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -505,21 +507,18 @@ class Owner {
   -city: City
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
 class Specie {
   -name: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
 class AnimalColor {
   -name: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -527,7 +526,6 @@ class Breed {
   -name: String
   -specie: Specie
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -541,7 +539,7 @@ class Animal {
   -weightType: WeightType
   -animalType: AnimalType
   -reproductiveState: ReproductiveState
-  -deceased: Boolean
+  -deceased: boolean
   -deceasedDate: LocalDate
   -specie: Specie
   -breed: Breed
@@ -549,7 +547,6 @@ class Animal {
   -owner: Owner
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -561,7 +558,6 @@ class ConsultationType {
   -name: String
   -description: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -576,7 +572,6 @@ class Consultation {
   -animal: Animal
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -586,7 +581,6 @@ class VaccinationType {
   -company: Company
   -general: Boolean
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -600,7 +594,6 @@ class Vaccination {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -610,7 +603,6 @@ class SurgeryType {
   -company: Company
   -general: Boolean
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -626,7 +618,6 @@ class Surgery {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -642,7 +633,6 @@ class Hospitalization {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -732,7 +722,6 @@ class DayCare {
   -animal: Animal
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -820,7 +809,6 @@ class LaboratoryTestType {
   -company: Company
   -general: Boolean
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -834,10 +822,9 @@ class LaboratoryTest {
   -animal: Animal
   -consultation: Consultation
   -company: Company
-  -createdDate: LocalDateTime
-  -createdBy: Employee
   -processedBy: Employee
   -processedDate: LocalDateTime
+  -createdDate: LocalDateTime
   -enabled: boolean
 }
 
@@ -861,7 +848,6 @@ class Prescription {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -872,7 +858,6 @@ class MedicamentPrescription {
   -posology: String
   -prescription: Prescription
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -888,7 +873,6 @@ class Deworming {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -898,7 +882,6 @@ class DiagnosticImagingType {
   -company: Company
   -general: Boolean
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -914,7 +897,6 @@ class DiagnosticImaging {
   -consultation: Consultation
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -922,7 +904,6 @@ class SpaType {
   -name: String
   -description: String
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
 }
 
@@ -936,8 +917,25 @@ class Spa {
   -animal: Animal
   -company: Company
   -createdDate: LocalDateTime
-  -createdBy: Employee
   -enabled: boolean
+}
+
+' =========================
+' Clinical History (read model)
+' =========================
+
+' Vista de solo lectura (@Immutable, mapea la vista SQL v_clinical_event).
+' Agrega los eventos clínicos de un animal; referencia por IDs primitivos, no por asociaciones JPA.
+class ClinicalEventView <<view>> {
+  -compositeKey: String
+  -sourceId: Long
+  -animalId: Long
+  -companyId: Long
+  -consultationId: Long
+  -eventDate: LocalDate
+  -endDate: LocalDate
+  -eventType: ClinicalEventType
+  -summary: String
 }
 
 ' =========================
@@ -1059,6 +1057,7 @@ class CustomerSnapshot {
   -legalName: String
   -name: String
   -email: String
+  -cityDaneCode: String
 }
 
 class ElectronicDocument {
@@ -1067,6 +1066,7 @@ class ElectronicDocument {
   -documentType: ElectronicDocumentType
   -prefix: String
   -consecutive: Long
+  -resolutionNumber: String
   -issueDate: LocalDate
   -issueTime: String
   -cufe: String
@@ -1182,7 +1182,6 @@ BasePermission      --> SubModule
 Company  --> Membership
 Company  --> City
 Employee --> Company
-Employee --> EmployeeStatus
 
 ' --- Company Tax Profile (DIAN) ---
 CompanyTaxProfile               --> Company
@@ -1297,6 +1296,9 @@ Spa                   --> SpaType
 Spa                   --> SpaStatus
 Spa                   --> Animal
 Spa                   --> Company
+
+' --- Clinical History (read model) ---
+ClinicalEventView     --> ClinicalEventType
 
 ' --- Inventory / Catalog ---
 Product               --> ProductCategory
