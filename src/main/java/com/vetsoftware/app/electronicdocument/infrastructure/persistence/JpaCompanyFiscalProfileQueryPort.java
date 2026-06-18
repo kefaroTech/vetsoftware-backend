@@ -6,6 +6,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.CompanyFiscal
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaEntity;
 import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaRepository;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
@@ -37,11 +38,19 @@ public class JpaCompanyFiscalProfileQueryPort implements CompanyFiscalProfileQue
     }
 
     private static IssuerSnapshot toIssuer(CompanyTaxProfileJpaEntity profile) {
+        // Congela los códigos de responsabilidad fiscal del RUT (ya filtrados por enabled vía @SQLRestriction).
+        // NOTA: el proveedor MATIAS toma la identidad del emisor (NIT, régimen, responsabilidades) de su propia
+        // config de empresa, no del payload; estos códigos quedan en el snapshot para la inmutabilidad fiscal
+        // y la representación gráfica del documento.
+        List<String> responsibilities = profile.getResponsibilities().stream()
+                .map(r -> r.getCode())
+                .toList();
         return new IssuerSnapshot(
                 profile.getCompanyDocumentType() == null ? null : profile.getCompanyDocumentType().name(),
                 profile.getCompanyDocumentId(), profile.getCompanyDocumentVerificationDigit(),
                 profile.getLegalName(),
                 profile.getTaxRegime() == null ? null : profile.getTaxRegime().name(),
-                profile.getFiscalEmail());
+                profile.getFiscalEmail(),
+                responsibilities);
     }
 }

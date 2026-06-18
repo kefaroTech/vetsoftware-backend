@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -42,6 +43,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setIssuerLegalName(i.legalName());
         entity.setIssuerTaxRegime(i.taxRegime());
         entity.setIssuerEmail(i.email());
+        entity.setIssuerResponsibilities(i.responsibilities().isEmpty() ? null : String.join(";", i.responsibilities()));
 
         CustomerSnapshot c = doc.getCustomer();
         entity.setCustomerDocumentType(c.documentType());
@@ -117,7 +119,7 @@ public class ElectronicDocumentJpaMapper {
         Long companyId = entity.getCompany() == null ? null : entity.getCompany().getId();
         IssuerSnapshot issuer = new IssuerSnapshot(entity.getIssuerDocumentType(), entity.getIssuerDocumentId(),
                 entity.getIssuerVerificationDigit(), entity.getIssuerLegalName(), entity.getIssuerTaxRegime(),
-                entity.getIssuerEmail());
+                entity.getIssuerEmail(), splitCodes(entity.getIssuerResponsibilities()));
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
@@ -138,5 +140,14 @@ public class ElectronicDocumentJpaMapper {
                 entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
                 entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
                 entity.getReteIcaAmount());
+    }
+
+    /** Reconstruye la lista de códigos de responsabilidad fiscal desde la columna unida por ';'. */
+    private static List<String> splitCodes(String joined) {
+        if (joined == null || joined.isBlank()) return List.of();
+        return Arrays.stream(joined.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 }

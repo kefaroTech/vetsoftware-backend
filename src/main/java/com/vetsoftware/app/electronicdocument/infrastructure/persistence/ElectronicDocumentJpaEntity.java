@@ -88,6 +88,8 @@ public class ElectronicDocumentJpaEntity {
     private String issuerTaxRegime;
     @Column(name = "issuer_email", length = 255)
     private String issuerEmail;
+    @Column(name = "issuer_responsibilities", length = 100)
+    private String issuerResponsibilities;
 
     @Column(name = "customer_document_type", length = 30)
     private String customerDocumentType;
@@ -210,6 +212,8 @@ public class ElectronicDocumentJpaEntity {
     public void setIssuerTaxRegime(String v) { this.issuerTaxRegime = v; }
     public String getIssuerEmail() { return issuerEmail; }
     public void setIssuerEmail(String v) { this.issuerEmail = v; }
+    public String getIssuerResponsibilities() { return issuerResponsibilities; }
+    public void setIssuerResponsibilities(String v) { this.issuerResponsibilities = v; }
     public String getCustomerDocumentType() { return customerDocumentType; }
     public void setCustomerDocumentType(String v) { this.customerDocumentType = v; }
     public String getCustomerDocumentId() { return customerDocumentId; }

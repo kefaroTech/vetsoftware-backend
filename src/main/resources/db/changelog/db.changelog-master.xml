@@ -137,5 +137,9 @@
     <include file="db/changelog/migrations/131_add_customer_city_dane_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/132_add_tax_scheme_to_charges.xml"/>
     <include file="db/changelog/migrations/133_unique_product_code_per_company.xml"/>
+    <include file="db/changelog/migrations/134_unique_document_per_open_account.xml"/>
+    <include file="db/changelog/migrations/135_idempotency_key_debt_open_accounts.xml"/>
+    <include file="db/changelog/migrations/136_add_issuer_responsibilities_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/137_drop_environment_from_dian_provider_configs.xml"/>
 
 </databaseChangeLog>

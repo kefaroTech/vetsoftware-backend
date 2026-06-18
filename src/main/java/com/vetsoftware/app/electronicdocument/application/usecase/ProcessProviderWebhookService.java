@@ -12,8 +12,8 @@ import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionL
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.TransmissionResult;
+import com.vetsoftware.app.electronicdocument.domain.WebhookOutcome;
 import io.micrometer.observation.annotation.Observed;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,24 +34,21 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final ElectronicDocumentRepository repository;
     private final ProviderConfigQueryPort configQueryPort;
     private final TransmissionLogPort transmissionLog;
-    private final DeliverElectronicDocumentService deliverService;
-    private final CreditNoteReversalApplier reversalApplier;
     private final BillingEntitlementQueryPort billingEntitlement;
+    private final DocumentTransmitter documentTransmitter;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
                                          ProviderConfigQueryPort configQueryPort,
                                          TransmissionLogPort transmissionLog,
-                                         DeliverElectronicDocumentService deliverService,
-                                         CreditNoteReversalApplier reversalApplier,
                                          BillingEntitlementQueryPort billingEntitlement,
+                                         DocumentTransmitter documentTransmitter,
                                          List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
-        this.deliverService = deliverService;
-        this.reversalApplier = reversalApplier;
         this.billingEntitlement = billingEntitlement;
+        this.documentTransmitter = documentTransmitter;
         this.parsers = webhookParsers.stream()
                 .collect(Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
@@ -65,7 +62,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         }
 
         ParsedWebhook parsed = parser.parse(command.rawBody());
-        if (parsed.outcome() == com.vetsoftware.app.electronicdocument.domain.WebhookOutcome.IGNORED
+        if (parsed.outcome() == WebhookOutcome.IGNORED
                 || parsed.providerDocumentKey() == null) {
             return; // evento no relevante / sin clave
         }
@@ -92,30 +89,22 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
             return;
         }
 
-        TransmissionResult logResult;
-        switch (parsed.outcome()) {
-            case ACCEPTED -> {
-                document.markValidated(parsed.prefix(), parsed.consecutive(), parsed.cufe(), parsed.cude(),
-                        parsed.uuid(), parsed.xmlSigned(), parsed.qrData(), parsed.qrUrl(),
-                        parsed.pdfRepresentation(), LocalDateTime.now());
-                logResult = TransmissionResult.ACCEPTED;
-            }
-            case REJECTED -> {
-                document.markRejected();
-                logResult = TransmissionResult.REJECTED;
-            }
-            default -> {
-                return;
-            }
+        if (parsed.outcome() == WebhookOutcome.ACCEPTED) {
+            // El webhook NO trae el sello fiscal (CUFE/CUDE, XML firmado, QR). En vez de marcar VALIDADO con
+            // el sello vacío del webhook, consultamos el estado autoritativo al proveedor (fetchStatus, vía
+            // reconcile), que sí devuelve el sello; recién entonces se valida, se registra la bitácora, se
+            // reversa la cartera y se entrega la representación gráfica. Si el proveedor aún no tiene el sello
+            // listo, el documento queda PENDIENTE y el job de reconciliación lo reintenta — nunca se marca
+            // VALIDADO sin sello.
+            documentTransmitter.reconcile(document);
+            return;
         }
+        if (parsed.outcome() != WebhookOutcome.REJECTED) {
+            return; // outcome no terminal: nada que aplicar
+        }
+        document.markRejected();
         repository.updateDianResult(document);
         transmissionLog.record(document.getId(), config.provider(), 200, parsed.providerDocumentKey(),
-                logResult, parsed.rejectionReason());
-
-        // Subordinacion del void: si el webhook valido una nota credito, reversa la factura y la cartera ahora.
-        reversalApplier.applyIfCreditNoteValidated(document);
-
-        // Tras validar por webhook (async), genera y envía la representación gráfica.
-        deliverService.deliverIfValidated(document);
+                TransmissionResult.REJECTED, parsed.rejectionReason());
     }
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Códigos de responsabilidad fiscal del RUT del emisor (O-13, O-15, R-99-PN…), congelados en el
+         snapshot del documento al emitir (unidos por ';'). Antes solo se modelaban en CompanyTaxProfile y
+         no viajaban al documento; ahora quedan inmutables para la representación gráfica. La transmisión a
+         MATIAS no los usa (el proveedor toma el emisor de su propia config de empresa). Nullable: documentos
+         previos quedan en null. -->
+    <changeSet id="136_add_issuer_responsibilities_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="issuer_responsibilities" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
