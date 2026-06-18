@@ -34,7 +34,7 @@ public class CompanyTaxProfile {
                              LocalDateTime createdDate,
                              boolean enabled) {
         validate(company, companyDocumentType, companyDocumentId, companyDocumentVerificationDigit,
-                legalName, taxRegime, fiscalEmail, responsibilities);
+                legalName, taxRegime, fiscalEmail);
         this.id = id;
         this.company = company;
         this.companyDocumentType = companyDocumentType;
@@ -47,7 +47,7 @@ public class CompanyTaxProfile {
         this.fiscalEmail = fiscalEmail;
         this.commercialName = commercialName;
         this.economicActivity = economicActivity;
-        this.responsibilities = List.copyOf(responsibilities);
+        this.responsibilities = responsibilities == null ? List.of() : List.copyOf(responsibilities);
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
@@ -77,7 +77,7 @@ public class CompanyTaxProfile {
                        EconomicActivityRef economicActivity,
                        List<CompanyTaxProfileResponsibility> responsibilities) {
         validate(this.company, companyDocumentType, companyDocumentId, companyDocumentVerificationDigit,
-                legalName, taxRegime, fiscalEmail, responsibilities);
+                legalName, taxRegime, fiscalEmail);
         this.companyDocumentType = companyDocumentType;
         this.companyDocumentId = companyDocumentId;
         this.companyDocumentVerificationDigit =
@@ -88,7 +88,7 @@ public class CompanyTaxProfile {
         this.fiscalEmail = fiscalEmail;
         this.commercialName = commercialName;
         this.economicActivity = economicActivity;
-        this.responsibilities = List.copyOf(responsibilities);
+        this.responsibilities = responsibilities == null ? List.of() : List.copyOf(responsibilities);
     }
 
     private static void validate(CompanyRef company,
@@ -97,8 +97,7 @@ public class CompanyTaxProfile {
                                  String companyDocumentVerificationDigit,
                                  String legalName,
                                  TaxRegime taxRegime,
-                                 String fiscalEmail,
-                                 List<CompanyTaxProfileResponsibility> responsibilities) {
+                                 String fiscalEmail) {
         if (company == null) throw new IllegalArgumentException("company is required");
         if (companyDocumentType == null) throw new IllegalArgumentException("companyDocumentType is required");
         if (taxRegime == null) throw new IllegalArgumentException("taxRegime is required");
@@ -119,9 +118,6 @@ public class CompanyTaxProfile {
             throw new IllegalArgumentException("fiscalEmail must be 255 chars or less");
         if (!fiscalEmail.matches(EMAIL_REGEX))
             throw new IllegalArgumentException("fiscalEmail must be a valid email");
-
-        if (responsibilities == null || responsibilities.isEmpty())
-            throw new IllegalArgumentException("at least one responsibility is required");
 
         boolean hasVerificationDigit =
                 companyDocumentVerificationDigit != null && !companyDocumentVerificationDigit.isBlank();
