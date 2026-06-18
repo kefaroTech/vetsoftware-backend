@@ -18,6 +18,8 @@ public class ServiceChargeOpenAccount {
     private final boolean hasTax;
     private final BigDecimal taxPercentage;
     private final String taxName;
+    /** Esquema tributario congelado del catálogo: "IVA" o "INC"; null si el servicio no aplica impuesto. */
+    private final String taxScheme;
     /** Desglose tributario persistido: el precio incluye IVA → base = total / (1 + tasa), tax = total - base. */
     private final BigDecimal baseAmount;
     private final BigDecimal taxAmount;
@@ -33,7 +35,8 @@ public class ServiceChargeOpenAccount {
 
     public ServiceChargeOpenAccount(Long id, AnimalRef animal, ServiceRef service, BigDecimal unitPrice,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
-                                    BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
+                                    String taxScheme, BigDecimal baseAmount, BigDecimal taxAmount,
+                                    BigDecimal totalAmount,
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
@@ -47,6 +50,7 @@ public class ServiceChargeOpenAccount {
         this.hasTax = hasTax;
         this.taxPercentage = taxPercentage;
         this.taxName = taxName;
+        this.taxScheme = taxScheme;
         this.baseAmount = baseAmount;
         this.taxAmount = taxAmount;
         this.totalAmount = totalAmount;
@@ -66,7 +70,7 @@ public class ServiceChargeOpenAccount {
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason) {
-        this(id, animal, service, unitPrice, null, false, null, null,
+        this(id, animal, service, unitPrice, null, false, null, null, null,
             scaled(unitPrice), zero(), scaled(unitPrice),
             openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason);
     }
@@ -90,11 +94,12 @@ public class ServiceChargeOpenAccount {
         TaxRef tax = hasTax ? service.tax() : null;
         BigDecimal percentage = hasTax ? tax.percentage() : null;
         String taxName = hasTax ? tax.name() : null;
+        String taxScheme = hasTax ? tax.scheme() : null;
         BigDecimal total = unitPrice.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal base = extractBase(total, percentage);
         BigDecimal taxAmount = total.subtract(base);
         return new ServiceChargeOpenAccount(null, animal, service, unitPrice, tax, hasTax, percentage, taxName,
-            base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null);
+            taxScheme, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null);
     }
 
     public void update(AnimalRef animal, ServiceRef service, OpenAccountRef openAccount) {
@@ -151,6 +156,7 @@ public class ServiceChargeOpenAccount {
     public boolean isHasTax() { return hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }
     public String getTaxName() { return taxName; }
+    public String getTaxScheme() { return taxScheme; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }

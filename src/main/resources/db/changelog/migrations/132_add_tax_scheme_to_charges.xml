@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Esquema tributario (IVA/INC) congelado en cada cargo de la cuenta, para que el documento
+         electronico emitido al cerrar respete el INC igual que la venta directa de POS (antes el cierre
+         forzaba IVA y los items INC ni siquiera se gravaban). Nullable: los cargos sin impuesto lo dejan
+         en null; los cargos previos quedan en null y el snapshot los trata como IVA (el unico esquema
+         que el cierre soportaba antes). -->
+    <changeSet id="132_add_tax_scheme_to_charges" author="orlando">
+        <addColumn tableName="product_charge_open_accounts">
+            <column name="tax_scheme" type="VARCHAR(10)"/>
+        </addColumn>
+        <addColumn tableName="service_charge_open_accounts">
+            <column name="tax_scheme" type="VARCHAR(10)"/>
+        </addColumn>
+        <addColumn tableName="general_charge_open_accounts">
+            <column name="tax_scheme" type="VARCHAR(10)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -24,9 +24,15 @@ public class JpaServiceQueryPort implements ServiceQueryPort {
     }
 
     private static ServiceRef toRef(ServiceJpaEntity e) {
-        boolean hasTax = e.getTaxTreatment() == TaxTreatment.GRAVADO;
+        // Gravado tanto GRAVADO (IVA) como INC: ambos llevan impuesto. El esquema (IVA/INC) sale del Tax y
+        // se congela en el cargo para que el documento del cierre lo respete igual que la venta POS.
+        TaxTreatment treatment = e.getTaxTreatment();
+        boolean hasTax = treatment == TaxTreatment.GRAVADO || treatment == TaxTreatment.INC;
         TaxJpaEntity t = e.getTax();
-        TaxRef tax = hasTax && t != null ? new TaxRef(t.getId(), t.getName(), t.getPercentage()) : null;
+        TaxRef tax = hasTax && t != null
+            ? new TaxRef(t.getId(), t.getName(), t.getPercentage(),
+                t.getTaxScheme() == null ? null : t.getTaxScheme().name())
+            : null;
         return new ServiceRef(e.getId(), e.getName(), e.getPrice(), hasTax, tax);
     }
 }

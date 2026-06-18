@@ -40,6 +40,9 @@ public class GeneralChargeOpenAccountJpaEntity {
     @Column(name = "tax_name", length = 100)
     private String taxName;
 
+    @Column(name = "tax_scheme", length = 10)
+    private String taxScheme;
+
     @Column(name = "base_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal baseAmount;
 
@@ -94,6 +97,8 @@ public class GeneralChargeOpenAccountJpaEntity {
     public void setTaxPercentage(BigDecimal taxPercentage) { this.taxPercentage = taxPercentage; }
     public String getTaxName() { return taxName; }
     public void setTaxName(String taxName) { this.taxName = taxName; }
+    public String getTaxScheme() { return taxScheme; }
+    public void setTaxScheme(String taxScheme) { this.taxScheme = taxScheme; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }

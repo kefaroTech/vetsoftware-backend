@@ -18,6 +18,8 @@ public class GeneralChargeOpenAccount {
     private BigDecimal taxPercentage;
     /** Nombre del impuesto congelado: sobrevive aunque el catálogo deshabilite el impuesto. */
     private String taxName;
+    /** Esquema tributario congelado: "IVA" o "INC"; null si no aplica impuesto. */
+    private String taxScheme;
     /** Desglose tributario persistido: el monto incluye IVA → base = total / (1 + tasa), iva = total - base. */
     private BigDecimal baseAmount;
     private BigDecimal taxAmount;
@@ -33,7 +35,8 @@ public class GeneralChargeOpenAccount {
 
     public GeneralChargeOpenAccount(Long id, String name, BigDecimal unitAmount, BigDecimal quantity,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
-                                    BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
+                                    String taxScheme, BigDecimal baseAmount, BigDecimal taxAmount,
+                                    BigDecimal totalAmount,
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
@@ -47,6 +50,7 @@ public class GeneralChargeOpenAccount {
         this.hasTax = hasTax;
         this.taxPercentage = taxPercentage;
         this.taxName = taxName;
+        this.taxScheme = taxScheme;
         this.baseAmount = baseAmount;
         this.taxAmount = taxAmount;
         this.totalAmount = totalAmount;
@@ -69,7 +73,7 @@ public class GeneralChargeOpenAccount {
         BigDecimal total = grossTotal(unitAmount, quantity);
         BigDecimal base = extractBase(total, pct);
         return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, pct,
-                snapshotTaxName(tax, hasTax), base, total.subtract(base), total,
+                snapshotTaxName(tax, hasTax), snapshotTaxScheme(tax, hasTax), base, total.subtract(base), total,
                 openAccount, createdBy, LocalDateTime.now(), true,
                 false, null, null, null);
     }
@@ -101,6 +105,7 @@ public class GeneralChargeOpenAccount {
         this.hasTax = hasTax;
         this.taxPercentage = snapshotTaxPercentage(tax, hasTax);
         this.taxName = snapshotTaxName(tax, hasTax);
+        this.taxScheme = snapshotTaxScheme(tax, hasTax);
         this.totalAmount = grossTotal(unitAmount, quantity);
         this.baseAmount = extractBase(this.totalAmount, this.taxPercentage);
         this.taxAmount = this.totalAmount.subtract(this.baseAmount);
@@ -114,6 +119,11 @@ public class GeneralChargeOpenAccount {
 
     private static String snapshotTaxName(TaxRef tax, boolean hasTax) {
         return hasTax && tax != null ? tax.name() : null;
+    }
+
+    /** Congela el esquema tributario (IVA/INC) del impuesto asignado; null si no aplica impuesto. */
+    private static String snapshotTaxScheme(TaxRef tax, boolean hasTax) {
+        return hasTax && tax != null ? tax.scheme() : null;
     }
 
     /** Total bruto (IVA incluido) = unitAmount * quantity. */
@@ -152,6 +162,7 @@ public class GeneralChargeOpenAccount {
     public boolean isHasTax() { return hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }
     public String getTaxName() { return taxName; }
+    public String getTaxScheme() { return taxScheme; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }

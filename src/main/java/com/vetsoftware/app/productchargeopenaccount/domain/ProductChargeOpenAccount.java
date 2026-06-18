@@ -18,6 +18,8 @@ public class ProductChargeOpenAccount {
     private final boolean hasTax;
     private final BigDecimal taxPercentage;
     private final String taxName;
+    /** Esquema tributario congelado del catálogo: "IVA" o "INC"; null si el producto no aplica impuesto. */
+    private final String taxScheme;
     /** Desglose tributario persistido: el precio incluye IVA → base = total / (1 + tasa), tax = total - base. */
     private final BigDecimal baseAmount;
     private final BigDecimal taxAmount;
@@ -33,7 +35,8 @@ public class ProductChargeOpenAccount {
 
     public ProductChargeOpenAccount(Long id, AnimalRef animal, ProductRef product, BigDecimal unitPrice,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
-                                    BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
+                                    String taxScheme, BigDecimal baseAmount, BigDecimal taxAmount,
+                                    BigDecimal totalAmount,
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
@@ -47,6 +50,7 @@ public class ProductChargeOpenAccount {
         this.hasTax = hasTax;
         this.taxPercentage = taxPercentage;
         this.taxName = taxName;
+        this.taxScheme = taxScheme;
         this.baseAmount = baseAmount;
         this.taxAmount = taxAmount;
         this.totalAmount = totalAmount;
@@ -66,7 +70,7 @@ public class ProductChargeOpenAccount {
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason) {
-        this(id, animal, product, unitPrice, null, false, null, null,
+        this(id, animal, product, unitPrice, null, false, null, null, null,
             scaled(unitPrice), zero(), scaled(unitPrice),
             openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason);
     }
@@ -90,11 +94,12 @@ public class ProductChargeOpenAccount {
         TaxRef tax = hasTax ? product.tax() : null;
         BigDecimal percentage = hasTax ? tax.percentage() : null;
         String taxName = hasTax ? tax.name() : null;
+        String taxScheme = hasTax ? tax.scheme() : null;
         BigDecimal total = unitPrice.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal base = extractBase(total, percentage);
         BigDecimal taxAmount = total.subtract(base);
         return new ProductChargeOpenAccount(null, animal, product, unitPrice, tax, hasTax, percentage, taxName,
-            base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null);
+            taxScheme, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null);
     }
 
     public void update(AnimalRef animal, ProductRef product, OpenAccountRef openAccount) {
@@ -151,6 +156,7 @@ public class ProductChargeOpenAccount {
     public boolean isHasTax() { return hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }
     public String getTaxName() { return taxName; }
+    public String getTaxScheme() { return taxScheme; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }

@@ -32,6 +32,7 @@ public class ServiceChargeOpenAccountJpaMapper {
         entity.setHasTax(charge.isHasTax());
         entity.setTaxPercentage(charge.getTaxPercentage());
         entity.setTaxName(charge.getTaxName());
+        entity.setTaxScheme(charge.getTaxScheme());
         entity.setBaseAmount(charge.getBaseAmount());
         entity.setTaxAmount(charge.getTaxAmount());
         entity.setTotalAmount(charge.getTotalAmount());
@@ -56,7 +57,8 @@ public class ServiceChargeOpenAccountJpaMapper {
         return toDomain(entity,
             new AnimalRef(a.getId(), a.getName(), a.getCode()),
             new ServiceRef(s.getId(), s.getName(), s.getPrice()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
+            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage(),
+                t.getTaxScheme() == null ? null : t.getTaxScheme().name()),
             new OpenAccountRef(o.getId(), o.getCompany().getId()),
             e == null ? null : new EmployeeRef(e.getId(), e.getName()),
             v == null ? null : new EmployeeRef(v.getId(), v.getName()));
@@ -75,6 +77,7 @@ public class ServiceChargeOpenAccountJpaMapper {
             entity.isHasTax(),
             entity.getTaxPercentage(),
             entity.getTaxName(),
+            entity.getTaxScheme(),
             entity.getBaseAmount(),
             entity.getTaxAmount(),
             entity.getTotalAmount(),

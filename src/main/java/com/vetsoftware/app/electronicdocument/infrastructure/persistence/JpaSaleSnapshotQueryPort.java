@@ -98,18 +98,21 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
             if (c.isVoided()) continue;
             String description = c.getProduct() == null ? "Producto" : c.getProduct().getName();
             lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
-                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount()));
+                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
+                    c.getTaxScheme()));
         }
         for (var c : serviceChargeRepository.findByOpenAccountId(openAccountId)) {
             if (c.isVoided()) continue;
             String description = c.getService() == null ? "Servicio" : c.getService().getName();
             lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
-                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount()));
+                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
+                    c.getTaxScheme()));
         }
         for (var c : generalChargeRepository.findByOpenAccountId(openAccountId)) {
             if (c.isVoided()) continue;
             lines.add(line(++n, c.getName(), c.getQuantity(), c.getUnitAmount(), c.getBaseAmount(),
-                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount()));
+                    c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
+                    c.getTaxScheme()));
         }
         return lines;
     }
@@ -122,10 +125,14 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
      */
     private ElectronicDocumentLine line(int lineNumber, String description, BigDecimal quantity,
                                         BigDecimal unitPrice, BigDecimal base, boolean hasTax,
-                                        BigDecimal rate, BigDecimal taxAmount, BigDecimal total) {
+                                        BigDecimal rate, BigDecimal taxAmount, BigDecimal total,
+                                        String frozenScheme) {
         boolean taxed = hasTax && rate != null && rate.signum() > 0;
-        TaxCategory category = taxed ? TaxCategory.GRAVADO : TaxCategory.EXCLUIDO;
-        TaxScheme scheme = taxed ? TaxScheme.IVA : null;
+        // El esquema (IVA/INC) se congeló en el cargo; si falta (cargos previos) cae a IVA, que era el
+        // unico esquema que el cierre soportaba. INC tributa con su propia categoria/esquema, como el POS.
+        boolean inc = "INC".equals(frozenScheme);
+        TaxCategory category = !taxed ? TaxCategory.EXCLUIDO : (inc ? TaxCategory.INC : TaxCategory.GRAVADO);
+        TaxScheme scheme = !taxed ? null : (inc ? TaxScheme.INC : TaxScheme.IVA);
         BigDecimal effectiveRate = taxed ? rate : null;
         return new ElectronicDocumentLine(null, lineNumber, description, quantity, UNIT_MEASURE,
                 unitPrice, base, category, scheme, effectiveRate, taxAmount, total);
