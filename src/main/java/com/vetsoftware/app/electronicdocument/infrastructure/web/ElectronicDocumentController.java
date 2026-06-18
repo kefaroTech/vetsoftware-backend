@@ -6,6 +6,7 @@ import com.vetsoftware.app.electronicdocument.application.command.ConvertPosToIn
 import com.vetsoftware.app.electronicdocument.application.command.EmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.command.IssueCreditNoteCommand;
 import com.vetsoftware.app.electronicdocument.application.command.IssueDebitNoteCommand;
+import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand;
 import com.vetsoftware.app.electronicdocument.application.command.TransmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
 import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
@@ -15,10 +16,12 @@ import com.vetsoftware.app.electronicdocument.application.port.in.FindElectronic
 import com.vetsoftware.app.electronicdocument.application.port.in.IssueCreditNoteUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.IssueDebitNoteUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
+import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSaleUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.TransmitElectronicDocumentUseCase;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.BuildElectronicDocumentRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueCreditNoteRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueDebitNoteRequest;
+import com.vetsoftware.app.electronicdocument.infrastructure.web.request.RegisterPosSaleRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -34,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 public class ElectronicDocumentController {
     private final BuildElectronicDocumentFromAccountUseCase buildUseCase;
     private final EmitElectronicDocumentFromAccountUseCase emitUseCase;
+    private final RegisterPosSaleUseCase registerPosSaleUseCase;
     private final ConvertPosToInvoiceUseCase convertPosUseCase;
     private final TransmitElectronicDocumentUseCase transmitUseCase;
     private final IssueCreditNoteUseCase creditNoteUseCase;
@@ -44,6 +48,7 @@ public class ElectronicDocumentController {
 
     public ElectronicDocumentController(BuildElectronicDocumentFromAccountUseCase buildUseCase,
                                         EmitElectronicDocumentFromAccountUseCase emitUseCase,
+                                        RegisterPosSaleUseCase registerPosSaleUseCase,
                                         ConvertPosToInvoiceUseCase convertPosUseCase,
                                         TransmitElectronicDocumentUseCase transmitUseCase,
                                         IssueCreditNoteUseCase creditNoteUseCase,
@@ -53,6 +58,7 @@ public class ElectronicDocumentController {
                                         Authz authz) {
         this.buildUseCase = buildUseCase;
         this.emitUseCase = emitUseCase;
+        this.registerPosSaleUseCase = registerPosSaleUseCase;
         this.convertPosUseCase = convertPosUseCase;
         this.transmitUseCase = transmitUseCase;
         this.creditNoteUseCase = creditNoteUseCase;
@@ -77,6 +83,26 @@ public class ElectronicDocumentController {
         return emitUseCase.execute(new EmitElectronicDocumentCommand(
                 request.openAccountId(), request.documentType(), authz.currentCompanyId(),
                 request.finalConsumer()));
+    }
+
+    /**
+     * Registra una venta de POS como documento electrónico (sin cuenta abierta). Con BILLING la transmite a
+     * la DIAN; sin el módulo queda PENDIENTE (datos guardados, emisión diferida). Disponible para cualquier
+     * usuario con acceso al POS (product.read) — no requiere permisos de facturación electrónica.
+     */
+    @PostMapping("/from-sale")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ElectronicDocumentDto registerPosSale(@Valid @RequestBody RegisterPosSaleRequest request) {
+        List<RegisterPosSaleCommand.SaleLine> lines = request.lines().stream()
+                .map(l -> new RegisterPosSaleCommand.SaleLine(
+                        l.kind(), l.refId(), l.description(), l.quantity(), l.unitPrice()))
+                .toList();
+        List<RegisterPosSaleCommand.SalePayment> payments = request.payments().stream()
+                .map(p -> new RegisterPosSaleCommand.SalePayment(p.means(), p.amount()))
+                .toList();
+        return registerPosSaleUseCase.execute(new RegisterPosSaleCommand(
+                authz.currentCompanyId(), request.documentType(), request.finalConsumer(),
+                request.customerOwnerId(), lines, payments));
     }
 
     /** F4: convierte un documento equivalente POS en factura electrónica de venta. */

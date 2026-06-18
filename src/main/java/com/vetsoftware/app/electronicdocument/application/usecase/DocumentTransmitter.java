@@ -55,12 +55,9 @@ public class DocumentTransmitter {
     @Transactional
     public ElectronicDocument transmit(ElectronicDocument document) {
         // Gate de facturación electrónica: sin submódulo BILLING nunca se contacta al proveedor (MATIAS).
-        // Un documento PENDIENTE se degrada a NO_ELECTRONICO (guardado local); cualquier otro estado es no-op.
+        // El documento se deja como está (PENDIENTE si nunca se transmitió): datos guardados, emisión diferida
+        // y re-emitible al habilitar el módulo. No se degrada a NO_ELECTRONICO.
         if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) {
-            if (document.getDianStatus() == DianStatus.PENDIENTE) {
-                document.markLocal();
-                return repository.updateDianResult(document);
-            }
             return document;
         }
 

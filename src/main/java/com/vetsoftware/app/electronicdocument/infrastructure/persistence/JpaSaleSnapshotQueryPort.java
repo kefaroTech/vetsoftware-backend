@@ -1,9 +1,9 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
-import com.vetsoftware.app.companytaxprofile.infrastructure.persistence.CompanyTaxProfileJpaEntity;
-import com.vetsoftware.app.companytaxprofile.infrastructure.persistence.CompanyTaxProfileJpaRepository;
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import com.vetsoftware.app.debtopenaccount.infrastructure.persistence.DebtOpenAccountJpaRepository;
+import com.vetsoftware.app.electronicdocument.application.port.out.CompanyFiscalProfileQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.CompanyFiscalProfileQueryPort.CompanyFiscalProfile;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleSnapshotQueryPort;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
@@ -20,8 +20,6 @@ import com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpa
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.ProductChargeOpenAccountJpaRepository;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence.ServiceChargeOpenAccountJpaRepository;
-import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaEntity;
-import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,23 +42,20 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
     private final ServiceChargeOpenAccountJpaRepository serviceChargeRepository;
     private final GeneralChargeOpenAccountJpaRepository generalChargeRepository;
     private final DebtOpenAccountJpaRepository debtRepository;
-    private final CompanyTaxProfileJpaRepository companyTaxProfileRepository;
-    private final WithholdingConfigJpaRepository withholdingConfigRepository;
+    private final CompanyFiscalProfileQueryPort fiscalProfileQueryPort;
 
     public JpaSaleSnapshotQueryPort(OpenAccountJpaRepository openAccountRepository,
                                     ProductChargeOpenAccountJpaRepository productChargeRepository,
                                     ServiceChargeOpenAccountJpaRepository serviceChargeRepository,
                                     GeneralChargeOpenAccountJpaRepository generalChargeRepository,
                                     DebtOpenAccountJpaRepository debtRepository,
-                                    CompanyTaxProfileJpaRepository companyTaxProfileRepository,
-                                    WithholdingConfigJpaRepository withholdingConfigRepository) {
+                                    CompanyFiscalProfileQueryPort fiscalProfileQueryPort) {
         this.openAccountRepository = openAccountRepository;
         this.productChargeRepository = productChargeRepository;
         this.serviceChargeRepository = serviceChargeRepository;
         this.generalChargeRepository = generalChargeRepository;
         this.debtRepository = debtRepository;
-        this.companyTaxProfileRepository = companyTaxProfileRepository;
-        this.withholdingConfigRepository = withholdingConfigRepository;
+        this.fiscalProfileQueryPort = fiscalProfileQueryPort;
     }
 
     @Override
@@ -71,15 +66,10 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
             return Optional.empty();
         }
 
-        CompanyTaxProfileJpaEntity profile = companyTaxProfileRepository.findByCompany_Id(companyId)
+        CompanyFiscalProfile fiscalProfile = fiscalProfileQueryPort.findByCompany(companyId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "La empresa no tiene perfil fiscal (CompanyTaxProfile) configurado: " + companyId));
-        IssuerSnapshot issuer = new IssuerSnapshot(
-                profile.getCompanyDocumentType() == null ? null : profile.getCompanyDocumentType().name(),
-                profile.getCompanyDocumentId(), profile.getCompanyDocumentVerificationDigit(),
-                profile.getLegalName(),
-                profile.getTaxRegime() == null ? null : profile.getTaxRegime().name(),
-                profile.getFiscalEmail());
+        IssuerSnapshot issuer = fiscalProfile.issuer();
 
         OwnerJpaEntity owner = account.getOwner();
         CustomerSnapshot customer = new CustomerSnapshot(
@@ -95,14 +85,10 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
 
         // F6 - retenciones: el adquiriente es agente retenedor + las tarifas configuradas por el emisor.
         boolean withholdingAgent = owner.isWithholdingAgent();
-        WithholdingConfigJpaEntity wc = withholdingConfigRepository.findByCompany_Id(companyId).orElse(null);
-        BigDecimal reteFuenteRate = wc == null ? null : wc.getReteFuenteRate();
-        BigDecimal reteIvaRate = wc == null ? null : wc.getReteIvaRate();
-        BigDecimal reteIcaRate = wc == null ? null : wc.getReteIcaRate();
 
         return Optional.of(new SaleSnapshot(companyId, openAccountId, closed, issuer, customer,
-                lines, payments, PaymentForm.CONTADO,
-                withholdingAgent, reteFuenteRate, reteIvaRate, reteIcaRate));
+                lines, payments, PaymentForm.CONTADO, withholdingAgent,
+                fiscalProfile.reteFuenteRate(), fiscalProfile.reteIvaRate(), fiscalProfile.reteIcaRate()));
     }
 
     private List<ElectronicDocumentLine> buildLines(Long openAccountId) {
