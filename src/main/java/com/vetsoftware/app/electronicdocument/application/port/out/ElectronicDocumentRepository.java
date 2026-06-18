@@ -18,6 +18,9 @@ public interface ElectronicDocumentRepository {
     /** ¿Ya existe un documento para esta cuenta? Idempotencia de la auto-emisión al cerrar la cuenta. */
     boolean existsByOpenAccountId(Long openAccountId);
 
+    /** El documento emitido al cerrar una cuenta (para imprimir su recibo). Scoped a la empresa. */
+    Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId);
+
     List<ElectronicDocument> findAllByCompanyId(Long companyId);
 
     /** Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de reintento). */

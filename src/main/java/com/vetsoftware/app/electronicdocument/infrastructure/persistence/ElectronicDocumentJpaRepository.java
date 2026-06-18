@@ -19,6 +19,9 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
     Optional<ElectronicDocumentJpaEntity> findByCufeAndCompany_Id(String cufe, Long companyId);
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
+    Optional<ElectronicDocumentJpaEntity> findByOpenAccountIdAndCompany_Id(Long openAccountId, Long companyId);
+
+    @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByDianStatus(DianStatus dianStatus);
 
     boolean existsByOpenAccountId(Long openAccountId);

@@ -12,12 +12,14 @@ import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocument
 import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ConvertPosToInvoiceUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.EmitElectronicDocumentFromAccountUseCase;
+import com.vetsoftware.app.electronicdocument.application.port.in.FindElectronicDocumentByAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.FindElectronicDocumentUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.IssueCreditNoteUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.IssueDebitNoteUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSaleUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.TransmitElectronicDocumentUseCase;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.BuildElectronicDocumentRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueCreditNoteRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueDebitNoteRequest;
@@ -43,6 +45,7 @@ public class ElectronicDocumentController {
     private final IssueCreditNoteUseCase creditNoteUseCase;
     private final IssueDebitNoteUseCase debitNoteUseCase;
     private final FindElectronicDocumentUseCase findUseCase;
+    private final FindElectronicDocumentByAccountUseCase findByAccountUseCase;
     private final ListElectronicDocumentsUseCase listUseCase;
     private final Authz authz;
 
@@ -54,6 +57,7 @@ public class ElectronicDocumentController {
                                         IssueCreditNoteUseCase creditNoteUseCase,
                                         IssueDebitNoteUseCase debitNoteUseCase,
                                         FindElectronicDocumentUseCase findUseCase,
+                                        FindElectronicDocumentByAccountUseCase findByAccountUseCase,
                                         ListElectronicDocumentsUseCase listUseCase,
                                         Authz authz) {
         this.buildUseCase = buildUseCase;
@@ -64,6 +68,7 @@ public class ElectronicDocumentController {
         this.creditNoteUseCase = creditNoteUseCase;
         this.debitNoteUseCase = debitNoteUseCase;
         this.findUseCase = findUseCase;
+        this.findByAccountUseCase = findByAccountUseCase;
         this.listUseCase = listUseCase;
         this.authz = authz;
     }
@@ -145,5 +150,12 @@ public class ElectronicDocumentController {
     @GetMapping("/{id}")
     public ElectronicDocumentDto findById(@PathVariable Long id) {
         return findUseCase.findById(id);
+    }
+
+    /** Documento emitido al cerrar una cuenta (para imprimir su recibo). 404 si la cuenta no generó documento. */
+    @GetMapping("/by-account/{openAccountId}")
+    public ElectronicDocumentDto findByAccount(@PathVariable Long openAccountId) {
+        return findByAccountUseCase.findByOpenAccount(openAccountId, authz.currentCompanyId())
+                .orElseThrow(() -> new ElectronicDocumentNotFoundException(openAccountId));
     }
 }

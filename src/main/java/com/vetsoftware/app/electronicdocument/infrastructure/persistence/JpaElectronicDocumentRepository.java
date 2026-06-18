@@ -45,6 +45,11 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId) {
+        return jpaRepository.findByOpenAccountIdAndCompany_Id(openAccountId, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public ElectronicDocument updateDianResult(ElectronicDocument document) {
         ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
                 .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain
