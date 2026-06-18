@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Único punto de orquestación que conoce la feature companytaxprofile. Crea el perfil fiscal del emisor
- * durante el signup público con tipo NIT, DV autocalculado por el service y sin responsabilidades.
+ * durante el signup público con el tipo de documento elegido, DV autocalculado por el service (para NIT)
+ * y sin responsabilidades.
  */
 @Component
 public class CreateCompanyTaxProfileAdapter implements CompanyTaxProfileCreator {
@@ -26,10 +27,10 @@ public class CreateCompanyTaxProfileAdapter implements CompanyTaxProfileCreator 
     }
 
     @Override
-    public void create(Long companyId, String documentId, String legalName,
+    public void create(Long companyId, String documentType, String documentId, String legalName,
                        String taxRegime, String fiscalEmail) {
         systemAuthRunner.call(() -> createCompanyTaxProfileUseCase.execute(new CreateCompanyTaxProfileCommand(
-            CompanyDocumentType.NIT,
+            CompanyDocumentType.valueOf(documentType),
             documentId,
             null,                       // DV: lo autocalcula el service para NIT
             legalName,

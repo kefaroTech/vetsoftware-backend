@@ -3,13 +3,12 @@ package com.vetsoftware.app.registration.infrastructure.web.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterUserRequest(
     @NotBlank @Size(max = 100) String companyName,
-    @NotBlank @Pattern(regexp = "\\d{5,15}",
-            message = "El NIT debe ser numérico (entre 5 y 15 dígitos)") String companyIdentifier,
+    @NotBlank String documentType,
+    @NotBlank @Size(max = 20) String companyIdentifier,
     @Size(max = 200) String companyAddress,
     @Size(max = 30) String companyContactNumber,
     @NotNull Long cityId,

@@ -90,7 +90,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         // Identidad fiscal del emisor: toda venta (incluido el tiquete POS) la requiere. Tipo NIT, número =
         // identificador de la empresa, DV autocalculado, razón social = nombre; régimen y correo del signup.
         companyTaxProfileCreator.create(
-                company.id(), company.identifier(), company.name(),
+                company.id(), command.documentType(), company.identifier(), company.name(),
                 command.taxRegime(), command.fiscalEmail());
 
         String employeeCode = generateUniqueEmployeeCode(command.companyName(), command.employeeName());

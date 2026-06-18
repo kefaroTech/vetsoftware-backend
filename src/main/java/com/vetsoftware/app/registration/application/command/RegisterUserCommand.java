@@ -2,6 +2,7 @@ package com.vetsoftware.app.registration.application.command;
 
 public record RegisterUserCommand(
     String companyName,
+    String documentType,
     String companyIdentifier,
     String companyAddress,
     String companyContactNumber,

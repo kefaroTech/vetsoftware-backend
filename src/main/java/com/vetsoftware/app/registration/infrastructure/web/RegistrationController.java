@@ -24,6 +24,7 @@ public class RegistrationController {
     public RegistrationResponse register(@Valid @RequestBody RegisterUserRequest request) {
         RegistrationDto dto = registerUserUseCase.execute(new RegisterUserCommand(
             request.companyName(),
+            request.documentType(),
             request.companyIdentifier(),
             request.companyAddress(),
             request.companyContactNumber(),
