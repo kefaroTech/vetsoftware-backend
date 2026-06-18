@@ -98,6 +98,7 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFo
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
+import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNotFoundException;
 import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
@@ -227,6 +228,12 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "COMPANY_TAX_PROFILE_ALREADY_EXISTS", ex.getMessage());
     }
 
+    @ExceptionHandler(ProductCodeAlreadyExistsException.class)
+    public ProblemDetail handleProductCodeAlreadyExists(ProductCodeAlreadyExistsException ex) {
+        log.warn("Product code already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS", ex.getMessage());
+    }
+
     @ExceptionHandler(OwnerAlreadyHasOpenAccountException.class)
     public ProblemDetail handleOwnerAlreadyHasOpenAccount(OwnerAlreadyHasOpenAccountException ex) {
         log.warn("Owner already has an open account: {}", ex.getMessage());
@@ -333,6 +340,12 @@ public class GlobalExceptionHandler {
         if (cause != null && cause.contains("uq_open_accounts_active_owner")) {
             return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT",
                 "El propietario ya tiene una cuenta abierta.");
+        }
+        // Carrera en la unicidad de SKU por empresa (constraint de la migración 133): la 2ª inserción
+        // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo código de negocio.
+        if (cause != null && cause.contains("uq_products_company_active_code")) {
+            return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS",
+                "Ya existe un producto activo con ese código en esta empresa.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

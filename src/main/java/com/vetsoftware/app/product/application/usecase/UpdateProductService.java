@@ -10,6 +10,7 @@ import com.vetsoftware.app.product.application.port.out.TaxQueryPort;
 import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
+import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNotFoundException;
 import com.vetsoftware.app.product.domain.TaxRef;
 import io.micrometer.observation.annotation.Observed;
@@ -41,6 +42,9 @@ public class UpdateProductService implements UpdateProductUseCase {
             .orElseThrow(() -> new ProductNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndCodeExcludingId(command.companyId(), command.code(), command.id())) {
+            throw new ProductCodeAlreadyExistsException(command.code());
+        }
         ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null

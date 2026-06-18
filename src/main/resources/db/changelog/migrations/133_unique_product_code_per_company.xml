@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Unicidad de SKU (code) por empresa: un code duplicado rompe inventario y reportes. Antes solo
+         había validación en el service (ventana de carrera). MySQL no soporta índices únicos parciales y
+         products usa soft-delete (enabled), así que se replica el patrón de la migración 106: una columna
+         generada que vale `code` solo cuando el producto está activo (enabled) y NULL en otro caso. El
+         índice único sobre (company_id, active_code) deduplica únicamente productos ACTIVOS (MySQL permite
+         múltiples NULL), dejando libre el code de un producto desactivado para reusarlo.
+         Requiere que no existan codes duplicados activos previos por empresa; si los hubiera, limpiarlos antes. -->
+    <changeSet id="133_unique_product_code_per_company" author="orlando">
+        <sql>
+            ALTER TABLE products
+                ADD COLUMN active_code VARCHAR(50)
+                GENERATED ALWAYS AS (
+                    CASE WHEN enabled = TRUE THEN code ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_products_company_active_code UNIQUE (company_id, active_code)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE products
+                    DROP INDEX uq_products_company_active_code,
+                    DROP COLUMN active_code
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

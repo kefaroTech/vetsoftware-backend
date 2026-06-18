@@ -58,6 +58,16 @@ public class JpaProductRepository implements ProductRepository {
     }
 
     @Override
+    public boolean existsByCompanyIdAndCode(Long companyId, String code) {
+        return jpaRepository.existsByCompany_IdAndCode(companyId, code);
+    }
+
+    @Override
+    public boolean existsByCompanyIdAndCodeExcludingId(Long companyId, String code, Long id) {
+        return jpaRepository.existsByCompany_IdAndCodeAndIdNot(companyId, code, id);
+    }
+
+    @Override
     public List<Product> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

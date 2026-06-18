@@ -136,5 +136,6 @@
     <include file="db/changelog/migrations/130_add_resolution_number_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/131_add_customer_city_dane_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/132_add_tax_scheme_to_charges.xml"/>
+    <include file="db/changelog/migrations/133_unique_product_code_per_company.xml"/>
 
 </databaseChangeLog>

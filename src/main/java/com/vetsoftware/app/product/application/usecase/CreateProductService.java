@@ -10,6 +10,7 @@ import com.vetsoftware.app.product.application.port.out.TaxQueryPort;
 import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
+import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.TaxRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,9 @@ public class CreateProductService implements CreateProductUseCase {
     public ProductDto execute(CreateProductCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndCode(command.companyId(), command.code())) {
+            throw new ProductCodeAlreadyExistsException(command.code());
+        }
         ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null
