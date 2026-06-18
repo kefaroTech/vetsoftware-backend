@@ -981,6 +981,7 @@ class ProductChargeOpenAccount {
   -hasTax: Boolean
   -taxPercentage: BigDecimal
   -taxName: String
+  -taxScheme: String
   -baseAmount: BigDecimal
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
@@ -1002,6 +1003,7 @@ class ServiceChargeOpenAccount {
   -hasTax: Boolean
   -taxPercentage: BigDecimal
   -taxName: String
+  -taxScheme: String
   -baseAmount: BigDecimal
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
@@ -1023,6 +1025,7 @@ class GeneralChargeOpenAccount {
   -hasTax: Boolean
   -taxPercentage: BigDecimal
   -taxName: String
+  -taxScheme: String
   -baseAmount: BigDecimal
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
