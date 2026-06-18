@@ -5,10 +5,12 @@ import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDt
 import com.vetsoftware.app.companytaxprofile.application.port.in.UpdateCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.application.port.out.CompanyTaxProfileRepository;
 import com.vetsoftware.app.companytaxprofile.application.port.out.EconomicActivityQueryPort;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyDocumentType;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfile;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileResponsibility;
 import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
+import com.vetsoftware.app.companytaxprofile.domain.NitVerificationDigit;
 import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -36,10 +38,15 @@ public class UpdateCompanyTaxProfileService implements UpdateCompanyTaxProfileUs
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Economic activity not found: " + command.economicActivityId()));
         List<CompanyTaxProfileResponsibility> responsibilities = toResponsibilities(command.responsibilityCodes());
+        // El DV del NIT es determinístico (módulo 11): se autocalcula y es autoritativo, ignorando cualquier
+        // valor entrante. Para otros tipos de documento no aplica DV.
+        String verificationDigit = command.companyDocumentType() == CompanyDocumentType.NIT
+                ? NitVerificationDigit.calculate(command.companyDocumentId())
+                : null;
         profile.update(
                 command.companyDocumentType(),
                 command.companyDocumentId(),
-                command.companyDocumentVerificationDigit(),
+                verificationDigit,
                 command.legalName(),
                 command.taxRegime(),
                 command.fiscalEmail(),

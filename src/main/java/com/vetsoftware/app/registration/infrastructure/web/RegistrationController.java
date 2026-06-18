@@ -30,7 +30,9 @@ public class RegistrationController {
             request.cityId(),
             request.employeeName(),
             request.employeeEmail(),
-            request.password()
+            request.password(),
+            request.taxRegime(),
+            request.fiscalEmail()
         ));
         return new RegistrationResponse(dto.companyId(), dto.employeeId(), dto.token(), dto.tokenType());
     }

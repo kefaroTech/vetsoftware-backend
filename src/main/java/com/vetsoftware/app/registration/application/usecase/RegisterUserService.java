@@ -8,6 +8,7 @@ import com.vetsoftware.app.registration.application.port.in.RegisterUserUseCase;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
 import com.vetsoftware.app.registration.application.port.out.CompanyIdentifierChecker;
+import com.vetsoftware.app.registration.application.port.out.CompanyTaxProfileCreator;
 import com.vetsoftware.app.registration.application.port.out.DefaultMembershipProvider;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
@@ -28,6 +29,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private static final int MAX_SUFFIX_ATTEMPTS = 999;
 
     private final CompanyCreator companyCreator;
+    private final CompanyTaxProfileCreator companyTaxProfileCreator;
     private final EmployeeCreator employeeCreator;
     private final CompanyIdentifierChecker companyIdentifierChecker;
     private final EmployeeCodeChecker employeeCodeChecker;
@@ -40,6 +42,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final RolePermissionInitializationPort rolePermissionInitializationPort;
 
     public RegisterUserService(CompanyCreator companyCreator,
+                               CompanyTaxProfileCreator companyTaxProfileCreator,
                                EmployeeCreator employeeCreator,
                                CompanyIdentifierChecker companyIdentifierChecker,
                                EmployeeCodeChecker employeeCodeChecker,
@@ -51,6 +54,7 @@ public class RegisterUserService implements RegisterUserUseCase {
                                DefaultMembershipProvider defaultMembershipProvider,
                                RolePermissionInitializationPort rolePermissionInitializationPort) {
         this.companyCreator = companyCreator;
+        this.companyTaxProfileCreator = companyTaxProfileCreator;
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
         this.employeeCodeChecker = employeeCodeChecker;
@@ -82,6 +86,12 @@ public class RegisterUserService implements RegisterUserUseCase {
                 command.cityId(),
                 membershipId
         );
+
+        // Identidad fiscal del emisor: toda venta (incluido el tiquete POS) la requiere. Tipo NIT, número =
+        // identificador de la empresa, DV autocalculado, razón social = nombre; régimen y correo del signup.
+        companyTaxProfileCreator.create(
+                company.id(), company.identifier(), company.name(),
+                command.taxRegime(), command.fiscalEmail());
 
         String employeeCode = generateUniqueEmployeeCode(command.companyName(), command.employeeName());
         EmployeeResult employee = employeeCreator.create(

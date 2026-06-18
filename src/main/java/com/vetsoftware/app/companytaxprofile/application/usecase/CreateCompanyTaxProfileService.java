@@ -6,11 +6,13 @@ import com.vetsoftware.app.companytaxprofile.application.port.in.CreateCompanyTa
 import com.vetsoftware.app.companytaxprofile.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.companytaxprofile.application.port.out.CompanyTaxProfileRepository;
 import com.vetsoftware.app.companytaxprofile.application.port.out.EconomicActivityQueryPort;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyDocumentType;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyRef;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfile;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileResponsibility;
 import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
+import com.vetsoftware.app.companytaxprofile.domain.NitVerificationDigit;
 import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -42,11 +44,16 @@ public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUs
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Economic activity not found: " + command.economicActivityId()));
         List<CompanyTaxProfileResponsibility> responsibilities = toResponsibilities(command.responsibilityCodes());
+        // El DV del NIT es determinístico (módulo 11): se autocalcula y es autoritativo, ignorando cualquier
+        // valor entrante. Para otros tipos de documento no aplica DV.
+        String verificationDigit = command.companyDocumentType() == CompanyDocumentType.NIT
+                ? NitVerificationDigit.calculate(command.companyDocumentId())
+                : null;
         CompanyTaxProfile profile = CompanyTaxProfile.create(
                 company,
                 command.companyDocumentType(),
                 command.companyDocumentId(),
-                command.companyDocumentVerificationDigit(),
+                verificationDigit,
                 command.legalName(),
                 command.taxRegime(),
                 command.fiscalEmail(),

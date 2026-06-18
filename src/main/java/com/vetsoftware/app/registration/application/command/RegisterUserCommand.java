@@ -8,5 +8,7 @@ public record RegisterUserCommand(
     Long cityId,
     String employeeName,
     String employeeEmail,
-    String rawPassword
+    String rawPassword,
+    String taxRegime,
+    String fiscalEmail
 ) {}
