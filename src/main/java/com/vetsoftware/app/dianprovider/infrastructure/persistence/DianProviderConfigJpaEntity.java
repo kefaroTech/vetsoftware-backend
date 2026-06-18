@@ -1,7 +1,6 @@
 package com.vetsoftware.app.dianprovider.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
-import com.vetsoftware.app.dianprovider.domain.ProviderEnvironment;
 import com.vetsoftware.app.dianprovider.domain.ProviderType;
 import com.vetsoftware.app.infrastructure.security.EncryptedStringConverter;
 import jakarta.persistence.*;
@@ -25,10 +24,6 @@ public class DianProviderConfigJpaEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false, length = 20)
     private ProviderType provider;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "environment", nullable = false, length = 20)
-    private ProviderEnvironment environment;
 
     @Column(name = "base_url", nullable = false, length = 255)
     private String baseUrl;
@@ -81,8 +76,6 @@ public class DianProviderConfigJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public ProviderType getProvider() { return provider; }
     public void setProvider(ProviderType provider) { this.provider = provider; }
-    public ProviderEnvironment getEnvironment() { return environment; }
-    public void setEnvironment(ProviderEnvironment environment) { this.environment = environment; }
     public String getBaseUrl() { return baseUrl; }
     public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
     public String getClientId() { return clientId; }

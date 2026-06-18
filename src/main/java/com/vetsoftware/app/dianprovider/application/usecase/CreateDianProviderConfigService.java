@@ -29,7 +29,7 @@ public class CreateDianProviderConfigService implements CreateDianProviderConfig
         }
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        DianProviderConfig config = DianProviderConfig.create(company, command.provider(), command.environment(),
+        DianProviderConfig config = DianProviderConfig.create(company, command.provider(),
                 command.baseUrl(), command.clientId(), command.clientSecret(), command.username(),
                 command.password(), command.apiToken(), command.webhookSecret(), command.numberingProviderRef());
         return DianProviderConfigDto.from(repository.save(config));

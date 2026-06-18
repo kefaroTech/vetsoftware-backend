@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Elimina `environment` (SANDBOX/PRODUCTION) de la config del proveedor DIAN: el ambiente lo define el
+         despliegue (una base de datos por ambiente), no un campo por empresa. Estaba almacenado pero nunca
+         usado (0 lecturas en la lógica). Se quitó del dominio, el snapshot y el front. -->
+    <changeSet id="137_drop_environment_from_dian_provider_configs" author="orlando">
+        <dropColumn tableName="dian_provider_configs" columnName="environment"/>
+        <rollback>
+            <addColumn tableName="dian_provider_configs">
+                <column name="environment" type="VARCHAR(20)" defaultValue="SANDBOX">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

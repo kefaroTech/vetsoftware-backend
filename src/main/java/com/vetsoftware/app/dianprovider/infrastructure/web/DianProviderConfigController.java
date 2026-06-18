@@ -35,7 +35,7 @@ public class DianProviderConfigController {
     @ResponseStatus(HttpStatus.CREATED)
     public DianProviderConfigDto create(@Valid @RequestBody CreateDianProviderConfigRequest request) {
         return createUseCase.execute(new CreateDianProviderConfigCommand(
-                request.provider(), request.environment(), request.baseUrl(), request.clientId(),
+                request.provider(), request.baseUrl(), request.clientId(),
                 request.clientSecret(), request.username(), request.password(), request.apiToken(),
                 request.webhookSecret(), request.numberingProviderRef(), authz.currentCompanyId()));
     }
@@ -43,7 +43,7 @@ public class DianProviderConfigController {
     @PutMapping
     public DianProviderConfigDto update(@Valid @RequestBody UpdateDianProviderConfigRequest request) {
         return updateUseCase.execute(new UpdateDianProviderConfigCommand(
-                request.provider(), request.environment(), request.baseUrl(), request.clientId(),
+                request.provider(), request.baseUrl(), request.clientId(),
                 request.clientSecret(), request.username(), request.password(), request.apiToken(),
                 request.webhookSecret(), request.numberingProviderRef(), authz.currentCompanyId()));
     }

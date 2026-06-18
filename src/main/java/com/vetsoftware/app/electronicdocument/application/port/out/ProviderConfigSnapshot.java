@@ -7,7 +7,6 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
  */
 public record ProviderConfigSnapshot(
         String provider,
-        String environment,
         String baseUrl,
         String clientId,
         String clientSecret,

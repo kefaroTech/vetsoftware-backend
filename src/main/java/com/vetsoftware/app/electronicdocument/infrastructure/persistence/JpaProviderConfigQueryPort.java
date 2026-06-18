@@ -22,7 +22,6 @@ public class JpaProviderConfigQueryPort implements ProviderConfigQueryPort {
     public Optional<ProviderConfigSnapshot> findByCompanyId(Long companyId) {
         return configJpaRepository.findByCompany_Id(companyId).map(e -> new ProviderConfigSnapshot(
                 e.getProvider().name(),
-                e.getEnvironment().name(),
                 e.getBaseUrl(),
                 e.getClientId(),
                 e.getClientSecret(),

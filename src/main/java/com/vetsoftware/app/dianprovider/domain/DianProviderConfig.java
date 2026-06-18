@@ -12,7 +12,6 @@ public class DianProviderConfig {
     private Long id;
     private CompanyRef company;
     private ProviderType provider;
-    private ProviderEnvironment environment;
     private String baseUrl;
     // Credenciales de login MATIAS: username = email, password. (clientId/clientSecret reservados, sin uso hoy.)
     private String clientId;
@@ -30,15 +29,14 @@ public class DianProviderConfig {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public DianProviderConfig(Long id, CompanyRef company, ProviderType provider, ProviderEnvironment environment,
+    public DianProviderConfig(Long id, CompanyRef company, ProviderType provider,
                               String baseUrl, String clientId, String clientSecret, String username, String password,
                               String apiToken, String webhookSecret, String accessToken, LocalDateTime tokenExpiresAt,
                               String numberingProviderRef, LocalDateTime createdDate, boolean enabled) {
-        validate(company, provider, environment, baseUrl);
+        validate(company, provider, baseUrl);
         this.id = id;
         this.company = company;
         this.provider = provider;
-        this.environment = environment;
         this.baseUrl = baseUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -53,21 +51,20 @@ public class DianProviderConfig {
         this.enabled = enabled;
     }
 
-    public static DianProviderConfig create(CompanyRef company, ProviderType provider, ProviderEnvironment environment,
+    public static DianProviderConfig create(CompanyRef company, ProviderType provider,
                                             String baseUrl, String clientId, String clientSecret, String username,
                                             String password, String apiToken, String webhookSecret,
                                             String numberingProviderRef) {
-        return new DianProviderConfig(null, company, provider, environment, baseUrl, clientId, clientSecret,
+        return new DianProviderConfig(null, company, provider, baseUrl, clientId, clientSecret,
                 username, password, apiToken, webhookSecret, null, null, numberingProviderRef,
                 LocalDateTime.now(), true);
     }
 
-    public void update(ProviderType provider, ProviderEnvironment environment, String baseUrl, String clientId,
+    public void update(ProviderType provider, String baseUrl, String clientId,
                        String clientSecret, String username, String password, String apiToken, String webhookSecret,
                        String numberingProviderRef) {
-        validate(this.company, provider, environment, baseUrl);
+        validate(this.company, provider, baseUrl);
         this.provider = provider;
-        this.environment = environment;
         this.baseUrl = baseUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -84,11 +81,9 @@ public class DianProviderConfig {
         this.tokenExpiresAt = expiresAt;
     }
 
-    private static void validate(CompanyRef company, ProviderType provider, ProviderEnvironment environment,
-                                 String baseUrl) {
+    private static void validate(CompanyRef company, ProviderType provider, String baseUrl) {
         if (company == null) throw new IllegalArgumentException("company is required");
         if (provider == null) throw new IllegalArgumentException("provider is required");
-        if (environment == null) throw new IllegalArgumentException("environment is required");
         if (baseUrl == null || baseUrl.isBlank()) throw new IllegalArgumentException("baseUrl is required");
         if (baseUrl.length() > 255) throw new IllegalArgumentException("baseUrl must be 255 chars or less");
     }
@@ -96,7 +91,6 @@ public class DianProviderConfig {
     public Long getId() { return id; }
     public CompanyRef getCompany() { return company; }
     public ProviderType getProvider() { return provider; }
-    public ProviderEnvironment getEnvironment() { return environment; }
     public String getBaseUrl() { return baseUrl; }
     public String getClientId() { return clientId; }
     public String getClientSecret() { return clientSecret; }

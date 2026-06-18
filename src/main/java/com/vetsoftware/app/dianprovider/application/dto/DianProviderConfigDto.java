@@ -1,7 +1,6 @@
 package com.vetsoftware.app.dianprovider.application.dto;
 
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfig;
-import com.vetsoftware.app.dianprovider.domain.ProviderEnvironment;
 import com.vetsoftware.app.dianprovider.domain.ProviderType;
 import java.time.LocalDateTime;
 
@@ -13,7 +12,6 @@ public record DianProviderConfigDto(
         Long id,
         Long companyId,
         ProviderType provider,
-        ProviderEnvironment environment,
         String baseUrl,
         String clientId,
         boolean clientSecretConfigured,
@@ -30,7 +28,6 @@ public record DianProviderConfigDto(
                 c.getId(),
                 c.getCompany() == null ? null : c.getCompany().id(),
                 c.getProvider(),
-                c.getEnvironment(),
                 c.getBaseUrl(),
                 c.getClientId(),
                 isSet(c.getClientSecret()),

@@ -1,11 +1,9 @@
 package com.vetsoftware.app.dianprovider.application.command;
 
-import com.vetsoftware.app.dianprovider.domain.ProviderEnvironment;
 import com.vetsoftware.app.dianprovider.domain.ProviderType;
 
 public record UpdateDianProviderConfigCommand(
         ProviderType provider,
-        ProviderEnvironment environment,
         String baseUrl,
         String clientId,
         String clientSecret,

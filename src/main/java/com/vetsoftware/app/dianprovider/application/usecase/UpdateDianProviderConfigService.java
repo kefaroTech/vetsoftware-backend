@@ -24,7 +24,7 @@ public class UpdateDianProviderConfigService implements UpdateDianProviderConfig
     public DianProviderConfigDto execute(UpdateDianProviderConfigCommand command) {
         DianProviderConfig config = repository.findByCompanyId(command.companyId())
                 .orElseThrow(() -> new DianProviderConfigNotFoundException(command.companyId()));
-        config.update(command.provider(), command.environment(), command.baseUrl(), command.clientId(),
+        config.update(command.provider(), command.baseUrl(), command.clientId(),
                 command.clientSecret(), command.username(), command.password(), command.apiToken(),
                 command.webhookSecret(), command.numberingProviderRef());
         return DianProviderConfigDto.from(repository.save(config));
