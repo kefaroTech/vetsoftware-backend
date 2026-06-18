@@ -7,5 +7,6 @@ public record CreateDebtOpenAccountCommand(
         String paymentMethod,
         Long openAccountId,
         Long companyId,
-        Long createdById
+        Long createdById,
+        String clientRequestId
 ) {}

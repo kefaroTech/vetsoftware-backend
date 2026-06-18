@@ -13,6 +13,7 @@ import com.vetsoftware.app.debtopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,15 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
     @Override
     @Transactional
     public DebtOpenAccountDto execute(CreateDebtOpenAccountCommand command) {
+        // Idempotencia: si el cobro ya se registró con esta clave (reintento/doble-submit), devolverlo sin
+        // duplicar. Va ANTES del guard de sobrepago: tras el 1er abono el saldo bajó y el reintento fallaría.
+        if (command.clientRequestId() != null && !command.clientRequestId().isBlank()) {
+            Optional<DebtOpenAccount> existing = repository.findByOpenAccountIdAndClientRequestId(
+                command.openAccountId(), command.clientRequestId());
+            if (existing.isPresent()) {
+                return DebtOpenAccountDto.from(existing.get());
+            }
+        }
         OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
             .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + command.openAccountId()));
         if (!openAccount.companyId().equals(command.companyId())) {
@@ -56,7 +66,8 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         DebtOpenAccount debtOpenAccount = DebtOpenAccount.create(
-            command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount, createdBy);
+            command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount, createdBy,
+            command.clientRequestId());
         DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
         refresher.refresh(command.openAccountId());
         return dto;

@@ -47,6 +47,12 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     }
 
     @Override
+    public Optional<DebtOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId) {
+        return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId)
+            .map(mapper::toDomain);
+    }
+
+    @Override
     public List<DebtOpenAccount> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

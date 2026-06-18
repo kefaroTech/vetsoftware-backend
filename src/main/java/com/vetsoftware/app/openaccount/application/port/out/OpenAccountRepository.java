@@ -9,6 +9,8 @@ import java.util.Optional;
 public interface OpenAccountRepository {
     OpenAccount save(OpenAccount openAccount);
     Optional<OpenAccount> findById(Long id);
+    /** Carga la cuenta con bloqueo pesimista (FOR UPDATE) para serializar el recálculo de totales. */
+    Optional<OpenAccount> findByIdForUpdate(Long id);
     List<OpenAccount> findAll();
     List<OpenAccount> findAllByCompanyId(Long companyId);
     /** true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por propietario. */

@@ -25,7 +25,9 @@ public class RecalculateOpenAccountService implements RecalculateOpenAccountUseC
     @Override
     @Transactional
     public void recalculate(Long openAccountId) {
-        OpenAccount openAccount = repository.findById(openAccountId)
+        // Bloqueo pesimista: serializa recálculos concurrentes (cargos/abonos simultáneos) sobre la misma
+        // cuenta, evitando que un total/paid quede desactualizado por una carrera read-modify-write.
+        OpenAccount openAccount = repository.findByIdForUpdate(openAccountId)
             .orElseThrow(() -> new OpenAccountNotFoundException(openAccountId));
         BigDecimal total = totalsPort.totalCharges(openAccountId);
         BigDecimal paid = totalsPort.totalPayments(openAccountId);

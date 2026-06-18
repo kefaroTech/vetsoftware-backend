@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Garantía dura de "un solo documento electrónico por cuenta cerrada" (idempotencia de la emisión al
+         cierre). Antes solo había el check `existsByOpenAccountId` en el service (check-then-act → ventana de
+         carrera): dos cierres concurrentes podían emitir DOS documentos fiscales para la misma venta,
+         consumiendo dos consecutivos. El índice único cierra esa ventana a nivel de BD.
+         MySQL permite múltiples NULL en un índice único, así que las ventas POS (open_account_id = NULL) NO
+         se ven afectadas: solo se deduplican los documentos ligados a una cuenta.
+         Requiere que no existan duplicados previos de open_account_id; si los hubiera, limpiarlos antes. -->
+    <changeSet id="134_unique_document_per_open_account" author="orlando">
+        <addUniqueConstraint tableName="electronic_documents"
+                             columnNames="open_account_id"
+                             constraintName="uq_electronic_documents_open_account"/>
+        <rollback>
+            <dropUniqueConstraint tableName="electronic_documents"
+                                  constraintName="uq_electronic_documents_open_account"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

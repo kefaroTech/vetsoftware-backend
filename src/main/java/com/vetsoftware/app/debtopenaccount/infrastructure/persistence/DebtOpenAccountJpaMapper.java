@@ -26,6 +26,7 @@ public class DebtOpenAccountJpaMapper {
         entity.setVoidedBy(voidedBy);
         entity.setVoidedAt(debtOpenAccount.getVoidedAt());
         entity.setVoidReason(debtOpenAccount.getVoidReason());
+        entity.setClientRequestId(debtOpenAccount.getClientRequestId());
         return entity;
     }
 
@@ -54,6 +55,7 @@ public class DebtOpenAccountJpaMapper {
             entity.isVoided(),
             voidedByRef,
             entity.getVoidedAt(),
-            entity.getVoidReason());
+            entity.getVoidReason(),
+            entity.getClientRequestId());
     }
 }

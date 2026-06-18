@@ -15,12 +15,14 @@ public class DebtOpenAccount {
     private EmployeeRef voidedBy;
     private LocalDateTime voidedAt;
     private String voidReason;
+    /** Idempotency key (UUID del cliente): deduplica reintentos del mismo cobro. Nullable (legacy/sin id). */
+    private final String clientRequestId;
 
     public DebtOpenAccount(Long id, BigDecimal amount, PaymentMethod paymentMethod,
                            OpenAccountRef openAccount, EmployeeRef createdBy,
                            LocalDateTime createdDate, boolean enabled,
                            boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
-                           String voidReason) {
+                           String voidReason, String clientRequestId) {
         validate(amount, paymentMethod, openAccount);
         this.id = id;
         this.amount = amount;
@@ -33,12 +35,14 @@ public class DebtOpenAccount {
         this.voidedBy = voidedBy;
         this.voidedAt = voidedAt;
         this.voidReason = voidReason;
+        this.clientRequestId = clientRequestId;
     }
 
     public static DebtOpenAccount create(BigDecimal amount, PaymentMethod paymentMethod,
-                                         OpenAccountRef openAccount, EmployeeRef createdBy) {
+                                         OpenAccountRef openAccount, EmployeeRef createdBy,
+                                         String clientRequestId) {
         return new DebtOpenAccount(null, amount, paymentMethod, openAccount, createdBy,
-            LocalDateTime.now(), true, false, null, null, null);
+            LocalDateTime.now(), true, false, null, null, null, clientRequestId);
     }
 
     public void update(BigDecimal amount, PaymentMethod paymentMethod, OpenAccountRef openAccount) {
@@ -80,4 +84,5 @@ public class DebtOpenAccount {
     public EmployeeRef getVoidedBy() { return voidedBy; }
     public LocalDateTime getVoidedAt() { return voidedAt; }
     public String getVoidReason() { return voidReason; }
+    public String getClientRequestId() { return clientRequestId; }
 }

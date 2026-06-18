@@ -65,7 +65,7 @@ public class DebtOpenAccountController {
         return toResponse(createUseCase.execute(
             new CreateDebtOpenAccountCommand(
                 request.amount(), request.paymentMethod(), request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId())));
+                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId())));
     }
 
     @GetMapping

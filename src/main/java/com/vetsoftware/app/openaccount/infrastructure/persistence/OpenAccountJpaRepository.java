@@ -1,11 +1,15 @@
 package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEntity, Long>,
         JpaSpecificationExecutor<OpenAccountJpaEntity> {
@@ -20,6 +24,13 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
 
     @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
     List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
+
+    // Bloqueo pesimista de la fila de la cuenta para serializar el recálculo de totales bajo concurrencia
+    // (cargos/abonos simultáneos). Sin @EntityGraph a propósito: FOR UPDATE no combina con join-fetch; las
+    // asociaciones se cargan lazy dentro de la transacción.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from OpenAccountJpaEntity o where o.id = :id")
+    Optional<OpenAccountJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
     // Regla "1 cuenta abierta por propietario": cuenta el estado OPEN (las CLOSE/CANCEL
     // siguen enabled=true pero ya no bloquean). AndEnabledTrue explícito (no depender del @SQLRestriction).

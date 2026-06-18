@@ -347,6 +347,18 @@ public class GlobalExceptionHandler {
             return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS",
                 "Ya existe un producto activo con ese código en esta empresa.");
         }
+        // Carrera en "un documento por cuenta cerrada" (constraint de la migración 134): dos cierres
+        // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª emisión fiscal.
+        if (cause != null && cause.contains("uq_electronic_documents_open_account")) {
+            return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_EMITTED",
+                "La venta ya tiene un documento electrónico emitido.");
+        }
+        // Carrera en la idempotencia de abonos (constraint de la migración 135): doble-submit concurrente con
+        // la misma clave; la BD rechaza el 2º. El cliente reintenta y el check de idempotencia devuelve el abono.
+        if (cause != null && cause.contains("uq_debt_open_accounts_request")) {
+            return problem(HttpStatus.CONFLICT, "DUPLICATE_PAYMENT_REQUEST",
+                "El abono ya fue registrado (solicitud duplicada).");
+        }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }
 

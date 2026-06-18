@@ -18,6 +18,9 @@ public interface DebtOpenAccountJpaRepository extends JpaRepository<DebtOpenAcco
     @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
     List<DebtOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
 
+    @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
+    Optional<DebtOpenAccountJpaEntity> findByOpenAccount_IdAndClientRequestId(Long openAccountId, String clientRequestId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
