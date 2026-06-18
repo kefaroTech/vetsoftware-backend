@@ -2,8 +2,8 @@ package com.vetsoftware.app.openaccount.application.usecase;
 
 import com.vetsoftware.app.openaccount.application.command.ChangeOpenAccountStatusCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
-import com.vetsoftware.app.openaccount.application.event.OpenAccountClosedForEmissionEvent;
 import com.vetsoftware.app.openaccount.application.port.in.ChangeOpenAccountStatusUseCase;
+import com.vetsoftware.app.openaccount.application.port.out.ClosedAccountEmissionPort;
 import com.vetsoftware.app.openaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
@@ -11,25 +11,22 @@ import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import io.micrometer.observation.annotation.Observed;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "open_account.change_status")
 @Service
 public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUseCase {
-    private static final String DEFAULT_DOCUMENT_TYPE = "DOC_EQUIV_POS";
-
     private final OpenAccountRepository repository;
     private final EmployeeQueryPort employeeQueryPort;
-    private final ApplicationEventPublisher events;
+    private final ClosedAccountEmissionPort emissionPort;
 
     public ChangeOpenAccountStatusService(OpenAccountRepository repository,
                                           EmployeeQueryPort employeeQueryPort,
-                                          ApplicationEventPublisher events) {
+                                          ClosedAccountEmissionPort emissionPort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
-        this.events = events;
+        this.emissionPort = emissionPort;
     }
 
     @Override
@@ -46,14 +43,13 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
         openAccount.changeStatus(newStatus, closedBy, command.reason());
         OpenAccount saved = repository.save(openAccount);
 
-        // Cobro/cierre de la venta: dispara la auto-emisión del documento electrónico. Se publica un evento
-        // que un listener de electronicdocument procesa TRAS el commit (best-effort): así la emisión ve la
-        // cuenta ya CLOSE y un fallo (DIAN caída, sin numeración) nunca revierte ni bloquea el cierre.
+        // Cobro/cierre de la venta: emite el documento electrónico directamente (síncrono, misma transacción).
+        // La emisión ve la cuenta ya CLOSE y el documento se guarda atómicamente con el cierre. Un fallo de
+        // configuración (p. ej. sin perfil fiscal) hace fallar el cierre con ese error, en vez de cerrar sin
+        // documento; las caídas transitorias de la DIAN no lanzan (el proveedor las marca CONTINGENCIA).
         if (newStatus == OpenAccountStatus.CLOSE) {
-            String documentType = command.documentType() != null && !command.documentType().isBlank()
-                ? command.documentType() : DEFAULT_DOCUMENT_TYPE;
-            events.publishEvent(new OpenAccountClosedForEmissionEvent(
-                saved.getId(), saved.getCompany().id(), documentType, command.finalConsumer()));
+            emissionPort.emitForClosedAccount(
+                saved.getId(), saved.getCompany().id(), command.documentType(), command.finalConsumer());
         }
         return OpenAccountDto.from(saved);
     }
