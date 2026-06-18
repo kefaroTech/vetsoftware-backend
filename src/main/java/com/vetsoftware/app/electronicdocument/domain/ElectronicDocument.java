@@ -151,6 +151,16 @@ public class ElectronicDocument {
         BigDecimal base = sum(lines, ElectronicDocumentLine::getLineExtensionAmount);
         BigDecimal totalWithTax = sum(lines, ElectronicDocumentLine::getTotalAmount);
         BigDecimal iva = totalWithTax.subtract(base);
+        // Cuadre de caja: en CONTADO la suma de pagos debe igualar el total a pagar. No aplica a CREDITO
+        // (puede ser parcial/diferido). Evita persistir un documento con pagos que no cierran el total.
+        if (paymentForm == PaymentForm.CONTADO && payments != null && !payments.isEmpty()) {
+            BigDecimal paid = payments.stream().map(ElectronicDocumentPayment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            if (paid.compareTo(totalWithTax) != 0) {
+                throw new IllegalArgumentException(
+                        "La suma de pagos (" + paid + ") no coincide con el total del documento (" + totalWithTax + ").");
+            }
+        }
         // F6: si el adquiriente es agente retenedor, calcula las retenciones con las tarifas del emisor.
         WithholdingAmounts wh = WithholdingCalculator.compute(withholdingAgent, base, iva,
                 reteFuenteRate, reteIvaRate, reteIcaRate);

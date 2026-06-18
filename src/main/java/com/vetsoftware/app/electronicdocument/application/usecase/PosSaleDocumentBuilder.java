@@ -125,7 +125,7 @@ public class PosSaleDocumentBuilder {
         BigDecimal gross = l.unitPrice().multiply(l.quantity()).setScale(2, RoundingMode.HALF_UP);
         boolean taxed = scheme != null && rate != null && rate.signum() > 0;
         BigDecimal base = taxed
-                ? gross.divide(BigDecimal.ONE.add(rate.divide(HUNDRED)), 2, RoundingMode.HALF_UP)
+                ? gross.divide(BigDecimal.ONE.add(rate.divide(HUNDRED, 6, RoundingMode.HALF_UP)), 2, RoundingMode.HALF_UP)
                 : gross;
         BigDecimal taxAmount = gross.subtract(base);
         return new ElectronicDocumentLine(null, lineNumber, description, l.quantity(), UNIT_MEASURE,

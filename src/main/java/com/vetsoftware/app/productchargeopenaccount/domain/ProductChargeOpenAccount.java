@@ -164,8 +164,6 @@ public class ProductChargeOpenAccount {
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
     public boolean isVoided() { return voided; }
     public EmployeeRef getVoidedBy() { return voidedBy; }
     public LocalDateTime getVoidedAt() { return voidedAt; }

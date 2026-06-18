@@ -12,6 +12,7 @@ import com.vetsoftware.app.debtopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.debtopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import io.micrometer.observation.annotation.Observed;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,13 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
         }
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
+        }
+        // El abono no puede exceder el saldo pendiente (no se maneja vuelto en cuenta; el cambio en
+        // efectivo se da en el POS). Evita dejar el outstanding negativo.
+        BigDecimal outstanding = openAccountQueryPort.outstandingAmount(command.openAccountId());
+        if (command.amount().compareTo(outstanding) > 0) {
+            throw new IllegalArgumentException(
+                "El abono (" + command.amount() + ") no puede exceder el saldo pendiente (" + outstanding + ").");
         }
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
