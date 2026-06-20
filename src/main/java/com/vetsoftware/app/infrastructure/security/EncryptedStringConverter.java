@@ -8,11 +8,15 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Cifra/descifra columnas de texto con AES-GCM. La clave (32 bytes en base64) se lee de la variable
- * de entorno {@code DIAN_ENC_KEY}; hay un default solo para desarrollo. El formato persistido es
- * base64(iv[12] || ciphertext+tag). Pensado para secretos reversibles (credenciales/tokens del
+ * de entorno {@code DIAN_ENC_KEY}; hay un default que SOLO se acepta en los perfiles dev/test/local.
+ * Fuera de esos perfiles, si {@code DIAN_ENC_KEY} falta o esta vacia el arranque falla (fail-fast),
+ * para no cifrar los secretos del proveedor DIAN con una clave publica del repo. El formato persistido
+ * es base64(iv[12] || ciphertext+tag). Pensado para secretos reversibles (credenciales/tokens del
  * proveedor DIAN); NO para contrasenas de usuario (esas usan BCrypt, no reversible).
  *
  * Hibernate instancia este converter (no es un bean de Spring), por eso la clave se resuelve de forma
@@ -20,6 +24,8 @@ import javax.crypto.spec.SecretKeySpec;
  */
 @Converter
 public class EncryptedStringConverter implements AttributeConverter<String, String> {
+
+    private static final Logger log = LoggerFactory.getLogger(EncryptedStringConverter.class);
 
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int IV_LENGTH = 12;
@@ -32,12 +38,41 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     private static SecretKeySpec loadKey() {
         String configured = System.getenv("DIAN_ENC_KEY");
-        byte[] key = Base64.getDecoder().decode(
-                (configured == null || configured.isBlank()) ? DEV_KEY_BASE64 : configured);
+        boolean missing = (configured == null || configured.isBlank());
+        if (missing) {
+            if (!isDevOrTestProfile()) {
+                throw new IllegalStateException(
+                        "DIAN_ENC_KEY no esta definida y el perfil activo no es dev/test/local. "
+                        + "Defina DIAN_ENC_KEY (32 bytes en base64) para cifrar los secretos del proveedor DIAN.");
+            }
+            log.warn("DIAN_ENC_KEY no definida: usando la clave de desarrollo embebida del repo. "
+                    + "Solo aceptable en dev/test/local; NUNCA usar en produccion.");
+        }
+        byte[] key = Base64.getDecoder().decode(missing ? DEV_KEY_BASE64 : configured);
         if (key.length != 32) {
             throw new IllegalStateException("DIAN_ENC_KEY must decode to 32 bytes (AES-256)");
         }
         return new SecretKeySpec(key, "AES");
+    }
+
+    // El converter se inicializa de forma estatica (antes de que Spring resuelva el Environment),
+    // por eso el perfil se lee directo de la system property / env var, con el mismo default (dev)
+    // que application.yml (spring.profiles.active: ${SPRING_PROFILES_ACTIVE:dev}).
+    private static boolean isDevOrTestProfile() {
+        String profiles = System.getProperty("spring.profiles.active");
+        if (profiles == null || profiles.isBlank()) {
+            profiles = System.getenv("SPRING_PROFILES_ACTIVE");
+        }
+        if (profiles == null || profiles.isBlank()) {
+            profiles = "dev";
+        }
+        for (String profile : profiles.split(",")) {
+            String normalized = profile.trim().toLowerCase();
+            if (normalized.equals("dev") || normalized.equals("test") || normalized.equals("local")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
