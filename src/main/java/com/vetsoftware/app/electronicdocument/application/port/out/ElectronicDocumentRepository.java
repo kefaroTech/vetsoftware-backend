@@ -12,6 +12,9 @@ public interface ElectronicDocumentRepository {
     ElectronicDocument save(ElectronicDocument document);
     Optional<ElectronicDocument> findById(Long id);
 
+    /** Lectura scoped a la empresa: evita IDOR cross-tenant al consultar un documento por id directo. */
+    Optional<ElectronicDocument> findByIdAndCompanyId(Long id, Long companyId);
+
     /** Ubica una factura por su CUFE dentro de la empresa (para enlazar la nota credito con el original). */
     Optional<ElectronicDocument> findByCufe(String cufe, Long companyId);
 

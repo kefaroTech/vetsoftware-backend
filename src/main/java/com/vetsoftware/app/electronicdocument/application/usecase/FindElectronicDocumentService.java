@@ -17,8 +17,8 @@ public class FindElectronicDocumentService implements FindElectronicDocumentUseC
     }
 
     @Override
-    public ElectronicDocumentDto findById(Long id) {
-        return ElectronicDocumentDto.from(repository.findById(id)
+    public ElectronicDocumentDto findById(Long id, Long companyId) {
+        return ElectronicDocumentDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(id)));
     }
 }

@@ -149,7 +149,7 @@ public class ElectronicDocumentController {
 
     @GetMapping("/{id}")
     public ElectronicDocumentDto findById(@PathVariable Long id) {
-        return findUseCase.findById(id);
+        return findUseCase.findById(id, authz.currentCompanyId());
     }
 
     /** Documento emitido al cerrar una cuenta (para imprimir su recibo). 404 si la cuenta no generó documento. */

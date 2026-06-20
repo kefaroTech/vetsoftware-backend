@@ -13,6 +13,9 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
     Optional<ElectronicDocumentJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
+    Optional<ElectronicDocumentJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByCompanyId(Long companyId);
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})

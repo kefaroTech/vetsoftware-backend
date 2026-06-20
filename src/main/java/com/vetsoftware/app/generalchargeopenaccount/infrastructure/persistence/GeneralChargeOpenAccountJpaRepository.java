@@ -17,6 +17,9 @@ public interface GeneralChargeOpenAccountJpaRepository
     Optional<GeneralChargeOpenAccountJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
+    Optional<GeneralChargeOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
     List<GeneralChargeOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

@@ -16,6 +16,9 @@ public interface DebtOpenAccountJpaRepository extends JpaRepository<DebtOpenAcco
     Optional<DebtOpenAccountJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
+    Optional<DebtOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
     List<DebtOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
 
     @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})

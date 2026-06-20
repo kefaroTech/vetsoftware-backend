@@ -17,8 +17,8 @@ public class FindDebtOpenAccountService implements FindDebtOpenAccountUseCase {
     }
 
     @Override
-    public DebtOpenAccountDto findById(Long id) {
-        return DebtOpenAccountDto.from(repository.findById(id)
+    public DebtOpenAccountDto findById(Long id, Long companyId) {
+        return DebtOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id)));
     }
 }

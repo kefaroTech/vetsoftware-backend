@@ -5,5 +5,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindServiceChargeOpenAccountUseCase {
     @PreAuthorize("hasAuthority('admin.all') or hasAuthority('chargeOpenAccount.read') or hasRole('SYSTEM')")
-    ServiceChargeOpenAccountDto findById(Long id);
+    ServiceChargeOpenAccountDto findById(Long id, Long companyId);
 }

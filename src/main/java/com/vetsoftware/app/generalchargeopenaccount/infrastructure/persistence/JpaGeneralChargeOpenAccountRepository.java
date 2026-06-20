@@ -54,6 +54,11 @@ public class JpaGeneralChargeOpenAccountRepository implements GeneralChargeOpenA
     }
 
     @Override
+    public Optional<GeneralChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<GeneralChargeOpenAccount> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

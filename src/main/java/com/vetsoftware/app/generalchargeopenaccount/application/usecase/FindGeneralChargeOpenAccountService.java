@@ -17,8 +17,8 @@ public class FindGeneralChargeOpenAccountService implements FindGeneralChargeOpe
     }
 
     @Override
-    public GeneralChargeOpenAccountDto findById(Long id) {
-        return GeneralChargeOpenAccountDto.from(repository.findById(id)
+    public GeneralChargeOpenAccountDto findById(Long id, Long companyId) {
+        return GeneralChargeOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(id)));
     }
 }

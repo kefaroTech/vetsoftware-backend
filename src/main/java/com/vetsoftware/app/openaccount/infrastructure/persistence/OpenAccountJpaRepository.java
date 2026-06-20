@@ -23,6 +23,9 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     Optional<OpenAccountJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
+    Optional<OpenAccountJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
     List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
 
     // Bloqueo pesimista de la fila de la cuenta para serializar el recálculo de totales bajo concurrencia

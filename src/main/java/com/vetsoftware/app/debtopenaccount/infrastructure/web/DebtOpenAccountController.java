@@ -81,7 +81,7 @@ public class DebtOpenAccountController {
 
     @GetMapping("/{id}")
     public DebtOpenAccountResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

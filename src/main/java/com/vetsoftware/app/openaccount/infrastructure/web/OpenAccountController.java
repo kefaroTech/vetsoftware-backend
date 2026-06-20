@@ -92,7 +92,7 @@ public class OpenAccountController {
 
     @GetMapping("/{id}")
     public OpenAccountResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

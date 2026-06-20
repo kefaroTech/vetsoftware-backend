@@ -65,6 +65,11 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
+    public Optional<ProductChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<ProductChargeOpenAccount> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

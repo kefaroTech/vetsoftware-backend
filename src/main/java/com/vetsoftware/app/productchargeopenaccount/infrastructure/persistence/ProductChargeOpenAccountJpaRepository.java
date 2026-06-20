@@ -17,6 +17,9 @@ public interface ProductChargeOpenAccountJpaRepository
     Optional<ProductChargeOpenAccountJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"animal", "product", "tax", "openAccount", "createdBy", "voidedBy"})
+    Optional<ProductChargeOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "product", "tax", "openAccount", "createdBy", "voidedBy"})
     List<ProductChargeOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
