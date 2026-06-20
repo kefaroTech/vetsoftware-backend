@@ -251,13 +251,7 @@ enum DebitNoteReason {
 }
 
 enum ProviderType {
-  FACTUS
   MATIAS
-}
-
-enum ProviderEnvironment {
-  SANDBOX
-  PRODUCTION
 }
 
 enum TransmissionResult {
@@ -964,6 +958,7 @@ class DebtOpenAccount {
   -amount: BigDecimal
   -paymentMethod: PaymentMethod
   -openAccount: OpenAccount
+  -clientRequestId: String
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -1050,6 +1045,7 @@ class IssuerSnapshot {
   -legalName: String
   -taxRegime: String
   -email: String
+  -responsibilities: List<String>
 }
 
 class CustomerSnapshot {
@@ -1088,7 +1084,6 @@ class ElectronicDocument {
   -taxInclusiveAmount: BigDecimal
   -payableAmount: BigDecimal
   -paymentForm: PaymentForm
-  -paymentDueDate: LocalDate
   -reference: DocumentReference
   -noteReasonCode: String
   -noteReasonText: String
@@ -1121,7 +1116,6 @@ class ElectronicDocumentTransmission {
 class DianProviderConfig {
   -company: Company
   -provider: ProviderType
-  -environment: ProviderEnvironment
   -baseUrl: String
   -clientId: String
   -clientSecret: String
@@ -1357,7 +1351,6 @@ ElectronicDocumentPayment  --> PaymentMeans
 ' --- Integración proveedor DIAN (F3) ---
 DianProviderConfig          --> Company
 DianProviderConfig          --> ProviderType
-DianProviderConfig          --> ProviderEnvironment
 ElectronicDocumentTransmission --> ElectronicDocument
 ElectronicDocumentTransmission --> TransmissionResult
 
