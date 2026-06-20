@@ -19,6 +19,11 @@ public record RegisterPosSaleCommand(
         List<SaleLine> lines,
         List<SalePayment> payments
 ) {
+    /** true si alguna linea es GENERAL (precio libre): solo admin.all puede emitirlas (ver @PreAuthorize del use case). */
+    public boolean hasGeneralLine() {
+        return lines != null && lines.stream().anyMatch(l -> l.kind() == SaleLineKind.GENERAL);
+    }
+
     /** Linea de venta: el unitPrice es el precio final (post-promo) con IVA incluido. */
     public record SaleLine(SaleLineKind kind, Long refId, String description,
                            BigDecimal quantity, BigDecimal unitPrice) {}

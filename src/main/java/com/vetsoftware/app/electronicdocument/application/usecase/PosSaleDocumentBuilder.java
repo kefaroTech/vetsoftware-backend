@@ -9,6 +9,8 @@ import com.vetsoftware.app.electronicdocument.application.port.out.CompanyFiscal
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleCustomerQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleCustomerQueryPort.SaleCustomer;
+import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort.SalePromotion;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
@@ -18,6 +20,7 @@ import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -32,19 +35,24 @@ import org.springframework.stereotype.Component;
 public class PosSaleDocumentBuilder {
     private static final String UNIT_MEASURE = "94"; // UN/ECE: unidad
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    /** Tolerancia (1 peso) al validar el unitPrice del cliente contra el precio canonico: absorbe el redondeo a peso entero (COP sin centavos). */
+    private static final BigDecimal PRICE_TOLERANCE = BigDecimal.ONE;
 
     private final CompanyFiscalProfileQueryPort fiscalProfileQueryPort;
     private final SaleCustomerQueryPort saleCustomerQueryPort;
     private final CatalogLineQueryPort catalogLineQueryPort;
+    private final SalePromotionQueryPort salePromotionQueryPort;
     private final ElectronicDocumentRepository repository;
 
     public PosSaleDocumentBuilder(CompanyFiscalProfileQueryPort fiscalProfileQueryPort,
                                   SaleCustomerQueryPort saleCustomerQueryPort,
                                   CatalogLineQueryPort catalogLineQueryPort,
+                                  SalePromotionQueryPort salePromotionQueryPort,
                                   ElectronicDocumentRepository repository) {
         this.fiscalProfileQueryPort = fiscalProfileQueryPort;
         this.saleCustomerQueryPort = saleCustomerQueryPort;
         this.catalogLineQueryPort = catalogLineQueryPort;
+        this.salePromotionQueryPort = salePromotionQueryPort;
         this.repository = repository;
     }
 
@@ -68,10 +76,11 @@ public class PosSaleDocumentBuilder {
             withholdingAgent = sc.withholdingAgent();
         }
 
+        List<SalePromotion> activePromos = salePromotionQueryPort.findActive(companyId, LocalDate.now());
         List<ElectronicDocumentLine> lines = new ArrayList<>();
         int n = 0;
         for (SaleLine l : command.lines()) {
-            lines.add(toLine(++n, l, companyId));
+            lines.add(toLine(++n, l, companyId, activePromos));
         }
         List<ElectronicDocumentPayment> payments = command.payments().stream()
                 .map(p -> new ElectronicDocumentPayment(null, p.means(), p.amount()))
@@ -80,12 +89,12 @@ public class PosSaleDocumentBuilder {
         ElectronicDocument document = ElectronicDocument.createPending(
                 companyId, null /* sin cuenta abierta: la venta POS ES el registro */,
                 command.documentType(), fiscal.issuer(), customer, lines, payments,
-                PaymentForm.CONTADO, null,
+                PaymentForm.CONTADO,
                 withholdingAgent, fiscal.reteFuenteRate(), fiscal.reteIvaRate(), fiscal.reteIcaRate());
         return repository.save(document);
     }
 
-    private ElectronicDocumentLine toLine(int lineNumber, SaleLine l, Long companyId) {
+    private ElectronicDocumentLine toLine(int lineNumber, SaleLine l, Long companyId, List<SalePromotion> promos) {
         if (l.quantity() == null || l.quantity().signum() <= 0)
             throw new IllegalArgumentException("line quantity must be > 0");
         if (l.unitPrice() == null || l.unitPrice().signum() < 0)
@@ -102,6 +111,7 @@ public class PosSaleDocumentBuilder {
                 category = item.taxCategory();
                 scheme = item.taxScheme();
                 rate = item.taxRate();
+                validateUnitPrice(l, item, promos);
             }
             case SERVICE -> {
                 CatalogItem item = requireCatalog(catalogLineQueryPort.findService(refId(l), companyId), "Servicio", l);
@@ -109,6 +119,7 @@ public class PosSaleDocumentBuilder {
                 category = item.taxCategory();
                 scheme = item.taxScheme();
                 rate = item.taxRate();
+                validateUnitPrice(l, item, promos);
             }
             case GENERAL -> {
                 if (l.description() == null || l.description().isBlank())
@@ -130,6 +141,21 @@ public class PosSaleDocumentBuilder {
         BigDecimal taxAmount = gross.subtract(base);
         return new ElectronicDocumentLine(null, lineNumber, description, l.quantity(), UNIT_MEASURE,
                 l.unitPrice(), base, category, taxed ? scheme : null, taxed ? rate : null, taxAmount, gross);
+    }
+
+    /**
+     * El servidor es la autoridad del precio: recalcula el precio canonico (lista del catalogo + promo activa)
+     * y rechaza la linea si el unitPrice del cliente se desvia mas alla de la tolerancia. Asi un usuario no
+     * puede emitir un documento fiscal con un monto arbitrario aunque manipule el payload del POS.
+     */
+    private void validateUnitPrice(SaleLine l, CatalogItem item, List<SalePromotion> promos) {
+        BigDecimal expected = PromotionPriceCalculator.expectedUnitPrice(
+                item.basePrice(), l.kind(), l.refId(), item.categoryId(), promos);
+        if (l.unitPrice().subtract(expected).abs().compareTo(PRICE_TOLERANCE) > 0) {
+            throw new IllegalArgumentException(
+                    "El precio unitario de la linea no coincide con el catalogo (" + l.kind() + " refId "
+                            + l.refId() + "): esperado " + expected + ", recibido " + l.unitPrice());
+        }
     }
 
     private static Long refId(SaleLine l) {

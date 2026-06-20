@@ -32,24 +32,27 @@ public class JpaCatalogLineQueryPort implements CatalogLineQueryPort {
     public Optional<CatalogItem> findProduct(Long productId, Long companyId) {
         return productRepository.findById(productId)
                 .filter(p -> p.getCompany() != null && companyId.equals(p.getCompany().getId()))
-                .map(p -> toItem(p.getName(), p.getTaxTreatment().name(), p.getTax()));
+                .map(p -> toItem(p.getName(), p.getTaxTreatment().name(), p.getTax(),
+                        p.getSalePrice(), p.getProductCategory().getId()));
     }
 
     @Override
     public Optional<CatalogItem> findService(Long serviceId, Long companyId) {
         return serviceRepository.findById(serviceId)
                 .filter(s -> s.getCompany() != null && companyId.equals(s.getCompany().getId()))
-                .map(s -> toItem(s.getName(), s.getTaxTreatment().name(), s.getTax()));
+                .map(s -> toItem(s.getName(), s.getTaxTreatment().name(), s.getTax(),
+                        s.getPrice(), s.getServiceCategory().getId()));
     }
 
-    private CatalogItem toItem(String name, String taxTreatment, TaxJpaEntity tax) {
+    private CatalogItem toItem(String name, String taxTreatment, TaxJpaEntity tax,
+                               BigDecimal basePrice, Long categoryId) {
         TaxCategory category = TaxCategory.valueOf(taxTreatment); // product/service.TaxTreatment espeja TaxCategory
         boolean taxed = (category == TaxCategory.GRAVADO || category == TaxCategory.INC)
                 && tax != null && tax.getPercentage() != null && tax.getPercentage().signum() > 0;
         if (!taxed) {
-            return new CatalogItem(name, category, null, null);
+            return new CatalogItem(name, category, null, null, basePrice, categoryId);
         }
         TaxScheme scheme = TaxScheme.valueOf(tax.getTaxScheme().name()); // tax.TaxScheme (IVA/INC) -> doc.TaxScheme
-        return new CatalogItem(name, category, scheme, tax.getPercentage());
+        return new CatalogItem(name, category, scheme, tax.getPercentage(), basePrice, categoryId);
     }
 }
