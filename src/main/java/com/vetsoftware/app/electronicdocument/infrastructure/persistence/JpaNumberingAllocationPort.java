@@ -43,4 +43,21 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
         repository.save(r);
         return Optional.of(new AllocatedNumber(r.getResolutionNumber(), r.getPrefix(), consecutive));
     }
+
+    @Override
+    public boolean release(Long companyId, ElectronicDocumentType documentType, Long consecutive) {
+        if (consecutive == null) return false;
+        NumberingResolutionJpaEntity r =
+                repository.lockActiveForUpdate(companyId, documentType.name()).orElse(null);
+        if (r == null) return false;
+
+        // Solo es seguro recuperar el consecutivo si fue el último entregado y nadie tomó el siguiente.
+        // Bajo el FOR UPDATE de la emisión síncrona esto siempre se cumple; en rutas async lo hace de forma
+        // oportunista (si ya se asignaron números posteriores, no se toca nada y el hueco permanece).
+        if (!Long.valueOf(consecutive + 1).equals(r.getCurrentNumber())) return false;
+
+        r.setCurrentNumber(consecutive);
+        repository.save(r);
+        return true;
+    }
 }

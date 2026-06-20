@@ -44,7 +44,6 @@ public record ElectronicDocumentDto(
         BigDecimal reteIcaAmount,
         BigDecimal netPayableAmount,
         PaymentForm paymentForm,
-        LocalDate paymentDueDate,
         List<LineDto> lines,
         List<PaymentDto> payments,
         List<TaxTotalDto> taxTotalsByRate,
@@ -87,7 +86,7 @@ public record ElectronicDocumentDto(
                 doc.getTaxInclusiveAmount(), doc.getPayableAmount(),
                 doc.getReteFuenteAmount(), doc.getReteIvaAmount(), doc.getReteIcaAmount(),
                 doc.getNetPayableAmount(),
-                doc.getPaymentForm(), doc.getPaymentDueDate(),
+                doc.getPaymentForm(),
                 lines, payments, taxTotals(doc.getLines()),
                 referenceFrom(doc), doc.getNoteReasonCode(), doc.getNoteReasonText(), doc.isReversed(),
                 doc.getCreatedDate(), doc.isEnabled());

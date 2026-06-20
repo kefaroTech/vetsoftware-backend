@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Elimina `payment_due_date` de los documentos electrónicos: la forma de pago a CRÉDITO no está
+         soportada (toda venta es de contado), por lo que la fecha de vencimiento siempre era null y nunca
+         se usó. Se quitó del dominio, el DTO, los builders, el mapper y el front. -->
+    <changeSet id="138_drop_payment_due_date_from_electronic_documents" author="orlando">
+        <dropColumn tableName="electronic_documents" columnName="payment_due_date"/>
+        <rollback>
+            <addColumn tableName="electronic_documents">
+                <column name="payment_due_date" type="DATE"/>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

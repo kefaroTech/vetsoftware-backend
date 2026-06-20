@@ -25,4 +25,17 @@ public class NumberAssigner {
                                 + document.getDocumentType() + "."));
         document.assignNumber(number.resolutionNumber(), number.prefix(), number.consecutive());
     }
+
+    /**
+     * Ante un rechazo, intenta recuperar el consecutivo del documento para evitar un hueco en la secuencia
+     * fiscal. Si la resolución pudo recuperarlo (era el último entregado), limpia la numeración del
+     * documento para que no queden dos filas con el mismo número. Si no era seguro, no toca nada (el hueco
+     * permanece). No-op si el documento nunca llegó a numerarse.
+     */
+    public void release(ElectronicDocument document) {
+        if (document.getConsecutive() == null) return;
+        boolean reclaimed = numberingPort.release(
+                document.getCompanyId(), document.getDocumentType(), document.getConsecutive());
+        if (reclaimed) document.releaseFiscalNumber();
+    }
 }

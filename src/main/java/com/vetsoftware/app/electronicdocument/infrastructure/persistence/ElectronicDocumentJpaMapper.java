@@ -63,7 +63,6 @@ public class ElectronicDocumentJpaMapper {
         entity.setReteIvaAmount(doc.getReteIvaAmount());
         entity.setReteIcaAmount(doc.getReteIcaAmount());
         entity.setPaymentForm(doc.getPaymentForm());
-        entity.setPaymentDueDate(doc.getPaymentDueDate());
         entity.setCreatedDate(doc.getCreatedDate());
         entity.setEnabled(doc.isEnabled());
 
@@ -136,7 +135,7 @@ public class ElectronicDocumentJpaMapper {
                 entity.getQrUrl(), entity.getXmlSigned(), entity.getPdfRepresentation(), entity.getDianStatus(),
                 entity.getDianValidationDate(), issuer, customer, entity.getLineExtensionAmount(),
                 entity.getTaxExclusiveAmount(), entity.getTaxInclusiveAmount(), entity.getPayableAmount(),
-                entity.getPaymentForm(), entity.getPaymentDueDate(), lines, payments, entity.getCreatedDate(),
+                entity.getPaymentForm(), lines, payments, entity.getCreatedDate(),
                 entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
                 entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
                 entity.getReteIcaAmount());

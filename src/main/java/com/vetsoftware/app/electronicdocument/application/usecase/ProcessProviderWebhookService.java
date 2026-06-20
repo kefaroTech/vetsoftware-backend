@@ -36,6 +36,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final TransmissionLogPort transmissionLog;
     private final BillingEntitlementQueryPort billingEntitlement;
     private final DocumentTransmitter documentTransmitter;
+    private final NumberAssigner numberAssigner;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
@@ -43,12 +44,14 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
                                          TransmissionLogPort transmissionLog,
                                          BillingEntitlementQueryPort billingEntitlement,
                                          DocumentTransmitter documentTransmitter,
+                                         NumberAssigner numberAssigner,
                                          List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
         this.billingEntitlement = billingEntitlement;
         this.documentTransmitter = documentTransmitter;
+        this.numberAssigner = numberAssigner;
         this.parsers = webhookParsers.stream()
                 .collect(Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
@@ -103,6 +106,9 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
             return; // outcome no terminal: nada que aplicar
         }
         document.markRejected();
+        // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia fiscal antes de
+        // persistir la numeración limpia.
+        numberAssigner.release(document);
         repository.updateDianResult(document);
         transmissionLog.record(document.getId(), config.provider(), 200, parsed.providerDocumentKey(),
                 TransmissionResult.REJECTED, parsed.rejectionReason());

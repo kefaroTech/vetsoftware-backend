@@ -10,7 +10,6 @@ import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
-import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -354,7 +353,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
     private List<Map<String, Object>> buildPayments(ElectronicDocument doc) {
         Map<String, Object> payment = new LinkedHashMap<>();
-        payment.put("payment_method_id", doc.getPaymentForm() == PaymentForm.CREDITO ? 2 : 1);
+        payment.put("payment_method_id", 1); // contado: el crédito no está soportado
         // Verificado contra GET /payment-means: efectivo=10, consignación=42, tarjeta crédito=48, débito=49
         // (== nuestros códigos DIAN de PaymentMeans), así que primaryPaymentMeansCode() ya da el means_payment_id.
         payment.put("means_payment_id", parseIntOr(doc.primaryPaymentMeansCode(), MEANS_PAYMENT_EFECTIVO));

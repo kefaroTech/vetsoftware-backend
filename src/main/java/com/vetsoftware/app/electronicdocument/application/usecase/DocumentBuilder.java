@@ -36,7 +36,7 @@ public class DocumentBuilder {
         ElectronicDocument document = ElectronicDocument.createPending(
                 snapshot.companyId(), snapshot.openAccountId(), documentType,
                 snapshot.issuer(), customer, snapshot.lines(), snapshot.payments(),
-                snapshot.paymentForm(), null,
+                snapshot.paymentForm(),
                 snapshot.customerWithholdingAgent(), snapshot.reteFuenteRate(),
                 snapshot.reteIvaRate(), snapshot.reteIcaRate());
         // El documento nace SIN numerar (PENDIENTE). La numeración fiscal (consecutivo) se asigna en la

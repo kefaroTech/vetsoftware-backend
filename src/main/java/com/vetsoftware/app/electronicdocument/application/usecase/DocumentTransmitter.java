@@ -33,6 +33,7 @@ public class DocumentTransmitter {
     private final CreditNoteReversalApplier reversalApplier;
     private final DeliverElectronicDocumentService deliverService;
     private final BillingEntitlementQueryPort billingEntitlement;
+    private final NumberAssigner numberAssigner;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
@@ -41,6 +42,7 @@ public class DocumentTransmitter {
                                CreditNoteReversalApplier reversalApplier,
                                DeliverElectronicDocumentService deliverService,
                                BillingEntitlementQueryPort billingEntitlement,
+                               NumberAssigner numberAssigner,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
@@ -48,6 +50,7 @@ public class DocumentTransmitter {
         this.reversalApplier = reversalApplier;
         this.deliverService = deliverService;
         this.billingEntitlement = billingEntitlement;
+        this.numberAssigner = numberAssigner;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
@@ -125,7 +128,12 @@ public class DocumentTransmitter {
             case VALIDADO -> document.markValidated(r.prefix(), r.consecutive(), r.cufe(), r.cude(), r.uuid(),
                     r.xmlSigned(), r.qrData(), r.qrUrl(), r.pdfRepresentation(),
                     r.validationDate() != null ? r.validationDate() : LocalDateTime.now());
-            case RECHAZADO -> document.markRejected();
+            case RECHAZADO -> {
+                document.markRejected();
+                // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia fiscal.
+                // El persist posterior (updateDianResult) guarda la numeración limpia.
+                numberAssigner.release(document);
+            }
             case CONTINGENCIA -> document.markContingency();
             case PENDIENTE -> { /* async: el webhook completará el estado */ }
         }

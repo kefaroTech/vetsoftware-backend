@@ -1,9 +1,8 @@
 package com.vetsoftware.app.electronicdocument.domain;
 
-/** Forma de pago DIAN: 1 contado, 2 credito. */
+/** Forma de pago DIAN: 1 contado. El crédito (2) no está soportado: toda venta es de contado. */
 public enum PaymentForm {
-    CONTADO("1"),
-    CREDITO("2");
+    CONTADO("1");
 
     private final String dianCode;
 

@@ -63,7 +63,6 @@ public class ElectronicDocument {
     private final BigDecimal reteIcaAmount;
 
     private final PaymentForm paymentForm;
-    private final LocalDate paymentDueDate;
 
     private final List<ElectronicDocumentLine> lines;
     private final List<ElectronicDocumentPayment> payments;
@@ -86,7 +85,7 @@ public class ElectronicDocument {
                               LocalDateTime dianValidationDate, IssuerSnapshot issuer, CustomerSnapshot customer,
                               BigDecimal lineExtensionAmount, BigDecimal taxExclusiveAmount,
                               BigDecimal taxInclusiveAmount, BigDecimal payableAmount, PaymentForm paymentForm,
-                              LocalDate paymentDueDate, List<ElectronicDocumentLine> lines,
+                              List<ElectronicDocumentLine> lines,
                               List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
                               DocumentReference reference, String noteReasonCode, String noteReasonText,
                               boolean reversed, BigDecimal reteFuenteAmount, BigDecimal reteIvaAmount,
@@ -119,7 +118,6 @@ public class ElectronicDocument {
         this.taxInclusiveAmount = taxInclusiveAmount;
         this.payableAmount = payableAmount;
         this.paymentForm = paymentForm;
-        this.paymentDueDate = paymentDueDate;
         this.lines = List.copyOf(lines);
         this.payments = payments == null ? List.of() : List.copyOf(payments);
         this.reference = reference;
@@ -141,7 +139,7 @@ public class ElectronicDocument {
                                                    ElectronicDocumentType documentType, IssuerSnapshot issuer,
                                                    CustomerSnapshot customer, List<ElectronicDocumentLine> lines,
                                                    List<ElectronicDocumentPayment> payments,
-                                                   PaymentForm paymentForm, LocalDate paymentDueDate,
+                                                   PaymentForm paymentForm,
                                                    boolean withholdingAgent, BigDecimal reteFuenteRate,
                                                    BigDecimal reteIvaRate, BigDecimal reteIcaRate) {
         if (lines == null || lines.isEmpty())
@@ -151,9 +149,9 @@ public class ElectronicDocument {
         BigDecimal base = sum(lines, ElectronicDocumentLine::getLineExtensionAmount);
         BigDecimal totalWithTax = sum(lines, ElectronicDocumentLine::getTotalAmount);
         BigDecimal iva = totalWithTax.subtract(base);
-        // Cuadre de caja: en CONTADO la suma de pagos debe igualar el total a pagar. No aplica a CREDITO
-        // (puede ser parcial/diferido). Evita persistir un documento con pagos que no cierran el total.
-        if (paymentForm == PaymentForm.CONTADO && payments != null && !payments.isEmpty()) {
+        // Cuadre de caja: toda venta es de contado, así que la suma de pagos debe igualar el total a pagar.
+        // Evita persistir un documento con pagos que no cierran el total.
+        if (payments != null && !payments.isEmpty()) {
             BigDecimal paid = payments.stream().map(ElectronicDocumentPayment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
             if (paid.compareTo(totalWithTax) != 0) {
@@ -168,7 +166,7 @@ public class ElectronicDocument {
                 null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 issuer, customer, base, base, totalWithTax, totalWithTax,
-                paymentForm, paymentDueDate, lines, payments, LocalDateTime.now(), true,
+                paymentForm, lines, payments, LocalDateTime.now(), true,
                 null, null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca());
     }
 
@@ -209,7 +207,7 @@ public class ElectronicDocument {
                 null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 original.issuer, original.customer, original.lineExtensionAmount, original.taxExclusiveAmount,
-                original.taxInclusiveAmount, original.payableAmount, original.paymentForm, original.paymentDueDate,
+                original.taxInclusiveAmount, original.payableAmount, original.paymentForm,
                 clonedLines, clonedPayments, LocalDateTime.now(), true,
                 ref, reasonCode, reasonText, false,
                 original.reteFuenteAmount, original.reteIvaAmount, original.reteIcaAmount);
@@ -333,6 +331,20 @@ public class ElectronicDocument {
         this.dianStatus = DianStatus.RECHAZADO;
     }
 
+    /**
+     * Libera la numeración fiscal de un documento RECHAZADO (contrapartida de {@link #assignNumber}) para
+     * que el consecutivo pueda reutilizarse y no quede un hueco en la secuencia. El intento (número enviado
+     * + motivo) queda en la bitácora de transmisión, no en el documento. Solo aplicable tras marcar
+     * RECHAZADO, y solo se invoca cuando la resolución pudo recuperar el consecutivo.
+     */
+    public void releaseFiscalNumber() {
+        if (dianStatus != DianStatus.RECHAZADO)
+            throw new IllegalStateException("solo se libera la numeración de un documento RECHAZADO");
+        this.prefix = null;
+        this.consecutive = null;
+        this.resolutionNumber = null;
+    }
+
     /** Proveedor/DIAN indisponible: queda en contingencia para retransmitir dentro del plazo. */
     public void markContingency() {
         ensureNotTerminal();
@@ -392,7 +404,6 @@ public class ElectronicDocument {
         return payableAmount.subtract(reteFuenteAmount).subtract(reteIvaAmount).subtract(reteIcaAmount);
     }
     public PaymentForm getPaymentForm() { return paymentForm; }
-    public LocalDate getPaymentDueDate() { return paymentDueDate; }
     public List<ElectronicDocumentLine> getLines() { return lines; }
     public List<ElectronicDocumentPayment> getPayments() { return payments; }
     public DocumentReference getReference() { return reference; }

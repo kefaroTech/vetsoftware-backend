@@ -141,5 +141,6 @@
     <include file="db/changelog/migrations/135_idempotency_key_debt_open_accounts.xml"/>
     <include file="db/changelog/migrations/136_add_issuer_responsibilities_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/137_drop_environment_from_dian_provider_configs.xml"/>
+    <include file="db/changelog/migrations/138_drop_payment_due_date_from_electronic_documents.xml"/>
 
 </databaseChangeLog>

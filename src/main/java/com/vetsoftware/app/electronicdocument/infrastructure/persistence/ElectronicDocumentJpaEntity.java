@@ -128,9 +128,6 @@ public class ElectronicDocumentJpaEntity {
     @Column(name = "payment_form", nullable = false, length = 20)
     private PaymentForm paymentForm;
 
-    @Column(name = "payment_due_date")
-    private LocalDate paymentDueDate;
-
     // Set (no List) para permitir fetch conjunto via @EntityGraph sin MultipleBagFetchException.
     // El orden de lineas se reconstruye por lineNumber en el mapper.
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -246,8 +243,6 @@ public class ElectronicDocumentJpaEntity {
     public void setReteIcaAmount(BigDecimal v) { this.reteIcaAmount = v; }
     public PaymentForm getPaymentForm() { return paymentForm; }
     public void setPaymentForm(PaymentForm paymentForm) { this.paymentForm = paymentForm; }
-    public LocalDate getPaymentDueDate() { return paymentDueDate; }
-    public void setPaymentDueDate(LocalDate paymentDueDate) { this.paymentDueDate = paymentDueDate; }
     public Set<ElectronicDocumentLineJpaEntity> getLines() { return lines; }
     public void setLines(Set<ElectronicDocumentLineJpaEntity> lines) { this.lines = lines; }
     public Set<ElectronicDocumentPaymentJpaEntity> getPayments() { return payments; }

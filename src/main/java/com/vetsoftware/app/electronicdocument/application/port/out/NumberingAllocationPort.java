@@ -13,5 +13,13 @@ public interface NumberingAllocationPort {
     /** Devuelve el número fiscal asignado, o vacío si la empresa no tiene resolución activa para el tipo. */
     Optional<AllocatedNumber> allocate(Long companyId, ElectronicDocumentType documentType);
 
+    /**
+     * Libera un consecutivo asignado ante un rechazo, para evitar huecos en la secuencia fiscal. Solo lo
+     * recupera (decrementa {@code current_number} de vuelta al {@code consecutive}) si éste fue el último
+     * número entregado y nadie tomó el siguiente — bajo el mismo bloqueo pesimista de {@code allocate}.
+     * Devuelve {@code true} si lo recuperó; {@code false} si ya no es seguro (el hueco permanece).
+     */
+    boolean release(Long companyId, ElectronicDocumentType documentType, Long consecutive);
+
     record AllocatedNumber(String resolutionNumber, String prefix, Long consecutive) {}
 }
