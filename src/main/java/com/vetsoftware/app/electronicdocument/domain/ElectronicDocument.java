@@ -1,7 +1,7 @@
 package com.vetsoftware.app.electronicdocument.domain;
 
+import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,7 +17,6 @@ import java.util.List;
  * No expone update ni soft-delete: la unica correccion valida es una nota credito/debito (F5).
  */
 public class ElectronicDocument {
-    private static final int MONEY_SCALE = 2;
     private static final ZoneId COLOMBIA = ZoneId.of("America/Bogota");
     private static final String COLOMBIA_OFFSET = "-05:00";
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -152,8 +151,8 @@ public class ElectronicDocument {
         // Cuadre de caja: toda venta es de contado, así que la suma de pagos debe igualar el total a pagar.
         // Evita persistir un documento con pagos que no cierran el total.
         if (payments != null && !payments.isEmpty()) {
-            BigDecimal paid = payments.stream().map(ElectronicDocumentPayment::getAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            BigDecimal paid = Money.scaled(payments.stream().map(ElectronicDocumentPayment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
             if (paid.compareTo(totalWithTax) != 0) {
                 throw new IllegalArgumentException(
                         "La suma de pagos (" + paid + ") no coincide con el total del documento (" + totalWithTax + ").");
@@ -215,8 +214,7 @@ public class ElectronicDocument {
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
                                   java.util.function.Function<ElectronicDocumentLine, BigDecimal> field) {
-        return lines.stream().map(field).reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        return Money.scaled(lines.stream().map(field).reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
     private static void validate(Long companyId, ElectronicDocumentType documentType, LocalDate issueDate,

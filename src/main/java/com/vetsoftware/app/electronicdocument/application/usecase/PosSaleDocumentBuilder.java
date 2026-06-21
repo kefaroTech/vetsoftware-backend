@@ -18,8 +18,8 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
 import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
+import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class PosSaleDocumentBuilder {
     private static final String UNIT_MEASURE = "94"; // UN/ECE: unidad
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     /** Tolerancia (1 peso) al validar el unitPrice del cliente contra el precio canonico: absorbe el redondeo a peso entero (COP sin centavos). */
     private static final BigDecimal PRICE_TOLERANCE = BigDecimal.ONE;
 
@@ -133,11 +132,9 @@ public class PosSaleDocumentBuilder {
         }
 
         // El unitPrice del POS viene con IVA incluido (post-promo). Si la linea tributa, se extrae la base.
-        BigDecimal gross = l.unitPrice().multiply(l.quantity()).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal gross = Money.multiply(l.unitPrice(), l.quantity());
         boolean taxed = scheme != null && rate != null && rate.signum() > 0;
-        BigDecimal base = taxed
-                ? gross.divide(BigDecimal.ONE.add(rate.divide(HUNDRED, 6, RoundingMode.HALF_UP)), 2, RoundingMode.HALF_UP)
-                : gross;
+        BigDecimal base = taxed ? Money.extractBase(gross, rate) : gross;
         BigDecimal taxAmount = gross.subtract(base);
         return new ElectronicDocumentLine(null, lineNumber, description, l.quantity(), UNIT_MEASURE,
                 l.unitPrice(), base, category, taxed ? scheme : null, taxed ? rate : null, taxAmount, gross);
