@@ -1,13 +1,10 @@
 package com.vetsoftware.app.generalchargeopenaccount.domain;
 
+import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class GeneralChargeOpenAccount {
-    private static final int MONEY_SCALE = 2;
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-
     private Long id;
     private String name;
     private BigDecimal unitAmount;
@@ -32,6 +29,8 @@ public class GeneralChargeOpenAccount {
     private EmployeeRef voidedBy;
     private LocalDateTime voidedAt;
     private String voidReason;
+    /** Idempotency key (UUID del cliente): deduplica reintentos del mismo cargo. Nullable (legacy/sin id). */
+    private final String clientRequestId;
 
     public GeneralChargeOpenAccount(Long id, String name, BigDecimal unitAmount, BigDecimal quantity,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
@@ -40,7 +39,7 @@ public class GeneralChargeOpenAccount {
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
-                                    String voidReason) {
+                                    String voidReason, String clientRequestId) {
         validate(name, unitAmount, quantity, openAccount);
         this.id = id;
         this.name = name;
@@ -62,20 +61,21 @@ public class GeneralChargeOpenAccount {
         this.voidedBy = voidedBy;
         this.voidedAt = voidedAt;
         this.voidReason = voidReason;
+        this.clientRequestId = clientRequestId;
     }
 
     public static GeneralChargeOpenAccount create(String name, BigDecimal unitAmount, BigDecimal quantity,
                                                   TaxRef tax, OpenAccountRef openAccount,
-                                                  EmployeeRef createdBy) {
+                                                  EmployeeRef createdBy, String clientRequestId) {
         // hasTax es derivado: aplica impuesto si y solo si tiene un impuesto asignado.
         boolean hasTax = tax != null;
         BigDecimal pct = snapshotTaxPercentage(tax, hasTax);
-        BigDecimal total = grossTotal(unitAmount, quantity);
-        BigDecimal base = extractBase(total, pct);
+        BigDecimal total = Money.multiply(unitAmount, quantity);
+        BigDecimal base = Money.extractBase(total, pct);
         return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, pct,
                 snapshotTaxName(tax, hasTax), snapshotTaxScheme(tax, hasTax), base, total.subtract(base), total,
                 openAccount, createdBy, LocalDateTime.now(), true,
-                false, null, null, null);
+                false, null, null, null, clientRequestId);
     }
 
     /**
@@ -106,8 +106,8 @@ public class GeneralChargeOpenAccount {
         this.taxPercentage = snapshotTaxPercentage(tax, hasTax);
         this.taxName = snapshotTaxName(tax, hasTax);
         this.taxScheme = snapshotTaxScheme(tax, hasTax);
-        this.totalAmount = grossTotal(unitAmount, quantity);
-        this.baseAmount = extractBase(this.totalAmount, this.taxPercentage);
+        this.totalAmount = Money.multiply(unitAmount, quantity);
+        this.baseAmount = Money.extractBase(this.totalAmount, this.taxPercentage);
         this.taxAmount = this.totalAmount.subtract(this.baseAmount);
         this.openAccount = openAccount;
     }
@@ -124,18 +124,6 @@ public class GeneralChargeOpenAccount {
     /** Congela el esquema tributario (IVA/INC) del impuesto asignado; null si no aplica impuesto. */
     private static String snapshotTaxScheme(TaxRef tax, boolean hasTax) {
         return hasTax && tax != null ? tax.scheme() : null;
-    }
-
-    /** Total bruto (IVA incluido) = unitAmount * quantity. */
-    private static BigDecimal grossTotal(BigDecimal unitAmount, BigDecimal quantity) {
-        return unitAmount.multiply(quantity).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-    }
-
-    /** Extrae la base gravable de un total CON IVA incluido: base = total / (1 + tasa/100). */
-    private static BigDecimal extractBase(BigDecimal total, BigDecimal percentage) {
-        if (percentage == null || percentage.signum() == 0) return total;
-        BigDecimal factor = BigDecimal.ONE.add(percentage.divide(HUNDRED, 6, RoundingMode.HALF_UP));
-        return total.divide(factor, MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
     /** Monto efectivo que el cargo aporta al total de la cuenta (= total_amount persistido). */
@@ -174,4 +162,5 @@ public class GeneralChargeOpenAccount {
     public EmployeeRef getVoidedBy() { return voidedBy; }
     public LocalDateTime getVoidedAt() { return voidedAt; }
     public String getVoidReason() { return voidReason; }
+    public String getClientRequestId() { return clientRequestId; }
 }

@@ -65,7 +65,7 @@ public class GeneralChargeOpenAccountController {
             new CreateGeneralChargeOpenAccountCommand(
                 request.name(), request.unitAmount(), request.quantity(), request.taxId(),
                 request.openAccountId(), authz.currentCompanyId(),
-                authz.currentEmployeeId())));
+                authz.currentEmployeeId(), request.clientRequestId(), request.expectedVersion())));
     }
 
     @GetMapping
@@ -90,7 +90,7 @@ public class GeneralChargeOpenAccountController {
         return toResponse(updateUseCase.execute(
             new UpdateGeneralChargeOpenAccountCommand(
                 id, request.name(), request.unitAmount(), request.quantity(), request.taxId(),
-                request.openAccountId(), authz.currentCompanyId())));
+                request.openAccountId(), authz.currentCompanyId(), request.expectedVersion())));
     }
 
     @PatchMapping("/{id}/enable")
@@ -103,7 +103,8 @@ public class GeneralChargeOpenAccountController {
             @PathVariable Long id, @Valid @RequestBody VoidGeneralChargeOpenAccountRequest request) {
         return toResponse(voidUseCase.execute(
             new VoidGeneralChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
+                request.expectedVersion())));
     }
 
     private GeneralChargeOpenAccountResponse toResponse(GeneralChargeOpenAccountDto dto) {

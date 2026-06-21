@@ -70,6 +70,11 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
+    public Optional<ProductChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId) {
+        return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<ProductChargeOpenAccount> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

@@ -9,6 +9,8 @@ public interface GeneralChargeOpenAccountRepository {
     Optional<GeneralChargeOpenAccount> findById(Long id);
     /** Lectura scoped a la empresa (vía la cuenta): evita IDOR cross-tenant al consultar un cargo por id directo. */
     Optional<GeneralChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId);
+    /** Cargo ya registrado con esta idempotency key en la cuenta (para deduplicar reintentos). */
+    Optional<GeneralChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId);
     List<GeneralChargeOpenAccount> findAll();
     List<GeneralChargeOpenAccount> findByOpenAccountId(Long openAccountId);
     void delete(Long id);

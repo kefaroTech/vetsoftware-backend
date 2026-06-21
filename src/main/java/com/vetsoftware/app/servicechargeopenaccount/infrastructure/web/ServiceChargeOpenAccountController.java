@@ -66,7 +66,8 @@ public class ServiceChargeOpenAccountController {
         return toResponse(createUseCase.execute(
             new CreateServiceChargeOpenAccountCommand(
                 request.animalId(), request.serviceId(), request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId())));
+                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
+                request.expectedVersion())));
     }
 
     @GetMapping
@@ -91,7 +92,7 @@ public class ServiceChargeOpenAccountController {
         return toResponse(updateUseCase.execute(
             new UpdateServiceChargeOpenAccountCommand(
                 id, request.animalId(), request.serviceId(), request.openAccountId(),
-                authz.currentCompanyId())));
+                authz.currentCompanyId(), request.expectedVersion())));
     }
 
     @PatchMapping("/{id}/enable")
@@ -104,7 +105,8 @@ public class ServiceChargeOpenAccountController {
             @PathVariable Long id, @Valid @RequestBody VoidServiceChargeOpenAccountRequest request) {
         return toResponse(voidUseCase.execute(
             new VoidServiceChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
+                request.expectedVersion())));
     }
 
     private ServiceChargeOpenAccountResponse toResponse(ServiceChargeOpenAccountDto dto) {

@@ -83,6 +83,9 @@ public class ProductChargeOpenAccountJpaEntity {
     @Column(name = "void_reason", length = 255)
     private String voidReason;
 
+    @Column(name = "client_request_id", length = 36)
+    private String clientRequestId;
+
     protected ProductChargeOpenAccountJpaEntity() {}
 
     public Long getId() { return id; }
@@ -125,4 +128,6 @@ public class ProductChargeOpenAccountJpaEntity {
     public void setVoidedAt(LocalDateTime voidedAt) { this.voidedAt = voidedAt; }
     public String getVoidReason() { return voidReason; }
     public void setVoidReason(String voidReason) { this.voidReason = voidReason; }
+    public String getClientRequestId() { return clientRequestId; }
+    public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
 }

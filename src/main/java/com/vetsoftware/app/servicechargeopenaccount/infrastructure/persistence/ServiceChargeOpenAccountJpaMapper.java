@@ -44,6 +44,7 @@ public class ServiceChargeOpenAccountJpaMapper {
         entity.setVoidedBy(voidedBy);
         entity.setVoidedAt(charge.getVoidedAt());
         entity.setVoidReason(charge.getVoidReason());
+        entity.setClientRequestId(charge.getClientRequestId());
         return entity;
     }
 
@@ -88,6 +89,7 @@ public class ServiceChargeOpenAccountJpaMapper {
             entity.isVoided(),
             voidedByRef,
             entity.getVoidedAt(),
-            entity.getVoidReason());
+            entity.getVoidReason(),
+            entity.getClientRequestId());
     }
 }

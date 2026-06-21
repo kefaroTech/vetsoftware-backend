@@ -1,13 +1,10 @@
 package com.vetsoftware.app.servicechargeopenaccount.domain;
 
+import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class ServiceChargeOpenAccount {
-    private static final int MONEY_SCALE = 2;
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-
     private Long id;
     private AnimalRef animal;
     private ServiceRef service;
@@ -32,6 +29,8 @@ public class ServiceChargeOpenAccount {
     private EmployeeRef voidedBy;
     private LocalDateTime voidedAt;
     private String voidReason;
+    /** Idempotency key (UUID del cliente): deduplica reintentos del mismo cargo. Nullable (legacy/sin id). */
+    private final String clientRequestId;
 
     public ServiceChargeOpenAccount(Long id, AnimalRef animal, ServiceRef service, BigDecimal unitPrice,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
@@ -40,7 +39,7 @@ public class ServiceChargeOpenAccount {
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
-                                    String voidReason) {
+                                    String voidReason, String clientRequestId) {
         validate(animal, service, openAccount, unitPrice);
         this.id = id;
         this.animal = animal;
@@ -62,6 +61,7 @@ public class ServiceChargeOpenAccount {
         this.voidedBy = voidedBy;
         this.voidedAt = voidedAt;
         this.voidReason = voidReason;
+        this.clientRequestId = clientRequestId;
     }
 
     /** Compat (cargo sin impuesto): base = total = unitPrice, tax = 0. */
@@ -71,8 +71,8 @@ public class ServiceChargeOpenAccount {
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason) {
         this(id, animal, service, unitPrice, null, false, null, null, null,
-            scaled(unitPrice), zero(), scaled(unitPrice),
-            openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason);
+            Money.scaled(unitPrice), Money.zero(), Money.scaled(unitPrice),
+            openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason, null);
     }
 
     /** Compat (cargo activo sin anular ni impuesto). */
@@ -84,7 +84,8 @@ public class ServiceChargeOpenAccount {
     }
 
     public static ServiceChargeOpenAccount create(AnimalRef animal, ServiceRef service,
-                                                  OpenAccountRef openAccount, EmployeeRef createdBy) {
+                                                  OpenAccountRef openAccount, EmployeeRef createdBy,
+                                                  String clientRequestId) {
         // Congela el precio vigente del servicio: el total de la cuenta no debe cambiar
         // si el catálogo se edita después.
         BigDecimal unitPrice = service == null || service.price() == null
@@ -95,11 +96,12 @@ public class ServiceChargeOpenAccount {
         BigDecimal percentage = hasTax ? tax.percentage() : null;
         String taxName = hasTax ? tax.name() : null;
         String taxScheme = hasTax ? tax.scheme() : null;
-        BigDecimal total = unitPrice.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal base = extractBase(total, percentage);
+        BigDecimal total = Money.scaled(unitPrice);
+        BigDecimal base = Money.extractBase(total, percentage);
         BigDecimal taxAmount = total.subtract(base);
         return new ServiceChargeOpenAccount(null, animal, service, unitPrice, tax, hasTax, percentage, taxName,
-            taxScheme, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null);
+            taxScheme, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null,
+            clientRequestId);
     }
 
     public void update(AnimalRef animal, ServiceRef service, OpenAccountRef openAccount) {
@@ -122,21 +124,6 @@ public class ServiceChargeOpenAccount {
         this.voidedBy = voidedBy;
         this.voidedAt = LocalDateTime.now();
         this.voidReason = reason;
-    }
-
-    /** Extrae la base gravable de un precio CON IVA incluido: base = total / (1 + tasa/100). */
-    private static BigDecimal extractBase(BigDecimal total, BigDecimal percentage) {
-        if (percentage == null || percentage.signum() == 0) return total;
-        BigDecimal factor = BigDecimal.ONE.add(percentage.divide(HUNDRED, 6, RoundingMode.HALF_UP));
-        return total.divide(factor, MONEY_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal scaled(BigDecimal value) {
-        return value == null ? null : value.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zero() {
-        return BigDecimal.ZERO.setScale(MONEY_SCALE);
     }
 
     private static void validate(AnimalRef animal, ServiceRef service, OpenAccountRef openAccount,
@@ -168,4 +155,5 @@ public class ServiceChargeOpenAccount {
     public EmployeeRef getVoidedBy() { return voidedBy; }
     public LocalDateTime getVoidedAt() { return voidedAt; }
     public String getVoidReason() { return voidReason; }
+    public String getClientRequestId() { return clientRequestId; }
 }

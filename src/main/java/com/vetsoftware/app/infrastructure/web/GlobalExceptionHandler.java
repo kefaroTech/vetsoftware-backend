@@ -66,6 +66,7 @@ import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundExcepti
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransitionException;
+import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
@@ -290,6 +291,15 @@ public class GlobalExceptionHandler {
             "El registro fue modificado por otra operación. Reintenta.");
     }
 
+    // Detección temprana del mismo conflicto: la versión que envió el front (expectedVersion) ya no es
+    // la actual de la cuenta. Mismo código que el optimistic lock para que el front lo trate igual.
+    @ExceptionHandler(OpenAccountVersionConflictException.class)
+    public ProblemDetail handleOpenAccountVersionConflict(OpenAccountVersionConflictException ex) {
+        log.warn("Open account version conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+            "La cuenta fue modificada por otra operación. Reintenta.");
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ProblemDetail handleUnauthorized(InvalidCredentialsException ex, HttpServletRequest request) {
         log.warn("Unauthorized: {}", ex.getMessage());
@@ -358,6 +368,15 @@ public class GlobalExceptionHandler {
         if (cause != null && cause.contains("uq_debt_open_accounts_request")) {
             return problem(HttpStatus.CONFLICT, "DUPLICATE_PAYMENT_REQUEST",
                 "El abono ya fue registrado (solicitud duplicada).");
+        }
+        // Carrera en la idempotencia de cargos (constraints de las migraciones 139/140/141): doble-submit
+        // concurrente con la misma clave; la BD rechaza el 2º. El cliente reintenta y el check de idempotencia
+        // devuelve el cargo ya creado.
+        if (cause != null && (cause.contains("uq_product_charge_open_accounts_request")
+                || cause.contains("uq_service_charge_open_accounts_request")
+                || cause.contains("uq_general_charge_open_accounts_request"))) {
+            return problem(HttpStatus.CONFLICT, "DUPLICATE_CHARGE_REQUEST",
+                "El cargo ya fue registrado (solicitud duplicada).");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

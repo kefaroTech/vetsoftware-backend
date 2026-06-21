@@ -9,5 +9,8 @@ public record CreateGeneralChargeOpenAccountCommand(
         Long taxId,
         Long openAccountId,
         Long companyId,
-        Long createdById
+        Long createdById,
+        String clientRequestId,
+        // Versión esperada de la cuenta (opt-in) para detección temprana de conflicto. null = sin chequeo.
+        Long expectedVersion
 ) {}

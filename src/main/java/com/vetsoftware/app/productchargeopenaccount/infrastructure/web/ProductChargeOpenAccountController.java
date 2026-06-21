@@ -66,7 +66,8 @@ public class ProductChargeOpenAccountController {
         return toResponse(createUseCase.execute(
             new CreateProductChargeOpenAccountCommand(
                 request.animalId(), request.productId(), request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId())));
+                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
+                request.expectedVersion())));
     }
 
     @GetMapping
@@ -91,7 +92,7 @@ public class ProductChargeOpenAccountController {
         return toResponse(updateUseCase.execute(
             new UpdateProductChargeOpenAccountCommand(
                 id, request.animalId(), request.productId(), request.openAccountId(),
-                authz.currentCompanyId())));
+                authz.currentCompanyId(), request.expectedVersion())));
     }
 
     @PatchMapping("/{id}/enable")
@@ -104,7 +105,8 @@ public class ProductChargeOpenAccountController {
             @PathVariable Long id, @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
         return toResponse(voidUseCase.execute(
             new VoidProductChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason())));
+                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
+                request.expectedVersion())));
     }
 
     private ProductChargeOpenAccountResponse toResponse(ProductChargeOpenAccountDto dto) {
