@@ -101,34 +101,42 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
             String description = c.getProduct() == null ? "Producto" : c.getProduct().getName();
             lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
-                    c.getTaxScheme()));
+                    c.getTaxScheme(), c.getTaxTreatment()));
         }
         for (var c : serviceChargeRepository.findByOpenAccountId(openAccountId)) {
             if (c.isVoided()) continue;
             String description = c.getService() == null ? "Servicio" : c.getService().getName();
             lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
-                    c.getTaxScheme()));
+                    c.getTaxScheme(), c.getTaxTreatment()));
         }
         for (var c : generalChargeRepository.findByOpenAccountId(openAccountId)) {
             if (c.isVoided()) continue;
+            // Cargo general (sin catálogo): no tiene tratamiento congelado → null cae a la heurística
+            // (EXCLUIDO si no tributa; GRAVADO/INC si lleva impuesto). No existe "general exento".
             lines.add(line(++n, c.getName(), c.getQuantity(), c.getUnitAmount(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
-                    c.getTaxScheme()));
+                    c.getTaxScheme(), null));
         }
         return lines;
     }
 
     /**
-     * Deriva la clasificacion tributaria de la linea desde el impuesto congelado del cargo. F2: los cargos
-     * solo congelaron has_tax + tasa (no taxTreatment/taxScheme, que no existian al crearse), asi que
-     * gravado -> (GRAVADO, IVA); sin impuesto -> (EXCLUIDO, null). El INC fino llegara cuando los cargos
-     * congelen su esquema (mejora futura).
+     * Deriva la clasificacion tributaria de la linea desde lo congelado en el cargo (taxTreatment + esquema +
+     * tasa). EXENTO -> (EXENTO, IVA, 0%): la DIAN lo distingue de EXCLUIDO (sin esquema). GRAVADO/INC -> su
+     * esquema y tasa. Los cargos previos a congelar el tratamiento (frozenTreatment null) caen a la heuristica:
+     * gravado -> (GRAVADO/INC, esquema); sin impuesto -> (EXCLUIDO, null).
      */
     private ElectronicDocumentLine line(int lineNumber, String description, BigDecimal quantity,
                                         BigDecimal unitPrice, BigDecimal base, boolean hasTax,
                                         BigDecimal rate, BigDecimal taxAmount, BigDecimal total,
-                                        String frozenScheme) {
+                                        String frozenScheme, String frozenTreatment) {
+        // EXENTO = gravado a tarifa 0%: lleva esquema IVA con tasa 0 (la base ya es el total y el IVA 0). Es lo
+        // que permite al XML diferenciarlo de un excluido (que no lleva esquema).
+        if ("EXENTO".equals(frozenTreatment)) {
+            return new ElectronicDocumentLine(null, lineNumber, description, quantity, UNIT_MEASURE,
+                    unitPrice, base, TaxCategory.EXENTO, TaxScheme.IVA, BigDecimal.ZERO, taxAmount, total);
+        }
         boolean taxed = hasTax && rate != null && rate.signum() > 0;
         // El esquema (IVA/INC) se congeló en el cargo; si falta (cargos previos) cae a IVA, que era el
         // unico esquema que el cierre soportaba. INC tributa con su propia categoria/esquema, como el POS.

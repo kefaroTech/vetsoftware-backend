@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Tratamiento tributario congelado del cargo (GRAVADO/EXENTO/EXCLUIDO/INC), heredado del catálogo al
+         crearlo. Antes el cargo solo congelaba has_tax + tasa + esquema, por lo que un servicio/producto EXENTO
+         quedaba indistinguible de un EXCLUIDO y el documento del cierre no podía emitir el IVA al 0% que la DIAN
+         exige para exentos. Nullable: los cargos previos no lo tienen y caen a la heurística del query port.
+         El backfill deja explícito el tratamiento equivalente al comportamiento actual (no recupera EXENTO,
+         que se perdió al congelarse como sin-impuesto; solo aplica a cargos nuevos). -->
+    <changeSet id="145_add_tax_treatment_to_charges" author="orlando">
+        <addColumn tableName="service_charge_open_accounts">
+            <column name="tax_treatment" type="VARCHAR(20)"/>
+        </addColumn>
+        <addColumn tableName="product_charge_open_accounts">
+            <column name="tax_treatment" type="VARCHAR(20)"/>
+        </addColumn>
+
+        <!-- Backfill = misma heurística que JpaSaleSnapshotQueryPort.line para datos sin tratamiento. -->
+        <update tableName="service_charge_open_accounts">
+            <column name="tax_treatment" value="INC"/>
+            <where>has_tax = TRUE AND tax_scheme = 'INC'</where>
+        </update>
+        <update tableName="service_charge_open_accounts">
+            <column name="tax_treatment" value="GRAVADO"/>
+            <where>has_tax = TRUE AND (tax_scheme IS NULL OR tax_scheme = 'IVA')</where>
+        </update>
+        <update tableName="service_charge_open_accounts">
+            <column name="tax_treatment" value="EXCLUIDO"/>
+            <where>has_tax = FALSE</where>
+        </update>
+
+        <update tableName="product_charge_open_accounts">
+            <column name="tax_treatment" value="INC"/>
+            <where>has_tax = TRUE AND tax_scheme = 'INC'</where>
+        </update>
+        <update tableName="product_charge_open_accounts">
+            <column name="tax_treatment" value="GRAVADO"/>
+            <where>has_tax = TRUE AND (tax_scheme IS NULL OR tax_scheme = 'IVA')</where>
+        </update>
+        <update tableName="product_charge_open_accounts">
+            <column name="tax_treatment" value="EXCLUIDO"/>
+            <where>has_tax = FALSE</where>
+        </update>
+
+        <rollback>
+            <dropColumn tableName="service_charge_open_accounts" columnName="tax_treatment"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="tax_treatment"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

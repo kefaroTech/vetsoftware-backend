@@ -17,6 +17,9 @@ public class ProductChargeOpenAccount {
     private final String taxName;
     /** Esquema tributario congelado del catálogo: "IVA" o "INC"; null si el producto no aplica impuesto. */
     private final String taxScheme;
+    /** Tratamiento tributario congelado del catálogo (GRAVADO/EXENTO/EXCLUIDO/INC). Distingue EXENTO (IVA 0%)
+     *  de EXCLUIDO (sin esquema) al emitir el documento del cierre. Null en cargos previos a esta columna. */
+    private final String taxTreatment;
     /** Desglose tributario persistido: el precio incluye IVA → base = total / (1 + tasa), tax = total - base. */
     private final BigDecimal baseAmount;
     private final BigDecimal taxAmount;
@@ -34,7 +37,7 @@ public class ProductChargeOpenAccount {
 
     public ProductChargeOpenAccount(Long id, AnimalRef animal, ProductRef product, BigDecimal unitPrice,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
-                                    String taxScheme, BigDecimal baseAmount, BigDecimal taxAmount,
+                                    String taxScheme, String taxTreatment, BigDecimal baseAmount, BigDecimal taxAmount,
                                     BigDecimal totalAmount,
                                     OpenAccountRef openAccount, EmployeeRef createdBy,
                                     LocalDateTime createdDate, boolean enabled,
@@ -50,6 +53,7 @@ public class ProductChargeOpenAccount {
         this.taxPercentage = taxPercentage;
         this.taxName = taxName;
         this.taxScheme = taxScheme;
+        this.taxTreatment = taxTreatment;
         this.baseAmount = baseAmount;
         this.taxAmount = taxAmount;
         this.totalAmount = totalAmount;
@@ -70,7 +74,7 @@ public class ProductChargeOpenAccount {
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason) {
-        this(id, animal, product, unitPrice, null, false, null, null, null,
+        this(id, animal, product, unitPrice, null, false, null, null, null, null,
             Money.scaled(unitPrice), Money.zero(), Money.scaled(unitPrice),
             openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason, null);
     }
@@ -95,12 +99,15 @@ public class ProductChargeOpenAccount {
         BigDecimal percentage = hasTax ? tax.percentage() : null;
         String taxName = hasTax ? tax.name() : null;
         String taxScheme = hasTax ? tax.scheme() : null;
+        // El tratamiento (incl. EXENTO/EXCLUIDO) se congela aunque no haya impuesto monetario, para que el
+        // documento del cierre pueda distinguir exento (IVA 0%) de excluido (sin esquema).
+        String taxTreatment = product == null ? null : product.taxTreatment();
         BigDecimal total = Money.scaled(unitPrice);
         BigDecimal base = Money.extractBase(total, percentage);
         BigDecimal taxAmount = total.subtract(base);
         return new ProductChargeOpenAccount(null, animal, product, unitPrice, tax, hasTax, percentage, taxName,
-            taxScheme, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true, false, null, null, null,
-            clientRequestId);
+            taxScheme, taxTreatment, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true,
+            false, null, null, null, clientRequestId);
     }
 
     public void update(AnimalRef animal, ProductRef product, OpenAccountRef openAccount) {
@@ -143,6 +150,7 @@ public class ProductChargeOpenAccount {
     public BigDecimal getTaxPercentage() { return taxPercentage; }
     public String getTaxName() { return taxName; }
     public String getTaxScheme() { return taxScheme; }
+    public String getTaxTreatment() { return taxTreatment; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }
     public BigDecimal getTotalAmount() { return totalAmount; }

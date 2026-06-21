@@ -47,6 +47,9 @@ public class ProductChargeOpenAccountJpaEntity {
     @Column(name = "tax_scheme", length = 10)
     private String taxScheme;
 
+    @Column(name = "tax_treatment", length = 20)
+    private String taxTreatment;
+
     @Column(name = "base_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal baseAmount;
 
@@ -106,6 +109,8 @@ public class ProductChargeOpenAccountJpaEntity {
     public void setTaxName(String taxName) { this.taxName = taxName; }
     public String getTaxScheme() { return taxScheme; }
     public void setTaxScheme(String taxScheme) { this.taxScheme = taxScheme; }
+    public String getTaxTreatment() { return taxTreatment; }
+    public void setTaxTreatment(String taxTreatment) { this.taxTreatment = taxTreatment; }
     public BigDecimal getBaseAmount() { return baseAmount; }
     public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
     public BigDecimal getTaxAmount() { return taxAmount; }

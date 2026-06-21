@@ -33,6 +33,8 @@ public class JpaProductQueryPort implements ProductQueryPort {
             ? new TaxRef(t.getId(), t.getName(), t.getPercentage(),
                 t.getTaxScheme() == null ? null : t.getTaxScheme().name())
             : null;
-        return new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice(), hasTax, tax);
+        // Congela el tratamiento real del catálogo (incl. EXENTO/EXCLUIDO), no solo el hasTax monetario.
+        return new ProductRef(e.getId(), e.getName(), e.getCode(), e.getSalePrice(), hasTax, tax,
+            treatment == null ? null : treatment.name());
     }
 }

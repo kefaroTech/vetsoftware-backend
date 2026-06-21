@@ -33,6 +33,7 @@ public class ServiceChargeOpenAccountJpaMapper {
         entity.setTaxPercentage(charge.getTaxPercentage());
         entity.setTaxName(charge.getTaxName());
         entity.setTaxScheme(charge.getTaxScheme());
+        entity.setTaxTreatment(charge.getTaxTreatment());
         entity.setBaseAmount(charge.getBaseAmount());
         entity.setTaxAmount(charge.getTaxAmount());
         entity.setTotalAmount(charge.getTotalAmount());
@@ -79,6 +80,7 @@ public class ServiceChargeOpenAccountJpaMapper {
             entity.getTaxPercentage(),
             entity.getTaxName(),
             entity.getTaxScheme(),
+            entity.getTaxTreatment(),
             entity.getBaseAmount(),
             entity.getTaxAmount(),
             entity.getTotalAmount(),

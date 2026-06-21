@@ -33,6 +33,8 @@ public class JpaServiceQueryPort implements ServiceQueryPort {
             ? new TaxRef(t.getId(), t.getName(), t.getPercentage(),
                 t.getTaxScheme() == null ? null : t.getTaxScheme().name())
             : null;
-        return new ServiceRef(e.getId(), e.getName(), e.getPrice(), hasTax, tax);
+        // Congela el tratamiento real del catálogo (incl. EXENTO/EXCLUIDO), no solo el hasTax monetario.
+        return new ServiceRef(e.getId(), e.getName(), e.getPrice(), hasTax, tax,
+            treatment == null ? null : treatment.name());
     }
 }
