@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
+import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -54,7 +55,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setCustomerName(c.name());
         entity.setCustomerEmail(c.email());
         entity.setCustomerCityDane(c.cityDaneCode());
-        entity.setCustomerTaxRegime(c.taxRegime());
+        entity.setCustomerTaxRegime(c.taxRegime() == null ? null : c.taxRegime().name());
 
         entity.setLineExtensionAmount(doc.getLineExtensionAmount());
         entity.setTaxExclusiveAmount(doc.getTaxExclusiveAmount());
@@ -123,7 +124,8 @@ public class ElectronicDocumentJpaMapper {
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
-                entity.getCustomerEmail(), entity.getCustomerCityDane(), entity.getCustomerTaxRegime());
+                entity.getCustomerEmail(), entity.getCustomerCityDane(),
+                TaxRegime.fromName(entity.getCustomerTaxRegime()));
 
         DocumentReference reference = entity.getReferencedCufe() == null ? null
                 : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),

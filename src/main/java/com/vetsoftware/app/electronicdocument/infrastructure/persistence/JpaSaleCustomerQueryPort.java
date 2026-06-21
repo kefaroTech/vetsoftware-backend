@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleCustomerQueryPort;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
+import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaRepository;
 import java.util.Optional;
@@ -31,7 +32,7 @@ public class JpaSaleCustomerQueryPort implements SaleCustomerQueryPort {
                 owner.getPersonType() == null ? null : owner.getPersonType().name(),
                 owner.getLegalName(), owner.getName(), owner.getEmail(),
                 owner.getCity() == null ? null : owner.getCity().getDaneCode(),
-                owner.getTaxRegime() == null ? null : owner.getTaxRegime().name());
+                TaxRegime.fromName(owner.getTaxRegime() == null ? null : owner.getTaxRegime().name()));
         return Optional.of(new SaleCustomer(snapshot, owner.isWithholdingAgent()));
     }
 }

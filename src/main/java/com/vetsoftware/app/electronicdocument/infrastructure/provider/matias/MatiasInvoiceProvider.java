@@ -10,9 +10,10 @@ import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
+import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -52,6 +55,10 @@ import org.springframework.web.client.RestClientResponseException;
 @Component
 public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
+    private static final Logger log = LoggerFactory.getLogger(MatiasInvoiceProvider.class);
+    // Sello fiscal DIAN (CUFE/CUDE/CUDS) = SHA-384 → 96 caracteres hex.
+    private static final java.util.regex.Pattern SEAL_SHA384 = java.util.regex.Pattern.compile("[0-9a-fA-F]{96}");
+
     // --- Catálogos MATIAS VERIFICADOS contra la API en vivo del sandbox (GET /document-type, /taxes, etc.). ---
     private static final int OPERATION_TYPE_NACIONAL = 1; // Operación: Estándar (GET /operation-type id 1)
     private static final String COUNTRY_COLOMBIA = "45";  // País: Colombia (GET /countries id 45)
@@ -68,7 +75,9 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private static final String EX_RESOLUTION_NUMBER = "18764074347312"; // TODO(F1): de la NumberingResolution de la empresa
     private static final String EX_PREFIX = "SETP";                      // TODO(F1): de la NumberingResolution de la empresa
     private static final String EX_CITY_ID = "959";          // default = ciudad de la empresa; TODO: city del adquiriente vía /cities (city_code=DANE)
-    private static final int EX_TAX_REGIME_ID = 2;           // No Responsable IVA — default válido (GET /company usa 2)
+    // tax_regime_id MATIAS (GET /taxes-regime): 1 = Responsable de IVA, 2 = No responsable de IVA.
+    private static final int TAX_REGIME_RESPONSABLE_IVA = 1;
+    private static final int TAX_REGIME_NO_RESPONSABLE_IVA = 2; // default/fallback (GET /company usa 2)
     private static final int EX_TAX_LEVEL_ID = 5;            // default válido (GET /company usa 5)
     private static final String EX_REFERENCE_PRICE_ID = "1"; // precio de referencia estándar (validado en el sandbox)
     private static final String EX_NC_RESPONSE_ID = "2";     // concepto de corrección por defecto (2=Anulación); ideal: mapear desde noteReasonCode
@@ -104,7 +113,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                     .retrieve()
                     .toEntity(JsonNode.class);
             // MATIAS puede validar SÍNCRONO (HTTP 200, StatusCode 00) o encolar (HTTP 201) → webhook/polling.
-            return parseDocumentResult(response.getBody(), document, response.getStatusCode().value());
+            return parseDocumentResult(response.getBody(), document, response.getStatusCode().value(), null);
         } catch (RestClientResponseException e) {
             HttpStatusCode status = e.getStatusCode();
             String responseBody = e.getResponseBodyAsString();
@@ -133,7 +142,8 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .toEntity(JsonNode.class);
-            ProviderResult result = parseDocumentResult(response.getBody(), null, response.getStatusCode().value());
+            // En reconciliación el sello es el trackId consultado (el /status no reenvía XmlDocumentKey).
+            ProviderResult result = parseDocumentResult(response.getBody(), null, response.getStatusCode().value(), trackId);
             // Conserva el trackId mientras siga PENDIENTE para reintentar en el siguiente ciclo.
             return Optional.of(result.status() == DianStatus.PENDIENTE ? pending(trackId) : result);
         } catch (RestClientResponseException | ResourceAccessException e) {
@@ -291,11 +301,12 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
      * a la heurística: Responsable de IVA si es persona jurídica o se identifica con NIT.
      */
     private static int taxRegimeId(CustomerSnapshot customer) {
-        String regime = customer.taxRegime();
-        if ("RESPONSABLE_IVA".equals(regime)) return 1;
-        if ("NO_RESPONSABLE_IVA".equals(regime)) return EX_TAX_REGIME_ID;
+        TaxRegime regime = customer.taxRegime();
+        if (regime == TaxRegime.RESPONSABLE_IVA) return TAX_REGIME_RESPONSABLE_IVA;
+        if (regime == TaxRegime.NO_RESPONSABLE_IVA) return TAX_REGIME_NO_RESPONSABLE_IVA;
+        // Documentos antiguos sin régimen congelado (null): heurística por tipo de persona / documento.
         boolean responsableIva = "JURIDICA".equals(customer.personType()) || "NIT".equals(customer.documentType());
-        return responsableIva ? 1 : EX_TAX_REGIME_ID;
+        return responsableIva ? TAX_REGIME_RESPONSABLE_IVA : TAX_REGIME_NO_RESPONSABLE_IVA;
     }
 
     /**
@@ -466,7 +477,8 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
     private static BigDecimal retentionPercent(BigDecimal amount, BigDecimal base) {
         if (base == null || base.signum() == 0) return BigDecimal.ZERO;
-        return amount.multiply(BigDecimal.valueOf(100)).divide(base, 2, RoundingMode.HALF_UP);
+        // Tasa efectiva de retención = amount/base·100, con la escala/redondeo monetario compartido.
+        return amount.multiply(BigDecimal.valueOf(100)).divide(base, Money.SCALE, Money.ROUND);
     }
 
     private Map<String, Object> buildMonetaryTotals(ElectronicDocument doc) {
@@ -515,13 +527,24 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
      * {@code XmlDocumentKey}=CUFE/CUDE, objetos {@code qr/pdf/AttachedDocument}. HTTP 201 / send_to_queue=1
      * = encolado (async). {@code doc} puede ser null (polling sin contexto de tipo): el sello va en cufe.
      */
-    private ProviderResult parseDocumentResult(JsonNode body, ElectronicDocument doc, int http) {
+    private ProviderResult parseDocumentResult(JsonNode body, ElectronicDocument doc, int http, String fallbackKey) {
         JsonNode response = at(body, "response");
         String statusCode = text(response, "StatusCode");
-        String key = firstNonNull(text(body, "XmlDocumentKey"), text(response, "XmlDocumentKey"));
+        // El sello viene en XmlDocumentKey al emitir; el POST /status (reconciliación) NO lo reenvía, así que
+        // ahí el sello es el propio trackId consultado (fallbackKey = CUFE/CUDE que ya teníamos).
+        String key = firstNonNull(text(body, "XmlDocumentKey"), text(response, "XmlDocumentKey"), fallbackKey);
         boolean queued = http == 201 || intOf(body, "send_to_queue") == 1 || "98".equals(statusCode);
 
         if ("00".equals(statusCode)) {
+            // El sello fiscal (CUFE/CUDE/CUDS) es un SHA-384 = 96 hex. Si MATIAS reporta 00 pero el sello no
+            // tiene formato válido, NO marcamos VALIDADO sin sello: alertamos y dejamos PENDIENTE para que la
+            // reconciliación (fetchStatus) traiga el sello real (evita un documento "validado" sin CUFE/CUDE).
+            if (!isValidSeal(key)) {
+                log.warn("MATIAS reportó StatusCode 00 sin sello CUFE/CUDE válido (esperado SHA-384, 96 hex): '{}'."
+                        + " Documento {} se deja PENDIENTE para reconciliar. Respuesta: {}",
+                        key, doc == null ? "(polling)" : doc.getId(), safe(body));
+                return pending(firstNonNull(key, text(response, "XmlFileName"), extractTrackId(body)));
+            }
             JsonNode qr = at(body, "qr");
             JsonNode attached = at(body, "AttachedDocument");
             boolean isInvoice = doc == null || doc.getDocumentType() == ElectronicDocumentType.FE_VENTA;
@@ -611,6 +634,11 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /** El sello fiscal (CUFE/CUDE/CUDS) debe ser un SHA-384: exactamente 96 caracteres hexadecimales. */
+    private static boolean isValidSeal(String key) {
+        return key != null && SEAL_SHA384.matcher(key).matches();
     }
 
     private static int parseIntOr(String value, int fallback) {
