@@ -6,6 +6,7 @@ import com.vetsoftware.app.generalchargeopenaccount.application.port.in.UpdateGe
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.TaxQueryPort;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
@@ -22,15 +23,18 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
     private final OpenAccountQueryPort openAccountQueryPort;
     private final TaxQueryPort taxQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public UpdateGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
                                                  OpenAccountQueryPort openAccountQueryPort,
                                                  TaxQueryPort taxQueryPort,
-                                                 OpenAccountRefresher refresher) {
+                                                 OpenAccountRefresher refresher,
+                                                 OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.taxQueryPort = taxQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
@@ -45,6 +49,8 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        // Detección temprana de conflicto sobre la cuenta destino del cargo.
+        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));

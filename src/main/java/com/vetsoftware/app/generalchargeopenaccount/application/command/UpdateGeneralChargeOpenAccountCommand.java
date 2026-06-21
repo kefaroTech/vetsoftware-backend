@@ -9,5 +9,7 @@ public record UpdateGeneralChargeOpenAccountCommand(
         BigDecimal quantity,
         Long taxId,
         Long openAccountId,
-        Long companyId
+        Long companyId,
+        // Versión esperada de la cuenta (opt-in) para detección temprana de conflicto. null = sin chequeo.
+        Long expectedVersion
 ) {}

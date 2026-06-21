@@ -7,6 +7,7 @@ import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountR
 import com.vetsoftware.app.debtopenaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.EmployeeRef;
@@ -21,15 +22,18 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
     private final OpenAccountQueryPort openAccountQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public VoidDebtOpenAccountService(DebtOpenAccountRepository repository,
                                       OpenAccountQueryPort openAccountQueryPort,
                                       EmployeeQueryPort employeeQueryPort,
-                                      OpenAccountRefresher refresher) {
+                                      OpenAccountRefresher refresher,
+                                      OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
@@ -41,6 +45,11 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         if (!debtOpenAccount.getOpenAccount().companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("debt open account does not belong to company");
         }
+        // Lock pesimista de la cuenta antes de leer su estado: serializa la anulación del abono frente a
+        // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen), no solo en el recálculo.
+        openAccountQueryPort.lockForUpdate(openAccountId);
+        // Detección temprana de conflicto sobre la cuenta del abono.
+        versionGuard.assertVersion(openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }

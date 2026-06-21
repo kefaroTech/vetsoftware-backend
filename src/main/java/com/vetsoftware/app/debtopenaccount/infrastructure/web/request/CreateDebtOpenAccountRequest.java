@@ -11,5 +11,7 @@ public record CreateDebtOpenAccountRequest(
         @NotBlank String paymentMethod,
         @NotNull Long openAccountId,
         /** Idempotency key opcional (UUID) para deduplicar reintentos del mismo cobro. */
-        @Size(max = 36) String clientRequestId
+        @Size(max = 36) String clientRequestId,
+        /** Versión optimista de la cuenta que vio el front (opt-in) para detección temprana de conflicto. */
+        Long expectedVersion
 ) {}

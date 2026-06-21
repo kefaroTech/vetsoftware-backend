@@ -6,6 +6,7 @@ import com.vetsoftware.app.productchargeopenaccount.application.port.in.UpdatePr
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.AnimalRef;
@@ -25,17 +26,20 @@ public class UpdateProductChargeOpenAccountService implements UpdateProductCharg
     private final ProductQueryPort productQueryPort;
     private final OpenAccountQueryPort openAccountQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public UpdateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
                                                  AnimalQueryPort animalQueryPort,
                                                  ProductQueryPort productQueryPort,
                                                  OpenAccountQueryPort openAccountQueryPort,
-                                                 OpenAccountRefresher refresher) {
+                                                 OpenAccountRefresher refresher,
+                                                 OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.productQueryPort = productQueryPort;
         this.openAccountQueryPort = openAccountQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
@@ -50,6 +54,8 @@ public class UpdateProductChargeOpenAccountService implements UpdateProductCharg
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        // Detección temprana de conflicto sobre la cuenta destino del cargo.
+        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
         AnimalRef animal = animalQueryPort.findById(command.animalId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         ProductRef product = productQueryPort.findById(command.productId())

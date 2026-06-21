@@ -19,5 +19,6 @@ public record OpenAccountResponse(
         LocalDateTime closedAt,
         String closeReason,
         boolean reversed,
-        LocalDateTime reversedAt
+        LocalDateTime reversedAt,
+        Long version
 ) {}

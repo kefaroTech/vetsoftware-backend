@@ -7,6 +7,7 @@ import com.vetsoftware.app.generalchargeopenaccount.application.port.out.Employe
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.generalchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
@@ -22,15 +23,18 @@ public class VoidGeneralChargeOpenAccountService implements VoidGeneralChargeOpe
     private final OpenAccountQueryPort openAccountQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public VoidGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
                                                OpenAccountQueryPort openAccountQueryPort,
                                                EmployeeQueryPort employeeQueryPort,
-                                               OpenAccountRefresher refresher) {
+                                               OpenAccountRefresher refresher,
+                                               OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
@@ -42,6 +46,11 @@ public class VoidGeneralChargeOpenAccountService implements VoidGeneralChargeOpe
         if (!charge.getOpenAccount().companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("general charge does not belong to company");
         }
+        // Lock pesimista de la cuenta antes de leer su estado/saldo: serializa la anulación frente a
+        // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen/saldo), no solo en el recálculo.
+        openAccountQueryPort.lockForUpdate(openAccountId);
+        // Detección temprana de conflicto sobre la cuenta del cargo.
+        versionGuard.assertVersion(openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }

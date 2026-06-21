@@ -65,7 +65,8 @@ public class DebtOpenAccountController {
         return toResponse(createUseCase.execute(
             new CreateDebtOpenAccountCommand(
                 request.amount(), request.paymentMethod(), request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId())));
+                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
+                request.expectedVersion())));
     }
 
     @GetMapping
@@ -90,7 +91,7 @@ public class DebtOpenAccountController {
         return toResponse(updateUseCase.execute(
             new UpdateDebtOpenAccountCommand(
                 id, request.amount(), request.paymentMethod(), request.openAccountId(),
-                authz.currentCompanyId())));
+                authz.currentCompanyId(), request.expectedVersion())));
     }
 
     @DeleteMapping("/{id}")
@@ -109,7 +110,7 @@ public class DebtOpenAccountController {
                                                @Valid @RequestBody VoidDebtOpenAccountRequest request) {
         return toResponse(voidUseCase.execute(
             new VoidDebtOpenAccountCommand(id, authz.currentCompanyId(),
-                authz.currentEmployeeId(), request.reason())));
+                authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
     }
 
     private DebtOpenAccountResponse toResponse(DebtOpenAccountDto dto) {

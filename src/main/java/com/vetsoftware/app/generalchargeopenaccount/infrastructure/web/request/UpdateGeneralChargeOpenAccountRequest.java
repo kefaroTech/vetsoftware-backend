@@ -12,5 +12,7 @@ public record UpdateGeneralChargeOpenAccountRequest(
         @NotNull @PositiveOrZero BigDecimal unitAmount,
         @NotNull @Positive BigDecimal quantity,
         Long taxId,
-        @NotNull Long openAccountId
+        @NotNull Long openAccountId,
+        /** Versión optimista de la cuenta que vio el front (opt-in) para detección temprana de conflicto. */
+        Long expectedVersion
 ) {}

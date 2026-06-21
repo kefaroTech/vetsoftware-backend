@@ -98,7 +98,8 @@ public class OpenAccountController {
     @PutMapping("/{id}")
     public OpenAccountResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOpenAccountRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateOpenAccountCommand(id, request.ownerId(), authz.currentCompanyId())));
+            new UpdateOpenAccountCommand(id, request.ownerId(), authz.currentCompanyId(),
+                request.expectedVersion())));
     }
 
     @DeleteMapping("/{id}")
@@ -118,7 +119,7 @@ public class OpenAccountController {
         return toResponse(changeStatusUseCase.execute(
             new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(),
                 request.reason(), authz.currentCompanyId(),
-                request.documentType(), request.finalConsumer())));
+                request.documentType(), request.finalConsumer(), request.expectedVersion())));
     }
 
     private OpenAccountResponse toResponse(OpenAccountDto dto) {
@@ -136,6 +137,6 @@ public class OpenAccountController {
             dto.createdDate(), dto.enabled(),
             closed != null ? new EmployeeSummary(closed.id(), closed.name()) : null,
             dto.closedAt(), dto.closeReason(),
-            dto.reversed(), dto.reversedAt());
+            dto.reversed(), dto.reversedAt(), dto.version());
     }
 }

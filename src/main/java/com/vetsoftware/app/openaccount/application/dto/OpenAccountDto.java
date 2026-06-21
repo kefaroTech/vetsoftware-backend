@@ -20,7 +20,10 @@ public record OpenAccountDto(
         LocalDateTime closedAt,
         String closeReason,
         boolean reversed,
-        LocalDateTime reversedAt
+        LocalDateTime reversedAt,
+        // Versión optimista (@Version). El front la reenvía como expectedVersion en las mutaciones
+        // de la cuenta para detección temprana de conflicto de concurrencia.
+        Long version
 ) {
     public static OpenAccountDto from(OpenAccount openAccount) {
         return new OpenAccountDto(
@@ -38,6 +41,7 @@ public record OpenAccountDto(
                 openAccount.getClosedAt(),
                 openAccount.getCloseReason(),
                 openAccount.isReversed(),
-                openAccount.getReversedAt());
+                openAccount.getReversedAt(),
+                openAccount.getVersion());
     }
 }

@@ -6,6 +6,7 @@ import com.vetsoftware.app.servicechargeopenaccount.application.port.in.UpdateSe
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.servicechargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.ServiceChargeOpenAccountRepository;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.out.ServiceQueryPort;
 import com.vetsoftware.app.servicechargeopenaccount.domain.AnimalRef;
@@ -25,17 +26,20 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
     private final ServiceQueryPort serviceQueryPort;
     private final OpenAccountQueryPort openAccountQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public UpdateServiceChargeOpenAccountService(ServiceChargeOpenAccountRepository repository,
                                                  AnimalQueryPort animalQueryPort,
                                                  ServiceQueryPort serviceQueryPort,
                                                  OpenAccountQueryPort openAccountQueryPort,
-                                                 OpenAccountRefresher refresher) {
+                                                 OpenAccountRefresher refresher,
+                                                 OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.serviceQueryPort = serviceQueryPort;
         this.openAccountQueryPort = openAccountQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
@@ -50,6 +54,8 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        // Detección temprana de conflicto sobre la cuenta destino del cargo.
+        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
         AnimalRef animal = animalQueryPort.findById(command.animalId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         ServiceRef service = serviceQueryPort.findById(command.serviceId())

@@ -5,5 +5,7 @@ import jakarta.validation.constraints.NotNull;
 public record UpdateServiceChargeOpenAccountRequest(
         @NotNull Long animalId,
         @NotNull Long serviceId,
-        @NotNull Long openAccountId
+        @NotNull Long openAccountId,
+        /** Versión optimista de la cuenta que vio el front (opt-in) para detección temprana de conflicto. */
+        Long expectedVersion
 ) {}

@@ -8,5 +8,7 @@ public record CreateDebtOpenAccountCommand(
         Long openAccountId,
         Long companyId,
         Long createdById,
-        String clientRequestId
+        String clientRequestId,
+        // Versión esperada de la cuenta (opt-in) para detección temprana de conflicto. null = sin chequeo.
+        Long expectedVersion
 ) {}

@@ -7,6 +7,7 @@ import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountR
 import com.vetsoftware.app.debtopenaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountRefresher;
+import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
 import com.vetsoftware.app.debtopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.debtopenaccount.domain.OpenAccountRef;
@@ -24,20 +25,27 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
     private final OpenAccountQueryPort openAccountQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
+    private final OpenAccountVersionGuard versionGuard;
 
     public CreateDebtOpenAccountService(DebtOpenAccountRepository repository,
                                         OpenAccountQueryPort openAccountQueryPort,
                                         EmployeeQueryPort employeeQueryPort,
-                                        OpenAccountRefresher refresher) {
+                                        OpenAccountRefresher refresher,
+                                        OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
+        this.versionGuard = versionGuard;
     }
 
     @Override
     @Transactional
     public DebtOpenAccountDto execute(CreateDebtOpenAccountCommand command) {
+        // Lock pesimista como PRIMERA sentencia: serializa abonos/cargos concurrentes sobre la cuenta desde
+        // el read-modify-write completo. Debe ir antes de cualquier lectura consistente (incluida la
+        // idempotencia) para que el guard de sobrepago lea el saldo ya committeado por una operación rival.
+        openAccountQueryPort.lockForUpdate(command.openAccountId());
         // Idempotencia: si el cobro ya se registró con esta clave (reintento/doble-submit), devolverlo sin
         // duplicar. Va ANTES del guard de sobrepago: tras el 1er abono el saldo bajó y el reintento fallaría.
         if (command.clientRequestId() != null && !command.clientRequestId().isBlank()) {
@@ -52,6 +60,8 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
+        // Detección temprana de conflicto: dentro del lock, antes de registrar el abono.
+        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }

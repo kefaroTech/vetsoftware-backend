@@ -7,6 +7,7 @@ import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepositor
 import com.vetsoftware.app.openaccount.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
+import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import com.vetsoftware.app.openaccount.domain.OwnerRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,11 @@ public class UpdateOpenAccountService implements UpdateOpenAccountUseCase {
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
         if (!openAccount.getCompany().id().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
+        }
+        if (command.expectedVersion() != null
+                && !command.expectedVersion().equals(openAccount.getVersion())) {
+            throw new OpenAccountVersionConflictException(
+                command.id(), command.expectedVersion(), openAccount.getVersion());
         }
         OwnerRef owner = ownerQueryPort.findById(command.ownerId())
             .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));

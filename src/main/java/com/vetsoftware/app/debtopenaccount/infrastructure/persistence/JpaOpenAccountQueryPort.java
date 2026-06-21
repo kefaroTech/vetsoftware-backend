@@ -24,6 +24,11 @@ public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
     }
 
     @Override
+    public void lockForUpdate(Long openAccountId) {
+        openAccountJpaRepository.findByIdForUpdate(openAccountId);
+    }
+
+    @Override
     public boolean isOpen(Long openAccountId) {
         return openAccountJpaRepository.findById(openAccountId)
             .map(e -> e.getStatus() == OpenAccountStatus.OPEN)

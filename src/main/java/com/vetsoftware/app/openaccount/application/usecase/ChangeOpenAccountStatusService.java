@@ -10,6 +10,7 @@ import com.vetsoftware.app.openaccount.domain.EmployeeRef;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
+import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +33,18 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
     @Override
     @Transactional
     public OpenAccountDto execute(ChangeOpenAccountStatusCommand command) {
-        OpenAccount openAccount = repository.findById(command.id())
+        // Lock pesimista de la cuenta al inicio: serializa el cierre/cancelación frente a cargos/abonos
+        // concurrentes (un cargo no se puede colar mientras se cierra), cerrando el TOCTOU sobre el estado y
+        // el saldo. La emisión del documento al cierre ocurre en esta misma transacción bajo el lock.
+        OpenAccount openAccount = repository.findByIdForUpdate(command.id())
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
         if (!openAccount.getCompany().id().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
+        }
+        if (command.expectedVersion() != null
+                && !command.expectedVersion().equals(openAccount.getVersion())) {
+            throw new OpenAccountVersionConflictException(
+                command.id(), command.expectedVersion(), openAccount.getVersion());
         }
         EmployeeRef closedBy = employeeQueryPort.findById(command.employeeId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));

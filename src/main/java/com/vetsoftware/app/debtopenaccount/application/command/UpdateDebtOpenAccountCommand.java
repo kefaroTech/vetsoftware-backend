@@ -7,5 +7,7 @@ public record UpdateDebtOpenAccountCommand(
         BigDecimal amount,
         String paymentMethod,
         Long openAccountId,
-        Long companyId
+        Long companyId,
+        // Versión esperada de la cuenta (opt-in) para detección temprana de conflicto. null = sin chequeo.
+        Long expectedVersion
 ) {}
