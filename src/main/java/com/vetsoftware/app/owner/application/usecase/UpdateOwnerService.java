@@ -8,6 +8,7 @@ import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import com.vetsoftware.app.owner.domain.CityRef;
 import com.vetsoftware.app.owner.domain.CompanyRef;
+import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.Owner;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.owner.domain.TaxRegime;
@@ -42,9 +43,13 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
         TaxRegime taxRegime = command.taxRegime() != null
             ? command.taxRegime()
             : TaxRegime.defaultFor(command.personType(), command.documentType());
+        FiscalResponsibility fiscalResponsibility = command.fiscalResponsibility() != null
+            ? command.fiscalResponsibility()
+            : FiscalResponsibility.defaultValue();
         owner.update(command.name(), command.email(), command.document(), command.documentType(),
                      command.personType(), command.verificationDigit(), command.legalName(),
-                     command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime);
+                     command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime,
+                     fiscalResponsibility);
         return OwnerDto.from(repository.save(owner));
     }
 }

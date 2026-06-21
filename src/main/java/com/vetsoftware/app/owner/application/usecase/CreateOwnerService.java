@@ -8,6 +8,7 @@ import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import com.vetsoftware.app.owner.domain.CityRef;
 import com.vetsoftware.app.owner.domain.CompanyRef;
+import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.Owner;
 import com.vetsoftware.app.owner.domain.TaxRegime;
 import io.micrometer.observation.annotation.Observed;
@@ -38,10 +39,15 @@ public class CreateOwnerService implements CreateOwnerUseCase {
         TaxRegime taxRegime = command.taxRegime() != null
             ? command.taxRegime()
             : TaxRegime.defaultFor(command.personType(), command.documentType());
+        // Si el request no trae responsabilidad fiscal, se usa NO_APLICA (R-99-PN), el caso por defecto.
+        FiscalResponsibility fiscalResponsibility = command.fiscalResponsibility() != null
+            ? command.fiscalResponsibility()
+            : FiscalResponsibility.defaultValue();
         Owner owner = Owner.create(
             command.name(), command.email(), command.document(), command.documentType(),
             command.personType(), command.verificationDigit(), command.legalName(),
-            command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime
+            command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime,
+            fiscalResponsibility
         );
         return OwnerDto.from(repository.save(owner));
     }

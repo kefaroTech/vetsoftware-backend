@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Responsabilidad fiscal del adquiriente (Owner): determina el tax_level_id / TaxLevelCode ante la
+         DIAN/MATIAS. Antes se enviaba un valor fijo (5 = R-99-PN). Es declarativa (no se infiere del tipo de
+         persona/documento), así que el default es NO_APLICA (R-99-PN), el caso de la inmensa mayoría. -->
+    <changeSet id="146_add_fiscal_responsibility_to_owners" author="orlando">
+        <addColumn tableName="owners">
+            <column name="fiscal_responsibility" type="VARCHAR(20)" defaultValue="NO_APLICA">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

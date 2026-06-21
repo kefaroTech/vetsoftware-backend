@@ -149,5 +149,7 @@
     <include file="db/changelog/migrations/143_add_customer_tax_regime_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/144_unique_active_resolution_per_company_type.xml"/>
     <include file="db/changelog/migrations/145_add_tax_treatment_to_charges.xml"/>
+    <include file="db/changelog/migrations/146_add_fiscal_responsibility_to_owners.xml"/>
+    <include file="db/changelog/migrations/147_add_customer_fiscal_responsibility_to_electronic_documents.xml"/>
 
 </databaseChangeLog>

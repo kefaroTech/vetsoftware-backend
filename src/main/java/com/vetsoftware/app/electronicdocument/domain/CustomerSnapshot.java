@@ -16,7 +16,10 @@ public record CustomerSnapshot(
         String cityDaneCode,
         // Régimen de IVA del adquiriente. Determina el tax_regime_id ante la DIAN. Puede ser null en
         // documentos antiguos (anteriores a capturar el régimen) → el adaptador cae a una heurística.
-        TaxRegime taxRegime
+        TaxRegime taxRegime,
+        // Responsabilidad fiscal del adquiriente. Determina el tax_level_id (TaxLevelCode) ante la DIAN.
+        // null en documentos antiguos (anteriores a capturarla) → el adaptador cae al default (NO_APLICA).
+        FiscalResponsibility fiscalResponsibility
 ) {
     public CustomerSnapshot {
         if (documentId == null || documentId.isBlank())
@@ -44,6 +47,7 @@ public record CustomerSnapshot(
                 "Consumidor final",
                 null,
                 null,
-                TaxRegime.NO_RESPONSABLE_IVA); // el consumidor final no es responsable de IVA
+                TaxRegime.NO_RESPONSABLE_IVA, // el consumidor final no es responsable de IVA
+                FiscalResponsibility.NO_APLICA); // R-99-PN: el consumidor final no tiene responsabilidad especial
     }
 }

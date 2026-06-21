@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Responsabilidad fiscal del adquiriente congelada en el documento (espejo de customer_tax_regime).
+         Nullable: los documentos previos no la tienen → el adaptador del proveedor cae al default (R-99-PN/5).
+         Se persiste el nombre del enum como String (sin acoplar al enum de owner). -->
+    <changeSet id="147_add_customer_fiscal_responsibility_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="customer_fiscal_responsibility" type="VARCHAR(20)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

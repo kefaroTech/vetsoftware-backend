@@ -2,6 +2,7 @@ package com.vetsoftware.app.owner.infrastructure.persistence;
 
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
 import com.vetsoftware.app.owner.domain.TaxRegime;
@@ -53,6 +54,11 @@ public class OwnerJpaEntity {
     @Column(name = "tax_regime", nullable = false, length = 20)
     private TaxRegime taxRegime = TaxRegime.NO_RESPONSABLE_IVA;
 
+    // Responsabilidad fiscal del adquiriente → tax_level_id (TaxLevelCode) ante la DIAN. Default NO_APLICA.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fiscal_responsibility", nullable = false, length = 20)
+    private FiscalResponsibility fiscalResponsibility = FiscalResponsibility.NO_APLICA;
+
     @Column(length = 255)
     private String address;
 
@@ -95,6 +101,8 @@ public class OwnerJpaEntity {
     public void setWithholdingAgent(boolean withholdingAgent) { this.withholdingAgent = withholdingAgent; }
     public TaxRegime getTaxRegime() { return taxRegime; }
     public void setTaxRegime(TaxRegime taxRegime) { this.taxRegime = taxRegime; }
+    public FiscalResponsibility getFiscalResponsibility() { return fiscalResponsibility; }
+    public void setFiscalResponsibility(FiscalResponsibility fiscalResponsibility) { this.fiscalResponsibility = fiscalResponsibility; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public String getPhone() { return phone; }

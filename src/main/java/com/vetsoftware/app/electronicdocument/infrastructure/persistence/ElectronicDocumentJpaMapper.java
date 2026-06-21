@@ -3,6 +3,7 @@ package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
+import com.vetsoftware.app.electronicdocument.domain.FiscalResponsibility;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
@@ -56,6 +57,8 @@ public class ElectronicDocumentJpaMapper {
         entity.setCustomerEmail(c.email());
         entity.setCustomerCityDane(c.cityDaneCode());
         entity.setCustomerTaxRegime(c.taxRegime() == null ? null : c.taxRegime().name());
+        entity.setCustomerFiscalResponsibility(
+                c.fiscalResponsibility() == null ? null : c.fiscalResponsibility().name());
 
         entity.setLineExtensionAmount(doc.getLineExtensionAmount());
         entity.setTaxExclusiveAmount(doc.getTaxExclusiveAmount());
@@ -125,7 +128,8 @@ public class ElectronicDocumentJpaMapper {
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
                 entity.getCustomerEmail(), entity.getCustomerCityDane(),
-                TaxRegime.fromName(entity.getCustomerTaxRegime()));
+                TaxRegime.fromName(entity.getCustomerTaxRegime()),
+                FiscalResponsibility.fromName(entity.getCustomerFiscalResponsibility()));
 
         DocumentReference reference = entity.getReferencedCufe() == null ? null
                 : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),

@@ -11,6 +11,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
 import com.vetsoftware.app.electronicdocument.domain.PaymentMeans;
+import com.vetsoftware.app.electronicdocument.domain.FiscalResponsibility;
 import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
@@ -79,7 +80,9 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 owner.getPersonType() == null ? null : owner.getPersonType().name(),
                 owner.getLegalName(), owner.getName(), owner.getEmail(),
                 owner.getCity() == null ? null : owner.getCity().getDaneCode(),
-                TaxRegime.fromName(owner.getTaxRegime() == null ? null : owner.getTaxRegime().name()));
+                TaxRegime.fromName(owner.getTaxRegime() == null ? null : owner.getTaxRegime().name()),
+                FiscalResponsibility.fromName(
+                        owner.getFiscalResponsibility() == null ? null : owner.getFiscalResponsibility().name()));
 
         List<ElectronicDocumentLine> lines = buildLines(openAccountId);
         List<ElectronicDocumentPayment> payments = buildPayments(openAccountId);

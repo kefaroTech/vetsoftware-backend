@@ -1,5 +1,6 @@
 package com.vetsoftware.app.owner.infrastructure.web.request;
 
+import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
 import com.vetsoftware.app.owner.domain.TaxRegime;
@@ -21,5 +22,7 @@ public record CreateOwnerRequest(
         @NotNull Long cityId,
         boolean withholdingAgent,
         // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable de IVA).
-        TaxRegime taxRegime
+        TaxRegime taxRegime,
+        // Opcional: si no se envía, el backend usa NO_APLICA (R-99-PN), el caso por defecto.
+        FiscalResponsibility fiscalResponsibility
 ) {}

@@ -10,6 +10,7 @@ import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import com.vetsoftware.app.electronicdocument.domain.FiscalResponsibility;
 import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import com.vetsoftware.app.shared.domain.Money;
@@ -85,7 +86,15 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     // tax_regime_id MATIAS (GET /taxes-regime): 1 = Responsable de IVA, 2 = No responsable de IVA.
     private static final int TAX_REGIME_RESPONSABLE_IVA = 1;
     private static final int TAX_REGIME_NO_RESPONSABLE_IVA = 2; // default/fallback (GET /company usa 2)
-    private static final int EX_TAX_LEVEL_ID = 5;            // default válido (GET /company usa 5)
+    // tax_level_id MATIAS (catálogo type_liabilities = responsabilidad fiscal / TaxLevelCode del adquiriente).
+    // NO_APLICA (R-99-PN) = 5 es el default validado e2e (GET /company usa 5). El sandbox NO expone el GET del
+    // catálogo de tax-levels, así que 7/9/14/112 (apidian) están PENDIENTES de confirmar emitiendo antes de
+    // depender de ellos; solo se usan si el adquiriente declara una responsabilidad distinta de NO_APLICA.
+    private static final int TAX_LEVEL_NO_APLICA = 5;             // R-99-PN (default; documentos sin dato → este)
+    private static final int TAX_LEVEL_GRAN_CONTRIBUYENTE = 7;    // O-13  (TODO: confirmar contra catálogo vivo)
+    private static final int TAX_LEVEL_AUTORRETENEDOR = 9;        // O-15  (TODO: confirmar)
+    private static final int TAX_LEVEL_AGENTE_RETENCION_IVA = 14; // O-23  (TODO: confirmar)
+    private static final int TAX_LEVEL_REGIMEN_SIMPLE = 112;      // O-47  (TODO: confirmar)
     private static final String EX_REFERENCE_PRICE_ID = "1"; // precio de referencia estándar (validado en el sandbox)
     private static final String EX_NC_RESPONSE_ID = "2";     // concepto de corrección por defecto (2=Anulación); ideal: mapear desde noteReasonCode
 
@@ -317,6 +326,23 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     }
 
     /**
+     * tax_level_id MATIAS (responsabilidad fiscal / TaxLevelCode del adquiriente). Usa la responsabilidad REAL
+     * congelada del adquiriente ({@code Owner.fiscalResponsibility} → snapshot). Documentos antiguos sin el dato
+     * (null) o NO_APLICA → R-99-PN (5), el caso por defecto de la inmensa mayoría de adquirientes.
+     */
+    private static int taxLevelId(CustomerSnapshot customer) {
+        FiscalResponsibility fr = customer.fiscalResponsibility();
+        if (fr == null) return TAX_LEVEL_NO_APLICA;
+        return switch (fr) {
+            case GRAN_CONTRIBUYENTE -> TAX_LEVEL_GRAN_CONTRIBUYENTE;
+            case AUTORRETENEDOR -> TAX_LEVEL_AUTORRETENEDOR;
+            case AGENTE_RETENCION_IVA -> TAX_LEVEL_AGENTE_RETENCION_IVA;
+            case REGIMEN_SIMPLE -> TAX_LEVEL_REGIMEN_SIMPLE;
+            case NO_APLICA -> TAX_LEVEL_NO_APLICA;
+        };
+    }
+
+    /**
      * operation_type_id MATIAS (verificado contra GET /operation-type): venta/POS estándar=1; las notas que
      * referencian una factura usan NC=12 / ND=14 (nuestras notas siempre referencian la factura original).
      */
@@ -418,7 +444,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         customer.put("identity_document_id", identityDocumentId(doc.getCustomer().documentType()));
         customer.put("type_organization_id", typeOrganizationId(doc.getCustomer().personType()));
         customer.put("tax_regime_id", taxRegimeId(doc.getCustomer())); // régimen inferido del adquiriente
-        customer.put("tax_level_id", EX_TAX_LEVEL_ID);   // responsabilidad fiscal: requiere campo explícito en Owner para fidelidad total
+        customer.put("tax_level_id", taxLevelId(doc.getCustomer())); // responsabilidad fiscal real del adquiriente
         return customer;
     }
 
