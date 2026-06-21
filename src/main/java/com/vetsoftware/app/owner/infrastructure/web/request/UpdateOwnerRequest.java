@@ -2,6 +2,7 @@ package com.vetsoftware.app.owner.infrastructure.web.request;
 
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
+import com.vetsoftware.app.owner.domain.TaxRegime;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,5 +20,7 @@ public record UpdateOwnerRequest(
         @Size(max = 30) String phone,
         @NotNull Long cityId,
         @NotNull Long companyId,
-        boolean withholdingAgent
+        boolean withholdingAgent,
+        // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable de IVA).
+        TaxRegime taxRegime
 ) {}

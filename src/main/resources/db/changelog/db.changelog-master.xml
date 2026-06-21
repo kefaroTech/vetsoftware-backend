@@ -145,5 +145,7 @@
     <include file="db/changelog/migrations/139_idempotency_key_product_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/140_idempotency_key_service_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/141_idempotency_key_general_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/142_add_tax_regime_to_owners.xml"/>
+    <include file="db/changelog/migrations/143_add_customer_tax_regime_to_electronic_documents.xml"/>
 
 </databaseChangeLog>

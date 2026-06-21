@@ -286,6 +286,19 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     }
 
     /**
+     * tax_regime_id MATIAS: 1 = Responsable de IVA, 2 = No responsable de IVA. Usa el régimen REAL congelado
+     * del adquiriente ({@code Owner.taxRegime} → snapshot). Para documentos antiguos sin ese dato (null), cae
+     * a la heurística: Responsable de IVA si es persona jurídica o se identifica con NIT.
+     */
+    private static int taxRegimeId(CustomerSnapshot customer) {
+        String regime = customer.taxRegime();
+        if ("RESPONSABLE_IVA".equals(regime)) return 1;
+        if ("NO_RESPONSABLE_IVA".equals(regime)) return EX_TAX_REGIME_ID;
+        boolean responsableIva = "JURIDICA".equals(customer.personType()) || "NIT".equals(customer.documentType());
+        return responsableIva ? 1 : EX_TAX_REGIME_ID;
+    }
+
+    /**
      * operation_type_id MATIAS (verificado contra GET /operation-type): venta/POS estándar=1; las notas que
      * referencian una factura usan NC=12 / ND=14 (nuestras notas siempre referencian la factura original).
      */
@@ -386,8 +399,8 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         customer.put("city_id", resolveCityId(config, doc.getCustomer().cityDaneCode()));
         customer.put("identity_document_id", identityDocumentId(doc.getCustomer().documentType()));
         customer.put("type_organization_id", typeOrganizationId(doc.getCustomer().personType()));
-        customer.put("tax_regime_id", EX_TAX_REGIME_ID); // TODO(catalog): régimen real del adquiriente
-        customer.put("tax_level_id", EX_TAX_LEVEL_ID);   // TODO(catalog): no aparece en el glosario
+        customer.put("tax_regime_id", taxRegimeId(doc.getCustomer())); // régimen inferido del adquiriente
+        customer.put("tax_level_id", EX_TAX_LEVEL_ID);   // responsabilidad fiscal: requiere campo explícito en Owner para fidelidad total
         return customer;
     }
 

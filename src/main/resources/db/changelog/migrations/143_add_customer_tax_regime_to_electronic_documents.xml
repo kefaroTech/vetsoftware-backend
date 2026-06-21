@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Snapshot del régimen de IVA del adquiriente congelado en el documento (inmutabilidad fiscal), igual
+         que el resto de columnas customer_*. Nullable: los documentos anteriores no lo tienen y el adaptador
+         MATIAS cae a una heurística cuando es null. -->
+    <changeSet id="143_add_customer_tax_regime_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="customer_tax_regime" type="VARCHAR(20)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

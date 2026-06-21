@@ -54,6 +54,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setCustomerName(c.name());
         entity.setCustomerEmail(c.email());
         entity.setCustomerCityDane(c.cityDaneCode());
+        entity.setCustomerTaxRegime(c.taxRegime());
 
         entity.setLineExtensionAmount(doc.getLineExtensionAmount());
         entity.setTaxExclusiveAmount(doc.getTaxExclusiveAmount());
@@ -122,7 +123,7 @@ public class ElectronicDocumentJpaMapper {
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
-                entity.getCustomerEmail(), entity.getCustomerCityDane());
+                entity.getCustomerEmail(), entity.getCustomerCityDane(), entity.getCustomerTaxRegime());
 
         DocumentReference reference = entity.getReferencedCufe() == null ? null
                 : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),

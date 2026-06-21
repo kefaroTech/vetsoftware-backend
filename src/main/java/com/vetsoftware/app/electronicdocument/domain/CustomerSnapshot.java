@@ -13,7 +13,11 @@ public record CustomerSnapshot(
         String legalName,
         String name,
         String email,
-        String cityDaneCode
+        String cityDaneCode,
+        // Régimen de IVA del adquiriente (nombre del enum Owner.TaxRegime). Determina el tax_regime_id ante
+        // la DIAN. Puede ser null en documentos antiguos (anteriores a capturar el régimen) → el adaptador cae
+        // a una heurística.
+        String taxRegime
 ) {
     public CustomerSnapshot {
         if (documentId == null || documentId.isBlank())
@@ -40,6 +44,7 @@ public record CustomerSnapshot(
                 null,
                 "Consumidor final",
                 null,
-                null);
+                null,
+                "NO_RESPONSABLE_IVA"); // el consumidor final no es responsable de IVA
     }
 }

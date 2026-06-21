@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Régimen de IVA del adquiriente (Owner): determina el tax_regime_id ante la DIAN/MATIAS
+         (RESPONSABLE_IVA=1 / NO_RESPONSABLE_IVA=2). Antes se enviaba un valor fijo. Se rellena con el default
+         conservador y luego se backfillea como Responsable de IVA a los jurídicos / con NIT (misma heurística
+         que el default del dominio). -->
+    <changeSet id="142_add_tax_regime_to_owners" author="orlando">
+        <addColumn tableName="owners">
+            <column name="tax_regime" type="VARCHAR(20)" defaultValue="NO_RESPONSABLE_IVA">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <update tableName="owners">
+            <column name="tax_regime" value="RESPONSABLE_IVA"/>
+            <where>person_type = 'JURIDICA' OR document_type = 'NIT'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

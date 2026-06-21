@@ -30,7 +30,8 @@ public class JpaSaleCustomerQueryPort implements SaleCustomerQueryPort {
                 owner.getDocument(), owner.getVerificationDigit(),
                 owner.getPersonType() == null ? null : owner.getPersonType().name(),
                 owner.getLegalName(), owner.getName(), owner.getEmail(),
-                owner.getCity() == null ? null : owner.getCity().getDaneCode());
+                owner.getCity() == null ? null : owner.getCity().getDaneCode(),
+                owner.getTaxRegime() == null ? null : owner.getTaxRegime().name());
         return Optional.of(new SaleCustomer(snapshot, owner.isWithholdingAgent()));
     }
 }

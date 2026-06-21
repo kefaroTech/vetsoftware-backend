@@ -17,15 +17,17 @@ public class Owner {
     private CompanyRef company;
     // F6 - agente retenedor: cuando el adquiriente lo es, la factura calcula y muestra sus retenciones.
     private boolean withholdingAgent;
+    // Régimen de IVA del adquiriente (responsable / no responsable): determina el tax_regime_id ante la DIAN.
+    private TaxRegime taxRegime;
     private final LocalDateTime createdDate;
     private boolean enabled;
 
     public Owner(Long id, String name, String email, String document, OwnerDocumentType documentType,
                  PersonType personType, String verificationDigit, String legalName, String address,
                  String phone, CityRef city, CompanyRef company, boolean withholdingAgent,
-                 LocalDateTime createdDate, boolean enabled) {
+                 TaxRegime taxRegime, LocalDateTime createdDate, boolean enabled) {
         validate(name, email, document, documentType, personType, verificationDigit, legalName,
-                 address, phone, city, company);
+                 address, phone, city, company, taxRegime);
         this.id = id;
         this.name = name;
         this.email = email;
@@ -39,6 +41,7 @@ public class Owner {
         this.city = city;
         this.company = company;
         this.withholdingAgent = withholdingAgent;
+        this.taxRegime = taxRegime;
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
@@ -46,17 +49,17 @@ public class Owner {
     public static Owner create(String name, String email, String document, OwnerDocumentType documentType,
                                 PersonType personType, String verificationDigit, String legalName,
                                 String address, String phone, CityRef city, CompanyRef company,
-                                boolean withholdingAgent) {
+                                boolean withholdingAgent, TaxRegime taxRegime) {
         return new Owner(null, name, email, document, documentType, personType, verificationDigit,
-                legalName, address, phone, city, company, withholdingAgent, LocalDateTime.now(), true);
+                legalName, address, phone, city, company, withholdingAgent, taxRegime, LocalDateTime.now(), true);
     }
 
     public void update(String name, String email, String document, OwnerDocumentType documentType,
                        PersonType personType, String verificationDigit, String legalName,
                        String address, String phone, CityRef city, CompanyRef company,
-                       boolean withholdingAgent) {
+                       boolean withholdingAgent, TaxRegime taxRegime) {
         validate(name, email, document, documentType, personType, verificationDigit, legalName,
-                 address, phone, city, company);
+                 address, phone, city, company, taxRegime);
         this.name = name;
         this.email = email;
         this.document = document;
@@ -69,11 +72,13 @@ public class Owner {
         this.city = city;
         this.company = company;
         this.withholdingAgent = withholdingAgent;
+        this.taxRegime = taxRegime;
     }
 
     private static void validate(String name, String email, String document, OwnerDocumentType documentType,
                                  PersonType personType, String verificationDigit, String legalName,
-                                 String address, String phone, CityRef city, CompanyRef company) {
+                                 String address, String phone, CityRef city, CompanyRef company,
+                                 TaxRegime taxRegime) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 150) throw new IllegalArgumentException("name must be 150 chars or less");
         if (document == null || document.isBlank()) throw new IllegalArgumentException("document is required");
@@ -83,6 +88,7 @@ public class Owner {
         if (phone != null && phone.length() > 30) throw new IllegalArgumentException("phone must be 30 chars or less");
         if (city == null) throw new IllegalArgumentException("city is required");
         if (company == null) throw new IllegalArgumentException("company is required");
+        if (taxRegime == null) throw new IllegalArgumentException("taxRegime is required");
 
         if (documentType == null) throw new IllegalArgumentException("documentType is required");
         if (personType == null) throw new IllegalArgumentException("personType is required");
@@ -125,6 +131,7 @@ public class Owner {
     public CityRef getCity() { return city; }
     public CompanyRef getCompany() { return company; }
     public boolean isWithholdingAgent() { return withholdingAgent; }
+    public TaxRegime getTaxRegime() { return taxRegime; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }

@@ -107,6 +107,9 @@ public class ElectronicDocumentJpaEntity {
     private String customerEmail;
     @Column(name = "customer_city_dane", length = 5)
     private String customerCityDane;
+    // Régimen de IVA del adquiriente congelado (RESPONSABLE_IVA / NO_RESPONSABLE_IVA) → tax_regime_id DIAN.
+    @Column(name = "customer_tax_regime", length = 20)
+    private String customerTaxRegime;
 
     @Column(name = "line_extension_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal lineExtensionAmount;
@@ -227,6 +230,8 @@ public class ElectronicDocumentJpaEntity {
     public void setCustomerEmail(String v) { this.customerEmail = v; }
     public String getCustomerCityDane() { return customerCityDane; }
     public void setCustomerCityDane(String v) { this.customerCityDane = v; }
+    public String getCustomerTaxRegime() { return customerTaxRegime; }
+    public void setCustomerTaxRegime(String v) { this.customerTaxRegime = v; }
     public BigDecimal getLineExtensionAmount() { return lineExtensionAmount; }
     public void setLineExtensionAmount(BigDecimal v) { this.lineExtensionAmount = v; }
     public BigDecimal getTaxExclusiveAmount() { return taxExclusiveAmount; }

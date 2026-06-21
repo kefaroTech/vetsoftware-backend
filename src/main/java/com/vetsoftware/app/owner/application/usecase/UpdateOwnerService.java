@@ -10,6 +10,7 @@ import com.vetsoftware.app.owner.domain.CityRef;
 import com.vetsoftware.app.owner.domain.CompanyRef;
 import com.vetsoftware.app.owner.domain.Owner;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
+import com.vetsoftware.app.owner.domain.TaxRegime;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,9 +39,12 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        TaxRegime taxRegime = command.taxRegime() != null
+            ? command.taxRegime()
+            : TaxRegime.defaultFor(command.personType(), command.documentType());
         owner.update(command.name(), command.email(), command.document(), command.documentType(),
                      command.personType(), command.verificationDigit(), command.legalName(),
-                     command.address(), command.phone(), city, company, command.withholdingAgent());
+                     command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime);
         return OwnerDto.from(repository.save(owner));
     }
 }

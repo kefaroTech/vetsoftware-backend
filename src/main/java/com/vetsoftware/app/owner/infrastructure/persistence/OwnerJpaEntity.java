@@ -4,6 +4,7 @@ import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
+import com.vetsoftware.app.owner.domain.TaxRegime;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -47,6 +48,11 @@ public class OwnerJpaEntity {
     @Column(name = "withholding_agent", nullable = false)
     private boolean withholdingAgent = false;
 
+    // Régimen de IVA del adquiriente → tax_regime_id ante la DIAN (RESPONSABLE_IVA=1 / NO_RESPONSABLE_IVA=2).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_regime", nullable = false, length = 20)
+    private TaxRegime taxRegime = TaxRegime.NO_RESPONSABLE_IVA;
+
     @Column(length = 255)
     private String address;
 
@@ -87,6 +93,8 @@ public class OwnerJpaEntity {
     public void setLegalName(String legalName) { this.legalName = legalName; }
     public boolean isWithholdingAgent() { return withholdingAgent; }
     public void setWithholdingAgent(boolean withholdingAgent) { this.withholdingAgent = withholdingAgent; }
+    public TaxRegime getTaxRegime() { return taxRegime; }
+    public void setTaxRegime(TaxRegime taxRegime) { this.taxRegime = taxRegime; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public String getPhone() { return phone; }
