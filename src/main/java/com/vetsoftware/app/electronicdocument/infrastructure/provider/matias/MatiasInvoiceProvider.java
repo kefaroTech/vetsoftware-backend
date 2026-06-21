@@ -247,6 +247,11 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         };
     }
 
+    /** Endpoints donde MATIAS asigna el consecutivo (auto-increment): NO se debe enviar document_number. */
+    private static boolean isAutoIncrement(ElectronicDocumentType type) {
+        return type == ElectronicDocumentType.DOC_EQUIV_POS;
+    }
+
     /** type_document_id MATIAS — confirmado contra el glosario (Códigos de Documentos, columna ID API). */
     private static int typeDocumentId(ElectronicDocumentType type) {
         return switch (type) {
@@ -308,7 +313,12 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         // El fallback EX_* solo cubre un documento sin numerar (no debería ocurrir en el flujo de emisión).
         body.put("resolution_number", doc.getResolutionNumber() != null ? doc.getResolutionNumber() : EX_RESOLUTION_NUMBER);
         body.put("prefix", doc.getPrefix() != null ? doc.getPrefix() : EX_PREFIX);
-        body.put("document_number", String.valueOf(doc.getConsecutive() != null ? doc.getConsecutive() : doc.getId()));
+        // En endpoints auto-increment (POS) MATIAS asigna el consecutivo y RECHAZA con 422 si se envía
+        // document_number ("Para la generación automática, no debe enviar el campo document_number."). En los
+        // manuales (factura / notas) es obligatorio y MATIAS respeta el que enviamos. Por eso solo va aquí.
+        if (!isAutoIncrement(doc.getDocumentType())) {
+            body.put("document_number", String.valueOf(doc.getConsecutive() != null ? doc.getConsecutive() : doc.getId()));
+        }
         body.put("notes", "Documento " + doc.getId());
         body.put("operation_type_id", operationTypeId(doc.getDocumentType()));
         body.put("type_document_id", typeDocumentId(doc.getDocumentType()));
@@ -326,7 +336,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
         if (doc.getDocumentType() == ElectronicDocumentType.DOC_EQUIV_POS) {
             body.put("document_signature", buildDocumentSignature());
-            body.put("point_of_sale", buildPointOfSale());
+            body.put("point_of_sale", buildPointOfSale(doc));
             body.put("software_manufacturer", buildSoftwareManufacturer());
         }
 
@@ -463,13 +473,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         return signature;
     }
 
-    private Map<String, Object> buildPointOfSale() {
+    private Map<String, Object> buildPointOfSale(ElectronicDocument doc) {
         Map<String, Object> pos = new LinkedHashMap<>();
         pos.put("cashier_name", "Cajero");
         pos.put("terminal_number", "CJ001");
         pos.put("cashier_type", "Caja principal");
         pos.put("sales_code", "POS01");
         pos.put("address", "N/A");
+        pos.put("sub_total", str(doc.getTaxExclusiveAmount())); // requerido por MATIAS: subtotal sin impuestos
         return pos;
     }
 
@@ -503,7 +514,12 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
             boolean isInvoice = doc == null || doc.getDocumentType() == ElectronicDocumentType.FE_VENTA;
             String cufe = isInvoice ? key : null;   // FE → CUFE
             String cude = isInvoice ? null : key;   // POS/notas → CUDE
-            return new ProviderResult(DianStatus.VALIDADO, null, null, cufe, cude, null,
+            // En POS (auto-increment) el consecutivo lo asigna MATIAS; lo extraemos del StatusMessage
+            // ("...electrónica DPOS1, ha sido autorizada.") para sellar el número fiscal REAL en el documento
+            // (en facturas/notas coincide con el que enviamos, así que es inocuo). markValidated solo lo aplica
+            // si viene poblado.
+            String[] assigned = parseAssignedNumber(text(response, "StatusMessage"));
+            return new ProviderResult(DianStatus.VALIDADO, assigned[0], parseLongOrNull(assigned[1]), cufe, cude, null,
                     text(attached, "url"),                                // xmlSigned: URL del XML firmado
                     firstNonNull(text(qr, "qrDian"), text(qr, "data")),   // qrData: contenido/URL DIAN
                     text(qr, "url"),                                      // qrUrl: imagen QR
@@ -557,6 +573,31 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
     private static String str(BigDecimal value) {
         return value == null ? null : value.toPlainString();
+    }
+
+    /**
+     * Extrae [prefix, consecutivo] del {@code StatusMessage} de MATIAS (p. ej.
+     * "La Factura electrónica DPOS1, ha sido autorizada.") — el patrón "LETRAS+DÍGITOS," del número fiscal.
+     * Útil para POS, donde el consecutivo lo asigna MATIAS. Devuelve {@code [null, null]} si no se reconoce.
+     */
+    private static final java.util.regex.Pattern ASSIGNED_NUMBER =
+            java.util.regex.Pattern.compile("([A-Za-z]{1,10})(\\d{1,18}),");
+
+    private static String[] parseAssignedNumber(String statusMessage) {
+        if (statusMessage != null) {
+            java.util.regex.Matcher m = ASSIGNED_NUMBER.matcher(statusMessage);
+            if (m.find()) return new String[]{m.group(1), m.group(2)};
+        }
+        return new String[]{null, null};
+    }
+
+    private static Long parseLongOrNull(String value) {
+        if (value == null) return null;
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static int parseIntOr(String value, int fallback) {

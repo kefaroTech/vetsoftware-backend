@@ -45,6 +45,20 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
     }
 
     @Override
+    public Optional<AllocatedNumber> peekActive(Long companyId, ElectronicDocumentType documentType) {
+        NumberingResolutionJpaEntity r = repository.findActive(companyId, documentType.name()).orElse(null);
+        if (r == null) return Optional.empty();
+
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(r.getValidFrom()) || today.isAfter(r.getValidTo())) {
+            throw new IllegalStateException("La resolución de numeración " + r.getResolutionNumber()
+                    + " no está vigente (" + r.getValidFrom() + " a " + r.getValidTo() + ").");
+        }
+        // Sin consumir consecutivo: el proveedor (POS auto-increment) lo asigna. Solo resolución + prefijo.
+        return Optional.of(new AllocatedNumber(r.getResolutionNumber(), r.getPrefix(), null));
+    }
+
+    @Override
     public boolean release(Long companyId, ElectronicDocumentType documentType, Long consecutive) {
         if (consecutive == null) return false;
         NumberingResolutionJpaEntity r =

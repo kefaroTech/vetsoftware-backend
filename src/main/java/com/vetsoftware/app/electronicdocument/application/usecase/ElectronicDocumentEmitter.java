@@ -34,7 +34,13 @@ public class ElectronicDocumentEmitter {
         if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) {
             return document;
         }
-        numberAssigner.assign(document);
+        // POS: el consecutivo lo asigna el proveedor (MATIAS auto-increment), así que NO consumimos numeración
+        // local — solo aportamos resolución+prefijo (requeridos por el endpoint). El resto numera localmente.
+        if (document.usesProviderAssignedConsecutive()) {
+            numberAssigner.assignResolutionOnly(document);
+        } else {
+            numberAssigner.assign(document);
+        }
         return documentTransmitter.transmit(document);
     }
 }

@@ -289,6 +289,30 @@ public class ElectronicDocument {
     }
 
     /**
+     * El consecutivo de los documentos equivalentes POS lo asigna el proveedor DIAN (MATIAS auto-increment),
+     * no nuestra resolución local; por eso no consumimos consecutivo local para POS.
+     */
+    public boolean usesProviderAssignedConsecutive() {
+        return documentType == ElectronicDocumentType.DOC_EQUIV_POS;
+    }
+
+    /**
+     * Asigna SOLO resolución + prefijo (sin consecutivo) al emitir, para los documentos cuyo número lo asigna
+     * el proveedor DIAN ({@link #usesProviderAssignedConsecutive()}). El consecutivo real lo sella
+     * {@link #markValidated} con la respuesta del proveedor. No consume numeración local.
+     */
+    public void assignResolutionOnly(String resolutionNumber, String prefix) {
+        if (dianStatus != DianStatus.PENDIENTE)
+            throw new IllegalStateException("solo se puede numerar un documento PENDIENTE");
+        if (this.consecutive != null)
+            throw new IllegalStateException("el documento ya tiene consecutivo asignado");
+        if (resolutionNumber == null || resolutionNumber.isBlank())
+            throw new IllegalArgumentException("resolutionNumber is required");
+        this.resolutionNumber = resolutionNumber;
+        this.prefix = prefix;
+    }
+
+    /**
      * Sella el documento como VALIDADO por la DIAN: número fiscal + sellos del proveedor. Forward-only:
      * solo desde PENDIENTE/CONTINGENCIA. No toca el contenido fiscal.
      */

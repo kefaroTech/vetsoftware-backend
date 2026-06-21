@@ -14,6 +14,14 @@ public interface NumberingAllocationPort {
     Optional<AllocatedNumber> allocate(Long companyId, ElectronicDocumentType documentType);
 
     /**
+     * Lee la resolución activa SIN consumir consecutivo (no incrementa {@code current_number}): devuelve solo
+     * resolución + prefijo ({@code consecutive} = null). Para documentos cuyo consecutivo lo asigna el
+     * proveedor DIAN (POS auto-increment), que igual exige {@code resolution_number}+{@code prefix} en el
+     * request. Vacío si la empresa no tiene resolución activa para el tipo.
+     */
+    Optional<AllocatedNumber> peekActive(Long companyId, ElectronicDocumentType documentType);
+
+    /**
      * Libera un consecutivo asignado ante un rechazo, para evitar huecos en la secuencia fiscal. Solo lo
      * recupera (decrementa {@code current_number} de vuelta al {@code consecutive}) si éste fue el último
      * número entregado y nadie tomó el siguiente — bajo el mismo bloqueo pesimista de {@code allocate}.

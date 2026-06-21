@@ -27,6 +27,19 @@ public class NumberAssigner {
     }
 
     /**
+     * Asigna SOLO resolución + prefijo (sin consumir consecutivo) para documentos cuyo número lo asigna el
+     * proveedor DIAN (POS auto-increment). El proveedor exige igual resolución+prefijo en el request.
+     */
+    public void assignResolutionOnly(ElectronicDocument document) {
+        NumberingAllocationPort.AllocatedNumber number = numberingPort
+                .peekActive(document.getCompanyId(), document.getDocumentType())
+                .orElseThrow(() -> new IllegalStateException(
+                        "La empresa no tiene una resolución de numeración activa para "
+                                + document.getDocumentType() + "."));
+        document.assignResolutionOnly(number.resolutionNumber(), number.prefix());
+    }
+
+    /**
      * Ante un rechazo, intenta recuperar el consecutivo del documento para evitar un hueco en la secuencia
      * fiscal. Si la resolución pudo recuperarlo (era el último entregado), limpia la numeración del
      * documento para que no queden dos filas con el mismo número. Si no era seguro, no toca nada (el hueco

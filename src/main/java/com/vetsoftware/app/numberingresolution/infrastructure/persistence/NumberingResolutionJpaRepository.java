@@ -32,6 +32,19 @@ public interface NumberingResolutionJpaRepository extends JpaRepository<Numberin
         @org.springframework.data.repository.query.Param("companyId") Long companyId,
         @org.springframework.data.repository.query.Param("documentType") String documentType);
 
+    /**
+     * Resolución activa de la empresa para un tipo de documento, SIN bloqueo (lectura). Para los casos que
+     * solo necesitan resolución+prefijo y NO consumen consecutivo (POS auto-increment: MATIAS asigna el
+     * número). Nativa por consistencia con {@link #lockActiveForUpdate} y para filtrar enabled=true explícito.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        value = "SELECT * FROM numbering_resolutions WHERE company_id = :companyId "
+              + "AND document_type = :documentType AND enabled = true ORDER BY id LIMIT 1",
+        nativeQuery = true)
+    Optional<NumberingResolutionJpaEntity> findActive(
+        @org.springframework.data.repository.query.Param("companyId") Long companyId,
+        @org.springframework.data.repository.query.Param("documentType") String documentType);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
