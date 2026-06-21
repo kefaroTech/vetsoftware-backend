@@ -373,6 +373,15 @@ public class ElectronicDocument {
         this.dianStatus = DianStatus.CONTINGENCIA;
     }
 
+    /**
+     * Documento "provisional": en contingencia y aún SIN sello fiscal DIAN (sin CUFE/CUDE). Lo que se entrega
+     * al cliente mientras tanto es un comprobante NO fiscal; el documento fiscal real llega al regularizar
+     * (cuando el proveedor/DIAN vuelve y la transmisión valida). Útil para etiquetar la representación gráfica.
+     */
+    public boolean isProvisional() {
+        return dianStatus == DianStatus.CONTINGENCIA && cufe == null && cude == null;
+    }
+
     /** Adjunta la referencia (clave/URL S3) de la representación gráfica PDF ya generada. */
     public void attachRepresentation(String pdfRepresentation) {
         this.pdfRepresentation = pdfRepresentation;

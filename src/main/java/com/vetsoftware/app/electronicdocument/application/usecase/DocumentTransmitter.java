@@ -1,6 +1,7 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingEntitlementQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.ContingencyMonitorPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigQueryPort;
@@ -16,6 +17,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 public class DocumentTransmitter {
+    private static final Logger log = LoggerFactory.getLogger(DocumentTransmitter.class);
+
     private final ElectronicDocumentRepository repository;
     private final ProviderConfigQueryPort configQueryPort;
     private final TransmissionLogPort transmissionLog;
@@ -34,6 +39,7 @@ public class DocumentTransmitter {
     private final DeliverElectronicDocumentService deliverService;
     private final BillingEntitlementQueryPort billingEntitlement;
     private final NumberAssigner numberAssigner;
+    private final ContingencyMonitorPort contingencyMonitor;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
@@ -43,6 +49,7 @@ public class DocumentTransmitter {
                                DeliverElectronicDocumentService deliverService,
                                BillingEntitlementQueryPort billingEntitlement,
                                NumberAssigner numberAssigner,
+                               ContingencyMonitorPort contingencyMonitor,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
@@ -51,6 +58,7 @@ public class DocumentTransmitter {
         this.deliverService = deliverService;
         this.billingEntitlement = billingEntitlement;
         this.numberAssigner = numberAssigner;
+        this.contingencyMonitor = contingencyMonitor;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
@@ -73,6 +81,10 @@ public class DocumentTransmitter {
         }
 
         ProviderResult result = provider.transmit(document, config);
+        // Detección automática del modo contingencia: CONTINGENCIA = fallo de infraestructura (5xx/timeout);
+        // cualquier otro estado = el proveedor respondió (sano). Reintentar un CONTINGENCIA que ahora valida
+        // registra "sano" y desactiva el modo solo. No cambia el resultado de la emisión.
+        contingencyMonitor.recordOutcome(document.getCompanyId(), result.status() != DianStatus.CONTINGENCIA);
         applyResult(document, result);
         ElectronicDocument saved = repository.updateDianResult(document);
 
@@ -125,9 +137,18 @@ public class DocumentTransmitter {
 
     private void applyResult(ElectronicDocument document, ProviderResult r) {
         switch (r.status()) {
-            case VALIDADO -> document.markValidated(r.prefix(), r.consecutive(), r.cufe(), r.cude(), r.uuid(),
-                    r.xmlSigned(), r.qrData(), r.qrUrl(), r.pdfRepresentation(),
-                    r.validationDate() != null ? r.validationDate() : LocalDateTime.now());
+            case VALIDADO -> {
+                // Alerta de seguridad: un documento NUNCA debería quedar VALIDADO sin sello fiscal
+                // (CUFE en factura / CUDE en POS y notas). El proveedor ya degrada a PENDIENTE el "00 sin
+                // sello"; esto es la red por si otra ruta/proveedor lo marcara validado sin CUFE/CUDE.
+                if (isBlank(r.cufe()) && isBlank(r.cude())) {
+                    log.error("Documento {} marcado VALIDADO SIN SELLO (CUFE/CUDE vacíos). "
+                            + "Revisar la respuesta del proveedor; requiere atención manual.", document.getId());
+                }
+                document.markValidated(r.prefix(), r.consecutive(), r.cufe(), r.cude(), r.uuid(),
+                        r.xmlSigned(), r.qrData(), r.qrUrl(), r.pdfRepresentation(),
+                        r.validationDate() != null ? r.validationDate() : LocalDateTime.now());
+            }
             case RECHAZADO -> {
                 document.markRejected();
                 // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia fiscal.
@@ -137,6 +158,10 @@ public class DocumentTransmitter {
             case CONTINGENCIA -> document.markContingency();
             case PENDIENTE -> { /* async: el webhook completará el estado */ }
         }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private TransmissionResult toTransmissionResult(DianStatus status) {
