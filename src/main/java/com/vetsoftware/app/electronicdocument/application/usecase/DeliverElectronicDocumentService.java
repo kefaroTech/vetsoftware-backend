@@ -47,7 +47,13 @@ public class DeliverElectronicDocumentService {
         if (document.getPdfRepresentation() != null && !document.getPdfRepresentation().isBlank()) return;
 
         String seal = document.getCufe() != null ? document.getCufe() : document.getCude();
-        String qrBase64 = qrGenerator.generatePngBase64(qrBaseUrl + (seal == null ? "" : seal));
+        // La DIAN regula el CONTENIDO del QR (Anexo Técnico): usar el que calculó el proveedor
+        // (qrData) cuando exista — es el oficial; si no viene, construir la URL de consulta DIAN
+        // (qr-base-url) + CUFE/CUDE como respaldo.
+        String qrContent = (document.getQrData() != null && !document.getQrData().isBlank())
+                ? document.getQrData()
+                : qrBaseUrl + (seal == null ? "" : seal);
+        String qrBase64 = qrGenerator.generatePngBase64(qrContent);
         byte[] pdf = invoicePdf.render(document, qrBase64);
 
         String number = numberOf(document);
