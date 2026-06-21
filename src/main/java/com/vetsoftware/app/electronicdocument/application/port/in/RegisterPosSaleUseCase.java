@@ -12,7 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * {@code admin.all}; el resto valida el precio contra el catalogo en el builder.
  */
 public interface RegisterPosSaleUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicDocument.create') "
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('pos.create') "
             + "and @authz.isMyCompany(#command.companyId) and !#command.hasGeneralLine())")
     ElectronicDocumentDto execute(RegisterPosSaleCommand command);
 }

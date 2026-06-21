@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** F4: emite una factura electrónica de venta (FE) a partir de un documento equivalente POS previo. */
 public interface ConvertPosToInvoiceUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicDocument.emit') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
     ElectronicDocumentDto execute(ConvertPosToInvoiceCommand command);
 }

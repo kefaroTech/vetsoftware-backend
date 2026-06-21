@@ -11,7 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  */
 public interface FindElectronicDocumentByAccountUseCase {
     @PreAuthorize("hasAuthority('admin.all') or "
-            + "((hasAuthority('electronicDocument.read') or hasAuthority('openAccount.read')) "
+            + "((hasAuthority('pos.read') or hasAuthority('pos.read')) "
             + "and @authz.isMyCompany(#companyId))")
     Optional<ElectronicDocumentDto> findByOpenAccount(Long openAccountId, Long companyId);
 }
