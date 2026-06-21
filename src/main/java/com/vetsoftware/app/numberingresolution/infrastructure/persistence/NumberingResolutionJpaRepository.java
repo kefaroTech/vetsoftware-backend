@@ -19,6 +19,13 @@ public interface NumberingResolutionJpaRepository extends JpaRepository<Numberin
     List<NumberingResolutionJpaEntity> findAllByCompanyId(Long companyId);
 
     /**
+     * ¿La empresa ya tiene una resolución ACTIVA para ese tipo de documento? Base del invariante "una sola
+     * resolución activa por (company, tipo)". `enabled = true` explícito además del {@code @SQLRestriction}.
+     */
+    boolean existsByCompany_IdAndDocumentTypeAndEnabledTrue(
+        Long companyId, com.vetsoftware.app.numberingresolution.domain.ElectronicDocumentType documentType);
+
+    /**
      * Resolución activa de la empresa para un tipo de documento, BLOQUEADA para actualización (FOR UPDATE):
      * serializa la asignación concurrente del consecutivo entre emisiones de la misma empresa+tipo. Nativa
      * para poder usar FOR UPDATE; filtra enabled=true explícitamente (la @SQLRestriction no aplica a nativas).

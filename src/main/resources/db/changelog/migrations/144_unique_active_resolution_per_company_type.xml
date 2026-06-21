@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Invariante "una sola resolución de numeración ACTIVA por (empresa, tipo de documento)": dos activas
+         para el mismo (company, document_type) hacen que la asignación de consecutivo (lockActiveForUpdate
+         ORDER BY id LIMIT 1) elija una en silencio e ignore la otra. Antes solo había check en el service
+         (ventana de carrera + no cubría reactivación). MySQL no soporta índices únicos parciales y la entidad
+         usa soft-delete (enabled), así que se replica el patrón de las migraciones 106/133: una columna
+         generada que vale document_type solo cuando enabled=TRUE y NULL en otro caso; el índice único sobre
+         (company_id, active_document_type) deduplica únicamente las ACTIVAS (MySQL permite múltiples NULL),
+         dejando libres las desactivadas. Requiere que no existan duplicados activos previos por (company,
+         tipo); si los hubiera, desactivarlos antes. -->
+    <changeSet id="144_unique_active_resolution_per_company_type" author="orlando">
+        <sql>
+            ALTER TABLE numbering_resolutions
+                ADD COLUMN active_document_type VARCHAR(30)
+                GENERATED ALWAYS AS (
+                    CASE WHEN enabled = TRUE THEN document_type ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_numbering_resolutions_active UNIQUE (company_id, active_document_type)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE numbering_resolutions
+                    DROP INDEX uq_numbering_resolutions_active,
+                    DROP COLUMN active_document_type
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

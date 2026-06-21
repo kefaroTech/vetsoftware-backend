@@ -99,6 +99,7 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFo
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
+import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNotFoundException;
 import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
@@ -241,6 +242,12 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT", ex.getMessage());
     }
 
+    @ExceptionHandler(NumberingResolutionAlreadyActiveException.class)
+    public ProblemDetail handleNumberingResolutionAlreadyActive(NumberingResolutionAlreadyActiveException ex) {
+        log.warn("Numbering resolution already active: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE", ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidOpenAccountStatusTransitionException.class)
     public ProblemDetail handleInvalidOpenAccountStatusTransition(InvalidOpenAccountStatusTransitionException ex) {
         log.warn("Invalid open account status transition: {}", ex.getMessage());
@@ -377,6 +384,12 @@ public class GlobalExceptionHandler {
                 || cause.contains("uq_general_charge_open_accounts_request"))) {
             return problem(HttpStatus.CONFLICT, "DUPLICATE_CHARGE_REQUEST",
                 "El cargo ya fue registrado (solicitud duplicada).");
+        }
+        // Carrera/reactivación en la unicidad de "una sola resolución activa por (company, tipo)" (migración
+        // 144). La 2ª inserción/reactivación concurrente que pasó el check del service la atrapa la BD.
+        if (cause != null && cause.contains("uq_numbering_resolutions_active")) {
+            return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
+                "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

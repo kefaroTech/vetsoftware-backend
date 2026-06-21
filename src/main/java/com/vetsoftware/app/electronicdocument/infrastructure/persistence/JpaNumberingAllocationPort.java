@@ -65,9 +65,17 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
                 repository.lockActiveForUpdate(companyId, documentType.name()).orElse(null);
         if (r == null) return false;
 
-        // Solo es seguro recuperar el consecutivo si fue el último entregado y nadie tomó el siguiente.
-        // Bajo el FOR UPDATE de la emisión síncrona esto siempre se cumple; en rutas async lo hace de forma
+        // Solo se recupera el consecutivo si fue el último entregado y nadie tomó el siguiente (recuperación
+        // EN ORDEN). Bajo el FOR UPDATE de la emisión síncrona siempre se cumple; en rutas async es
         // oportunista (si ya se asignaron números posteriores, no se toca nada y el hueco permanece).
+        //
+        // DECISIÓN (no implementar free-list de consecutivos liberados): la doc DIAN/MATIAS exige numeración
+        // ascendente y NO reutilizar números — "Continúa con el siguiente número secuencial. No repitas
+        // números" (FAQ) y VAL-ID-003 "Debe ser consecutivo según la resolución; no puede haber saltos
+        // (excepto por anulaciones)". Reutilizar un número liberado FUERA DE ORDEN (tras aceptar números
+        // mayores) violaría esa regla y MATIAS lo rechazaría. Por eso el hueco que deja un rechazo async ya
+        // pasado de turno es DEFINITIVO y justificable (documento rechazado, nunca aceptado por la DIAN): se
+        // conserva el número + motivo en la bitácora de transmisión, no se rellena.
         if (!Long.valueOf(consecutive + 1).equals(r.getCurrentNumber())) return false;
 
         r.setCurrentNumber(consecutive);

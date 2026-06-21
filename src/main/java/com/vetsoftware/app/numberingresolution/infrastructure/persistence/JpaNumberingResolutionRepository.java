@@ -41,6 +41,12 @@ public class JpaNumberingResolutionRepository implements NumberingResolutionRepo
     }
 
     @Override
+    public boolean existsActiveByCompanyAndType(
+            Long companyId, com.vetsoftware.app.numberingresolution.domain.ElectronicDocumentType documentType) {
+        return jpaRepository.existsByCompany_IdAndDocumentTypeAndEnabledTrue(companyId, documentType);
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
