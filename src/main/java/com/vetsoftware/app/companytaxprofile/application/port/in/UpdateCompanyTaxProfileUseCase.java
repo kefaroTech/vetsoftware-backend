@@ -5,6 +5,6 @@ import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateCompanyTaxProfileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('companyTaxProfile.manage') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicbilling.update') and @authz.isMyCompany(#command.companyId))")
     CompanyTaxProfileDto execute(UpdateCompanyTaxProfileCommand command);
 }

@@ -4,6 +4,6 @@ import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindCompanyTaxProfileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('companyTaxProfile.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicbilling.read') and @authz.isMyCompany(#companyId))")
     CompanyTaxProfileDto findByCompanyId(Long companyId);
 }
