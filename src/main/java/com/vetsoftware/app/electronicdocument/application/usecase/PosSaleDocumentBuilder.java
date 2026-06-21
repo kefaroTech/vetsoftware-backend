@@ -131,13 +131,15 @@ public class PosSaleDocumentBuilder {
             default -> throw new IllegalArgumentException("unsupported sale line kind: " + l.kind());
         }
 
-        // El unitPrice del POS viene con IVA incluido (post-promo). Si la linea tributa, se extrae la base.
+        // El unitPrice del POS viene con IVA incluido (post-promo). Solo se extrae base cuando hay tarifa > 0
+        // (GRAVADO/INC). EXENTO conserva su esquema IVA con tasa 0: base = bruto, IVA 0, pero mantiene el
+        // esquema para que el XML lo distinga de EXCLUIDO (sin esquema). EXCLUIDO/GENERAL viajan sin esquema.
         BigDecimal gross = Money.multiply(l.unitPrice(), l.quantity());
-        boolean taxed = scheme != null && rate != null && rate.signum() > 0;
-        BigDecimal base = taxed ? Money.extractBase(gross, rate) : gross;
+        boolean hasPositiveRate = rate != null && rate.signum() > 0;
+        BigDecimal base = hasPositiveRate ? Money.extractBase(gross, rate) : gross;
         BigDecimal taxAmount = gross.subtract(base);
         return new ElectronicDocumentLine(null, lineNumber, description, l.quantity(), UNIT_MEASURE,
-                l.unitPrice(), base, category, taxed ? scheme : null, taxed ? rate : null, taxAmount, gross);
+                l.unitPrice(), base, category, scheme, rate, taxAmount, gross);
     }
 
     /**

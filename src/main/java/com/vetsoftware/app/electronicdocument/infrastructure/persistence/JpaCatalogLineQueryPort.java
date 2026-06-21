@@ -47,6 +47,11 @@ public class JpaCatalogLineQueryPort implements CatalogLineQueryPort {
     private CatalogItem toItem(String name, String taxTreatment, TaxJpaEntity tax,
                                BigDecimal basePrice, Long categoryId) {
         TaxCategory category = TaxCategory.valueOf(taxTreatment); // product/service.TaxTreatment espeja TaxCategory
+        // EXENTO = gravado a tarifa 0%: lleva esquema IVA con tasa 0 (la DIAN lo distingue de EXCLUIDO, que
+        // NO lleva esquema). Independiente de que el catálogo tenga o no un impuesto asociado.
+        if (category == TaxCategory.EXENTO) {
+            return new CatalogItem(name, category, TaxScheme.IVA, BigDecimal.ZERO, basePrice, categoryId);
+        }
         boolean taxed = (category == TaxCategory.GRAVADO || category == TaxCategory.INC)
                 && tax != null && tax.getPercentage() != null && tax.getPercentage().signum() > 0;
         if (!taxed) {

@@ -62,7 +62,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     // --- Catálogos MATIAS VERIFICADOS contra la API en vivo del sandbox (GET /document-type, /taxes, etc.). ---
     private static final int OPERATION_TYPE_NACIONAL = 1; // Operación: Estándar (GET /operation-type id 1)
     private static final String COUNTRY_COLOMBIA = "45";  // País: Colombia (GET /countries id 45)
-    private static final String UNIT_UNIDAD = "1093";     // Unidad genérica "mutuamente definido" (GET /quantity-units id 1093)
+    // El id de MATIAS cuyo "code" es el código DIAN/UNECE que guardamos en la línea (unit_measure_code). El XML
+    // DIAN emite @unitCode = ese code, así que el id transmitido debe calzar con unit_measure_code. id 70 = code
+    // "94" (unidad); el antiguo 1093 tenía code "ZZ" (mutuamente definido), que NO calzaba con el "94" guardado.
+    private static final String UNIT_ID_UNIDAD = "70";    // code "94" = unidad (GET /quantity-units id 70)
+    private static final Map<String, String> QUANTITY_UNIT_ID_BY_DIAN_CODE = Map.of(
+            "94", UNIT_ID_UNIDAD
+            // TODO(catalog): kg (KGM), litro (LTR), metro (MTR)… cuando se capture unidad por producto.
+    );
     private static final int MEANS_PAYMENT_EFECTIVO = 10; // Medio de pago: Efectivo (GET /payment-means id 10) — fallback
     private static final String TAX_ID_IVA = "1";         // Impuesto: IVA (GET /taxes id 1, code 01)
     private static final String TAX_ID_INC = "4";         // Impuesto Nacional al Consumo (GET /taxes id 4, code 04)
@@ -420,7 +427,9 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         for (ElectronicDocumentLine line : doc.getLines()) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("invoiced_quantity", str(line.getQuantity()));
-            item.put("quantity_units_id", UNIT_UNIDAD); // TODO(catalog): mapear otras unidades (kg/L/m…) si se requieren
+            // Traduce el código DIAN/UNECE de la línea al id interno de MATIAS; "unidad" (94→70) por defecto.
+            item.put("quantity_units_id",
+                    QUANTITY_UNIT_ID_BY_DIAN_CODE.getOrDefault(line.getUnitMeasureCode(), UNIT_ID_UNIDAD));
             item.put("line_extension_amount", str(line.getLineExtensionAmount()));
             item.put("free_of_charge_indicator", false);
             item.put("description", line.getDescription());
@@ -435,16 +444,21 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         return items;
     }
 
-    /** tax_totals de una línea (vacío si la línea no lleva impuesto). */
+    /**
+     * tax_totals de una línea. Vacío solo cuando la línea NO lleva esquema (EXCLUIDO). El EXENTO sí lleva
+     * esquema IVA con tarifa 0% e importe 0: la DIAN exige reportarlo como subtotal IVA al 0% (lo que lo
+     * diferencia de un excluido). GRAVADO/INC reportan su tarifa real.
+     */
     private static List<Map<String, Object>> lineTaxTotals(ElectronicDocumentLine line) {
-        if (line.getTaxRate() == null || line.getTaxRate().signum() <= 0) {
+        if (line.getTaxScheme() == null) {
             return List.of();
         }
+        BigDecimal percent = line.getTaxRate() == null ? BigDecimal.ZERO : line.getTaxRate();
         Map<String, Object> tax = new LinkedHashMap<>();
         tax.put("tax_id", taxIdFor(line.getTaxScheme()));
         tax.put("tax_amount", line.getTaxAmount());
         tax.put("taxable_amount", line.getLineExtensionAmount());
-        tax.put("percent", line.getTaxRate());
+        tax.put("percent", percent);
         return List.of(tax);
     }
 

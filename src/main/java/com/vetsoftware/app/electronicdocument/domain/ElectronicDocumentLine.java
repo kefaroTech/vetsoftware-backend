@@ -15,9 +15,9 @@ public class ElectronicDocumentLine {
     private final BigDecimal unitPrice;
     private final BigDecimal lineExtensionAmount;
     private final TaxCategory taxCategory;
-    /** null cuando la categoria no genera tributo (EXENTO/EXCLUIDO). */
+    /** null solo en EXCLUIDO (sin esquema). EXENTO lleva esquema IVA (a tarifa 0%), igual que GRAVADO/INC. */
     private final TaxScheme taxScheme;
-    /** null cuando no aplica tributo. */
+    /** 0 en EXENTO (IVA 0%); null en EXCLUIDO; tarifa positiva en GRAVADO/INC. */
     private final BigDecimal taxRate;
     private final BigDecimal taxAmount;
     private final BigDecimal totalAmount;
