@@ -11,5 +11,7 @@ public record TaxResponse(
         TaxScheme taxScheme,
         CompanySummary company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {}

@@ -26,4 +26,9 @@ public interface ProductCategoryJpaRepository extends JpaRepository<ProductCateg
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsByIdAndCompany_Id(Long id, Long companyId);
+
+    // @SQLRestriction("enabled = true") aplica: solo cuenta categorías ACTIVAS (un name desactivado se reusa).
+    boolean existsByCompany_IdAndName(Long companyId, String name);
+
+    boolean existsByCompany_IdAndNameAndIdNot(Long companyId, String name, Long id);
 }

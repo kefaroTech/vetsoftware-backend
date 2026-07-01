@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Trazabilidad de auditoría: quién y cuándo modificó por última vez (nullable; nunca modificado = NULL).
+         updated_by es el id del empleado (stamp de auditoría, sin FK). -->
+    <changeSet id="155_add_audit_columns_to_services" author="orlando">
+        <addColumn tableName="services">
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="services" columnName="updated_date"/>
+            <dropColumn tableName="services" columnName="updated_by"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

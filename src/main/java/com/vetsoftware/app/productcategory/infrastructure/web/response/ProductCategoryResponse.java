@@ -8,5 +8,7 @@ public record ProductCategoryResponse(
         String description,
         CompanySummary company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {}

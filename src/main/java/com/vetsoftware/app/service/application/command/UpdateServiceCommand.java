@@ -11,5 +11,6 @@ public record UpdateServiceCommand(
         String notes,
         Long serviceCategoryId,
         Long taxId,
-        Long companyId
+        Long companyId,
+        Long updatedBy
 ) {}

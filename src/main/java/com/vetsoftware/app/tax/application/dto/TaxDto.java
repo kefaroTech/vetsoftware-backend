@@ -12,6 +12,8 @@ public record TaxDto(
         TaxScheme taxScheme,
         CompanySummaryDto company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {
     public static TaxDto from(Tax tax) {
@@ -22,6 +24,8 @@ public record TaxDto(
                 tax.getTaxScheme(),
                 tax.getCompany() == null ? null : CompanySummaryDto.from(tax.getCompany()),
                 tax.getCreatedDate(),
+                tax.getUpdatedDate(),
+                tax.getUpdatedBy(),
                 tax.isEnabled());
     }
 }

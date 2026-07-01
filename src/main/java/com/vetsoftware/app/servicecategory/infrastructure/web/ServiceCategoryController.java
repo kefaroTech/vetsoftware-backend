@@ -71,7 +71,7 @@ public class ServiceCategoryController {
                                           @Valid @RequestBody UpdateServiceCategoryRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateServiceCategoryCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId())));
+                        authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -91,6 +91,8 @@ public class ServiceCategoryController {
                 dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
                 dto.createdDate(),
+                dto.updatedDate(),
+                dto.updatedBy(),
                 dto.enabled());
     }
 }

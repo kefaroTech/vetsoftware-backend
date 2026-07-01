@@ -104,7 +104,7 @@ public class ProductController {
                 request.currentStock(), request.minStock(), request.provider(),
                 request.expireDate(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
-                authz.currentCompanyId())));
+                authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -129,6 +129,6 @@ public class ProductController {
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.enabled());
     }
 }

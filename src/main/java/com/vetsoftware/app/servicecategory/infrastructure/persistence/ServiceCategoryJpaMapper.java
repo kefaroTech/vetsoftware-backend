@@ -14,6 +14,8 @@ public class ServiceCategoryJpaMapper {
         entity.setDescription(serviceCategory.getDescription());
         entity.setCompany(company);
         entity.setCreatedDate(serviceCategory.getCreatedDate());
+        entity.setUpdatedDate(serviceCategory.getUpdatedDate());
+        entity.setUpdatedBy(serviceCategory.getUpdatedBy());
         entity.setEnabled(serviceCategory.isEnabled());
         return entity;
     }
@@ -30,6 +32,8 @@ public class ServiceCategoryJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 entity.getCreatedDate(),
+                entity.getUpdatedDate(),
+                entity.getUpdatedBy(),
                 entity.isEnabled());
     }
 }

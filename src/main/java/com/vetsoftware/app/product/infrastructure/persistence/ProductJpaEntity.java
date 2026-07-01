@@ -65,6 +65,16 @@ public class ProductJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "updated_date")
+    private LocalDateTime updatedDate;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -100,6 +110,12 @@ public class ProductJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public LocalDateTime getUpdatedDate() { return updatedDate; }
+    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
+    public Long getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

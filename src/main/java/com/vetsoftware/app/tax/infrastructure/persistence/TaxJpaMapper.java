@@ -15,6 +15,8 @@ public class TaxJpaMapper {
         entity.setTaxScheme(tax.getTaxScheme());
         entity.setCompany(company);
         entity.setCreatedDate(tax.getCreatedDate());
+        entity.setUpdatedDate(tax.getUpdatedDate());
+        entity.setUpdatedBy(tax.getUpdatedBy());
         entity.setEnabled(tax.isEnabled());
         return entity;
     }
@@ -33,6 +35,8 @@ public class TaxJpaMapper {
                 entity.getTaxScheme(),
                 companyRef,
                 entity.getCreatedDate(),
+                entity.getUpdatedDate(),
+                entity.getUpdatedBy(),
                 entity.isEnabled());
     }
 }

@@ -20,5 +20,6 @@ public record UpdateProductRequest(
         @Size(max = 500) String notes,
         @NotNull TaxTreatment taxTreatment,
         @NotNull Long productCategoryId,
-        Long taxId
+        Long taxId,
+        @NotNull Long version
 ) {}

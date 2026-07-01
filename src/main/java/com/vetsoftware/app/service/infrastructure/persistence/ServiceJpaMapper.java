@@ -26,6 +26,8 @@ public class ServiceJpaMapper {
         entity.setTax(tax);
         entity.setCompany(company);
         entity.setCreatedDate(service.getCreatedDate());
+        entity.setUpdatedDate(service.getUpdatedDate());
+        entity.setUpdatedBy(service.getUpdatedBy());
         entity.setEnabled(service.isEnabled());
         return entity;
     }
@@ -52,6 +54,8 @@ public class ServiceJpaMapper {
             taxRef,
             companyRef,
             entity.getCreatedDate(),
+            entity.getUpdatedDate(),
+            entity.getUpdatedBy(),
             entity.isEnabled());
     }
 }

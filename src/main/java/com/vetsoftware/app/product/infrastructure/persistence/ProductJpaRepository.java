@@ -36,4 +36,9 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, Lo
     boolean existsByCompany_IdAndCode(Long companyId, String code);
 
     boolean existsByCompany_IdAndCodeAndIdNot(Long companyId, String code, Long id);
+
+    // @SQLRestriction("enabled = true") aplica: solo cuenta productos ACTIVOS (un name desactivado se reusa).
+    boolean existsByCompany_IdAndName(Long companyId, String name);
+
+    boolean existsByCompany_IdAndNameAndIdNot(Long companyId, String name, Long id);
 }

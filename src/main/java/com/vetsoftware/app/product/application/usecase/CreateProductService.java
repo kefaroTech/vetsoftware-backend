@@ -11,6 +11,7 @@ import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
+import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
 import com.vetsoftware.app.product.domain.TaxRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,9 @@ public class CreateProductService implements CreateProductUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         if (repository.existsByCompanyIdAndCode(command.companyId(), command.code())) {
             throw new ProductCodeAlreadyExistsException(command.code());
+        }
+        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+            throw new ProductNameAlreadyExistsException(command.name());
         }
         ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));

@@ -98,7 +98,8 @@ public class ServiceController {
         return toResponse(updateUseCase.execute(
             new UpdateServiceCommand(
                 id, request.name(), request.price(), request.taxTreatment(), request.notes(),
-                request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
+                request.serviceCategoryId(), request.taxId(), authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -121,6 +122,6 @@ public class ServiceController {
             new ServiceCategorySummary(sc.id(), sc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.enabled());
+            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.enabled());
     }
 }

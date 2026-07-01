@@ -7,6 +7,7 @@ import com.vetsoftware.app.productcategory.application.port.out.CompanyQueryPort
 import com.vetsoftware.app.productcategory.application.port.out.ProductCategoryRepository;
 import com.vetsoftware.app.productcategory.domain.CompanyRef;
 import com.vetsoftware.app.productcategory.domain.ProductCategory;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,9 @@ public class CreateProductCategoryService implements CreateProductCategoryUseCas
     public ProductCategoryDto execute(CreateProductCategoryCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+            throw new ProductCategoryNameAlreadyExistsException(command.name());
+        }
         return ProductCategoryDto.from(
                 repository.save(ProductCategory.create(command.name(), command.description(), company)));
     }

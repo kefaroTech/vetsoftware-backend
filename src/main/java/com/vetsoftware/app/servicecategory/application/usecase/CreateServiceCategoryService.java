@@ -7,6 +7,7 @@ import com.vetsoftware.app.servicecategory.application.port.out.CompanyQueryPort
 import com.vetsoftware.app.servicecategory.application.port.out.ServiceCategoryRepository;
 import com.vetsoftware.app.servicecategory.domain.CompanyRef;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategory;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,9 @@ public class CreateServiceCategoryService implements CreateServiceCategoryUseCas
     public ServiceCategoryDto execute(CreateServiceCategoryCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+            throw new ServiceCategoryNameAlreadyExistsException(command.name());
+        }
         return ServiceCategoryDto.from(
                 repository.save(ServiceCategory.create(command.name(), command.description(), company)));
     }

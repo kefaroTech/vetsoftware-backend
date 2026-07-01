@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Unicidad de NOMBRE de impuesto por empresa (entre ACTIVOS). Mismo patrón de la migración 151
+         (producto): columna generada que vale `name` solo si enabled=TRUE y NULL en otro caso; índice único
+         sobre (company_id, active_name) deduplica solo impuestos activos (MySQL permite múltiples NULL).
+         Requiere que no existan nombres duplicados activos previos por empresa; limpiarlos antes si los hubiera. -->
+    <changeSet id="154_unique_tax_name_per_company" author="orlando">
+        <sql>
+            ALTER TABLE taxes
+                ADD COLUMN active_name VARCHAR(100)
+                GENERATED ALWAYS AS (
+                    CASE WHEN enabled = TRUE THEN name ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_taxes_company_active_name UNIQUE (company_id, active_name)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE taxes
+                    DROP INDEX uq_taxes_company_active_name,
+                    DROP COLUMN active_name
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Trazabilidad de auditoría: quién y cuándo modificó por última vez (nullable; nunca modificado = NULL).
+         updated_by es el id del empleado (stamp de auditoría, sin FK). -->
+    <changeSet id="154_add_audit_columns_to_taxes" author="orlando">
+        <addColumn tableName="taxes">
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="taxes" columnName="updated_date"/>
+            <dropColumn tableName="taxes" columnName="updated_by"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

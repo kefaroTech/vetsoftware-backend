@@ -35,6 +35,16 @@ public class JpaTaxRepository implements TaxRepository {
     }
 
     @Override
+    public boolean existsByCompanyIdAndName(Long companyId, String name) {
+        return jpaRepository.existsByCompany_IdAndName(companyId, name);
+    }
+
+    @Override
+    public boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id) {
+        return jpaRepository.existsByCompany_IdAndNameAndIdNot(companyId, name, id);
+    }
+
+    @Override
     public List<Tax> findAllByCompanyId(Long companyId) {
         return jpaRepository.findAllByCompanyId(companyId)
                 .stream().map(mapper::toDomain).toList();

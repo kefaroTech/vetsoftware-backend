@@ -69,7 +69,7 @@ public class TaxController {
     public TaxResponse update(@PathVariable Long id,
                               @Valid @RequestBody UpdateTaxRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId())));
+                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -89,6 +89,8 @@ public class TaxController {
                 dto.id(), dto.name(), dto.percentage(), dto.taxScheme(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
                 dto.createdDate(),
+                dto.updatedDate(),
+                dto.updatedBy(),
                 dto.enabled());
     }
 }

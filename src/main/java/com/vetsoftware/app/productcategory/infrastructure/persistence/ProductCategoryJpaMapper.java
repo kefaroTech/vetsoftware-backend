@@ -14,6 +14,8 @@ public class ProductCategoryJpaMapper {
         entity.setDescription(productCategory.getDescription());
         entity.setCompany(company);
         entity.setCreatedDate(productCategory.getCreatedDate());
+        entity.setUpdatedDate(productCategory.getUpdatedDate());
+        entity.setUpdatedBy(productCategory.getUpdatedBy());
         entity.setEnabled(productCategory.isEnabled());
         return entity;
     }
@@ -31,6 +33,8 @@ public class ProductCategoryJpaMapper {
                 entity.getDescription(),
                 companyRef,
                 entity.getCreatedDate(),
+                entity.getUpdatedDate(),
+                entity.getUpdatedBy(),
                 entity.isEnabled());
     }
 }

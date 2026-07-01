@@ -7,6 +7,7 @@ import com.vetsoftware.app.tax.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.tax.application.port.out.TaxRepository;
 import com.vetsoftware.app.tax.domain.CompanyRef;
 import com.vetsoftware.app.tax.domain.Tax;
+import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,10 @@ public class UpdateTaxService implements UpdateTaxUseCase {
                 .orElseThrow(() -> new TaxNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        tax.update(command.name(), command.percentage(), command.taxScheme(), company);
+        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
+            throw new TaxNameAlreadyExistsException(command.name());
+        }
+        tax.update(command.name(), command.percentage(), command.taxScheme(), company, command.updatedBy());
         return TaxDto.from(repository.save(tax));
     }
 }

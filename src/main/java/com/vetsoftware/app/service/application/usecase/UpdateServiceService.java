@@ -46,7 +46,7 @@ public class UpdateServiceService implements UpdateServiceUseCase {
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
         service.update(command.name(), command.price(),
-            command.taxTreatment(), command.notes(), serviceCategory, tax, company);
+            command.taxTreatment(), command.notes(), serviceCategory, tax, company, command.updatedBy());
         return ServiceDto.from(repository.save(service));
     }
 }

@@ -17,5 +17,7 @@ public record UpdateProductCommand(
         TaxTreatment taxTreatment,
         Long productCategoryId,
         Long taxId,
-        Long companyId
+        Long companyId,
+        Long updatedBy,
+        Long version
 ) {}

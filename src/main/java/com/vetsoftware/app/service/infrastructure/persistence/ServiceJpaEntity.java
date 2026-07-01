@@ -47,6 +47,12 @@ public class ServiceJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "updated_date")
+    private LocalDateTime updatedDate;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -70,6 +76,10 @@ public class ServiceJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public LocalDateTime getUpdatedDate() { return updatedDate; }
+    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
+    public Long getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

@@ -15,6 +15,8 @@ public record ServiceDto(
         TaxSummaryDto tax,
         CompanySummaryDto company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {
     public static ServiceDto from(Service service) {
@@ -28,6 +30,8 @@ public record ServiceDto(
                 service.getTax() == null ? null : TaxSummaryDto.from(service.getTax()),
                 CompanySummaryDto.from(service.getCompany()),
                 service.getCreatedDate(),
+                service.getUpdatedDate(),
+                service.getUpdatedBy(),
                 service.isEnabled());
     }
 }

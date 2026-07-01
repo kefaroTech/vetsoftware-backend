@@ -7,6 +7,7 @@ import com.vetsoftware.app.productcategory.application.port.out.CompanyQueryPort
 import com.vetsoftware.app.productcategory.application.port.out.ProductCategoryRepository;
 import com.vetsoftware.app.productcategory.domain.CompanyRef;
 import com.vetsoftware.app.productcategory.domain.ProductCategory;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,10 @@ public class UpdateProductCategoryService implements UpdateProductCategoryUseCas
                 .orElseThrow(() -> new ProductCategoryNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        productCategory.update(command.name(), command.description(), company);
+        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
+            throw new ProductCategoryNameAlreadyExistsException(command.name());
+        }
+        productCategory.update(command.name(), command.description(), company, command.updatedBy());
         return ProductCategoryDto.from(repository.save(productCategory));
     }
 }

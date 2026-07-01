@@ -19,12 +19,16 @@ public class Product {
     private TaxRef tax;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private LocalDateTime updatedDate;
+    private Long updatedBy;
+    private Long version;
     private boolean enabled;
 
     public Product(Long id, String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                    Integer currentStock, Integer minStock, String provider, TaxTreatment taxTreatment,
                    boolean expireDate, String notes, ProductCategoryRef productCategory, TaxRef tax,
-                   CompanyRef company, LocalDateTime createdDate, boolean enabled) {
+                   CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy,
+                   Long version, boolean enabled) {
         validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
                  productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
@@ -43,6 +47,9 @@ public class Product {
         this.tax = tax;
         this.company = company;
         this.createdDate = createdDate;
+        this.updatedDate = updatedDate;
+        this.updatedBy = updatedBy;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -52,13 +59,14 @@ public class Product {
                                  ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
         return new Product(null, name, code, purchasePrice, salePrice, currentStock, minStock, provider,
                            taxTreatment, expireDate, notes, productCategory, tax, company,
-                           LocalDateTime.now(), true);
+                           LocalDateTime.now(), null, null, null, true);
     }
 
     public void update(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                        Integer currentStock, Integer minStock, String provider,
                        TaxTreatment taxTreatment, boolean expireDate, String notes,
-                       ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
+                       ProductCategoryRef productCategory, TaxRef tax, CompanyRef company, Long updatedBy,
+                       Long expectedVersion) {
         validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
                  productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
@@ -75,6 +83,9 @@ public class Product {
         this.productCategory = productCategory;
         this.tax = tax;
         this.company = company;
+        this.updatedDate = LocalDateTime.now();
+        this.updatedBy = updatedBy;
+        this.version = expectedVersion;
     }
 
     private static void validate(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
@@ -129,6 +140,9 @@ public class Product {
     public TaxRef getTax() { return tax; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public LocalDateTime getUpdatedDate() { return updatedDate; }
+    public Long getUpdatedBy() { return updatedBy; }
+    public Long getVersion() { return version; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }

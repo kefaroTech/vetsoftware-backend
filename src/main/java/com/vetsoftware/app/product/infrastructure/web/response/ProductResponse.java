@@ -20,5 +20,7 @@ public record ProductResponse(
         TaxSummary tax,
         CompanySummary company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {}

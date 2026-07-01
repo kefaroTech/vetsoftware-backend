@@ -11,6 +11,7 @@ import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
+import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNotFoundException;
 import com.vetsoftware.app.product.domain.TaxRef;
 import io.micrometer.observation.annotation.Observed;
@@ -45,6 +46,9 @@ public class UpdateProductService implements UpdateProductUseCase {
         if (repository.existsByCompanyIdAndCodeExcludingId(command.companyId(), command.code(), command.id())) {
             throw new ProductCodeAlreadyExistsException(command.code());
         }
+        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
+            throw new ProductNameAlreadyExistsException(command.name());
+        }
         ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null
@@ -54,7 +58,8 @@ public class UpdateProductService implements UpdateProductUseCase {
         product.update(
             command.name(), command.code(), command.purchasePrice(), command.salePrice(),
             command.currentStock(), command.minStock(), command.provider(),
-            command.taxTreatment(), command.expireDate(), command.notes(), productCategory, tax, company);
+            command.taxTreatment(), command.expireDate(), command.notes(), productCategory, tax, company,
+            command.updatedBy());
         return ProductDto.from(repository.save(product));
     }
 }

@@ -13,11 +13,13 @@ public class Service {
     private TaxRef tax;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private LocalDateTime updatedDate;
+    private Long updatedBy;
     private boolean enabled;
 
     public Service(Long id, String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
                    ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company,
-                   LocalDateTime createdDate, boolean enabled) {
+                   LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy, boolean enabled) {
         validate(name, price, notes, serviceCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.id = id;
@@ -29,17 +31,19 @@ public class Service {
         this.tax = tax;
         this.company = company;
         this.createdDate = createdDate;
+        this.updatedDate = updatedDate;
+        this.updatedBy = updatedBy;
         this.enabled = enabled;
     }
 
     public static Service create(String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
                                  ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
         return new Service(null, name, price, taxTreatment, notes, serviceCategory, tax, company,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, null, true);
     }
 
     public void update(String name, BigDecimal price, TaxTreatment taxTreatment, String notes,
-                       ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company) {
+                       ServiceCategoryRef serviceCategory, TaxRef tax, CompanyRef company, Long updatedBy) {
         validate(name, price, notes, serviceCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.name = name;
@@ -49,6 +53,8 @@ public class Service {
         this.serviceCategory = serviceCategory;
         this.tax = tax;
         this.company = company;
+        this.updatedDate = LocalDateTime.now();
+        this.updatedBy = updatedBy;
     }
 
     private static void validate(String name, BigDecimal price, String notes,
@@ -87,6 +93,8 @@ public class Service {
     public TaxRef getTax() { return tax; }
     public CompanyRef getCompany() { return company; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public LocalDateTime getUpdatedDate() { return updatedDate; }
+    public Long getUpdatedBy() { return updatedBy; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }

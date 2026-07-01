@@ -9,6 +9,8 @@ public record ProductCategoryDto(
         String description,
         CompanySummaryDto company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {
     public static ProductCategoryDto from(ProductCategory productCategory) {
@@ -18,6 +20,8 @@ public record ProductCategoryDto(
                 productCategory.getDescription(),
                 productCategory.getCompany() == null ? null : CompanySummaryDto.from(productCategory.getCompany()),
                 productCategory.getCreatedDate(),
+                productCategory.getUpdatedDate(),
+                productCategory.getUpdatedBy(),
                 productCategory.isEnabled());
     }
 }

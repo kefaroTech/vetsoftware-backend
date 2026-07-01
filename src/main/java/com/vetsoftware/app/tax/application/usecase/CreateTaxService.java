@@ -7,6 +7,7 @@ import com.vetsoftware.app.tax.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.tax.application.port.out.TaxRepository;
 import com.vetsoftware.app.tax.domain.CompanyRef;
 import com.vetsoftware.app.tax.domain.Tax;
+import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,9 @@ public class CreateTaxService implements CreateTaxUseCase {
     public TaxDto execute(CreateTaxCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+            throw new TaxNameAlreadyExistsException(command.name());
+        }
         return TaxDto.from(
                 repository.save(Tax.create(command.name(), command.percentage(), command.taxScheme(), company)));
     }

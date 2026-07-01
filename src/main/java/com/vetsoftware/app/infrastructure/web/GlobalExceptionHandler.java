@@ -101,14 +101,18 @@ import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildr
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
+import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNotFoundException;
 import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
 import com.vetsoftware.app.service.domain.ServiceNotFoundException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
 import com.vetsoftware.app.tax.domain.TaxHasActiveChildrenException;
+import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -234,6 +238,19 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleProductCodeAlreadyExists(ProductCodeAlreadyExistsException ex) {
         log.warn("Product code already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    // Unicidad de NOMBRE por empresa (migraciones 151-154). errorCode(ex) deriva el código correcto por
+    // clase: PRODUCT_NAME_ALREADY_EXISTS / PRODUCT_CATEGORY_NAME_ALREADY_EXISTS / etc.
+    @ExceptionHandler({
+        ProductNameAlreadyExistsException.class,
+        ProductCategoryNameAlreadyExistsException.class,
+        ServiceCategoryNameAlreadyExistsException.class,
+        TaxNameAlreadyExistsException.class
+    })
+    public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
+        log.warn("Name already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
     @ExceptionHandler(OwnerAlreadyHasOpenAccountException.class)
@@ -363,6 +380,23 @@ public class GlobalExceptionHandler {
         if (cause != null && cause.contains("uq_products_company_active_code")) {
             return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS",
                 "Ya existe un producto activo con ese código en esta empresa.");
+        }
+        // Carrera en la unicidad de NOMBRE por empresa (constraints de las migraciones 151-154).
+        if (cause != null && cause.contains("uq_products_company_active_name")) {
+            return problem(HttpStatus.CONFLICT, "PRODUCT_NAME_ALREADY_EXISTS",
+                "Ya existe un producto activo con ese nombre en esta empresa.");
+        }
+        if (cause != null && cause.contains("uq_product_categories_company_active_name")) {
+            return problem(HttpStatus.CONFLICT, "PRODUCT_CATEGORY_NAME_ALREADY_EXISTS",
+                "Ya existe una categoría de producto activa con ese nombre en esta empresa.");
+        }
+        if (cause != null && cause.contains("uq_service_categories_company_active_name")) {
+            return problem(HttpStatus.CONFLICT, "SERVICE_CATEGORY_NAME_ALREADY_EXISTS",
+                "Ya existe una categoría de servicio activa con ese nombre en esta empresa.");
+        }
+        if (cause != null && cause.contains("uq_taxes_company_active_name")) {
+            return problem(HttpStatus.CONFLICT, "TAX_NAME_ALREADY_EXISTS",
+                "Ya existe un impuesto activo con ese nombre en esta empresa.");
         }
         // Carrera en "un documento por cuenta cerrada" (constraint de la migración 134): dos cierres
         // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª emisión fiscal.

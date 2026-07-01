@@ -27,4 +27,9 @@ public interface TaxJpaRepository extends JpaRepository<TaxJpaEntity, Long> {
         value = "UPDATE taxes SET enabled = true WHERE id = :id",
         nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    // @SQLRestriction("enabled = true") aplica: solo cuenta impuestos ACTIVOS (un name desactivado se reusa).
+    boolean existsByCompany_IdAndName(Long companyId, String name);
+
+    boolean existsByCompany_IdAndNameAndIdNot(Long companyId, String name, Long id);
 }

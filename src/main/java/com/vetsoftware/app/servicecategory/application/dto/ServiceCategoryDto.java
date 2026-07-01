@@ -9,6 +9,8 @@ public record ServiceCategoryDto(
         String description,
         CompanySummaryDto company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {
     public static ServiceCategoryDto from(ServiceCategory serviceCategory) {
@@ -18,6 +20,8 @@ public record ServiceCategoryDto(
                 serviceCategory.getDescription(),
                 serviceCategory.getCompany() == null ? null : CompanySummaryDto.from(serviceCategory.getCompany()),
                 serviceCategory.getCreatedDate(),
+                serviceCategory.getUpdatedDate(),
+                serviceCategory.getUpdatedBy(),
                 serviceCategory.isEnabled());
     }
 }

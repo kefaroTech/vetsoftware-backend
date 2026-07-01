@@ -7,6 +7,7 @@ import com.vetsoftware.app.servicecategory.application.port.out.CompanyQueryPort
 import com.vetsoftware.app.servicecategory.application.port.out.ServiceCategoryRepository;
 import com.vetsoftware.app.servicecategory.domain.CompanyRef;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategory;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,10 @@ public class UpdateServiceCategoryService implements UpdateServiceCategoryUseCas
                 .orElseThrow(() -> new ServiceCategoryNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        serviceCategory.update(command.name(), command.description(), company);
+        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
+            throw new ServiceCategoryNameAlreadyExistsException(command.name());
+        }
+        serviceCategory.update(command.name(), command.description(), company, command.updatedBy());
         return ServiceCategoryDto.from(repository.save(serviceCategory));
     }
 }

@@ -32,6 +32,9 @@ public class ProductJpaMapper {
         entity.setTax(tax);
         entity.setCompany(company);
         entity.setCreatedDate(product.getCreatedDate());
+        entity.setUpdatedDate(product.getUpdatedDate());
+        entity.setUpdatedBy(product.getUpdatedBy());
+        entity.setVersion(product.getVersion());
         entity.setEnabled(product.isEnabled());
         return entity;
     }
@@ -64,6 +67,9 @@ public class ProductJpaMapper {
             taxRef,
             companyRef,
             entity.getCreatedDate(),
+            entity.getUpdatedDate(),
+            entity.getUpdatedBy(),
+            entity.getVersion(),
             entity.isEnabled());
     }
 }

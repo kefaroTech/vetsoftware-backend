@@ -21,6 +21,8 @@ public record ProductDto(
         TaxSummaryDto tax,
         CompanySummaryDto company,
         LocalDateTime createdDate,
+        LocalDateTime updatedDate,
+        Long updatedBy,
         boolean enabled
 ) {
     public static ProductDto from(Product product) {
@@ -40,6 +42,8 @@ public record ProductDto(
                 product.getTax() == null ? null : TaxSummaryDto.from(product.getTax()),
                 CompanySummaryDto.from(product.getCompany()),
                 product.getCreatedDate(),
+                product.getUpdatedDate(),
+                product.getUpdatedBy(),
                 product.isEnabled());
     }
 }
