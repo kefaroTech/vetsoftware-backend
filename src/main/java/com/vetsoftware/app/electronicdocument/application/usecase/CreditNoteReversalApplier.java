@@ -32,16 +32,20 @@ public class CreditNoteReversalApplier {
         if (note.getDianStatus() != DianStatus.VALIDADO) return;
 
         DocumentReference ref = note.getReference();
-        if (ref != null && ref.cufe() != null) {
-            repository.findByCufe(ref.cufe(), note.getCompanyId()).ifPresent(original -> {
-                if (!original.isReversed()) {
-                    original.markReversed();
-                    repository.updateDianResult(original);
-                }
-            });
-        }
-        if (note.getOpenAccountId() != null) {
-            accountReversalPort.markReversed(note.getOpenAccountId());
-        }
+        if (ref == null || ref.cufe() == null) return;
+        repository.findByCufe(ref.cufe(), note.getCompanyId()).ifPresent(original -> {
+            // 3.9 - solo una NC TOTAL (cubre el total de la factura) anula el original y reversa la cartera.
+            // Una NC PARCIAL emite el documento fiscal pero NO reversa la venta completa: evita borrar todo el
+            // saldo por un crédito parcial. El ajuste parcial de la cartera queda como paso aparte.
+            boolean fullCredit = note.getPayableAmount().compareTo(original.getPayableAmount()) >= 0;
+            if (!fullCredit) return;
+            if (!original.isReversed()) {
+                original.markReversed();
+                repository.updateDianResult(original);
+            }
+            if (note.getOpenAccountId() != null) {
+                accountReversalPort.markReversed(note.getOpenAccountId());
+            }
+        });
     }
 }

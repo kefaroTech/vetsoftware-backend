@@ -10,6 +10,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDoc
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleCustomerQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleCustomerQueryPort.SaleCustomer;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.UvtQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort.SalePromotion;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
@@ -42,17 +43,23 @@ public class PosSaleDocumentBuilder {
     private final CatalogLineQueryPort catalogLineQueryPort;
     private final SalePromotionQueryPort salePromotionQueryPort;
     private final ElectronicDocumentRepository repository;
+    private final PosTicketLimitValidator posTicketLimitValidator;
+    private final UvtQueryPort uvtQueryPort;
 
     public PosSaleDocumentBuilder(CompanyFiscalProfileQueryPort fiscalProfileQueryPort,
                                   SaleCustomerQueryPort saleCustomerQueryPort,
                                   CatalogLineQueryPort catalogLineQueryPort,
                                   SalePromotionQueryPort salePromotionQueryPort,
-                                  ElectronicDocumentRepository repository) {
+                                  ElectronicDocumentRepository repository,
+                                  PosTicketLimitValidator posTicketLimitValidator,
+                                  UvtQueryPort uvtQueryPort) {
         this.fiscalProfileQueryPort = fiscalProfileQueryPort;
         this.saleCustomerQueryPort = saleCustomerQueryPort;
         this.catalogLineQueryPort = catalogLineQueryPort;
         this.salePromotionQueryPort = salePromotionQueryPort;
         this.repository = repository;
+        this.posTicketLimitValidator = posTicketLimitValidator;
+        this.uvtQueryPort = uvtQueryPort;
     }
 
     public ElectronicDocument build(RegisterPosSaleCommand command) {
@@ -85,12 +92,15 @@ public class PosSaleDocumentBuilder {
                 .map(p -> new ElectronicDocumentPayment(null, p.means(), p.amount()))
                 .toList();
 
+        BigDecimal uvt = uvtQueryPort.currentUvt().orElse(null);
         ElectronicDocument document = ElectronicDocument.createPending(
                 companyId, null /* sin cuenta abierta: la venta POS ES el registro */,
                 command.documentType(), fiscal.issuer(), customer, lines, payments,
                 PaymentForm.CONTADO,
                 withholdingAgent, fiscal.reteFuenteRate(), fiscal.reteIvaRate(), fiscal.reteIcaRate(),
-                command.clientRequestId(), command.issuedByEmployeeId());
+                uvt, command.clientRequestId(), command.issuedByEmployeeId());
+        // 3.2: un tiquete POS (DOC_EQUIV_POS) no puede superar 5 UVT; por encima exige FE_VENTA.
+        posTicketLimitValidator.validate(document);
         return repository.save(document);
     }
 

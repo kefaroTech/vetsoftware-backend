@@ -132,7 +132,7 @@ public class ElectronicDocumentController {
                                             @Valid @RequestBody IssueCreditNoteRequest request) {
         return creditNoteUseCase.execute(
                 new IssueCreditNoteCommand(id, request.reason(), authz.currentCompanyId(),
-                        authz.currentEmployeeId()));
+                        authz.currentEmployeeId(), request.partialAmount()));
     }
 
     /** F5: emite una nota débito (aumento) que referencia la factura {id} y la transmite. */
@@ -142,7 +142,7 @@ public class ElectronicDocumentController {
                                            @Valid @RequestBody IssueDebitNoteRequest request) {
         return debitNoteUseCase.execute(
                 new IssueDebitNoteCommand(id, request.reason(), authz.currentCompanyId(),
-                        authz.currentEmployeeId()));
+                        authz.currentEmployeeId(), request.additionalAmount()));
     }
 
     @GetMapping

@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,12 @@ public interface ElectronicDocumentRepository {
 
     /** ¿Ya existe un documento para esta cuenta? Idempotencia de la auto-emisión al cerrar la cuenta. */
     boolean existsByOpenAccountId(Long openAccountId);
+
+    /**
+     * ¿Ya existe un documento de este TIPO para la cuenta? Idempotencia de la conversión POS→FE: la cuenta
+     * ya tiene el DOC_EQUIV_POS, así que se filtra por FE_VENTA para no convertir dos veces (doble ingreso).
+     */
+    boolean existsByOpenAccountIdAndDocumentType(Long openAccountId, ElectronicDocumentType documentType);
 
     /**
      * Documento previamente registrado con este client_request_id dentro de la empresa. Idempotencia de la

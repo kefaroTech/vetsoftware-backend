@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderResult;
+import com.vetsoftware.app.electronicdocument.application.port.out.TechnicalKeyQueryPort;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
@@ -102,12 +103,15 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private static final long TOKEN_TTL_SECONDS = 50 * 60L;
 
     private final RestClient restClient;
+    private final TechnicalKeyQueryPort technicalKeyQueryPort;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
     // Cache del catálogo de ciudades por base URL: DANE (city_code 5 díg.) → city_id interno de MATIAS.
     private final Map<String, Map<String, String>> cityCacheByBase = new ConcurrentHashMap<>();
 
-    public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient) {
+    public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient,
+                                 TechnicalKeyQueryPort technicalKeyQueryPort) {
         this.restClient = restClient;
+        this.technicalKeyQueryPort = technicalKeyQueryPort;
     }
 
     @Override
@@ -370,6 +374,10 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         // El fallback EX_* solo cubre un documento sin numerar (no debería ocurrir en el flujo de emisión).
         body.put("resolution_number", doc.getResolutionNumber() != null ? doc.getResolutionNumber() : EX_RESOLUTION_NUMBER);
         body.put("prefix", doc.getPrefix() != null ? doc.getPrefix() : EX_PREFIX);
+        // B5/3.7 - clave técnica de la resolución activa (la DIAN la usa en el CUFE de la factura). Se envía si
+        // la resolución la tiene; las de notas/POS (CUDE) normalmente no, y entonces se omite.
+        technicalKeyQueryPort.findActiveTechnicalKey(doc.getCompanyId(), doc.getDocumentType())
+                .ifPresent(key -> body.put("technical_key", key));
         // En endpoints auto-increment (POS) MATIAS asigna el consecutivo y RECHAZA con 422 si se envía
         // document_number ("Para la generación automática, no debe enviar el campo document_number."). En los
         // manuales (factura / notas) es obligatorio y MATIAS respeta el que enviamos. Por eso solo va aquí.
@@ -494,13 +502,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         for (ElectronicDocumentLine line : doc.getLines()) {
             totals.addAll(lineTaxTotals(line));
         }
-        // F6 - retenciones del adquiriente (agente retenedor) como tax_totals adicionales. ReteFuente/ReteICA
-        // sobre la base; ReteIVA sobre el IVA generado. Solo se incluyen las que tienen monto.
-        BigDecimal base = doc.getLineExtensionAmount();
-        BigDecimal iva = doc.getTaxInclusiveAmount().subtract(doc.getTaxExclusiveAmount());
-        addRetention(totals, TAX_ID_RETEIVA, doc.getReteIvaAmount(), iva);
-        addRetention(totals, TAX_ID_RETEFUENTE, doc.getReteFuenteAmount(), base);
-        addRetention(totals, TAX_ID_RETEICA, doc.getReteIcaAmount(), base);
+        // F6/3.10 - retenciones del adquiriente (agente retenedor) como tax_totals adicionales. La base reportada
+        // coincide con la usada al calcular el monto: reteIVA sobre el IVA generado (esquema IVA, SIN INC),
+        // reteFuente/reteICA sobre la base de las líneas gravadas (excluye EXCLUIDO/GENERAL). Solo las que tienen monto.
+        BigDecimal withholdingBase = doc.getWithholdingBase();
+        BigDecimal ivaTotal = doc.getIvaTotal();
+        addRetention(totals, TAX_ID_RETEIVA, doc.getReteIvaAmount(), ivaTotal);
+        addRetention(totals, TAX_ID_RETEFUENTE, doc.getReteFuenteAmount(), withholdingBase);
+        addRetention(totals, TAX_ID_RETEICA, doc.getReteIcaAmount(), withholdingBase);
         return totals;
     }
 

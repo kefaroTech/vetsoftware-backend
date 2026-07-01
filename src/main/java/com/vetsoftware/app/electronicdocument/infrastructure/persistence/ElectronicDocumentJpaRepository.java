@@ -29,6 +29,9 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
 
     boolean existsByOpenAccountId(Long openAccountId);
 
+    boolean existsByOpenAccountIdAndDocumentType(Long openAccountId,
+            com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType documentType);
+
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     Optional<ElectronicDocumentJpaEntity> findByCompany_IdAndClientRequestId(Long companyId, String clientRequestId);
 }

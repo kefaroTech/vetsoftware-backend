@@ -102,7 +102,7 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
         for (var c : productChargeRepository.findByOpenAccountId(openAccountId)) {
             if (c.isVoided()) continue;
             String description = c.getProduct() == null ? "Producto" : c.getProduct().getName();
-            lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
+            lines.add(line(++n, description, BigDecimal.valueOf(c.getQuantity()), c.getUnitPrice(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
                     c.getTaxScheme(), c.getTaxTreatment()));
         }

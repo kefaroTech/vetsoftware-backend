@@ -50,6 +50,13 @@ public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
         if (pos.getOpenAccountId() == null) {
             throw new IllegalStateException("El documento POS no referencia una cuenta para reconstruir la factura.");
         }
+        // 3.11/B4 - idempotencia: si la cuenta ya tiene una FE_VENTA, el POS ya fue convertido. Evita emitir N
+        // facturas sobre la misma venta (doble registro del ingreso).
+        if (repository.existsByOpenAccountIdAndDocumentType(
+                pos.getOpenAccountId(), ElectronicDocumentType.FE_VENTA)) {
+            throw new IllegalStateException(
+                    "La cuenta ya tiene una factura electrónica: el documento POS ya fue convertido.");
+        }
 
         ElectronicDocument invoice = documentBuilder.build(
                 pos.getOpenAccountId(), ElectronicDocumentType.FE_VENTA, command.companyId(), false);

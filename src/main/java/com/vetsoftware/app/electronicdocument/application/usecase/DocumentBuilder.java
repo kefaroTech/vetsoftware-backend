@@ -3,9 +3,11 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleSnapshotQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SaleSnapshotQueryPort.SaleSnapshot;
+import com.vetsoftware.app.electronicdocument.application.port.out.UvtQueryPort;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,11 +18,17 @@ import org.springframework.stereotype.Component;
 public class DocumentBuilder {
     private final SaleSnapshotQueryPort saleSnapshotQueryPort;
     private final ElectronicDocumentRepository repository;
+    private final PosTicketLimitValidator posTicketLimitValidator;
+    private final UvtQueryPort uvtQueryPort;
 
     public DocumentBuilder(SaleSnapshotQueryPort saleSnapshotQueryPort,
-                           ElectronicDocumentRepository repository) {
+                           ElectronicDocumentRepository repository,
+                           PosTicketLimitValidator posTicketLimitValidator,
+                           UvtQueryPort uvtQueryPort) {
         this.saleSnapshotQueryPort = saleSnapshotQueryPort;
         this.repository = repository;
+        this.posTicketLimitValidator = posTicketLimitValidator;
+        this.uvtQueryPort = uvtQueryPort;
     }
 
     public ElectronicDocument build(Long openAccountId, ElectronicDocumentType documentType, Long companyId,
@@ -41,7 +49,11 @@ public class DocumentBuilder {
                 // La idempotencia del cierre se maneja por cuenta (existsByOpenAccountId), no por client_request_id.
                 // issuedByEmployeeId null: la emisión al cerrar la cuenta no tiene un actor fiscal directo aquí;
                 // la autoría del cierre queda registrada en OpenAccount.closedBy.
-                snapshot.reteIvaRate(), snapshot.reteIcaRate(), null, null);
+                snapshot.reteIvaRate(), snapshot.reteIcaRate(), uvtQueryPort.currentUvt().orElse(null),
+                null, null);
+        // 3.2: al cerrar una cuenta como tiquete POS (DOC_EQUIV_POS), tampoco puede superar 5 UVT; por encima
+        // exige FE_VENTA (el front ya lo fuerza, esto es el enforcement de backend).
+        posTicketLimitValidator.validate(document);
         // El documento nace SIN numerar (PENDIENTE). La numeración fiscal (consecutivo) se asigna en la
         // EMISIÓN (justo antes de transmitir), no aquí: así el endpoint provisional /from-account no quema
         // consecutivos (un consecutivo sin transmitir dejaría un hueco que la DIAN penaliza).

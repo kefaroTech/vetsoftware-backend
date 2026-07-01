@@ -153,6 +153,7 @@ public class ElectronicDocument {
                                                    PaymentForm paymentForm,
                                                    boolean withholdingAgent, BigDecimal reteFuenteRate,
                                                    BigDecimal reteIvaRate, BigDecimal reteIcaRate,
+                                                   BigDecimal uvt,
                                                    String clientRequestId, Long issuedByEmployeeId) {
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
@@ -160,7 +161,6 @@ public class ElectronicDocument {
         String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
         BigDecimal base = sum(lines, ElectronicDocumentLine::getLineExtensionAmount);
         BigDecimal totalWithTax = sum(lines, ElectronicDocumentLine::getTotalAmount);
-        BigDecimal iva = totalWithTax.subtract(base);
         // Cuadre de caja: toda venta es de contado, así que la suma de pagos debe igualar el total a pagar.
         // Evita persistir un documento con pagos que no cierran el total.
         if (payments != null && !payments.isEmpty()) {
@@ -171,9 +171,10 @@ public class ElectronicDocument {
                         "La suma de pagos (" + paid + ") no coincide con el total del documento (" + totalWithTax + ").");
             }
         }
-        // F6: si el adquiriente es agente retenedor, calcula las retenciones con las tarifas del emisor.
-        WithholdingAmounts wh = WithholdingCalculator.compute(withholdingAgent, base, iva,
-                reteFuenteRate, reteIvaRate, reteIcaRate);
+        // F6/3.10: retenciones del adquiriente agente retenedor. reteIVA SOLO sobre el IVA generado (esquema
+        // IVA), NO sobre IVA+INC; reteFuente/reteICA sobre la base de las líneas gravadas (excluye EXCLUIDO/GENERAL).
+        WithholdingAmounts wh = WithholdingCalculator.compute(withholdingAgent,
+                withholdingBaseOf(lines), ivaTotalOf(lines), reteFuenteRate, reteIvaRate, reteIcaRate, uvt);
         return new ElectronicDocument(null, companyId, openAccountId, documentType,
                 null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
@@ -190,43 +191,87 @@ public class ElectronicDocument {
      */
     public static ElectronicDocument createCreditNote(ElectronicDocument original,
                                                       String reasonCode, String reasonText,
-                                                      Long issuedByEmployeeId) {
-        return createNote(original, ElectronicDocumentType.NOTA_CREDITO, reasonCode, reasonText, issuedByEmployeeId);
+                                                      Long issuedByEmployeeId, BigDecimal partialAmount) {
+        return createNote(original, ElectronicDocumentType.NOTA_CREDITO, reasonCode, reasonText,
+                issuedByEmployeeId, partialAmount);
     }
 
-    /** Construye una NOTA DEBITO PENDIENTE (aumentos) que referencia una factura VALIDADA. */
+    /**
+     * Construye una NOTA DEBITO PENDIENTE (aumento) que referencia una factura VALIDADA. Con
+     * {@code additionalAmount} null clona el original (heredado); con un monto {@code > 0} la nota representa
+     * ese INCREMENTO real (escala proporcional del original), en vez de duplicar el valor de la factura.
+     */
     public static ElectronicDocument createDebitNote(ElectronicDocument original,
                                                      String reasonCode, String reasonText,
-                                                     Long issuedByEmployeeId) {
-        return createNote(original, ElectronicDocumentType.NOTA_DEBITO, reasonCode, reasonText, issuedByEmployeeId);
+                                                     Long issuedByEmployeeId, BigDecimal additionalAmount) {
+        return createNote(original, ElectronicDocumentType.NOTA_DEBITO, reasonCode, reasonText,
+                issuedByEmployeeId, additionalAmount);
     }
 
+    /**
+     * 3.9 — Construye la nota (crédito/débito). {@code amount} null ⇒ nota TOTAL (clona el original: NC de
+     * anulación). {@code amount} presente ⇒ nota PARCIAL/INCREMENTAL: escala líneas, totales y retenciones por
+     * el ratio {@code amount/total}, preservando la mezcla de tarifas y el IVA proporcional. La NC no puede
+     * exceder el total del original; la ND admite cualquier incremento positivo.
+     */
     private static ElectronicDocument createNote(ElectronicDocument original, ElectronicDocumentType type,
-                                                 String reasonCode, String reasonText, Long issuedByEmployeeId) {
+                                                 String reasonCode, String reasonText, Long issuedByEmployeeId,
+                                                 BigDecimal amount) {
         if (original == null) throw new IllegalArgumentException("original document is required");
         if (original.cufe == null || original.cufe.isBlank())
             throw new IllegalArgumentException("original document has no CUFE to reference");
         DocumentReference ref = new DocumentReference(original.cufe, original.prefix,
                 original.consecutive, original.issueDate);
-        List<ElectronicDocumentLine> clonedLines = original.lines.stream()
-                .map(l -> new ElectronicDocumentLine(null, l.getLineNumber(), l.getDescription(), l.getQuantity(),
-                        l.getUnitMeasureCode(), l.getUnitPrice(), l.getLineExtensionAmount(), l.getTaxCategory(),
-                        l.getTaxScheme(), l.getTaxRate(), l.getTaxAmount(), l.getTotalAmount()))
-                .toList();
-        List<ElectronicDocumentPayment> clonedPayments = original.payments.stream()
-                .map(p -> new ElectronicDocumentPayment(null, p.getPaymentMeans(), p.getAmount()))
+        BigDecimal total = original.payableAmount;
+        BigDecimal ratio;
+        if (amount == null) {
+            ratio = BigDecimal.ONE;
+        } else {
+            if (amount.signum() <= 0)
+                throw new IllegalArgumentException("el monto de la nota debe ser mayor que cero");
+            if (total == null || total.signum() == 0)
+                throw new IllegalArgumentException("la factura referenciada no tiene total para calcular la nota");
+            if (type == ElectronicDocumentType.NOTA_CREDITO && amount.compareTo(total) > 0)
+                throw new IllegalArgumentException(
+                        "una nota crédito no puede exceder el total de la factura (" + total + ")");
+            ratio = amount.divide(total, 6, Money.ROUND);
+        }
+        List<ElectronicDocumentLine> noteLines = original.lines.stream()
+                .map(l -> scaleLine(l, ratio)).toList();
+        List<ElectronicDocumentPayment> notePayments = original.payments.stream()
+                .map(p -> new ElectronicDocumentPayment(null, p.getPaymentMeans(),
+                        Money.scaled(p.getAmount().multiply(ratio))))
                 .toList();
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
         String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
         return new ElectronicDocument(null, original.companyId, original.openAccountId, type,
                 null, null, null, now.toLocalDate(), issueTime,
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
-                original.issuer, original.customer, original.lineExtensionAmount, original.taxExclusiveAmount,
-                original.taxInclusiveAmount, original.payableAmount, original.paymentForm,
-                clonedLines, clonedPayments, LocalDateTime.now(), true,
+                original.issuer, original.customer,
+                Money.scaled(original.lineExtensionAmount.multiply(ratio)),
+                Money.scaled(original.taxExclusiveAmount.multiply(ratio)),
+                Money.scaled(original.taxInclusiveAmount.multiply(ratio)),
+                Money.scaled(original.payableAmount.multiply(ratio)), original.paymentForm,
+                noteLines, notePayments, LocalDateTime.now(), true,
                 ref, reasonCode, reasonText, false,
-                original.reteFuenteAmount, original.reteIvaAmount, original.reteIcaAmount, null,
+                Money.scaled(original.reteFuenteAmount.multiply(ratio)),
+                Money.scaled(original.reteIvaAmount.multiply(ratio)),
+                Money.scaled(original.reteIcaAmount.multiply(ratio)), null,
                 issuedByEmployeeId);
+    }
+
+    /** Clona una línea escalando sus montos por {@code ratio} (NC parcial / ND incremental). ratio=1 ⇒ copia. */
+    private static ElectronicDocumentLine scaleLine(ElectronicDocumentLine l, BigDecimal ratio) {
+        if (ratio.compareTo(BigDecimal.ONE) == 0) {
+            return new ElectronicDocumentLine(null, l.getLineNumber(), l.getDescription(), l.getQuantity(),
+                    l.getUnitMeasureCode(), l.getUnitPrice(), l.getLineExtensionAmount(), l.getTaxCategory(),
+                    l.getTaxScheme(), l.getTaxRate(), l.getTaxAmount(), l.getTotalAmount());
+        }
+        return new ElectronicDocumentLine(null, l.getLineNumber(), l.getDescription(), l.getQuantity(),
+                l.getUnitMeasureCode(), Money.scaled(l.getUnitPrice().multiply(ratio)),
+                Money.scaled(l.getLineExtensionAmount().multiply(ratio)), l.getTaxCategory(),
+                l.getTaxScheme(), l.getTaxRate(), Money.scaled(l.getTaxAmount().multiply(ratio)),
+                Money.scaled(l.getTotalAmount().multiply(ratio)));
     }
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
@@ -450,6 +495,30 @@ public class ElectronicDocument {
     /** Neto a pagar tras restar las retenciones del adquiriente (total − reteFuente − reteIva − reteIca). */
     public BigDecimal getNetPayableAmount() {
         return payableAmount.subtract(reteFuenteAmount).subtract(reteIvaAmount).subtract(reteIcaAmount);
+    }
+
+    /**
+     * IVA generado del documento = suma del impuesto de las líneas con esquema IVA (a tarifa real). Es la
+     * base correcta de la reteIVA: NO incluye el INC (3.10). Recalculado desde las líneas para que el reporte
+     * (buildTaxTotals) coincida con el monto retenido en {@link #createPending}.
+     */
+    public BigDecimal getIvaTotal() { return ivaTotalOf(lines); }
+
+    /**
+     * Base de retención en fuente / ICA = suma de la base de las líneas GRAVADAS (con esquema tributario:
+     * GRAVADO/INC/EXENTO-IVA-0%). Excluye EXCLUIDO y los ítems libres del POS (sin esquema), que no forman
+     * parte de la base gravable (3.10).
+     */
+    public BigDecimal getWithholdingBase() { return withholdingBaseOf(lines); }
+
+    private static BigDecimal ivaTotalOf(List<ElectronicDocumentLine> lines) {
+        return sum(lines.stream().filter(l -> l.getTaxScheme() == TaxScheme.IVA).toList(),
+                ElectronicDocumentLine::getTaxAmount);
+    }
+
+    private static BigDecimal withholdingBaseOf(List<ElectronicDocumentLine> lines) {
+        return sum(lines.stream().filter(l -> l.getTaxScheme() != null).toList(),
+                ElectronicDocumentLine::getLineExtensionAmount);
     }
     public PaymentForm getPaymentForm() { return paymentForm; }
     public String getClientRequestId() { return clientRequestId; }

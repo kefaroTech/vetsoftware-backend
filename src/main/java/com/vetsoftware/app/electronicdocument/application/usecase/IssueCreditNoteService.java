@@ -49,7 +49,7 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
         }
         ElectronicDocument note = ElectronicDocument.createCreditNote(
                 original, command.reason().dianCode(), command.reason().description(),
-                command.issuedByEmployeeId());
+                command.issuedByEmployeeId(), command.partialAmount());
         // Persiste la nota PENDIENTE; el emisor numera+transmite (empresa con BILLING) o la guarda local.
         ElectronicDocument saved = repository.save(note);
         return ElectronicDocumentDto.from(emitter.emit(saved));

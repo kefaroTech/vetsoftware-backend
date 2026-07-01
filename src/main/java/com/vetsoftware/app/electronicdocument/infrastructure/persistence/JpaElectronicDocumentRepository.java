@@ -50,6 +50,12 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public boolean existsByOpenAccountIdAndDocumentType(Long openAccountId,
+            com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType documentType) {
+        return jpaRepository.existsByOpenAccountIdAndDocumentType(openAccountId, documentType);
+    }
+
+    @Override
     public Optional<ElectronicDocument> findByCompanyIdAndClientRequestId(Long companyId, String clientRequestId) {
         return jpaRepository.findByCompany_IdAndClientRequestId(companyId, clientRequestId).map(mapper::toDomain);
     }
