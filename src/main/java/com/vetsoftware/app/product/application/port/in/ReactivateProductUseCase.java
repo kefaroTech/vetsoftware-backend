@@ -4,6 +4,7 @@ import com.vetsoftware.app.product.application.dto.ProductDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateProductUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('product.delete')")
-    ProductDto execute(Long id);
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
+    ProductDto execute(Long id, Long companyId);
 }
