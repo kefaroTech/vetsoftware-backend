@@ -26,13 +26,18 @@ public class JpaProductCategoryRepository implements ProductCategoryRepository {
     public ProductCategory save(ProductCategory productCategory) {
         CompanyJpaEntity company = productCategory.getCompany() == null ? null
                 : companyJpaRepository.getReferenceById(productCategory.getCompany().id());
-        ProductCategoryJpaEntity saved = jpaRepository.save(mapper.toJpa(productCategory, company));
+        ProductCategoryJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(productCategory, company));
         return mapper.toDomain(saved, productCategory.getCompany());
     }
 
     @Override
     public Optional<ProductCategory> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<ProductCategory> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
 
     @Override
@@ -62,7 +67,7 @@ public class JpaProductCategoryRepository implements ProductCategoryRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

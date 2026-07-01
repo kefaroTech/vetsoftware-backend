@@ -4,6 +4,7 @@ import com.vetsoftware.app.productcategory.application.dto.ProductCategoryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindProductCategoryUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('productCategory.read')")
-    ProductCategoryDto findById(Long id);
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('productCategory.read') and @authz.isMyCompany(#companyId))")
+    ProductCategoryDto findById(Long id, Long companyId);
 }

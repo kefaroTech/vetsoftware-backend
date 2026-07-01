@@ -65,7 +65,7 @@ public class ProductController {
             new CreateProductCommand(
                 request.name(), request.code(), request.purchasePrice(), request.salePrice(),
                 request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.notes(), request.taxTreatment(),
+                request.expireDate(), request.lotNumber(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
@@ -93,7 +93,7 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ProductResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -102,7 +102,7 @@ public class ProductController {
             new UpdateProductCommand(
                 id, request.name(), request.code(), request.purchasePrice(), request.salePrice(),
                 request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.notes(), request.taxTreatment(),
+                request.expireDate(), request.lotNumber(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
@@ -110,12 +110,12 @@ public class ProductController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public ProductResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private ProductResponse toResponse(ProductDto dto) {
@@ -125,7 +125,7 @@ public class ProductController {
         return new ProductResponse(
             dto.id(), dto.name(), dto.code(), dto.purchasePrice(), dto.salePrice(),
             dto.currentStock(), dto.minStock(), dto.provider(), dto.taxTreatment(), dto.expireDate(),
-            dto.notes(),
+            dto.lotNumber(), dto.notes(),
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),

@@ -17,6 +17,7 @@ public record ServiceDto(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {
     public static ServiceDto from(Service service) {
@@ -32,6 +33,7 @@ public record ServiceDto(
                 service.getCreatedDate(),
                 service.getUpdatedDate(),
                 service.getUpdatedBy(),
+                service.getVersion(),
                 service.isEnabled());
     }
 }

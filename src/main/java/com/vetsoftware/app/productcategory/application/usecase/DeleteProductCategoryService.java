@@ -24,8 +24,9 @@ public class DeleteProductCategoryService implements DeleteProductCategoryUseCas
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new ProductCategoryNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new ProductCategoryNotFoundException(id));
         if (productChildrenQueryPort.existsActiveByProductCategoryId(id)) {
             throw new ProductCategoryHasActiveChildrenException(id, "product");
         }

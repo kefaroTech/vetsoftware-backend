@@ -14,6 +14,7 @@ public record TaxDto(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {
     public static TaxDto from(Tax tax) {
@@ -26,6 +27,7 @@ public record TaxDto(
                 tax.getCreatedDate(),
                 tax.getUpdatedDate(),
                 tax.getUpdatedBy(),
+                tax.getVersion(),
                 tax.isEnabled());
     }
 }

@@ -13,5 +13,6 @@ public record TaxResponse(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {}

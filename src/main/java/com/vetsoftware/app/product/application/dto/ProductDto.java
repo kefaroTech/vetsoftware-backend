@@ -3,6 +3,7 @@ package com.vetsoftware.app.product.application.dto;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.TaxTreatment;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record ProductDto(
@@ -15,7 +16,8 @@ public record ProductDto(
         Integer minStock,
         String provider,
         TaxTreatment taxTreatment,
-        boolean expireDate,
+        LocalDate expireDate,
+        String lotNumber,
         String notes,
         ProductCategorySummaryDto productCategory,
         TaxSummaryDto tax,
@@ -37,7 +39,8 @@ public record ProductDto(
                 product.getMinStock(),
                 product.getProvider(),
                 product.getTaxTreatment(),
-                product.isExpireDate(),
+                product.getExpireDate(),
+                product.getLotNumber(),
                 product.getNotes(),
                 ProductCategorySummaryDto.from(product.getProductCategory()),
                 product.getTax() == null ? null : TaxSummaryDto.from(product.getTax()),

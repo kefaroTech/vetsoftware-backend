@@ -26,7 +26,8 @@ public class ProductJpaMapper {
         entity.setMinStock(product.getMinStock());
         entity.setProvider(product.getProvider());
         entity.setTaxTreatment(product.getTaxTreatment());
-        entity.setExpireDate(product.isExpireDate());
+        entity.setExpireDate(product.getExpireDate());
+        entity.setLotNumber(product.getLotNumber());
         entity.setNotes(product.getNotes());
         entity.setProductCategory(productCategory);
         entity.setTax(tax);
@@ -61,7 +62,8 @@ public class ProductJpaMapper {
             entity.getMinStock(),
             entity.getProvider(),
             entity.getTaxTreatment(),
-            entity.isExpireDate(),
+            entity.getExpireDate(),
+            entity.getLotNumber(),
             entity.getNotes(),
             productCategoryRef,
             taxRef,

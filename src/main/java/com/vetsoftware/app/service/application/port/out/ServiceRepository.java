@@ -9,9 +9,10 @@ import java.util.Optional;
 public interface ServiceRepository {
     Service save(Service service);
     Optional<Service> findById(Long id);
+    Optional<Service> findByIdAndCompanyId(Long id, Long companyId);
     List<Service> findAll();
     List<Service> findAllByCompanyId(Long companyId);
     PageResult<Service> search(SearchServicesCommand command);
     void delete(Long id);
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }

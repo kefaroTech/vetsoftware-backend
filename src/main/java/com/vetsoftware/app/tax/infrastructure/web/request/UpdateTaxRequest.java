@@ -11,5 +11,6 @@ import java.math.BigDecimal;
 public record UpdateTaxRequest(
         @NotBlank @Size(max = 100) String name,
         @NotNull @DecimalMin("0.0") @DecimalMax("100.0") BigDecimal percentage,
-        @NotNull TaxScheme taxScheme
+        @NotNull TaxScheme taxScheme,
+        @NotNull Long version
 ) {}

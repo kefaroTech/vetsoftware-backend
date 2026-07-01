@@ -15,8 +15,8 @@ public class JpaServiceCategoryQueryPort implements ServiceCategoryQueryPort {
     }
 
     @Override
-    public Optional<ServiceCategoryRef> findById(Long serviceCategoryId) {
-        return serviceCategoryJpaRepository.findById(serviceCategoryId)
+    public Optional<ServiceCategoryRef> findById(Long serviceCategoryId, Long companyId) {
+        return serviceCategoryJpaRepository.findByIdAndCompany_Id(serviceCategoryId, companyId)
             .map(e -> new ServiceCategoryRef(e.getId(), e.getName()));
     }
 }

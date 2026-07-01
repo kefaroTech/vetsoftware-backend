@@ -2,6 +2,7 @@ package com.vetsoftware.app.product.application.command;
 
 import com.vetsoftware.app.product.domain.TaxTreatment;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public record UpdateProductCommand(
         Long id,
@@ -12,7 +13,8 @@ public record UpdateProductCommand(
         Integer currentStock,
         Integer minStock,
         String provider,
-        boolean expireDate,
+        LocalDate expireDate,
+        String lotNumber,
         String notes,
         TaxTreatment taxTreatment,
         Long productCategoryId,

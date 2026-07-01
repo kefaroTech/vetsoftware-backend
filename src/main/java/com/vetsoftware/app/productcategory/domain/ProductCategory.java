@@ -10,11 +10,12 @@ public class ProductCategory {
     private final LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     private Long updatedBy;
+    private Long version;
     private boolean enabled;
 
     public ProductCategory(Long id, String name, String description,
                            CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate,
-                           Long updatedBy, boolean enabled) {
+                           Long updatedBy, Long version, boolean enabled) {
         validate(name, description, company);
         this.id = id;
         this.name = name;
@@ -23,20 +24,22 @@ public class ProductCategory {
         this.createdDate = createdDate;
         this.updatedDate = updatedDate;
         this.updatedBy = updatedBy;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static ProductCategory create(String name, String description, CompanyRef company) {
-        return new ProductCategory(null, name, description, company, LocalDateTime.now(), null, null, true);
+        return new ProductCategory(null, name, description, company, LocalDateTime.now(), null, null, null, true);
     }
 
-    public void update(String name, String description, CompanyRef company, Long updatedBy) {
+    public void update(String name, String description, CompanyRef company, Long updatedBy, Long expectedVersion) {
         validate(name, description, company);
         this.name = name;
         this.description = description;
         this.company = company;
         this.updatedDate = LocalDateTime.now();
         this.updatedBy = updatedBy;
+        this.version = expectedVersion;
     }
 
     private static void validate(String name, String description, CompanyRef company) {
@@ -54,6 +57,7 @@ public class ProductCategory {
     public LocalDateTime getCreatedDate() { return createdDate; }
     public LocalDateTime getUpdatedDate() { return updatedDate; }
     public Long getUpdatedBy() { return updatedBy; }
+    public Long getVersion() { return version; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }

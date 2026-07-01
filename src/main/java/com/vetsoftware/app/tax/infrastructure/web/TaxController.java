@@ -62,25 +62,25 @@ public class TaxController {
 
     @GetMapping("/{id}")
     public TaxResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
     public TaxResponse update(@PathVariable Long id,
                               @Valid @RequestBody UpdateTaxRequest request) {
         return toResponse(updateUseCase.execute(
-                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
+                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public TaxResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private TaxResponse toResponse(TaxDto dto) {
@@ -91,6 +91,7 @@ public class TaxController {
                 dto.createdDate(),
                 dto.updatedDate(),
                 dto.updatedBy(),
+                dto.version(),
                 dto.enabled());
     }
 }

@@ -48,13 +48,18 @@ public class JpaServiceRepository implements ServiceRepository {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(service.getCompany().id());
         TaxJpaEntity tax = service.getTax() == null ? null
             : taxJpaRepository.getReferenceById(service.getTax().id());
-        ServiceJpaEntity saved = jpaRepository.save(mapper.toJpa(service, serviceCategory, tax, company));
+        ServiceJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(service, serviceCategory, tax, company));
         return mapper.toDomain(saved, service.getServiceCategory(), service.getTax(), service.getCompany());
     }
 
     @Override
     public Optional<Service> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Service> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
 
     @Override
@@ -111,7 +116,7 @@ public class JpaServiceRepository implements ServiceRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

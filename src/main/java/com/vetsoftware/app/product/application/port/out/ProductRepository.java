@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface ProductRepository {
     Product save(Product product);
     Optional<Product> findById(Long id);
+    Optional<Product> findByIdAndCompanyId(Long id, Long companyId);
 
     /** ¿Existe ya un producto ACTIVO con este code en la empresa? (unicidad de SKU por empresa) */
     boolean existsByCompanyIdAndCode(Long companyId, String code);
@@ -25,5 +26,5 @@ public interface ProductRepository {
     List<Product> findAllByCompanyId(Long companyId);
     PageResult<Product> search(SearchProductsCommand command);
     void delete(Long id);
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }

@@ -10,5 +10,6 @@ public record ProductCategoryResponse(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {}

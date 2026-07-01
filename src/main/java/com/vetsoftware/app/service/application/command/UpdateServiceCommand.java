@@ -12,5 +12,6 @@ public record UpdateServiceCommand(
         Long serviceCategoryId,
         Long taxId,
         Long companyId,
-        Long updatedBy
+        Long updatedBy,
+        Long version
 ) {}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- D2 — Vencimiento real + lote. `expire_date` deja de ser una bandera BOOLEAN (decorativa: no guardaba
+         la fecha) y pasa a ser una fecha DATE real. Ambos campos son OPCIONALES (nullable): un producto que no
+         vence o cuyo lote no se rastrea simplemente los deja en NULL. Se descarta la bandera booleana anterior
+         (no mapeaba a ninguna fecha concreta). Lote simple a nivel de producto; el rastreo multi-lote con stock
+         por lote queda para el kardex (D1). -->
+    <changeSet id="159_product_real_expire_date_and_lot" author="orlando">
+        <dropColumn tableName="products" columnName="expire_date"/>
+        <addColumn tableName="products">
+            <column name="expire_date" type="DATE"/>
+            <column name="lot_number" type="VARCHAR(50)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="products" columnName="lot_number"/>
+            <dropColumn tableName="products" columnName="expire_date"/>
+            <addColumn tableName="products">
+                <column name="expire_date" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

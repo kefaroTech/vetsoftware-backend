@@ -58,6 +58,11 @@ public class JpaProductRepository implements ProductRepository {
     }
 
     @Override
+    public Optional<Product> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public boolean existsByCompanyIdAndCode(Long companyId, String code) {
         return jpaRepository.existsByCompany_IdAndCode(companyId, code);
     }
@@ -133,7 +138,7 @@ public class JpaProductRepository implements ProductRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

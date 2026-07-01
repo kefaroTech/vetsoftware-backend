@@ -17,6 +17,7 @@ public class TaxJpaMapper {
         entity.setCreatedDate(tax.getCreatedDate());
         entity.setUpdatedDate(tax.getUpdatedDate());
         entity.setUpdatedBy(tax.getUpdatedBy());
+        entity.setVersion(tax.getVersion());
         entity.setEnabled(tax.isEnabled());
         return entity;
     }
@@ -37,6 +38,7 @@ public class TaxJpaMapper {
                 entity.getCreatedDate(),
                 entity.getUpdatedDate(),
                 entity.getUpdatedBy(),
+                entity.getVersion(),
                 entity.isEnabled());
     }
 }

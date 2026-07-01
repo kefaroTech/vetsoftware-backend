@@ -24,8 +24,8 @@ public class DeleteTaxService implements DeleteTaxUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new TaxNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new TaxNotFoundException(id));
         if (taxChildrenQueryPort.existsActiveByTaxId(id)) {
             throw new TaxHasActiveChildrenException(id, "product/service");
         }

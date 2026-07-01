@@ -28,14 +28,14 @@ public class UpdateTaxService implements UpdateTaxUseCase {
     @Override
     @Transactional
     public TaxDto execute(UpdateTaxCommand command) {
-        Tax tax = repository.findById(command.id())
+        Tax tax = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new TaxNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
             throw new TaxNameAlreadyExistsException(command.name());
         }
-        tax.update(command.name(), command.percentage(), command.taxScheme(), company, command.updatedBy());
+        tax.update(command.name(), command.percentage(), command.taxScheme(), company, command.updatedBy(), command.version());
         return TaxDto.from(repository.save(tax));
     }
 }

@@ -4,6 +4,7 @@ import com.vetsoftware.app.servicecategory.application.dto.ServiceCategoryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateServiceCategoryUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('serviceCategory.delete')")
-    ServiceCategoryDto execute(Long id);
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('serviceCategory.delete') and @authz.isMyCompany(#companyId))")
+    ServiceCategoryDto execute(Long id, Long companyId);
 }

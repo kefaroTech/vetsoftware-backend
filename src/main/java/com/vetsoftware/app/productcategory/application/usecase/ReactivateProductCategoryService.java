@@ -19,10 +19,10 @@ public class ReactivateProductCategoryService implements ReactivateProductCatego
 
     @Override
     @Transactional
-    public ProductCategoryDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public ProductCategoryDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new ProductCategoryNotFoundException(id);
-        return ProductCategoryDto.from(repository.findById(id)
+        return ProductCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ProductCategoryNotFoundException(id)));
     }
 }

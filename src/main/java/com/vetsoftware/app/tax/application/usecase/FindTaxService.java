@@ -17,8 +17,8 @@ public class FindTaxService implements FindTaxUseCase {
     }
 
     @Override
-    public TaxDto findById(Long id) {
-        return TaxDto.from(repository.findById(id)
+    public TaxDto findById(Long id, Long companyId) {
+        return TaxDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new TaxNotFoundException(id)));
     }
 }

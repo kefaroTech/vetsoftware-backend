@@ -18,10 +18,10 @@ public class ReactivateServiceService implements ReactivateServiceUseCase {
 
     @Override
     @Transactional
-    public ServiceDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public ServiceDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new ServiceNotFoundException(id);
-        return ServiceDto.from(repository.findById(id)
+        return ServiceDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ServiceNotFoundException(id)));
     }
 }

@@ -28,14 +28,14 @@ public class UpdateServiceCategoryService implements UpdateServiceCategoryUseCas
     @Override
     @Transactional
     public ServiceCategoryDto execute(UpdateServiceCategoryCommand command) {
-        ServiceCategory serviceCategory = repository.findById(command.id())
+        ServiceCategory serviceCategory = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new ServiceCategoryNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
             throw new ServiceCategoryNameAlreadyExistsException(command.name());
         }
-        serviceCategory.update(command.name(), command.description(), company, command.updatedBy());
+        serviceCategory.update(command.name(), command.description(), company, command.updatedBy(), command.version());
         return ServiceCategoryDto.from(repository.save(serviceCategory));
     }
 }

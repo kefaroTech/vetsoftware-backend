@@ -1,6 +1,7 @@
 package com.vetsoftware.app.product.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class Product {
@@ -13,7 +14,10 @@ public class Product {
     private Integer minStock;
     private String provider;
     private TaxTreatment taxTreatment;
-    private boolean expireDate;
+    /** Fecha real de vencimiento del producto/lote; null = no vence o no se rastrea (opcional). */
+    private LocalDate expireDate;
+    /** Número de lote/batch; opcional. */
+    private String lotNumber;
     private String notes;
     private ProductCategoryRef productCategory;
     private TaxRef tax;
@@ -26,10 +30,10 @@ public class Product {
 
     public Product(Long id, String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                    Integer currentStock, Integer minStock, String provider, TaxTreatment taxTreatment,
-                   boolean expireDate, String notes, ProductCategoryRef productCategory, TaxRef tax,
-                   CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy,
-                   Long version, boolean enabled) {
-        validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
+                   LocalDate expireDate, String lotNumber, String notes, ProductCategoryRef productCategory,
+                   TaxRef tax, CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate,
+                   Long updatedBy, Long version, boolean enabled) {
+        validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, lotNumber, notes,
                  productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.id = id;
@@ -42,6 +46,7 @@ public class Product {
         this.provider = provider;
         this.taxTreatment = taxTreatment;
         this.expireDate = expireDate;
+        this.lotNumber = lotNumber;
         this.notes = notes;
         this.productCategory = productCategory;
         this.tax = tax;
@@ -55,19 +60,19 @@ public class Product {
 
     public static Product create(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                                  Integer currentStock, Integer minStock, String provider,
-                                 TaxTreatment taxTreatment, boolean expireDate, String notes,
+                                 TaxTreatment taxTreatment, LocalDate expireDate, String lotNumber, String notes,
                                  ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
         return new Product(null, name, code, purchasePrice, salePrice, currentStock, minStock, provider,
-                           taxTreatment, expireDate, notes, productCategory, tax, company,
+                           taxTreatment, expireDate, lotNumber, notes, productCategory, tax, company,
                            LocalDateTime.now(), null, null, null, true);
     }
 
     public void update(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
                        Integer currentStock, Integer minStock, String provider,
-                       TaxTreatment taxTreatment, boolean expireDate, String notes,
+                       TaxTreatment taxTreatment, LocalDate expireDate, String lotNumber, String notes,
                        ProductCategoryRef productCategory, TaxRef tax, CompanyRef company, Long updatedBy,
                        Long expectedVersion) {
-        validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, notes,
+        validate(name, code, purchasePrice, salePrice, currentStock, minStock, provider, lotNumber, notes,
                  productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.name = name;
@@ -79,6 +84,7 @@ public class Product {
         this.provider = provider;
         this.taxTreatment = taxTreatment;
         this.expireDate = expireDate;
+        this.lotNumber = lotNumber;
         this.notes = notes;
         this.productCategory = productCategory;
         this.tax = tax;
@@ -89,8 +95,8 @@ public class Product {
     }
 
     private static void validate(String name, String code, BigDecimal purchasePrice, BigDecimal salePrice,
-                                 Integer currentStock, Integer minStock, String provider, String notes,
-                                 ProductCategoryRef productCategory, CompanyRef company) {
+                                 Integer currentStock, Integer minStock, String provider, String lotNumber,
+                                 String notes, ProductCategoryRef productCategory, CompanyRef company) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
         if (code == null || code.isBlank()) throw new IllegalArgumentException("code is required");
@@ -104,6 +110,7 @@ public class Product {
         if (minStock == null) throw new IllegalArgumentException("minStock is required");
         if (minStock < 0) throw new IllegalArgumentException("minStock cannot be negative");
         if (provider != null && provider.length() > 150) throw new IllegalArgumentException("provider must be 150 chars or less");
+        if (lotNumber != null && lotNumber.length() > 50) throw new IllegalArgumentException("lotNumber must be 50 chars or less");
         if (notes != null && notes.length() > 500) throw new IllegalArgumentException("notes must be 500 chars or less");
         if (productCategory == null) throw new IllegalArgumentException("productCategory is required");
         if (company == null) throw new IllegalArgumentException("company is required");
@@ -134,7 +141,8 @@ public class Product {
     public Integer getMinStock() { return minStock; }
     public String getProvider() { return provider; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }
-    public boolean isExpireDate() { return expireDate; }
+    public LocalDate getExpireDate() { return expireDate; }
+    public String getLotNumber() { return lotNumber; }
     public String getNotes() { return notes; }
     public ProductCategoryRef getProductCategory() { return productCategory; }
     public TaxRef getTax() { return tax; }

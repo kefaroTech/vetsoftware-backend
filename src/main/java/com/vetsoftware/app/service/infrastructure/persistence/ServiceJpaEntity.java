@@ -53,6 +53,10 @@ public class ServiceJpaEntity {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -80,6 +84,8 @@ public class ServiceJpaEntity {
     public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

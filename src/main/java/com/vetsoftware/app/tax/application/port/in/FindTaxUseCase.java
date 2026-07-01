@@ -4,6 +4,7 @@ import com.vetsoftware.app.tax.application.dto.TaxDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindTaxUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('tax.read')")
-    TaxDto findById(Long id);
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
+    TaxDto findById(Long id, Long companyId);
 }

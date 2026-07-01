@@ -17,8 +17,8 @@ public class FindServiceCategoryService implements FindServiceCategoryUseCase {
     }
 
     @Override
-    public ServiceCategoryDto findById(Long id) {
-        return ServiceCategoryDto.from(repository.findById(id)
+    public ServiceCategoryDto findById(Long id, Long companyId) {
+        return ServiceCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ServiceCategoryNotFoundException(id)));
     }
 }

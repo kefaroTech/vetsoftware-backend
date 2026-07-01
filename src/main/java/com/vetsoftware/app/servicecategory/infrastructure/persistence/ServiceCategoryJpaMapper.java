@@ -16,6 +16,7 @@ public class ServiceCategoryJpaMapper {
         entity.setCreatedDate(serviceCategory.getCreatedDate());
         entity.setUpdatedDate(serviceCategory.getUpdatedDate());
         entity.setUpdatedBy(serviceCategory.getUpdatedBy());
+        entity.setVersion(serviceCategory.getVersion());
         entity.setEnabled(serviceCategory.isEnabled());
         return entity;
     }
@@ -34,6 +35,7 @@ public class ServiceCategoryJpaMapper {
                 entity.getCreatedDate(),
                 entity.getUpdatedDate(),
                 entity.getUpdatedBy(),
+                entity.getVersion(),
                 entity.isEnabled());
     }
 }

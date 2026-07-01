@@ -89,7 +89,7 @@ public class ServiceController {
 
     @GetMapping("/{id}")
     public ServiceResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -99,18 +99,18 @@ public class ServiceController {
             new UpdateServiceCommand(
                 id, request.name(), request.price(), request.taxTreatment(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId(),
-                authz.currentEmployeeIdOrNull())));
+                authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public ServiceResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private ServiceResponse toResponse(ServiceDto dto) {
@@ -122,6 +122,6 @@ public class ServiceController {
             new ServiceCategorySummary(sc.id(), sc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.enabled());
+            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
     }
 }

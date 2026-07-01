@@ -25,13 +25,18 @@ public class JpaTaxRepository implements TaxRepository {
     @Override
     public Tax save(Tax tax) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(tax.getCompany().id());
-        TaxJpaEntity saved = jpaRepository.save(mapper.toJpa(tax, company));
+        TaxJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(tax, company));
         return mapper.toDomain(saved, tax.getCompany());
     }
 
     @Override
     public Optional<Tax> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Tax> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
 
     @Override
@@ -56,7 +61,7 @@ public class JpaTaxRepository implements TaxRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

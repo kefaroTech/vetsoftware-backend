@@ -11,6 +11,7 @@ public record ProductCategoryDto(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {
     public static ProductCategoryDto from(ProductCategory productCategory) {
@@ -22,6 +23,7 @@ public record ProductCategoryDto(
                 productCategory.getCreatedDate(),
                 productCategory.getUpdatedDate(),
                 productCategory.getUpdatedBy(),
+                productCategory.getVersion(),
                 productCategory.isEnabled());
     }
 }

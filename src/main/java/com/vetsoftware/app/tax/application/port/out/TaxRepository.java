@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface TaxRepository {
     Tax save(Tax tax);
     Optional<Tax> findById(Long id);
+    Optional<Tax> findByIdAndCompanyId(Long id, Long companyId);
 
     /** ¿Existe ya un impuesto ACTIVO con este name en la empresa? (unicidad de nombre por empresa) */
     boolean existsByCompanyIdAndName(Long companyId, String name);
@@ -15,5 +16,5 @@ public interface TaxRepository {
     boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
     List<Tax> findAllByCompanyId(Long companyId);
     void delete(Long id);
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }

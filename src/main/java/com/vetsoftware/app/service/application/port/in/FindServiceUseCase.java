@@ -4,6 +4,7 @@ import com.vetsoftware.app.service.application.dto.ServiceDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindServiceUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('service.read')")
-    ServiceDto findById(Long id);
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('service.read') and @authz.isMyCompany(#companyId))")
+    ServiceDto findById(Long id, Long companyId);
 }

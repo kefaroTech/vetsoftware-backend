@@ -25,13 +25,18 @@ public class JpaServiceCategoryRepository implements ServiceCategoryRepository {
     @Override
     public ServiceCategory save(ServiceCategory serviceCategory) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(serviceCategory.getCompany().id());
-        ServiceCategoryJpaEntity saved = jpaRepository.save(mapper.toJpa(serviceCategory, company));
+        ServiceCategoryJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(serviceCategory, company));
         return mapper.toDomain(saved, serviceCategory.getCompany());
     }
 
     @Override
     public Optional<ServiceCategory> findById(Long id) {
         return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<ServiceCategory> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
 
     @Override
@@ -55,7 +60,7 @@ public class JpaServiceCategoryRepository implements ServiceCategoryRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

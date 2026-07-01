@@ -6,6 +6,7 @@ import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCat
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -44,8 +45,11 @@ public class ProductJpaEntity {
     @Column(name = "tax_treatment", nullable = false, length = 20)
     private TaxTreatment taxTreatment;
 
-    @Column(name = "expire_date", nullable = false)
-    private boolean expireDate;
+    @Column(name = "expire_date")
+    private LocalDate expireDate;
+
+    @Column(name = "lot_number", length = 50)
+    private String lotNumber;
 
     @Column(length = 500)
     private String notes;
@@ -98,8 +102,10 @@ public class ProductJpaEntity {
     public void setProvider(String provider) { this.provider = provider; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
-    public boolean isExpireDate() { return expireDate; }
-    public void setExpireDate(boolean expireDate) { this.expireDate = expireDate; }
+    public LocalDate getExpireDate() { return expireDate; }
+    public void setExpireDate(LocalDate expireDate) { this.expireDate = expireDate; }
+    public String getLotNumber() { return lotNumber; }
+    public void setLotNumber(String lotNumber) { this.lotNumber = lotNumber; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     public ProductCategoryJpaEntity getProductCategory() { return productCategory; }

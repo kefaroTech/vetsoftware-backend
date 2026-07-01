@@ -24,8 +24,9 @@ public class DeleteServiceCategoryService implements DeleteServiceCategoryUseCas
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new ServiceCategoryNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new ServiceCategoryNotFoundException(id));
         if (serviceChildrenQueryPort.existsActiveByServiceCategoryId(id)) {
             throw new ServiceCategoryHasActiveChildrenException(id, "service");
         }

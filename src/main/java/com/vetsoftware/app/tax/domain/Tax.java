@@ -12,11 +12,12 @@ public class Tax {
     private final LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     private Long updatedBy;
+    private Long version;
     private boolean enabled;
 
     public Tax(Long id, String name, BigDecimal percentage, TaxScheme taxScheme,
                CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy,
-               boolean enabled) {
+               Long version, boolean enabled) {
         validate(name, percentage, taxScheme, company);
         this.id = id;
         this.name = name;
@@ -26,14 +27,16 @@ public class Tax {
         this.createdDate = createdDate;
         this.updatedDate = updatedDate;
         this.updatedBy = updatedBy;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Tax create(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company) {
-        return new Tax(null, name, percentage, taxScheme, company, LocalDateTime.now(), null, null, true);
+        return new Tax(null, name, percentage, taxScheme, company, LocalDateTime.now(), null, null, null, true);
     }
 
-    public void update(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company, Long updatedBy) {
+    public void update(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company, Long updatedBy,
+                       Long expectedVersion) {
         validate(name, percentage, taxScheme, company);
         this.name = name;
         this.percentage = percentage;
@@ -41,6 +44,7 @@ public class Tax {
         this.company = company;
         this.updatedDate = LocalDateTime.now();
         this.updatedBy = updatedBy;
+        this.version = expectedVersion;
     }
 
     private static void validate(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company) {
@@ -61,6 +65,7 @@ public class Tax {
     public LocalDateTime getCreatedDate() { return createdDate; }
     public LocalDateTime getUpdatedDate() { return updatedDate; }
     public Long getUpdatedBy() { return updatedBy; }
+    public Long getVersion() { return version; }
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }

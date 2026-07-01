@@ -11,6 +11,7 @@ public record ServiceCategoryDto(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {
     public static ServiceCategoryDto from(ServiceCategory serviceCategory) {
@@ -22,6 +23,7 @@ public record ServiceCategoryDto(
                 serviceCategory.getCreatedDate(),
                 serviceCategory.getUpdatedDate(),
                 serviceCategory.getUpdatedBy(),
+                serviceCategory.getVersion(),
                 serviceCategory.isEnabled());
     }
 }

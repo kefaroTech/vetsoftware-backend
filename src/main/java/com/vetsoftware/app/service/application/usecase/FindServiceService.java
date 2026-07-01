@@ -16,8 +16,8 @@ public class FindServiceService implements FindServiceUseCase {
     }
 
     @Override
-    public ServiceDto findById(Long id) {
-        return repository.findById(id)
+    public ServiceDto findById(Long id, Long companyId) {
+        return repository.findByIdAndCompanyId(id, companyId)
             .map(ServiceDto::from)
             .orElseThrow(() -> new ServiceNotFoundException(id));
     }

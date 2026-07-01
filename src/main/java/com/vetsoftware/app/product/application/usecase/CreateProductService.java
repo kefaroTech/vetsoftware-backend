@@ -53,7 +53,8 @@ public class CreateProductService implements CreateProductUseCase {
         Product product = Product.create(
             command.name(), command.code(), command.purchasePrice(), command.salePrice(),
             command.currentStock(), command.minStock(), command.provider(),
-            command.taxTreatment(), command.expireDate(), command.notes(), productCategory, tax, company);
+            command.taxTreatment(), command.expireDate(), command.lotNumber(), command.notes(),
+            productCategory, tax, company);
         return ProductDto.from(repository.save(product));
     }
 }

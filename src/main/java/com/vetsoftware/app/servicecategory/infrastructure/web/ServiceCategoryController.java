@@ -63,7 +63,7 @@ public class ServiceCategoryController {
 
     @GetMapping("/{id}")
     public ServiceCategoryResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -71,18 +71,18 @@ public class ServiceCategoryController {
                                           @Valid @RequestBody UpdateServiceCategoryRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateServiceCategoryCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
+                        authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public ServiceCategoryResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private ServiceCategoryResponse toResponse(ServiceCategoryDto dto) {
@@ -93,6 +93,7 @@ public class ServiceCategoryController {
                 dto.createdDate(),
                 dto.updatedDate(),
                 dto.updatedBy(),
+                dto.version(),
                 dto.enabled());
     }
 }

@@ -17,8 +17,8 @@ public class FindProductCategoryService implements FindProductCategoryUseCase {
     }
 
     @Override
-    public ProductCategoryDto findById(Long id) {
-        return ProductCategoryDto.from(repository.findById(id)
+    public ProductCategoryDto findById(Long id, Long companyId) {
+        return ProductCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ProductCategoryNotFoundException(id)));
     }
 }
