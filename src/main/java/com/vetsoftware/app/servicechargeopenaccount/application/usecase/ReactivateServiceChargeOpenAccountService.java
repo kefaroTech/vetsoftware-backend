@@ -32,7 +32,7 @@ public class ReactivateServiceChargeOpenAccountService implements ReactivateServ
         if (!charge.getOpenAccount().companyId().equals(companyId)) {
             throw new IllegalArgumentException("service charge does not belong to company");
         }
-        refresher.refresh(charge.getOpenAccount().id());
+        refresher.refresh(companyId, charge.getOpenAccount().id());
         return ServiceChargeOpenAccountDto.from(charge);
     }
 }

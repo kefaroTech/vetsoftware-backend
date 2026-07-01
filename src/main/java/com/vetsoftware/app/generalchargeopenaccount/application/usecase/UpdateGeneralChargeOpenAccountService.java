@@ -50,7 +50,7 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto sobre la cuenta destino del cargo.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
@@ -58,9 +58,9 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
         charge.update(command.name(), command.unitAmount(), command.quantity(), tax,
             openAccount);
         GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(openAccount.id());
+        refresher.refresh(command.companyId(), openAccount.id());
         if (!openAccount.id().equals(previousOpenAccountId)) {
-            refresher.refresh(previousOpenAccountId);
+            refresher.refresh(command.companyId(), previousOpenAccountId);
         }
         return dto;
     }

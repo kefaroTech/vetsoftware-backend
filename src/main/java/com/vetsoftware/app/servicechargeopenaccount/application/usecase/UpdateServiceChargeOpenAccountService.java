@@ -55,7 +55,7 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto sobre la cuenta destino del cargo.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
         AnimalRef animal = animalQueryPort.findById(command.animalId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         ServiceRef service = serviceQueryPort.findById(command.serviceId())
@@ -63,9 +63,9 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
 
         charge.update(animal, service, openAccount);
         ServiceChargeOpenAccountDto dto = ServiceChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(command.openAccountId());
+        refresher.refresh(command.companyId(), command.openAccountId());
         if (!command.openAccountId().equals(previousOpenAccountId)) {
-            refresher.refresh(previousOpenAccountId);
+            refresher.refresh(command.companyId(), previousOpenAccountId);
         }
         return dto;
     }

@@ -71,6 +71,11 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
+    public Optional<OpenAccount> findByIdForUpdateAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdForUpdateAndCompanyId(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<OpenAccount> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

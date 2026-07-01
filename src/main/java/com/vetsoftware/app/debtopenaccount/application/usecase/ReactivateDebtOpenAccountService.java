@@ -32,7 +32,7 @@ public class ReactivateDebtOpenAccountService implements ReactivateDebtOpenAccou
         if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
             throw new IllegalArgumentException("debt open account does not belong to company");
         }
-        refresher.refresh(debtOpenAccount.getOpenAccount().id());
+        refresher.refresh(companyId, debtOpenAccount.getOpenAccount().id());
         return DebtOpenAccountDto.from(debtOpenAccount);
     }
 }

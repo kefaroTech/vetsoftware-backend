@@ -7,6 +7,8 @@ public interface RecalculateOpenAccountUseCase {
     // already-authorized charge/payment mutation (via each child's OpenAccountRefresher),
     // so it must not impose openAccount.* authorities on the charge caller — only require
     // an authenticated principal.
+    // Scoped a la empresa (companyId): el lock/recálculo solo aplica a una cuenta de ese tenant;
+    // una cuenta ajena lanza OpenAccountNotFoundException sin tomar el lock (defensa en profundidad).
     @PreAuthorize("isAuthenticated()")
-    void recalculate(Long openAccountId);
+    void recalculate(Long companyId, Long openAccountId);
 }

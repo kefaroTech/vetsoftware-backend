@@ -69,7 +69,7 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto: dentro del lock, antes de crear el cargo.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }
@@ -83,7 +83,7 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         ProductChargeOpenAccount charge = ProductChargeOpenAccount.create(animal, product, openAccount, createdBy,
             command.clientRequestId());
         ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(command.openAccountId());
+        refresher.refresh(command.companyId(), command.openAccountId());
         return dto;
     }
 }

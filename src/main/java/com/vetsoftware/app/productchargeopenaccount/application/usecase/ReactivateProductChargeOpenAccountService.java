@@ -32,7 +32,7 @@ public class ReactivateProductChargeOpenAccountService implements ReactivateProd
         if (!charge.getOpenAccount().companyId().equals(companyId)) {
             throw new IllegalArgumentException("product charge does not belong to company");
         }
-        refresher.refresh(charge.getOpenAccount().id());
+        refresher.refresh(companyId, charge.getOpenAccount().id());
         return ProductChargeOpenAccountDto.from(charge);
     }
 }

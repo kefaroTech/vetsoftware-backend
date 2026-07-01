@@ -7,6 +7,8 @@ public interface AssertOpenAccountVersionUseCase {
     // de cargo/abono/estado ya autorizada (vía el OpenAccountVersionGuard de cada feature), así que no
     // impone autoridades openAccount.* al caller — solo exige principal autenticado, como Recalculate.
     // No-op cuando expectedVersion es null (opt-in: el front decide cuándo enviar la versión).
+    // Scoped a la empresa (companyId): la cuenta se resuelve dentro del tenant; una cuenta ajena lanza
+    // OpenAccountNotFoundException (defensa en profundidad, no filtra versión cross-tenant).
     @PreAuthorize("isAuthenticated()")
-    void assertVersion(Long openAccountId, Long expectedVersion);
+    void assertVersion(Long companyId, Long openAccountId, Long expectedVersion);
 }

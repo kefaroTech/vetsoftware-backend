@@ -6,5 +6,5 @@ package com.vetsoftware.app.debtopenaccount.application.port.out;
  * {@link OpenAccountRefresher}). No-op cuando expectedVersion es null.
  */
 public interface OpenAccountVersionGuard {
-    void assertVersion(Long openAccountId, Long expectedVersion);
+    void assertVersion(Long companyId, Long openAccountId, Long expectedVersion);
 }

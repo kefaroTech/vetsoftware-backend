@@ -13,6 +13,12 @@ public interface OpenAccountRepository {
     Optional<OpenAccount> findByIdAndCompanyId(Long id, Long companyId);
     /** Carga la cuenta con bloqueo pesimista (FOR UPDATE) para serializar el recálculo de totales. */
     Optional<OpenAccount> findByIdForUpdate(Long id);
+    /**
+     * Igual que {@link #findByIdForUpdate} pero scoped a la empresa: el FOR UPDATE solo bloquea la fila si
+     * pertenece a {@code companyId}. Evita que un caller (o bug futuro) tome el lock pesimista sobre una
+     * cuenta ajena (defensa en profundidad contra IDOR / DoS por lock cross-tenant).
+     */
+    Optional<OpenAccount> findByIdForUpdateAndCompanyId(Long id, Long companyId);
     List<OpenAccount> findAll();
     List<OpenAccount> findAllByCompanyId(Long companyId);
     /** true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por propietario. */

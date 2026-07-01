@@ -20,10 +20,11 @@ public class AssertOpenAccountVersionService implements AssertOpenAccountVersion
 
     @Override
     @Transactional(readOnly = true)
-    public void assertVersion(Long openAccountId, Long expectedVersion) {
+    public void assertVersion(Long companyId, Long openAccountId, Long expectedVersion) {
         // Opt-in: sin versión esperada no hay chequeo temprano (se conserva el optimistic lock al flush).
         if (expectedVersion == null) return;
-        OpenAccount account = repository.findById(openAccountId)
+        // Lectura scoped a la empresa: una cuenta ajena lanza NotFound en vez de comparar/filtrar su versión.
+        OpenAccount account = repository.findByIdAndCompanyId(openAccountId, companyId)
             .orElseThrow(() -> new OpenAccountNotFoundException(openAccountId));
         if (!expectedVersion.equals(account.getVersion())) {
             throw new OpenAccountVersionConflictException(openAccountId, expectedVersion, account.getVersion());

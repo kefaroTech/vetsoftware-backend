@@ -31,6 +31,6 @@ public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCas
         }
         Long openAccountId = debtOpenAccount.getOpenAccount().id();
         repository.delete(id);
-        refresher.refresh(openAccountId);
+        refresher.refresh(companyId, openAccountId);
     }
 }

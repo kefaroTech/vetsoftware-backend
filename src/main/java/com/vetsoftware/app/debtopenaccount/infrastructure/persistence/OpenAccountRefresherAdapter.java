@@ -13,7 +13,7 @@ public class OpenAccountRefresherAdapter implements OpenAccountRefresher {
     }
 
     @Override
-    public void refresh(Long openAccountId) {
-        recalculateOpenAccountUseCase.recalculate(openAccountId);
+    public void refresh(Long companyId, Long openAccountId) {
+        recalculateOpenAccountUseCase.recalculate(companyId, openAccountId);
     }
 }

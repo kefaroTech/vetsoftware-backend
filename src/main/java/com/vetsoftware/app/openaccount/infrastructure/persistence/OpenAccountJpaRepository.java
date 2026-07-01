@@ -35,6 +35,13 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     @Query("select o from OpenAccountJpaEntity o where o.id = :id")
     Optional<OpenAccountJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
+    // Variante scoped a la empresa: el FOR UPDATE solo toma el lock si la fila pertenece a companyId,
+    // evitando bloquear (o leer) una cuenta de otro tenant. Mismo motivo del sin-@EntityGraph que arriba.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from OpenAccountJpaEntity o where o.id = :id and o.company.id = :companyId")
+    Optional<OpenAccountJpaEntity> findByIdForUpdateAndCompanyId(@Param("id") Long id,
+                                                                 @Param("companyId") Long companyId);
+
     // Regla "1 cuenta abierta por propietario": cuenta el estado OPEN (las CLOSE/CANCEL
     // siguen enabled=true pero ya no bloquean). AndEnabledTrue explícito (no depender del @SQLRestriction).
     boolean existsByOwnerIdAndStatusAndEnabledTrue(Long ownerId, OpenAccountStatus status);

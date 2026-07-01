@@ -49,7 +49,7 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen), no solo en el recálculo.
         openAccountQueryPort.lockForUpdate(openAccountId);
         // Detección temprana de conflicto sobre la cuenta del abono.
-        versionGuard.assertVersion(openAccountId, command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }
@@ -58,7 +58,7 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
 
         debtOpenAccount.voidPayment(voidedBy, command.reason());
         DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
-        refresher.refresh(openAccountId);
+        refresher.refresh(command.companyId(), openAccountId);
         return dto;
     }
 }

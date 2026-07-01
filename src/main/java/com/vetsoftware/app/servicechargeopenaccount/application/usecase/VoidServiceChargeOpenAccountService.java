@@ -50,7 +50,7 @@ public class VoidServiceChargeOpenAccountService implements VoidServiceChargeOpe
         // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen/saldo), no solo en el recálculo.
         openAccountQueryPort.lockForUpdate(openAccountId);
         // Detección temprana de conflicto sobre la cuenta del cargo.
-        versionGuard.assertVersion(openAccountId, command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }
@@ -67,7 +67,7 @@ public class VoidServiceChargeOpenAccountService implements VoidServiceChargeOpe
 
         charge.voidCharge(voidedBy, command.reason());
         ServiceChargeOpenAccountDto dto = ServiceChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(openAccountId);
+        refresher.refresh(command.companyId(), openAccountId);
         return dto;
     }
 }

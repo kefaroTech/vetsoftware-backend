@@ -46,13 +46,13 @@ public class UpdateDebtOpenAccountService implements UpdateDebtOpenAccountUseCas
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto sobre la cuenta destino del abono.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
 
         debtOpenAccount.update(command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount);
         DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
-        refresher.refresh(command.openAccountId());
+        refresher.refresh(command.companyId(), command.openAccountId());
         if (!command.openAccountId().equals(previousOpenAccountId)) {
-            refresher.refresh(previousOpenAccountId);
+            refresher.refresh(command.companyId(), previousOpenAccountId);
         }
         return dto;
     }

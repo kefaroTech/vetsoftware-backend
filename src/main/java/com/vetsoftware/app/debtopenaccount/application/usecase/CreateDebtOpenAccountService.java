@@ -61,7 +61,7 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto: dentro del lock, antes de registrar el abono.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }
@@ -79,7 +79,7 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
             command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount, createdBy,
             command.clientRequestId());
         DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
-        refresher.refresh(command.openAccountId());
+        refresher.refresh(command.companyId(), command.openAccountId());
         return dto;
     }
 }

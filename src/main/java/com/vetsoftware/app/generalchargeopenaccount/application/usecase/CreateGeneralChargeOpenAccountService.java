@@ -64,7 +64,7 @@ public class CreateGeneralChargeOpenAccountService implements CreateGeneralCharg
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto: dentro del lock, antes de crear el cargo.
-        versionGuard.assertVersion(command.openAccountId(), command.expectedVersion());
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }
@@ -78,7 +78,7 @@ public class CreateGeneralChargeOpenAccountService implements CreateGeneralCharg
             command.name(), command.unitAmount(), command.quantity(), tax,
             openAccount, createdBy, command.clientRequestId());
         GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(openAccount.id());
+        refresher.refresh(command.companyId(), openAccount.id());
         return dto;
     }
 }

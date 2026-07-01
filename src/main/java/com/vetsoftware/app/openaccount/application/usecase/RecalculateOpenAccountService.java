@@ -24,10 +24,11 @@ public class RecalculateOpenAccountService implements RecalculateOpenAccountUseC
 
     @Override
     @Transactional
-    public void recalculate(Long openAccountId) {
-        // Bloqueo pesimista: serializa recálculos concurrentes (cargos/abonos simultáneos) sobre la misma
-        // cuenta, evitando que un total/paid quede desactualizado por una carrera read-modify-write.
-        OpenAccount openAccount = repository.findByIdForUpdate(openAccountId)
+    public void recalculate(Long companyId, Long openAccountId) {
+        // Bloqueo pesimista scoped a la empresa: serializa recálculos concurrentes (cargos/abonos simultáneos)
+        // sobre la misma cuenta, y solo toma el lock si la cuenta pertenece a companyId (una cuenta ajena
+        // lanza NotFound sin bloquear su fila).
+        OpenAccount openAccount = repository.findByIdForUpdateAndCompanyId(openAccountId, companyId)
             .orElseThrow(() -> new OpenAccountNotFoundException(openAccountId));
         BigDecimal total = totalsPort.totalCharges(openAccountId);
         BigDecimal paid = totalsPort.totalPayments(openAccountId);

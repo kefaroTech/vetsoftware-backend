@@ -13,7 +13,7 @@ public class OpenAccountVersionGuardAdapter implements OpenAccountVersionGuard {
     }
 
     @Override
-    public void assertVersion(Long openAccountId, Long expectedVersion) {
-        assertVersionUseCase.assertVersion(openAccountId, expectedVersion);
+    public void assertVersion(Long companyId, Long openAccountId, Long expectedVersion) {
+        assertVersionUseCase.assertVersion(companyId, openAccountId, expectedVersion);
     }
 }
