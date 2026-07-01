@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Optimistic locking (@Version) para el catálogo: columna `version` BIGINT NOT NULL DEFAULT 0.
+         Hibernate la incrementa en cada UPDATE; una edición con versión desactualizada dispara
+         ObjectOptimisticLockingFailureException → 409 CONCURRENT_MODIFICATION (ya mapeado en el handler).
+         Las filas existentes arrancan en 0. -->
+    <changeSet id="157_add_version_to_products" author="orlando">
+        <addColumn tableName="products">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="products" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="157_add_version_to_services" author="orlando">
+        <addColumn tableName="services">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="services" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="157_add_version_to_taxes" author="orlando">
+        <addColumn tableName="taxes">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="taxes" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="157_add_version_to_product_categories" author="orlando">
+        <addColumn tableName="product_categories">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="product_categories" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="157_add_version_to_service_categories" author="orlando">
+        <addColumn tableName="service_categories">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="service_categories" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
