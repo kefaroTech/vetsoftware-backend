@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Configuración general del sistema (GLOBAL, singleton, no scoped a empresa). Por ahora solo
+         guarda el valor del UVT vigente (COP), usado para el umbral de obligatoriedad de Factura
+         electrónica (la DIAN no permite Documento POS por encima de 5 UVT). -->
+    <changeSet id="148_create_system_configurations" author="orlando">
+        <createTable tableName="system_configurations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="uvt_value" type="DECIMAL(15,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Semilla: UVT 2025 = 49.799 COP. Actualizable vía PUT /system-configurations. -->
+        <insert tableName="system_configurations">
+            <column name="uvt_value" valueNumeric="49799.00"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

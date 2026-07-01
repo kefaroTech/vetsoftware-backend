@@ -151,5 +151,7 @@
     <include file="db/changelog/migrations/145_add_tax_treatment_to_charges.xml"/>
     <include file="db/changelog/migrations/146_add_fiscal_responsibility_to_owners.xml"/>
     <include file="db/changelog/migrations/147_add_customer_fiscal_responsibility_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/148_create_system_configurations.xml"/>
+    <include file="db/changelog/migrations/149_alter_system_configurations_to_key_value.xml"/>
 
 </databaseChangeLog>
