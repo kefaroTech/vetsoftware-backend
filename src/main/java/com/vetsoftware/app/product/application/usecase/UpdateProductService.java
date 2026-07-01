@@ -39,7 +39,7 @@ public class UpdateProductService implements UpdateProductUseCase {
     @Override
     @Transactional
     public ProductDto execute(UpdateProductCommand command) {
-        Product product = repository.findById(command.id())
+        Product product = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProductNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
@@ -49,7 +49,7 @@ public class UpdateProductService implements UpdateProductUseCase {
         if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
             throw new ProductNameAlreadyExistsException(command.name());
         }
-        ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
+        ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
