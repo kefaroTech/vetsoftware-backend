@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- B8 - actor fiscal: empleado que emite el documento (venta POS, nota crédito/débito). Da trazabilidad
+         de autoría a acciones sensibles (una NC anula la factura y reversa la cartera). Se guarda como id
+         pelado (BIGINT), sin FK, igual que open_account_id: es un cruce entre features por id. NULL en las vías
+         sin empleado directo (emisión al cerrar la cuenta — la autoría queda en open_accounts.closed_by —,
+         procesos de sistema/async y documentos legacy), por eso la columna es nullable. -->
+    <changeSet id="156_add_issued_by_employee_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="issued_by_employee_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

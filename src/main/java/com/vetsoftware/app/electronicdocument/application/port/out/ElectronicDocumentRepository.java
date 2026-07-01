@@ -21,6 +21,13 @@ public interface ElectronicDocumentRepository {
     /** ¿Ya existe un documento para esta cuenta? Idempotencia de la auto-emisión al cerrar la cuenta. */
     boolean existsByOpenAccountId(Long openAccountId);
 
+    /**
+     * Documento previamente registrado con este client_request_id dentro de la empresa. Idempotencia de la
+     * venta POS: si el POST se reintenta con la misma key (respuesta perdida), se devuelve el ya emitido en
+     * vez de registrar y transmitir otra venta.
+     */
+    Optional<ElectronicDocument> findByCompanyIdAndClientRequestId(Long companyId, String clientRequestId);
+
     /** El documento emitido al cerrar una cuenta (para imprimir su recibo). Scoped a la empresa. */
     Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId);
 

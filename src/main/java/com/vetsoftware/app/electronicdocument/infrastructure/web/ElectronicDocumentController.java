@@ -107,7 +107,8 @@ public class ElectronicDocumentController {
                 .toList();
         return registerPosSaleUseCase.execute(new RegisterPosSaleCommand(
                 authz.currentCompanyId(), request.documentType(), request.finalConsumer(),
-                request.customerOwnerId(), lines, payments));
+                request.customerOwnerId(), lines, payments, request.clientRequestId(),
+                authz.currentEmployeeId()));
     }
 
     /** F4: convierte un documento equivalente POS en factura electrónica de venta. */
@@ -130,7 +131,8 @@ public class ElectronicDocumentController {
     public ElectronicDocumentDto creditNote(@PathVariable Long id,
                                             @Valid @RequestBody IssueCreditNoteRequest request) {
         return creditNoteUseCase.execute(
-                new IssueCreditNoteCommand(id, request.reason(), authz.currentCompanyId()));
+                new IssueCreditNoteCommand(id, request.reason(), authz.currentCompanyId(),
+                        authz.currentEmployeeId()));
     }
 
     /** F5: emite una nota débito (aumento) que referencia la factura {id} y la transmite. */
@@ -139,7 +141,8 @@ public class ElectronicDocumentController {
     public ElectronicDocumentDto debitNote(@PathVariable Long id,
                                            @Valid @RequestBody IssueDebitNoteRequest request) {
         return debitNoteUseCase.execute(
-                new IssueDebitNoteCommand(id, request.reason(), authz.currentCompanyId()));
+                new IssueDebitNoteCommand(id, request.reason(), authz.currentCompanyId(),
+                        authz.currentEmployeeId()));
     }
 
     @GetMapping

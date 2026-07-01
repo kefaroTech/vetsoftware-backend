@@ -46,7 +46,8 @@ public class IssueDebitNoteService implements IssueDebitNoteUseCase {
             throw new DocumentAlreadyReversedException(original.getId());
         }
         ElectronicDocument note = ElectronicDocument.createDebitNote(
-                original, command.reason().dianCode(), command.reason().description());
+                original, command.reason().dianCode(), command.reason().description(),
+                command.issuedByEmployeeId());
         // Persiste la nota PENDIENTE; el emisor numera+transmite (empresa con BILLING) o la guarda local.
         ElectronicDocument saved = repository.save(note);
         return ElectronicDocumentDto.from(emitter.emit(saved));

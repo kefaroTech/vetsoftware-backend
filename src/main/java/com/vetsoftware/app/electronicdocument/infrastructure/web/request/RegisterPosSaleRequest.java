@@ -21,7 +21,9 @@ public record RegisterPosSaleRequest(
         boolean finalConsumer,
         Long customerOwnerId,
         @NotEmpty @Valid List<SaleLineRequest> lines,
-        @NotEmpty @Valid List<SalePaymentRequest> payments
+        @NotEmpty @Valid List<SalePaymentRequest> payments,
+        /** Idempotencia de la venta: UUID que el front genera por apertura del cobro (opcional). */
+        String clientRequestId
 ) {
     public record SaleLineRequest(
             @NotNull SaleLineKind kind,

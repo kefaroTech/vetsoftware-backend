@@ -50,6 +50,11 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
+    public Optional<ElectronicDocument> findByCompanyIdAndClientRequestId(Long companyId, String clientRequestId) {
+        return jpaRepository.findByCompany_IdAndClientRequestId(companyId, clientRequestId).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId) {
         return jpaRepository.findByOpenAccountIdAndCompany_Id(openAccountId, companyId).map(mapper::toDomain);
     }

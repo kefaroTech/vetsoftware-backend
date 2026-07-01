@@ -81,6 +81,8 @@ public class ElectronicDocumentJpaMapper {
         entity.setNoteReasonCode(doc.getNoteReasonCode());
         entity.setNoteReasonText(doc.getNoteReasonText());
         entity.setReversed(doc.isReversed());
+        entity.setClientRequestId(doc.getClientRequestId());
+        entity.setIssuedByEmployeeId(doc.getIssuedByEmployeeId());
 
         for (ElectronicDocumentLine l : doc.getLines()) {
             ElectronicDocumentLineJpaEntity le = new ElectronicDocumentLineJpaEntity();
@@ -145,7 +147,7 @@ public class ElectronicDocumentJpaMapper {
                 entity.getPaymentForm(), lines, payments, entity.getCreatedDate(),
                 entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
                 entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
-                entity.getReteIcaAmount());
+                entity.getReteIcaAmount(), entity.getClientRequestId(), entity.getIssuedByEmployeeId());
     }
 
     /** Reconstruye la lista de códigos de responsabilidad fiscal desde la columna unida por ';'. */

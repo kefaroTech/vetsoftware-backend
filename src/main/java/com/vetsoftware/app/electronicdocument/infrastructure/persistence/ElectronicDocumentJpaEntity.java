@@ -165,6 +165,17 @@ public class ElectronicDocumentJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    // Idempotencia de la venta POS: UUID por apertura del cobro. UNIQUE(company_id, client_request_id) evita
+    // registrar/transmitir dos veces la misma venta ante un reintento con la respuesta perdida. NULL en los
+    // documentos que no vienen del POS (from-account, notas, legacy).
+    @Column(name = "client_request_id", length = 36)
+    private String clientRequestId;
+
+    // Actor fiscal (B8): empleado que emite el documento (POS/NC/ND). Id pelado sin FK, igual que
+    // open_account_id (cruce entre features por id). NULL en emisión al cierre, procesos sistema y legacy.
+    @Column(name = "issued_by_employee_id")
+    private Long issuedByEmployeeId;
+
     protected ElectronicDocumentJpaEntity() {}
 
     public Long getId() { return id; }
@@ -275,4 +286,8 @@ public class ElectronicDocumentJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getClientRequestId() { return clientRequestId; }
+    public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
+    public Long getIssuedByEmployeeId() { return issuedByEmployeeId; }
+    public void setIssuedByEmployeeId(Long issuedByEmployeeId) { this.issuedByEmployeeId = issuedByEmployeeId; }
 }

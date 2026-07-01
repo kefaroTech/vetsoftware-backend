@@ -89,7 +89,8 @@ public class PosSaleDocumentBuilder {
                 companyId, null /* sin cuenta abierta: la venta POS ES el registro */,
                 command.documentType(), fiscal.issuer(), customer, lines, payments,
                 PaymentForm.CONTADO,
-                withholdingAgent, fiscal.reteFuenteRate(), fiscal.reteIvaRate(), fiscal.reteIcaRate());
+                withholdingAgent, fiscal.reteFuenteRate(), fiscal.reteIvaRate(), fiscal.reteIcaRate(),
+                command.clientRequestId(), command.issuedByEmployeeId());
         return repository.save(document);
     }
 

@@ -77,6 +77,16 @@ public class ElectronicDocument {
     private final LocalDateTime createdDate;
     private final boolean enabled;
 
+    // Idempotencia de la venta POS: UUID que el cliente genera por apertura del cobro. Null en documentos que
+    // no vienen del POS (cierre de cuenta, notas). La unicidad (empresa, clientRequestId) la respalda la BD.
+    private final String clientRequestId;
+
+    // Actor fiscal: empleado que emite el documento (venta POS, nota credito/debito), tomado del contexto de
+    // autenticacion. Da trazabilidad de autoria a acciones sensibles (una NC anula factura y reversa cartera).
+    // NULL en las vias sin empleado directo: emision al cerrar la cuenta (autor via OpenAccount.closedBy),
+    // procesos async/sistema y documentos legacy.
+    private final Long issuedByEmployeeId;
+
     public ElectronicDocument(Long id, Long companyId, Long openAccountId, ElectronicDocumentType documentType,
                               String prefix, Long consecutive, String resolutionNumber, LocalDate issueDate, String issueTime,
                               String cufe, String cude, String uuid, String qrData, String qrUrl,
@@ -88,7 +98,7 @@ public class ElectronicDocument {
                               List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
                               DocumentReference reference, String noteReasonCode, String noteReasonText,
                               boolean reversed, BigDecimal reteFuenteAmount, BigDecimal reteIvaAmount,
-                              BigDecimal reteIcaAmount) {
+                              BigDecimal reteIcaAmount, String clientRequestId, Long issuedByEmployeeId) {
         validate(companyId, documentType, issueDate, issueTime, dianStatus, issuer, customer,
                 lineExtensionAmount, taxExclusiveAmount, taxInclusiveAmount, payableAmount, paymentForm, lines);
         validateNoteConsistency(documentType, reference, noteReasonCode);
@@ -128,6 +138,8 @@ public class ElectronicDocument {
         this.reteIcaAmount = reteIcaAmount == null ? BigDecimal.ZERO : reteIcaAmount;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.clientRequestId = clientRequestId;
+        this.issuedByEmployeeId = issuedByEmployeeId;
     }
 
     /**
@@ -140,7 +152,8 @@ public class ElectronicDocument {
                                                    List<ElectronicDocumentPayment> payments,
                                                    PaymentForm paymentForm,
                                                    boolean withholdingAgent, BigDecimal reteFuenteRate,
-                                                   BigDecimal reteIvaRate, BigDecimal reteIcaRate) {
+                                                   BigDecimal reteIvaRate, BigDecimal reteIcaRate,
+                                                   String clientRequestId, Long issuedByEmployeeId) {
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
@@ -166,7 +179,8 @@ public class ElectronicDocument {
                 null, null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 issuer, customer, base, base, totalWithTax, totalWithTax,
                 paymentForm, lines, payments, LocalDateTime.now(), true,
-                null, null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca());
+                null, null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca(), clientRequestId,
+                issuedByEmployeeId);
     }
 
     /**
@@ -175,18 +189,20 @@ public class ElectronicDocument {
      * La nota usa CUDE propio y consecutivo de su resolucion (los estampa la validacion DIAN, F3).
      */
     public static ElectronicDocument createCreditNote(ElectronicDocument original,
-                                                      String reasonCode, String reasonText) {
-        return createNote(original, ElectronicDocumentType.NOTA_CREDITO, reasonCode, reasonText);
+                                                      String reasonCode, String reasonText,
+                                                      Long issuedByEmployeeId) {
+        return createNote(original, ElectronicDocumentType.NOTA_CREDITO, reasonCode, reasonText, issuedByEmployeeId);
     }
 
     /** Construye una NOTA DEBITO PENDIENTE (aumentos) que referencia una factura VALIDADA. */
     public static ElectronicDocument createDebitNote(ElectronicDocument original,
-                                                     String reasonCode, String reasonText) {
-        return createNote(original, ElectronicDocumentType.NOTA_DEBITO, reasonCode, reasonText);
+                                                     String reasonCode, String reasonText,
+                                                     Long issuedByEmployeeId) {
+        return createNote(original, ElectronicDocumentType.NOTA_DEBITO, reasonCode, reasonText, issuedByEmployeeId);
     }
 
     private static ElectronicDocument createNote(ElectronicDocument original, ElectronicDocumentType type,
-                                                 String reasonCode, String reasonText) {
+                                                 String reasonCode, String reasonText, Long issuedByEmployeeId) {
         if (original == null) throw new IllegalArgumentException("original document is required");
         if (original.cufe == null || original.cufe.isBlank())
             throw new IllegalArgumentException("original document has no CUFE to reference");
@@ -209,7 +225,8 @@ public class ElectronicDocument {
                 original.taxInclusiveAmount, original.payableAmount, original.paymentForm,
                 clonedLines, clonedPayments, LocalDateTime.now(), true,
                 ref, reasonCode, reasonText, false,
-                original.reteFuenteAmount, original.reteIvaAmount, original.reteIcaAmount);
+                original.reteFuenteAmount, original.reteIvaAmount, original.reteIcaAmount, null,
+                issuedByEmployeeId);
     }
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
@@ -435,6 +452,9 @@ public class ElectronicDocument {
         return payableAmount.subtract(reteFuenteAmount).subtract(reteIvaAmount).subtract(reteIcaAmount);
     }
     public PaymentForm getPaymentForm() { return paymentForm; }
+    public String getClientRequestId() { return clientRequestId; }
+    /** Empleado que emitió el documento (POS/NC/ND); null en emisión al cierre, procesos sistema o legacy. */
+    public Long getIssuedByEmployeeId() { return issuedByEmployeeId; }
     public List<ElectronicDocumentLine> getLines() { return lines; }
     public List<ElectronicDocumentPayment> getPayments() { return payments; }
     public DocumentReference getReference() { return reference; }

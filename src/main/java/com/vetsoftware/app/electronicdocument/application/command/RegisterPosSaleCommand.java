@@ -17,7 +17,11 @@ public record RegisterPosSaleCommand(
         /** null o finalConsumer=true => consumidor final anonimo. */
         Long customerOwnerId,
         List<SaleLine> lines,
-        List<SalePayment> payments
+        List<SalePayment> payments,
+        /** Idempotencia: UUID por apertura del cobro; null en clientes legacy que no lo envían. */
+        String clientRequestId,
+        /** Actor fiscal: empleado que registra la venta, inyectado por el controller desde el contexto auth. */
+        Long issuedByEmployeeId
 ) {
     /** true si alguna linea es GENERAL (precio libre): solo admin.all puede emitirlas (ver @PreAuthorize del use case). */
     public boolean hasGeneralLine() {

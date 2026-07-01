@@ -38,7 +38,10 @@ public class DocumentBuilder {
                 snapshot.issuer(), customer, snapshot.lines(), snapshot.payments(),
                 snapshot.paymentForm(),
                 snapshot.customerWithholdingAgent(), snapshot.reteFuenteRate(),
-                snapshot.reteIvaRate(), snapshot.reteIcaRate());
+                // La idempotencia del cierre se maneja por cuenta (existsByOpenAccountId), no por client_request_id.
+                // issuedByEmployeeId null: la emisión al cerrar la cuenta no tiene un actor fiscal directo aquí;
+                // la autoría del cierre queda registrada en OpenAccount.closedBy.
+                snapshot.reteIvaRate(), snapshot.reteIcaRate(), null, null);
         // El documento nace SIN numerar (PENDIENTE). La numeración fiscal (consecutivo) se asigna en la
         // EMISIÓN (justo antes de transmitir), no aquí: así el endpoint provisional /from-account no quema
         // consecutivos (un consecutivo sin transmitir dejaría un hueco que la DIAN penaliza).
