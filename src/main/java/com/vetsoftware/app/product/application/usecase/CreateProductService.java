@@ -44,7 +44,7 @@ public class CreateProductService implements CreateProductUseCase {
         if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
             throw new ProductNameAlreadyExistsException(command.name());
         }
-        ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId())
+        ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
