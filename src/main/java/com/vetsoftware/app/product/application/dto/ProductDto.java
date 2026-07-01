@@ -23,6 +23,7 @@ public record ProductDto(
         LocalDateTime createdDate,
         LocalDateTime updatedDate,
         Long updatedBy,
+        Long version,
         boolean enabled
 ) {
     public static ProductDto from(Product product) {
@@ -44,6 +45,7 @@ public record ProductDto(
                 product.getCreatedDate(),
                 product.getUpdatedDate(),
                 product.getUpdatedBy(),
+                product.getVersion(),
                 product.isEnabled());
     }
 }

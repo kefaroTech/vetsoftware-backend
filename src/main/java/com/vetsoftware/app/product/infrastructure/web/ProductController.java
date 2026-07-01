@@ -129,6 +129,6 @@ public class ProductController {
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.enabled());
+            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
     }
 }

@@ -18,8 +18,8 @@ public class DeleteProductService implements DeleteProductUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new ProductNotFoundException(id));
         repository.delete(id);
     }
 }

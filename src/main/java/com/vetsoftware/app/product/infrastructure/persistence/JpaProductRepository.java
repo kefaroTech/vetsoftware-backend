@@ -48,7 +48,7 @@ public class JpaProductRepository implements ProductRepository {
         TaxJpaEntity tax = product.getTax() == null ? null
             : taxJpaRepository.getReferenceById(product.getTax().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(product.getCompany().id());
-        ProductJpaEntity saved = jpaRepository.save(mapper.toJpa(product, productCategory, tax, company));
+        ProductJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company));
         return mapper.toDomain(saved, product.getProductCategory(), product.getTax(), product.getCompany());
     }
 
