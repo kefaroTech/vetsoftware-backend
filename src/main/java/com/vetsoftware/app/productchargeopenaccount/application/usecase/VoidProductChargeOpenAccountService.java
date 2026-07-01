@@ -8,6 +8,7 @@ import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAcc
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductStockPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
@@ -24,17 +25,20 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
+    private final ProductStockPort stockPort;
 
     public VoidProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
                                                OpenAccountQueryPort openAccountQueryPort,
                                                EmployeeQueryPort employeeQueryPort,
                                                OpenAccountRefresher refresher,
-                                               OpenAccountVersionGuard versionGuard) {
+                                               OpenAccountVersionGuard versionGuard,
+                                               ProductStockPort stockPort) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
+        this.stockPort = stockPort;
     }
 
     @Override
@@ -57,7 +61,7 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
         // No se puede anular un cargo si eso dejaría el saldo pendiente negativo (hay abonos que
         // ya cubren más de lo que quedaría). Regla: monto del cargo <= saldo pendiente actual.
         BigDecimal outstanding = openAccountQueryPort.outstandingAmount(openAccountId);
-        if (charge.getUnitPrice().compareTo(outstanding) > 0) {
+        if (charge.getTotalAmount().compareTo(outstanding) > 0) {
             throw new IllegalStateException(
                 "No se puede anular el cargo: el saldo pendiente quedaría negativo. "
                 + "Hay abonos que lo cubren; anula primero los abonos necesarios.");
@@ -67,6 +71,8 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
 
         charge.voidCharge(voidedBy, command.reason());
         ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
+        // Repone el stock descontado al crear el cargo: la venta se revierte.
+        stockPort.increaseStock(charge.getProduct().id(), command.companyId(), charge.getQuantity());
         refresher.refresh(command.companyId(), openAccountId);
         return dto;
     }

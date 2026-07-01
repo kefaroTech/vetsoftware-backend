@@ -35,7 +35,8 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
     public OpenAccountDto execute(ChangeOpenAccountStatusCommand command) {
         // Lock pesimista de la cuenta al inicio: serializa el cierre/cancelación frente a cargos/abonos
         // concurrentes (un cargo no se puede colar mientras se cierra), cerrando el TOCTOU sobre el estado y
-        // el saldo. La emisión del documento al cierre ocurre en esta misma transacción bajo el lock.
+        // el saldo. Bajo el lock solo se persiste el documento PENDIENTE; la transmisión a la DIAN + entrega
+        // (I/O externo ~60s) se difiere a afterCommit (A1), fuera del lock.
         OpenAccount openAccount = repository.findByIdForUpdate(command.id())
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
         if (!openAccount.getCompany().id().equals(command.companyId())) {
@@ -52,10 +53,9 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
         openAccount.changeStatus(newStatus, closedBy, command.reason());
         OpenAccount saved = repository.save(openAccount);
 
-        // Cobro/cierre de la venta: emite el documento electrónico directamente (síncrono, misma transacción).
-        // La emisión ve la cuenta ya CLOSE y el documento se guarda atómicamente con el cierre. Un fallo de
-        // configuración (p. ej. sin perfil fiscal) hace fallar el cierre con ese error, en vez de cerrar sin
-        // documento; las caídas transitorias de la DIAN no lanzan (el proveedor las marca CONTINGENCIA).
+        // Cobro/cierre de la venta: construye+persiste el documento PENDIENTE bajo el lock (un fallo de config
+        // como "sin perfil fiscal" que valida el builder hace fallar el cierre atómicamente) y programa la
+        // transmisión a la DIAN + entrega para DESPUÉS del commit, ya sin el lock (ver A1 / EmitOnClose).
         if (newStatus == OpenAccountStatus.CLOSE) {
             emissionPort.emitForClosedAccount(
                 saved.getId(), saved.getCompany().id(), command.documentType(), command.finalConsumer());

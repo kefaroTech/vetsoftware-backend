@@ -10,6 +10,8 @@ public class ProductChargeOpenAccount {
     private ProductRef product;
     /** Precio unitario congelado al momento de crear el cargo (snapshot, CON IVA incluido). */
     private final BigDecimal unitPrice;
+    /** Cantidad vendida; el total del cargo es unitPrice * quantity. */
+    private final int quantity;
     /** Impuesto congelado heredado del catálogo del producto; null si el producto no aplica impuesto. */
     private final TaxRef tax;
     private final boolean hasTax;
@@ -35,7 +37,7 @@ public class ProductChargeOpenAccount {
     /** Idempotency key (UUID del cliente): deduplica reintentos del mismo cargo. Nullable (legacy/sin id). */
     private final String clientRequestId;
 
-    public ProductChargeOpenAccount(Long id, AnimalRef animal, ProductRef product, BigDecimal unitPrice,
+    public ProductChargeOpenAccount(Long id, AnimalRef animal, ProductRef product, BigDecimal unitPrice, int quantity,
                                     TaxRef tax, boolean hasTax, BigDecimal taxPercentage, String taxName,
                                     String taxScheme, String taxTreatment, BigDecimal baseAmount, BigDecimal taxAmount,
                                     BigDecimal totalAmount,
@@ -44,10 +46,12 @@ public class ProductChargeOpenAccount {
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason, String clientRequestId) {
         validate(animal, product, openAccount, unitPrice);
+        if (quantity < 1) throw new IllegalArgumentException("quantity must be at least 1");
         this.id = id;
         this.animal = animal;
         this.product = product;
         this.unitPrice = unitPrice;
+        this.quantity = quantity;
         this.tax = tax;
         this.hasTax = hasTax;
         this.taxPercentage = taxPercentage;
@@ -74,7 +78,7 @@ public class ProductChargeOpenAccount {
                                     LocalDateTime createdDate, boolean enabled,
                                     boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
                                     String voidReason) {
-        this(id, animal, product, unitPrice, null, false, null, null, null, null,
+        this(id, animal, product, unitPrice, 1, null, false, null, null, null, null,
             Money.scaled(unitPrice), Money.zero(), Money.scaled(unitPrice),
             openAccount, createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason, null);
     }
@@ -87,7 +91,8 @@ public class ProductChargeOpenAccount {
             false, null, null, null);
     }
 
-    public static ProductChargeOpenAccount create(AnimalRef animal, ProductRef product, OpenAccountRef openAccount,
+    public static ProductChargeOpenAccount create(AnimalRef animal, ProductRef product, int quantity,
+                                                  OpenAccountRef openAccount,
                                                   EmployeeRef createdBy, String clientRequestId) {
         // Congela el precio de venta vigente del producto: el total de la cuenta no debe
         // cambiar si el catálogo se edita después.
@@ -102,10 +107,10 @@ public class ProductChargeOpenAccount {
         // El tratamiento (incl. EXENTO/EXCLUIDO) se congela aunque no haya impuesto monetario, para que el
         // documento del cierre pueda distinguir exento (IVA 0%) de excluido (sin esquema).
         String taxTreatment = product == null ? null : product.taxTreatment();
-        BigDecimal total = Money.scaled(unitPrice);
+        BigDecimal total = Money.multiply(unitPrice, BigDecimal.valueOf(quantity));
         BigDecimal base = Money.extractBase(total, percentage);
         BigDecimal taxAmount = total.subtract(base);
-        return new ProductChargeOpenAccount(null, animal, product, unitPrice, tax, hasTax, percentage, taxName,
+        return new ProductChargeOpenAccount(null, animal, product, unitPrice, quantity, tax, hasTax, percentage, taxName,
             taxScheme, taxTreatment, base, taxAmount, total, openAccount, createdBy, LocalDateTime.now(), true,
             false, null, null, null, clientRequestId);
     }
@@ -145,6 +150,7 @@ public class ProductChargeOpenAccount {
     public AnimalRef getAnimal() { return animal; }
     public ProductRef getProduct() { return product; }
     public BigDecimal getUnitPrice() { return unitPrice; }
+    public int getQuantity() { return quantity; }
     public TaxRef getTax() { return tax; }
     public boolean isHasTax() { return hasTax; }
     public BigDecimal getTaxPercentage() { return taxPercentage; }

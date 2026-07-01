@@ -10,6 +10,7 @@ import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAcc
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductStockPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.AnimalRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.OpenAccountRef;
@@ -30,6 +31,7 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
+    private final ProductStockPort stockPort;
 
     public CreateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
                                                  AnimalQueryPort animalQueryPort,
@@ -37,7 +39,8 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
                                                  OpenAccountQueryPort openAccountQueryPort,
                                                  EmployeeQueryPort employeeQueryPort,
                                                  OpenAccountRefresher refresher,
-                                                 OpenAccountVersionGuard versionGuard) {
+                                                 OpenAccountVersionGuard versionGuard,
+                                                 ProductStockPort stockPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.productQueryPort = productQueryPort;
@@ -45,6 +48,7 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
+        this.stockPort = stockPort;
     }
 
     @Override
@@ -81,9 +85,12 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        ProductChargeOpenAccount charge = ProductChargeOpenAccount.create(animal, product, openAccount, createdBy,
-            command.clientRequestId());
+        ProductChargeOpenAccount charge = ProductChargeOpenAccount.create(animal, product, command.quantity(),
+            openAccount, createdBy, command.clientRequestId());
         ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
+        // Descuenta stock del catálogo por la venta (atómico; permite negativo). Va dentro de la misma
+        // transacción: si algo falla después, el descuento se revierte con el resto.
+        stockPort.decreaseStock(command.productId(), command.companyId(), command.quantity());
         refresher.refresh(command.companyId(), command.openAccountId());
         return dto;
     }

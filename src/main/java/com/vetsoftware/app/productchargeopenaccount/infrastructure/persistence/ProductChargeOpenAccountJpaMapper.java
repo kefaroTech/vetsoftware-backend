@@ -28,6 +28,7 @@ public class ProductChargeOpenAccountJpaMapper {
         entity.setAnimal(animal);
         entity.setProduct(product);
         entity.setUnitPrice(charge.getUnitPrice());
+        entity.setQuantity(charge.getQuantity());
         entity.setTax(tax);
         entity.setHasTax(charge.isHasTax());
         entity.setTaxPercentage(charge.getTaxPercentage());
@@ -78,6 +79,7 @@ public class ProductChargeOpenAccountJpaMapper {
             animalRef,
             productRef,
             entity.getUnitPrice(),
+            entity.getQuantity(),
             taxRef,
             entity.isHasTax(),
             entity.getTaxPercentage(),

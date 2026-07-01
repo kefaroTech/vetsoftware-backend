@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cantidad vendida por cargo de producto. Hasta ahora cada cargo era 1 unidad (unit_price = total).
+         Con `quantity`, base/tax/total se escalan a total = unit_price * quantity (mismo patrón que los cargos
+         generales, que ya llevan quantity + unit_amount). La línea del documento electrónico del cierre pasa a
+         emitir la cantidad real (antes fijaba 1). Filas existentes = 1 unidad. -->
+    <changeSet id="158_add_quantity_to_product_charge_open_accounts" author="orlando">
+        <addColumn tableName="product_charge_open_accounts">
+            <column name="quantity" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="product_charge_open_accounts" columnName="quantity"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

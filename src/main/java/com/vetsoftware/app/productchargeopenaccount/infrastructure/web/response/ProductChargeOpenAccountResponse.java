@@ -8,6 +8,7 @@ public record ProductChargeOpenAccountResponse(
         AnimalSummary animal,
         ProductSummary product,
         BigDecimal unitPrice,
+        int quantity,
         boolean hasTax,
         BigDecimal taxPercentage,
         String taxName,

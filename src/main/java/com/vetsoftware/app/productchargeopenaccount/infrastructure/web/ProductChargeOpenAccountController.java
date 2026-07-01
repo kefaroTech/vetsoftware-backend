@@ -65,7 +65,9 @@ public class ProductChargeOpenAccountController {
             @Valid @RequestBody CreateProductChargeOpenAccountRequest request) {
         return toResponse(createUseCase.execute(
             new CreateProductChargeOpenAccountCommand(
-                request.animalId(), request.productId(), request.openAccountId(),
+                request.animalId(), request.productId(),
+                request.quantity() == null ? 1 : request.quantity(),
+                request.openAccountId(),
                 authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
                 request.expectedVersion())));
     }
@@ -120,6 +122,7 @@ public class ProductChargeOpenAccountController {
             new AnimalSummary(a.id(), a.name(), a.code()),
             new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()),
             dto.unitPrice(),
+            dto.quantity(),
             dto.hasTax(),
             dto.taxPercentage(),
             dto.taxName(),

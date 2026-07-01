@@ -31,6 +31,9 @@ public class ProductChargeOpenAccountJpaEntity {
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 
+    @Column(name = "quantity", nullable = false)
+    private int quantity = 1;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tax_id", nullable = true)
     private TaxJpaEntity tax;
@@ -99,6 +102,8 @@ public class ProductChargeOpenAccountJpaEntity {
     public void setProduct(ProductJpaEntity product) { this.product = product; }
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
     public TaxJpaEntity getTax() { return tax; }
     public void setTax(TaxJpaEntity tax) { this.tax = tax; }
     public boolean isHasTax() { return hasTax; }
