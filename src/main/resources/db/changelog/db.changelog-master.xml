@@ -161,5 +161,7 @@
     <include file="db/changelog/migrations/155_service_audit.xml"/>
     <include file="db/changelog/migrations/156_add_issued_by_employee_to_electronic_documents.xml"/>
     <include file="db/changelog/migrations/157_add_version_optimistic_lock.xml"/>
+    <include file="db/changelog/migrations/158_add_quantity_to_product_charge_open_accounts.xml"/>
+    <include file="db/changelog/migrations/159_product_real_expire_date_and_lot.xml"/>
 
 </databaseChangeLog>

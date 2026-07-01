@@ -19,6 +19,7 @@ public final class Money {
     public static final RoundingMode ROUND = RoundingMode.HALF_UP;
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
     /** Escala intermedia del factor (1 + tasa/100) antes de dividir el total. */
     private static final int RATE_SCALE = 6;
 
@@ -56,5 +57,15 @@ public final class Money {
     public static BigDecimal percentOf(BigDecimal amount, BigDecimal rate) {
         if (amount == null || rate == null || rate.signum() <= 0) return BigDecimal.ZERO;
         return amount.multiply(rate).divide(HUNDRED, SCALE, ROUND);
+    }
+
+    /**
+     * Por mil sobre un monto: {@code amount · rate / 1000} (2 dec, HALF_UP). Para tarifas expresadas en ‰
+     * (p. ej. la retención de ICA: 9,66 ‰ = 0,966 %). Devuelve 0 si {@code amount}/{@code rate} son null o
+     * {@code rate ≤ 0}.
+     */
+    public static BigDecimal perMilOf(BigDecimal amount, BigDecimal rate) {
+        if (amount == null || rate == null || rate.signum() <= 0) return BigDecimal.ZERO;
+        return amount.multiply(rate).divide(THOUSAND, SCALE, ROUND);
     }
 }
