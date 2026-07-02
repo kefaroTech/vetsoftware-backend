@@ -79,3 +79,17 @@ vetsoftware:
     enabled: ${MAIL_ENABLED:true}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
+    # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con
+    # los valores reales del terminal/caja. El cajero (cashier_name) se toma del empleado que emite la venta;
+    # 'default-cashier' es el fallback cuando la emisión no tiene actor (cierre de cuenta / procesos de sistema).
+    pos:
+      terminal-number: ${DIAN_POS_TERMINAL_NUMBER:CJ001}
+      cashier-type: ${DIAN_POS_CASHIER_TYPE:Caja principal}
+      sales-code: ${DIAN_POS_SALES_CODE:POS01}
+      address: ${DIAN_POS_ADDRESS:N/A}
+      default-cashier: ${DIAN_POS_DEFAULT_CASHIER:Cajero}
+    # Identidad del fabricante del software (VetSoftware) reportada en el documento POS.
+    software:
+      owner-name: ${DIAN_SOFTWARE_OWNER_NAME:VetSoftware}
+      company-name: ${DIAN_SOFTWARE_COMPANY_NAME:VetSoftware}
+      name: ${DIAN_SOFTWARE_NAME:VetSoftware}

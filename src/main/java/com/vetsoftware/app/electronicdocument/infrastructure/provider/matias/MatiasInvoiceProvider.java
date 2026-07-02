@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.infrastructure.provider.matias;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.EmployeeNameQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderResult;
 import com.vetsoftware.app.electronicdocument.application.port.out.TechnicalKeyQueryPort;
@@ -104,14 +105,20 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
     private final RestClient restClient;
     private final TechnicalKeyQueryPort technicalKeyQueryPort;
+    private final EmployeeNameQueryPort employeeNameQueryPort;
+    private final MatiasPosConfig posConfig;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
     // Cache del catálogo de ciudades por base URL: DANE (city_code 5 díg.) → city_id interno de MATIAS.
     private final Map<String, Map<String, String>> cityCacheByBase = new ConcurrentHashMap<>();
 
     public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient,
-                                 TechnicalKeyQueryPort technicalKeyQueryPort) {
+                                 TechnicalKeyQueryPort technicalKeyQueryPort,
+                                 EmployeeNameQueryPort employeeNameQueryPort,
+                                 MatiasPosConfig posConfig) {
         this.restClient = restClient;
         this.technicalKeyQueryPort = technicalKeyQueryPort;
+        this.employeeNameQueryPort = employeeNameQueryPort;
+        this.posConfig = posConfig;
     }
 
     @Override
@@ -400,7 +407,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         body.put("tax_totals", buildTaxTotals(doc));
 
         if (doc.getDocumentType() == ElectronicDocumentType.DOC_EQUIV_POS) {
-            body.put("document_signature", buildDocumentSignature());
+            body.put("document_signature", buildDocumentSignature(doc));
             body.put("point_of_sale", buildPointOfSale(doc));
             body.put("software_manufacturer", buildSoftwareManufacturer());
         }
@@ -539,30 +546,38 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         return totals;
     }
 
-    // Bloques POS — datos operativos que aún no modelamos; provisionales de ejemplo. TODO: parametrizar.
-    private Map<String, Object> buildDocumentSignature() {
+    // B6 - Bloques POS con datos reales: el cajero se resuelve del empleado que emitió (issuedByEmployeeId); el
+    // resto (terminal, código de venta, dirección, fabricante) es parametrizable por despliegue (MatiasPosConfig).
+    /** Cajero real (nombre del empleado emisor). Si no hay actor (cierre/sistema), usa el default configurado. */
+    private String resolveCashier(ElectronicDocument doc) {
+        return employeeNameQueryPort.findName(doc.getIssuedByEmployeeId())
+                .orElseGet(posConfig::defaultCashier);
+    }
+
+    private Map<String, Object> buildDocumentSignature(ElectronicDocument doc) {
+        String cashier = resolveCashier(doc);
         Map<String, Object> signature = new LinkedHashMap<>();
-        signature.put("cashier", "Cajero");
-        signature.put("seller", "Vendedor");
+        signature.put("cashier", cashier);
+        signature.put("seller", cashier);
         return signature;
     }
 
     private Map<String, Object> buildPointOfSale(ElectronicDocument doc) {
         Map<String, Object> pos = new LinkedHashMap<>();
-        pos.put("cashier_name", "Cajero");
-        pos.put("terminal_number", "CJ001");
-        pos.put("cashier_type", "Caja principal");
-        pos.put("sales_code", "POS01");
-        pos.put("address", "N/A");
+        pos.put("cashier_name", resolveCashier(doc));
+        pos.put("terminal_number", posConfig.terminalNumber());
+        pos.put("cashier_type", posConfig.cashierType());
+        pos.put("sales_code", posConfig.salesCode());
+        pos.put("address", posConfig.address());
         pos.put("sub_total", str(doc.getTaxExclusiveAmount())); // requerido por MATIAS: subtotal sin impuestos
         return pos;
     }
 
     private Map<String, Object> buildSoftwareManufacturer() {
         Map<String, Object> sw = new LinkedHashMap<>();
-        sw.put("owner_name", "VetSoftware");
-        sw.put("company_name", "VetSoftware");
-        sw.put("software_name", "VetSoftware");
+        sw.put("owner_name", posConfig.softwareOwnerName());
+        sw.put("company_name", posConfig.softwareCompanyName());
+        sw.put("software_name", posConfig.softwareName());
         return sw;
     }
 
