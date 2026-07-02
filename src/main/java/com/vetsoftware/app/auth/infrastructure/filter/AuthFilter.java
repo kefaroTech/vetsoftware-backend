@@ -10,6 +10,7 @@ import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseC
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,10 +18,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -93,27 +94,39 @@ public class AuthFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
 
         if (header == null || !header.startsWith("Bearer ")) {
-            writeUnauthorized(request, response, "Missing or invalid Authorization header");
+            writeUnauthorized(request, response, "TOKEN_MISSING", "Missing or invalid Authorization header");
             return;
         }
 
         String token = header.substring(7);
-        String type = extractType(token);
-        Long id = extractId(token);
+        String type;
+        Long id;
+        Long authVersion;
+        try {
+            type = jwtProvider.extractType(token);
+            id = jwtProvider.extractId(token);
+            authVersion = jwtProvider.extractAuthVersion(token);
+        } catch (ExpiredJwtException e) {
+            writeUnauthorized(request, response, "TOKEN_EXPIRED", "Token expired");
+            return;
+        } catch (Exception e) {
+            writeUnauthorized(request, response, "TOKEN_INVALID", "Invalid token");
+            return;
+        }
 
         if (type == null || id == null) {
-            writeUnauthorized(request, response, "Invalid token");
+            writeUnauthorized(request, response, "TOKEN_INVALID", "Invalid token");
             return;
         }
 
         AuthContext authContext = switch (type) {
-            case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, extractAuthVersion(token));
+            case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, authVersion);
             case "SYSTEM_USER" -> resolveSystemAuthContextUseCase.execute(id);
             default            -> null;
         };
 
         if (authContext == null) {
-            writeUnauthorized(request, response, "Unknown user type");
+            writeUnauthorized(request, response, "TOKEN_INVALID", "Unknown or revoked user");
             return;
         }
 
@@ -160,35 +173,22 @@ public class AuthFilter extends OncePerRequestFilter {
         return new UsernamePasswordAuthenticationToken(authContext, null, authorities);
     }
 
-    private String extractType(String token) {
-        try {
-            return jwtProvider.extractType(token);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private Long extractId(String token) {
-        try {
-            return jwtProvider.extractId(token);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private Long extractAuthVersion(String token) {
-        try {
-            return jwtProvider.extractAuthVersion(token);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response, String message)
-            throws IOException {
-        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), message);
+    /**
+     * Rechazo de autenticación en formato ProblemDetail (RFC 7807), consistente con
+     * {@code GlobalExceptionHandler}. El {@code code} discrimina el motivo para que el
+     * front decida: {@code TOKEN_EXPIRED} → intentar refrescar; {@code TOKEN_INVALID} /
+     * {@code TOKEN_MISSING} → desloguear.
+     */
+    private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response,
+                                   String code, String detail) throws IOException {
+        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), detail);
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
+        problem.setTitle(HttpStatus.UNAUTHORIZED.getReasonPhrase());
+        problem.setProperty("code", code);
+        String traceId = MDC.get("traceId");
+        if (traceId != null) problem.setProperty("traceId", traceId);
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), Map.of("error", message));
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), problem);
     }
 }
