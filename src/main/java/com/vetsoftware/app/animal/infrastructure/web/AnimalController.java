@@ -106,7 +106,7 @@ public class AnimalController {
                 dto.reproductiveState(),
                 new AnimalColorSummary(co.id(), co.name()),
                 dto.bod(),
-                dto.weight(), dto.size(), dto.deceased(), dto.deceasedDate(),
+                dto.weight(), dto.weightMeasuredAt(), dto.size(), dto.deceased(), dto.deceasedDate(),
                 new CompanySummary(c.id(), c.name(), c.identifier()),
                 dto.createdDate(), dto.enabled()
         );

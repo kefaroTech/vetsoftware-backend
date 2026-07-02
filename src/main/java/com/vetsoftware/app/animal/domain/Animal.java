@@ -1,5 +1,6 @@
 package com.vetsoftware.app.animal.domain;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -16,7 +17,6 @@ public class Animal {
     private ReproductiveState reproductiveState;
     private AnimalColorRef color;
     private LocalDate bod;
-    private Integer weight;
     private Integer size;
     private boolean deceased;
     private LocalDate deceasedDate;
@@ -24,13 +24,19 @@ public class Animal {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
+    // Peso actual DERIVADO del último WeightRecord habilitado (no es una columna). Lo hidrata el
+    // adaptador de persistencia vía applyCurrentWeight(); create/update no lo tocan. Ver WeightRecord.
+    private BigDecimal currentWeight;
+    private WeightType currentWeightUnit;
+    private LocalDate currentWeightMeasuredAt;
+
     public Animal(Long id, String name, String code, SpecieRef specie, BreedRef breed,
                   OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
                   ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod,
-                  Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
+                  Integer size, boolean deceased, LocalDate deceasedDate,
                   CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
-                 reproductiveState, color, weight, size, deceased, deceasedDate, company);
+                 reproductiveState, color, size, deceased, deceasedDate, company);
         this.id = id;
         this.name = name;
         this.code = code;
@@ -43,7 +49,6 @@ public class Animal {
         this.reproductiveState = reproductiveState;
         this.color = color;
         this.bod = bod;
-        this.weight = weight;
         this.size = size;
         this.deceased = deceased;
         this.deceasedDate = deceasedDate;
@@ -55,20 +60,20 @@ public class Animal {
     public static Animal create(String name, String code, SpecieRef specie, BreedRef breed,
                                  OwnerRef owner, Gender gender, WeightType weightType,
                                  AnimalType animalType, ReproductiveState reproductiveState,
-                                 AnimalColorRef color, LocalDate bod, Integer weight, Integer size,
+                                 AnimalColorRef color, LocalDate bod, Integer size,
                                  boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         return new Animal(null, name, code, specie, breed, owner, gender, weightType, animalType,
-                          reproductiveState, color, bod, weight, size, deceased, deceasedDate,
+                          reproductiveState, color, bod, size, deceased, deceasedDate,
                           company, LocalDateTime.now(), true);
     }
 
     public void update(String name, String code, SpecieRef specie, BreedRef breed,
                        OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
                        ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod,
-                       Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
+                       Integer size, boolean deceased, LocalDate deceasedDate,
                        CompanyRef company) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
-                 reproductiveState, color, weight, size, deceased, deceasedDate, company);
+                 reproductiveState, color, size, deceased, deceasedDate, company);
         this.name = name;
         this.code = code;
         this.specie = specie;
@@ -80,17 +85,23 @@ public class Animal {
         this.reproductiveState = reproductiveState;
         this.color = color;
         this.bod = bod;
-        this.weight = weight;
         this.size = size;
         this.deceased = deceased;
         this.deceasedDate = deceasedDate;
         this.company = company;
     }
 
+    /** Hidrata el peso actual derivado del último registro de peso. Solo lo llama la capa de persistencia. */
+    public void applyCurrentWeight(BigDecimal value, WeightType unit, LocalDate measuredAt) {
+        this.currentWeight = value;
+        this.currentWeightUnit = unit;
+        this.currentWeightMeasuredAt = measuredAt;
+    }
+
     private static void validate(String name, String code, SpecieRef specie, BreedRef breed,
                                   OwnerRef owner, Gender gender, WeightType weightType,
                                   AnimalType animalType, ReproductiveState reproductiveState,
-                                  AnimalColorRef color, Integer weight, Integer size,
+                                  AnimalColorRef color, Integer size,
                                   boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
@@ -104,7 +115,6 @@ public class Animal {
         if (animalType == null) throw new IllegalArgumentException("animalType is required");
         if (reproductiveState == null) throw new IllegalArgumentException("reproductiveState is required");
         if (color == null) throw new IllegalArgumentException("color is required");
-        if (weight != null && weight < 0) throw new IllegalArgumentException("weight cannot be negative");
         if (size != null && size < 0) throw new IllegalArgumentException("size cannot be negative");
         if (company == null) throw new IllegalArgumentException("company is required");
         if (deceased && deceasedDate == null) throw new IllegalArgumentException("deceasedDate is required when deceased is true");
@@ -123,7 +133,6 @@ public class Animal {
     public ReproductiveState getReproductiveState() { return reproductiveState; }
     public AnimalColorRef getColor() { return color; }
     public LocalDate getBod() { return bod; }
-    public Integer getWeight() { return weight; }
     public Integer getSize() { return size; }
     public boolean isDeceased() { return deceased; }
     public LocalDate getDeceasedDate() { return deceasedDate; }
@@ -132,4 +141,8 @@ public class Animal {
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }
+
+    public BigDecimal getCurrentWeight() { return currentWeight; }
+    public WeightType getCurrentWeightUnit() { return currentWeightUnit; }
+    public LocalDate getCurrentWeightMeasuredAt() { return currentWeightMeasuredAt; }
 }

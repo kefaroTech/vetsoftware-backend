@@ -4,6 +4,7 @@ import com.vetsoftware.app.animal.domain.AnimalType;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
 import com.vetsoftware.app.animal.domain.WeightType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -12,6 +13,6 @@ public record AnimalResponse(
         SpecieSummary specie, BreedSummary breed, OwnerSummary owner,
         Gender gender, WeightType weightType, AnimalType animalType,
         ReproductiveState reproductiveState, AnimalColorSummary color, LocalDate bod,
-        Integer weight, Integer size, boolean deceased, LocalDate deceasedDate,
+        BigDecimal weight, LocalDate weightMeasuredAt, Integer size, boolean deceased, LocalDate deceasedDate,
         CompanySummary company, LocalDateTime createdDate, boolean enabled
 ) {}

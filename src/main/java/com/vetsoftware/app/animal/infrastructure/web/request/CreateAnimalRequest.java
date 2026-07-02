@@ -6,8 +6,10 @@ import com.vetsoftware.app.animal.domain.ReproductiveState;
 import com.vetsoftware.app.animal.domain.WeightType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateAnimalRequest(
@@ -22,7 +24,9 @@ public record CreateAnimalRequest(
         @NotNull ReproductiveState reproductiveState,
         @NotNull Long colorId,
         LocalDate bod,
-        @PositiveOrZero Integer weight,
+        // Peso inicial opcional: si viene, se registra como primer WeightRecord (source=MANUAL) en la
+        // unidad weightType. El peso posterior se gestiona vía /animals/{id}/weight-records.
+        @Positive BigDecimal weight,
         @PositiveOrZero Integer size,
         boolean deceased,
         LocalDate deceasedDate,

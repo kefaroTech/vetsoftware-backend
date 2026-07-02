@@ -67,9 +67,6 @@ public class AnimalJpaEntity {
     @Column(name = "bod")
     private LocalDate bod;
 
-    @Column(name = "weight")
-    private Integer weight;
-
     @Column(name = "size")
     private Integer size;
 
@@ -115,8 +112,6 @@ public class AnimalJpaEntity {
     public void setColor(AnimalColorJpaEntity color) { this.color = color; }
     public LocalDate getBod() { return bod; }
     public void setBod(LocalDate bod) { this.bod = bod; }
-    public Integer getWeight() { return weight; }
-    public void setWeight(Integer weight) { this.weight = weight; }
     public Integer getSize() { return size; }
     public void setSize(Integer size) { this.size = size; }
     public boolean isDeceased() { return deceased; }

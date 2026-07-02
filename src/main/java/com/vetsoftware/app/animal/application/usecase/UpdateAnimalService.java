@@ -60,11 +60,13 @@ public class UpdateAnimalService implements UpdateAnimalUseCase {
         AnimalColorRef color = animalColorQueryPort.findById(command.colorId())
             .orElseThrow(() -> new IllegalArgumentException("AnimalColor not found: " + command.colorId()));
 
+        // command.weight() se ignora deliberadamente: el peso se gestiona como serie temporal vía
+        // /animals/{id}/weight-records, no desde el update del animal. Ver WeightRecord.
         animal.update(
             command.name(), command.code(), specie, breed, owner,
             command.gender(), command.weightType(), command.animalType(),
             command.reproductiveState(), color, command.bod(),
-            command.weight(), command.size(), command.deceased(), command.deceasedDate(),
+            command.size(), command.deceased(), command.deceasedDate(),
             company
         );
         return AnimalDto.from(repository.save(animal));

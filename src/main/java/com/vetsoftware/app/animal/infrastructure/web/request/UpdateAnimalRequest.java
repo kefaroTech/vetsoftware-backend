@@ -6,8 +6,10 @@ import com.vetsoftware.app.animal.domain.ReproductiveState;
 import com.vetsoftware.app.animal.domain.WeightType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UpdateAnimalRequest(
@@ -22,7 +24,8 @@ public record UpdateAnimalRequest(
         @NotNull ReproductiveState reproductiveState,
         @NotNull Long colorId,
         LocalDate bod,
-        @PositiveOrZero Integer weight,
+        // Ignorado: el peso ya no se edita desde el animal; se gestiona vía /animals/{id}/weight-records.
+        @Positive BigDecimal weight,
         @PositiveOrZero Integer size,
         boolean deceased,
         LocalDate deceasedDate,

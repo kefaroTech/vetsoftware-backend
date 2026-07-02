@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Historial clínico de peso como serie temporal. El "peso actual" del animal deja de ser un
+         escalar en `animals` y pasa a derivarse del último registro habilitado de esta tabla. Ver
+         WeightRecord / auditoría item #10. -->
+    <changeSet id="162_create_weight_records" author="orlando">
+        <createTable tableName="weight_records">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="animal_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_weight_records_animal"
+                             references="animals(id)"/>
+            </column>
+            <column name="weight_value" type="DECIMAL(9,3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weight_unit" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="measured_at" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- id de la consulta / hospitalización origen cuando source != MANUAL. -->
+            <column name="source_id" type="BIGINT"/>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_weight_records_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Índice para resolver el "último peso por animal" (ORDER BY measured_at DESC, id DESC). -->
+        <createIndex tableName="weight_records" indexName="idx_weight_records_animal_company_measured">
+            <column name="animal_id"/>
+            <column name="company_id"/>
+            <column name="measured_at"/>
+        </createIndex>
+
+        <!-- Backfill: cada animal con peso escalar existente se convierte en su primer registro manual,
+             medido en la fecha de alta del animal, para no perder el dato al eliminar la columna. -->
+        <sql>
+            INSERT INTO weight_records
+                (animal_id, company_id, weight_value, weight_unit, measured_at, source, created_date, enabled)
+            SELECT a.id, a.company_id, a.weight, a.weight_type, DATE(a.created_date), 'MANUAL', a.created_date, true
+            FROM animals a
+            WHERE a.weight IS NOT NULL
+        </sql>
+
+        <!-- El peso escalar ya no es la fuente de verdad; se deriva del último weight_record. -->
+        <dropColumn tableName="animals" columnName="weight"/>
+    </changeSet>
+
+</databaseChangeLog>
