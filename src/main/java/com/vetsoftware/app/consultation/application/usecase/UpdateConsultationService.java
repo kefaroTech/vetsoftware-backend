@@ -37,11 +37,11 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
     @Override
     @Transactional
     public ConsultationDto execute(UpdateConsultationCommand command) {
-        Consultation consultation = repository.findById(command.id())
+        Consultation consultation = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ConsultationNotFoundException(command.id()));
         ConsultationTypeRef consultationType = consultationTypeQueryPort.findById(command.consultationTypeId())
             .orElseThrow(() -> new IllegalArgumentException("ConsultationType not found: " + command.consultationTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));

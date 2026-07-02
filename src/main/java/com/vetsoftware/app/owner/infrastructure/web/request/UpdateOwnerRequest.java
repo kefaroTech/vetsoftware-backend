@@ -20,7 +20,7 @@ public record UpdateOwnerRequest(
         @Size(max = 255) String address,
         @Size(max = 30) String phone,
         @NotNull Long cityId,
-        @NotNull Long companyId,
+        Long companyId,
         boolean withholdingAgent,
         // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable de IVA).
         TaxRegime taxRegime,

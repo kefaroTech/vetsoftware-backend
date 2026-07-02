@@ -23,6 +23,9 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @Query("SELECT e FROM EmployeeJpaEntity e WHERE e.company.id = :companyId")
     List<EmployeeJpaEntity> findAllByCompanyId(@Param("companyId") Long companyId);
 
+    @EntityGraph(attributePaths = "company")
+    Optional<EmployeeJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
     boolean existsByEmployeeCode(String employeeCode);
 
     @EntityGraph(attributePaths = "company")

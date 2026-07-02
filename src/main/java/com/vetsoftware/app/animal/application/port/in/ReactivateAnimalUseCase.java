@@ -5,5 +5,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateAnimalUseCase {
     @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
-    AnimalDto execute(Long id);
+    AnimalDto execute(Long id, Long companyId);
 }

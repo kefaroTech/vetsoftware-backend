@@ -70,7 +70,7 @@ public class GeneralChargeOpenAccountController {
 
     @GetMapping
     public List<GeneralChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/by-open-account/{openAccountId}")

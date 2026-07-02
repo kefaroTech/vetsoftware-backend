@@ -5,5 +5,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateConsultationUseCase {
     @PreAuthorize("hasAuthority('admin.all') or hasAuthority('consultation.update') or hasRole('SYSTEM')")
-    ConsultationDto execute(Long id);
+    ConsultationDto execute(Long id, Long companyId);
 }

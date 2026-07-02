@@ -25,13 +25,10 @@ public class ReactivateGeneralChargeOpenAccountService implements ReactivateGene
     @Override
     @Transactional
     public GeneralChargeOpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id);
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new GeneralChargeOpenAccountNotFoundException(id);
-        GeneralChargeOpenAccount charge = repository.findById(id)
+        GeneralChargeOpenAccount charge = repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(id));
-        if (!charge.getOpenAccount().companyId().equals(companyId)) {
-            throw new IllegalArgumentException("general charge does not belong to company");
-        }
         refresher.refresh(companyId, charge.getOpenAccount().id());
         return GeneralChargeOpenAccountDto.from(charge);
     }

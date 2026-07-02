@@ -24,11 +24,11 @@ public class DeleteOwnerService implements DeleteOwnerUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new OwnerNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new OwnerNotFoundException(id));
         if (animalChildrenQueryPort.existsActiveByOwnerId(id)) {
             throw new OwnerHasActiveChildrenException(id, "animal");
         }
-        repository.delete(id);
+        repository.delete(id, companyId);
     }
 }

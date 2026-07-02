@@ -36,13 +36,13 @@ public class JpaOwnerRepository implements OwnerRepository {
     }
 
     @Override
-    public Optional<Owner> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
+    public Optional<Owner> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompanyId(id, companyId).map(mapper::toDomain);
     }
 
     @Override
-    public List<Owner> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    public List<Owner> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
@@ -52,12 +52,12 @@ public class JpaOwnerRepository implements OwnerRepository {
     }
 
     @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.findByIdAndCompanyId(id, companyId).ifPresent(jpaRepository::delete);
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

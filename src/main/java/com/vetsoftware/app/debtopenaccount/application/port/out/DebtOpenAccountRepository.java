@@ -12,7 +12,8 @@ public interface DebtOpenAccountRepository {
     /** Abono ya registrado con esta idempotency key en la cuenta (para deduplicar reintentos). */
     Optional<DebtOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId);
     List<DebtOpenAccount> findAll();
-    List<DebtOpenAccount> findByOpenAccountId(Long openAccountId);
-    void delete(Long id);
-    int reactivate(Long id);
+    List<DebtOpenAccount> findAllByCompanyId(Long companyId);
+    List<DebtOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId);
+    void delete(Long id, Long companyId);
+    int reactivate(Long id, Long companyId);
 }

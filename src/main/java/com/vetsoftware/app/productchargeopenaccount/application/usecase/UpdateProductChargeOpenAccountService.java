@@ -45,7 +45,7 @@ public class UpdateProductChargeOpenAccountService implements UpdateProductCharg
     @Override
     @Transactional
     public ProductChargeOpenAccountDto execute(UpdateProductChargeOpenAccountCommand command) {
-        ProductChargeOpenAccount charge = repository.findById(command.id())
+        ProductChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = charge.getOpenAccount().id();
 
@@ -56,9 +56,9 @@ public class UpdateProductChargeOpenAccountService implements UpdateProductCharg
         }
         // Detección temprana de conflicto sobre la cuenta destino del cargo.
         versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ProductRef product = productQueryPort.findById(command.productId())
+        ProductRef product = productQueryPort.findByIdAndCompanyId(command.productId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Product not found: " + command.productId()));
 
         charge.update(animal, product, openAccount);

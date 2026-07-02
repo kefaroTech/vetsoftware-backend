@@ -19,10 +19,10 @@ public class ReactivateOwnerService implements ReactivateOwnerUseCase {
 
     @Override
     @Transactional
-    public OwnerDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public OwnerDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new OwnerNotFoundException(id);
-        return OwnerDto.from(repository.findById(id)
+        return OwnerDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new OwnerNotFoundException(id)));
     }
 }

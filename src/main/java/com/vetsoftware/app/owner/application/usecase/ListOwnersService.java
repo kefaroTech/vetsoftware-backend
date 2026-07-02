@@ -17,7 +17,7 @@ public class ListOwnersService implements ListOwnersUseCase {
     }
 
     @Override
-    public List<OwnerDto> listAll() {
-        return repository.findAll().stream().map(OwnerDto::from).toList();
+    public List<OwnerDto> listAll(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(OwnerDto::from).toList();
     }
 }

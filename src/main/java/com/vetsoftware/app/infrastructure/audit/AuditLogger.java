@@ -76,8 +76,14 @@ public class AuditLogger {
 
     /** Login bloqueado por rate limiting (429) — señal de fuerza bruta. client.ip/http.path vía MDC. */
     public void loginRateLimited() {
-        audit.warn("login rate limited",
-                kv("event", "login_rate_limited"),
+        rateLimited("LOGIN_RATE_LIMITED");
+    }
+
+    /** Ruta publica bloqueada por rate limiting (429). client.ip/http.path via MDC. */
+    public void rateLimited(String code) {
+        audit.warn("rate limited code={}", code,
+                kv("event", "rate_limited"),
+                kv("code", code),
                 kv("outcome", "DENIED"));
     }
 }

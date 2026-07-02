@@ -7,7 +7,9 @@ import java.util.Optional;
 public interface ConsultationRepository {
     Consultation save(Consultation consultation);
     Optional<Consultation> findById(Long id);
+    Optional<Consultation> findByIdAndCompanyId(Long id, Long companyId);
     List<Consultation> findAll();
-    void delete(Long id);
-    int reactivate(Long id);
+    List<Consultation> findAllByCompanyId(Long companyId);
+    void delete(Long id, Long companyId);
+    int reactivate(Long id, Long companyId);
 }

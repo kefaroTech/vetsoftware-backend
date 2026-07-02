@@ -72,7 +72,7 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
             throw new IllegalArgumentException(
                 "El abono (" + command.amount() + ") no puede exceder el saldo pendiente (" + outstanding + ").");
         }
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
+        EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         DebtOpenAccount debtOpenAccount = DebtOpenAccount.create(

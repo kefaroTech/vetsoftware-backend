@@ -17,8 +17,8 @@ public class FindOwnerService implements FindOwnerUseCase {
     }
 
     @Override
-    public OwnerDto findById(Long id) {
-        return OwnerDto.from(repository.findById(id)
+    public OwnerDto findById(Long id, Long companyId) {
+        return OwnerDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new OwnerNotFoundException(id)));
     }
 }

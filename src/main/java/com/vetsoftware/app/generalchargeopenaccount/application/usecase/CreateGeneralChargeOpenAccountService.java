@@ -72,7 +72,7 @@ public class CreateGeneralChargeOpenAccountService implements CreateGeneralCharg
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
+        EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         GeneralChargeOpenAccount charge = GeneralChargeOpenAccount.create(

@@ -62,7 +62,7 @@ public class OwnerController {
 
     @GetMapping
     public List<OwnerResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
@@ -73,7 +73,7 @@ public class OwnerController {
 
     @GetMapping("/{id}")
     public OwnerResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -82,19 +82,19 @@ public class OwnerController {
             new UpdateOwnerCommand(id, request.name(), request.email(), request.document(),
                 request.documentType(), request.personType(), request.verificationDigit(),
                 request.legalName(), request.address(), request.phone(), request.cityId(),
-                request.companyId(), request.withholdingAgent(), request.taxRegime(),
+                authz.currentCompanyId(), request.withholdingAgent(), request.taxRegime(),
                 request.fiscalResponsibility())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public OwnerResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private OwnerResponse toResponse(OwnerDto dto) {

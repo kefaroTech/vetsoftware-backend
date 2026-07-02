@@ -19,8 +19,8 @@ public class JpaServiceQueryPort implements ServiceQueryPort {
     }
 
     @Override
-    public Optional<ServiceRef> findById(Long serviceId) {
-        return serviceJpaRepository.findById(serviceId).map(JpaServiceQueryPort::toRef);
+    public Optional<ServiceRef> findByIdAndCompanyId(Long serviceId, Long companyId) {
+        return serviceJpaRepository.findByIdAndCompany_Id(serviceId, companyId).map(JpaServiceQueryPort::toRef);
     }
 
     private static ServiceRef toRef(ServiceJpaEntity e) {

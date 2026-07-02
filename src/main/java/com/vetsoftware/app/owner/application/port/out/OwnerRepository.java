@@ -6,9 +6,9 @@ import java.util.Optional;
 
 public interface OwnerRepository {
     Owner save(Owner owner);
-    Optional<Owner> findById(Long id);
-    List<Owner> findAll();
+    Optional<Owner> findByIdAndCompanyId(Long id, Long companyId);
+    List<Owner> findAllByCompanyId(Long companyId);
     List<Owner> searchByCompanyAndNameOrEmail(Long companyId, String query);
-    void delete(Long id);
-    int reactivate(Long id);
+    void delete(Long id, Long companyId);
+    int reactivate(Long id, Long companyId);
 }

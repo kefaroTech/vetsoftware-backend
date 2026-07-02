@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListOwnersUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
-    List<OwnerDto> listAll();
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') or (hasAuthority('owner.read') and @authz.isMyCompany(#companyId))")
+    List<OwnerDto> listAll(Long companyId);
 }

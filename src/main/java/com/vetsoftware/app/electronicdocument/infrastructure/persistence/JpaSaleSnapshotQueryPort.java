@@ -62,9 +62,9 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
 
     @Override
     public Optional<SaleSnapshot> findByOpenAccount(Long openAccountId, Long companyId) {
-        OpenAccountJpaEntity account = openAccountRepository.findById(openAccountId).orElse(null);
-        if (account == null || account.getCompany() == null
-                || !companyId.equals(account.getCompany().getId())) {
+        OpenAccountJpaEntity account = openAccountRepository.findByIdAndCompany_Id(openAccountId, companyId)
+                .orElse(null);
+        if (account == null) {
             return Optional.empty();
         }
 
@@ -84,8 +84,8 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 FiscalResponsibility.fromName(
                         owner.getFiscalResponsibility() == null ? null : owner.getFiscalResponsibility().name()));
 
-        List<ElectronicDocumentLine> lines = buildLines(openAccountId);
-        List<ElectronicDocumentPayment> payments = buildPayments(openAccountId);
+        List<ElectronicDocumentLine> lines = buildLines(openAccountId, companyId);
+        List<ElectronicDocumentPayment> payments = buildPayments(openAccountId, companyId);
         boolean closed = account.getStatus() == OpenAccountStatus.CLOSE;
 
         // F6 - retenciones: el adquiriente es agente retenedor + las tarifas configuradas por el emisor.
@@ -96,24 +96,27 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 fiscalProfile.reteFuenteRate(), fiscalProfile.reteIvaRate(), fiscalProfile.reteIcaRate()));
     }
 
-    private List<ElectronicDocumentLine> buildLines(Long openAccountId) {
+    private List<ElectronicDocumentLine> buildLines(Long openAccountId, Long companyId) {
         List<ElectronicDocumentLine> lines = new ArrayList<>();
         int n = 0;
-        for (var c : productChargeRepository.findByOpenAccountId(openAccountId)) {
+        for (var c : productChargeRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(
+                openAccountId, companyId)) {
             if (c.isVoided()) continue;
             String description = c.getProduct() == null ? "Producto" : c.getProduct().getName();
             lines.add(line(++n, description, BigDecimal.valueOf(c.getQuantity()), c.getUnitPrice(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
                     c.getTaxScheme(), c.getTaxTreatment()));
         }
-        for (var c : serviceChargeRepository.findByOpenAccountId(openAccountId)) {
+        for (var c : serviceChargeRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(
+                openAccountId, companyId)) {
             if (c.isVoided()) continue;
             String description = c.getService() == null ? "Servicio" : c.getService().getName();
             lines.add(line(++n, description, ONE, c.getUnitPrice(), c.getBaseAmount(),
                     c.isHasTax(), c.getTaxPercentage(), c.getTaxAmount(), c.getTotalAmount(),
                     c.getTaxScheme(), c.getTaxTreatment()));
         }
-        for (var c : generalChargeRepository.findByOpenAccountId(openAccountId)) {
+        for (var c : generalChargeRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(
+                openAccountId, companyId)) {
             if (c.isVoided()) continue;
             // Cargo general (sin catálogo): no tiene tratamiento congelado → null cae a la heurística
             // (EXCLUIDO si no tributa; GRAVADO/INC si lleva impuesto). No existe "general exento".
@@ -151,9 +154,9 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
                 unitPrice, base, category, scheme, effectiveRate, taxAmount, total);
     }
 
-    private List<ElectronicDocumentPayment> buildPayments(Long openAccountId) {
+    private List<ElectronicDocumentPayment> buildPayments(Long openAccountId, Long companyId) {
         List<ElectronicDocumentPayment> payments = new ArrayList<>();
-        for (var d : debtRepository.findByOpenAccountId(openAccountId)) {
+        for (var d : debtRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId)) {
             if (d.isVoided()) continue;
             payments.add(new ElectronicDocumentPayment(null, toPaymentMeans(d.getPaymentMethod()), d.getAmount()));
         }

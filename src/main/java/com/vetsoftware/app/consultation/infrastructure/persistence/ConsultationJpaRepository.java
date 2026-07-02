@@ -15,12 +15,19 @@ public interface ConsultationJpaRepository extends JpaRepository<ConsultationJpa
     @EntityGraph(attributePaths = {"consultationType", "animal", "company"})
     Optional<ConsultationJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"consultationType", "animal", "company"})
+    Optional<ConsultationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"consultationType", "animal", "company"})
+    List<ConsultationJpaEntity> findAllByCompany_Id(Long companyId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE consultations SET enabled = true WHERE id = :id",
+        value = "UPDATE consultations SET enabled = true WHERE id = :id AND company_id = :companyId",
         nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     boolean existsByConsultationType_Id(Long consultationTypeId);
 

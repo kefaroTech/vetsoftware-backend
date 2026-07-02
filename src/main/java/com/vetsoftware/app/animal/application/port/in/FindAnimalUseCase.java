@@ -5,5 +5,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindAnimalUseCase {
     @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
-    AnimalDto findById(Long id);
+    AnimalDto findById(Long id, Long companyId);
 }

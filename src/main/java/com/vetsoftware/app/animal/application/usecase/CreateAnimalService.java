@@ -48,7 +48,7 @@ public class CreateAnimalService implements CreateAnimalUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
         BreedRef breed = breedQueryPort.findById(command.breedId())
             .orElseThrow(() -> new IllegalArgumentException("Breed not found: " + command.breedId()));
-        OwnerRef owner = ownerQueryPort.findById(command.ownerId())
+        OwnerRef owner = ownerQueryPort.findByIdAndCompanyId(command.ownerId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));

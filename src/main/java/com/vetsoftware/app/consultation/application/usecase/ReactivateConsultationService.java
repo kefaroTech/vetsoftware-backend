@@ -19,10 +19,10 @@ public class ReactivateConsultationService implements ReactivateConsultationUseC
 
     @Override
     @Transactional
-    public ConsultationDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public ConsultationDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new ConsultationNotFoundException(id);
-        return ConsultationDto.from(repository.findById(id)
+        return ConsultationDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ConsultationNotFoundException(id)));
     }
 }

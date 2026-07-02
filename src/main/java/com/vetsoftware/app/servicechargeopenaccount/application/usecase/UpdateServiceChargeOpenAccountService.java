@@ -45,7 +45,7 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
     @Override
     @Transactional
     public ServiceChargeOpenAccountDto execute(UpdateServiceChargeOpenAccountCommand command) {
-        ServiceChargeOpenAccount charge = repository.findById(command.id())
+        ServiceChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = charge.getOpenAccount().id();
 
@@ -56,9 +56,9 @@ public class UpdateServiceChargeOpenAccountService implements UpdateServiceCharg
         }
         // Detección temprana de conflicto sobre la cuenta destino del cargo.
         versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ServiceRef service = serviceQueryPort.findById(command.serviceId())
+        ServiceRef service = serviceQueryPort.findByIdAndCompanyId(command.serviceId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Service not found: " + command.serviceId()));
 
         charge.update(animal, service, openAccount);

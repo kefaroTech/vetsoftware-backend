@@ -44,7 +44,7 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
     @Override
     @Transactional
     public ProductChargeOpenAccountDto execute(VoidProductChargeOpenAccountCommand command) {
-        ProductChargeOpenAccount charge = repository.findById(command.id())
+        ProductChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
         Long openAccountId = charge.getOpenAccount().id();
         if (!charge.getOpenAccount().companyId().equals(command.companyId())) {
@@ -66,7 +66,7 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
                 "No se puede anular el cargo: el saldo pendiente quedaría negativo. "
                 + "Hay abonos que lo cubren; anula primero los abonos necesarios.");
         }
-        EmployeeRef voidedBy = employeeQueryPort.findById(command.voidedById())
+        EmployeeRef voidedBy = employeeQueryPort.findByIdAndCompanyId(command.voidedById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
 
         charge.voidCharge(voidedBy, command.reason());

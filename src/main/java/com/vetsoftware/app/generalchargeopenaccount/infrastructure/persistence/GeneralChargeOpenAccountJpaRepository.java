@@ -20,7 +20,11 @@ public interface GeneralChargeOpenAccountJpaRepository
     Optional<GeneralChargeOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
-    List<GeneralChargeOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
+    List<GeneralChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId);
+
+    @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
+    List<GeneralChargeOpenAccountJpaEntity> findByOpenAccount_IdAndOpenAccount_Company_Id(
+        Long openAccountId, Long companyId);
 
     @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
     Optional<GeneralChargeOpenAccountJpaEntity> findByOpenAccount_IdAndClientRequestId(
@@ -29,8 +33,12 @@ public interface GeneralChargeOpenAccountJpaRepository
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE general_charge_open_accounts SET enabled = true WHERE id = :id", nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+        value = "UPDATE general_charge_open_accounts SET enabled = true WHERE id = :id "
+            + "AND EXISTS (SELECT 1 FROM open_accounts oa "
+            + "WHERE oa.id = general_charge_open_accounts.open_account_id AND oa.company_id = :companyId)",
+        nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     // Total general charges for an open account = SUM(total_amount), the per-line gross already
     // computed and frozen at create/update (base + tax). No tax math here: the breakdown is

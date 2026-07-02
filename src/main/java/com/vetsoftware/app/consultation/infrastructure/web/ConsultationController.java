@@ -62,12 +62,12 @@ public class ConsultationController {
 
     @GetMapping
     public List<ConsultationResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
     public ConsultationResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -77,18 +77,18 @@ public class ConsultationController {
             new UpdateConsultationCommand(
                 id, request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.nextControl(), request.animalId(), request.companyId())));
+                request.nextControl(), request.animalId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public ConsultationResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private ConsultationResponse toResponse(ConsultationDto dto) {

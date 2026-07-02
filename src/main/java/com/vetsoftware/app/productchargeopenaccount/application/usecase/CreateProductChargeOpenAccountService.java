@@ -78,11 +78,11 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ProductRef product = productQueryPort.findById(command.productId())
+        ProductRef product = productQueryPort.findByIdAndCompanyId(command.productId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Product not found: " + command.productId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
+        EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         ProductChargeOpenAccount charge = ProductChargeOpenAccount.create(animal, product, command.quantity(),

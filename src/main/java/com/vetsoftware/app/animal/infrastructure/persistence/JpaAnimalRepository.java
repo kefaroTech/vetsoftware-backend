@@ -60,8 +60,18 @@ public class JpaAnimalRepository implements AnimalRepository {
     }
 
     @Override
+    public Optional<Animal> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Animal> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public List<Animal> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
@@ -71,12 +81,12 @@ public class JpaAnimalRepository implements AnimalRepository {
     }
 
     @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

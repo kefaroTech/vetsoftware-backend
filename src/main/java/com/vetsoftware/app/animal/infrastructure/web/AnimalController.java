@@ -55,7 +55,7 @@ public class AnimalController {
 
     @GetMapping
     public List<AnimalResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/by-owner/{ownerId}")
@@ -66,7 +66,7 @@ public class AnimalController {
 
     @GetMapping("/{id}")
     public AnimalResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -77,18 +77,18 @@ public class AnimalController {
                         request.ownerId(), request.gender(), request.weightType(), request.animalType(),
                         request.reproductiveState(), request.colorId(), request.bod(),
                         request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                        request.companyId())));
+                        authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public AnimalResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private AnimalResponse toResponse(AnimalDto dto) {

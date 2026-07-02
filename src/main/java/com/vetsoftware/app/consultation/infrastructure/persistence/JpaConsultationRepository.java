@@ -50,17 +50,27 @@ public class JpaConsultationRepository implements ConsultationRepository {
     }
 
     @Override
+    public Optional<Consultation> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Consultation> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
 
     @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
+    public List<Consultation> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
+    }
+
+    @Override
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

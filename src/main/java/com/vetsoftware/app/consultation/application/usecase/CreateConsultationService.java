@@ -36,7 +36,7 @@ public class CreateConsultationService implements CreateConsultationUseCase {
     public ConsultationDto execute(CreateConsultationCommand command) {
         ConsultationTypeRef consultationType = consultationTypeQueryPort.findById(command.consultationTypeId())
             .orElseThrow(() -> new IllegalArgumentException("ConsultationType not found: " + command.consultationTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));

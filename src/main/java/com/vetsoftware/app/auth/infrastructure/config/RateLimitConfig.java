@@ -45,10 +45,10 @@ public class RateLimitConfig {
     public LettuceBasedProxyManager<String> loginRateLimitProxyManager(
             StatefulRedisConnection<String, byte[]> rateLimitRedisConnection) {
         // TTL de la clave basado en el tiempo de recarga del bucket → los buckets ociosos se evictan
-        // solos de Redis (no hay fuga). 1 min cubre la ventana del rate limiter.
+        // solos de Redis (no hay fuga). 1 hora cubre la ventana mas larga del rate limiter.
         ClientSideConfig clientSideConfig = ClientSideConfig.getDefault()
                 .withExpirationAfterWriteStrategy(ExpirationAfterWriteStrategy
-                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(1)));
+                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofHours(1)));
         return LettuceBasedProxyManager.builderFor(rateLimitRedisConnection)
                 .withClientSideConfig(clientSideConfig)
                 .build();

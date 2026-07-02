@@ -4,5 +4,5 @@ import com.vetsoftware.app.animal.domain.OwnerRef;
 import java.util.Optional;
 
 public interface OwnerQueryPort {
-    Optional<OwnerRef> findById(Long ownerId);
+    Optional<OwnerRef> findByIdAndCompanyId(Long ownerId, Long companyId);
 }

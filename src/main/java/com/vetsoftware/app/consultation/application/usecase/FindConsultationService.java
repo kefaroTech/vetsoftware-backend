@@ -17,8 +17,8 @@ public class FindConsultationService implements FindConsultationUseCase {
     }
 
     @Override
-    public ConsultationDto findById(Long id) {
-        return ConsultationDto.from(repository.findById(id)
+    public ConsultationDto findById(Long id, Long companyId) {
+        return ConsultationDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ConsultationNotFoundException(id)));
     }
 }

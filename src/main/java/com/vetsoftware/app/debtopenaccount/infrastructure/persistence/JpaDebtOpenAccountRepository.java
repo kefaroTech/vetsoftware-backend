@@ -63,17 +63,23 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     }
 
     @Override
-    public List<DebtOpenAccount> findByOpenAccountId(Long openAccountId) {
-        return jpaRepository.findByOpenAccountId(openAccountId).stream().map(mapper::toDomain).toList();
+    public List<DebtOpenAccount> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
+    public List<DebtOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId) {
+        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId).stream()
+            .map(mapper::toDomain).toList();
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).ifPresent(jpaRepository::delete);
+    }
+
+    @Override
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

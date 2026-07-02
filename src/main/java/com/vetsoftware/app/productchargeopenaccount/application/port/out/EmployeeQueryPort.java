@@ -4,5 +4,5 @@ import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import java.util.Optional;
 
 public interface EmployeeQueryPort {
-    Optional<EmployeeRef> findById(Long employeeId);
+    Optional<EmployeeRef> findByIdAndCompanyId(Long employeeId, Long companyId);
 }

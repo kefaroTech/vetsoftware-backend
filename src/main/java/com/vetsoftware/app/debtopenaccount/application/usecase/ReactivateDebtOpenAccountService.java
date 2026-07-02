@@ -25,13 +25,10 @@ public class ReactivateDebtOpenAccountService implements ReactivateDebtOpenAccou
     @Override
     @Transactional
     public DebtOpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id);
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new DebtOpenAccountNotFoundException(id);
-        DebtOpenAccount debtOpenAccount = repository.findById(id)
+        DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
-        if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
-            throw new IllegalArgumentException("debt open account does not belong to company");
-        }
         refresher.refresh(companyId, debtOpenAccount.getOpenAccount().id());
         return DebtOpenAccountDto.from(debtOpenAccount);
     }

@@ -36,7 +36,7 @@ public class UpdateDebtOpenAccountService implements UpdateDebtOpenAccountUseCas
     @Override
     @Transactional
     public DebtOpenAccountDto execute(UpdateDebtOpenAccountCommand command) {
-        DebtOpenAccount debtOpenAccount = repository.findById(command.id())
+        DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = debtOpenAccount.getOpenAccount().id();
 

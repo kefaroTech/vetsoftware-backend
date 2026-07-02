@@ -17,7 +17,7 @@ public class ListGeneralChargeOpenAccountsService implements ListGeneralChargeOp
     }
 
     @Override
-    public List<GeneralChargeOpenAccountDto> listAll() {
-        return repository.findAll().stream().map(GeneralChargeOpenAccountDto::from).toList();
+    public List<GeneralChargeOpenAccountDto> listAll(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(GeneralChargeOpenAccountDto::from).toList();
     }
 }

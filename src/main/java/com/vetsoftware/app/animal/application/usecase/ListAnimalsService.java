@@ -17,7 +17,7 @@ public class ListAnimalsService implements ListAnimalsUseCase {
     }
 
     @Override
-    public List<AnimalDto> listAll() {
-        return repository.findAll().stream().map(AnimalDto::from).toList();
+    public List<AnimalDto> listAll(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(AnimalDto::from).toList();
     }
 }

@@ -19,8 +19,8 @@ public class JpaProductQueryPort implements ProductQueryPort {
     }
 
     @Override
-    public Optional<ProductRef> findById(Long productId) {
-        return productJpaRepository.findById(productId).map(JpaProductQueryPort::toRef);
+    public Optional<ProductRef> findByIdAndCompanyId(Long productId, Long companyId) {
+        return productJpaRepository.findByIdAndCompany_Id(productId, companyId).map(JpaProductQueryPort::toRef);
     }
 
     private static ProductRef toRef(ProductJpaEntity e) {

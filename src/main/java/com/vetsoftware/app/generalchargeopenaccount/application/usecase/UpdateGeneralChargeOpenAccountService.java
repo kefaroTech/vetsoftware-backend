@@ -40,7 +40,7 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
     @Override
     @Transactional
     public GeneralChargeOpenAccountDto execute(UpdateGeneralChargeOpenAccountCommand command) {
-        GeneralChargeOpenAccount charge = repository.findById(command.id())
+        GeneralChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = charge.getOpenAccount().id();
 

@@ -18,6 +18,7 @@ public class ListDebtOpenAccountsByOpenAccountService implements ListDebtOpenAcc
 
     @Override
     public List<DebtOpenAccountDto> listByOpenAccount(Long openAccountId, Long companyId) {
-        return repository.findByOpenAccountId(openAccountId).stream().map(DebtOpenAccountDto::from).toList();
+        return repository.findByOpenAccountIdAndCompanyId(openAccountId, companyId).stream()
+            .map(DebtOpenAccountDto::from).toList();
     }
 }

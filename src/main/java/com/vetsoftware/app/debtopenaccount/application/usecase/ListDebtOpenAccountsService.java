@@ -17,7 +17,7 @@ public class ListDebtOpenAccountsService implements ListDebtOpenAccountsUseCase 
     }
 
     @Override
-    public List<DebtOpenAccountDto> listAll() {
-        return repository.findAll().stream().map(DebtOpenAccountDto::from).toList();
+    public List<DebtOpenAccountDto> listAll(Long companyId) {
+        return repository.findAllByCompanyId(companyId).stream().map(DebtOpenAccountDto::from).toList();
     }
 }

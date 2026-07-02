@@ -19,7 +19,7 @@ public class ListGeneralChargeOpenAccountsByOpenAccountService
 
     @Override
     public List<GeneralChargeOpenAccountDto> listByOpenAccount(Long openAccountId, Long companyId) {
-        return repository.findByOpenAccountId(openAccountId).stream()
+        return repository.findByOpenAccountIdAndCompanyId(openAccountId, companyId).stream()
             .map(GeneralChargeOpenAccountDto::from).toList();
     }
 }

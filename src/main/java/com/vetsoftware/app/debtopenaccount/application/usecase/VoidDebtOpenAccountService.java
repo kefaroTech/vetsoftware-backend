@@ -39,7 +39,7 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
     @Override
     @Transactional
     public DebtOpenAccountDto execute(VoidDebtOpenAccountCommand command) {
-        DebtOpenAccount debtOpenAccount = repository.findById(command.id())
+        DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(command.id()));
         Long openAccountId = debtOpenAccount.getOpenAccount().id();
         if (!debtOpenAccount.getOpenAccount().companyId().equals(command.companyId())) {
@@ -53,7 +53,7 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }
-        EmployeeRef voidedBy = employeeQueryPort.findById(command.voidedById())
+        EmployeeRef voidedBy = employeeQueryPort.findByIdAndCompanyId(command.voidedById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
 
         debtOpenAccount.voidPayment(voidedBy, command.reason());

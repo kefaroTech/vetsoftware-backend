@@ -18,12 +18,19 @@ public interface AnimalJpaRepository extends JpaRepository<AnimalJpaEntity, Long
     @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
     List<AnimalJpaEntity> findAllByOwner_IdAndCompany_Id(Long ownerId, Long companyId);
 
+    @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
+    Optional<AnimalJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
+    List<AnimalJpaEntity> findAllByCompany_Id(Long companyId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE animals SET enabled = true WHERE id = :id",
+        value = "UPDATE animals SET enabled = true WHERE id = :id AND company_id = :companyId",
         nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     boolean existsByColor_Id(Long colorId);
 

@@ -20,19 +20,28 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Rate limiting de login por IP. Los buckets viven en Redis (ver {@code RateLimitConfig}): se
- * comparten entre réplicas y expiran por TTL, así que no hay fuga de memoria ni se puede evadir
- * el límite repartiendo intentos entre instancias.
+ * Rate limiting distribuido por IP para rutas publicas de autenticacion.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-    private static final int MAX_ATTEMPTS = 5;
-    private static final Duration WINDOW = Duration.ofMinutes(1);
+    private static final RouteLimit LOGIN_LIMIT = new RouteLimit(
+            "login-rl:",
+            "/auth/login",
+            5,
+            Duration.ofMinutes(1),
+            "LOGIN_RATE_LIMITED",
+            "Too many login attempts. Try again later.");
+    private static final RouteLimit REGISTER_LIMIT = new RouteLimit(
+            "register-rl:",
+            "/register",
+            3,
+            Duration.ofHours(1),
+            "REGISTER_RATE_LIMITED",
+            "Too many registration attempts. Try again later.");
 
     private final LettuceBasedProxyManager<String> proxyManager;
-    private final BucketConfiguration bucketConfiguration;
     private final ObjectMapper objectMapper;
     private final AuditLogger auditLogger;
 
@@ -42,40 +51,62 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         this.proxyManager = loginRateLimitProxyManager;
         this.objectMapper = objectMapper;
         this.auditLogger = auditLogger;
-        this.bucketConfiguration = BucketConfiguration.builder()
-                .addLimit(limit -> limit.capacity(MAX_ATTEMPTS).refillIntervally(MAX_ATTEMPTS, WINDOW))
-                .build();
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().contains("/auth/login");
+        return routeLimit(request) == null;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        BucketProxy bucket = proxyManager.builder().build(clientKey(request), () -> bucketConfiguration);
+        RouteLimit routeLimit = routeLimit(request);
+        if (routeLimit == null) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        BucketProxy bucket = proxyManager.builder().build(
+                clientKey(request, routeLimit),
+                () -> bucketConfiguration(routeLimit));
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
-        } else {
-            auditLogger.loginRateLimited();
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", String.valueOf(WINDOW.toSeconds()));
-            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            objectMapper.writeValue(response.getWriter(), Map.of(
-                    "type", "about:blank",
-                    "title", "Too Many Requests",
-                    "status", 429,
-                    "code", "LOGIN_RATE_LIMITED",
-                    "detail", "Too many login attempts. Try again later."
-            ));
+            return;
         }
+
+        auditLogger.rateLimited(routeLimit.code());
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        response.setHeader("Retry-After", String.valueOf(routeLimit.window().toSeconds()));
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), Map.of(
+                "type", "about:blank",
+                "title", "Too Many Requests",
+                "status", 429,
+                "code", routeLimit.code(),
+                "detail", routeLimit.detail()
+        ));
     }
 
-    private static String clientKey(HttpServletRequest request) {
-        // IP real y NO falsificable (server.forward-headers-strategy=native). Prefijo de namespace
-        // para no colisionar con otras claves en el mismo Redis.
-        return "login-rl:" + request.getRemoteAddr();
+    private static RouteLimit routeLimit(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) return null;
+        String uri = request.getServletPath();
+        if (uri.contains(LOGIN_LIMIT.path())) return LOGIN_LIMIT;
+        if (uri.equals(REGISTER_LIMIT.path())) return REGISTER_LIMIT;
+        return null;
     }
+
+    private static BucketConfiguration bucketConfiguration(RouteLimit routeLimit) {
+        return BucketConfiguration.builder()
+                .addLimit(limit -> limit.capacity(routeLimit.maxAttempts())
+                        .refillIntervally(routeLimit.maxAttempts(), routeLimit.window()))
+                .build();
+    }
+
+    private static String clientKey(HttpServletRequest request, RouteLimit routeLimit) {
+        return routeLimit.keyPrefix() + request.getRemoteAddr();
+    }
+
+    private record RouteLimit(String keyPrefix, String path, int maxAttempts, Duration window,
+                              String code, String detail) {}
 }

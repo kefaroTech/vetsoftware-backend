@@ -80,8 +80,14 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
-    public List<ProductChargeOpenAccount> findByOpenAccountId(Long openAccountId) {
-        return jpaRepository.findByOpenAccountId(openAccountId).stream().map(mapper::toDomain).toList();
+    public List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId) {
+        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId).stream()
+            .map(mapper::toDomain).toList();
     }
 
     @Override
@@ -90,7 +96,7 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

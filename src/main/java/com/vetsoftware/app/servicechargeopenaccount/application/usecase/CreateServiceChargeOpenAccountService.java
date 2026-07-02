@@ -74,11 +74,11 @@ public class CreateServiceChargeOpenAccountService implements CreateServiceCharg
         if (!openAccountQueryPort.isOpen(command.openAccountId())) {
             throw new IllegalStateException("open account is not OPEN");
         }
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ServiceRef service = serviceQueryPort.findById(command.serviceId())
+        ServiceRef service = serviceQueryPort.findByIdAndCompanyId(command.serviceId(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Service not found: " + command.serviceId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
+        EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         ServiceChargeOpenAccount charge = ServiceChargeOpenAccount.create(animal, service, openAccount, createdBy,

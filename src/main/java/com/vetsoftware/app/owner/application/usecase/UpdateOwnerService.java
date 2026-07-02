@@ -34,7 +34,7 @@ public class UpdateOwnerService implements UpdateOwnerUseCase {
     @Override
     @Transactional
     public OwnerDto execute(UpdateOwnerCommand command) {
-        Owner owner = repository.findById(command.id())
+        Owner owner = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new OwnerNotFoundException(command.id()));
         CityRef city = cityQueryPort.findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));

@@ -20,7 +20,11 @@ public interface ProductChargeOpenAccountJpaRepository
     Optional<ProductChargeOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "product", "tax", "openAccount", "createdBy", "voidedBy"})
-    List<ProductChargeOpenAccountJpaEntity> findByOpenAccountId(Long openAccountId);
+    List<ProductChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "product", "tax", "openAccount", "createdBy", "voidedBy"})
+    List<ProductChargeOpenAccountJpaEntity> findByOpenAccount_IdAndOpenAccount_Company_Id(
+        Long openAccountId, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "product", "tax", "openAccount", "createdBy", "voidedBy"})
     Optional<ProductChargeOpenAccountJpaEntity> findByOpenAccount_IdAndClientRequestId(
@@ -29,8 +33,12 @@ public interface ProductChargeOpenAccountJpaRepository
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE product_charge_open_accounts SET enabled = true WHERE id = :id", nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+        value = "UPDATE product_charge_open_accounts SET enabled = true WHERE id = :id "
+            + "AND EXISTS (SELECT 1 FROM open_accounts oa "
+            + "WHERE oa.id = product_charge_open_accounts.open_account_id AND oa.company_id = :companyId)",
+        nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     // Total product charges for an open account = SUM(total_amount), the per-line gross frozen at
     // creation (= unit_price, IVA incluido). The tax breakdown is persisted; no tax math here.

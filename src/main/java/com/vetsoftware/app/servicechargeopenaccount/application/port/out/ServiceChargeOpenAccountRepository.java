@@ -12,7 +12,8 @@ public interface ServiceChargeOpenAccountRepository {
     /** Cargo ya registrado con esta idempotency key en la cuenta (para deduplicar reintentos). */
     Optional<ServiceChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId);
     List<ServiceChargeOpenAccount> findAll();
-    List<ServiceChargeOpenAccount> findByOpenAccountId(Long openAccountId);
+    List<ServiceChargeOpenAccount> findAllByCompanyId(Long companyId);
+    List<ServiceChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId);
     void delete(Long id);
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }
