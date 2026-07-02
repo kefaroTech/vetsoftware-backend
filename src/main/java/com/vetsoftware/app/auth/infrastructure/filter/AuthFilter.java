@@ -57,6 +57,7 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private static final List<PublicRoute> PUBLIC_PATHS = List.of(
             new PublicRoute("POST", "/auth/login/**"),
+            new PublicRoute("POST", "/auth/refresh"),
             new PublicRoute("POST", "/register"),
             new PublicRoute("POST", "/dian/webhooks/**"),
             new PublicRoute("GET",  "/countries"),

@@ -19,4 +19,9 @@ public class JpaAuthEmployeeRepository implements AuthEmployeeRepository {
         return employeeJpaRepository.findActiveWithCompanyById(employeeId)
             .map(e -> new AuthEmployee(e.getId(), e.getCompany().getId(), e.getAuthVersion()));
     }
+
+    @Override
+    public void bumpAuthVersion(Long employeeId) {
+        employeeJpaRepository.bumpAuthVersion(employeeId);
+    }
 }

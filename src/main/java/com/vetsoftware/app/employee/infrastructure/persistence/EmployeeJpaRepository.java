@@ -39,5 +39,11 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @Query(value = "UPDATE employees SET enabled = true, auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
     int reactivate(@Param("id") Long id);
 
+    // Invalida los access tokens vivos del empleado (usado en logout) sin tocar `enabled`.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = "UPDATE employees SET auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
+    int bumpAuthVersion(@Param("id") Long id);
+
     boolean existsByCompany_Id(Long companyId);
 }

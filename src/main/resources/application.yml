@@ -49,7 +49,10 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:c2VjcmV0LWtleS12ZXRzb2Z0d2FyZS0yMDI2LXN1cGVyc2VjcmV0LWtleS0xMjM0NTY3ODk=}
-  expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
+  # Access token corto: se renueva vía refresh token sin re-login (ver /auth/refresh).
+  expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
+  # Refresh token largo (opaco, persistido y rotado). Controla cuánto dura la sesión sin re-login.
+  refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:30}
 
 management:
   endpoints:

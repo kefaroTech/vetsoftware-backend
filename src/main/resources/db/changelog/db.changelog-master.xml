@@ -166,5 +166,6 @@
     <include file="db/changelog/migrations/160_add_auth_version_to_employees.xml"/>
     <include file="db/changelog/migrations/161_alter_consultations_clinical_fields_nullable.xml"/>
     <include file="db/changelog/migrations/162_create_weight_records.xml"/>
+    <include file="db/changelog/migrations/163_create_refresh_tokens.xml"/>
 
 </databaseChangeLog>

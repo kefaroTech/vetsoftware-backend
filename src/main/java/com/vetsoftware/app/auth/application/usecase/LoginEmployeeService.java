@@ -6,26 +6,32 @@ import com.vetsoftware.app.auth.application.exception.InvalidCredentialsExceptio
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository.EmployeeCredentials;
+import com.vetsoftware.app.auth.application.port.out.RefreshTokenIssuer;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LoginEmployeeService implements LoginEmployeeUseCase {
 
     private final EmployeeCredentialsRepository credentialsRepository;
     private final TokenGenerator tokenGenerator;
+    private final RefreshTokenIssuer refreshTokenIssuer;
     private final PasswordHasher passwordHasher;
 
     public LoginEmployeeService(EmployeeCredentialsRepository credentialsRepository,
                                 TokenGenerator tokenGenerator,
+                                RefreshTokenIssuer refreshTokenIssuer,
                                 PasswordHasher passwordHasher) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
+        this.refreshTokenIssuer = refreshTokenIssuer;
         this.passwordHasher = passwordHasher;
     }
 
     @Override
+    @Transactional
     public TokenDto execute(LoginEmployeeCommand command) {
         EmployeeCredentials credentials = credentialsRepository.findByCode(command.employeeCode())
                 .orElseThrow(InvalidCredentialsException::new);
@@ -33,7 +39,9 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
 
-        return new TokenDto(tokenGenerator.generate(
-            credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion()), "EMPLOYEE");
+        String accessToken = tokenGenerator.generate(
+                credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion());
+        String refreshToken = refreshTokenIssuer.issue(credentials.id(), "EMPLOYEE");
+        return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
     }
 }

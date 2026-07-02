@@ -7,13 +7,17 @@ import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.port.in.GetCurrentUserUseCase;
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
 import com.vetsoftware.app.auth.application.port.in.LoginSystemUserUseCase;
+import com.vetsoftware.app.auth.application.port.in.LogoutUseCase;
+import com.vetsoftware.app.auth.application.port.in.RefreshTokenUseCase;
 import com.vetsoftware.app.auth.infrastructure.web.request.LoginEmployeeRequest;
 import com.vetsoftware.app.auth.infrastructure.web.request.LoginSystemUserRequest;
+import com.vetsoftware.app.auth.infrastructure.web.request.RefreshTokenRequest;
 import com.vetsoftware.app.auth.infrastructure.web.response.MeResponse;
 import com.vetsoftware.app.auth.infrastructure.web.response.TokenResponse;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,15 +27,21 @@ public class AuthController {
     private final LoginEmployeeUseCase loginEmployeeUseCase;
     private final LoginSystemUserUseCase loginSystemUserUseCase;
     private final GetCurrentUserUseCase getCurrentUserUseCase;
+    private final RefreshTokenUseCase refreshTokenUseCase;
+    private final LogoutUseCase logoutUseCase;
     private final AuditLogger auditLogger;
 
     public AuthController(LoginEmployeeUseCase loginEmployeeUseCase,
                           LoginSystemUserUseCase loginSystemUserUseCase,
                           GetCurrentUserUseCase getCurrentUserUseCase,
+                          RefreshTokenUseCase refreshTokenUseCase,
+                          LogoutUseCase logoutUseCase,
                           AuditLogger auditLogger) {
         this.loginEmployeeUseCase = loginEmployeeUseCase;
         this.loginSystemUserUseCase = loginSystemUserUseCase;
         this.getCurrentUserUseCase = getCurrentUserUseCase;
+        this.refreshTokenUseCase = refreshTokenUseCase;
+        this.logoutUseCase = logoutUseCase;
         this.auditLogger = auditLogger;
     }
 
@@ -41,7 +51,7 @@ public class AuthController {
                 new LoginEmployeeCommand(request.employeeCode(), request.password())
         );
         auditLogger.loginSuccess("EMPLOYEE", request.employeeCode());
-        return new TokenResponse(dto.token(), dto.type());
+        return new TokenResponse(dto.token(), dto.type(), dto.refreshToken());
     }
 
     @PostMapping("/login/system")
@@ -50,7 +60,19 @@ public class AuthController {
                 new LoginSystemUserCommand(request.code(), request.password())
         );
         auditLogger.loginSuccess("SYSTEM_USER", request.code());
-        return new TokenResponse(dto.token(), dto.type());
+        return new TokenResponse(dto.token(), dto.type(), dto.refreshToken());
+    }
+
+    @PostMapping("/refresh")
+    public TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        TokenDto dto = refreshTokenUseCase.execute(request.refreshToken());
+        return new TokenResponse(dto.token(), dto.type(), dto.refreshToken());
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout() {
+        logoutUseCase.execute();
     }
 
     @GetMapping("/me")

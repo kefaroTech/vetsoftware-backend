@@ -35,6 +35,7 @@ public class RegistrationController {
             request.taxRegime(),
             request.fiscalEmail()
         ));
-        return new RegistrationResponse(dto.companyId(), dto.employeeId(), dto.token(), dto.tokenType());
+        return new RegistrationResponse(
+            dto.companyId(), dto.employeeId(), dto.token(), dto.tokenType(), dto.refreshToken());
     }
 }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Refresh tokens opacos (se guarda solo el hash SHA-256, nunca el valor en claro). Habilitan
+         renovar el access token corto sin re-login y permiten logout server-side (revocación). La
+         rotación revoca el token usado y emite uno nuevo en cada refresh. Ver RefreshTokenUseCase. -->
+    <changeSet id="163_create_refresh_tokens" author="orlando">
+        <createTable tableName="refresh_tokens">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <!-- SHA-256 en hex = 64 chars. Único: el mismo token no puede existir dos veces. -->
+            <column name="token_hash" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <!-- id del empleado o del system user, según subject_type. -->
+            <column name="subject_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revoked" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Revocación masiva por sujeto (logout) y limpieza. -->
+        <createIndex tableName="refresh_tokens" indexName="idx_refresh_tokens_subject">
+            <column name="subject_id"/>
+            <column name="subject_type"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

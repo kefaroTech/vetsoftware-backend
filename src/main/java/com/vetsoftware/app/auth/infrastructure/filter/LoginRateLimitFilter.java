@@ -40,6 +40,13 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             Duration.ofHours(1),
             "REGISTER_RATE_LIMITED",
             "Too many registration attempts. Try again later.");
+    private static final RouteLimit REFRESH_LIMIT = new RouteLimit(
+            "refresh-rl:",
+            "/auth/refresh",
+            30,
+            Duration.ofMinutes(1),
+            "REFRESH_RATE_LIMITED",
+            "Too many token refresh attempts. Try again later.");
 
     private final LettuceBasedProxyManager<String> proxyManager;
     private final ObjectMapper objectMapper;
@@ -91,6 +98,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static RouteLimit routeLimit(HttpServletRequest request) {
         if (!"POST".equalsIgnoreCase(request.getMethod())) return null;
         String uri = request.getServletPath();
+        if (uri.equals(REFRESH_LIMIT.path())) return REFRESH_LIMIT;
         if (uri.contains(LOGIN_LIMIT.path())) return LOGIN_LIMIT;
         if (uri.equals(REGISTER_LIMIT.path())) return REGISTER_LIMIT;
         return null;
