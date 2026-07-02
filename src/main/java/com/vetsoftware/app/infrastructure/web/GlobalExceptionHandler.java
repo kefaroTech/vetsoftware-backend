@@ -125,14 +125,28 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+// @Order(HIGHEST_PRECEDENCE): gana sobre el ProblemDetailsExceptionHandler interno de
+// Spring Boot (registrado con @Order(0) por spring.mvc.problemdetails.enabled=true), que
+// de otro modo resolvía las excepciones estándar de MVC en silencio y eclipsaba estos
+// handlers. Al extender ResponseEntityExceptionHandler, este advice pasa a manejar (y
+// loguear) validación de body, JSON ilegible, 405, 415, parámetros faltantes, etc.
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -140,6 +154,18 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(AuditLogger auditLogger) {
         this.auditLogger = auditLogger;
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+            Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        if (statusCode.is5xxServerError()) {
+            log.error("Server error {} on {}", statusCode.value(), request.getDescription(false), ex);
+        } else if (statusCode.is4xxClientError()) {
+            log.warn("Client error {} on {}: {}",
+                    statusCode.value(), request.getDescription(false), ex.getMessage());
+        }
+        return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
     @ExceptionHandler({
@@ -353,16 +379,25 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "INVALID_INPUT", ex.getMessage());
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> Map.of("field", fe.getField(),
                         "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"))
                 .toList();
-        log.warn("Validation failed: {}", errors);
         ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Request validation failed");
         pd.setProperty("errors", errors);
-        return pd;
+        return handleExceptionInternal(ex, pd, headers, status, request);
+    }
+
+    // Body ilegible / no deserializable (JSON malformado, enum inválido, campo
+    // requerido ausente que rompe el binding). El logueo lo hace handleExceptionInternal.
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Invalid request content.");
+        return handleExceptionInternal(ex, pd, headers, status, request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
