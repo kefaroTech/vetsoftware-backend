@@ -28,9 +28,12 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @EntityGraph(attributePaths = "company")
     Optional<EmployeeJpaEntity> findByEmployeeCode(String employeeCode);
 
+    @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled = true AND c.enabled = true")
+    Optional<EmployeeJpaEntity> findActiveWithCompanyById(@Param("id") Long id);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE employees SET enabled = true WHERE id = :id", nativeQuery = true)
+    @Query(value = "UPDATE employees SET enabled = true, auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
     int reactivate(@Param("id") Long id);
 
     boolean existsByCompany_Id(Long companyId);

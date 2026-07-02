@@ -17,6 +17,7 @@ public class EmployeeJpaMapper {
         entity.setCompany(company);
         entity.setCreatedDate(employee.getCreatedDate());
         entity.setEnabled(employee.isEnabled());
+        entity.setAuthVersion(employee.getAuthVersion());
         return entity;
     }
 
@@ -34,7 +35,8 @@ public class EmployeeJpaMapper {
             entity.getEmail(),
             companyRef,
             entity.getCreatedDate(),
-            entity.isEnabled()
+            entity.isEnabled(),
+            entity.getAuthVersion()
         );
     }
 }

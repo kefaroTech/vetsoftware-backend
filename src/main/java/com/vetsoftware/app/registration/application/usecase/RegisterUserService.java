@@ -1,5 +1,6 @@
 package com.vetsoftware.app.registration.application.usecase;
 
+import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import com.vetsoftware.app.registration.application.command.RegisterUserCommand;
@@ -35,6 +36,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final EmployeeCodeChecker employeeCodeChecker;
     private final PasswordHasher passwordHasher;
     private final TokenGenerator tokenGenerator;
+    private final AuthEmployeeRepository authEmployeeRepository;
     private final MandatoryBaseRoleProvider mandatoryBaseRoleProvider;
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
@@ -48,6 +50,7 @@ public class RegisterUserService implements RegisterUserUseCase {
                                EmployeeCodeChecker employeeCodeChecker,
                                PasswordHasher passwordHasher,
                                TokenGenerator tokenGenerator,
+                               AuthEmployeeRepository authEmployeeRepository,
                                MandatoryBaseRoleProvider mandatoryBaseRoleProvider,
                                RoleCreator roleCreator,
                                EmployeeRoleAssigner employeeRoleAssigner,
@@ -60,6 +63,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.employeeCodeChecker = employeeCodeChecker;
         this.passwordHasher = passwordHasher;
         this.tokenGenerator = tokenGenerator;
+        this.authEmployeeRepository = authEmployeeRepository;
         this.mandatoryBaseRoleProvider = mandatoryBaseRoleProvider;
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
@@ -108,7 +112,10 @@ public class RegisterUserService implements RegisterUserUseCase {
             employeeRoleAssigner.assign(employee.id(), role.id());
         }
 
-        String token = tokenGenerator.generate(employee.id(), "EMPLOYEE", company.id());
+        Long authVersion = authEmployeeRepository.findActiveById(employee.id())
+                .map(AuthEmployeeRepository.AuthEmployee::authVersion)
+                .orElseThrow(() -> new IllegalStateException("Created employee cannot be authenticated: " + employee.id()));
+        String token = tokenGenerator.generate(employee.id(), "EMPLOYEE", company.id(), authVersion);
         return new RegistrationDto(company.id(), employee.id(), token, "EMPLOYEE");
     }
 
