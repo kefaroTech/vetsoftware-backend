@@ -164,5 +164,7 @@
     <include file="db/changelog/migrations/158_add_quantity_to_product_charge_open_accounts.xml"/>
     <include file="db/changelog/migrations/159_product_real_expire_date_and_lot.xml"/>
     <include file="db/changelog/migrations/160_add_auth_version_to_employees.xml"/>
+    <include file="db/changelog/migrations/161_alter_consultations_clinical_fields_nullable.xml"/>
+    <include file="db/changelog/migrations/162_create_weight_records.xml"/>
 
 </databaseChangeLog>

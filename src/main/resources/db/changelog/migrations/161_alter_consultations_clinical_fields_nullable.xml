@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="161_drop_not_null_consultations_diagnosis" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="NO">
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'consultations'
+                  AND COLUMN_NAME = 'diagnosis'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="consultations"
+                               columnName="diagnosis"
+                               columnDataType="VARCHAR(2000)"/>
+    </changeSet>
+
+    <changeSet id="161_drop_not_null_consultations_therapeutic_plan" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="NO">
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'consultations'
+                  AND COLUMN_NAME = 'therapeutic_plan'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="consultations"
+                               columnName="therapeutic_plan"
+                               columnDataType="VARCHAR(2000)"/>
+    </changeSet>
+
+    <changeSet id="161_drop_not_null_consultations_diagnosis_plan" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="NO">
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'consultations'
+                  AND COLUMN_NAME = 'diagnosis_plan'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="consultations"
+                               columnName="diagnosis_plan"
+                               columnDataType="VARCHAR(2000)"/>
+    </changeSet>
+
+</databaseChangeLog>

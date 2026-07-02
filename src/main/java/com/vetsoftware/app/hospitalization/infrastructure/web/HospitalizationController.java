@@ -59,7 +59,8 @@ public class HospitalizationController {
                 request.date(), request.startDate(), request.endDate(),
                 request.type(), request.reasonLeaving(),
                 request.reason(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), request.companyId(),
+                request.weight(), request.weightUnit())));
     }
 
     @GetMapping

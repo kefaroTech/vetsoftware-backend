@@ -28,13 +28,13 @@ public class ConsultationJpaEntity {
     @Column(nullable = false, length = 2000)
     private String anamnesis;
 
-    @Column(nullable = false, length = 2000)
+    @Column(length = 2000)
     private String diagnosis;
 
-    @Column(name = "therapeutic_plan", nullable = false, length = 2000)
+    @Column(name = "therapeutic_plan", length = 2000)
     private String therapeuticPlan;
 
-    @Column(name = "diagnosis_plan", nullable = false, length = 2000)
+    @Column(name = "diagnosis_plan", length = 2000)
     private String diagnosisPlan;
 
     @Column(name = "next_control")

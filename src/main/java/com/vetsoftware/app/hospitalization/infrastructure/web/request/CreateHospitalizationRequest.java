@@ -4,7 +4,9 @@ import com.vetsoftware.app.hospitalization.domain.HospitalizationType;
 import com.vetsoftware.app.hospitalization.domain.ReasonLeaving;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateHospitalizationRequest(
@@ -17,5 +19,9 @@ public record CreateHospitalizationRequest(
         @Size(max = 2000) String observations,
         @NotNull Long animalId,
         Long consultationId,
-        @NotNull Long companyId
+        @NotNull Long companyId,
+        // Peso opcional al ingreso → se registra en el historial de peso del animal.
+        // weightUnit es GRAMS/POUNDS/KILOGRAMS; si es null se usa la unidad preferida del animal.
+        @Positive BigDecimal weight,
+        String weightUnit
 ) {}

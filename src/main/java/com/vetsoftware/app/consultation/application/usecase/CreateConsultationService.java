@@ -4,6 +4,7 @@ import com.vetsoftware.app.consultation.application.command.CreateConsultationCo
 import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
 import com.vetsoftware.app.consultation.application.port.in.CreateConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.consultation.application.port.out.AnimalWeightPort;
 import com.vetsoftware.app.consultation.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.consultation.application.port.out.ConsultationRepository;
 import com.vetsoftware.app.consultation.application.port.out.ConsultationTypeQueryPort;
@@ -13,6 +14,7 @@ import com.vetsoftware.app.consultation.domain.Consultation;
 import com.vetsoftware.app.consultation.domain.ConsultationTypeRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "consultation.create")
 @Service
@@ -21,18 +23,22 @@ public class CreateConsultationService implements CreateConsultationUseCase {
     private final ConsultationTypeQueryPort consultationTypeQueryPort;
     private final AnimalQueryPort animalQueryPort;
     private final CompanyQueryPort companyQueryPort;
+    private final AnimalWeightPort animalWeightPort;
 
     public CreateConsultationService(ConsultationRepository repository,
                                      ConsultationTypeQueryPort consultationTypeQueryPort,
                                      AnimalQueryPort animalQueryPort,
-                                     CompanyQueryPort companyQueryPort) {
+                                     CompanyQueryPort companyQueryPort,
+                                     AnimalWeightPort animalWeightPort) {
         this.repository = repository;
         this.consultationTypeQueryPort = consultationTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
         this.companyQueryPort = companyQueryPort;
+        this.animalWeightPort = animalWeightPort;
     }
 
     @Override
+    @Transactional
     public ConsultationDto execute(CreateConsultationCommand command) {
         ConsultationTypeRef consultationType = consultationTypeQueryPort.findById(command.consultationTypeId())
             .orElseThrow(() -> new IllegalArgumentException("ConsultationType not found: " + command.consultationTypeId()));
@@ -45,6 +51,14 @@ public class CreateConsultationService implements CreateConsultationUseCase {
             command.date(), consultationType, command.anamnesis(), command.diagnosis(),
             command.therapeuticPlan(), command.diagnosisPlan(), command.nextControl(),
             animal, company);
-        return ConsultationDto.from(repository.save(consultation));
+        Consultation saved = repository.save(consultation);
+
+        // Peso opcional capturado en la consulta → punto de la serie temporal del animal (misma
+        // transacción: si el registro de peso falla, la consulta también hace rollback).
+        if (command.weight() != null) {
+            animalWeightPort.recordConsultationWeight(command.animalId(), command.companyId(),
+                command.weight(), command.weightUnit(), command.date(), saved.getId());
+        }
+        return ConsultationDto.from(saved);
     }
 }

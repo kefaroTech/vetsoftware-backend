@@ -27,9 +27,9 @@ public class Consultation {
         this.date = date;
         this.consultationType = consultationType;
         this.anamnesis = anamnesis;
-        this.diagnosis = diagnosis;
-        this.therapeuticPlan = therapeuticPlan;
-        this.diagnosisPlan = diagnosisPlan;
+        this.diagnosis = blankToNull(diagnosis);
+        this.therapeuticPlan = blankToNull(therapeuticPlan);
+        this.diagnosisPlan = blankToNull(diagnosisPlan);
         this.nextControl = nextControl;
         this.animal = animal;
         this.company = company;
@@ -55,9 +55,9 @@ public class Consultation {
         this.date = date;
         this.consultationType = consultationType;
         this.anamnesis = anamnesis;
-        this.diagnosis = diagnosis;
-        this.therapeuticPlan = therapeuticPlan;
-        this.diagnosisPlan = diagnosisPlan;
+        this.diagnosis = blankToNull(diagnosis);
+        this.therapeuticPlan = blankToNull(therapeuticPlan);
+        this.diagnosisPlan = blankToNull(diagnosisPlan);
         this.nextControl = nextControl;
         this.animal = animal;
         this.company = company;
@@ -70,14 +70,18 @@ public class Consultation {
         if (consultationType == null) throw new IllegalArgumentException("consultationType is required");
         if (anamnesis == null || anamnesis.isBlank()) throw new IllegalArgumentException("anamnesis is required");
         if (anamnesis.length() > 2000) throw new IllegalArgumentException("anamnesis must be 2000 chars or less");
-        if (diagnosis == null || diagnosis.isBlank()) throw new IllegalArgumentException("diagnosis is required");
-        if (diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
-        if (therapeuticPlan == null || therapeuticPlan.isBlank()) throw new IllegalArgumentException("therapeuticPlan is required");
-        if (therapeuticPlan.length() > 2000) throw new IllegalArgumentException("therapeuticPlan must be 2000 chars or less");
-        if (diagnosisPlan == null || diagnosisPlan.isBlank()) throw new IllegalArgumentException("diagnosisPlan is required");
-        if (diagnosisPlan.length() > 2000) throw new IllegalArgumentException("diagnosisPlan must be 2000 chars or less");
+        // diagnosis, therapeuticPlan y diagnosisPlan son clínicamente opcionales
+        // (p.ej. primera visita con dx pendiente): se aceptan null/vacío y solo se
+        // valida el tope de longitud cuando vienen con contenido.
+        if (diagnosis != null && diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
+        if (therapeuticPlan != null && therapeuticPlan.length() > 2000) throw new IllegalArgumentException("therapeuticPlan must be 2000 chars or less");
+        if (diagnosisPlan != null && diagnosisPlan.length() > 2000) throw new IllegalArgumentException("diagnosisPlan must be 2000 chars or less");
         if (animal == null) throw new IllegalArgumentException("animal is required");
         if (company == null) throw new IllegalArgumentException("company is required");
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     public Long getId() { return id; }

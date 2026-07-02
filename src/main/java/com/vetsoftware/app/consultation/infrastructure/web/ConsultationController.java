@@ -57,7 +57,8 @@ public class ConsultationController {
             new CreateConsultationCommand(
                 request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.nextControl(), request.animalId(), authz.currentCompanyId())));
+                request.nextControl(), request.animalId(), authz.currentCompanyId(),
+                request.weight(), request.weightUnit())));
     }
 
     @GetMapping

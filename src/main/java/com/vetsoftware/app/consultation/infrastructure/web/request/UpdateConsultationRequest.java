@@ -9,9 +9,9 @@ public record UpdateConsultationRequest(
         @NotNull LocalDate date,
         @NotNull Long consultationTypeId,
         @NotBlank @Size(max = 2000) String anamnesis,
-        @NotBlank @Size(max = 2000) String diagnosis,
-        @NotBlank @Size(max = 2000) String therapeuticPlan,
-        @NotBlank @Size(max = 2000) String diagnosisPlan,
+        @Size(max = 2000) String diagnosis,
+        @Size(max = 2000) String therapeuticPlan,
+        @Size(max = 2000) String diagnosisPlan,
         LocalDate nextControl,
         @NotNull Long animalId,
         @NotNull Long companyId
