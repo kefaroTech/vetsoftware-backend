@@ -24,6 +24,8 @@ public interface ProductRepository {
     boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
     List<Product> findAll();
     List<Product> findAllByCompanyId(Long companyId);
+    /** Productos PAUSADOS (enabled=false) de la empresa, para el listado de reactivación. */
+    List<Product> findAllDisabledByCompanyId(Long companyId);
     PageResult<Product> search(SearchProductsCommand command);
     void delete(Long id);
     int reactivate(Long id, Long companyId);

@@ -15,6 +15,8 @@ public interface TaxRepository {
     /** Igual, excluyendo el propio impuesto (para validar en actualización). */
     boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
     List<Tax> findAllByCompanyId(Long companyId);
+    /** Impuestos PAUSADOS (enabled=false) de la empresa, para el listado de reactivación. */
+    List<Tax> findAllDisabledByCompanyId(Long companyId);
     void delete(Long id);
     int reactivate(Long id, Long companyId);
 }

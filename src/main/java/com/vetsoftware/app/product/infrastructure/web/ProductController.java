@@ -76,6 +76,12 @@ public class ProductController {
             .stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/disabled")
+    public List<ProductResponse> listDisabled() {
+        return listUseCase.listDisabledByCompany(authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/search")
     public PageResponse<ProductResponse> search(
             @RequestParam(required = false) String name,

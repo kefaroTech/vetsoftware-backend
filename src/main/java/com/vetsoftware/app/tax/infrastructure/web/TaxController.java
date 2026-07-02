@@ -60,6 +60,12 @@ public class TaxController {
                 .stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/disabled")
+    public List<TaxResponse> listDisabled() {
+        return listUseCase.listDisabledByCompany(authz.currentCompanyId())
+                .stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{id}")
     public TaxResponse findById(@PathVariable Long id) {
         return toResponse(findUseCase.findById(id, authz.currentCompanyId()));

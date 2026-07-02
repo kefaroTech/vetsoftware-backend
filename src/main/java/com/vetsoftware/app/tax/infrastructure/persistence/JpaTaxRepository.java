@@ -56,6 +56,12 @@ public class JpaTaxRepository implements TaxRepository {
     }
 
     @Override
+    public List<Tax> findAllDisabledByCompanyId(Long companyId) {
+        return jpaRepository.findAllDisabledByCompany_Id(companyId)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }

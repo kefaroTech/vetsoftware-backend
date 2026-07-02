@@ -73,6 +73,12 @@ public class ServiceController {
             .stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/disabled")
+    public List<ServiceResponse> listDisabled() {
+        return listByCompanyUseCase.listDisabledByCompany(authz.currentCompanyId())
+            .stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/search")
     public PageResponse<ServiceResponse> search(
             @RequestParam(required = false) String name,

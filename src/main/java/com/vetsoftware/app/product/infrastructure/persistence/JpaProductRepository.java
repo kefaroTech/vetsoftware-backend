@@ -93,6 +93,11 @@ public class JpaProductRepository implements ProductRepository {
     }
 
     @Override
+    public List<Product> findAllDisabledByCompanyId(Long companyId) {
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public PageResult<Product> search(SearchProductsCommand command) {
         Specification<ProductJpaEntity> spec = buildSpec(command);
         PageRequest pageRequest = PageRequest.of(

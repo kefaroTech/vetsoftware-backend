@@ -73,6 +73,11 @@ public class JpaServiceRepository implements ServiceRepository {
     }
 
     @Override
+    public List<Service> findAllDisabledByCompanyId(Long companyId) {
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public PageResult<Service> search(SearchServicesCommand command) {
         Specification<ServiceJpaEntity> spec = buildSpec(command);
         PageRequest pageRequest = PageRequest.of(

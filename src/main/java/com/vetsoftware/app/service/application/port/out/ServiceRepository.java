@@ -12,6 +12,8 @@ public interface ServiceRepository {
     Optional<Service> findByIdAndCompanyId(Long id, Long companyId);
     List<Service> findAll();
     List<Service> findAllByCompanyId(Long companyId);
+    /** Servicios PAUSADOS (enabled=false) de la empresa, para el listado de reactivación. */
+    List<Service> findAllDisabledByCompanyId(Long companyId);
     PageResult<Service> search(SearchServicesCommand command);
     void delete(Long id);
     int reactivate(Long id, Long companyId);
