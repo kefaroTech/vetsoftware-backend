@@ -4,6 +4,6 @@ import com.vetsoftware.app.diagnosticimagingtype.application.dto.DiagnosticImagi
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindDiagnosticImagingTypeUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') or (hasAuthority('diagnosticimaging.read'))")
     DiagnosticImagingTypeDto findById(Long id);
 }
