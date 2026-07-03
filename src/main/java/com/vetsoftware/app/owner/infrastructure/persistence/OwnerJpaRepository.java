@@ -29,9 +29,10 @@ public interface OwnerJpaRepository extends JpaRepository<OwnerJpaEntity, Long> 
     @EntityGraph(attributePaths = {"city", "company"})
     @Query("SELECT o FROM OwnerJpaEntity o WHERE o.company.id = :companyId AND ("
         + "LOWER(o.name) LIKE LOWER(CONCAT('%', :query, '%')) OR "
-        + "LOWER(o.email) LIKE LOWER(CONCAT('%', :query, '%')))")
-    List<OwnerJpaEntity> searchByCompanyAndNameOrEmail(@Param("companyId") Long companyId,
-                                                       @Param("query") String query);
+        + "LOWER(o.email) LIKE LOWER(CONCAT('%', :query, '%')) OR "
+        + "LOWER(o.document) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<OwnerJpaEntity> searchByCompanyAndTerm(@Param("companyId") Long companyId,
+                                                @Param("query") String query);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

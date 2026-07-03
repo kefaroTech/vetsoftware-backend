@@ -46,8 +46,8 @@ public class JpaOwnerRepository implements OwnerRepository {
     }
 
     @Override
-    public List<Owner> searchByCompanyAndNameOrEmail(Long companyId, String query) {
-        return jpaRepository.searchByCompanyAndNameOrEmail(companyId, query)
+    public List<Owner> searchByCompanyAndTerm(Long companyId, String query) {
+        return jpaRepository.searchByCompanyAndTerm(companyId, query)
             .stream().map(mapper::toDomain).toList();
     }
 
