@@ -8,6 +8,8 @@ public record UpdateVaccinationCommand(
         Long vaccinationTypeId,
         String lot,
         String notes,
+        String route,
+        String applicationSite,
         LocalDate nextVaccination,
         Long animalId,
         Long consultationId,

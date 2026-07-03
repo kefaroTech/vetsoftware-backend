@@ -10,6 +10,9 @@ public record UpdateVaccinationRequest(
         @NotNull Long vaccinationTypeId,
         @NotBlank @Size(max = 100) String lot,
         @Size(max = 2000) String notes,
+        // Vía de administración y sitio de aplicación (WSAVA) — opcionales.
+        @Size(max = 30) String route,
+        @Size(max = 60) String applicationSite,
         LocalDate nextVaccination,
         @NotNull Long animalId,
         Long consultationId

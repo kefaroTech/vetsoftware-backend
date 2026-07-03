@@ -57,8 +57,12 @@ public class ConsultationController {
             new CreateConsultationCommand(
                 request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.nextControl(), request.animalId(), authz.currentCompanyId(),
-                request.weight(), request.weightUnit())));
+                request.prognosis(), request.nextControl(), request.animalId(),
+                authz.currentCompanyId(), request.weight(), request.weightUnit(),
+                request.temperature(), request.heartRate(), request.respiratoryRate(),
+                request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
+                request.bodyConditionScore(), request.painScore(), request.attitude(),
+                request.examFindings())));
     }
 
     @GetMapping
@@ -78,7 +82,12 @@ public class ConsultationController {
             new UpdateConsultationCommand(
                 id, request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.nextControl(), request.animalId(), authz.currentCompanyId())));
+                request.prognosis(), request.nextControl(), request.animalId(),
+                authz.currentCompanyId(),
+                request.temperature(), request.heartRate(), request.respiratoryRate(),
+                request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
+                request.bodyConditionScore(), request.painScore(), request.attitude(),
+                request.examFindings())));
     }
 
     @DeleteMapping("/{id}")
@@ -100,10 +109,14 @@ public class ConsultationController {
             dto.id(), dto.date(),
             new ConsultationTypeSummary(ct.id(), ct.name()),
             dto.anamnesis(), dto.diagnosis(), dto.therapeuticPlan(), dto.diagnosisPlan(),
-            dto.nextControl(),
+            dto.prognosis(), dto.nextControl(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate(),
-            dto.enabled());
+            dto.enabled(),
+            dto.temperature(), dto.heartRate(), dto.respiratoryRate(),
+            dto.mucousMembranes(), dto.capillaryRefill(), dto.hydration(),
+            dto.bodyConditionScore(), dto.painScore(), dto.attitude(),
+            dto.examFindings());
     }
 }

@@ -3,6 +3,7 @@ package com.vetsoftware.app.infrastructure.web;
 import com.vetsoftware.app.animal.domain.AnimalHasActiveChildrenException;
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
 import com.vetsoftware.app.animal.domain.WeightRecordNotFoundException;
+import com.vetsoftware.app.animalalert.domain.AnimalAlertNotFoundException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorHasActiveChildrenException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
@@ -77,6 +78,7 @@ import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenExceptio
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
+import com.vetsoftware.app.problem.domain.ProblemNotFoundException;
 import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
@@ -183,6 +185,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             OwnerNotFoundException.class, AnimalNotFoundException.class,
             WeightRecordNotFoundException.class,
             AnimalColorNotFoundException.class,
+            ProblemNotFoundException.class, AnimalAlertNotFoundException.class,
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,

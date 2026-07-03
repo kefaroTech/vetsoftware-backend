@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Fase 3: examen físico con constantes vitales (la "O" de SOAP) + pronóstico (AVMA).
+         Todas las columnas son NULLABLE: son clínicamente opcionales y no rompen las consultas ya
+         registradas. Los scores se guardan como INT (no TINYINT) para evitar el mapeo BIT del driver. -->
+    <changeSet id="165_add_physical_exam_and_prognosis_to_consultations" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="consultations" columnName="temperature"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="consultations">
+            <column name="prognosis" type="VARCHAR(500)"/>
+            <column name="temperature" type="DECIMAL(4,1)"/>
+            <column name="heart_rate" type="INT"/>
+            <column name="respiratory_rate" type="INT"/>
+            <column name="mucous_membranes" type="VARCHAR(40)"/>
+            <column name="capillary_refill" type="VARCHAR(20)"/>
+            <column name="hydration" type="VARCHAR(20)"/>
+            <column name="body_condition_score" type="INT"/>
+            <column name="pain_score" type="INT"/>
+            <column name="attitude" type="VARCHAR(40)"/>
+            <column name="exam_findings" type="VARCHAR(2000)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

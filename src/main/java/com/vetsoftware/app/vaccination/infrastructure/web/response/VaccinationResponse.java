@@ -9,6 +9,8 @@ public record VaccinationResponse(
         VaccinationTypeSummary vaccinationType,
         String lot,
         String notes,
+        String route,
+        String applicationSite,
         LocalDate nextVaccination,
         AnimalSummary animal,
         ConsultationSummary consultation,

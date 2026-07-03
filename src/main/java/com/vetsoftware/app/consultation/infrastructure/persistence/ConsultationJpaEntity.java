@@ -6,6 +6,7 @@ import com.vetsoftware.app.consultationtype.infrastructure.persistence.Consultat
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -36,6 +37,40 @@ public class ConsultationJpaEntity {
 
     @Column(name = "diagnosis_plan", length = 2000)
     private String diagnosisPlan;
+
+    @Column(name = "prognosis", length = 500)
+    private String prognosis;
+
+    // Examen físico / constantes vitales (Fase 3) — todas opcionales.
+    @Column(name = "temperature", precision = 4, scale = 1)
+    private BigDecimal temperature;
+
+    @Column(name = "heart_rate")
+    private Integer heartRate;
+
+    @Column(name = "respiratory_rate")
+    private Integer respiratoryRate;
+
+    @Column(name = "mucous_membranes", length = 40)
+    private String mucousMembranes;
+
+    @Column(name = "capillary_refill", length = 20)
+    private String capillaryRefill;
+
+    @Column(name = "hydration", length = 20)
+    private String hydration;
+
+    @Column(name = "body_condition_score")
+    private Integer bodyConditionScore;
+
+    @Column(name = "pain_score")
+    private Integer painScore;
+
+    @Column(name = "attitude", length = 40)
+    private String attitude;
+
+    @Column(name = "exam_findings", length = 2000)
+    private String examFindings;
 
     @Column(name = "next_control")
     private LocalDate nextControl;
@@ -70,6 +105,28 @@ public class ConsultationJpaEntity {
     public void setTherapeuticPlan(String therapeuticPlan) { this.therapeuticPlan = therapeuticPlan; }
     public String getDiagnosisPlan() { return diagnosisPlan; }
     public void setDiagnosisPlan(String diagnosisPlan) { this.diagnosisPlan = diagnosisPlan; }
+    public String getPrognosis() { return prognosis; }
+    public void setPrognosis(String prognosis) { this.prognosis = prognosis; }
+    public BigDecimal getTemperature() { return temperature; }
+    public void setTemperature(BigDecimal temperature) { this.temperature = temperature; }
+    public Integer getHeartRate() { return heartRate; }
+    public void setHeartRate(Integer heartRate) { this.heartRate = heartRate; }
+    public Integer getRespiratoryRate() { return respiratoryRate; }
+    public void setRespiratoryRate(Integer respiratoryRate) { this.respiratoryRate = respiratoryRate; }
+    public String getMucousMembranes() { return mucousMembranes; }
+    public void setMucousMembranes(String mucousMembranes) { this.mucousMembranes = mucousMembranes; }
+    public String getCapillaryRefill() { return capillaryRefill; }
+    public void setCapillaryRefill(String capillaryRefill) { this.capillaryRefill = capillaryRefill; }
+    public String getHydration() { return hydration; }
+    public void setHydration(String hydration) { this.hydration = hydration; }
+    public Integer getBodyConditionScore() { return bodyConditionScore; }
+    public void setBodyConditionScore(Integer bodyConditionScore) { this.bodyConditionScore = bodyConditionScore; }
+    public Integer getPainScore() { return painScore; }
+    public void setPainScore(Integer painScore) { this.painScore = painScore; }
+    public String getAttitude() { return attitude; }
+    public void setAttitude(String attitude) { this.attitude = attitude; }
+    public String getExamFindings() { return examFindings; }
+    public void setExamFindings(String examFindings) { this.examFindings = examFindings; }
     public LocalDate getNextControl() { return nextControl; }
     public void setNextControl(LocalDate nextControl) { this.nextControl = nextControl; }
     public AnimalJpaEntity getAnimal() { return animal; }

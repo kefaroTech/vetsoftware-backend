@@ -32,6 +32,12 @@ public class VaccinationJpaEntity {
     @Column(length = 2000)
     private String notes;
 
+    @Column(name = "route", length = 30)
+    private String route;
+
+    @Column(name = "application_site", length = 60)
+    private String applicationSite;
+
     @Column(name = "next_vaccination")
     private LocalDate nextVaccination;
 
@@ -65,6 +71,10 @@ public class VaccinationJpaEntity {
     public void setLot(String lot) { this.lot = lot; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getRoute() { return route; }
+    public void setRoute(String route) { this.route = route; }
+    public String getApplicationSite() { return applicationSite; }
+    public void setApplicationSite(String applicationSite) { this.applicationSite = applicationSite; }
     public LocalDate getNextVaccination() { return nextVaccination; }
     public void setNextVaccination(LocalDate nextVaccination) { this.nextVaccination = nextVaccination; }
     public AnimalJpaEntity getAnimal() { return animal; }

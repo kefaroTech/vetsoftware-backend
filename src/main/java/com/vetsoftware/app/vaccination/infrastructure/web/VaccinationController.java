@@ -63,7 +63,7 @@ public class VaccinationController {
         return toResponse(createUseCase.execute(
             new CreateVaccinationCommand(
                 request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.nextVaccination(),
+                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
                 request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
@@ -88,7 +88,7 @@ public class VaccinationController {
         return toResponse(updateUseCase.execute(
             new UpdateVaccinationCommand(
                 id, request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.nextVaccination(),
+                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
                 request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
@@ -111,7 +111,7 @@ public class VaccinationController {
         return new VaccinationResponse(
             dto.id(), dto.date(),
             new VaccinationTypeSummary(vt.id(), vt.name()),
-            dto.lot(), dto.notes(), dto.nextVaccination(),
+            dto.lot(), dto.notes(), dto.route(), dto.applicationSite(), dto.nextVaccination(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             co == null ? null : new ConsultationSummary(co.id(), co.date()),
             new CompanySummary(c.id(), c.name(), c.identifier()),

@@ -55,6 +55,7 @@ public class UpdateVaccinationService implements UpdateVaccinationUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
         vaccination.update(command.date(), vaccinationType, command.lot(), command.notes(),
+            command.route(), command.applicationSite(),
             command.nextVaccination(), animal, consultation, company);
         return VaccinationDto.from(repository.save(vaccination));
     }

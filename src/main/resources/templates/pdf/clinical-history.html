@@ -6,7 +6,13 @@
   <style>
     @page {
       size: A4;
-      margin: 20mm 16mm 22mm 16mm;
+      margin: 18mm 16mm 24mm 16mm;
+      @bottom-center {
+        content: "Documento clínico confidencial · Uso exclusivo del titular y del médico veterinario tratante";
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 7.5pt;
+        color: #9a8e80;
+      }
       @bottom-right {
         content: "Página " counter(page) " de " counter(pages);
         font-family: "Helvetica", "Arial", sans-serif;
@@ -14,7 +20,7 @@
         color: #6b6363;
       }
       @bottom-left {
-        content: "VetSoftware · Generado el " attr(data-gen);
+        content: "Generado el " attr(data-gen);
         font-family: "Helvetica", "Arial", sans-serif;
         font-size: 9pt;
         color: #6b6363;
@@ -37,7 +43,7 @@
       justify-content: space-between;
       border-bottom: 2px solid #5c2d8c;
       padding-bottom: 10px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     .brand {
       font-family: "Georgia", "Times New Roman", serif;
@@ -47,129 +53,184 @@
       letter-spacing: -0.01em;
     }
     .brand-sub {
-      font-size: 10pt;
+      font-size: 9.5pt;
       color: #6b6363;
       margin-top: 2px;
     }
     .header-right {
       text-align: right;
-      font-size: 10pt;
+      font-size: 9.5pt;
       color: #6b6363;
     }
-    .header-right strong { color: #2a2424; }
+    .header-right strong { color: #2a2424; font-size: 11pt; }
 
     h1.report-title {
       font-family: "Georgia", "Times New Roman", serif;
       font-weight: 400;
-      font-size: 18pt;
-      margin: 0 0 14px 0;
+      font-size: 17pt;
+      margin: 0 0 12px 0;
       color: #2a2424;
     }
 
-    .patient-card {
+    .cards { display: flex; gap: 12px; margin-bottom: 12px; }
+    .card {
+      flex: 1;
       background: #f8f4ee;
       border: 1px solid #e6dccf;
       border-radius: 8px;
-      padding: 14px 18px;
-      margin-bottom: 14px;
+      padding: 12px 16px;
       page-break-inside: avoid;
     }
-    .patient-row {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
-    }
-    .patient-field {
-      min-width: 130px;
-    }
-    .patient-label {
-      font-size: 9pt;
-      color: #6b6363;
-      letter-spacing: 0.04em;
+    .card-title {
+      font-size: 8.5pt;
+      color: #5c2d8c;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-    .patient-value {
-      font-size: 11pt;
-      color: #2a2424;
-      font-weight: 500;
+      font-weight: 600;
+      margin-bottom: 8px;
     }
     .patient-name {
       font-family: "Georgia", "Times New Roman", serif;
       font-size: 16pt;
       font-weight: 400;
       color: #2a2424;
-      margin: 0 0 6px 0;
+      margin: 0 0 8px 0;
+    }
+    .deceased-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border-radius: 12px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      background: #f0e0e0;
+      color: #9a3030;
+      vertical-align: middle;
+    }
+    .kv-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+    }
+    .kv { min-width: 118px; }
+    .kv-label {
+      font-size: 8.5pt;
+      color: #6b6363;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 1px;
+    }
+    .kv-value {
+      font-size: 10.5pt;
+      color: #2a2424;
+      font-weight: 500;
     }
 
     .filters {
-      font-size: 10pt;
+      font-size: 9.5pt;
       color: #6b6363;
       padding: 8px 12px;
       background: #f3eee6;
       border-radius: 6px;
-      margin-bottom: 16px;
+      margin-bottom: 6px;
     }
     .filters strong { color: #2a2424; }
-
-    .month-group {
-      margin-bottom: 14px;
-      page-break-inside: avoid;
+    .type-counts {
+      margin: 0 0 16px 0;
+      font-size: 9pt;
+      color: #6b6363;
     }
+    .count-pill {
+      display: inline-block;
+      padding: 1px 8px;
+      margin: 2px 4px 2px 0;
+      border-radius: 12px;
+      background: #efe9f5;
+      color: #4a2470;
+      font-weight: 500;
+    }
+
+    .month-group { margin-bottom: 8px; }
     .month-head {
       font-size: 10pt;
       color: #6b6363;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      font-weight: 500;
+      font-weight: 600;
       border-bottom: 1px solid #e6dccf;
       padding-bottom: 4px;
-      margin-bottom: 8px;
+      margin: 12px 0 6px 0;
     }
 
-    table.events {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    table.events td {
-      padding: 7px 10px;
-      vertical-align: top;
+    .event {
+      padding: 9px 0;
       border-bottom: 1px solid #f0e9dd;
+      page-break-inside: avoid;
     }
-    table.events tr:last-child td {
-      border-bottom: none;
+    .event:last-child { border-bottom: none; }
+    .event-head {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 3px;
     }
-    .ev-date {
-      width: 76px;
-      font-size: 10pt;
+    .event-date {
+      width: 132px;
+      flex-shrink: 0;
+      font-size: 9.5pt;
       color: #6b6363;
       white-space: nowrap;
     }
-    .ev-type {
-      width: 130px;
-      font-size: 10pt;
-      font-weight: 500;
-    }
-    .ev-summary {
-      font-size: 11pt;
-      color: #2a2424;
-    }
-    .ev-id {
-      width: 50px;
-      font-size: 9pt;
-      color: #9a8e80;
+    .event-title { font-weight: 600; font-size: 11pt; color: #2a2424; }
+    .event-id {
+      margin-left: auto;
+      font-size: 8.5pt;
+      color: #b3a89a;
       font-family: "Courier New", monospace;
-      text-align: right;
       white-space: nowrap;
+    }
+    .event-body { margin-left: 142px; }
+    .field { margin-bottom: 2px; font-size: 10.5pt; }
+    .field-label { color: #6b6363; font-weight: 600; }
+    .field-value { color: #2a2424; white-space: pre-line; }
+    .no-detail { font-size: 10pt; color: #9a8e80; font-style: italic; }
+
+    .detail-table { margin: 6px 0 4px 0; page-break-inside: avoid; }
+    .detail-table-title {
+      font-size: 9pt;
+      color: #5c2d8c;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+    table.dt { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    table.dt th {
+      text-align: left;
+      background: #f3eee6;
+      color: #6b6363;
+      font-weight: 600;
+      padding: 3px 6px;
+      border: 1px solid #e6dccf;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    table.dt td {
+      padding: 3px 6px;
+      border: 1px solid #eee3d6;
+      color: #2a2424;
+      vertical-align: top;
     }
 
     .pill {
       display: inline-block;
       padding: 1px 8px;
       border-radius: 12px;
-      font-size: 9pt;
-      font-weight: 500;
+      font-size: 8.5pt;
+      font-weight: 600;
       letter-spacing: 0.01em;
+      flex-shrink: 0;
     }
     .t-CONSULTATION { background: #ede3f5; color: #5c2d8c; }
     .t-SURGERY { background: #f8dada; color: #9a3030; }
@@ -190,6 +251,71 @@
       border-radius: 8px;
       font-size: 11pt;
     }
+
+    .alerts-banner {
+      border: 1.5px solid #c0392b;
+      background: #fbe9e7;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+    }
+    .alerts-title {
+      font-size: 9pt;
+      font-weight: 700;
+      color: #9a3030;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+    }
+    .alert-item { font-size: 10.5pt; color: #5a2020; margin-bottom: 2px; }
+    .alert-sev {
+      display: inline-block;
+      font-size: 8pt;
+      font-weight: 700;
+      padding: 0 6px;
+      border-radius: 10px;
+      background: #c0392b;
+      color: #fff;
+      margin-left: 4px;
+    }
+
+    .problems { margin-bottom: 14px; page-break-inside: avoid; }
+    .problems-title {
+      font-size: 10pt;
+      color: #5c2d8c;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      border-bottom: 1px solid #e6dccf;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    table.problems-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+    table.problems-table th {
+      text-align: left; background: #f3eee6; color: #6b6363; font-weight: 600;
+      padding: 4px 8px; border: 1px solid #e6dccf; font-size: 8pt;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    table.problems-table td { padding: 4px 8px; border: 1px solid #eee3d6; vertical-align: top; }
+    .status-pill {
+      display: inline-block; padding: 0 8px; border-radius: 10px;
+      font-size: 8.5pt; font-weight: 600;
+    }
+    .status-active { background: #f5e3c4; color: #7a4f10; }
+    .status-resolved { background: #d8ecd3; color: #2b6020; }
+
+    .signature {
+      margin-top: 40px;
+      page-break-inside: avoid;
+    }
+    .sign-line {
+      width: 280px;
+      border-top: 1px solid #2a2424;
+      padding-top: 4px;
+      font-size: 9.5pt;
+      color: #6b6363;
+    }
   </style>
 </head>
 <body th:attr="data-gen=${#temporals.format(generatedAt, 'dd/MM/yyyy HH:mm')}">
@@ -198,43 +324,140 @@
     <div>
       <div class="brand" th:text="${animal.companyName}">Clínica</div>
       <div class="brand-sub" th:text="'NIT ' + ${animal.companyIdentifier}">NIT 00000000</div>
+      <div class="brand-sub"
+           th:if="${animal.companyAddress != null and !animal.companyAddress.isBlank()}"
+           th:text="${animal.companyAddress}">Dirección</div>
+      <div class="brand-sub"
+           th:if="${animal.companyPhone != null and !animal.companyPhone.isBlank()}"
+           th:text="'Tel. ' + ${animal.companyPhone}">Tel.</div>
     </div>
     <div class="header-right">
       <div><strong>Historia clínica</strong></div>
-      <div th:text="'Generado: ' + ${#temporals.format(generatedAt, 'dd MMM yyyy, HH:mm')}">Generado: 24 may 2026, 12:00</div>
+      <div th:text="'Generado: ' + ${#temporals.format(generatedAt, 'dd MMM yyyy, HH:mm')}">Generado</div>
     </div>
   </div>
 
   <h1 class="report-title">Historia clínica del paciente</h1>
 
-  <div class="patient-card">
-    <div class="patient-name" th:text="${animal.name}">Nombre del animal</div>
-    <div class="patient-row">
-      <div class="patient-field">
-        <div class="patient-label">Código</div>
-        <div class="patient-value" th:text="${animal.code}">—</div>
+  <div class="alerts-banner" th:if="${hasAlerts}">
+    <div class="alerts-title">⚠ Alertas del paciente</div>
+    <div class="alert-item" th:each="al : ${alerts}">
+      <strong th:text="${al.typeLabel}">Tipo</strong>:
+      <span th:text="${al.description}">descripción</span>
+      <span class="alert-sev" th:if="${al.severityLabel != null}" th:text="${al.severityLabel}">Alta</span>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-title">Paciente</div>
+      <div class="patient-name">
+        <span th:text="${animal.name}">Nombre</span>
+        <span class="deceased-badge" th:if="${animal.deceased}"
+              th:text="${animal.deceasedDate != null
+                       ? 'Fallecido · ' + #temporals.format(animal.deceasedDate, 'dd MMM yyyy')
+                       : 'Fallecido'}">Fallecido</span>
       </div>
-      <div class="patient-field">
-        <div class="patient-label">Especie</div>
-        <div class="patient-value" th:text="${animal.specieName}">—</div>
+      <div class="kv-grid">
+        <div class="kv" th:if="${animal.code != null and !animal.code.isBlank()}">
+          <div class="kv-label">Código / Historia</div>
+          <div class="kv-value" th:text="${animal.code}">—</div>
+        </div>
+        <div class="kv">
+          <div class="kv-label">Especie</div>
+          <div class="kv-value" th:text="${animal.specieName}">—</div>
+        </div>
+        <div class="kv">
+          <div class="kv-label">Raza</div>
+          <div class="kv-value" th:text="${animal.breedName}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.colorName != null and !animal.colorName.isBlank()}">
+          <div class="kv-label">Color / Señas</div>
+          <div class="kv-value" th:text="${animal.colorName}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.genderLabel != null}">
+          <div class="kv-label">Sexo</div>
+          <div class="kv-value" th:text="${animal.genderLabel}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.reproductiveStateLabel != null}">
+          <div class="kv-label">Estado reproductivo</div>
+          <div class="kv-value" th:text="${animal.reproductiveStateLabel}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.birthDate != null}">
+          <div class="kv-label">Nacimiento</div>
+          <div class="kv-value">
+            <span th:text="${#temporals.format(animal.birthDate, 'dd MMM yyyy')}">—</span>
+            <span th:if="${animal.ageLabel != null}" th:text="'(' + ${animal.ageLabel} + ')'">(edad)</span>
+          </div>
+        </div>
+        <div class="kv">
+          <div class="kv-label">Peso actual</div>
+          <div class="kv-value">
+            <span th:text="${animal.currentWeight != null ? animal.currentWeight : 'Sin registro'}">—</span>
+            <span th:if="${animal.weightMeasuredAt != null}" style="font-weight:400; color:#6b6363; font-size:9pt"
+                  th:text="'· ' + ${#temporals.format(animal.weightMeasuredAt, 'dd MMM yyyy')}">fecha</span>
+          </div>
+        </div>
       </div>
-      <div class="patient-field">
-        <div class="patient-label">Raza</div>
-        <div class="patient-value" th:text="${animal.breedName}">—</div>
-      </div>
-      <div class="patient-field">
-        <div class="patient-label">Propietario</div>
-        <div class="patient-value" th:text="${animal.ownerName}">—</div>
-      </div>
-      <div class="patient-field" th:if="${animal.ownerPhone != null and !animal.ownerPhone.isBlank()}">
-        <div class="patient-label">Teléfono</div>
-        <div class="patient-value" th:text="${animal.ownerPhone}">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Propietario</div>
+      <div class="kv-grid">
+        <div class="kv" style="min-width:100%">
+          <div class="kv-label">Nombre</div>
+          <div class="kv-value" th:text="${animal.ownerName}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.ownerDocument != null and !animal.ownerDocument.isBlank()}">
+          <div class="kv-label">Documento</div>
+          <div class="kv-value" th:text="${animal.ownerDocument}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.ownerPhone != null and !animal.ownerPhone.isBlank()}">
+          <div class="kv-label">Teléfono</div>
+          <div class="kv-value" th:text="${animal.ownerPhone}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.ownerEmail != null and !animal.ownerEmail.isBlank()}">
+          <div class="kv-label">Email</div>
+          <div class="kv-value" th:text="${animal.ownerEmail}">—</div>
+        </div>
+        <div class="kv" th:if="${animal.ownerAddress != null and !animal.ownerAddress.isBlank()}" style="min-width:100%">
+          <div class="kv-label">Dirección</div>
+          <div class="kv-value" th:text="${animal.ownerAddress}">—</div>
+        </div>
       </div>
     </div>
   </div>
 
+  <div class="problems" th:if="${hasProblems}">
+    <div class="problems-title">Lista de problemas</div>
+    <table class="problems-table">
+      <thead>
+        <tr>
+          <th style="width:45%">Problema</th>
+          <th style="width:14%">Estado</th>
+          <th style="width:13%">Inicio</th>
+          <th style="width:13%">Resolución</th>
+          <th style="width:15%">Notas</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="p : ${problems}">
+          <td th:text="${p.description}">Problema</td>
+          <td>
+            <span class="status-pill"
+                  th:classappend="${p.active} ? 'status-active' : 'status-resolved'"
+                  th:text="${p.statusLabel}">Estado</span>
+          </td>
+          <td th:text="${p.onsetDate != null ? #temporals.format(p.onsetDate, 'dd MMM yyyy') : '—'}">—</td>
+          <td th:text="${p.resolvedDate != null ? #temporals.format(p.resolvedDate, 'dd MMM yyyy') : '—'}">—</td>
+          <td th:text="${p.notes != null ? p.notes : '—'}">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <div class="filters">
-    <strong>Filtros aplicados:</strong>
+    <strong>Filtros:</strong>
     <span th:if="${from == null and to == null}">todas las fechas</span>
     <span th:if="${from != null or to != null}">
       <span th:if="${from != null}" th:text="'desde ' + ${#temporals.format(from, 'dd MMM yyyy')}">desde —</span>
@@ -249,22 +472,61 @@
     <strong th:text="${eventCount} + ' eventos'">0 eventos</strong>
   </div>
 
+  <div class="type-counts" th:if="${hasEvents}">
+    <span class="count-pill" th:each="tc : ${typeCounts}"
+          th:text="${tc.label} + ': ' + ${tc.count}">Tipo: 0</span>
+  </div>
+
   <div th:if="${!hasEvents}" class="empty">
     Sin historia clínica registrada para este paciente con los filtros aplicados.
   </div>
 
   <div th:each="group : ${monthGroups}" class="month-group">
     <div class="month-head" th:text="${group.label}">Mes Año</div>
-    <table class="events">
-      <tr th:each="ev : ${group.events}">
-        <td class="ev-date" th:text="${#temporals.format(ev.eventDate, 'dd MMM yyyy')}">12 may 2024</td>
-        <td class="ev-type">
-          <span class="pill" th:classappend="'t-' + ${ev.eventType.name()}" th:text="${ev.eventType.name()}">TYPE</span>
-        </td>
-        <td class="ev-summary" th:text="${ev.summary != null ? ev.summary : 'Sin descripción'}">Resumen</td>
-        <td class="ev-id" th:text="'#' + ${ev.sourceId}">#0</td>
-      </tr>
-    </table>
+    <div th:each="ev : ${group.events}" class="event">
+      <div class="event-head">
+        <span class="event-date" th:text="${#temporals.format(ev.eventDate, 'dd MMM yyyy')}">12 may 2024</span>
+        <span class="pill" th:classappend="'t-' + ${ev.eventType.name()}"
+              th:text="${typeLabels.get(ev.eventType.name())}">Tipo</span>
+        <span class="event-title" th:text="${ev.title}">Título</span>
+        <span class="event-id" th:text="'#' + ${ev.sourceId}">#0</span>
+      </div>
+      <div class="event-body">
+        <div class="field" th:if="${ev.endDate != null}">
+          <span class="field-label">Finaliza: </span><span class="field-value"
+                th:text="${#temporals.format(ev.endDate, 'dd MMM yyyy')}">—</span>
+        </div>
+        <div class="field" th:each="field : ${ev.fields}">
+          <span class="field-label" th:text="${field.label} + ': '">Campo: </span><span
+                class="field-value" th:text="${field.value}">valor</span>
+        </div>
+        <div class="detail-table" th:each="table : ${ev.tables}">
+          <div class="detail-table-title" th:text="${table.title}">Tabla</div>
+          <table class="dt">
+            <thead>
+              <tr>
+                <th th:each="col : ${table.columns}" th:text="${col}">Col</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="row : ${table.rows}">
+                <td th:each="cell : ${row}" th:text="${cell}">celda</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="no-detail" th:if="${ev.fields.isEmpty() and ev.tables.isEmpty() and ev.endDate == null}">
+          Sin detalle clínico registrado.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="signature" th:if="${hasEvents}">
+    <div class="sign-line">
+      Firma y sello del médico veterinario responsable<br/>
+      Nombre y n.º de matrícula profesional
+    </div>
   </div>
 
 </body>

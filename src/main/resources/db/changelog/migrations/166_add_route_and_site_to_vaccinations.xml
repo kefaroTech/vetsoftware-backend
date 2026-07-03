@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Fase 3: vía de administración y sitio de aplicación de la vacuna (requisito WSAVA).
+         Nullable: no rompen las vacunas ya registradas. -->
+    <changeSet id="166_add_route_and_site_to_vaccinations" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="vaccinations" columnName="route"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="vaccinations">
+            <column name="route" type="VARCHAR(30)"/>
+            <column name="application_site" type="VARCHAR(60)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

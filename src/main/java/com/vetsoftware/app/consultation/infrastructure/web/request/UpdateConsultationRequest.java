@@ -1,8 +1,13 @@
 package com.vetsoftware.app.consultation.infrastructure.web.request;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UpdateConsultationRequest(
@@ -12,7 +17,19 @@ public record UpdateConsultationRequest(
         @Size(max = 2000) String diagnosis,
         @Size(max = 2000) String therapeuticPlan,
         @Size(max = 2000) String diagnosisPlan,
+        @Size(max = 500) String prognosis,
         LocalDate nextControl,
         @NotNull Long animalId,
-        @NotNull Long companyId
+        @NotNull Long companyId,
+        // Examen físico / constantes vitales (Fase 3) — todos opcionales.
+        @DecimalMin("0") @DecimalMax("60") BigDecimal temperature,
+        @Min(0) @Max(1000) Integer heartRate,
+        @Min(0) @Max(1000) Integer respiratoryRate,
+        @Size(max = 40) String mucousMembranes,
+        @Size(max = 20) String capillaryRefill,
+        @Size(max = 20) String hydration,
+        @Min(1) @Max(9) Integer bodyConditionScore,
+        @Min(0) @Max(10) Integer painScore,
+        @Size(max = 40) String attitude,
+        @Size(max = 2000) String examFindings
 ) {}

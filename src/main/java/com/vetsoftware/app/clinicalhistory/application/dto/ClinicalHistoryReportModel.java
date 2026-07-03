@@ -10,7 +10,9 @@ public record ClinicalHistoryReportModel(
         LocalDate from,
         LocalDate to,
         List<ClinicalEventType> typeFilters,
-        List<ClinicalEventDto> events,
+        List<ReportAlert> alerts,
+        List<ReportProblem> problems,
+        List<ReportClinicalEvent> events,
         LocalDateTime generatedAt
 ) {
 }

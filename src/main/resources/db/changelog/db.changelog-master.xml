@@ -168,5 +168,9 @@
     <include file="db/changelog/migrations/162_create_weight_records.xml"/>
     <include file="db/changelog/migrations/163_create_refresh_tokens.xml"/>
     <include file="db/changelog/migrations/164_alter_animals_code_nullable_drop_unique.xml"/>
+    <include file="db/changelog/migrations/165_add_physical_exam_and_prognosis_to_consultations.xml"/>
+    <include file="db/changelog/migrations/166_add_route_and_site_to_vaccinations.xml"/>
+    <include file="db/changelog/migrations/167_create_problems.xml"/>
+    <include file="db/changelog/migrations/168_create_animal_alerts.xml"/>
 
 </databaseChangeLog>

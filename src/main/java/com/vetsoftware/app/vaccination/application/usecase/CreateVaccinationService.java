@@ -51,6 +51,7 @@ public class CreateVaccinationService implements CreateVaccinationUseCase {
 
         Vaccination vaccination = Vaccination.create(
             command.date(), vaccinationType, command.lot(), command.notes(),
+            command.route(), command.applicationSite(),
             command.nextVaccination(), animal, consultation, company);
         return VaccinationDto.from(repository.save(vaccination));
     }

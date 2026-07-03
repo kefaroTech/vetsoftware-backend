@@ -12,6 +12,7 @@ import com.vetsoftware.app.consultation.domain.CompanyRef;
 import com.vetsoftware.app.consultation.domain.Consultation;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultation.domain.ConsultationTypeRef;
+import com.vetsoftware.app.consultation.domain.PhysicalExam;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,9 +47,14 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
         CompanyRef company = companyQueryPort.findById(command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
+        PhysicalExam physicalExam = new PhysicalExam(
+            command.temperature(), command.heartRate(), command.respiratoryRate(),
+            command.mucousMembranes(), command.capillaryRefill(), command.hydration(),
+            command.bodyConditionScore(), command.painScore(), command.attitude(),
+            command.examFindings());
         consultation.update(command.date(), consultationType, command.anamnesis(), command.diagnosis(),
-            command.therapeuticPlan(), command.diagnosisPlan(), command.nextControl(),
-            animal, company);
+            command.therapeuticPlan(), command.diagnosisPlan(), command.prognosis(), physicalExam,
+            command.nextControl(), animal, company);
         return ConsultationDto.from(repository.save(consultation));
     }
 }

@@ -134,7 +134,8 @@ class AnimalConsultationTenantGuardTest {
     void updateConsultationDoesNotLoadReferencesWhenConsultationIsOutsideCurrentCompany() {
         when(consultationRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
         UpdateConsultationCommand command = new UpdateConsultationCommand(
-            RESOURCE_ID, LocalDate.now(), 1L, null, null, null, null, null, 2L, COMPANY_ID);
+            RESOURCE_ID, LocalDate.now(), 1L, null, null, null, null, null, null, 2L, COMPANY_ID,
+            null, null, null, null, null, null, null, null, null, null);
 
         com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService service =
             new com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService(

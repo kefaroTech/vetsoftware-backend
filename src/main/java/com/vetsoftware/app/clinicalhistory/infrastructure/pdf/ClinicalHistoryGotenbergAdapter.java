@@ -1,8 +1,9 @@
 package com.vetsoftware.app.clinicalhistory.infrastructure.pdf;
 
-import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventDto;
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalHistoryReportModel;
+import com.vetsoftware.app.clinicalhistory.application.dto.ReportClinicalEvent;
 import com.vetsoftware.app.clinicalhistory.application.port.out.ClinicalHistoryPdfPort;
+import com.vetsoftware.app.clinicalhistory.domain.ClinicalEventType;
 import com.vetsoftware.app.infrastructure.pdf.HtmlPdfRenderer;
 import com.vetsoftware.app.infrastructure.pdf.PdfOptions;
 import java.util.ArrayList;
@@ -20,6 +21,18 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     };
 
+    private static final Map<ClinicalEventType, String> TYPE_LABELS = Map.of(
+            ClinicalEventType.CONSULTATION, "Consulta",
+            ClinicalEventType.SURGERY, "Cirugía",
+            ClinicalEventType.VACCINATION, "Vacunación",
+            ClinicalEventType.DEWORMING, "Desparasitación",
+            ClinicalEventType.HOSPITALIZATION, "Hospitalización",
+            ClinicalEventType.LABORATORY_TEST, "Laboratorio",
+            ClinicalEventType.DIAGNOSTIC_IMAGING, "Imagen diagnóstica",
+            ClinicalEventType.PRESCRIPTION, "Prescripción",
+            ClinicalEventType.SPA, "Estética"
+    );
+
     private final HtmlPdfRenderer renderer;
 
     public ClinicalHistoryGotenbergAdapter(HtmlPdfRenderer renderer) {
@@ -33,6 +46,12 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
         ctx.put("from", model.from());
         ctx.put("to", model.to());
         ctx.put("typeFilters", model.typeFilters());
+        ctx.put("alerts", model.alerts());
+        ctx.put("hasAlerts", model.alerts() != null && !model.alerts().isEmpty());
+        ctx.put("problems", model.problems());
+        ctx.put("hasProblems", model.problems() != null && !model.problems().isEmpty());
+        ctx.put("typeLabels", labelsByName());
+        ctx.put("typeCounts", countByType(model.events()));
         ctx.put("monthGroups", groupByMonth(model.events()));
         ctx.put("hasEvents", !model.events().isEmpty());
         ctx.put("eventCount", model.events().size());
@@ -40,9 +59,29 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
         return renderer.render("clinical-history", ctx, PdfOptions.defaults());
     }
 
-    private List<ClinicalHistoryMonthGroup> groupByMonth(List<ClinicalEventDto> events) {
-        LinkedHashMap<String, List<ClinicalEventDto>> map = new LinkedHashMap<>();
-        for (ClinicalEventDto ev : events) {
+    private Map<String, String> labelsByName() {
+        Map<String, String> byName = new HashMap<>();
+        TYPE_LABELS.forEach((type, label) -> byName.put(type.name(), label));
+        return byName;
+    }
+
+    /** Conteo de eventos por tipo, en el orden del enum, para el resumen del encabezado. */
+    private List<TypeCount> countByType(List<ReportClinicalEvent> events) {
+        Map<ClinicalEventType, Long> counts = new LinkedHashMap<>();
+        for (ClinicalEventType type : ClinicalEventType.values()) {
+            long n = events.stream().filter(e -> e.eventType() == type).count();
+            if (n > 0) {
+                counts.put(type, n);
+            }
+        }
+        return counts.entrySet().stream()
+                .map(e -> new TypeCount(e.getKey().name(), TYPE_LABELS.get(e.getKey()), e.getValue()))
+                .toList();
+    }
+
+    private List<ClinicalHistoryMonthGroup> groupByMonth(List<ReportClinicalEvent> events) {
+        LinkedHashMap<String, List<ReportClinicalEvent>> map = new LinkedHashMap<>();
+        for (ReportClinicalEvent ev : events) {
             String key = ev.eventDate().getYear() + "-"
                     + String.format("%02d", ev.eventDate().getMonthValue());
             map.computeIfAbsent(key, k -> new ArrayList<>()).add(ev);
@@ -58,5 +97,9 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
         int year = Integer.parseInt(parts[0]);
         int month = Integer.parseInt(parts[1]);
         return SPANISH_MONTHS[month - 1] + " " + year;
+    }
+
+    /** View-model para el chip de resumen por tipo en el encabezado del reporte. */
+    public record TypeCount(String type, String label, long count) {
     }
 }

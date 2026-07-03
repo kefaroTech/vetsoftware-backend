@@ -11,6 +11,8 @@ public class Consultation {
     private String diagnosis;
     private String therapeuticPlan;
     private String diagnosisPlan;
+    private String prognosis;
+    private PhysicalExam physicalExam;
     private LocalDate nextControl;
     private AnimalRef animal;
     private CompanyRef company;
@@ -19,10 +21,11 @@ public class Consultation {
 
     public Consultation(Long id, LocalDate date, ConsultationTypeRef consultationType,
                         String anamnesis, String diagnosis, String therapeuticPlan,
-                        String diagnosisPlan, LocalDate nextControl, AnimalRef animal,
+                        String diagnosisPlan, String prognosis, PhysicalExam physicalExam,
+                        LocalDate nextControl, AnimalRef animal,
                         CompanyRef company, LocalDateTime createdDate, boolean enabled) {
         validate(date, consultationType, anamnesis, diagnosis, therapeuticPlan, diagnosisPlan,
-                 animal, company);
+                 prognosis, animal, company);
         this.id = id;
         this.date = date;
         this.consultationType = consultationType;
@@ -30,6 +33,8 @@ public class Consultation {
         this.diagnosis = blankToNull(diagnosis);
         this.therapeuticPlan = blankToNull(therapeuticPlan);
         this.diagnosisPlan = blankToNull(diagnosisPlan);
+        this.prognosis = blankToNull(prognosis);
+        this.physicalExam = physicalExam == null ? PhysicalExam.empty() : physicalExam;
         this.nextControl = nextControl;
         this.animal = animal;
         this.company = company;
@@ -39,25 +44,27 @@ public class Consultation {
 
     public static Consultation create(LocalDate date, ConsultationTypeRef consultationType,
                                       String anamnesis, String diagnosis, String therapeuticPlan,
-                                      String diagnosisPlan, LocalDate nextControl,
-                                      AnimalRef animal, CompanyRef company) {
+                                      String diagnosisPlan, String prognosis, PhysicalExam physicalExam,
+                                      LocalDate nextControl, AnimalRef animal, CompanyRef company) {
         return new Consultation(null, date, consultationType, anamnesis, diagnosis,
-                                therapeuticPlan, diagnosisPlan, nextControl, animal, company,
-                                LocalDateTime.now(), true);
+                                therapeuticPlan, diagnosisPlan, prognosis, physicalExam, nextControl,
+                                animal, company, LocalDateTime.now(), true);
     }
 
     public void update(LocalDate date, ConsultationTypeRef consultationType,
                        String anamnesis, String diagnosis, String therapeuticPlan,
-                       String diagnosisPlan, LocalDate nextControl, AnimalRef animal,
-                       CompanyRef company) {
+                       String diagnosisPlan, String prognosis, PhysicalExam physicalExam,
+                       LocalDate nextControl, AnimalRef animal, CompanyRef company) {
         validate(date, consultationType, anamnesis, diagnosis, therapeuticPlan, diagnosisPlan,
-                 animal, company);
+                 prognosis, animal, company);
         this.date = date;
         this.consultationType = consultationType;
         this.anamnesis = anamnesis;
         this.diagnosis = blankToNull(diagnosis);
         this.therapeuticPlan = blankToNull(therapeuticPlan);
         this.diagnosisPlan = blankToNull(diagnosisPlan);
+        this.prognosis = blankToNull(prognosis);
+        this.physicalExam = physicalExam == null ? PhysicalExam.empty() : physicalExam;
         this.nextControl = nextControl;
         this.animal = animal;
         this.company = company;
@@ -65,17 +72,19 @@ public class Consultation {
 
     private static void validate(LocalDate date, ConsultationTypeRef consultationType,
                                   String anamnesis, String diagnosis, String therapeuticPlan,
-                                  String diagnosisPlan, AnimalRef animal, CompanyRef company) {
+                                  String diagnosisPlan, String prognosis, AnimalRef animal,
+                                  CompanyRef company) {
         if (date == null) throw new IllegalArgumentException("date is required");
         if (consultationType == null) throw new IllegalArgumentException("consultationType is required");
         if (anamnesis == null || anamnesis.isBlank()) throw new IllegalArgumentException("anamnesis is required");
         if (anamnesis.length() > 2000) throw new IllegalArgumentException("anamnesis must be 2000 chars or less");
-        // diagnosis, therapeuticPlan y diagnosisPlan son clínicamente opcionales
+        // diagnosis, therapeuticPlan, diagnosisPlan y prognosis son clínicamente opcionales
         // (p.ej. primera visita con dx pendiente): se aceptan null/vacío y solo se
         // valida el tope de longitud cuando vienen con contenido.
         if (diagnosis != null && diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
         if (therapeuticPlan != null && therapeuticPlan.length() > 2000) throw new IllegalArgumentException("therapeuticPlan must be 2000 chars or less");
         if (diagnosisPlan != null && diagnosisPlan.length() > 2000) throw new IllegalArgumentException("diagnosisPlan must be 2000 chars or less");
+        if (prognosis != null && prognosis.length() > 500) throw new IllegalArgumentException("prognosis must be 500 chars or less");
         if (animal == null) throw new IllegalArgumentException("animal is required");
         if (company == null) throw new IllegalArgumentException("company is required");
     }
@@ -91,6 +100,8 @@ public class Consultation {
     public String getDiagnosis() { return diagnosis; }
     public String getTherapeuticPlan() { return therapeuticPlan; }
     public String getDiagnosisPlan() { return diagnosisPlan; }
+    public String getPrognosis() { return prognosis; }
+    public PhysicalExam getPhysicalExam() { return physicalExam; }
     public LocalDate getNextControl() { return nextControl; }
     public AnimalRef getAnimal() { return animal; }
     public CompanyRef getCompany() { return company; }

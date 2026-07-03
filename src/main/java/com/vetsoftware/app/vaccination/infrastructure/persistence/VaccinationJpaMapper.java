@@ -25,6 +25,8 @@ public class VaccinationJpaMapper {
         entity.setVaccinationType(vaccinationType);
         entity.setLot(vaccination.getLot());
         entity.setNotes(vaccination.getNotes());
+        entity.setRoute(vaccination.getRoute());
+        entity.setApplicationSite(vaccination.getApplicationSite());
         entity.setNextVaccination(vaccination.getNextVaccination());
         entity.setAnimal(animal);
         entity.setConsultation(consultation);
@@ -50,7 +52,8 @@ public class VaccinationJpaMapper {
                                 AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
         return new Vaccination(
             entity.getId(), entity.getDate(), vaccinationTypeRef,
-            entity.getLot(), entity.getNotes(), entity.getNextVaccination(),
+            entity.getLot(), entity.getNotes(), entity.getRoute(), entity.getApplicationSite(),
+            entity.getNextVaccination(),
             animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

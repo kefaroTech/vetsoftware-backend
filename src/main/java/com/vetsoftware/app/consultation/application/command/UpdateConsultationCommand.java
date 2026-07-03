@@ -1,5 +1,6 @@
 package com.vetsoftware.app.consultation.application.command;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UpdateConsultationCommand(
@@ -10,7 +11,18 @@ public record UpdateConsultationCommand(
         String diagnosis,
         String therapeuticPlan,
         String diagnosisPlan,
+        String prognosis,
         LocalDate nextControl,
         Long animalId,
-        Long companyId
+        Long companyId,
+        BigDecimal temperature,
+        Integer heartRate,
+        Integer respiratoryRate,
+        String mucousMembranes,
+        String capillaryRefill,
+        String hydration,
+        Integer bodyConditionScore,
+        Integer painScore,
+        String attitude,
+        String examFindings
 ) {}
