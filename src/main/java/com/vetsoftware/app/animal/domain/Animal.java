@@ -105,8 +105,7 @@ public class Animal {
                                   boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (code == null || code.isBlank()) throw new IllegalArgumentException("code is required");
-        if (code.length() > 50) throw new IllegalArgumentException("code must be 50 chars or less");
+        if (code != null && code.length() > 50) throw new IllegalArgumentException("code must be 50 chars or less");
         if (specie == null) throw new IllegalArgumentException("specie is required");
         if (breed == null) throw new IllegalArgumentException("breed is required");
         if (owner == null) throw new IllegalArgumentException("owner is required");

@@ -16,9 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "animals", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_animals_company_code", columnNames = {"company_id", "code"})
-})
+@Table(name = "animals")
 @SQLDelete(sql = "UPDATE animals SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class AnimalJpaEntity {
@@ -29,7 +27,7 @@ public class AnimalJpaEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 50)
+    @Column(length = 50)
     private String code;
 
     @ManyToOne(fetch = FetchType.LAZY)

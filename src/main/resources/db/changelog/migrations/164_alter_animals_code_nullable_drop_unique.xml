@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El código de la mascota deja de ser único por empresa y pasa a ser opcional:
+         el front ya no lo autogenera (VTR-...), puede llegar null. -->
+
+    <!-- La FK fk_animals_company (company_id) se respaldaba en el índice compuesto
+         uq_animals_company_code (company_id, code). Al dropear ese índice, MySQL
+         se queda sin índice de respaldo para la FK y falla con:
+           Cannot drop index 'uq_animals_company_code': needed in a foreign key constraint (1553).
+         Creamos primero un índice plano sobre company_id para que la FK tenga respaldo. -->
+    <changeSet id="164_index_animals_company" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="animals" indexName="idx_animals_company"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="animals" indexName="idx_animals_company">
+            <column name="company_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="164_drop_unique_animals_company_code" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                WHERE CONSTRAINT_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'animals'
+                  AND CONSTRAINT_NAME = 'uq_animals_company_code'
+            </sqlCheck>
+        </preConditions>
+        <dropUniqueConstraint tableName="animals"
+                              constraintName="uq_animals_company_code"/>
+    </changeSet>
+
+    <changeSet id="164_drop_not_null_animals_code" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="NO">
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'animals'
+                  AND COLUMN_NAME = 'code'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="animals"
+                               columnName="code"
+                               columnDataType="VARCHAR(50)"/>
+    </changeSet>
+
+</databaseChangeLog>

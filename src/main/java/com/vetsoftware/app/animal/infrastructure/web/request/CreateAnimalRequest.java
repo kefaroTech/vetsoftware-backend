@@ -14,7 +14,7 @@ import java.time.LocalDate;
 
 public record CreateAnimalRequest(
         @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 50) String code,
+        @Size(max = 50) String code,
         @NotNull Long specieId,
         @NotNull Long breedId,
         @NotNull Long ownerId,

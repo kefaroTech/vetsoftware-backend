@@ -167,5 +167,6 @@
     <include file="db/changelog/migrations/161_alter_consultations_clinical_fields_nullable.xml"/>
     <include file="db/changelog/migrations/162_create_weight_records.xml"/>
     <include file="db/changelog/migrations/163_create_refresh_tokens.xml"/>
+    <include file="db/changelog/migrations/164_alter_animals_code_nullable_drop_unique.xml"/>
 
 </databaseChangeLog>
