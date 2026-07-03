@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAvailableSurgeryTypesUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or @authz.isMyCompany(#companyId)")
+    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('surgery.read') or hasRole('SYSTEM')")
     List<SurgeryTypeDto> listAvailable(Long companyId);
 }
