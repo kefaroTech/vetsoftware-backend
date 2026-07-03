@@ -56,7 +56,7 @@ public class LaboratoryTestTypeController {
     public LaboratoryTestTypeResponse create(@Valid @RequestBody CreateLaboratoryTestTypeRequest request) {
         return toResponse(createUseCase.execute(
                 new CreateLaboratoryTestTypeCommand(request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -80,7 +80,7 @@ public class LaboratoryTestTypeController {
                                    @Valid @RequestBody UpdateLaboratoryTestTypeRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateLaboratoryTestTypeCommand(id, request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")

@@ -12,6 +12,5 @@ public record UpdateDayCareRequest(
         @NotNull DayCareType type,
         @Size(max = 1000) String objects,
         @Size(max = 2000) String observations,
-        @NotNull Long animalId,
-        @NotNull Long companyId
+        @NotNull Long animalId
 ) {}

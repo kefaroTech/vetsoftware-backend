@@ -11,6 +11,5 @@ public record CreateSpaRequest(
         @NotBlank @Size(max = 2000) String reason,
         @NotBlank @Size(max = 2000) String details,
         @NotBlank @Size(max = 2000) String observations,
-        @NotNull Long animalId,
-        @NotNull Long companyId
+        @NotNull Long animalId
 ) {}

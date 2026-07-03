@@ -56,7 +56,7 @@ public class SurgeryTypeController {
     public SurgeryTypeResponse create(@Valid @RequestBody CreateSurgeryTypeRequest request) {
         return toResponse(createUseCase.execute(
                 new CreateSurgeryTypeCommand(request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -80,7 +80,7 @@ public class SurgeryTypeController {
                                      @Valid @RequestBody UpdateSurgeryTypeRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateSurgeryTypeCommand(id, request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")

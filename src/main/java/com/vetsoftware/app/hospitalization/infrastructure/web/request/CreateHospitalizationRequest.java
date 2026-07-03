@@ -19,7 +19,6 @@ public record CreateHospitalizationRequest(
         @Size(max = 2000) String observations,
         @NotNull Long animalId,
         Long consultationId,
-        @NotNull Long companyId,
         // Peso opcional al ingreso → se registra en el historial de peso del animal.
         // weightUnit es GRAMS/POUNDS/KILOGRAMS; si es null se usa la unidad preferida del animal.
         @Positive BigDecimal weight,

@@ -56,7 +56,7 @@ public class DiagnosticImagingTypeController {
     public DiagnosticImagingTypeResponse create(@Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
         return toResponse(createUseCase.execute(
                 new CreateDiagnosticImagingTypeCommand(request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -80,7 +80,7 @@ public class DiagnosticImagingTypeController {
                                                 @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateDiagnosticImagingTypeCommand(id, request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")

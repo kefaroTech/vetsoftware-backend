@@ -1,5 +1,6 @@
 package com.vetsoftware.app.deworming.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.deworming.application.command.CreateDewormingCommand;
 import com.vetsoftware.app.deworming.application.command.UpdateDewormingCommand;
 import com.vetsoftware.app.deworming.application.dto.AnimalSummaryDto;
@@ -34,6 +35,7 @@ public class DewormingController {
     private final ListDewormingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDewormingUseCase deleteUseCase;
     private final ReactivateDewormingUseCase reactivateUseCase;
+    private final Authz authz;
 
     public DewormingController(CreateDewormingUseCase createUseCase,
                                UpdateDewormingUseCase updateUseCase,
@@ -41,7 +43,8 @@ public class DewormingController {
                                ListDewormingsUseCase listUseCase,
                                ListDewormingsByAnimalUseCase listByAnimalUseCase,
                                DeleteDewormingUseCase deleteUseCase,
-                               ReactivateDewormingUseCase reactivateUseCase) {
+                               ReactivateDewormingUseCase reactivateUseCase,
+                               Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,6 +52,7 @@ public class DewormingController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -59,7 +63,7 @@ public class DewormingController {
                 request.date(), request.lastDeworming(), request.type(),
                 request.product(), request.dosage(), request.nextControl(),
                 request.observations(), request.animalId(), request.consultationId(),
-                request.companyId())));
+                authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -85,7 +89,7 @@ public class DewormingController {
                 id, request.date(), request.lastDeworming(), request.type(),
                 request.product(), request.dosage(), request.nextControl(),
                 request.observations(), request.animalId(), request.consultationId(),
-                request.companyId())));
+                authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")

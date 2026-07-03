@@ -1,5 +1,6 @@
 package com.vetsoftware.app.spa.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.spa.application.command.ChangeSpaStatusCommand;
 import com.vetsoftware.app.spa.application.command.CreateSpaCommand;
 import com.vetsoftware.app.spa.application.command.UpdateSpaCommand;
@@ -38,6 +39,7 @@ public class SpaController {
     private final DeleteSpaUseCase deleteUseCase;
     private final ReactivateSpaUseCase reactivateUseCase;
     private final ChangeSpaStatusUseCase changeStatusUseCase;
+    private final Authz authz;
 
     public SpaController(CreateSpaUseCase createUseCase,
                          UpdateSpaUseCase updateUseCase,
@@ -46,7 +48,8 @@ public class SpaController {
                          ListSpasByAnimalUseCase listByAnimalUseCase,
                          DeleteSpaUseCase deleteUseCase,
                          ReactivateSpaUseCase reactivateUseCase,
-                         ChangeSpaStatusUseCase changeStatusUseCase) {
+                         ChangeSpaStatusUseCase changeStatusUseCase,
+                         Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -55,6 +58,7 @@ public class SpaController {
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -64,7 +68,7 @@ public class SpaController {
             new CreateSpaCommand(
                 request.date(), request.spaTypeId(), request.reason(),
                 request.details(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -89,7 +93,7 @@ public class SpaController {
             new UpdateSpaCommand(
                 id, request.date(), request.spaTypeId(), request.reason(),
                 request.details(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")

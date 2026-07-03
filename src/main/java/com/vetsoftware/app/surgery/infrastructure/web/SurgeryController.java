@@ -1,5 +1,6 @@
 package com.vetsoftware.app.surgery.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.surgery.application.command.ChangeSurgeryStatusCommand;
 import com.vetsoftware.app.surgery.application.command.CreateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.command.UpdateSurgeryCommand;
@@ -40,6 +41,7 @@ public class SurgeryController {
     private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
     private final DeleteSurgeryUseCase deleteUseCase;
     private final ReactivateSurgeryUseCase reactivateUseCase;
+    private final Authz authz;
 
     public SurgeryController(CreateSurgeryUseCase createUseCase,
                              UpdateSurgeryUseCase updateUseCase,
@@ -48,7 +50,8 @@ public class SurgeryController {
                              ListSurgeriesUseCase listUseCase,
                              ListSurgeriesByAnimalUseCase listByAnimalUseCase,
                              DeleteSurgeryUseCase deleteUseCase,
-                             ReactivateSurgeryUseCase reactivateUseCase) {
+                             ReactivateSurgeryUseCase reactivateUseCase,
+                             Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -57,6 +60,7 @@ public class SurgeryController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -66,7 +70,7 @@ public class SurgeryController {
             new CreateSurgeryCommand(
                 request.date(), request.surgeryTypeId(), request.description(),
                 request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -91,7 +95,7 @@ public class SurgeryController {
             new UpdateSurgeryCommand(
                 id, request.date(), request.surgeryTypeId(), request.description(),
                 request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/status")

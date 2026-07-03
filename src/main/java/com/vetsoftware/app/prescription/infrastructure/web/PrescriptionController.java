@@ -1,5 +1,6 @@
 package com.vetsoftware.app.prescription.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.prescription.application.command.CreatePrescriptionCommand;
 import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
 import com.vetsoftware.app.prescription.application.dto.AnimalSummaryDto;
@@ -33,19 +34,22 @@ public class PrescriptionController {
     private final ListPrescriptionsUseCase listUseCase;
     private final DeletePrescriptionUseCase deleteUseCase;
     private final ReactivatePrescriptionUseCase reactivateUseCase;
+    private final Authz authz;
 
     public PrescriptionController(CreatePrescriptionUseCase createUseCase,
                                   UpdatePrescriptionUseCase updateUseCase,
                                   FindPrescriptionUseCase findUseCase,
                                   ListPrescriptionsUseCase listUseCase,
                                   DeletePrescriptionUseCase deleteUseCase,
-                                  ReactivatePrescriptionUseCase reactivateUseCase) {
+                                  ReactivatePrescriptionUseCase reactivateUseCase,
+                                  Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -54,7 +58,7 @@ public class PrescriptionController {
         return toResponse(createUseCase.execute(
             new CreatePrescriptionCommand(
                 request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -73,7 +77,7 @@ public class PrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdatePrescriptionCommand(
                 id, request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")

@@ -15,6 +15,5 @@ public record CreateDewormingRequest(
         LocalDate nextControl,
         @Size(max = 2000) String observations,
         @NotNull Long animalId,
-        Long consultationId,
-        @NotNull Long companyId
+        Long consultationId
 ) {}

@@ -84,7 +84,7 @@ public class LaboratoryTestController {
                 request.date(), request.testTypeId(), request.quantity(),
                 request.diagnosis(), request.status(), request.prioridad(),
                 request.animalId(), request.consultationId(),
-                request.companyId(), request.processedById(), request.processedDate())));
+                authz.currentCompanyId(), request.processedById(), request.processedDate())));
     }
 
     @GetMapping
@@ -131,7 +131,7 @@ public class LaboratoryTestController {
             new UpdateLaboratoryTestCommand(
                 id, request.date(), request.testTypeId(), request.quantity(),
                 request.diagnosis(), request.prioridad(), request.animalId(), request.consultationId(),
-                request.companyId(), request.processedById(), request.processedDate())));
+                authz.currentCompanyId(), request.processedById(), request.processedDate())));
     }
 
     @PatchMapping("/{id}/status")

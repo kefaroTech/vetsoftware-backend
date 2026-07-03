@@ -1,5 +1,6 @@
 package com.vetsoftware.app.hospitalization.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.hospitalization.application.command.CreateHospitalizationCommand;
 import com.vetsoftware.app.hospitalization.application.command.UpdateHospitalizationCommand;
 import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
@@ -34,6 +35,7 @@ public class HospitalizationController {
     private final ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteHospitalizationUseCase deleteUseCase;
     private final ReactivateHospitalizationUseCase reactivateUseCase;
+    private final Authz authz;
 
     public HospitalizationController(CreateHospitalizationUseCase createUseCase,
                                      UpdateHospitalizationUseCase updateUseCase,
@@ -41,7 +43,8 @@ public class HospitalizationController {
                                      ListHospitalizationsUseCase listUseCase,
                                      ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
                                      DeleteHospitalizationUseCase deleteUseCase,
-                                     ReactivateHospitalizationUseCase reactivateUseCase) {
+                                     ReactivateHospitalizationUseCase reactivateUseCase,
+                                     Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,6 +52,7 @@ public class HospitalizationController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -59,7 +63,7 @@ public class HospitalizationController {
                 request.date(), request.startDate(), request.endDate(),
                 request.type(), request.reasonLeaving(),
                 request.reason(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId(),
+                request.animalId(), request.consultationId(), authz.currentCompanyId(),
                 request.weight(), request.weightUnit())));
     }
 
@@ -86,7 +90,7 @@ public class HospitalizationController {
                 id, request.date(), request.startDate(), request.endDate(),
                 request.type(), request.reasonLeaving(),
                 request.reason(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")

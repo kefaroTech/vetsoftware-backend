@@ -1,5 +1,6 @@
 package com.vetsoftware.app.daycare.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.daycare.application.command.CreateDayCareCommand;
 import com.vetsoftware.app.daycare.application.command.UpdateDayCareCommand;
 import com.vetsoftware.app.daycare.application.dto.AnimalSummaryDto;
@@ -32,6 +33,7 @@ public class DayCareController {
     private final ListDayCaresByAnimalUseCase listByAnimalUseCase;
     private final DeleteDayCareUseCase deleteUseCase;
     private final ReactivateDayCareUseCase reactivateUseCase;
+    private final Authz authz;
 
     public DayCareController(CreateDayCareUseCase createUseCase,
                              UpdateDayCareUseCase updateUseCase,
@@ -39,7 +41,8 @@ public class DayCareController {
                              ListDayCaresUseCase listUseCase,
                              ListDayCaresByAnimalUseCase listByAnimalUseCase,
                              DeleteDayCareUseCase deleteUseCase,
-                             ReactivateDayCareUseCase reactivateUseCase) {
+                             ReactivateDayCareUseCase reactivateUseCase,
+                             Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,6 +50,7 @@ public class DayCareController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -56,7 +60,7 @@ public class DayCareController {
             new CreateDayCareCommand(
                 request.date(), request.startDate(), request.endDate(),
                 request.type(), request.objects(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -81,7 +85,7 @@ public class DayCareController {
             new UpdateDayCareCommand(
                 id, request.date(), request.startDate(), request.endDate(),
                 request.type(), request.objects(), request.observations(),
-                request.animalId(), request.companyId())));
+                request.animalId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")

@@ -13,6 +13,5 @@ public record UpdateSurgeryRequest(
         @Size(max = 2000) String observations,
         @Size(max = 2000) String complications,
         @NotNull Long animalId,
-        Long consultationId,
-        @NotNull Long companyId
+        Long consultationId
 ) {}

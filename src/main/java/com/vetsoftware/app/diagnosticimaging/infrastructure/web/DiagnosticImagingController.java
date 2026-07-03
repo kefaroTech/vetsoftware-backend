@@ -1,5 +1,6 @@
 package com.vetsoftware.app.diagnosticimaging.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.diagnosticimaging.application.command.ChangeDiagnosticImagingStatusCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.CreateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.UpdateDiagnosticImagingCommand;
@@ -40,6 +41,7 @@ public class DiagnosticImagingController {
     private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDiagnosticImagingUseCase deleteUseCase;
     private final ReactivateDiagnosticImagingUseCase reactivateUseCase;
+    private final Authz authz;
 
     public DiagnosticImagingController(CreateDiagnosticImagingUseCase createUseCase,
                                        UpdateDiagnosticImagingUseCase updateUseCase,
@@ -48,7 +50,8 @@ public class DiagnosticImagingController {
                                        ListDiagnosticImagingsUseCase listUseCase,
                                        ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
                                        DeleteDiagnosticImagingUseCase deleteUseCase,
-                                       ReactivateDiagnosticImagingUseCase reactivateUseCase) {
+                                       ReactivateDiagnosticImagingUseCase reactivateUseCase,
+                                       Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -57,6 +60,7 @@ public class DiagnosticImagingController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -66,7 +70,7 @@ public class DiagnosticImagingController {
             new CreateDiagnosticImagingCommand(
                 request.date(), request.diagnosticImagingTypeId(), request.clinicalSigns(),
                 request.studyType(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -91,7 +95,7 @@ public class DiagnosticImagingController {
             new UpdateDiagnosticImagingCommand(
                 id, request.date(), request.diagnosticImagingTypeId(), request.clinicalSigns(),
                 request.studyType(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/status")

@@ -16,6 +16,5 @@ public record UpdateHospitalizationRequest(
         @NotBlank @Size(max = 500) String reason,
         @Size(max = 2000) String observations,
         @NotNull Long animalId,
-        Long consultationId,
-        @NotNull Long companyId
+        Long consultationId
 ) {}

@@ -56,7 +56,7 @@ public class VaccinationTypeController {
     public VaccinationTypeResponse create(@Valid @RequestBody CreateVaccinationTypeRequest request) {
         return toResponse(createUseCase.execute(
                 new CreateVaccinationTypeCommand(request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -80,7 +80,7 @@ public class VaccinationTypeController {
                                           @Valid @RequestBody UpdateVaccinationTypeRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateVaccinationTypeCommand(id, request.name(), request.description(),
-                        request.companyId(), request.general())));
+                        authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")

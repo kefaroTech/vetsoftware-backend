@@ -16,7 +16,6 @@ public record CreateLaboratoryTestRequest(
         String prioridad,
         @NotNull Long animalId,
         Long consultationId,
-        @NotNull Long companyId,
         Long processedById,
         LocalDateTime processedDate
 ) {}

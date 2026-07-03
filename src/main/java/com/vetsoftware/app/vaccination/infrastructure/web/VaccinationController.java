@@ -1,5 +1,6 @@
 package com.vetsoftware.app.vaccination.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.vaccination.application.command.CreateVaccinationCommand;
 import com.vetsoftware.app.vaccination.application.command.UpdateVaccinationCommand;
 import com.vetsoftware.app.vaccination.application.dto.AnimalSummaryDto;
@@ -36,6 +37,7 @@ public class VaccinationController {
     private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteVaccinationUseCase deleteUseCase;
     private final ReactivateVaccinationUseCase reactivateUseCase;
+    private final Authz authz;
 
     public VaccinationController(CreateVaccinationUseCase createUseCase,
                                  UpdateVaccinationUseCase updateUseCase,
@@ -43,7 +45,8 @@ public class VaccinationController {
                                  ListVaccinationsUseCase listUseCase,
                                  ListVaccinationsByAnimalUseCase listByAnimalUseCase,
                                  DeleteVaccinationUseCase deleteUseCase,
-                                 ReactivateVaccinationUseCase reactivateUseCase) {
+                                 ReactivateVaccinationUseCase reactivateUseCase,
+                                 Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -51,6 +54,7 @@ public class VaccinationController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -60,7 +64,7 @@ public class VaccinationController {
             new CreateVaccinationCommand(
                 request.date(), request.vaccinationTypeId(), request.lot(),
                 request.notes(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -85,7 +89,7 @@ public class VaccinationController {
             new UpdateVaccinationCommand(
                 id, request.date(), request.vaccinationTypeId(), request.lot(),
                 request.notes(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), request.companyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
