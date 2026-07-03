@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 
 public record UpdateVaccinationTypeRequest(
         @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 500) String description,
+        @Size(max = 500) String description,
         Long companyId,
         boolean general
 ) {}

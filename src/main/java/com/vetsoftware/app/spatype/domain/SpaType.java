@@ -35,8 +35,7 @@ public class SpaType {
     private static void validate(String name, String description) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (description == null || description.isBlank()) throw new IllegalArgumentException("description is required");
-        if (description.length() > 500) throw new IllegalArgumentException("description must be 500 chars or less");
+        if (description != null && description.length() > 500) throw new IllegalArgumentException("description must be 500 chars or less");
     }
 
     public Long getId() { return id; }
