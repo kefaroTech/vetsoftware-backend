@@ -49,7 +49,7 @@ public class MedicamentPrescriptionController {
         return toResponse(createUseCase.execute(
             new CreateMedicamentPrescriptionCommand(
                 request.name(), request.presentation(), request.quantity(),
-                request.posology(), request.prescriptionId())));
+                request.posology(), request.observation(), request.prescriptionId())));
     }
 
     @GetMapping
@@ -68,7 +68,7 @@ public class MedicamentPrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdateMedicamentPrescriptionCommand(
                 id, request.name(), request.presentation(), request.quantity(),
-                request.posology(), request.prescriptionId())));
+                request.posology(), request.observation(), request.prescriptionId())));
     }
 
     @DeleteMapping("/{id}")
@@ -86,6 +86,7 @@ public class MedicamentPrescriptionController {
         PrescriptionSummaryDto p = dto.prescription();
         return new MedicamentPrescriptionResponse(
             dto.id(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
+            dto.observation(),
             new PrescriptionSummary(p.id(), p.date()),
             dto.createdDate(),
             dto.enabled());

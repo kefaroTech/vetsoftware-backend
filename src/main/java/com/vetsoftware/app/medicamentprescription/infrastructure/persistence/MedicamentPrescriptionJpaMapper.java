@@ -16,6 +16,7 @@ public class MedicamentPrescriptionJpaMapper {
         entity.setPresentation(medicament.getPresentation());
         entity.setQuantity(medicament.getQuantity());
         entity.setPosology(medicament.getPosology());
+        entity.setObservation(medicament.getObservation());
         entity.setPrescription(prescription);
         entity.setCreatedDate(medicament.getCreatedDate());
         entity.setEnabled(medicament.isEnabled());
@@ -31,7 +32,7 @@ public class MedicamentPrescriptionJpaMapper {
                                            PrescriptionRef prescriptionRef) {
         return new MedicamentPrescription(
             entity.getId(), entity.getName(), entity.getPresentation(),
-            entity.getQuantity(), entity.getPosology(),
+            entity.getQuantity(), entity.getPosology(), entity.getObservation(),
             prescriptionRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

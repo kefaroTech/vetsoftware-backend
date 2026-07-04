@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El campo antes llamado "diagnóstico presuntivo" pasa a ser "Observaciones" y es
+         opcional: la orientación diagnóstica ya vive en la consulta. La columna se mantiene
+         (misma semántica de texto libre) pero deja de exigirse. -->
+    <changeSet id="172_alter_laboratory_tests_diagnosis_nullable" author="orlando">
+        <dropNotNullConstraint tableName="laboratory_tests" columnName="diagnosis" columnDataType="VARCHAR(2000)"/>
+    </changeSet>
+
+</databaseChangeLog>

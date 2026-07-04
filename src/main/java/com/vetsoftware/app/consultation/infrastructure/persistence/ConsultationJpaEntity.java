@@ -32,12 +32,6 @@ public class ConsultationJpaEntity {
     @Column(length = 2000)
     private String diagnosis;
 
-    @Column(name = "therapeutic_plan", length = 2000)
-    private String therapeuticPlan;
-
-    @Column(name = "diagnosis_plan", length = 2000)
-    private String diagnosisPlan;
-
     @Column(name = "prognosis", length = 500)
     private String prognosis;
 
@@ -101,10 +95,6 @@ public class ConsultationJpaEntity {
     public void setAnamnesis(String anamnesis) { this.anamnesis = anamnesis; }
     public String getDiagnosis() { return diagnosis; }
     public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
-    public String getTherapeuticPlan() { return therapeuticPlan; }
-    public void setTherapeuticPlan(String therapeuticPlan) { this.therapeuticPlan = therapeuticPlan; }
-    public String getDiagnosisPlan() { return diagnosisPlan; }
-    public void setDiagnosisPlan(String diagnosisPlan) { this.diagnosisPlan = diagnosisPlan; }
     public String getPrognosis() { return prognosis; }
     public void setPrognosis(String prognosis) { this.prognosis = prognosis; }
     public BigDecimal getTemperature() { return temperature; }

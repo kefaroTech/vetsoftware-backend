@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El diagnóstico de la receta es el mismo de la consulta a la que pertenece (una receta
+         siempre tiene consultation_id). Se deja de exigir en la receta y se toma de la consulta,
+         por lo que la columna pasa a ser nullable. -->
+    <changeSet id="169_alter_prescriptions_diagnosis_nullable" author="orlando">
+        <dropNotNullConstraint tableName="prescriptions" columnName="diagnosis" columnDataType="VARCHAR(2000)"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El plan diagnóstico y terapéutico deja de capturarse como texto libre en la consulta:
+         las acciones rápidas (laboratorio/imagen = plan diagnóstico; receta/procedimientos =
+         plan terapéutico) son ahora el origen de verdad. Se eliminan las columnas. -->
+    <changeSet id="171_drop_consultation_plan_columns" author="orlando">
+        <dropColumn tableName="consultations">
+            <column name="diagnosis_plan"/>
+            <column name="therapeutic_plan"/>
+        </dropColumn>
+    </changeSet>
+
+</databaseChangeLog>

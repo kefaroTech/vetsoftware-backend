@@ -56,8 +56,7 @@ public class ConsultationController {
         return toResponse(createUseCase.execute(
             new CreateConsultationCommand(
                 request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.prognosis(), request.nextControl(), request.animalId(),
+                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
                 authz.currentCompanyId(), request.weight(), request.weightUnit(),
                 request.temperature(), request.heartRate(), request.respiratoryRate(),
                 request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
@@ -81,8 +80,7 @@ public class ConsultationController {
         return toResponse(updateUseCase.execute(
             new UpdateConsultationCommand(
                 id, request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.therapeuticPlan(), request.diagnosisPlan(),
-                request.prognosis(), request.nextControl(), request.animalId(),
+                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
                 authz.currentCompanyId(),
                 request.temperature(), request.heartRate(), request.respiratoryRate(),
                 request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
@@ -108,8 +106,7 @@ public class ConsultationController {
         return new ConsultationResponse(
             dto.id(), dto.date(),
             new ConsultationTypeSummary(ct.id(), ct.name()),
-            dto.anamnesis(), dto.diagnosis(), dto.therapeuticPlan(), dto.diagnosisPlan(),
-            dto.prognosis(), dto.nextControl(),
+            dto.anamnesis(), dto.diagnosis(), dto.prognosis(), dto.nextControl(),
             new AnimalSummary(a.id(), a.name(), a.code()),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             dto.createdDate(),

@@ -27,6 +27,9 @@ public class MedicamentPrescriptionJpaEntity {
     @Column(nullable = false, length = 1000)
     private String posology;
 
+    @Column(name = "observation", length = 1000)
+    private String observation;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prescription_id", nullable = false)
     private PrescriptionJpaEntity prescription;
@@ -49,6 +52,8 @@ public class MedicamentPrescriptionJpaEntity {
     public void setQuantity(Double quantity) { this.quantity = quantity; }
     public String getPosology() { return posology; }
     public void setPosology(String posology) { this.posology = posology; }
+    public String getObservation() { return observation; }
+    public void setObservation(String observation) { this.observation = observation; }
     public PrescriptionJpaEntity getPrescription() { return prescription; }
     public void setPrescription(PrescriptionJpaEntity prescription) { this.prescription = prescription; }
     public LocalDateTime getCreatedDate() { return createdDate; }

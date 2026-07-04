@@ -5,5 +5,6 @@ public record CreateMedicamentPrescriptionCommand(
         String presentation,
         Double quantity,
         String posology,
+        String observation,
         Long prescriptionId
 ) {}

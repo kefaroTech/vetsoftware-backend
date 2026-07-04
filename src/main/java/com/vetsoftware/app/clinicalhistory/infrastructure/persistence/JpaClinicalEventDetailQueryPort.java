@@ -121,8 +121,6 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                     add(f, "Hallazgos al examen", e.getExamFindings());
                     add(f, "Diagnóstico", e.getDiagnosis());
                     add(f, "Pronóstico", e.getPrognosis());
-                    add(f, "Plan diagnóstico", e.getDiagnosisPlan());
-                    add(f, "Plan terapéutico", e.getTherapeuticPlan());
                     add(f, "Próximo control", date(e.getNextControl()));
                     return ClinicalEventDetail.of(e.getConsultationType().getName(), f);
                 });
@@ -252,10 +250,11 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                         nz(m.getName()),
                         nz(m.getPresentation()),
                         formatDouble(m.getQuantity()),
-                        nz(m.getPosology())))
+                        nz(m.getPosology()),
+                        nz(m.getObservation())))
                 .toList();
         return new DetailTable("Medicamentos",
-                List.of("Medicamento", "Presentación", "Cantidad", "Posología"), rows);
+                List.of("Medicamento", "Presentación", "Cantidad", "Posología", "Observación"), rows);
     }
 
     private DetailTable medicationTable(Long hospitalizationId) {

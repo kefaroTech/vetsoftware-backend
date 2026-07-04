@@ -6,5 +6,6 @@ public record UpdateMedicamentPrescriptionCommand(
         String presentation,
         Double quantity,
         String posology,
+        String observation,
         Long prescriptionId
 ) {}

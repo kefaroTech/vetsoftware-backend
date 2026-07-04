@@ -8,6 +8,7 @@ public record MedicamentPrescriptionResponse(
         String presentation,
         Double quantity,
         String posology,
+        String observation,
         PrescriptionSummary prescription,
         LocalDateTime createdDate,
         boolean enabled

@@ -29,7 +29,7 @@ public class CreateMedicamentPrescriptionService implements CreateMedicamentPres
 
         MedicamentPrescription medicament = MedicamentPrescription.create(
             command.name(), command.presentation(), command.quantity(),
-            command.posology(), prescription);
+            command.posology(), command.observation(), prescription);
         return MedicamentPrescriptionDto.from(repository.save(medicament));
     }
 }

@@ -55,8 +55,7 @@ public class CreateConsultationService implements CreateConsultationUseCase {
             command.examFindings());
         Consultation consultation = Consultation.create(
             command.date(), consultationType, command.anamnesis(), command.diagnosis(),
-            command.therapeuticPlan(), command.diagnosisPlan(), command.prognosis(), physicalExam,
-            command.nextControl(), animal, company);
+            command.prognosis(), physicalExam, command.nextControl(), animal, company);
         Consultation saved = repository.save(consultation);
 
         // Peso opcional capturado en la consulta → punto de la serie temporal del animal (misma

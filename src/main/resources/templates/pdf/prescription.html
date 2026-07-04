@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'Fórmula — ' + ${s.patientName}">Fórmula médica veterinaria</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 15mm 22mm 15mm;
+      @bottom-center {
+        content: "Fórmula médica veterinaria · Documento confidencial · Consérvese mínimo 5 años (Consejo Profesional MVZ)";
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 7pt;
+        color: #9a8e80;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page) "/" counter(pages);
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 8pt;
+        color: #6b6363;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: "Helvetica", "Arial", sans-serif;
+      font-size: 10.5pt; color: #2a2424; line-height: 1.45;
+    }
+    /* La firma queda SIEMPRE al final de la hoja: el contenido crece y la empuja al fondo. */
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .content { flex: 1 0 auto; }
+
+    .header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      border-bottom: 2px solid #5c2d8c; padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .brand {
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: 21pt; font-weight: 400; color: #5c2d8c; letter-spacing: -0.01em;
+    }
+    .brand-sub { font-size: 9pt; color: #6b6363; margin-top: 2px; }
+    .header-right { text-align: right; font-size: 9.5pt; color: #6b6363; }
+    .header-right .doc-title {
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: 13pt; color: #2a2424; margin-bottom: 2px;
+    }
+    .header-right strong { color: #2a2424; }
+
+    .cards { display: flex; gap: 12px; margin-bottom: 12px; }
+    .card {
+      flex: 1; background: #f8f4ee; border: 1px solid #e6dccf;
+      border-radius: 8px; padding: 11px 15px; page-break-inside: avoid;
+    }
+    .card-title {
+      font-size: 8.5pt; color: #5c2d8c; letter-spacing: 0.08em;
+      text-transform: uppercase; font-weight: 600; margin-bottom: 7px;
+    }
+    .kv-grid { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .kv { min-width: 110px; }
+    .kv-label {
+      font-size: 8pt; color: #6b6363; letter-spacing: 0.03em;
+      text-transform: uppercase; margin-bottom: 1px;
+    }
+    .kv-value { font-size: 10pt; color: #2a2424; font-weight: 500; }
+
+    .dx {
+      font-size: 10.5pt; padding: 8px 12px; background: #f3eee6;
+      border-radius: 6px; margin-bottom: 14px;
+    }
+    .dx .lbl { color: #6b6363; font-weight: 600; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.04em; }
+
+    .rp {
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: 15pt; color: #5c2d8c; margin: 0 0 6px 0;
+    }
+    table.tx { width: 100%; border-collapse: collapse; font-size: 10pt; }
+    table.tx th {
+      text-align: left; background: #efe9f5; color: #4a2470; font-weight: 600;
+      padding: 6px 9px; border: 1px solid #ddd0ea; font-size: 8pt;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    table.tx td { padding: 7px 9px; border: 1px solid #eee3d6; vertical-align: top; }
+    .tx-idx { width: 26px; text-align: center; color: #9a8e80; }
+    .tx-qty { width: 62px; text-align: center; white-space: nowrap; }
+    .med-name { font-weight: 600; color: #2a2424; }
+    .med-pres { color: #6b6363; font-size: 9pt; }
+    .med-obs { color: #6b6363; font-size: 9pt; margin-top: 2px; }
+    .med-obs .lbl { font-weight: 600; }
+
+    .obs { margin-top: 12px; font-size: 10pt; }
+    .obs .lbl {
+      color: #6b6363; font-weight: 600; text-transform: uppercase;
+      font-size: 8.5pt; letter-spacing: 0.04em; display: block; margin-bottom: 2px;
+    }
+    .obs .val { white-space: pre-line; }
+
+    .signature { flex: 0 0 auto; margin-top: 40px; padding-top: 8px; page-break-inside: avoid; }
+    .sign-line {
+      width: 300px; border-top: 1px solid #2a2424; padding-top: 5px;
+    }
+    .sign-role { font-size: 9.5pt; color: #6b6363; }
+    .sign-name { font-size: 11pt; font-weight: 600; color: #2a2424; margin-top: 2px; }
+    .sign-fields { font-size: 9pt; color: #6b6363; margin-top: 6px; }
+    .sign-fields span { display: inline-block; min-width: 150px; }
+  </style>
+</head>
+<body>
+  <div class="content">
+
+  <div class="header">
+    <div>
+      <div class="brand" th:text="${s.clinicName}">Clínica Veterinaria</div>
+      <div class="brand-sub" th:if="${s.clinicIdentifier != null and !s.clinicIdentifier.isBlank()}"
+           th:text="'NIT ' + ${s.clinicIdentifier}">NIT</div>
+      <div class="brand-sub" th:if="${s.clinicAddress != null and !s.clinicAddress.isBlank()}"
+           th:text="${s.clinicAddress + (s.clinicCity != null and !s.clinicCity.isBlank() ? ' · ' + s.clinicCity : '')}">Dirección</div>
+      <div class="brand-sub" th:if="${s.clinicPhone != null and !s.clinicPhone.isBlank()}"
+           th:text="'Tel. ' + ${s.clinicPhone}">Tel.</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Fórmula médica veterinaria</div>
+      <div th:text="'Fecha: ' + ${#temporals.format(date, 'dd MMM yyyy')}">Fecha</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-title">Propietario</div>
+      <div class="kv-grid">
+        <div class="kv" style="min-width:100%">
+          <div class="kv-label">Nombre</div>
+          <div class="kv-value" th:text="${s.ownerName}">—</div>
+        </div>
+        <div class="kv" th:if="${s.ownerDocument != null and !s.ownerDocument.isBlank()}">
+          <div class="kv-label">Documento</div>
+          <div class="kv-value" th:text="${s.ownerDocument}">—</div>
+        </div>
+        <div class="kv" th:if="${s.ownerPhone != null and !s.ownerPhone.isBlank()}">
+          <div class="kv-label">Celular</div>
+          <div class="kv-value" th:text="${s.ownerPhone}">—</div>
+        </div>
+        <div class="kv" th:if="${s.ownerEmail != null and !s.ownerEmail.isBlank()}">
+          <div class="kv-label">Correo</div>
+          <div class="kv-value" th:text="${s.ownerEmail}">—</div>
+        </div>
+        <div class="kv" th:if="${s.ownerAddress != null and !s.ownerAddress.isBlank()}" style="min-width:100%">
+          <div class="kv-label">Dirección</div>
+          <div class="kv-value" th:text="${s.ownerAddress}">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Paciente</div>
+      <div class="kv-grid">
+        <div class="kv">
+          <div class="kv-label">Nombre</div>
+          <div class="kv-value" th:text="${s.patientName}">—</div>
+        </div>
+        <div class="kv">
+          <div class="kv-label">Especie</div>
+          <div class="kv-value" th:text="${s.patientSpecies}">—</div>
+        </div>
+        <div class="kv">
+          <div class="kv-label">Raza</div>
+          <div class="kv-value" th:text="${s.patientBreed}">—</div>
+        </div>
+        <div class="kv" th:if="${s.patientSex != null}">
+          <div class="kv-label">Sexo</div>
+          <div class="kv-value" th:text="${s.patientSex}">—</div>
+        </div>
+        <div class="kv" th:if="${s.patientAge != null}">
+          <div class="kv-label">Edad</div>
+          <div class="kv-value" th:text="${s.patientAge}">—</div>
+        </div>
+        <div class="kv" th:if="${s.patientWeight != null}">
+          <div class="kv-label">Peso</div>
+          <div class="kv-value" th:text="${s.patientWeight}">—</div>
+        </div>
+        <div class="kv" th:if="${s.patientColor != null and !s.patientColor.isBlank()}">
+          <div class="kv-label">Color</div>
+          <div class="kv-value" th:text="${s.patientColor}">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dx" th:if="${diagnosis != null and !diagnosis.isBlank()}">
+    <span class="lbl">Diagnóstico: </span><span th:text="${diagnosis}">—</span>
+  </div>
+
+  <h2 class="rp">Tratamiento</h2>
+  <table class="tx">
+    <thead>
+      <tr>
+        <th class="tx-idx">#</th>
+        <th>Medicamento</th>
+        <th class="tx-qty">Cantidad</th>
+        <th>Indicaciones (posología)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${!hasMedicaments}">
+        <td colspan="4" style="text-align:center; color:#9a8e80; font-style:italic;">
+          Sin medicamentos registrados en esta fórmula.
+        </td>
+      </tr>
+      <tr th:each="m : ${medicaments}">
+        <td class="tx-idx" th:text="${m.index}">1</td>
+        <td>
+          <div class="med-name" th:text="${m.name}">Medicamento</div>
+          <div class="med-pres" th:if="${m.presentation != null and !m.presentation.isBlank()}"
+               th:text="${m.presentation}">Presentación</div>
+        </td>
+        <td class="tx-qty" th:text="${m.quantity}">1</td>
+        <td>
+          <div th:text="${m.posology}">Posología</div>
+          <div class="med-obs" th:if="${m.observation != null and !m.observation.isBlank()}">
+            <span class="lbl">Obs.: </span><span th:text="${m.observation}">observación</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="obs" th:if="${observations != null and !observations.isBlank()}">
+    <span class="lbl">Observaciones / recomendaciones</span>
+    <span class="val" th:text="${observations}">—</span>
+  </div>
+  </div>
+
+  <div class="signature">
+    <div class="sign-line">
+      <div class="sign-role">Médico(a) Veterinario(a) responsable</div>
+      <div class="sign-name" th:if="${prescriberName != null and !prescriberName.isBlank()}"
+           th:text="${prescriberName}">Nombre del profesional</div>
+      <div class="sign-fields">
+        <span>C.C. __________________</span>
+        <span>Tarjeta / Matrícula Profesional __________________</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

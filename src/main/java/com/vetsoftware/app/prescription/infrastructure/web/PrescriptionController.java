@@ -9,6 +9,7 @@ import com.vetsoftware.app.prescription.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
+import com.vetsoftware.app.prescription.application.port.in.ExportPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.FindPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ListPrescriptionsUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ReactivatePrescriptionUseCase;
@@ -22,7 +23,10 @@ import com.vetsoftware.app.prescription.infrastructure.web.response.MedicamentSu
 import com.vetsoftware.app.prescription.infrastructure.web.response.PrescriptionResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -34,6 +38,7 @@ public class PrescriptionController {
     private final ListPrescriptionsUseCase listUseCase;
     private final DeletePrescriptionUseCase deleteUseCase;
     private final ReactivatePrescriptionUseCase reactivateUseCase;
+    private final ExportPrescriptionUseCase exportUseCase;
     private final Authz authz;
 
     public PrescriptionController(CreatePrescriptionUseCase createUseCase,
@@ -42,6 +47,7 @@ public class PrescriptionController {
                                   ListPrescriptionsUseCase listUseCase,
                                   DeletePrescriptionUseCase deleteUseCase,
                                   ReactivatePrescriptionUseCase reactivateUseCase,
+                                  ExportPrescriptionUseCase exportUseCase,
                                   Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -49,6 +55,7 @@ public class PrescriptionController {
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.exportUseCase = exportUseCase;
         this.authz = authz;
     }
 
@@ -91,13 +98,24 @@ public class PrescriptionController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
+    @GetMapping("/{id}/export.pdf")
+    public ResponseEntity<byte[]> export(@PathVariable Long id) {
+        byte[] pdf = exportUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull());
+        String filename = "receta-" + id + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename + "\"")
+                .body(pdf);
+    }
+
     private PrescriptionResponse toResponse(PrescriptionDto dto) {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         List<MedicamentSummary> medicaments = dto.medicaments().stream()
             .map(m -> new MedicamentSummary(
-                m.id(), m.name(), m.presentation(), m.quantity(), m.posology()))
+                m.id(), m.name(), m.presentation(), m.quantity(), m.posology(), m.observation()))
             .toList();
         return new PrescriptionResponse(
             dto.id(), dto.date(), dto.diagnosis(), dto.observations(),

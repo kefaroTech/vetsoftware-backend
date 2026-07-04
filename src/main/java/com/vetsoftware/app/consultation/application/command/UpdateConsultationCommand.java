@@ -9,8 +9,6 @@ public record UpdateConsultationCommand(
         Long consultationTypeId,
         String anamnesis,
         String diagnosis,
-        String therapeuticPlan,
-        String diagnosisPlan,
         String prognosis,
         LocalDate nextControl,
         Long animalId,

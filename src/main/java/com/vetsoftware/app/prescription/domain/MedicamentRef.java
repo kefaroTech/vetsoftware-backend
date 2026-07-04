@@ -5,7 +5,8 @@ public record MedicamentRef(
         String name,
         String presentation,
         Double quantity,
-        String posology
+        String posology,
+        String observation
 ) {
     public MedicamentRef {
         if (id == null) throw new IllegalArgumentException("medicament id is required");

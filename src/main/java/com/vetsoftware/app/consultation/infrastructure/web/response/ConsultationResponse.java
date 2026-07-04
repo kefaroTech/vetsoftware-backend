@@ -10,8 +10,6 @@ public record ConsultationResponse(
         ConsultationTypeSummary consultationType,
         String anamnesis,
         String diagnosis,
-        String therapeuticPlan,
-        String diagnosisPlan,
         String prognosis,
         LocalDate nextControl,
         AnimalSummary animal,

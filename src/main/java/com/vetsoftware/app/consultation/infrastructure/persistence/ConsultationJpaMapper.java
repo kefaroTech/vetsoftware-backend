@@ -23,8 +23,6 @@ public class ConsultationJpaMapper {
         entity.setConsultationType(consultationType);
         entity.setAnamnesis(consultation.getAnamnesis());
         entity.setDiagnosis(consultation.getDiagnosis());
-        entity.setTherapeuticPlan(consultation.getTherapeuticPlan());
-        entity.setDiagnosisPlan(consultation.getDiagnosisPlan());
         entity.setPrognosis(consultation.getPrognosis());
         PhysicalExam exam = consultation.getPhysicalExam();
         entity.setTemperature(exam.temperature());
@@ -64,8 +62,8 @@ public class ConsultationJpaMapper {
             entity.getExamFindings());
         return new Consultation(
             entity.getId(), entity.getDate(), consultationTypeRef,
-            entity.getAnamnesis(), entity.getDiagnosis(), entity.getTherapeuticPlan(),
-            entity.getDiagnosisPlan(), entity.getPrognosis(), exam, entity.getNextControl(),
+            entity.getAnamnesis(), entity.getDiagnosis(), entity.getPrognosis(), exam,
+            entity.getNextControl(),
             animalRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

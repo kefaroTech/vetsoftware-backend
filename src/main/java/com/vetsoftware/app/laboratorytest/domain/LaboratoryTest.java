@@ -100,8 +100,7 @@ public class LaboratoryTest {
         if (testType == null) throw new IllegalArgumentException("testType is required");
         if (quantity == null) throw new IllegalArgumentException("quantity is required");
         if (quantity < 1) throw new IllegalArgumentException("quantity must be at least 1");
-        if (diagnosis == null || diagnosis.isBlank()) throw new IllegalArgumentException("diagnosis is required");
-        if (diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
+        if (diagnosis != null && diagnosis.length() > 2000) throw new IllegalArgumentException("diagnosis must be 2000 chars or less");
         if (status == null) throw new IllegalArgumentException("status is required");
         if (prioridad == null) throw new IllegalArgumentException("prioridad is required");
         if (animal == null) throw new IllegalArgumentException("animal is required");

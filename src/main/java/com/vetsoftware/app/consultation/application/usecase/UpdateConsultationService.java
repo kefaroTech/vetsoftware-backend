@@ -53,8 +53,7 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
             command.bodyConditionScore(), command.painScore(), command.attitude(),
             command.examFindings());
         consultation.update(command.date(), consultationType, command.anamnesis(), command.diagnosis(),
-            command.therapeuticPlan(), command.diagnosisPlan(), command.prognosis(), physicalExam,
-            command.nextControl(), animal, company);
+            command.prognosis(), physicalExam, command.nextControl(), animal, company);
         return ConsultationDto.from(repository.save(consultation));
     }
 }

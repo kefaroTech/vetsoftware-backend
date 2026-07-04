@@ -16,8 +16,6 @@ public record CreateConsultationRequest(
         @NotNull Long consultationTypeId,
         @NotBlank @Size(max = 2000) String anamnesis,
         @Size(max = 2000) String diagnosis,
-        @Size(max = 2000) String therapeuticPlan,
-        @Size(max = 2000) String diagnosisPlan,
         @Size(max = 500) String prognosis,
         LocalDate nextControl,
         @NotNull Long animalId,

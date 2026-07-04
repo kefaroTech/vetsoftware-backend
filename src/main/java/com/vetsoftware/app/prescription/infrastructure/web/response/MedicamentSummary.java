@@ -5,5 +5,6 @@ public record MedicamentSummary(
         String name,
         String presentation,
         Double quantity,
-        String posology
+        String posology,
+        String observation
 ) {}

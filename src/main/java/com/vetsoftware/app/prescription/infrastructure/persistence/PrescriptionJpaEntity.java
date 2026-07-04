@@ -21,7 +21,7 @@ public class PrescriptionJpaEntity {
     @Column(nullable = false)
     private LocalDate date;
 
-    @Column(nullable = false, length = 2000)
+    @Column(length = 2000)
     private String diagnosis;
 
     @Column(length = 2000)

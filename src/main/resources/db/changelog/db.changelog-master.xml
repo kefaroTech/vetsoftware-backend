@@ -172,5 +172,9 @@
     <include file="db/changelog/migrations/166_add_route_and_site_to_vaccinations.xml"/>
     <include file="db/changelog/migrations/167_create_problems.xml"/>
     <include file="db/changelog/migrations/168_create_animal_alerts.xml"/>
+    <include file="db/changelog/migrations/169_alter_prescriptions_diagnosis_nullable.xml"/>
+    <include file="db/changelog/migrations/170_add_observation_to_medicament_prescriptions.xml"/>
+    <include file="db/changelog/migrations/171_drop_consultation_plan_columns.xml"/>
+    <include file="db/changelog/migrations/172_alter_laboratory_tests_diagnosis_nullable.xml"/>
 
 </databaseChangeLog>

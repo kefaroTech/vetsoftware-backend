@@ -33,7 +33,7 @@ public class UpdateMedicamentPrescriptionService implements UpdateMedicamentPres
             .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()));
 
         medicament.update(command.name(), command.presentation(), command.quantity(),
-            command.posology(), prescription);
+            command.posology(), command.observation(), prescription);
         return MedicamentPrescriptionDto.from(repository.save(medicament));
     }
 }

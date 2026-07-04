@@ -22,7 +22,8 @@ public class JpaMedicamentQueryPort implements MedicamentQueryPort {
                         e.getName(),
                         e.getPresentation(),
                         e.getQuantity(),
-                        e.getPosology()))
+                        e.getPosology(),
+                        e.getObservation()))
                 .toList();
     }
 }

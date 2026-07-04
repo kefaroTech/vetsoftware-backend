@@ -9,6 +9,7 @@ public record MedicamentPrescriptionDto(
         String presentation,
         Double quantity,
         String posology,
+        String observation,
         PrescriptionSummaryDto prescription,
         LocalDateTime createdDate,
         boolean enabled
@@ -20,6 +21,7 @@ public record MedicamentPrescriptionDto(
             medicament.getPresentation(),
             medicament.getQuantity(),
             medicament.getPosology(),
+            medicament.getObservation(),
             PrescriptionSummaryDto.from(medicament.getPrescription()),
             medicament.getCreatedDate(),
             medicament.isEnabled()
