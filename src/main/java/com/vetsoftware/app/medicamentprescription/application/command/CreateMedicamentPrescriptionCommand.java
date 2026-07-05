@@ -1,7 +1,7 @@
 package com.vetsoftware.app.medicamentprescription.application.command;
 
 public record CreateMedicamentPrescriptionCommand(
-        String name,
+        Long medicamentId,
         String presentation,
         Double quantity,
         String posology,

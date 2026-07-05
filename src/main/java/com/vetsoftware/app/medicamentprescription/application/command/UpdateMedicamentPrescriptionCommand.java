@@ -2,7 +2,7 @@ package com.vetsoftware.app.medicamentprescription.application.command;
 
 public record UpdateMedicamentPrescriptionCommand(
         Long id,
-        String name,
+        Long medicamentId,
         String presentation,
         Double quantity,
         String posology,

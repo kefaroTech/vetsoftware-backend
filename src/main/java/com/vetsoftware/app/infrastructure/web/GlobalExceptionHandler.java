@@ -48,6 +48,8 @@ import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
+import com.vetsoftware.app.medicament.domain.MedicamentHasActiveChildrenException;
+import com.vetsoftware.app.medicament.domain.MedicamentNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
 import com.vetsoftware.app.membership.domain.MembershipHasActiveChildrenException;
 import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
@@ -198,7 +200,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             PrescriptionNotFoundException.class, DewormingNotFoundException.class,
             DayCareNotFoundException.class,
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
-            MedicamentPrescriptionNotFoundException.class,
+            MedicamentPrescriptionNotFoundException.class, MedicamentNotFoundException.class,
             SurgeryTypeNotFoundException.class, SurgeryNotFoundException.class,
             DiagnosticImagingTypeNotFoundException.class, DiagnosticImagingNotFoundException.class,
             TaxNotFoundException.class, ProductCategoryNotFoundException.class,
@@ -221,6 +223,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             VaccinationTypeHasActiveChildrenException.class,
             SurgeryTypeHasActiveChildrenException.class,
             LaboratoryTestTypeHasActiveChildrenException.class,
+            MedicamentHasActiveChildrenException.class,
             DiagnosticImagingTypeHasActiveChildrenException.class,
             SpaTypeHasActiveChildrenException.class,
             AnimalColorHasActiveChildrenException.class,

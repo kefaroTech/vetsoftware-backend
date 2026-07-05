@@ -176,5 +176,6 @@
     <include file="db/changelog/migrations/170_add_observation_to_medicament_prescriptions.xml"/>
     <include file="db/changelog/migrations/171_drop_consultation_plan_columns.xml"/>
     <include file="db/changelog/migrations/172_alter_laboratory_tests_diagnosis_nullable.xml"/>
+    <include file="db/changelog/migrations/173_create_medicaments.xml"/>
 
 </databaseChangeLog>

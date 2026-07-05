@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Catálogo de medicamentos. `general = true` (company_id NULL) = catálogo global compartido
+         entre empresas; `general = false` + company_id = medicamento propio de la empresa.
+         La línea recetada (medicament_prescriptions) pasa a referenciar el catálogo por FK. -->
+
+    <changeSet id="173a_create_medicaments" author="orlando">
+        <createTable tableName="medicaments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(200)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_medicaments_name"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="company_id" type="BIGINT">
+                <constraints foreignKeyName="fk_medicaments_company" references="companies(id)"/>
+            </column>
+            <column name="general" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Semilla del catálogo global (los 6 medicamentos que antes vivían hardcodeados en el front). -->
+    <changeSet id="173b_seed_global_medicaments" author="orlando">
+        <insert tableName="medicaments">
+            <column name="name" value="Amoxicilina + Clavulánico"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <insert tableName="medicaments">
+            <column name="name" value="Meloxicam"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <insert tableName="medicaments">
+            <column name="name" value="Metronidazol"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <insert tableName="medicaments">
+            <column name="name" value="Omeprazol"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <insert tableName="medicaments">
+            <column name="name" value="Sucralfato"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <insert tableName="medicaments">
+            <column name="name" value="Maropitant"/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+    </changeSet>
+
+    <!-- FK en la línea recetada (nullable de momento para poder hacer backfill de filas existentes). -->
+    <changeSet id="173c_add_medicament_id_to_medicament_prescriptions" author="orlando">
+        <addColumn tableName="medicament_prescriptions">
+            <column name="medicament_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Backfill: por cada nombre distinto ya recetado que no esté en el catálogo, se crea como
+         medicamento global; luego se enlaza cada línea con su medicamento por nombre. -->
+    <changeSet id="173d_backfill_medicament_prescriptions" author="orlando">
+        <sql>
+            INSERT INTO medicaments (name, general, enabled, created_date)
+            SELECT DISTINCT mp.name, true, true, NOW()
+            FROM medicament_prescriptions mp
+            WHERE mp.name IS NOT NULL
+              AND mp.name NOT IN (SELECT name FROM medicaments);
+        </sql>
+        <sql>
+            UPDATE medicament_prescriptions mp
+            JOIN medicaments m ON m.name = mp.name
+            SET mp.medicament_id = m.id
+            WHERE mp.medicament_id IS NULL;
+        </sql>
+    </changeSet>
+
+    <changeSet id="173e_medicament_id_not_null_and_fk" author="orlando">
+        <addNotNullConstraint tableName="medicament_prescriptions" columnName="medicament_id" columnDataType="BIGINT"/>
+        <addForeignKeyConstraint baseTableName="medicament_prescriptions" baseColumnNames="medicament_id"
+                                 constraintName="fk_medicament_prescriptions_medicament"
+                                 referencedTableName="medicaments" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

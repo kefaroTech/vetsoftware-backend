@@ -48,7 +48,7 @@ public class MedicamentPrescriptionController {
     public MedicamentPrescriptionResponse create(@Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
         return toResponse(createUseCase.execute(
             new CreateMedicamentPrescriptionCommand(
-                request.name(), request.presentation(), request.quantity(),
+                request.medicamentId(), request.presentation(), request.quantity(),
                 request.posology(), request.observation(), request.prescriptionId())));
     }
 
@@ -67,7 +67,7 @@ public class MedicamentPrescriptionController {
                                                   @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateMedicamentPrescriptionCommand(
-                id, request.name(), request.presentation(), request.quantity(),
+                id, request.medicamentId(), request.presentation(), request.quantity(),
                 request.posology(), request.observation(), request.prescriptionId())));
     }
 
@@ -85,7 +85,7 @@ public class MedicamentPrescriptionController {
     private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {
         PrescriptionSummaryDto p = dto.prescription();
         return new MedicamentPrescriptionResponse(
-            dto.id(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
+            dto.id(), dto.medicamentId(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
             dto.observation(),
             new PrescriptionSummary(p.id(), p.date()),
             dto.createdDate(),

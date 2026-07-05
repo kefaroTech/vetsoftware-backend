@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record MedicamentPrescriptionDto(
         Long id,
+        Long medicamentId,
         String name,
         String presentation,
         Double quantity,
@@ -17,6 +18,7 @@ public record MedicamentPrescriptionDto(
     public static MedicamentPrescriptionDto from(MedicamentPrescription medicament) {
         return new MedicamentPrescriptionDto(
             medicament.getId(),
+            medicament.getMedicamentId(),
             medicament.getName(),
             medicament.getPresentation(),
             medicament.getQuantity(),

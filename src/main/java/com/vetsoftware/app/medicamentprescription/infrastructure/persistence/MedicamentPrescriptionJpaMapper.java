@@ -1,6 +1,8 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.persistence;
 
+import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaEntity;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
+import com.vetsoftware.app.medicamentprescription.domain.MedicamentRef;
 import com.vetsoftware.app.medicamentprescription.domain.PrescriptionRef;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaEntity;
 import org.springframework.stereotype.Component;
@@ -9,10 +11,12 @@ import org.springframework.stereotype.Component;
 public class MedicamentPrescriptionJpaMapper {
 
     public MedicamentPrescriptionJpaEntity toJpa(MedicamentPrescription medicament,
-                                                 PrescriptionJpaEntity prescription) {
+                                                 PrescriptionJpaEntity prescription,
+                                                 MedicamentJpaEntity medicamentCatalog) {
         MedicamentPrescriptionJpaEntity entity = new MedicamentPrescriptionJpaEntity();
         entity.setId(medicament.getId());
         entity.setName(medicament.getName());
+        entity.setMedicament(medicamentCatalog);
         entity.setPresentation(medicament.getPresentation());
         entity.setQuantity(medicament.getQuantity());
         entity.setPosology(medicament.getPosology());
@@ -25,13 +29,16 @@ public class MedicamentPrescriptionJpaMapper {
 
     public MedicamentPrescription toDomain(MedicamentPrescriptionJpaEntity entity) {
         PrescriptionJpaEntity p = entity.getPrescription();
-        return toDomain(entity, new PrescriptionRef(p.getId(), p.getDate()));
+        // El id del proxy LAZY se lee sin inicializar; el nombre viene del snapshot de la fila.
+        MedicamentRef medicamentRef = new MedicamentRef(entity.getMedicament().getId(), entity.getName());
+        return toDomain(entity, new PrescriptionRef(p.getId(), p.getDate()), medicamentRef);
     }
 
     public MedicamentPrescription toDomain(MedicamentPrescriptionJpaEntity entity,
-                                           PrescriptionRef prescriptionRef) {
+                                           PrescriptionRef prescriptionRef,
+                                           MedicamentRef medicamentRef) {
         return new MedicamentPrescription(
-            entity.getId(), entity.getName(), entity.getPresentation(),
+            entity.getId(), medicamentRef, entity.getPresentation(),
             entity.getQuantity(), entity.getPosology(), entity.getObservation(),
             prescriptionRef, entity.getCreatedDate(), entity.isEnabled());
     }

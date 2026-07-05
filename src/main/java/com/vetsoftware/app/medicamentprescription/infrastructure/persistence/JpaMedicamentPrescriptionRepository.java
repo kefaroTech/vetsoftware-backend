@@ -1,5 +1,7 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.persistence;
 
+import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaEntity;
+import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaRepository;
 import com.vetsoftware.app.medicamentprescription.application.port.out.MedicamentPrescriptionRepository;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaEntity;
@@ -13,21 +15,27 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
     private final MedicamentPrescriptionJpaRepository jpaRepository;
     private final MedicamentPrescriptionJpaMapper mapper;
     private final PrescriptionJpaRepository prescriptionJpaRepository;
+    private final MedicamentJpaRepository medicamentJpaRepository;
 
     public JpaMedicamentPrescriptionRepository(MedicamentPrescriptionJpaRepository jpaRepository,
                                                MedicamentPrescriptionJpaMapper mapper,
-                                               PrescriptionJpaRepository prescriptionJpaRepository) {
+                                               PrescriptionJpaRepository prescriptionJpaRepository,
+                                               MedicamentJpaRepository medicamentJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.prescriptionJpaRepository = prescriptionJpaRepository;
+        this.medicamentJpaRepository = medicamentJpaRepository;
     }
 
     @Override
     public MedicamentPrescription save(MedicamentPrescription medicament) {
         PrescriptionJpaEntity prescription =
             prescriptionJpaRepository.getReferenceById(medicament.getPrescription().id());
-        MedicamentPrescriptionJpaEntity saved = jpaRepository.save(mapper.toJpa(medicament, prescription));
-        return mapper.toDomain(saved, medicament.getPrescription());
+        MedicamentJpaEntity medicamentCatalog =
+            medicamentJpaRepository.getReferenceById(medicament.getMedicamentId());
+        MedicamentPrescriptionJpaEntity saved =
+            jpaRepository.save(mapper.toJpa(medicament, prescription, medicamentCatalog));
+        return mapper.toDomain(saved, medicament.getPrescription(), medicament.getMedicament());
     }
 
     @Override

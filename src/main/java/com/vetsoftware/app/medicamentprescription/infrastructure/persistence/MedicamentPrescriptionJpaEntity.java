@@ -1,5 +1,6 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.persistence;
 
+import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaEntity;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLDelete;
@@ -15,8 +16,13 @@ public class MedicamentPrescriptionJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Snapshot histórico del nombre del medicamento al momento de recetar.
     @Column(nullable = false, length = 200)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "medicament_id", nullable = false)
+    private MedicamentJpaEntity medicament;
 
     @Column(nullable = false, length = 200)
     private String presentation;
@@ -46,6 +52,8 @@ public class MedicamentPrescriptionJpaEntity {
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public MedicamentJpaEntity getMedicament() { return medicament; }
+    public void setMedicament(MedicamentJpaEntity medicament) { this.medicament = medicament; }
     public String getPresentation() { return presentation; }
     public void setPresentation(String presentation) { this.presentation = presentation; }
     public Double getQuantity() { return quantity; }
