@@ -37,6 +37,9 @@ public class EmployeeJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
     @Column(name = "auth_version", nullable = false)
     private Long authVersion = 0L;
 
@@ -58,6 +61,8 @@ public class EmployeeJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
     public Long getAuthVersion() { return authVersion; }
     public void setAuthVersion(Long authVersion) { this.authVersion = authVersion; }
 }

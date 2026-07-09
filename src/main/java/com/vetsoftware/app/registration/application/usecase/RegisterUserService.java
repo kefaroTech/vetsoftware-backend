@@ -16,8 +16,8 @@ import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.EmployeeResult;
 import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
-import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRoleProvider;
-import com.vetsoftware.app.registration.application.port.out.MandatoryBaseRoleProvider.BaseRoleData;
+import com.vetsoftware.app.registration.application.port.out.BaseRoleProvider;
+import com.vetsoftware.app.registration.application.port.out.BaseRoleProvider.BaseRoleData;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
@@ -39,7 +39,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final TokenGenerator tokenGenerator;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final AuthEmployeeRepository authEmployeeRepository;
-    private final MandatoryBaseRoleProvider mandatoryBaseRoleProvider;
+    private final BaseRoleProvider baseRoleProvider;
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
     private final DefaultMembershipProvider defaultMembershipProvider;
@@ -54,7 +54,7 @@ public class RegisterUserService implements RegisterUserUseCase {
                                TokenGenerator tokenGenerator,
                                RefreshTokenIssuer refreshTokenIssuer,
                                AuthEmployeeRepository authEmployeeRepository,
-                               MandatoryBaseRoleProvider mandatoryBaseRoleProvider,
+                               BaseRoleProvider baseRoleProvider,
                                RoleCreator roleCreator,
                                EmployeeRoleAssigner employeeRoleAssigner,
                                DefaultMembershipProvider defaultMembershipProvider,
@@ -68,7 +68,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
         this.authEmployeeRepository = authEmployeeRepository;
-        this.mandatoryBaseRoleProvider = mandatoryBaseRoleProvider;
+        this.baseRoleProvider = baseRoleProvider;
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
         this.defaultMembershipProvider = defaultMembershipProvider;
@@ -110,10 +110,15 @@ public class RegisterUserService implements RegisterUserUseCase {
                 company.id()
         );
 
-        for (BaseRoleData baseRole : mandatoryBaseRoleProvider.findMandatory()) {
+        // Se instancian TODOS los base roles en la empresa (permisos filtrados por
+        // la membresía). El dueño solo se auto-asigna a los mandatory (ADMIN); el
+        // resto quedan como plantillas listas para asignar al personal.
+        for (BaseRoleData baseRole : baseRoleProvider.findAll()) {
             RoleResult role = roleCreator.create(baseRole.name(), baseRole.code(), company.id());
             rolePermissionInitializationPort.initializeForRole(role.id(), company.id(), baseRole.id(), membershipId);
-            employeeRoleAssigner.assign(employee.id(), role.id());
+            if (baseRole.mandatory()) {
+                employeeRoleAssigner.assign(employee.id(), role.id());
+            }
         }
 
         Long authVersion = authEmployeeRepository.findActiveById(employee.id())

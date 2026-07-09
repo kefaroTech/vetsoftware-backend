@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="174_create_appointments" author="orlando">
+        <createTable tableName="appointments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="start_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="REQUESTED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="cancellation_reason" type="VARCHAR(300)"/>
+            <column name="animal_id" type="BIGINT">
+                <constraints foreignKeyName="fk_appointments_animal" references="animals(id)"/>
+            </column>
+            <column name="owner_id" type="BIGINT">
+                <constraints foreignKeyName="fk_appointments_owner" references="owners(id)"/>
+            </column>
+            <column name="client_name" type="VARCHAR(120)"/>
+            <column name="client_phone" type="VARCHAR(30)"/>
+            <column name="employee_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_appointments_employee"
+                             references="employees(id)"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_appointments_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="appointments" indexName="idx_appointments_company_start">
+            <column name="company_id"/>
+            <column name="start_at"/>
+        </createIndex>
+        <createIndex tableName="appointments" indexName="idx_appointments_employee_start">
+            <column name="employee_id"/>
+            <column name="start_at"/>
+        </createIndex>
+        <createIndex tableName="appointments" indexName="idx_appointments_company_status">
+            <column name="company_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

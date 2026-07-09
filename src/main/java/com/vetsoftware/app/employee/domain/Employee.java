@@ -11,10 +11,12 @@ public class Employee {
     private final CompanyRef company;
     private final LocalDateTime createdDate;
     private boolean enabled;
+    private boolean emailVerified;
     private Long authVersion;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
-                    CompanyRef company, LocalDateTime createdDate, boolean enabled, Long authVersion) {
+                    CompanyRef company, LocalDateTime createdDate, boolean enabled, boolean emailVerified,
+                    Long authVersion) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -31,13 +33,22 @@ public class Employee {
         this.company = company;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.emailVerified = emailVerified;
         this.authVersion = authVersion == null ? 0L : authVersion;
     }
 
+    /** Empleado creado por un administrador ya autenticado: no requiere verificar correo. */
     public static Employee create(String employeeCode, String hashPassword, String name, String email,
                                   CompanyRef company) {
         return new Employee(null, employeeCode, hashPassword, name, email,
-            company, LocalDateTime.now(), true, 0L);
+            company, LocalDateTime.now(), true, true, 0L);
+    }
+
+    /** Dueño creado por auto-registro público: queda pendiente de verificar el correo antes de poder entrar. */
+    public static Employee createUnverified(String employeeCode, String hashPassword, String name, String email,
+                                            CompanyRef company) {
+        return new Employee(null, employeeCode, hashPassword, name, email,
+            company, LocalDateTime.now(), true, false, 0L);
     }
 
     public void update(String employeeCode, String name, String email) {
@@ -55,6 +66,10 @@ public class Employee {
     public boolean isEnabled() { return enabled; }
     public void enable() { this.enabled = true; }
     public void disable() { this.enabled = false; }
+
+    public boolean isEmailVerified() { return emailVerified; }
+    /** Marca el correo como verificado. Idempotente: verificar dos veces no tiene efecto adicional. */
+    public void verifyEmail() { this.emailVerified = true; }
 
     public Long getId() { return id; }
     public String getEmployeeCode() { return employeeCode; }

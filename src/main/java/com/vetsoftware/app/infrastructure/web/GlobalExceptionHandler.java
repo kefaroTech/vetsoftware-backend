@@ -6,6 +6,8 @@ import com.vetsoftware.app.animal.domain.WeightRecordNotFoundException;
 import com.vetsoftware.app.animalalert.domain.AnimalAlertNotFoundException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorHasActiveChildrenException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
+import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
+import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
@@ -188,6 +190,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             WeightRecordNotFoundException.class,
             AnimalColorNotFoundException.class,
             ProblemNotFoundException.class, AnimalAlertNotFoundException.class,
+            AppointmentNotFoundException.class,
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,
@@ -260,6 +263,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleAdminEmployeeCannotBeDisabled(AdminEmployeeCannotBeDisabledException ex) {
         log.warn("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidAppointmentTransitionException.class)
+    public ProblemDetail handleInvalidAppointmentTransition(InvalidAppointmentTransitionException ex) {
+        log.warn("Invalid appointment status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_APPOINTMENT_TRANSITION", ex.getMessage());
     }
 
     @ExceptionHandler(CompanyTaxProfileAlreadyExistsException.class)
