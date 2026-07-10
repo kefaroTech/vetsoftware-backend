@@ -27,10 +27,13 @@ public class ChangeMyPasswordService implements ChangeMyPasswordUseCase {
 
     @Override
     @Transactional
-    public void execute(ChangeMyPasswordCommand command) {
+    public boolean execute(ChangeMyPasswordCommand command) {
         Employee employee = repository.findById(command.employeeId())
             .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
+        // Antes de cambiar: si estaba obligado a cambiarla, este cambio ES la aceptación de la invitación.
+        boolean acceptedInvitation = employee.isMustChangePassword();
         employee.changePassword(passwordHasher.hash(command.newPassword()));
         repository.save(employee);
+        return acceptedInvitation;
     }
 }

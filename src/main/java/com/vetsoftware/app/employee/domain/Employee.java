@@ -83,6 +83,19 @@ public class Employee {
         this.mustChangePassword = false;
     }
 
+    /**
+     * Restablece la contraseña (hash ya calculado) desde el flujo "olvidé mi contraseña": limpia la
+     * obligación de cambio e <b>invalida las sesiones vivas</b> subiendo authVersion (el usuario no está
+     * logueado; cualquier sesión abierta debe caerse por seguridad).
+     */
+    public void resetPassword(String newHashPassword) {
+        if (newHashPassword == null || newHashPassword.isBlank())
+            throw new IllegalArgumentException("password is required");
+        this.hashPassword = newHashPassword;
+        this.mustChangePassword = false;
+        this.authVersion = (authVersion == null ? 0L : authVersion) + 1;
+    }
+
     public EmployeeStatus getStatus() { return status; }
 
     /** Marca el empleado como activo (primer login). Idempotente: activar dos veces no tiene efecto adicional. */

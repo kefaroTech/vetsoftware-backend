@@ -54,6 +54,38 @@ public class AuditLogger {
                 kv("outcome", "SUCCESS"));
     }
 
+    /** Un admin (o quien tenga el permiso) envió una invitación de acceso a un nuevo empleado. El actor que
+     *  invita viaja en el MDC (actor.employeeId / actor.companyId). {@code invitedCode} es el código de
+     *  acceso del invitado, no un secreto. */
+    public void employeeInvited(Long invitedEmployeeId, String invitedCode, Long companyId) {
+        audit.info("employee invited id={} code={}", invitedEmployeeId, invitedCode,
+                kv("event", "employee_invited"),
+                kv("employee.id", invitedEmployeeId),
+                kv("employee.identifier", invitedCode),
+                kv("company.id", companyId),
+                kv("outcome", "SUCCESS"));
+    }
+
+    /** Reenvío de la invitación (nueva contraseña provisional) por un admin/con permiso. Actor vía MDC. */
+    public void employeeInvitationResent(Long invitedEmployeeId, String invitedCode, Long companyId) {
+        audit.info("employee invitation resent id={} code={}", invitedEmployeeId, invitedCode,
+                kv("event", "employee_invitation_resent"),
+                kv("employee.id", invitedEmployeeId),
+                kv("employee.identifier", invitedCode),
+                kv("company.id", companyId),
+                kv("outcome", "SUCCESS"));
+    }
+
+    /** El empleado invitado aceptó la invitación: completó su primer ingreso cambiando la contraseña
+     *  temporal (INVITED → activo con contraseña propia). El propio empleado es el actor (MDC). */
+    public void invitationAccepted(Long employeeId, Long companyId) {
+        audit.info("invitation accepted employeeId={}", employeeId,
+                kv("event", "invitation_accepted"),
+                kv("employee.id", employeeId),
+                kv("company.id", companyId),
+                kv("outcome", "SUCCESS"));
+    }
+
     /** Login exitoso; {@code identifier} es el código de empleado/usuario, no un secreto. */
     public void loginSuccess(String userType, String identifier) {
         audit.info("login success type={} id={}", userType, identifier,

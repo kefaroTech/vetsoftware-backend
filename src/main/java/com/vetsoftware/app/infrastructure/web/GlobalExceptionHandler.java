@@ -63,6 +63,7 @@ import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoun
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
+import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
@@ -402,6 +403,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Invalid email verification token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_VERIFICATION_TOKEN",
             "El enlace de verificación no es válido o expiró.");
+    }
+
+    // Token de restablecimiento de contraseña inválido, expirado o ya usado.
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ProblemDetail handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
+        log.warn("Invalid password reset token: {}", ex.getMessage());
+        return problem(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_RESET_TOKEN",
+            "El enlace de restablecimiento no es válido o expiró.");
     }
 
     // El usuario de acceso es el correo (un email = una veterinaria): correo ya registrado.

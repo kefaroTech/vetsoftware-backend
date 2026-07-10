@@ -1,6 +1,7 @@
 package com.vetsoftware.app.employee.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.employee.application.command.ChangeMyPasswordCommand;
 import com.vetsoftware.app.employee.application.command.InviteEmployeeCommand;
 import com.vetsoftware.app.employee.application.command.ResendInvitationCommand;
@@ -47,6 +48,7 @@ public class EmployeeController {
     private final SuggestEmployeeCodeUseCase suggestCodeUseCase;
     private final CheckEmployeeCodeAvailabilityUseCase checkCodeAvailabilityUseCase;
     private final Authz authz;
+    private final AuditLogger auditLogger;
 
     public EmployeeController(InviteEmployeeUseCase inviteUseCase,
                                ResendInvitationUseCase resendInvitationUseCase,
@@ -58,7 +60,8 @@ public class EmployeeController {
                                ReactivateEmployeeUseCase reactivateUseCase,
                                SuggestEmployeeCodeUseCase suggestCodeUseCase,
                                CheckEmployeeCodeAvailabilityUseCase checkCodeAvailabilityUseCase,
-                               Authz authz) {
+                               Authz authz,
+                               AuditLogger auditLogger) {
         this.inviteUseCase = inviteUseCase;
         this.resendInvitationUseCase = resendInvitationUseCase;
         this.changeMyPasswordUseCase = changeMyPasswordUseCase;
@@ -71,33 +74,40 @@ public class EmployeeController {
         this.suggestCodeUseCase = suggestCodeUseCase;
         this.checkCodeAvailabilityUseCase = checkCodeAvailabilityUseCase;
         this.authz = authz;
+        this.auditLogger = auditLogger;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
-        return toResponse(inviteUseCase.execute(
+        EmployeeDto dto = inviteUseCase.execute(
             new InviteEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.companyId(), request.roleIds())
-        ));
+                request.email(), request.companyId(), request.roleIds()));
+        auditLogger.employeeInvited(dto.id(), dto.employeeCode(), dto.company().id());
+        return toResponse(dto);
     }
 
     /** Reenvía la invitación a un empleado invitado con una nueva contraseña provisional. */
     @PostMapping("/{id}/resend-invitation")
     public EmployeeResponse resendInvitation(@PathVariable Long id,
                                              @Valid @RequestBody ResendInvitationRequest request) {
-        return toResponse(resendInvitationUseCase.execute(
-            new ResendInvitationCommand(id, request.password(), authz.currentCompanyId())
-        ));
+        EmployeeDto dto = resendInvitationUseCase.execute(
+            new ResendInvitationCommand(id, request.password(), authz.currentCompanyId()));
+        auditLogger.employeeInvitationResent(dto.id(), dto.employeeCode(), dto.company().id());
+        return toResponse(dto);
     }
 
     /** Cambio de la propia contraseña (primer login forzado). El empleado sale del contexto autenticado. */
     @PostMapping("/me/change-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changeMyPassword(@Valid @RequestBody ChangeMyPasswordRequest request) {
-        changeMyPasswordUseCase.execute(
-            new ChangeMyPasswordCommand(authz.currentEmployeeId(), request.newPassword())
-        );
+        Long employeeId = authz.currentEmployeeId();
+        boolean acceptedInvitation = changeMyPasswordUseCase.execute(
+            new ChangeMyPasswordCommand(employeeId, request.newPassword()));
+        // Si era el cambio forzado de primer login, el empleado acaba de aceptar su invitación.
+        if (acceptedInvitation) {
+            auditLogger.invitationAccepted(employeeId, authz.currentCompanyId());
+        }
     }
 
     @GetMapping

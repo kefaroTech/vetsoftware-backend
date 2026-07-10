@@ -96,6 +96,14 @@ vetsoftware:
     # ID de la plantilla de Resend para el correo de verificación (variables ADMIN_NAME, COMPANY_NAME,
     # VERIFY_URL, EMPLOYEE_CODE, HELP_URL, PRIVACY_URL, TERMS_URL).
     verification-template-id: ${REGISTRATION_VERIFICATION_TEMPLATE_ID:5a5ed501-4922-4e7d-8a3c-5d46406e6536}
+  # Restablecimiento de contraseña ("olvidé mi contraseña"). Se identifica por employeeCode; el enlace del
+  # correo apunta a reset-base-url?token=... y el front llama a POST /auth/reset-password.
+  password-reset:
+    reset-base-url: ${PASSWORD_RESET_URL:http://localhost:5174/restablecer-contrasena}
+    # Vigencia del enlace de restablecimiento.
+    token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
+    # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
+    template-id: ${PASSWORD_RESET_TEMPLATE_ID:79e6eeea-ae6a-4475-b17d-beb39279705c}
   # reCAPTCHA en el registro. Deshabilitado por defecto (dev/local); en prod poner RECAPTCHA_ENABLED=true
   # y RECAPTCHA_SECRET con la clave secreta del sitio (asignar la variable de entorno, no versionarla).
   recaptcha:
