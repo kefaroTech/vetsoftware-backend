@@ -104,6 +104,11 @@ vetsoftware:
     token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
     # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
     template-id: ${PASSWORD_RESET_TEMPLATE_ID:79e6eeea-ae6a-4475-b17d-beb39279705c}
+  # "Recordar mi código de usuario": por correo se envían todas las cuentas (código + veterinaria) del email.
+  # Este correo NO usa plantilla de Resend (el listado es de tamaño variable y superaría el límite de 2.000
+  # caracteres por variable): se renderiza en resources/email-templates/recover-code.html y se envía como HTML.
+  code-recovery:
+    login-url: ${CODE_RECOVERY_LOGIN_URL:http://localhost:5174/login}
   # reCAPTCHA en el registro. Deshabilitado por defecto (dev/local); en prod poner RECAPTCHA_ENABLED=true
   # y RECAPTCHA_SECRET con la clave secreta del sitio (asignar la variable de entorno, no versionarla).
   recaptcha:

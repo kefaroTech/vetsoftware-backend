@@ -48,6 +48,11 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @EntityGraph(attributePaths = "company")
     Optional<EmployeeJpaEntity> findByEmployeeCode(String employeeCode);
 
+    // "Recordar mi código": todas las cuentas activas y verificadas con ese correo (de cualquier company).
+    // El @SQLRestriction("enabled = true") ya excluye desactivadas; la company viene por @EntityGraph.
+    @EntityGraph(attributePaths = "company")
+    List<EmployeeJpaEntity> findByEmailAndEmailVerified(String email, boolean emailVerified);
+
     @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled = true AND c.enabled = true")
     Optional<EmployeeJpaEntity> findActiveWithCompanyById(@Param("id") Long id);
 
