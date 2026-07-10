@@ -3,7 +3,6 @@ package com.vetsoftware.app.registration.infrastructure.web.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterUserRequest(
@@ -20,10 +19,5 @@ public record RegisterUserRequest(
     @NotBlank @Email @Size(max = 255) String fiscalEmail,
     // Token del challenge reCAPTCHA. Opcional a nivel de bean-validation porque el captcha puede estar
     // deshabilitado por config (dev); cuando esta habilitado, el CaptchaVerifier exige su presencia.
-    @Size(max = 4000) String recaptchaToken,
-    // Usuario de acceso elegido por el dueño (Opción A). Empieza con letra/número; admite . _ - ; 4-50 chars.
-    @NotBlank
-    @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._-]{3,49}$",
-             message = "El usuario admite letras, números, punto, guion y guion bajo (4 a 50 caracteres)")
-    String employeeCode
+    @Size(max = 4000) String recaptchaToken
 ) {}

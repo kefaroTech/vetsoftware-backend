@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * registra un warning y el registro continúa).
  *
  * <p>Variables de la plantilla (deben coincidir con los {@code {{{VARIABLE}}}} del HTML en Resend):
- * ADMIN_NAME, COMPANY_NAME, VERIFY_URL, EMPLOYEE_CODE, HELP_URL, PRIVACY_URL, TERMS_URL.
+ * ADMIN_NAME, COMPANY_NAME, VERIFY_URL, HELP_URL, PRIVACY_URL, TERMS_URL.
  */
 @Component
 public class ResendVerificationEmailSender implements VerificationEmailSender {
@@ -50,19 +50,16 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
     }
 
     @Override
-    public void send(String toEmail, String employeeName, String companyName, String employeeCode,
-                     String rawToken) {
+    public void send(String toEmail, String employeeName, String companyName, String rawToken) {
         String link = buildLink(rawToken);
         if (!email.isEnabled()) {
-            log.info("[dev] Envío de correo deshabilitado. Usuario de acceso {} · enlace de verificación para {}: {}",
-                    employeeCode, toEmail, link);
+            log.info("[dev] Envío de correo deshabilitado. Enlace de verificación para {}: {}", toEmail, link);
             return;
         }
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("ADMIN_NAME", nz(employeeName));
         variables.put("COMPANY_NAME", nz(companyName));
         variables.put("VERIFY_URL", link);
-        variables.put("EMPLOYEE_CODE", nz(employeeCode));
         variables.put("HELP_URL", helpUrl);
         variables.put("PRIVACY_URL", privacyUrl);
         variables.put("TERMS_URL", termsUrl);

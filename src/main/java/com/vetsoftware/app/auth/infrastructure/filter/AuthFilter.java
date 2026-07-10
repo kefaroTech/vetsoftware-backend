@@ -60,8 +60,6 @@ public class AuthFilter extends OncePerRequestFilter {
             new PublicRoute("POST", "/auth/refresh"),
             new PublicRoute("POST", "/register"),
             new PublicRoute("POST", "/register/verify"),
-            new PublicRoute("GET",  "/register/suggest-code"),
-            new PublicRoute("GET",  "/register/code-availability"),
             new PublicRoute("POST", "/dian/webhooks/**"),
             new PublicRoute("GET",  "/countries"),
             new PublicRoute("GET",  "/countries/{countryId}/states"),

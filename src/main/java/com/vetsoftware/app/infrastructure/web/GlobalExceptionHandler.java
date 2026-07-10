@@ -404,12 +404,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             "El enlace de verificación no es válido o expiró.");
     }
 
-    // El usuario de acceso elegido en el registro (Opción A) ya está en uso.
+    // El usuario de acceso es el correo (un email = una veterinaria): correo ya registrado.
     @ExceptionHandler(EmployeeCodeAlreadyExistsException.class)
-    public ProblemDetail handleEmployeeCodeTaken(EmployeeCodeAlreadyExistsException ex) {
-        log.warn("Employee code already in use: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
-            "Ese usuario de acceso ya está en uso. Elige otro.");
+    public ProblemDetail handleEmailAlreadyRegistered(EmployeeCodeAlreadyExistsException ex) {
+        log.warn("Email already registered: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
+            "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -515,11 +515,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
                 "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
         }
-        // Carrera en la unicidad del usuario de acceso (employee_code): dos registros concurrentes con el
-        // mismo código que pasaron el chequeo del service; la BD rechaza el 2º. Mismo código que el guard.
+        // Carrera en la unicidad del correo (employee_code = email): dos registros concurrentes con el mismo
+        // correo que pasaron el chequeo del service; la BD rechaza el 2º. Mismo código que el guard.
         if (cause != null && cause.contains("employee_code")) {
-            return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
-                "Ese usuario de acceso ya está en uso. Elige otro.");
+            return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
+                "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

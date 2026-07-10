@@ -105,8 +105,9 @@ public class RegisterUserService implements RegisterUserUseCase {
                 command.taxRegime(), command.fiscalEmail());
 
         // El dueño ELIGE su código de acceso (Opción A). Revalidamos aquí que siga libre (defensa ante la
-        // carrera entre el chequeo en vivo del front y el submit). El dueño se crea SIN verificar (Opción B).
-        String employeeCode = command.employeeCode().trim();
+        // El usuario de acceso ES el correo del administrador (un email = una veterinaria). Como employee_code
+        // es único global, si el correo ya está registrado se rechaza aquí. El dueño se crea SIN verificar (Opción B).
+        String employeeCode = command.employeeEmail().trim();
         if (employeeCodeChecker.exists(employeeCode)) {
             throw new EmployeeCodeAlreadyExistsException(employeeCode);
         }
@@ -132,15 +133,15 @@ public class RegisterUserService implements RegisterUserUseCase {
         }
 
         // 2) Token de verificación de un solo uso: se guarda el HASH, se envía el valor plano por correo.
-        //    El envío NO bloquea el registro (best-effort); el correo incluye el código de acceso generado.
+        //    El envío NO bloquea el registro (best-effort).
         String rawToken = VerificationTokens.generateRawToken();
         emailVerificationTokenRepository.save(EmailVerificationToken.issue(
                 employee.id(), company.id(), VerificationTokens.hash(rawToken),
                 LocalDateTime.now().plusHours(verificationTtlHours)));
         verificationEmailSender.send(command.employeeEmail(), command.employeeName(),
-                command.companyName(), employeeCode, rawToken);
+                command.companyName(), rawToken);
 
-        return new RegistrationDto(company.id(), employee.id(), command.employeeEmail(), employeeCode,
+        return new RegistrationDto(company.id(), employee.id(), command.employeeEmail(),
                 STATUS_PENDING_VERIFICATION);
     }
 }
