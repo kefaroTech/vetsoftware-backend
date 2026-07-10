@@ -43,14 +43,6 @@ spring:
       port: ${REDIS_PORT:6379}
   cache:
     type: redis
-  mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
-      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:false}
 
 jwt:
   secret: ${JWT_SECRET:c2VjcmV0LWtleS12ZXRzb2Z0d2FyZS0yMDI2LXN1cGVyc2VjcmV0LWtleS0xMjM0NTY3ODk=}
@@ -82,15 +74,28 @@ vetsoftware:
   # vetsoftware.storage.s3 se define por perfil:
   #   - application-dev.yml  → LocalStack
   #   - application-prod.yml → S3 real
-  mail:
-    from: ${MAIL_FROM:facturacion@vetsoftware.local}
-    enabled: ${MAIL_ENABLED:true}
+  # Correo saliente vía Resend (https://resend.com) — cubre TODO el correo (factura y verificación).
+  # En prod: EMAIL_ENABLED=true, RESEND_API_KEY con la API key, y EMAIL_FROM con un remitente de un dominio
+  # verificado en Resend. El sandbox "onboarding@resend.dev" solo entrega al correo de tu propia cuenta Resend.
+  email:
+    enabled: ${EMAIL_ENABLED:true}
+    from: "${EMAIL_FROM:VetSoftware <onboarding@resend.dev>}"
+    resend:
+      api-key: ${RESEND_API_KEY:re_RWUsKz84_FZTexui2SQudvFHM4zgjyGac}
+      base-url: ${RESEND_BASE_URL:https://api.resend.com}
+    # Enlaces del pie de los correos (variables de plantilla HELP_URL / PRIVACY_URL / TERMS_URL).
+    help-url: ${EMAIL_HELP_URL:https://vetsoftware.co/ayuda}
+    privacy-url: ${EMAIL_PRIVACY_URL:https://vetsoftware.co/privacidad}
+    terms-url: ${EMAIL_TERMS_URL:https://vetsoftware.co/terminos}
   # Auto-registro público (Opción B): el dueño debe verificar su correo antes de poder iniciar sesión.
   registration:
     # Página del front a la que apunta el enlace del correo; recibe ?token=... y llama a POST /register/verify.
     verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
     # Vigencia del enlace de verificación.
     verification-token-ttl-hours: ${REGISTRATION_VERIFICATION_TTL_HOURS:24}
+    # ID de la plantilla de Resend para el correo de verificación (variables ADMIN_NAME, COMPANY_NAME,
+    # VERIFY_URL, EMPLOYEE_CODE, HELP_URL, PRIVACY_URL, TERMS_URL).
+    verification-template-id: ${REGISTRATION_VERIFICATION_TEMPLATE_ID:5a5ed501-4922-4e7d-8a3c-5d46406e6536}
   # reCAPTCHA en el registro. Deshabilitado por defecto (dev/local); en prod poner RECAPTCHA_ENABLED=true
   # y RECAPTCHA_SECRET con la clave secreta del sitio (asignar la variable de entorno, no versionarla).
   recaptcha:

@@ -28,6 +28,12 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
 
     boolean existsByEmployeeCode(String employeeCode);
 
+    // Disponibilidad real del código: cuenta TODAS las filas (incluidas las de empleados desactivados, que
+    // el @SQLRestriction oculta pero la constraint unique de la BD sí cuenta). Nativo para saltar el filtro.
+    // La comparación usa la collation de la columna (ci en MySQL) → es case-insensitive, igual que el unique.
+    @Query(value = "SELECT COUNT(*) FROM employees WHERE employee_code = :code", nativeQuery = true)
+    long countByEmployeeCodeAllRows(@Param("code") String code);
+
     @EntityGraph(attributePaths = "company")
     Optional<EmployeeJpaEntity> findByEmployeeCode(String employeeCode);
 

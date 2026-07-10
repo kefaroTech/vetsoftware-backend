@@ -97,10 +97,12 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private static RouteLimit routeLimit(HttpServletRequest request) {
         if (!"POST".equalsIgnoreCase(request.getMethod())) return null;
-        String uri = request.getServletPath();
-        if (uri.equals(REFRESH_LIMIT.path())) return REFRESH_LIMIT;
-        if (uri.contains(LOGIN_LIMIT.path())) return LOGIN_LIMIT;
-        if (uri.equals(REGISTER_LIMIT.path())) return REGISTER_LIMIT;
+        // TEMP: rate limit desactivado por ahora (pruebas del flujo de registro/login).
+        // Reactivar descomentando estas líneas.
+        // String uri = request.getServletPath();
+        // if (uri.equals(REFRESH_LIMIT.path())) return REFRESH_LIMIT;
+        // if (uri.contains(LOGIN_LIMIT.path())) return LOGIN_LIMIT;
+        // if (uri.equals(REGISTER_LIMIT.path())) return REGISTER_LIMIT;
         return null;
     }
 

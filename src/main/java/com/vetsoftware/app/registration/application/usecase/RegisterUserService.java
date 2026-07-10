@@ -21,6 +21,7 @@ import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleRes
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
 import com.vetsoftware.app.registration.application.port.out.VerificationEmailSender;
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
+import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,8 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegisterUserService implements RegisterUserUseCase {
 
-    private static final int MAX_EMPLOYEE_CODE_LENGTH = 50;
-    private static final int MAX_SUFFIX_ATTEMPTS = 999;
     private static final String STATUS_PENDING_VERIFICATION = "PENDING_VERIFICATION";
 
     private final CaptchaVerifier captchaVerifier;
@@ -111,8 +110,12 @@ public class RegisterUserService implements RegisterUserUseCase {
                 company.id(), command.documentType(), company.identifier(), company.name(),
                 command.taxRegime(), command.fiscalEmail());
 
-        // El dueño se crea SIN verificar (Opción B): no podrá iniciar sesión hasta confirmar su correo.
-        String employeeCode = generateUniqueEmployeeCode(command.companyName(), command.employeeName());
+        // El dueño ELIGE su código de acceso (Opción A). Revalidamos aquí que siga libre (defensa ante la
+        // carrera entre el chequeo en vivo del front y el submit). El dueño se crea SIN verificar (Opción B).
+        String employeeCode = command.employeeCode().trim();
+        if (employeeCodeChecker.exists(employeeCode)) {
+            throw new EmployeeCodeAlreadyExistsException(employeeCode);
+        }
         EmployeeResult employee = employeeCreator.create(
                 employeeCode,
                 hashed,
@@ -133,32 +136,15 @@ public class RegisterUserService implements RegisterUserUseCase {
         }
 
         // 2) Token de verificación de un solo uso: se guarda el HASH, se envía el valor plano por correo.
-        //    Si el envío falla, la transacción hace rollback (no dejamos cuentas imposibles de verificar).
+        //    El envío NO bloquea el registro (best-effort); el correo incluye el código de acceso generado.
         String rawToken = VerificationTokens.generateRawToken();
         emailVerificationTokenRepository.save(EmailVerificationToken.issue(
                 employee.id(), company.id(), VerificationTokens.hash(rawToken),
                 LocalDateTime.now().plusHours(verificationTtlHours)));
-        verificationEmailSender.send(command.employeeEmail(), command.employeeName(), rawToken);
+        verificationEmailSender.send(command.employeeEmail(), command.employeeName(),
+                command.companyName(), employeeCode, rawToken);
 
-        return new RegistrationDto(company.id(), employee.id(), command.employeeEmail(),
+        return new RegistrationDto(company.id(), employee.id(), command.employeeEmail(), employeeCode,
                 STATUS_PENDING_VERIFICATION);
-    }
-
-    private String generateUniqueEmployeeCode(String companyName, String employeeName) {
-        String base = EmployeeCodeGenerator.generate(companyName, employeeName);
-        if (!employeeCodeChecker.exists(base)) return base;
-        for (int i = 2; i <= MAX_SUFFIX_ATTEMPTS; i++) {
-            String candidate = withSuffix(base, i);
-            if (!employeeCodeChecker.exists(candidate)) return candidate;
-        }
-        throw new IllegalStateException(
-                "Could not generate unique employee code after " + MAX_SUFFIX_ATTEMPTS + " attempts");
-    }
-
-    private static String withSuffix(String base, int n) {
-        String suffix = "-" + n;
-        int reserved = MAX_EMPLOYEE_CODE_LENGTH - suffix.length();
-        String trimmed = base.length() > reserved ? base.substring(0, reserved) : base;
-        return trimmed + suffix;
     }
 }

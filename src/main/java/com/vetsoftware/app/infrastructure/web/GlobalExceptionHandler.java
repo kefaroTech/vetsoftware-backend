@@ -61,6 +61,7 @@ import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoundException;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
+import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
@@ -403,6 +404,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             "El enlace de verificación no es válido o expiró.");
     }
 
+    // El usuario de acceso elegido en el registro (Opción A) ya está en uso.
+    @ExceptionHandler(EmployeeCodeAlreadyExistsException.class)
+    public ProblemDetail handleEmployeeCodeTaken(EmployeeCodeAlreadyExistsException ex) {
+        log.warn("Employee code already in use: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
+            "Ese usuario de acceso ya está en uso. Elige otro.");
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("Access denied: {}", ex.getMessage());
@@ -505,6 +514,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (cause != null && cause.contains("uq_numbering_resolutions_active")) {
             return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
                 "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
+        }
+        // Carrera en la unicidad del usuario de acceso (employee_code): dos registros concurrentes con el
+        // mismo código que pasaron el chequeo del service; la BD rechaza el 2º. Mismo código que el guard.
+        if (cause != null && cause.contains("employee_code")) {
+            return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
+                "Ese usuario de acceso ya está en uso. Elige otro.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

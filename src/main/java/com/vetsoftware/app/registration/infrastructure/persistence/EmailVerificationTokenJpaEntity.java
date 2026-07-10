@@ -25,7 +25,10 @@ public class EmailVerificationTokenJpaEntity {
     @Column(name = "consumed_at")
     private LocalDateTime consumedAt;
 
-    @Column(name = "created_date", nullable = false)
+    // updatable=false: created_date se fija en el INSERT (@PrePersist) y NUNCA se incluye en UPDATE.
+    // Sin esto, al consumir el token (verificación) el mapper reconstruye la entidad con createdDate=null
+    // y el merge/UPDATE intentaría poner created_date=null → viola el NOT NULL.
+    @Column(name = "created_date", nullable = false, updatable = false)
     private LocalDateTime createdDate;
 
     protected EmailVerificationTokenJpaEntity() {}

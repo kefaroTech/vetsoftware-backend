@@ -5,9 +5,14 @@ vetsoftware:
   recaptcha:
     enabled: ${RECAPTCHA_ENABLED:true}
     secret: ${RECAPTCHA_SECRET:6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe}
-  # El enlace del correo de verificación apunta a la página del PublicFront (Vite dev en 5173).
+  # En dev el correo Resend está APAGADO por defecto: el registro no requiere API key y el enlace de
+  # verificación se escribe en el log (buscar "Enlace de verificación"). Para probar Resend real en dev:
+  # EMAIL_ENABLED=true + RESEND_API_KEY=<tu key> (y EMAIL_FROM verificado, o el sandbox de Resend).
+  email:
+    enabled: ${EMAIL_ENABLED:true}
+  # El enlace del correo de verificación apunta a la página del PublicFront (Vite dev en 5174, puerto fijo).
   registration:
-    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5174/verify-email}
   storage:
     s3:
       bucket: ${S3_BUCKET:vetsoftware}
