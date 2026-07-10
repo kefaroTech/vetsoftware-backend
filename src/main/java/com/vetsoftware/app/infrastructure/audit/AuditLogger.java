@@ -40,6 +40,20 @@ public class AuditLogger {
                 kv("http.durationMs", durationMs));
     }
 
+    /** Alta de una nueva empresa (veterinaria) por auto-registro público. Sin datos sensibles;
+     *  {@code ownerCode} es el código de acceso del dueño, no un secreto. client.ip/http.path vía MDC. */
+    public void companyRegistered(Long companyId, String companyName, String companyIdentifier,
+                                  Long ownerEmployeeId, String ownerCode) {
+        audit.info("company registered id={} name={}", companyId, companyName,
+                kv("event", "company_registered"),
+                kv("company.id", companyId),
+                kv("company.name", companyName),
+                kv("company.identifier", companyIdentifier),
+                kv("actor.employeeId", ownerEmployeeId),
+                kv("actor.identifier", ownerCode),
+                kv("outcome", "SUCCESS"));
+    }
+
     /** Login exitoso; {@code identifier} es el código de empleado/usuario, no un secreto. */
     public void loginSuccess(String userType, String identifier) {
         audit.info("login success type={} id={}", userType, identifier,
@@ -56,6 +70,16 @@ public class AuditLogger {
                 kv("event", "login_failure"),
                 kv("outcome", "FAILURE"),
                 kv("reason", reason));
+    }
+
+    /** Login bloqueado porque el correo del empleado aún no está verificado (auto-registro Opción B).
+     *  {@code identifier} es el código de empleado intentado (no un secreto). http.path/client.ip vía MDC. */
+    public void loginBlockedEmailNotVerified(String identifier) {
+        audit.warn("login blocked, email not verified id={}", identifier,
+                kv("event", "login_blocked_email_not_verified"),
+                kv("actor.identifier", identifier),
+                kv("outcome", "DENIED"),
+                kv("reason", "email_not_verified"));
     }
 
     /** Denegación de autorización (@PreAuthorize → AccessDeniedException). Actor, http.* vía MDC. */

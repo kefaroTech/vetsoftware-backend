@@ -22,7 +22,6 @@ import com.vetsoftware.app.registration.application.port.out.RolePermissionIniti
 import com.vetsoftware.app.registration.application.port.out.VerificationEmailSender;
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
-import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,7 +38,6 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final EmployeeCreator employeeCreator;
     private final CompanyIdentifierChecker companyIdentifierChecker;
     private final EmployeeCodeChecker employeeCodeChecker;
-    private final PasswordHasher passwordHasher;
     private final BaseRoleProvider baseRoleProvider;
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
@@ -55,7 +53,6 @@ public class RegisterUserService implements RegisterUserUseCase {
                                EmployeeCreator employeeCreator,
                                CompanyIdentifierChecker companyIdentifierChecker,
                                EmployeeCodeChecker employeeCodeChecker,
-                               PasswordHasher passwordHasher,
                                BaseRoleProvider baseRoleProvider,
                                RoleCreator roleCreator,
                                EmployeeRoleAssigner employeeRoleAssigner,
@@ -70,7 +67,6 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
         this.employeeCodeChecker = employeeCodeChecker;
-        this.passwordHasher = passwordHasher;
         this.baseRoleProvider = baseRoleProvider;
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
@@ -91,8 +87,6 @@ public class RegisterUserService implements RegisterUserUseCase {
             throw new IllegalArgumentException(
                     "Company identifier already in use: " + command.companyIdentifier());
         }
-
-        String hashed = passwordHasher.hash(command.rawPassword());
 
         Long membershipId = defaultMembershipProvider.getDefaultMembershipId();
         CompanyResult company = companyCreator.create(
@@ -116,9 +110,11 @@ public class RegisterUserService implements RegisterUserUseCase {
         if (employeeCodeChecker.exists(employeeCode)) {
             throw new EmployeeCodeAlreadyExistsException(employeeCode);
         }
+        // Se pasa la contraseña CRUDA: CreateEmployeeService la hashea una sola vez (igual que el alta de
+        // staff por el admin). No pre-hashear aquí, o quedaría doble-hasheada y el login nunca haría match.
         EmployeeResult employee = employeeCreator.create(
                 employeeCode,
-                hashed,
+                command.rawPassword(),
                 command.employeeName(),
                 command.employeeEmail(),
                 company.id()

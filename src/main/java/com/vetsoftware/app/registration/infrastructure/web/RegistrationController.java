@@ -7,6 +7,7 @@ import com.vetsoftware.app.registration.application.port.in.CheckEmployeeCodeAva
 import com.vetsoftware.app.registration.application.port.in.RegisterUserUseCase;
 import com.vetsoftware.app.registration.application.port.in.SuggestEmployeeCodeUseCase;
 import com.vetsoftware.app.registration.application.port.in.VerifyEmailUseCase;
+import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.registration.infrastructure.web.request.RegisterUserRequest;
 import com.vetsoftware.app.registration.infrastructure.web.request.VerifyEmailRequest;
 import com.vetsoftware.app.registration.infrastructure.web.response.EmployeeCodeAvailabilityResponse;
@@ -25,15 +26,18 @@ public class RegistrationController {
     private final VerifyEmailUseCase verifyEmailUseCase;
     private final SuggestEmployeeCodeUseCase suggestEmployeeCodeUseCase;
     private final CheckEmployeeCodeAvailabilityUseCase checkEmployeeCodeAvailabilityUseCase;
+    private final AuditLogger auditLogger;
 
     public RegistrationController(RegisterUserUseCase registerUserUseCase,
                                   VerifyEmailUseCase verifyEmailUseCase,
                                   SuggestEmployeeCodeUseCase suggestEmployeeCodeUseCase,
-                                  CheckEmployeeCodeAvailabilityUseCase checkEmployeeCodeAvailabilityUseCase) {
+                                  CheckEmployeeCodeAvailabilityUseCase checkEmployeeCodeAvailabilityUseCase,
+                                  AuditLogger auditLogger) {
         this.registerUserUseCase = registerUserUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.suggestEmployeeCodeUseCase = suggestEmployeeCodeUseCase;
         this.checkEmployeeCodeAvailabilityUseCase = checkEmployeeCodeAvailabilityUseCase;
+        this.auditLogger = auditLogger;
     }
 
     @PostMapping
@@ -56,6 +60,9 @@ public class RegistrationController {
             httpRequest.getRemoteAddr(),
             request.employeeCode()
         ));
+        // Auditoría: alta de nueva veterinaria (empresa) por auto-registro.
+        auditLogger.companyRegistered(dto.companyId(), request.companyName(), request.companyIdentifier(),
+            dto.employeeId(), dto.employeeCode());
         return new RegistrationResponse(
             dto.companyId(), dto.employeeId(), dto.email(), dto.employeeCode(), dto.status());
     }

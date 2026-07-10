@@ -381,9 +381,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Auto-registro Opción B: login rechazado por correo sin verificar. 403 con código propio para
     // que el front distinga de credenciales inválidas y ofrezca reenviar la verificación.
     @ExceptionHandler(EmailNotVerifiedException.class)
-    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex, HttpServletRequest request) {
-        log.warn("Login blocked, email not verified");
-        auditLogger.loginFailure(request.getRequestURI(), "email_not_verified");
+    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+        log.warn("Login blocked, email not verified: {}", ex.getIdentifier());
+        auditLogger.loginBlockedEmailNotVerified(ex.getIdentifier());
         return problem(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED",
             "Debes verificar tu correo antes de iniciar sesión.");
     }

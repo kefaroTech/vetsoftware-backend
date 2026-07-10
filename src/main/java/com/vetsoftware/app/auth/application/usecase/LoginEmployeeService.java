@@ -42,7 +42,7 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
 
         // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
         if (!credentials.emailVerified())
-            throw new EmailNotVerifiedException();
+            throw new EmailNotVerifiedException(command.employeeCode());
 
         String accessToken = tokenGenerator.generate(
                 credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion());
