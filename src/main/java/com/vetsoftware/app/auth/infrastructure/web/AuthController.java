@@ -84,6 +84,7 @@ public class AuthController {
                 dto.companyId(),
                 dto.name(),
                 dto.employeeCode(),
+                dto.mustChangePassword(),
                 new ArrayList<>(dto.permissions())
         );
     }

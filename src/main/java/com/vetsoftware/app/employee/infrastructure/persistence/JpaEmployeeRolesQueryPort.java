@@ -28,6 +28,16 @@ public class JpaEmployeeRolesQueryPort implements EmployeeRolesQueryPort {
             ));
     }
 
+    @Override
+    public Map<Long, List<RoleSnapshot>> findRolesForListing(List<Long> employeeIds) {
+        if (employeeIds.isEmpty()) return Map.of();
+        return employeeRoleJpaRepository.findForEmployeeListing(employeeIds).stream()
+            .collect(Collectors.groupingBy(
+                er -> er.getEmployee().getId(),
+                Collectors.mapping(this::toSnapshot, Collectors.toList())
+            ));
+    }
+
     private RoleSnapshot toSnapshot(EmployeeRoleJpaEntity er) {
         RoleJpaEntity r = er.getRole();
         return new RoleSnapshot(er.getId(), r.getId(), r.getName(), r.getCode());

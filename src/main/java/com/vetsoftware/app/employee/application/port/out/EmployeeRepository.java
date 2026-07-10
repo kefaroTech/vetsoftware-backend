@@ -7,8 +7,14 @@ import java.util.Optional;
 public interface EmployeeRepository {
     Employee save(Employee employee);
     Optional<Employee> findById(Long id);
+
+    /** Busca por id incluyendo empleados desactivados (para operaciones idempotentes como desactivar). */
+    Optional<Employee> findByIdIncludingDisabled(Long id);
     List<Employee> findAll();
     List<Employee> findAllByCompanyId(Long companyId);
+
+    /** Empleados de la company incluyendo los desactivados (para la pantalla de listado). */
+    List<Employee> findAllByCompanyIdIncludingDisabled(Long companyId);
     void delete(Long id);
     int reactivate(Long id);
 

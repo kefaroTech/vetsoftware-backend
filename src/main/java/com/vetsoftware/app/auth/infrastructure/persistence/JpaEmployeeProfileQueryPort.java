@@ -21,6 +21,7 @@ public class JpaEmployeeProfileQueryPort implements EmployeeProfileQueryPort {
                         e.getId(),
                         e.getCompany().getId(),
                         e.getName(),
-                        e.getEmployeeCode()));
+                        e.getEmployeeCode(),
+                        e.isMustChangePassword()));
     }
 }

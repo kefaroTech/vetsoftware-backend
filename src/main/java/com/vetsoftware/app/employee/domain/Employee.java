@@ -13,11 +13,12 @@ public class Employee {
     private boolean enabled;
     private boolean emailVerified;
     private boolean mustChangePassword;
+    private EmployeeStatus status;
     private Long authVersion;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
                     CompanyRef company, LocalDateTime createdDate, boolean enabled, boolean emailVerified,
-                    boolean mustChangePassword, Long authVersion) {
+                    boolean mustChangePassword, EmployeeStatus status, Long authVersion) {
         if (employeeCode == null || employeeCode.isBlank()) throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50) throw new IllegalArgumentException("employeeCode must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -36,18 +37,21 @@ public class Employee {
         this.enabled = enabled;
         this.emailVerified = emailVerified;
         this.mustChangePassword = mustChangePassword;
+        this.status = status == null ? EmployeeStatus.ACTIVE : status;
         this.authVersion = authVersion == null ? 0L : authVersion;
     }
 
     /**
      * Crea un empleado nuevo. {@code emailVerified=false} para el dueño por auto-registro (Opción B, debe
      * verificar el correo antes de entrar). {@code mustChangePassword=true} para el staff invitado por un
-     * admin (se le asigna una contraseña temporal y debe cambiarla en el primer login).
+     * admin (se le asigna una contraseña temporal y debe cambiarla en el primer login). En ese caso arranca
+     * en {@code INVITED} y pasará a {@code ACTIVE} en su primer login; el dueño auto-registrado arranca ACTIVE.
      */
     public static Employee create(String employeeCode, String hashPassword, String name, String email,
                                   CompanyRef company, boolean emailVerified, boolean mustChangePassword) {
+        EmployeeStatus status = mustChangePassword ? EmployeeStatus.INVITED : EmployeeStatus.ACTIVE;
         return new Employee(null, employeeCode, hashPassword, name, email,
-            company, LocalDateTime.now(), true, emailVerified, mustChangePassword, 0L);
+            company, LocalDateTime.now(), true, emailVerified, mustChangePassword, status, 0L);
     }
 
     public void update(String employeeCode, String name, String email) {
@@ -77,6 +81,24 @@ public class Employee {
             throw new IllegalArgumentException("password is required");
         this.hashPassword = newHashPassword;
         this.mustChangePassword = false;
+    }
+
+    public EmployeeStatus getStatus() { return status; }
+
+    /** Marca el empleado como activo (primer login). Idempotente: activar dos veces no tiene efecto adicional. */
+    public void activate() { this.status = EmployeeStatus.ACTIVE; }
+
+    /**
+     * Reenvía la invitación: asigna una nueva contraseña temporal (hash ya calculado), vuelve a exigir el
+     * cambio en el primer login y deja el estado en INVITED. La contraseña previa ya estaba ofuscada en hash,
+     * por eso el admin escribe una nueva provisional.
+     */
+    public void reinvite(String newHashPassword) {
+        if (newHashPassword == null || newHashPassword.isBlank())
+            throw new IllegalArgumentException("password is required");
+        this.hashPassword = newHashPassword;
+        this.mustChangePassword = true;
+        this.status = EmployeeStatus.INVITED;
     }
 
     public Long getId() { return id; }

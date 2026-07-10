@@ -10,6 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "employee.list_by_company")
 @Service
@@ -24,10 +25,13 @@ public class ListEmployeesByCompanyService implements ListEmployeesByCompanyUseC
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EmployeeDto> listByCompany(Long companyId) {
-        List<Employee> employees = repository.findAllByCompanyId(companyId);
+        // Incluye desactivados: la pantalla muestra el estado (Activo/Inactivo/Invitado).
+        List<Employee> employees = repository.findAllByCompanyIdIncludingDisabled(companyId);
         List<Long> ids = employees.stream().map(Employee::getId).toList();
-        Map<Long, List<RoleSnapshot>> rolesByEmployee = rolesQueryPort.findRolesByEmployeeIds(ids);
+        // Para el listado: los desactivados muestran el rol que tenían (asignaciones aunque deshabilitadas).
+        Map<Long, List<RoleSnapshot>> rolesByEmployee = rolesQueryPort.findRolesForListing(ids);
         return employees.stream()
             .map(e -> EmployeeDto.from(e, rolesByEmployee.getOrDefault(e.getId(), List.of())))
             .toList();

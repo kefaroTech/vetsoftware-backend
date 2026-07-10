@@ -8,5 +8,6 @@ public record MeDto(
         Long companyId,
         String name,
         String employeeCode,
+        boolean mustChangePassword,
         Set<String> permissions
 ) {}

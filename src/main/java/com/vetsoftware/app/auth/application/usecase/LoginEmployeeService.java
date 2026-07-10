@@ -5,6 +5,7 @@ import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
+import com.vetsoftware.app.auth.application.port.out.EmployeeActivationPort;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository.EmployeeCredentials;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenIssuer;
@@ -20,15 +21,18 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
     private final TokenGenerator tokenGenerator;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final PasswordHasher passwordHasher;
+    private final EmployeeActivationPort employeeActivationPort;
 
     public LoginEmployeeService(EmployeeCredentialsRepository credentialsRepository,
                                 TokenGenerator tokenGenerator,
                                 RefreshTokenIssuer refreshTokenIssuer,
-                                PasswordHasher passwordHasher) {
+                                PasswordHasher passwordHasher,
+                                EmployeeActivationPort employeeActivationPort) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
         this.passwordHasher = passwordHasher;
+        this.employeeActivationPort = employeeActivationPort;
     }
 
     @Override
@@ -43,6 +47,9 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
         // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
         if (!credentials.emailVerified())
             throw new EmailNotVerifiedException(command.employeeCode());
+
+        // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba activo).
+        employeeActivationPort.activateOnLogin(credentials.id());
 
         String accessToken = tokenGenerator.generate(
                 credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion());

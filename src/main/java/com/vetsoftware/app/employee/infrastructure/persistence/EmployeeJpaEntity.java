@@ -1,6 +1,7 @@
 package com.vetsoftware.app.employee.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.employee.domain.EmployeeStatus;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
@@ -43,6 +44,10 @@ public class EmployeeJpaEntity {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private EmployeeStatus status = EmployeeStatus.ACTIVE;
+
     @Column(name = "auth_version", nullable = false)
     private Long authVersion = 0L;
 
@@ -68,6 +73,8 @@ public class EmployeeJpaEntity {
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+    public EmployeeStatus getStatus() { return status; }
+    public void setStatus(EmployeeStatus status) { this.status = status; }
     public Long getAuthVersion() { return authVersion; }
     public void setAuthVersion(Long authVersion) { this.authVersion = authVersion; }
 }

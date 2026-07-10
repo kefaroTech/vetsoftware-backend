@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Estado del ciclo de invitación (INVITED/ACTIVE). El staff invitado por un admin arranca INVITED y
+         pasa a ACTIVE en su primer login. Empleados existentes = ACTIVE (ya operan). Ortogonal a `enabled`
+         (soft-delete) y a `must_change_password` (obligación de cambiar la contraseña temporal). -->
+    <changeSet id="178_add_status_to_employees" author="orlando">
+        <addColumn tableName="employees">
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

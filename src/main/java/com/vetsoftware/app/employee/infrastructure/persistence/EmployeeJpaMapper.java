@@ -19,6 +19,7 @@ public class EmployeeJpaMapper {
         entity.setEnabled(employee.isEnabled());
         entity.setEmailVerified(employee.isEmailVerified());
         entity.setMustChangePassword(employee.isMustChangePassword());
+        entity.setStatus(employee.getStatus());
         entity.setAuthVersion(employee.getAuthVersion());
         return entity;
     }
@@ -40,6 +41,7 @@ public class EmployeeJpaMapper {
             entity.isEnabled(),
             entity.isEmailVerified(),
             entity.isMustChangePassword(),
+            entity.getStatus(),
             entity.getAuthVersion()
         );
     }

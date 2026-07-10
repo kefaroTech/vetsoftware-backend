@@ -35,6 +35,11 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
+    public Optional<Employee> findByIdIncludingDisabled(Long id) {
+        return jpaRepository.findByIdIncludingDisabled(id).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Employee> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
@@ -45,8 +50,17 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
+    public List<Employee> findAllByCompanyIdIncludingDisabled(Long companyId) {
+        return jpaRepository.findAllByCompanyIdIncludingDisabled(companyId).stream()
+            .map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
-        jpaRepository.deleteById(id);
+        // Soft-delete vía UPDATE nativo (equivalente al @SQLDelete). No usamos deleteById para no disparar
+        // el flush de entidades: si hay employee_roles gestionados del empleado en la sesión, provocaría un
+        // TransientObjectException. El UPDATE nativo + clearAutomatically lo evita.
+        jpaRepository.deactivate(id);
     }
 
     @Override

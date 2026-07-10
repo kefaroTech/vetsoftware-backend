@@ -8,5 +8,6 @@ public record MeResponse(
         Long companyId,
         String name,
         String employeeCode,
+        boolean mustChangePassword,
         List<String> permissions
 ) {}

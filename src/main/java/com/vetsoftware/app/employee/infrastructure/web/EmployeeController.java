@@ -1,10 +1,13 @@
 package com.vetsoftware.app.employee.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.employee.application.command.ChangeMyPasswordCommand;
 import com.vetsoftware.app.employee.application.command.InviteEmployeeCommand;
+import com.vetsoftware.app.employee.application.command.ResendInvitationCommand;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
+import com.vetsoftware.app.employee.application.port.in.ChangeMyPasswordUseCase;
 import com.vetsoftware.app.employee.application.port.in.CheckEmployeeCodeAvailabilityUseCase;
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.FindEmployeeUseCase;
@@ -12,9 +15,12 @@ import com.vetsoftware.app.employee.application.port.in.InviteEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesByCompanyUseCase;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.in.ReactivateEmployeeUseCase;
+import com.vetsoftware.app.employee.application.port.in.ResendInvitationUseCase;
 import com.vetsoftware.app.employee.application.port.in.SuggestEmployeeCodeUseCase;
 import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
+import com.vetsoftware.app.employee.infrastructure.web.request.ChangeMyPasswordRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
+import com.vetsoftware.app.employee.infrastructure.web.request.ResendInvitationRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.UpdateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeCodeAvailabilityResponse;
@@ -30,6 +36,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/employees")
 public class EmployeeController {
     private final InviteEmployeeUseCase inviteUseCase;
+    private final ResendInvitationUseCase resendInvitationUseCase;
+    private final ChangeMyPasswordUseCase changeMyPasswordUseCase;
     private final UpdateEmployeeUseCase updateUseCase;
     private final FindEmployeeUseCase findUseCase;
     private final ListEmployeesUseCase listUseCase;
@@ -40,7 +48,10 @@ public class EmployeeController {
     private final CheckEmployeeCodeAvailabilityUseCase checkCodeAvailabilityUseCase;
     private final Authz authz;
 
-    public EmployeeController(InviteEmployeeUseCase inviteUseCase, UpdateEmployeeUseCase updateUseCase,
+    public EmployeeController(InviteEmployeeUseCase inviteUseCase,
+                               ResendInvitationUseCase resendInvitationUseCase,
+                               ChangeMyPasswordUseCase changeMyPasswordUseCase,
+                               UpdateEmployeeUseCase updateUseCase,
                                FindEmployeeUseCase findUseCase, ListEmployeesUseCase listUseCase,
                                ListEmployeesByCompanyUseCase listByCompanyUseCase,
                                DeleteEmployeeUseCase deleteUseCase,
@@ -49,6 +60,8 @@ public class EmployeeController {
                                CheckEmployeeCodeAvailabilityUseCase checkCodeAvailabilityUseCase,
                                Authz authz) {
         this.inviteUseCase = inviteUseCase;
+        this.resendInvitationUseCase = resendInvitationUseCase;
+        this.changeMyPasswordUseCase = changeMyPasswordUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
@@ -67,6 +80,24 @@ public class EmployeeController {
             new InviteEmployeeCommand(request.employeeCode(), request.password(), request.name(),
                 request.email(), request.companyId(), request.roleIds())
         ));
+    }
+
+    /** Reenvía la invitación a un empleado invitado con una nueva contraseña provisional. */
+    @PostMapping("/{id}/resend-invitation")
+    public EmployeeResponse resendInvitation(@PathVariable Long id,
+                                             @Valid @RequestBody ResendInvitationRequest request) {
+        return toResponse(resendInvitationUseCase.execute(
+            new ResendInvitationCommand(id, request.password(), authz.currentCompanyId())
+        ));
+    }
+
+    /** Cambio de la propia contraseña (primer login forzado). El empleado sale del contexto autenticado. */
+    @PostMapping("/me/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changeMyPassword(@Valid @RequestBody ChangeMyPasswordRequest request) {
+        changeMyPasswordUseCase.execute(
+            new ChangeMyPasswordCommand(authz.currentEmployeeId(), request.newPassword())
+        );
     }
 
     @GetMapping
@@ -127,6 +158,7 @@ public class EmployeeController {
             roles,
             dto.createdDate(),
             dto.enabled(),
-            dto.mustChangePassword());
+            dto.mustChangePassword(),
+            dto.status());
     }
 }

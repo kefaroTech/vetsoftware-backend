@@ -8,4 +8,5 @@ public record EmployeeResponse(Long id, String employeeCode, String name, String
                                List<RoleSummary> roles,
                                LocalDateTime createdDate,
                                boolean enabled,
-                               boolean mustChangePassword) {}
+                               boolean mustChangePassword,
+                               String status) {}

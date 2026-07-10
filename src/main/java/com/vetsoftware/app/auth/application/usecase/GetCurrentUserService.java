@@ -39,6 +39,7 @@ public class GetCurrentUserService implements GetCurrentUserUseCase {
                     me.companyId(),
                     profile.name(),
                     profile.employeeCode(),
+                    profile.mustChangePassword(),
                     me.permissions()
             );
         }
@@ -52,6 +53,7 @@ public class GetCurrentUserService implements GetCurrentUserUseCase {
                     null,
                     profile.code(),
                     null,
+                    false,
                     me.permissions()
             );
         }
