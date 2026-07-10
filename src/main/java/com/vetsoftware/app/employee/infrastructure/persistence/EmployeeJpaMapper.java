@@ -18,6 +18,7 @@ public class EmployeeJpaMapper {
         entity.setCreatedDate(employee.getCreatedDate());
         entity.setEnabled(employee.isEnabled());
         entity.setEmailVerified(employee.isEmailVerified());
+        entity.setMustChangePassword(employee.isMustChangePassword());
         entity.setAuthVersion(employee.getAuthVersion());
         return entity;
     }
@@ -38,6 +39,7 @@ public class EmployeeJpaMapper {
             entity.getCreatedDate(),
             entity.isEnabled(),
             entity.isEmailVerified(),
+            entity.isMustChangePassword(),
             entity.getAuthVersion()
         );
     }

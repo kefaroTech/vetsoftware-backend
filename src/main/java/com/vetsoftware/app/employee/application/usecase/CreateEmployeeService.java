@@ -32,9 +32,10 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
 
         String hashed = passwordHasher.hash(command.password());
 
-        Employee employee = command.emailVerified()
-            ? Employee.create(command.employeeCode(), hashed, command.name(), command.email(), company)
-            : Employee.createUnverified(command.employeeCode(), hashed, command.name(), command.email(), company);
+        // Este caso de uso lo usa el auto-registro del dueño (Opción B). No fuerza cambio de contraseña
+        // (el dueño elige la suya). El alta de staff por el admin va por InviteEmployeeService.
+        Employee employee = Employee.create(command.employeeCode(), hashed, command.name(),
+            command.email(), company, command.emailVerified(), false);
         return EmployeeDto.from(repository.save(employee));
     }
 }

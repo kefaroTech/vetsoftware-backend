@@ -53,4 +53,9 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public boolean codeExists(String employeeCode) {
+        return jpaRepository.countByEmployeeCodeAllRows(employeeCode) > 0;
+    }
 }

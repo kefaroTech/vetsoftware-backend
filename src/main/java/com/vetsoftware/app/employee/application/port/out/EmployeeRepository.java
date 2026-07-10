@@ -11,4 +11,8 @@ public interface EmployeeRepository {
     List<Employee> findAllByCompanyId(Long companyId);
     void delete(Long id);
     int reactivate(Long id);
+
+    /** ¿Existe ya ese código de empleado? Cuenta TODAS las filas (incluidas las desactivadas), acorde a
+     *  la constraint unique de la BD, para validar disponibilidad al autogenerar/editar el código. */
+    boolean codeExists(String employeeCode);
 }

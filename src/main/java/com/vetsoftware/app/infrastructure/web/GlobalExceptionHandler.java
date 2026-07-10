@@ -515,11 +515,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
                 "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
         }
-        // Carrera en la unicidad del correo (employee_code = email): dos registros concurrentes con el mismo
-        // correo que pasaron el chequeo del service; la BD rechaza el 2º. Mismo código que el guard.
+        // Carrera en la unicidad de employee_code (código de empleado / correo del dueño en el registro):
+        // el 2º INSERT concurrente lo rechaza la BD. Código neutral (el mensaje específico "correo ya
+        // registrado" lo emite el pre-check del registro vía EMAIL_ALREADY_REGISTERED).
         if (cause != null && cause.contains("employee_code")) {
-            return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
-                "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
+            return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
+                "Ese usuario ya está en uso. Elige otro.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

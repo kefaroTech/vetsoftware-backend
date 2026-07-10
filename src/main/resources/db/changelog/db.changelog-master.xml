@@ -180,5 +180,6 @@
     <include file="db/changelog/migrations/174_create_appointments.xml"/>
     <include file="db/changelog/migrations/175_add_email_verified_to_employees.xml"/>
     <include file="db/changelog/migrations/176_create_email_verification_tokens.xml"/>
+    <include file="db/changelog/migrations/177_add_must_change_password_to_employees.xml"/>
 
 </databaseChangeLog>

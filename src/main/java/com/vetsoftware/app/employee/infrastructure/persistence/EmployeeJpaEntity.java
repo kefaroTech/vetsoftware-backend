@@ -40,6 +40,9 @@ public class EmployeeJpaEntity {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = true;
 
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     @Column(name = "auth_version", nullable = false)
     private Long authVersion = 0L;
 
@@ -63,6 +66,8 @@ public class EmployeeJpaEntity {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public boolean isEmailVerified() { return emailVerified; }
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
     public Long getAuthVersion() { return authVersion; }
     public void setAuthVersion(Long authVersion) { this.authVersion = authVersion; }
 }

@@ -9,7 +9,8 @@ public record EmployeeDto(Long id, String employeeCode, String name, String emai
                           CompanySummaryDto company,
                           List<RoleSummaryDto> roles,
                           LocalDateTime createdDate,
-                          boolean enabled) {
+                          boolean enabled,
+                          boolean mustChangePassword) {
     public static EmployeeDto from(Employee employee) {
         return from(employee, List.of());
     }
@@ -23,7 +24,8 @@ public record EmployeeDto(Long id, String employeeCode, String name, String emai
             CompanySummaryDto.from(employee.getCompany()),
             roles.stream().map(RoleSummaryDto::from).toList(),
             employee.getCreatedDate(),
-            employee.isEnabled()
+            employee.isEnabled(),
+            employee.isMustChangePassword()
         );
     }
 }

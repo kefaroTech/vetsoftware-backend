@@ -104,6 +104,13 @@ vetsoftware:
     verify-url: ${RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
     # Umbral mínimo para reCAPTCHA v3 (ignorado en v2, que no envía score).
     min-score: ${RECAPTCHA_MIN_SCORE:0.5}
+  # Alta de staff por un admin: invitación por correo (plantilla de Resend) con usuario + contraseña temporal.
+  employee:
+    # ID de la plantilla de Resend del correo de invitación (variables EMPLOYEE_NAME, COMPANY_NAME,
+    # EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL). Vacío = no se envía (warning).
+    invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:cbf57a10-3f2c-439a-8fe1-fc0935778d52}
+    # URL de login a la que apunta el botón del correo de invitación.
+    login-url: ${EMPLOYEE_LOGIN_URL:http://localhost:5174/login}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con
