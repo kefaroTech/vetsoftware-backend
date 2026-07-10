@@ -21,8 +21,10 @@ public class CreateEmployeeAdapter implements EmployeeCreator {
     @Override
     public EmployeeResult create(String employeeCode, String hashedPassword, String name,
                                  String email, Long companyId) {
+        // Auto-registro público: el dueño se crea SIN verificar. No podrá iniciar sesión hasta
+        // confirmar su correo (verificación Opción B, ver RegisterUserService / VerifyEmailService).
         var dto = systemAuthRunner.call(() -> createEmployeeUseCase.execute(
-            new CreateEmployeeCommand(employeeCode, hashedPassword, name, email, companyId)
+            new CreateEmployeeCommand(employeeCode, hashedPassword, name, email, companyId, false)
         ));
         return new EmployeeResult(dto.id());
     }

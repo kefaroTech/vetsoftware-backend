@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Verificacion de correo (auto-registro Opcion B). Los empleados existentes se consideran
+         verificados (default TRUE); solo el dueno creado por /register queda en FALSE hasta confirmar. -->
+    <changeSet id="175_add_email_verified_to_employees" author="orlando">
+        <addColumn tableName="employees">
+            <column name="email_verified" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

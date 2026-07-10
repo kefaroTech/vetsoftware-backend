@@ -1,6 +1,11 @@
 server:
   servlet:
     context-path: /api/v1
+  # Tomcat corta en 8KB por defecto. En dev el navegador comparte cookies de otras
+  # apps en localhost (NextAuth de :3000/:3003, etc.), inflando el header Cookie por
+  # encima de 8KB → Tomcat responde 400 (HTML) antes de llegar al controller. Subimos
+  # el límite para tolerarlo. Override por env si hiciera falta.
+  max-http-header-size: ${MAX_HTTP_HEADER_SIZE:32KB}
   # 'native' → Tomcat (RemoteIpValve) solo confía en X-Forwarded-For/Proto de proxies INTERNOS de
   # confianza (rangos privados por defecto); un cliente externo no puede falsear su IP. Así
   # request.getRemoteAddr() devuelve la IP real del cliente tanto detrás de balanceador como en local.
@@ -80,6 +85,20 @@ vetsoftware:
   mail:
     from: ${MAIL_FROM:facturacion@vetsoftware.local}
     enabled: ${MAIL_ENABLED:true}
+  # Auto-registro público (Opción B): el dueño debe verificar su correo antes de poder iniciar sesión.
+  registration:
+    # Página del front a la que apunta el enlace del correo; recibe ?token=... y llama a POST /register/verify.
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
+    # Vigencia del enlace de verificación.
+    verification-token-ttl-hours: ${REGISTRATION_VERIFICATION_TTL_HOURS:24}
+  # reCAPTCHA en el registro. Deshabilitado por defecto (dev/local); en prod poner RECAPTCHA_ENABLED=true
+  # y RECAPTCHA_SECRET con la clave secreta del sitio (asignar la variable de entorno, no versionarla).
+  recaptcha:
+    enabled: ${RECAPTCHA_ENABLED:false}
+    secret: ${RECAPTCHA_SECRET:}
+    verify-url: ${RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
+    # Umbral mínimo para reCAPTCHA v3 (ignorado en v2, que no envía score).
+    min-score: ${RECAPTCHA_MIN_SCORE:0.5}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

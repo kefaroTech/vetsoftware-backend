@@ -21,6 +21,7 @@ public class JpaEmployeeCredentialsRepository implements EmployeeCredentialsRepo
                     e.getId(),
                     e.getCompany().getId(),
                     e.getAuthVersion(),
-                    e.getHashPassword()));
+                    e.getHashPassword(),
+                    e.isEmailVerified()));
     }
 }

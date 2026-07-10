@@ -32,9 +32,9 @@ public class CreateEmployeeService implements CreateEmployeeUseCase {
 
         String hashed = passwordHasher.hash(command.password());
 
-        Employee employee = Employee.create(
-            command.employeeCode(), hashed, command.name(), command.email(), company
-        );
+        Employee employee = command.emailVerified()
+            ? Employee.create(command.employeeCode(), hashed, command.name(), command.email(), company)
+            : Employee.createUnverified(command.employeeCode(), hashed, command.name(), command.email(), company);
         return EmployeeDto.from(repository.save(employee));
     }
 }

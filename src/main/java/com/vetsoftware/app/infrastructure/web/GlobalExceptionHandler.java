@@ -8,6 +8,7 @@ import com.vetsoftware.app.animalcolor.domain.AnimalColorHasActiveChildrenExcept
 import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionException;
+import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
@@ -59,6 +60,8 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoun
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoundException;
+import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
+import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
@@ -372,6 +375,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Unauthorized: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
+    }
+
+    // Auto-registro Opción B: login rechazado por correo sin verificar. 403 con código propio para
+    // que el front distinga de credenciales inválidas y ofrezca reenviar la verificación.
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex, HttpServletRequest request) {
+        log.warn("Login blocked, email not verified");
+        auditLogger.loginFailure(request.getRequestURI(), "email_not_verified");
+        return problem(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED",
+            "Debes verificar tu correo antes de iniciar sesión.");
+    }
+
+    // Captcha del registro no superado (o mal configurado).
+    @ExceptionHandler(CaptchaVerificationException.class)
+    public ProblemDetail handleCaptchaFailed(CaptchaVerificationException ex) {
+        log.warn("Captcha verification failed: {}", ex.getMessage());
+        return problem(HttpStatus.BAD_REQUEST, "CAPTCHA_FAILED",
+            "No pudimos verificar el captcha. Inténtalo de nuevo.");
+    }
+
+    // Token de verificación de correo inválido, expirado o ya usado.
+    @ExceptionHandler(InvalidVerificationTokenException.class)
+    public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
+        log.warn("Invalid email verification token: {}", ex.getMessage());
+        return problem(HttpStatus.BAD_REQUEST, "INVALID_VERIFICATION_TOKEN",
+            "El enlace de verificación no es válido o expiró.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)

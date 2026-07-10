@@ -2,6 +2,7 @@ package com.vetsoftware.app.auth.application.usecase;
 
 import com.vetsoftware.app.auth.application.command.LoginEmployeeCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
+import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository;
@@ -38,6 +39,10 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
 
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
+
+        // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
+        if (!credentials.emailVerified())
+            throw new EmailNotVerifiedException();
 
         String accessToken = tokenGenerator.generate(
                 credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion());

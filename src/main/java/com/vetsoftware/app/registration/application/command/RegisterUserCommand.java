@@ -11,5 +11,7 @@ public record RegisterUserCommand(
     String employeeEmail,
     String rawPassword,
     String taxRegime,
-    String fiscalEmail
+    String fiscalEmail,
+    String recaptchaToken,
+    String remoteIp
 ) {}

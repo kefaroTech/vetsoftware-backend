@@ -54,7 +54,7 @@ public class EmployeeController {
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
         return toResponse(createUseCase.execute(
             new CreateEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.companyId())
+                request.email(), request.companyId(), true)
         ));
     }
 

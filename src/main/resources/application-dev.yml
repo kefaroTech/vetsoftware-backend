@@ -1,5 +1,13 @@
 # Perfil dev — idéntico al entorno local actual, pero S3 apunta a LocalStack.
 vetsoftware:
+  # reCAPTCHA habilitado en dev con las llaves de TEST de Google (siempre validan success:true).
+  # Site key para el front: 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+  recaptcha:
+    enabled: ${RECAPTCHA_ENABLED:true}
+    secret: ${RECAPTCHA_SECRET:6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe}
+  # El enlace del correo de verificación apunta a la página del PublicFront (Vite dev en 5173).
+  registration:
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
   storage:
     s3:
       bucket: ${S3_BUCKET:vetsoftware}

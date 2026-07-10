@@ -16,5 +16,8 @@ public record RegisterUserRequest(
     @NotBlank @Email @Size(max = 100) String employeeEmail,
     @NotBlank @Size(min = 8, max = 100) String password,
     @NotBlank String taxRegime,
-    @NotBlank @Email @Size(max = 255) String fiscalEmail
+    @NotBlank @Email @Size(max = 255) String fiscalEmail,
+    // Token del challenge reCAPTCHA. Opcional a nivel de bean-validation porque el captcha puede estar
+    // deshabilitado por config (dev); cuando esta habilitado, el CaptchaVerifier exige su presencia.
+    @Size(max = 4000) String recaptchaToken
 ) {}

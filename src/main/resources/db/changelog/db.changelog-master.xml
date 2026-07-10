@@ -178,5 +178,7 @@
     <include file="db/changelog/migrations/172_alter_laboratory_tests_diagnosis_nullable.xml"/>
     <include file="db/changelog/migrations/173_create_medicaments.xml"/>
     <include file="db/changelog/migrations/174_create_appointments.xml"/>
+    <include file="db/changelog/migrations/175_add_email_verified_to_employees.xml"/>
+    <include file="db/changelog/migrations/176_create_email_verification_tokens.xml"/>
 
 </databaseChangeLog>
