@@ -17,8 +17,8 @@ public class ListElectronicDocumentsService implements ListElectronicDocumentsUs
     }
 
     @Override
-    public List<ElectronicDocumentDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream()
+    public List<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId) {
+        return repository.findAllByCompanyId(companyId, branchId).stream()
                 .map(ElectronicDocumentDto::from).toList();
     }
 }

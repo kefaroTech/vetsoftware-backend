@@ -20,6 +20,7 @@ import com.vetsoftware.app.breed.domain.BreedNotFoundException;
 import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
+import com.vetsoftware.app.branch.domain.BranchNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
@@ -219,7 +220,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             GeneralChargeOpenAccountNotFoundException.class,
             EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class,
             NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class,
-            DianProviderConfigNotFoundException.class, WithholdingConfigNotFoundException.class
+            DianProviderConfigNotFoundException.class, WithholdingConfigNotFoundException.class,
+            BranchNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());

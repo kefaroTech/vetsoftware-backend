@@ -21,7 +21,9 @@ public record RegisterPosSaleCommand(
         /** Idempotencia: UUID por apertura del cobro; null en clientes legacy que no lo envían. */
         String clientRequestId,
         /** Actor fiscal: empleado que registra la venta, inyectado por el controller desde el contexto auth. */
-        Long issuedByEmployeeId
+        Long issuedByEmployeeId,
+        /** Sede emisora (opcional). Si no viene, se resuelve a la "Principal" de la empresa. */
+        Long branchId
 ) {
     /** true si alguna linea es GENERAL (precio libre): solo admin.all puede emitirlas (ver @PreAuthorize del use case). */
     public boolean hasGeneralLine() {

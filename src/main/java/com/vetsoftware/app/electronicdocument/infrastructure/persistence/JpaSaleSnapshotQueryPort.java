@@ -93,7 +93,8 @@ public class JpaSaleSnapshotQueryPort implements SaleSnapshotQueryPort {
 
         return Optional.of(new SaleSnapshot(companyId, openAccountId, closed, issuer, customer,
                 lines, payments, PaymentForm.CONTADO, withholdingAgent,
-                fiscalProfile.reteFuenteRate(), fiscalProfile.reteIvaRate(), fiscalProfile.reteIcaRate()));
+                fiscalProfile.reteFuenteRate(), fiscalProfile.reteIvaRate(), fiscalProfile.reteIcaRate(),
+                account.getBranch().getId()));
     }
 
     private List<ElectronicDocumentLine> buildLines(Long openAccountId, Long companyId) {

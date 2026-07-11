@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Multi-sucursal (Fase C). Siembra los permisos de GESTIÓN de sucursales (branch.create/branch.update)
+         en el catálogo de permisos (sub_module + base_permissions + base_role_permissions al rol base ADMIN),
+         los habilita para las membresías (membership_sub_modules) y los backfillea a las empresas existentes
+         (permissions por empresa + role_permissions al rol ADMIN de cada empresa). La LECTURA de sucursales
+         (selector de sede) NO requiere permiso: cualquier empleado de la empresa lista sus sedes.
+         Todas las sentencias son idempotentes (guardas NOT EXISTS / claves por code). -->
+
+    <changeSet id="184_branch_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled)
+            SELECT 'Sucursales', 'BRANCH', (SELECT id FROM modules WHERE code = 'GENERAL'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'BRANCH');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'BRANCH';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="184_branch_base_permissions" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Crear sucursal', 'branch.create', (SELECT id FROM sub_modules WHERE code = 'BRANCH'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'branch.create');
+
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Editar sucursal', 'branch.update', (SELECT id FROM sub_modules WHERE code = 'BRANCH'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'branch.update');
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code IN ('branch.create', 'branch.update');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="184_branch_base_role_permissions_admin" author="orlando">
+        <!-- El rol base ADMIN recibe la gestión de sucursales: así toda empresa NUEVA la hereda al registrarse. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN ('branch.create', 'branch.update')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (SELECT id FROM base_permissions WHERE code IN ('branch.create', 'branch.update'));
+        </rollback>
+    </changeSet>
+
+    <changeSet id="184_branch_membership_sub_modules" author="orlando">
+        <!-- Habilita el sub-módulo BRANCH para TODAS las membresías (multi-sucursal es capacidad de base).
+             Sin esto, ni el registro ni el publish propagarían los permisos (gating por membership). -->
+        <sql>
+            INSERT INTO membership_sub_modules (membership_id, sub_module_id, enabled)
+            SELECT m.id, sm.id, 1
+            FROM memberships m
+            CROSS JOIN sub_modules sm
+            WHERE sm.code = 'BRANCH'
+              AND NOT EXISTS (
+                  SELECT 1 FROM membership_sub_modules x
+                  WHERE x.membership_id = m.id AND x.sub_module_id = sm.id);
+        </sql>
+        <rollback>
+            DELETE FROM membership_sub_modules
+            WHERE sub_module_id IN (SELECT id FROM sub_modules WHERE code = 'BRANCH');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="184_branch_permissions_backfill_companies" author="orlando">
+        <!-- Backfill a empresas EXISTENTES: copia branch.create/branch.update como permisos por empresa. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, c.id, sm.id, 1
+            FROM companies c
+            CROSS JOIN base_permissions bp
+            JOIN sub_modules sm ON sm.code = 'BRANCH'
+            WHERE bp.code IN ('branch.create', 'branch.update')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p WHERE p.company_id = c.id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code IN ('branch.create', 'branch.update');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="184_branch_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos permisos al rol ADMIN (code = 'ADMIN') de cada empresa existente. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id AND p.code IN ('branch.create', 'branch.update')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (SELECT id FROM permissions WHERE code IN ('branch.create', 'branch.update'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

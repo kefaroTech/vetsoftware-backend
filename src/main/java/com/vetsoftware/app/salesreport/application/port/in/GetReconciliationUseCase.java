@@ -6,5 +6,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface GetReconciliationUseCase {
     @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('salesreport.read') and @authz.isMyCompany(#companyId))")
-    ReconciliationDto get(Long companyId, LocalDate from, LocalDate to);
+    ReconciliationDto get(Long companyId, LocalDate from, LocalDate to, Long branchId);
 }

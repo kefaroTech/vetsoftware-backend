@@ -1,7 +1,9 @@
 package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
+import com.vetsoftware.app.openaccount.domain.BranchRef;
 import com.vetsoftware.app.openaccount.domain.CompanyRef;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
@@ -15,6 +17,7 @@ public class OpenAccountJpaMapper {
     public OpenAccountJpaEntity toJpa(OpenAccount openAccount,
                                       OwnerJpaEntity owner,
                                       CompanyJpaEntity company,
+                                      BranchJpaEntity branch,
                                       EmployeeJpaEntity createdBy,
                                       EmployeeJpaEntity closedBy) {
         OpenAccountJpaEntity entity = new OpenAccountJpaEntity();
@@ -24,6 +27,7 @@ public class OpenAccountJpaMapper {
         entity.setPaidAmount(openAccount.getPaidAmount());
         entity.setOutstandingAmount(openAccount.getOutstandingAmount());
         entity.setCompany(company);
+        entity.setBranch(branch);
         entity.setStatus(openAccount.getStatus());
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(openAccount.getCreatedDate());
@@ -40,6 +44,7 @@ public class OpenAccountJpaMapper {
     public OpenAccount toDomain(OpenAccountJpaEntity entity) {
         OwnerJpaEntity o = entity.getOwner();
         CompanyJpaEntity c = entity.getCompany();
+        BranchJpaEntity b = entity.getBranch();
         EmployeeJpaEntity cb = entity.getCreatedBy();
         EmployeeJpaEntity closedBy = entity.getClosedBy();
         EmployeeRef closedByRef = closedBy != null
@@ -48,12 +53,13 @@ public class OpenAccountJpaMapper {
         return toDomain(entity,
             new OwnerRef(o.getId(), o.getName(), o.getDocument()),
             new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+            new BranchRef(b.getId(), b.getName(), b.getCode()),
             new EmployeeRef(cb.getId(), cb.getName()),
             closedByRef);
     }
 
     public OpenAccount toDomain(OpenAccountJpaEntity entity, OwnerRef ownerRef,
-                                CompanyRef companyRef, EmployeeRef createdByRef,
+                                CompanyRef companyRef, BranchRef branchRef, EmployeeRef createdByRef,
                                 EmployeeRef closedByRef) {
         return new OpenAccount(
             entity.getId(),
@@ -62,6 +68,7 @@ public class OpenAccountJpaMapper {
             entity.getPaidAmount(),
             entity.getOutstandingAmount(),
             companyRef,
+            branchRef,
             entity.getStatus(),
             createdByRef,
             entity.getCreatedDate(),

@@ -17,6 +17,7 @@ public record AppointmentResponse(
         String clientName,
         String clientPhone,
         EmployeeSummary employee,
+        BranchSummary branch,
         long version,
         boolean enabled,
         LocalDateTime createdDate,

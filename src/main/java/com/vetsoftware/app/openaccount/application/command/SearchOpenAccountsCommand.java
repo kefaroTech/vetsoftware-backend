@@ -5,5 +5,7 @@ public record SearchOpenAccountsCommand(
         Long ownerId,
         Boolean enabled,
         int page,
-        int pageSize
+        int pageSize,
+        // Multi-sucursal (Fase C): filtro opcional por sede. null = todas las sedes de la empresa.
+        Long branchId
 ) {}

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Multi-sucursal (Fase B · Ventas). Añade branch_id a electronic_documents (sede emisora del documento
+         fiscal), backfilleado a la sede "Principal" (migración 180) antes de exigir NOT NULL + FK. -->
+    <changeSet id="183_add_branch_id_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="branch_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="183_backfill_electronic_document_branch" author="orlando">
+        <sql>
+            UPDATE electronic_documents d
+            JOIN branches b ON b.company_id = d.company_id AND b.code = 'PRINCIPAL'
+            SET d.branch_id = b.id
+            WHERE d.branch_id IS NULL
+        </sql>
+        <rollback>
+            UPDATE electronic_documents SET branch_id = NULL
+        </rollback>
+    </changeSet>
+
+    <changeSet id="183_electronic_document_branch_not_null_fk" author="orlando">
+        <addNotNullConstraint tableName="electronic_documents" columnName="branch_id" columnDataType="BIGINT"/>
+        <addForeignKeyConstraint baseTableName="electronic_documents" baseColumnNames="branch_id"
+                                 constraintName="fk_electronic_documents_branch"
+                                 referencedTableName="branches" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

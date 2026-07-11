@@ -1,5 +1,7 @@
 package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaEntity;
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaRepository;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
@@ -29,30 +31,35 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     private final OwnerJpaRepository ownerJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
+    private final BranchJpaRepository branchJpaRepository;
 
     public JpaOpenAccountRepository(OpenAccountJpaRepository jpaRepository,
                                     OpenAccountJpaMapper mapper,
                                     OwnerJpaRepository ownerJpaRepository,
                                     CompanyJpaRepository companyJpaRepository,
-                                    EmployeeJpaRepository employeeJpaRepository) {
+                                    EmployeeJpaRepository employeeJpaRepository,
+                                    BranchJpaRepository branchJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.ownerJpaRepository = ownerJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
         this.employeeJpaRepository = employeeJpaRepository;
+        this.branchJpaRepository = branchJpaRepository;
     }
 
     @Override
     public OpenAccount save(OpenAccount openAccount) {
         OwnerJpaEntity owner = ownerJpaRepository.getReferenceById(openAccount.getOwner().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(openAccount.getCompany().id());
+        BranchJpaEntity branch = branchJpaRepository.getReferenceById(openAccount.getBranch().id());
         EmployeeJpaEntity createdBy = employeeJpaRepository.getReferenceById(openAccount.getCreatedBy().id());
         EmployeeJpaEntity closedBy = openAccount.getClosedBy() != null
             ? employeeJpaRepository.getReferenceById(openAccount.getClosedBy().id())
             : null;
-        OpenAccountJpaEntity saved = jpaRepository.save(mapper.toJpa(openAccount, owner, company, createdBy, closedBy));
+        OpenAccountJpaEntity saved = jpaRepository.save(
+            mapper.toJpa(openAccount, owner, company, branch, createdBy, closedBy));
         return mapper.toDomain(saved, openAccount.getOwner(), openAccount.getCompany(),
-            openAccount.getCreatedBy(), openAccount.getClosedBy());
+            openAccount.getBranch(), openAccount.getCreatedBy(), openAccount.getClosedBy());
     }
 
     @Override
@@ -81,8 +88,9 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
-    public List<OpenAccount> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+    public List<OpenAccount> findAllByCompanyId(Long companyId, Long branchId) {
+        return jpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
+            .map(mapper::toDomain).toList();
     }
 
     @Override
@@ -109,6 +117,7 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("owner", JoinType.LEFT);
                 root.fetch("company", JoinType.LEFT);
+                root.fetch("branch", JoinType.LEFT);
                 root.fetch("createdBy", JoinType.LEFT);
                 query.distinct(true);
             }
@@ -119,6 +128,10 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
             }
             if (command.enabled() != null) {
                 predicates.add(cb.equal(root.get("enabled"), command.enabled()));
+            }
+            // Multi-sucursal (Fase C): filtro opcional por sede.
+            if (command.branchId() != null) {
+                predicates.add(cb.equal(root.get("branch").get("id"), command.branchId()));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

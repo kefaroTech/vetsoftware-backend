@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Multi-sucursal (Fase A). Sucursal/sede de una empresa: ancla para scopear stock, caja, ventas,
+         numeración fiscal y citas. `active` es estado de negocio (no soft-delete). -->
+    <changeSet id="180_create_branches" author="orlando">
+        <createTable tableName="branches">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address" type="VARCHAR(255)"/>
+            <column name="phone" type="VARCHAR(30)"/>
+            <column name="city_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_branches_city"
+                             references="cities(id)"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_branches_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="branches"
+                             columnNames="company_id, code"
+                             constraintName="uq_branches_company_code"/>
+    </changeSet>
+
+    <!-- Backfill: una sucursal "Principal" por cada empresa existente, para que el código que empiece a
+         exigir branch_id tenga siempre un valor. Hereda ciudad/dirección/teléfono de la empresa. -->
+    <changeSet id="180_seed_principal_branch" author="orlando">
+        <sql>
+            INSERT INTO branches (name, code, address, phone, city_id, company_id, created_date, active)
+            SELECT 'Principal', 'PRINCIPAL', c.address, c.contact_number, c.city_id, c.id, CURRENT_TIMESTAMP, 1
+            FROM companies c
+        </sql>
+        <rollback>
+            DELETE FROM branches WHERE code = 'PRINCIPAL'
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ElectronicDocumentJpaRepository extends JpaRepository<ElectronicDocumentJpaEntity, Long> {
 
@@ -15,8 +17,13 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     Optional<ElectronicDocumentJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
+    // Multi-sucursal (Fase C): lista de la empresa con filtro OPCIONAL por sede. branchId es una columna Long
+    // pelada (no @ManyToOne), por eso el guard es sobre e.branchId. null = todas las sedes.
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
-    List<ElectronicDocumentJpaEntity> findByCompanyId(Long companyId);
+    @Query("SELECT e FROM ElectronicDocumentJpaEntity e WHERE e.company.id = :companyId "
+        + "AND (:branchId IS NULL OR e.branchId = :branchId)")
+    List<ElectronicDocumentJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
+                                                                       @Param("branchId") Long branchId);
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     Optional<ElectronicDocumentJpaEntity> findByCufeAndCompany_Id(String cufe, Long companyId);

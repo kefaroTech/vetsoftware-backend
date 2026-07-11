@@ -3,6 +3,7 @@ package com.vetsoftware.app.registration.application.usecase;
 import com.vetsoftware.app.registration.application.command.RegisterUserCommand;
 import com.vetsoftware.app.registration.application.dto.RegistrationDto;
 import com.vetsoftware.app.registration.application.port.in.RegisterUserUseCase;
+import com.vetsoftware.app.registration.application.port.out.BranchCreator;
 import com.vetsoftware.app.registration.application.port.out.CaptchaVerifier;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
@@ -35,6 +36,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final CaptchaVerifier captchaVerifier;
     private final CompanyCreator companyCreator;
     private final CompanyTaxProfileCreator companyTaxProfileCreator;
+    private final BranchCreator branchCreator;
     private final EmployeeCreator employeeCreator;
     private final CompanyIdentifierChecker companyIdentifierChecker;
     private final EmployeeCodeChecker employeeCodeChecker;
@@ -50,6 +52,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     public RegisterUserService(CaptchaVerifier captchaVerifier,
                                CompanyCreator companyCreator,
                                CompanyTaxProfileCreator companyTaxProfileCreator,
+                               BranchCreator branchCreator,
                                EmployeeCreator employeeCreator,
                                CompanyIdentifierChecker companyIdentifierChecker,
                                EmployeeCodeChecker employeeCodeChecker,
@@ -64,6 +67,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.captchaVerifier = captchaVerifier;
         this.companyCreator = companyCreator;
         this.companyTaxProfileCreator = companyTaxProfileCreator;
+        this.branchCreator = branchCreator;
         this.employeeCreator = employeeCreator;
         this.companyIdentifierChecker = companyIdentifierChecker;
         this.employeeCodeChecker = employeeCodeChecker;
@@ -103,6 +107,11 @@ public class RegisterUserService implements RegisterUserUseCase {
         companyTaxProfileCreator.create(
                 company.id(), command.documentType(), company.identifier(), company.name(),
                 command.taxRegime(), command.fiscalEmail());
+
+        // Multi-sucursal: toda empresa nace con su sede "Principal" (invariante: ≥1 sede por empresa).
+        // Hereda ciudad/dirección/teléfono del registro, igual que el backfill de las empresas existentes.
+        branchCreator.create("Principal", "PRINCIPAL", command.companyAddress(),
+                command.companyContactNumber(), command.cityId(), company.id());
 
         // El dueño ELIGE su código de acceso (Opción A). Revalidamos aquí que siga libre (defensa ante la
         // El usuario de acceso ES el correo del administrador (un email = una veterinaria). Como employee_code

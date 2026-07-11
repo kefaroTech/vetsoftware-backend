@@ -1,6 +1,7 @@
 package com.vetsoftware.app.appointment.infrastructure.persistence;
 
 import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaEntity;
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
@@ -55,6 +56,10 @@ public class AppointmentJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id", nullable = false)
+    private BranchJpaEntity branch;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -91,6 +96,8 @@ public class AppointmentJpaEntity {
     public void setEmployee(EmployeeJpaEntity employee) { this.employee = employee; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public BranchJpaEntity getBranch() { return branch; }
+    public void setBranch(BranchJpaEntity branch) { this.branch = branch; }
     public long getVersion() { return version; }
     public void setVersion(long version) { this.version = version; }
     public boolean isEnabled() { return enabled; }

@@ -4,10 +4,12 @@ import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountComm
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import com.vetsoftware.app.openaccount.application.port.in.CreateOpenAccountUseCase;
+import com.vetsoftware.app.openaccount.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import com.vetsoftware.app.openaccount.application.port.out.OwnerQueryPort;
+import com.vetsoftware.app.openaccount.domain.BranchRef;
 import com.vetsoftware.app.openaccount.domain.CompanyRef;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
@@ -24,15 +26,18 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
     private final OwnerQueryPort ownerQueryPort;
     private final CompanyQueryPort companyQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
+    private final BranchQueryPort branchQueryPort;
 
     public CreateOpenAccountService(OpenAccountRepository repository,
                                     OwnerQueryPort ownerQueryPort,
                                     CompanyQueryPort companyQueryPort,
-                                    EmployeeQueryPort employeeQueryPort) {
+                                    EmployeeQueryPort employeeQueryPort,
+                                    BranchQueryPort branchQueryPort) {
         this.repository = repository;
         this.ownerQueryPort = ownerQueryPort;
         this.companyQueryPort = companyQueryPort;
         this.employeeQueryPort = employeeQueryPort;
+        this.branchQueryPort = branchQueryPort;
     }
 
     // NOTA (regla de negocio): una cuenta abierta no debe existir sin cargos. Como los
@@ -49,7 +54,7 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
         // devuelve esa en vez de fallar — un reintento tras perder la respuesta no duplica ni
         // choca con el 409 de la constraint, y una cuenta abierta vacía se reutiliza.
         Optional<OpenAccount> existing = repository
-            .search(new SearchOpenAccountsCommand(command.companyId(), command.ownerId(), true, 0, 50))
+            .search(new SearchOpenAccountsCommand(command.companyId(), command.ownerId(), true, 0, 50, null))
             .content().stream()
             .filter(a -> a.getStatus() == OpenAccountStatus.OPEN)
             .findFirst();
@@ -63,8 +68,24 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+        // Sede: si el request trae branchId debe pertenecer a la empresa y estar ACTIVA; si no, la sede activa
+        // por defecto ("Principal" activa / primera activa). No se abre cuenta en una sede fuera de operación.
+        BranchRef branch = command.branchId() != null
+            ? resolveRequestedBranch(command.branchId(), command.companyId())
+            : branchQueryPort.findDefaultActiveByCompanyId(command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "Company has no active branch: " + command.companyId()));
 
-        OpenAccount openAccount = OpenAccount.create(owner, company, createdBy);
+        OpenAccount openAccount = OpenAccount.create(owner, company, branch, createdBy);
         return OpenAccountDto.from(repository.save(openAccount));
+    }
+
+    // Sede solicitada explícitamente: activa y de la empresa. Distingue "inactiva" de "inexistente" para dar
+    // un error preciso (la sede existe pero fue desactivada vs. no pertenece a la empresa / no existe).
+    private BranchRef resolveRequestedBranch(Long branchId, Long companyId) {
+        return branchQueryPort.findActiveByIdAndCompanyId(branchId, companyId)
+            .orElseThrow(() -> branchQueryPort.existsByIdAndCompanyId(branchId, companyId)
+                ? new IllegalArgumentException("Branch is not active: " + branchId)
+                : new IllegalArgumentException("Branch not found: " + branchId));
     }
 }

@@ -23,7 +23,9 @@ public record RegisterPosSaleRequest(
         @NotEmpty @Valid List<SaleLineRequest> lines,
         @NotEmpty @Valid List<SalePaymentRequest> payments,
         /** Idempotencia de la venta: UUID que el front genera por apertura del cobro (opcional). */
-        String clientRequestId
+        String clientRequestId,
+        /** Sede emisora (opcional). Si no viene, se usa la sede "Principal" de la empresa. */
+        Long branchId
 ) {
     public record SaleLineRequest(
             @NotNull SaleLineKind kind,

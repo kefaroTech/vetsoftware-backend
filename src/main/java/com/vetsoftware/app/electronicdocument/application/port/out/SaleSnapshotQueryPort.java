@@ -30,6 +30,8 @@ public interface SaleSnapshotQueryPort {
             boolean customerWithholdingAgent,
             BigDecimal reteFuenteRate,
             BigDecimal reteIvaRate,
-            BigDecimal reteIcaRate
+            BigDecimal reteIcaRate,
+            // Sede de la cuenta cerrada: el documento emitido hereda la sucursal de la cuenta.
+            Long branchId
     ) {}
 }

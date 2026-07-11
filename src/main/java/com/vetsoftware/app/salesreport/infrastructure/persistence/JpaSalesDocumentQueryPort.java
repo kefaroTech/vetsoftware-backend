@@ -22,8 +22,9 @@ public class JpaSalesDocumentQueryPort implements SalesDocumentQueryPort {
     }
 
     @Override
-    public List<SalesDocumentView> findByCompanyAndDateRange(Long companyId, LocalDate from, LocalDate to) {
-        return documentJpaRepository.findByCompanyId(companyId).stream()
+    public List<SalesDocumentView> findByCompanyAndDateRange(Long companyId, LocalDate from, LocalDate to,
+                                                             Long branchId) {
+        return documentJpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
                 .distinct()
                 .filter(e -> inRange(e.getIssueDate(), from, to))
                 .sorted(java.util.Comparator.comparing(ElectronicDocumentJpaEntity::getIssueDate,

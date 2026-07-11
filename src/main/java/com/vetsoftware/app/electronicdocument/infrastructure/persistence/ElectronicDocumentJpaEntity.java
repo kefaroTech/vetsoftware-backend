@@ -29,6 +29,10 @@ public class ElectronicDocumentJpaEntity {
     @Column(name = "open_account_id")
     private Long openAccountId;
 
+    // Sucursal emisora. Id pelado (sin @ManyToOne), igual que open_account_id / issued_by_employee_id.
+    @Column(name = "branch_id", nullable = false)
+    private Long branchId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 30)
     private ElectronicDocumentType documentType;
@@ -184,6 +188,8 @@ public class ElectronicDocumentJpaEntity {
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
     public Long getOpenAccountId() { return openAccountId; }
     public void setOpenAccountId(Long openAccountId) { this.openAccountId = openAccountId; }
+    public Long getBranchId() { return branchId; }
+    public void setBranchId(Long branchId) { this.branchId = branchId; }
     public ElectronicDocumentType getDocumentType() { return documentType; }
     public void setDocumentType(ElectronicDocumentType documentType) { this.documentType = documentType; }
     public String getPrefix() { return prefix; }

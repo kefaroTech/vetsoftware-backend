@@ -16,6 +16,7 @@ public class OpenAccount {
     // (filtrar por status), nunca todas, o contaría como cobrable la pérdida de las canceladas.
     private BigDecimal outstandingAmount;
     private CompanyRef company;
+    private BranchRef branch;
     private OpenAccountStatus status;
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
@@ -30,17 +31,18 @@ public class OpenAccount {
     private Long version;
 
     public OpenAccount(Long id, OwnerRef owner, BigDecimal totalAmount, BigDecimal paidAmount,
-                       BigDecimal outstandingAmount, CompanyRef company, OpenAccountStatus status,
-                       EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled,
-                       EmployeeRef closedBy, LocalDateTime closedAt, String closeReason,
+                       BigDecimal outstandingAmount, CompanyRef company, BranchRef branch,
+                       OpenAccountStatus status, EmployeeRef createdBy, LocalDateTime createdDate,
+                       boolean enabled, EmployeeRef closedBy, LocalDateTime closedAt, String closeReason,
                        boolean reversed, LocalDateTime reversedAt, Long version) {
-        validate(owner, totalAmount, paidAmount, outstandingAmount, company, status, createdBy);
+        validate(owner, totalAmount, paidAmount, outstandingAmount, company, branch, status, createdBy);
         this.id = id;
         this.owner = owner;
         this.totalAmount = totalAmount;
         this.paidAmount = paidAmount;
         this.outstandingAmount = outstandingAmount;
         this.company = company;
+        this.branch = branch;
         this.status = status;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
@@ -53,9 +55,10 @@ public class OpenAccount {
         this.version = version;
     }
 
-    public static OpenAccount create(OwnerRef owner, CompanyRef company, EmployeeRef createdBy) {
+    public static OpenAccount create(OwnerRef owner, CompanyRef company, BranchRef branch,
+                                     EmployeeRef createdBy) {
         return new OpenAccount(null, owner, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                               company, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true,
+                               company, branch, OpenAccountStatus.OPEN, createdBy, LocalDateTime.now(), true,
                                null, null, null, false, null, null);
     }
 
@@ -116,7 +119,7 @@ public class OpenAccount {
     }
 
     private static void validate(OwnerRef owner, BigDecimal totalAmount, BigDecimal paidAmount,
-                                 BigDecimal outstandingAmount, CompanyRef company,
+                                 BigDecimal outstandingAmount, CompanyRef company, BranchRef branch,
                                  OpenAccountStatus status, EmployeeRef createdBy) {
         if (owner == null) throw new IllegalArgumentException("owner is required");
         if (totalAmount == null) throw new IllegalArgumentException("totalAmount is required");
@@ -125,6 +128,7 @@ public class OpenAccount {
         if (paidAmount.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("paidAmount cannot be negative");
         if (outstandingAmount == null) throw new IllegalArgumentException("outstandingAmount is required");
         if (company == null) throw new IllegalArgumentException("company is required");
+        if (branch == null) throw new IllegalArgumentException("branch is required");
         if (status == null) throw new IllegalArgumentException("status is required");
         if (createdBy == null) throw new IllegalArgumentException("createdBy is required");
     }
@@ -135,6 +139,7 @@ public class OpenAccount {
     public BigDecimal getPaidAmount() { return paidAmount; }
     public BigDecimal getOutstandingAmount() { return outstandingAmount; }
     public CompanyRef getCompany() { return company; }
+    public BranchRef getBranch() { return branch; }
     public OpenAccountStatus getStatus() { return status; }
     public EmployeeRef getCreatedBy() { return createdBy; }
     public LocalDateTime getCreatedDate() { return createdDate; }

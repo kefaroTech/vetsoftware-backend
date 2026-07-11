@@ -13,5 +13,7 @@ public record CreateAppointmentRequest(
         Long ownerId,
         @Size(max = 120) String clientName,
         @Size(max = 30) String clientPhone,
-        @Size(max = 1000) String notes
+        @Size(max = 1000) String notes,
+        // Opcional: sede de la cita. Si no se envía, se usa la sede "Principal" de la empresa.
+        Long branchId
 ) {}

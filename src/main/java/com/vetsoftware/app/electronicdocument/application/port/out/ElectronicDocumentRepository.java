@@ -38,7 +38,8 @@ public interface ElectronicDocumentRepository {
     /** El documento emitido al cerrar una cuenta (para imprimir su recibo). Scoped a la empresa. */
     Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId);
 
-    List<ElectronicDocument> findAllByCompanyId(Long companyId);
+    /** Documentos de la empresa, con filtro OPCIONAL por sede (branchId null = todas las sedes). */
+    List<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId);
 
     /** Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de reintento). */
     List<ElectronicDocument> findByDianStatus(DianStatus status);

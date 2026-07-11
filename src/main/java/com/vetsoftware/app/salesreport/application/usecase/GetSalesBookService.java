@@ -32,8 +32,8 @@ public class GetSalesBookService implements GetSalesBookUseCase {
     }
 
     @Override
-    public SalesBookDto get(Long companyId, LocalDate from, LocalDate to) {
-        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to);
+    public SalesBookDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
+        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to, branchId);
 
         List<EntryDto> entries = new ArrayList<>();
         Map<String, TaxByRateDto> taxByRate = new LinkedHashMap<>();

@@ -18,6 +18,7 @@ public record AppointmentDto(
         String clientName,
         String clientPhone,
         EmployeeSummaryDto employee,
+        BranchSummaryDto branch,
         long version,
         boolean enabled,
         LocalDateTime createdDate,
@@ -37,6 +38,7 @@ public record AppointmentDto(
                 : new OwnerSummaryDto(a.getOwner().id(), a.getOwner().name()),
             a.getClientName(), a.getClientPhone(),
             new EmployeeSummaryDto(a.getEmployee().id(), a.getEmployee().name()),
+            new BranchSummaryDto(a.getBranch().id(), a.getBranch().name(), a.getBranch().code()),
             a.getVersion(), a.isEnabled(), a.getCreatedDate(),
             overlaps == null ? List.of() : overlaps);
     }

@@ -24,6 +24,9 @@ public class ElectronicDocument {
     private Long id;
     private final Long companyId;
     private final Long openAccountId;
+    // Sucursal (sede) emisora del documento. Id pelado sin FK JPA, igual que openAccountId/issuedByEmployeeId
+    // (cruce entre features por id). Metadato fiscal: qué sede emitió la venta/nota.
+    private final Long branchId;
     private final ElectronicDocumentType documentType;
 
     // Campos del ciclo de vida DIAN: NO finales. Los rellena la transmisión (F3) mediante la máquina
@@ -98,13 +101,16 @@ public class ElectronicDocument {
                               List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
                               DocumentReference reference, String noteReasonCode, String noteReasonText,
                               boolean reversed, BigDecimal reteFuenteAmount, BigDecimal reteIvaAmount,
-                              BigDecimal reteIcaAmount, String clientRequestId, Long issuedByEmployeeId) {
+                              BigDecimal reteIcaAmount, String clientRequestId, Long issuedByEmployeeId,
+                              Long branchId) {
         validate(companyId, documentType, issueDate, issueTime, dianStatus, issuer, customer,
                 lineExtensionAmount, taxExclusiveAmount, taxInclusiveAmount, payableAmount, paymentForm, lines);
         validateNoteConsistency(documentType, reference, noteReasonCode);
+        if (branchId == null) throw new IllegalArgumentException("branchId is required");
         this.id = id;
         this.companyId = companyId;
         this.openAccountId = openAccountId;
+        this.branchId = branchId;
         this.documentType = documentType;
         this.prefix = prefix;
         this.consecutive = consecutive;
@@ -154,7 +160,8 @@ public class ElectronicDocument {
                                                    boolean withholdingAgent, BigDecimal reteFuenteRate,
                                                    BigDecimal reteIvaRate, BigDecimal reteIcaRate,
                                                    BigDecimal uvt,
-                                                   String clientRequestId, Long issuedByEmployeeId) {
+                                                   String clientRequestId, Long issuedByEmployeeId,
+                                                   Long branchId) {
         if (lines == null || lines.isEmpty())
             throw new IllegalArgumentException("a document requires at least one line");
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
@@ -181,7 +188,7 @@ public class ElectronicDocument {
                 issuer, customer, base, base, totalWithTax, totalWithTax,
                 paymentForm, lines, payments, LocalDateTime.now(), true,
                 null, null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca(), clientRequestId,
-                issuedByEmployeeId);
+                issuedByEmployeeId, branchId);
     }
 
     /**
@@ -257,7 +264,7 @@ public class ElectronicDocument {
                 Money.scaled(original.reteFuenteAmount.multiply(ratio)),
                 Money.scaled(original.reteIvaAmount.multiply(ratio)),
                 Money.scaled(original.reteIcaAmount.multiply(ratio)), null,
-                issuedByEmployeeId);
+                issuedByEmployeeId, original.branchId);
     }
 
     /** Clona una línea escalando sus montos por {@code ratio} (NC parcial / ND incremental). ratio=1 ⇒ copia. */
@@ -468,6 +475,8 @@ public class ElectronicDocument {
     public Long getId() { return id; }
     public Long getCompanyId() { return companyId; }
     public Long getOpenAccountId() { return openAccountId; }
+    /** Sucursal (sede) emisora del documento. */
+    public Long getBranchId() { return branchId; }
     public ElectronicDocumentType getDocumentType() { return documentType; }
     public String getPrefix() { return prefix; }
     public Long getConsecutive() { return consecutive; }

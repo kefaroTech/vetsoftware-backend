@@ -15,6 +15,7 @@ public class Appointment {
     private String clientPhone;    // opcional
     private EmployeeRef employee;  // requerido (vet asignado)
     private CompanyRef company;    // requerido
+    private BranchRef branch;      // requerido (sede de la cita)
     private long version;
     private boolean enabled;
     private final LocalDateTime createdDate;
@@ -22,8 +23,8 @@ public class Appointment {
     public Appointment(Long id, LocalDateTime startAt, AppointmentType type, AppointmentStatus status,
                        String notes, String cancellationReason, AnimalRef animal, OwnerRef owner,
                        String clientName, String clientPhone, EmployeeRef employee, CompanyRef company,
-                       long version, boolean enabled, LocalDateTime createdDate) {
-        validate(startAt, type, employee, company, animal, owner, clientName, notes, clientPhone, cancellationReason);
+                       BranchRef branch, long version, boolean enabled, LocalDateTime createdDate) {
+        validate(startAt, type, employee, company, branch, animal, owner, clientName, notes, clientPhone, cancellationReason);
         this.id = id;
         this.startAt = startAt;
         this.type = type;
@@ -36,6 +37,7 @@ public class Appointment {
         this.clientPhone = blankToNull(clientPhone);
         this.employee = employee;
         this.company = company;
+        this.branch = branch;
         this.version = version;
         this.enabled = enabled;
         this.createdDate = createdDate;
@@ -43,16 +45,16 @@ public class Appointment {
 
     public static Appointment create(LocalDateTime startAt, AppointmentType type, String notes,
                                      AnimalRef animal, OwnerRef owner, String clientName, String clientPhone,
-                                     EmployeeRef employee, CompanyRef company) {
+                                     EmployeeRef employee, CompanyRef company, BranchRef branch) {
         return new Appointment(null, startAt, type, AppointmentStatus.REQUESTED, notes, null,
-                               animal, owner, clientName, clientPhone, employee, company,
+                               animal, owner, clientName, clientPhone, employee, company, branch,
                                0L, true, LocalDateTime.now());
     }
 
     public void update(LocalDateTime startAt, AppointmentType type, String notes, AnimalRef animal,
                        OwnerRef owner, String clientName, String clientPhone, EmployeeRef employee) {
-        validate(startAt, type, employee, this.company, animal, owner, clientName, notes, clientPhone,
-                 this.cancellationReason);
+        validate(startAt, type, employee, this.company, this.branch, animal, owner, clientName, notes,
+                 clientPhone, this.cancellationReason);
         this.startAt = startAt;
         this.type = type;
         this.notes = blankToNull(notes);
@@ -94,12 +96,13 @@ public class Appointment {
     }
 
     private static void validate(LocalDateTime startAt, AppointmentType type, EmployeeRef employee,
-                                 CompanyRef company, AnimalRef animal, OwnerRef owner, String clientName,
-                                 String notes, String clientPhone, String cancellationReason) {
+                                 CompanyRef company, BranchRef branch, AnimalRef animal, OwnerRef owner,
+                                 String clientName, String notes, String clientPhone, String cancellationReason) {
         if (startAt == null) throw new IllegalArgumentException("startAt is required");
         if (type == null) throw new IllegalArgumentException("type is required");
         if (employee == null) throw new IllegalArgumentException("employee is required");
         if (company == null) throw new IllegalArgumentException("company is required");
+        if (branch == null) throw new IllegalArgumentException("branch is required");
         boolean hasSubject = animal != null || owner != null || (clientName != null && !clientName.isBlank());
         if (!hasSubject) {
             throw new IllegalArgumentException("at least one of {animal, owner, clientName} is required");
@@ -126,6 +129,7 @@ public class Appointment {
     public String getClientPhone() { return clientPhone; }
     public EmployeeRef getEmployee() { return employee; }
     public CompanyRef getCompany() { return company; }
+    public BranchRef getBranch() { return branch; }
     public long getVersion() { return version; }
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedDate() { return createdDate; }

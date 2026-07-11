@@ -7,6 +7,7 @@ import com.vetsoftware.app.appointment.application.command.RescheduleAppointment
 import com.vetsoftware.app.appointment.application.command.UpdateAppointmentCommand;
 import com.vetsoftware.app.appointment.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
+import com.vetsoftware.app.appointment.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.appointment.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.appointment.application.dto.OwnerSummaryDto;
 import com.vetsoftware.app.appointment.application.port.in.CancelAppointmentUseCase;
@@ -26,6 +27,7 @@ import com.vetsoftware.app.appointment.infrastructure.web.request.RescheduleAppo
 import com.vetsoftware.app.appointment.infrastructure.web.request.UpdateAppointmentRequest;
 import com.vetsoftware.app.appointment.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.appointment.infrastructure.web.response.AppointmentResponse;
+import com.vetsoftware.app.appointment.infrastructure.web.response.BranchSummary;
 import com.vetsoftware.app.appointment.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.appointment.infrastructure.web.response.OwnerSummary;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
@@ -72,7 +74,7 @@ public class AppointmentController {
         return toResponse(createUseCase.execute(new CreateAppointmentCommand(
             request.startAt(), request.type(), request.employeeId(), request.animalId(),
             request.ownerId(), request.clientName(), request.clientPhone(), request.notes(),
-            authz.currentCompanyId())));
+            request.branchId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -82,9 +84,10 @@ public class AppointmentController {
             @RequestParam(name = "to", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "employeeId", required = false) Long employeeId,
-            @RequestParam(name = "status", required = false) AppointmentStatus status) {
+            @RequestParam(name = "status", required = false) AppointmentStatus status,
+            @RequestParam(name = "branchId", required = false) Long branchId) {
         return listUseCase.execute(new ListAppointmentsQuery(
-                authz.currentCompanyId(), from, to, employeeId, status))
+                authz.currentCompanyId(), from, to, employeeId, status, branchId))
             .stream().map(this::toResponse).toList();
     }
 
@@ -134,12 +137,14 @@ public class AppointmentController {
         AnimalSummaryDto a = dto.animal();
         OwnerSummaryDto o = dto.owner();
         EmployeeSummaryDto e = dto.employee();
+        BranchSummaryDto b = dto.branch();
         return new AppointmentResponse(
             dto.id(), dto.startAt(), dto.type(), dto.status(), dto.notes(), dto.cancellationReason(),
             a == null ? null : new AnimalSummary(a.id(), a.name(), a.code()),
             o == null ? null : new OwnerSummary(o.id(), o.name()),
             dto.clientName(), dto.clientPhone(),
             new EmployeeSummary(e.id(), e.name()),
+            new BranchSummary(b.id(), b.name(), b.code()),
             dto.version(), dto.enabled(), dto.createdDate(), dto.overlappingAppointmentIds());
     }
 }

@@ -50,7 +50,7 @@ public class DocumentBuilder {
                 // issuedByEmployeeId null: la emisión al cerrar la cuenta no tiene un actor fiscal directo aquí;
                 // la autoría del cierre queda registrada en OpenAccount.closedBy.
                 snapshot.reteIvaRate(), snapshot.reteIcaRate(), uvtQueryPort.currentUvt().orElse(null),
-                null, null);
+                null, null, snapshot.branchId());
         // 3.2: al cerrar una cuenta como tiquete POS (DOC_EQUIV_POS), tampoco puede superar 5 UVT; por encima
         // exige FE_VENTA (el front ya lo fuerza, esto es el enforcement de backend).
         posTicketLimitValidator.validate(document);

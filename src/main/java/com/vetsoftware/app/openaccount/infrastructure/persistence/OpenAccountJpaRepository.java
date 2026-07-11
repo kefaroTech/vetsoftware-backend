@@ -15,18 +15,23 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
         JpaSpecificationExecutor<OpenAccountJpaEntity> {
 
     @Override
-    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
+    @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
     List<OpenAccountJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
+    @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
     Optional<OpenAccountJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
+    @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
     Optional<OpenAccountJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    @EntityGraph(attributePaths = {"owner", "company", "createdBy"})
-    List<OpenAccountJpaEntity> findByCompanyId(Long companyId);
+    // Multi-sucursal (Fase C): lista de la empresa con filtro OPCIONAL por sede (branch es @ManyToOne).
+    // branchId null = todas las sedes.
+    @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
+    @Query("SELECT o FROM OpenAccountJpaEntity o WHERE o.company.id = :companyId "
+        + "AND (:branchId IS NULL OR o.branch.id = :branchId)")
+    List<OpenAccountJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
+                                                                @Param("branchId") Long branchId);
 
     // Bloqueo pesimista de la fila de la cuenta para serializar el recálculo de totales bajo concurrencia
     // (cargos/abonos simultáneos). Sin @EntityGraph a propósito: FOR UPDATE no combina con join-fetch; las

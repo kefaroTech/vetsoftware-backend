@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand;
 import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand.SaleLine;
+import com.vetsoftware.app.electronicdocument.application.port.out.BranchResolverPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.CatalogLineQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.CatalogLineQueryPort.CatalogItem;
 import com.vetsoftware.app.electronicdocument.application.port.out.CompanyFiscalProfileQueryPort;
@@ -45,6 +46,7 @@ public class PosSaleDocumentBuilder {
     private final ElectronicDocumentRepository repository;
     private final PosTicketLimitValidator posTicketLimitValidator;
     private final UvtQueryPort uvtQueryPort;
+    private final BranchResolverPort branchResolverPort;
 
     public PosSaleDocumentBuilder(CompanyFiscalProfileQueryPort fiscalProfileQueryPort,
                                   SaleCustomerQueryPort saleCustomerQueryPort,
@@ -52,7 +54,8 @@ public class PosSaleDocumentBuilder {
                                   SalePromotionQueryPort salePromotionQueryPort,
                                   ElectronicDocumentRepository repository,
                                   PosTicketLimitValidator posTicketLimitValidator,
-                                  UvtQueryPort uvtQueryPort) {
+                                  UvtQueryPort uvtQueryPort,
+                                  BranchResolverPort branchResolverPort) {
         this.fiscalProfileQueryPort = fiscalProfileQueryPort;
         this.saleCustomerQueryPort = saleCustomerQueryPort;
         this.catalogLineQueryPort = catalogLineQueryPort;
@@ -60,6 +63,7 @@ public class PosSaleDocumentBuilder {
         this.repository = repository;
         this.posTicketLimitValidator = posTicketLimitValidator;
         this.uvtQueryPort = uvtQueryPort;
+        this.branchResolverPort = branchResolverPort;
     }
 
     public ElectronicDocument build(RegisterPosSaleCommand command) {
@@ -93,12 +97,15 @@ public class PosSaleDocumentBuilder {
                 .toList();
 
         BigDecimal uvt = uvtQueryPort.currentUvt().orElse(null);
+        // Sede emisora: request branchId validado contra la empresa, o la "Principal" por defecto.
+        Long branchId = branchResolverPort.resolve(companyId, command.branchId())
+                .orElseThrow(() -> new IllegalArgumentException("La empresa no tiene sucursal: " + companyId));
         ElectronicDocument document = ElectronicDocument.createPending(
                 companyId, null /* sin cuenta abierta: la venta POS ES el registro */,
                 command.documentType(), fiscal.issuer(), customer, lines, payments,
                 PaymentForm.CONTADO,
                 withholdingAgent, fiscal.reteFuenteRate(), fiscal.reteIvaRate(), fiscal.reteIcaRate(),
-                uvt, command.clientRequestId(), command.issuedByEmployeeId());
+                uvt, command.clientRequestId(), command.issuedByEmployeeId(), branchId);
         // 3.2: un tiquete POS (DOC_EQUIV_POS) no puede superar 5 UVT; por encima exige FE_VENTA.
         posTicketLimitValidator.validate(document);
         return repository.save(document);

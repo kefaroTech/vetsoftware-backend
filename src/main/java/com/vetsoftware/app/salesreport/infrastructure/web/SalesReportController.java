@@ -31,14 +31,16 @@ public class SalesReportController {
     @GetMapping("/sales-book")
     public SalesBookDto salesBook(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return salesBookUseCase.get(authz.currentCompanyId(), from, to);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "branchId", required = false) Long branchId) {
+        return salesBookUseCase.get(authz.currentCompanyId(), from, to, branchId);
     }
 
     @GetMapping("/reconciliation")
     public ReconciliationDto reconciliation(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return reconciliationUseCase.get(authz.currentCompanyId(), from, to);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "branchId", required = false) Long branchId) {
+        return reconciliationUseCase.get(authz.currentCompanyId(), from, to, branchId);
     }
 }

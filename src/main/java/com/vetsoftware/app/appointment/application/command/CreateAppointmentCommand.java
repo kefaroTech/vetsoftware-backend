@@ -12,5 +12,6 @@ public record CreateAppointmentCommand(
         String clientName,
         String clientPhone,
         String notes,
+        Long branchId,
         Long companyId
 ) {}

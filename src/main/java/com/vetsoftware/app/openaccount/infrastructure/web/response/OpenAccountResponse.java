@@ -11,6 +11,7 @@ public record OpenAccountResponse(
         BigDecimal paidAmount,
         BigDecimal outstandingAmount,
         CompanySummary company,
+        BranchSummary branch,
         OpenAccountStatus status,
         EmployeeSummary createdBy,
         LocalDateTime createdDate,

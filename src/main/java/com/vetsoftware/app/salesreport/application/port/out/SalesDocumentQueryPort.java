@@ -10,7 +10,8 @@ import java.util.List;
  */
 public interface SalesDocumentQueryPort {
 
-    List<SalesDocumentView> findByCompanyAndDateRange(Long companyId, LocalDate from, LocalDate to);
+    /** Documentos de la empresa en el rango, con filtro OPCIONAL por sede (branchId null = todas las sedes). */
+    List<SalesDocumentView> findByCompanyAndDateRange(Long companyId, LocalDate from, LocalDate to, Long branchId);
 
     record SalesDocumentView(
             Long id,

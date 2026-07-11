@@ -6,6 +6,7 @@ import com.vetsoftware.app.openaccount.application.command.ChangeOpenAccountStat
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.command.UpdateOpenAccountCommand;
+import com.vetsoftware.app.openaccount.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
@@ -22,6 +23,7 @@ import com.vetsoftware.app.openaccount.application.port.in.UpdateOpenAccountUseC
 import com.vetsoftware.app.openaccount.infrastructure.web.request.ChangeOpenAccountStatusRequest;
 import com.vetsoftware.app.openaccount.infrastructure.web.request.CreateOpenAccountRequest;
 import com.vetsoftware.app.openaccount.infrastructure.web.request.UpdateOpenAccountRequest;
+import com.vetsoftware.app.openaccount.infrastructure.web.response.BranchSummary;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.OpenAccountResponse;
@@ -69,12 +71,14 @@ public class OpenAccountController {
     public OpenAccountResponse create(@Valid @RequestBody CreateOpenAccountRequest request) {
         return toResponse(createUseCase.execute(
             new CreateOpenAccountCommand(
-                request.ownerId(), authz.currentCompanyId(), authz.currentEmployeeId())));
+                request.ownerId(), request.branchId(), authz.currentCompanyId(), authz.currentEmployeeId())));
     }
 
     @GetMapping
-    public List<OpenAccountResponse> list() {
-        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+    public List<OpenAccountResponse> list(
+            @RequestParam(name = "branchId", required = false) Long branchId) {
+        return listUseCase.listByCompany(authz.currentCompanyId(), branchId).stream()
+            .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
@@ -82,9 +86,10 @@ public class OpenAccountController {
             @RequestParam(required = false) Long ownerId,
             @RequestParam(required = false) Boolean enabled,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) Long branchId) {
         PageResult<OpenAccountDto> result = searchUseCase.execute(new SearchOpenAccountsCommand(
-            authz.currentCompanyId(), ownerId, enabled, page, pageSize));
+            authz.currentCompanyId(), ownerId, enabled, page, pageSize, branchId));
         return new PageResponse<>(
             result.content().stream().map(this::toResponse).toList(),
             result.page(), result.pageSize(), result.totalElements(), result.totalPages());
@@ -127,11 +132,13 @@ public class OpenAccountController {
         CompanySummaryDto c = dto.company();
         EmployeeSummaryDto cb = dto.createdBy();
         EmployeeSummaryDto closed = dto.closedBy();
+        BranchSummaryDto b = dto.branch();
         return new OpenAccountResponse(
             dto.id(),
             new OwnerSummary(o.id(), o.name(), o.document()),
             dto.totalAmount(), dto.paidAmount(), dto.outstandingAmount(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
+            new BranchSummary(b.id(), b.name(), b.code()),
             dto.status(),
             new EmployeeSummary(cb.id(), cb.name()),
             dto.createdDate(), dto.enabled(),

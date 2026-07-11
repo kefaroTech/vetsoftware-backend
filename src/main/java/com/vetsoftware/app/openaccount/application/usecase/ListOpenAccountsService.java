@@ -17,7 +17,7 @@ public class ListOpenAccountsService implements ListOpenAccountsUseCase {
     }
 
     @Override
-    public List<OpenAccountDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(OpenAccountDto::from).toList();
+    public List<OpenAccountDto> listByCompany(Long companyId, Long branchId) {
+        return repository.findAllByCompanyId(companyId, branchId).stream().map(OpenAccountDto::from).toList();
     }
 }

@@ -22,6 +22,7 @@ public record ElectronicDocumentDto(
         Long id,
         Long companyId,
         Long openAccountId,
+        Long branchId,
         ElectronicDocumentType documentType,
         String prefix,
         Long consecutive,
@@ -77,7 +78,7 @@ public record ElectronicDocumentDto(
         List<LineDto> lines = doc.getLines().stream().map(ElectronicDocumentDto::lineFrom).toList();
         List<PaymentDto> payments = doc.getPayments().stream().map(ElectronicDocumentDto::paymentFrom).toList();
         return new ElectronicDocumentDto(
-                doc.getId(), doc.getCompanyId(), doc.getOpenAccountId(), doc.getDocumentType(),
+                doc.getId(), doc.getCompanyId(), doc.getOpenAccountId(), doc.getBranchId(), doc.getDocumentType(),
                 doc.getPrefix(), doc.getConsecutive(), doc.getIssueDate(), doc.getIssueTime(),
                 doc.getCufe(), doc.getCude(), doc.getUuid(), doc.getQrUrl(),
                 doc.getDianStatus(), doc.getDianValidationDate(),

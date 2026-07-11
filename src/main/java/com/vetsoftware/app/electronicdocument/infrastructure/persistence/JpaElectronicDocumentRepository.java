@@ -89,8 +89,8 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
-    public List<ElectronicDocument> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream()
+    public List<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId) {
+        return jpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
                 .distinct()
                 .map(mapper::toDomain)
                 .toList();

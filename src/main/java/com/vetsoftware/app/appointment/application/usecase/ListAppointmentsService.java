@@ -21,7 +21,8 @@ public class ListAppointmentsService implements ListAppointmentsUseCase {
     public List<AppointmentDto> execute(ListAppointmentsQuery query) {
         LocalDateTime from = query.from() == null ? null : query.from().atStartOfDay();
         LocalDateTime to = query.to() == null ? null : query.to().atTime(LocalTime.MAX);
-        return repository.findByFilters(query.companyId(), from, to, query.employeeId(), query.status())
+        return repository.findByFilters(query.companyId(), from, to, query.employeeId(), query.status(),
+                query.branchId())
             .stream().map(AppointmentDto::from).toList();
     }
 }

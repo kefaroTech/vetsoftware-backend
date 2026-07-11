@@ -12,21 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface AppointmentJpaRepository extends JpaRepository<AppointmentJpaEntity, Long> {
 
-    @EntityGraph(attributePaths = {"animal", "owner", "employee", "company"})
+    @EntityGraph(attributePaths = {"animal", "owner", "employee", "company", "branch"})
     Optional<AppointmentJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    @EntityGraph(attributePaths = {"animal", "owner", "employee", "company"})
+    @EntityGraph(attributePaths = {"animal", "owner", "employee", "company", "branch"})
     @Query("SELECT a FROM AppointmentJpaEntity a WHERE a.company.id = :companyId "
         + "AND (:from IS NULL OR a.startAt >= :from) "
         + "AND (:to IS NULL OR a.startAt <= :to) "
         + "AND (:employeeId IS NULL OR a.employee.id = :employeeId) "
         + "AND (:status IS NULL OR a.status = :status) "
+        + "AND (:branchId IS NULL OR a.branch.id = :branchId) "
         + "ORDER BY a.startAt ASC")
     List<AppointmentJpaEntity> findByFilters(@Param("companyId") Long companyId,
                                              @Param("from") LocalDateTime from,
                                              @Param("to") LocalDateTime to,
                                              @Param("employeeId") Long employeeId,
-                                             @Param("status") String status);
+                                             @Param("status") String status,
+                                             @Param("branchId") Long branchId);
 
     @Query("SELECT a.id FROM AppointmentJpaEntity a WHERE a.company.id = :companyId "
         + "AND a.employee.id = :employeeId AND a.startAt = :startAt "

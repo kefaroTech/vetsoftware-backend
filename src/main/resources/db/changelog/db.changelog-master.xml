@@ -183,5 +183,10 @@
     <include file="db/changelog/migrations/177_add_must_change_password_to_employees.xml"/>
     <include file="db/changelog/migrations/178_add_status_to_employees.xml"/>
     <include file="db/changelog/migrations/179_create_password_reset_tokens.xml"/>
+    <include file="db/changelog/migrations/180_create_branches.xml"/>
+    <include file="db/changelog/migrations/181_add_branch_id_to_appointments.xml"/>
+    <include file="db/changelog/migrations/182_add_branch_id_to_open_accounts.xml"/>
+    <include file="db/changelog/migrations/183_add_branch_id_to_electronic_documents.xml"/>
+    <include file="db/changelog/migrations/184_seed_branch_permissions.xml"/>
 
 </databaseChangeLog>

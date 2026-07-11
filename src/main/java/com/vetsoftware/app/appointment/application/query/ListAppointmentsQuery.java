@@ -8,5 +8,7 @@ public record ListAppointmentsQuery(
         LocalDate from,
         LocalDate to,
         Long employeeId,
-        AppointmentStatus status
+        AppointmentStatus status,
+        // Multi-sucursal (Fase C): filtro opcional por sede. null = todas las sedes de la empresa.
+        Long branchId
 ) {}

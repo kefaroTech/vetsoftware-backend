@@ -20,7 +20,7 @@ public interface OpenAccountRepository {
      */
     Optional<OpenAccount> findByIdForUpdateAndCompanyId(Long id, Long companyId);
     List<OpenAccount> findAll();
-    List<OpenAccount> findAllByCompanyId(Long companyId);
+    List<OpenAccount> findAllByCompanyId(Long companyId, Long branchId);
     /** true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por propietario. */
     boolean existsActiveByOwnerId(Long ownerId);
     PageResult<OpenAccount> search(SearchOpenAccountsCommand command);

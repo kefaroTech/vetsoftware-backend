@@ -22,8 +22,8 @@ public class GetReconciliationService implements GetReconciliationUseCase {
     }
 
     @Override
-    public ReconciliationDto get(Long companyId, LocalDate from, LocalDate to) {
-        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to);
+    public ReconciliationDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
+        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to, branchId);
         long validados = 0, rechazados = 0, contingencia = 0, pendientes = 0;
         List<PendingDto> needsAttention = new ArrayList<>();
 
