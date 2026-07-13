@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Configuración por EMPRESA (clave-valor). A diferencia de system_configurations (global), esta tabla scopea el
+      flag a la empresa. Primer uso: inventory.allow_negative_stock (override de venta/consumo sin existencias). Solo
+      el admin de la empresa la togglea (ver CompanySettingController @PreAuthorize admin.all). Ausencia de la fila
+      = valor por defecto (para el flag: false = bloquear).
+    -->
+    <changeSet id="193_create_company_settings" author="orlando">
+        <createTable tableName="company_settings">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_company_settings_company" references="companies(id)"/>
+            </column>
+            <column name="property_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="company_settings" columnNames="company_id, property_name"
+                             constraintName="uq_company_settings_company_property"/>
+    </changeSet>
+
+</databaseChangeLog>
