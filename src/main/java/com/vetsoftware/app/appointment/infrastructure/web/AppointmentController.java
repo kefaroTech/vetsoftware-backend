@@ -74,7 +74,7 @@ public class AppointmentController {
         return toResponse(createUseCase.execute(new CreateAppointmentCommand(
             request.startAt(), request.type(), request.employeeId(), request.animalId(),
             request.ownerId(), request.clientName(), request.clientPhone(), request.notes(),
-            request.branchId(), authz.currentCompanyId())));
+            authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -87,7 +87,8 @@ public class AppointmentController {
             @RequestParam(name = "status", required = false) AppointmentStatus status,
             @RequestParam(name = "branchId", required = false) Long branchId) {
         return listUseCase.execute(new ListAppointmentsQuery(
-                authz.currentCompanyId(), from, to, employeeId, status, branchId))
+                authz.currentCompanyId(), from, to, employeeId, status,
+                authz.resolveAccessibleBranch(branchId)))
             .stream().map(this::toResponse).toList();
     }
 

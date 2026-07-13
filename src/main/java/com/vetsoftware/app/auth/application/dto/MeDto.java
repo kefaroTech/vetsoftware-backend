@@ -9,5 +9,6 @@ public record MeDto(
         String name,
         String employeeCode,
         boolean mustChangePassword,
-        Set<String> permissions
+        Set<String> permissions,
+        Set<Long> branchIds
 ) {}

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Asignación N:N empleado ↔ sede: ÚNICA fuente del alcance por sede de un empleado. "Todas las sedes" se
+      materializa como una fila por sede (no hay flag); cero filas = sin acceso a recursos scopeados a sede. `enabled`
+      sigue el patrón de soft-delete del proyecto (@SQLRestriction / @SQLDelete) igual que employee_roles.
+    -->
+    <changeSet id="187_create_employee_branches" author="orlando">
+        <createTable tableName="employee_branches">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="employee_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_employee_branches_employee"
+                             references="employees(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_employee_branches_branch"
+                             references="branches(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="employee_branches"
+                             columnNames="employee_id, branch_id"
+                             constraintName="uq_employee_branches"/>
+    </changeSet>
+
+    <!--
+      Backfill de seguridad: a cada empleado existente se le asigna TODA sede de su empresa ("todas" materializado).
+      Sin esto, al activar el enforcement por sede (Fase 2) todo empleado no-admin quedaría con cero sedes = bloqueado
+      de citas/cuentas/POS/reportes. Da el status quo previo (podían operar en cualquier sede) sin romper a nadie; los
+      empleados creados DESPUÉS nacen sin filas y hay que asignarles sedes explícitamente. Los admin no lo necesitan
+      (bypass por admin.all) pero incluirlos es inocuo.
+
+      Se incluyen TAMBIÉN los empleados desactivados: sus filas no hacen nada mientras estén inactivos (no autentican),
+      pero evitan que al reactivarlos queden con cero sedes = bloqueados.
+    -->
+    <changeSet id="187_backfill_employee_branches" author="orlando">
+        <sql>
+            INSERT INTO employee_branches (employee_id, branch_id, created_date, enabled)
+            SELECT e.id, b.id, CURRENT_TIMESTAMP, true
+            FROM employees e
+            JOIN branches b ON b.company_id = e.company_id
+        </sql>
+        <rollback>
+            DELETE FROM employee_branches
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

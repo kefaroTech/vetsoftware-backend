@@ -138,6 +138,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import com.vetsoftware.app.auth.infrastructure.security.BranchAccessDeniedException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -421,6 +422,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Email already registered: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
             "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
+    }
+
+    // Más específico que el handler de AccessDeniedException de abajo: Spring elige este para la subclase.
+    // Devuelve el motivo concreto (la sede) y un código propio para que el front lo distinga del 403 genérico.
+    @ExceptionHandler(BranchAccessDeniedException.class)
+    public ProblemDetail handleBranchAccessDenied(BranchAccessDeniedException ex, HttpServletRequest request) {
+        log.warn("Branch access denied: {}", ex.getMessage());
+        auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
+        return problem(HttpStatus.FORBIDDEN, "BRANCH_NOT_ALLOWED", ex.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)

@@ -13,6 +13,7 @@ import com.vetsoftware.app.branch.application.dto.BranchDto;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.application.port.out.CityQueryPort;
 import com.vetsoftware.app.branch.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.branch.application.port.out.FullCoverageBranchAssignmentPort;
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
@@ -34,6 +35,7 @@ class CreateBranchServiceTest {
     @Mock private BranchRepository repository;
     @Mock private CityQueryPort cityQueryPort;
     @Mock private CompanyQueryPort companyQueryPort;
+    @Mock private FullCoverageBranchAssignmentPort fullCoverageAssignmentPort;
     @InjectMocks private CreateBranchService service;
 
     private final CityRef city = new CityRef(5L, "Bogotá");
@@ -72,6 +74,9 @@ class CreateBranchServiceTest {
         assertThat(dto.company().id()).isEqualTo(9L);
         assertThat(dto.company().identifier()).isEqualTo("900123456");
         assertThat(dto.active()).isTrue();
+
+        // La sede recién creada se auto-asigna a los empleados "con todas las sedes" de la empresa.
+        verify(fullCoverageAssignmentPort).assignNewBranchToFullCoverageEmployees(9L, 1L);
     }
 
     @Test

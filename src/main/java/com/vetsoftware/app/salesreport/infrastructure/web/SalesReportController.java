@@ -33,7 +33,7 @@ public class SalesReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return salesBookUseCase.get(authz.currentCompanyId(), from, to, branchId);
+        return salesBookUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
     }
 
     @GetMapping("/reconciliation")
@@ -41,6 +41,6 @@ public class SalesReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return reconciliationUseCase.get(authz.currentCompanyId(), from, to, branchId);
+        return reconciliationUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
     }
 }

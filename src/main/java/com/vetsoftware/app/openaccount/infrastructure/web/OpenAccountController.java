@@ -71,13 +71,14 @@ public class OpenAccountController {
     public OpenAccountResponse create(@Valid @RequestBody CreateOpenAccountRequest request) {
         return toResponse(createUseCase.execute(
             new CreateOpenAccountCommand(
-                request.ownerId(), request.branchId(), authz.currentCompanyId(), authz.currentEmployeeId())));
+                request.ownerId(), authz.resolveAccessibleBranch(request.branchId()),
+                authz.currentCompanyId(), authz.currentEmployeeId())));
     }
 
     @GetMapping
     public List<OpenAccountResponse> list(
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return listUseCase.listByCompany(authz.currentCompanyId(), branchId).stream()
+        return listUseCase.listByCompany(authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId)).stream()
             .map(this::toResponse).toList();
     }
 
@@ -89,7 +90,8 @@ public class OpenAccountController {
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) Long branchId) {
         PageResult<OpenAccountDto> result = searchUseCase.execute(new SearchOpenAccountsCommand(
-            authz.currentCompanyId(), ownerId, enabled, page, pageSize, branchId));
+            authz.currentCompanyId(), ownerId, enabled, page, pageSize,
+            authz.resolveAccessibleBranch(branchId)));
         return new PageResponse<>(
             result.content().stream().map(this::toResponse).toList(),
             result.page(), result.pageSize(), result.totalElements(), result.totalPages());

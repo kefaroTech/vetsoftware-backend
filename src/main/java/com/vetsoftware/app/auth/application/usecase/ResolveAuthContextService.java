@@ -4,6 +4,7 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
+import com.vetsoftware.app.auth.application.port.out.BranchAccessResolver;
 import com.vetsoftware.app.auth.application.port.out.PermissionResolver;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -12,11 +13,14 @@ import org.springframework.stereotype.Service;
 public class ResolveAuthContextService implements ResolveAuthContextUseCase {
 
     private final PermissionResolver permissionResolver;
+    private final BranchAccessResolver branchAccessResolver;
     private final AuthEmployeeRepository employeeRepository;
 
     public ResolveAuthContextService(PermissionResolver permissionResolver,
+                                     BranchAccessResolver branchAccessResolver,
                                      AuthEmployeeRepository employeeRepository) {
         this.permissionResolver = permissionResolver;
+        this.branchAccessResolver = branchAccessResolver;
         this.employeeRepository = employeeRepository;
     }
 
@@ -28,7 +32,8 @@ public class ResolveAuthContextService implements ResolveAuthContextUseCase {
             .map(employee -> new EmployeeContext(
                 employee.id(),
                 employee.companyId(),
-                permissionResolver.resolveFor(employee.id())))
+                permissionResolver.resolveFor(employee.id()),
+                branchAccessResolver.resolveFor(employee.id())))
             .orElse(null);
     }
 }

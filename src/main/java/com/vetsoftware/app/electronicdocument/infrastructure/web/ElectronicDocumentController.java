@@ -108,7 +108,7 @@ public class ElectronicDocumentController {
         return registerPosSaleUseCase.execute(new RegisterPosSaleCommand(
                 authz.currentCompanyId(), request.documentType(), request.finalConsumer(),
                 request.customerOwnerId(), lines, payments, request.clientRequestId(),
-                authz.currentEmployeeId(), request.branchId()));
+                authz.currentEmployeeId(), authz.resolveAccessibleBranch(request.branchId())));
     }
 
     /** F4: convierte un documento equivalente POS en factura electrónica de venta. */
@@ -148,7 +148,7 @@ public class ElectronicDocumentController {
     @GetMapping
     public List<ElectronicDocumentDto> listAll(
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return listUseCase.listByCompany(authz.currentCompanyId(), branchId);
+        return listUseCase.listByCompany(authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId));
     }
 
     @GetMapping("/{id}")

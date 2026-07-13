@@ -9,5 +9,6 @@ public record MeResponse(
         String name,
         String employeeCode,
         boolean mustChangePassword,
-        List<String> permissions
+        List<String> permissions,
+        List<Long> branchIds
 ) {}

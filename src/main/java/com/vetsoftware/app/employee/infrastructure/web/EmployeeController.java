@@ -82,7 +82,7 @@ public class EmployeeController {
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
         EmployeeDto dto = inviteUseCase.execute(
             new InviteEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.companyId(), request.roleIds()));
+                request.email(), request.companyId(), request.roleIds(), request.branchIds()));
         auditLogger.employeeInvited(dto.id(), dto.employeeCode(), dto.company().id());
         return toResponse(dto);
     }

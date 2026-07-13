@@ -14,5 +14,7 @@ public record CreateEmployeeRequest(
         @NotBlank @Email @Size(max = 100) String email,
         @NotNull Long companyId,
         // Roles a asignar en el alta (al menos uno). Se asignan y se incluye el rol en la invitación.
-        @NotEmpty List<Long> roleIds
+        @NotEmpty List<Long> roleIds,
+        // Sedes a asignar en el alta (al menos una). Un empleado no puede crearse sin sede.
+        @NotEmpty List<Long> branchIds
 ) {}
