@@ -53,7 +53,7 @@ public class NumberingResolutionController {
         return toResponse(createUseCase.execute(new CreateNumberingResolutionCommand(
                 request.documentType(), request.resolutionNumber(), request.resolutionDate(), request.prefix(),
                 request.rangeFrom(), request.rangeTo(), request.validFrom(), request.validTo(),
-                request.technicalKey(), authz.currentCompanyId())));
+                request.technicalKey(), request.branchId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -73,7 +73,7 @@ public class NumberingResolutionController {
         return toResponse(updateUseCase.execute(new UpdateNumberingResolutionCommand(
                 id, request.documentType(), request.resolutionNumber(), request.resolutionDate(), request.prefix(),
                 request.rangeFrom(), request.rangeTo(), request.validFrom(), request.validTo(),
-                request.technicalKey(), authz.currentCompanyId())));
+                request.technicalKey(), request.branchId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -92,6 +92,7 @@ public class NumberingResolutionController {
         return new NumberingResolutionResponse(
                 dto.id(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+                dto.branchId(),
                 dto.documentType(),
                 dto.resolutionNumber(),
                 dto.resolutionDate(),

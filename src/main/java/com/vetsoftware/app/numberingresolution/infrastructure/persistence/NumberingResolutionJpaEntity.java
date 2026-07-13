@@ -21,6 +21,11 @@ public class NumberingResolutionJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
+    // Multi-sucursal (B-6): sede a la que aplica el prefijo. Id pelado (sin @ManyToOne, como
+    // electronic_documents.branch_id). null = resolución de empresa (todas las sedes).
+    @Column(name = "branch_id")
+    private Long branchId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 30)
     private ElectronicDocumentType documentType;
@@ -64,6 +69,8 @@ public class NumberingResolutionJpaEntity {
     public void setId(Long id) { this.id = id; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public Long getBranchId() { return branchId; }
+    public void setBranchId(Long branchId) { this.branchId = branchId; }
     public ElectronicDocumentType getDocumentType() { return documentType; }
     public void setDocumentType(ElectronicDocumentType documentType) { this.documentType = documentType; }
     public String getResolutionNumber() { return resolutionNumber; }

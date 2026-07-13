@@ -16,5 +16,7 @@ public record UpdateNumberingResolutionRequest(
         @NotNull @Min(1) Long rangeTo,
         @NotNull LocalDate validFrom,
         @NotNull LocalDate validTo,
-        @Size(max = 255) String technicalKey
+        @Size(max = 255) String technicalKey,
+        // Sede (opcional): prefijo por sucursal. Omitir = resolución de empresa (todas las sedes).
+        Long branchId
 ) {}

@@ -20,8 +20,8 @@ public class JpaTechnicalKeyQueryPort implements TechnicalKeyQueryPort {
     }
 
     @Override
-    public Optional<String> findActiveTechnicalKey(Long companyId, ElectronicDocumentType documentType) {
-        return repository.findActive(companyId, documentType.name())
+    public Optional<String> findActiveTechnicalKey(Long companyId, Long branchId, ElectronicDocumentType documentType) {
+        return repository.findActive(companyId, branchId, documentType.name())
                 .map(NumberingResolutionJpaEntity::getTechnicalKey)
                 .filter(key -> key != null && !key.isBlank());
     }

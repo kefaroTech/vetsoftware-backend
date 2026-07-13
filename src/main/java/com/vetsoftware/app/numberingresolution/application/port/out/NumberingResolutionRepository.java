@@ -9,8 +9,11 @@ public interface NumberingResolutionRepository {
     NumberingResolution save(NumberingResolution resolution);
     Optional<NumberingResolution> findById(Long id);
     List<NumberingResolution> findAllByCompanyId(Long companyId);
-    /** Invariante "una sola resolución activa por (company, tipo)": true si ya existe una activa para ese par. */
-    boolean existsActiveByCompanyAndType(Long companyId, ElectronicDocumentType documentType);
+    /**
+     * Invariante "una sola resolución activa por (company, sede, tipo)": true si ya existe una activa en ese
+     * EXACTO alcance. {@code branchId} null = alcance de empresa; no null = esa sede concreta.
+     */
+    boolean existsActiveByCompanyBranchAndType(Long companyId, Long branchId, ElectronicDocumentType documentType);
     void delete(Long id);
     int reactivate(Long id);
 }

@@ -10,8 +10,11 @@ import java.util.Optional;
  */
 public interface NumberingAllocationPort {
 
-    /** Devuelve el número fiscal asignado, o vacío si la empresa no tiene resolución activa para el tipo. */
-    Optional<AllocatedNumber> allocate(Long companyId, ElectronicDocumentType documentType);
+    /**
+     * Devuelve el número fiscal asignado, o vacío si no hay resolución activa. Multi-sucursal (B-6): usa la
+     * resolución de la SEDE ({@code branchId}) si existe; si no, la de EMPRESA (branch_id IS NULL).
+     */
+    Optional<AllocatedNumber> allocate(Long companyId, Long branchId, ElectronicDocumentType documentType);
 
     /**
      * Lee la resolución activa SIN consumir consecutivo (no incrementa {@code current_number}): devuelve solo
@@ -19,7 +22,7 @@ public interface NumberingAllocationPort {
      * proveedor DIAN (POS auto-increment), que igual exige {@code resolution_number}+{@code prefix} en el
      * request. Vacío si la empresa no tiene resolución activa para el tipo.
      */
-    Optional<AllocatedNumber> peekActive(Long companyId, ElectronicDocumentType documentType);
+    Optional<AllocatedNumber> peekActive(Long companyId, Long branchId, ElectronicDocumentType documentType);
 
     /**
      * Libera un consecutivo asignado ante un rechazo, para evitar huecos en la secuencia fiscal. Solo lo
@@ -27,7 +30,7 @@ public interface NumberingAllocationPort {
      * número entregado y nadie tomó el siguiente — bajo el mismo bloqueo pesimista de {@code allocate}.
      * Devuelve {@code true} si lo recuperó; {@code false} si ya no es seguro (el hueco permanece).
      */
-    boolean release(Long companyId, ElectronicDocumentType documentType, Long consecutive);
+    boolean release(Long companyId, Long branchId, ElectronicDocumentType documentType, Long consecutive);
 
     record AllocatedNumber(String resolutionNumber, String prefix, Long consecutive) {}
 }

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public record NumberingResolutionDto(
         Long id,
         CompanySummaryDto company,
+        Long branchId,
         ElectronicDocumentType documentType,
         String resolutionNumber,
         LocalDate resolutionDate,
@@ -25,6 +26,7 @@ public record NumberingResolutionDto(
         return new NumberingResolutionDto(
                 resolution.getId(),
                 resolution.getCompany() == null ? null : CompanySummaryDto.from(resolution.getCompany()),
+                resolution.getBranchId(),
                 resolution.getDocumentType(),
                 resolution.getResolutionNumber(),
                 resolution.getResolutionDate(),

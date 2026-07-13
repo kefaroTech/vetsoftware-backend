@@ -11,6 +11,7 @@ public class NumberingResolutionJpaMapper {
         NumberingResolutionJpaEntity entity = new NumberingResolutionJpaEntity();
         entity.setId(resolution.getId());
         entity.setCompany(company);
+        entity.setBranchId(resolution.getBranchId());
         entity.setDocumentType(resolution.getDocumentType());
         entity.setResolutionNumber(resolution.getResolutionNumber());
         entity.setResolutionDate(resolution.getResolutionDate());
@@ -47,6 +48,7 @@ public class NumberingResolutionJpaMapper {
                 entity.getTechnicalKey(),
                 entity.getCurrentNumber(),
                 entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.isEnabled(),
+                entity.getBranchId());
     }
 }

@@ -106,6 +106,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private final RestClient restClient;
     private final TechnicalKeyQueryPort technicalKeyQueryPort;
     private final EmployeeNameQueryPort employeeNameQueryPort;
+    private final com.vetsoftware.app.electronicdocument.application.port.out.BranchInfoQueryPort branchInfoQueryPort;
     private final MatiasPosConfig posConfig;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
     // Cache del catálogo de ciudades por base URL: DANE (city_code 5 díg.) → city_id interno de MATIAS.
@@ -114,10 +115,12 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient,
                                  TechnicalKeyQueryPort technicalKeyQueryPort,
                                  EmployeeNameQueryPort employeeNameQueryPort,
+                                 com.vetsoftware.app.electronicdocument.application.port.out.BranchInfoQueryPort branchInfoQueryPort,
                                  MatiasPosConfig posConfig) {
         this.restClient = restClient;
         this.technicalKeyQueryPort = technicalKeyQueryPort;
         this.employeeNameQueryPort = employeeNameQueryPort;
+        this.branchInfoQueryPort = branchInfoQueryPort;
         this.posConfig = posConfig;
     }
 
@@ -383,7 +386,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         body.put("prefix", doc.getPrefix() != null ? doc.getPrefix() : EX_PREFIX);
         // B5/3.7 - clave técnica de la resolución activa (la DIAN la usa en el CUFE de la factura). Se envía si
         // la resolución la tiene; las de notas/POS (CUDE) normalmente no, y entonces se omite.
-        technicalKeyQueryPort.findActiveTechnicalKey(doc.getCompanyId(), doc.getDocumentType())
+        technicalKeyQueryPort.findActiveTechnicalKey(doc.getCompanyId(), doc.getBranchId(), doc.getDocumentType())
                 .ifPresent(key -> body.put("technical_key", key));
         // En endpoints auto-increment (POS) MATIAS asigna el consecutivo y RECHAZA con 422 si se envía
         // document_number ("Para la generación automática, no debe enviar el campo document_number."). En los
@@ -563,12 +566,19 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     }
 
     private Map<String, Object> buildPointOfSale(ElectronicDocument doc) {
+        // Multi-sucursal (B-6): la dirección y el código del punto de venta reflejan la SEDE emisora del POS
+        // (dato de establecimiento, Res. 000165/2023) cuando el documento la tiene; si no, la config global.
+        var branch = branchInfoQueryPort.findById(doc.getBranchId()).orElse(null);
+        String address = branch != null && branch.address() != null && !branch.address().isBlank()
+                ? branch.address() : posConfig.address();
+        String salesCode = branch != null && branch.code() != null && !branch.code().isBlank()
+                ? branch.code() : posConfig.salesCode();
         Map<String, Object> pos = new LinkedHashMap<>();
         pos.put("cashier_name", resolveCashier(doc));
         pos.put("terminal_number", posConfig.terminalNumber());
         pos.put("cashier_type", posConfig.cashierType());
-        pos.put("sales_code", posConfig.salesCode());
-        pos.put("address", posConfig.address());
+        pos.put("sales_code", salesCode);
+        pos.put("address", address);
         pos.put("sub_total", str(doc.getTaxExclusiveAmount())); // requerido por MATIAS: subtotal sin impuestos
         return pos;
     }

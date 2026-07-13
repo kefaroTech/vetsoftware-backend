@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Multi-sucursal (B-6). Numeración fiscal POR SEDE: la DIAN distingue establecimientos por PREFIJO
+         (cada uno su rango+consecutivo), una misma resolución (Formato 1876) puede llevar varios prefijos.
+         Modelo: branch_id nullable = "un prefijo por sede" (null = prefijo de EMPRESA que sirve a todas las
+         sedes). En la asignación, la resolución de la sede tiene prioridad sobre la de empresa (fallback).
+         El resolution_number puede compartirse entre sedes (validado contra el sandbox MATIAS: 2 prefijos FE
+         bajo el mismo 18760000001 autorizados por la DIAN). -->
+
+    <changeSet id="185_add_branch_id_to_numbering_resolutions" author="orlando">
+        <addColumn tableName="numbering_resolutions">
+            <column name="branch_id" type="BIGINT"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="numbering_resolutions" baseColumnNames="branch_id"
+                                 constraintName="fk_numbering_resolutions_branch"
+                                 referencedTableName="branches" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Sustituye el índice único parcial de la migración 144 (una activa por (company, tipo)) por uno que
+         incluye la sede: una activa por (company, SEDE, tipo). La sede se codifica como COALESCE(branch_id,0)
+         para que la de empresa (branch_id NULL → "0") y la de cada sede convivan sin chocar, y las
+         desactivadas quedan NULL (MySQL permite múltiples NULL, no las deduplica). El nombre del índice
+         conserva el prefijo uq_numbering_resolutions_active para que el GlobalExceptionHandler siga mapeando
+         la violación al 409 NUMBERING_RESOLUTION_ALREADY_ACTIVE. -->
+    <changeSet id="185_replace_unique_active_scope_with_branch" author="orlando">
+        <sql>
+            ALTER TABLE numbering_resolutions
+                DROP INDEX uq_numbering_resolutions_active,
+                DROP COLUMN active_document_type,
+                ADD COLUMN active_scope VARCHAR(64)
+                    GENERATED ALWAYS AS (
+                        CASE WHEN enabled = TRUE
+                             THEN CONCAT(COALESCE(branch_id, 0), ':', document_type)
+                             ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_numbering_resolutions_active_scope UNIQUE (company_id, active_scope)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE numbering_resolutions
+                    DROP INDEX uq_numbering_resolutions_active_scope,
+                    DROP COLUMN active_scope,
+                    ADD COLUMN active_document_type VARCHAR(30)
+                        GENERATED ALWAYS AS (
+                            CASE WHEN enabled = TRUE THEN document_type ELSE NULL END
+                        ) STORED,
+                    ADD CONSTRAINT uq_numbering_resolutions_active UNIQUE (company_id, active_document_type)
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

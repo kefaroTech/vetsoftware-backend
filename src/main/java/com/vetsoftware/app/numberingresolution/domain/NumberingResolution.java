@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 public class NumberingResolution {
     private Long id;
     private CompanyRef company;
+    // Multi-sucursal (B-6): sede (prefijo) a la que aplica la resolución. null = resolución de EMPRESA (prefijo
+    // que sirve a todas las sedes). En la asignación, la de sede tiene prioridad sobre la de empresa (fallback).
+    private Long branchId;
     private ElectronicDocumentType documentType;
     private String resolutionNumber;
     private LocalDate resolutionDate;
@@ -25,11 +28,12 @@ public class NumberingResolution {
                                String resolutionNumber, LocalDate resolutionDate, String prefix,
                                Long rangeFrom, Long rangeTo, LocalDate validFrom, LocalDate validTo,
                                String technicalKey, Long currentNumber,
-                               LocalDateTime createdDate, boolean enabled) {
+                               LocalDateTime createdDate, boolean enabled, Long branchId) {
         validate(company, documentType, resolutionNumber, resolutionDate, prefix,
                 rangeFrom, rangeTo, validFrom, validTo, technicalKey, currentNumber);
         this.id = id;
         this.company = company;
+        this.branchId = branchId;
         this.documentType = documentType;
         this.resolutionNumber = resolutionNumber;
         this.resolutionDate = resolutionDate;
@@ -47,18 +51,19 @@ public class NumberingResolution {
     public static NumberingResolution create(CompanyRef company, ElectronicDocumentType documentType,
                                              String resolutionNumber, LocalDate resolutionDate, String prefix,
                                              Long rangeFrom, Long rangeTo, LocalDate validFrom, LocalDate validTo,
-                                             String technicalKey) {
+                                             String technicalKey, Long branchId) {
         return new NumberingResolution(null, company, documentType, resolutionNumber, resolutionDate, prefix,
-                rangeFrom, rangeTo, validFrom, validTo, technicalKey, rangeFrom, LocalDateTime.now(), true);
+                rangeFrom, rangeTo, validFrom, validTo, technicalKey, rangeFrom, LocalDateTime.now(), true, branchId);
     }
 
     public void update(CompanyRef company, ElectronicDocumentType documentType,
                        String resolutionNumber, LocalDate resolutionDate, String prefix,
                        Long rangeFrom, Long rangeTo, LocalDate validFrom, LocalDate validTo,
-                       String technicalKey) {
+                       String technicalKey, Long branchId) {
         validate(company, documentType, resolutionNumber, resolutionDate, prefix,
                 rangeFrom, rangeTo, validFrom, validTo, technicalKey, this.currentNumber);
         this.company = company;
+        this.branchId = branchId;
         this.documentType = documentType;
         this.resolutionNumber = resolutionNumber;
         this.resolutionDate = resolutionDate;
@@ -98,6 +103,8 @@ public class NumberingResolution {
 
     public Long getId() { return id; }
     public CompanyRef getCompany() { return company; }
+    /** Sede (prefijo) de la resolución; null = resolución de empresa (todas las sedes). */
+    public Long getBranchId() { return branchId; }
     public ElectronicDocumentType getDocumentType() { return documentType; }
     public String getResolutionNumber() { return resolutionNumber; }
     public LocalDate getResolutionDate() { return resolutionDate; }

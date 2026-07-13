@@ -23,9 +23,9 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
     }
 
     @Override
-    public Optional<AllocatedNumber> allocate(Long companyId, ElectronicDocumentType documentType) {
+    public Optional<AllocatedNumber> allocate(Long companyId, Long branchId, ElectronicDocumentType documentType) {
         NumberingResolutionJpaEntity r =
-                repository.lockActiveForUpdate(companyId, documentType.name()).orElse(null);
+                repository.lockActiveForUpdate(companyId, branchId, documentType.name()).orElse(null);
         if (r == null) return Optional.empty();
 
         LocalDate today = LocalDate.now();
@@ -45,8 +45,9 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
     }
 
     @Override
-    public Optional<AllocatedNumber> peekActive(Long companyId, ElectronicDocumentType documentType) {
-        NumberingResolutionJpaEntity r = repository.findActive(companyId, documentType.name()).orElse(null);
+    public Optional<AllocatedNumber> peekActive(Long companyId, Long branchId, ElectronicDocumentType documentType) {
+        NumberingResolutionJpaEntity r =
+                repository.findActive(companyId, branchId, documentType.name()).orElse(null);
         if (r == null) return Optional.empty();
 
         LocalDate today = LocalDate.now();
@@ -59,10 +60,10 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
     }
 
     @Override
-    public boolean release(Long companyId, ElectronicDocumentType documentType, Long consecutive) {
+    public boolean release(Long companyId, Long branchId, ElectronicDocumentType documentType, Long consecutive) {
         if (consecutive == null) return false;
         NumberingResolutionJpaEntity r =
-                repository.lockActiveForUpdate(companyId, documentType.name()).orElse(null);
+                repository.lockActiveForUpdate(companyId, branchId, documentType.name()).orElse(null);
         if (r == null) return false;
 
         // Solo se recupera el consecutivo si fue el último entregado y nadie tomó el siguiente (recuperación

@@ -14,4 +14,6 @@ public record UpdateNumberingResolutionCommand(
         LocalDate validFrom,
         LocalDate validTo,
         String technicalKey,
+        // Multi-sucursal (B-6): sede a la que aplica el prefijo. null = resolución de empresa (todas las sedes).
+        Long branchId,
         Long companyId) {}

@@ -10,5 +10,5 @@ import java.util.Optional;
  * o la resolución no tiene clave técnica (p. ej. resoluciones de notas, que usan CUDE).
  */
 public interface TechnicalKeyQueryPort {
-    Optional<String> findActiveTechnicalKey(Long companyId, ElectronicDocumentType documentType);
+    Optional<String> findActiveTechnicalKey(Long companyId, Long branchId, ElectronicDocumentType documentType);
 }

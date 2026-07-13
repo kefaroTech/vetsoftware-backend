@@ -19,7 +19,7 @@ public class NumberAssigner {
 
     public void assign(ElectronicDocument document) {
         NumberingAllocationPort.AllocatedNumber number = numberingPort
-                .allocate(document.getCompanyId(), document.getDocumentType())
+                .allocate(document.getCompanyId(), document.getBranchId(), document.getDocumentType())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene una resolución de numeración activa para "
                                 + document.getDocumentType() + "."));
@@ -32,7 +32,7 @@ public class NumberAssigner {
      */
     public void assignResolutionOnly(ElectronicDocument document) {
         NumberingAllocationPort.AllocatedNumber number = numberingPort
-                .peekActive(document.getCompanyId(), document.getDocumentType())
+                .peekActive(document.getCompanyId(), document.getBranchId(), document.getDocumentType())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene una resolución de numeración activa para "
                                 + document.getDocumentType() + "."));
@@ -48,7 +48,7 @@ public class NumberAssigner {
     public void release(ElectronicDocument document) {
         if (document.getConsecutive() == null) return;
         boolean reclaimed = numberingPort.release(
-                document.getCompanyId(), document.getDocumentType(), document.getConsecutive());
+                document.getCompanyId(), document.getBranchId(), document.getDocumentType(), document.getConsecutive());
         if (reclaimed) document.releaseFiscalNumber();
     }
 }

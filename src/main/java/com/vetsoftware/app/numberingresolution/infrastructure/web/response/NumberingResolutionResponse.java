@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public record NumberingResolutionResponse(
         Long id,
         CompanySummary company,
+        Long branchId,
         ElectronicDocumentType documentType,
         String resolutionNumber,
         LocalDate resolutionDate,
