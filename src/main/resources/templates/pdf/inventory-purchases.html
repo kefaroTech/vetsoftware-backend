@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Libro de compras</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 14mm 20mm 14mm;
+      @bottom-center {
+        content: "Libro de compras · Documento interno";
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #9a8e80;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page) "/" counter(pages);
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #6b6363;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #2a2424; }
+    .header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
+    .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
+    .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 12px; font-size: 9pt; }
+    .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
+    .meta .kv .val { color: #2a2424; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody td { padding: 5px 8px; border-bottom: 1px solid #eee4d8; }
+    tbody tr:nth-child(even) { background: #faf7f2; }
+    tfoot td { padding: 7px 8px; border-top: 2px solid #5c2d8c; font-weight: 700; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .sku { font-size: 7.5pt; color: #8a7f72; }
+    .empty { text-align: center; color: #9a8e80; padding: 22px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Vetrina</div>
+      <div style="font-size:8pt;color:#6b6363;">Libro de compras</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Compras</div>
+      <div th:text="'Generado: ' + ${#temporals.format(r.generatedAt, 'dd MMM yyyy, HH:mm')}">Generado</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="kv"><span class="lbl">Sede</span><span class="val" th:text="${r.branchName} ?: '—'">Sede</span></div>
+    <div class="kv"><span class="lbl">Desde</span><span class="val" th:text="${r.fromDate != null ? #temporals.format(r.fromDate, 'dd MMM yyyy') : 'Inicio'}">—</span></div>
+    <div class="kv"><span class="lbl">Hasta</span><span class="val" th:text="${r.toDate != null ? #temporals.format(r.toDate, 'dd MMM yyyy') : 'Hoy'}">—</span></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th><th>Producto</th><th>Sede</th><th>Lote</th>
+        <th class="num">Cantidad</th><th class="num">Costo unit.</th><th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(r.lines)}"><td colspan="7" class="empty">Sin compras en el rango.</td></tr>
+      <tr th:each="p : ${r.lines}">
+        <td th:text="${#temporals.format(p.createdDate, 'dd/MM/yyyy HH:mm')}">fecha</td>
+        <td><span th:text="${p.productName}">Producto</span> <span class="sku" th:text="${p.productCode}">SKU</span></td>
+        <td th:text="${p.branchName}">Sede</td>
+        <td th:text="${p.lotId} ?: '—'">lote</td>
+        <td class="num" th:text="${T(java.lang.Math).abs(p.quantity)}">0</td>
+        <td class="num" th:text="${#numbers.formatInteger(p.unitCost, 1, 'POINT')}">0</td>
+        <td class="num" th:text="${#numbers.formatInteger(p.total, 1, 'POINT')}">0</td>
+      </tr>
+    </tbody>
+    <tfoot th:unless="${#lists.isEmpty(r.lines)}">
+      <tr>
+        <td colspan="4">TOTAL</td>
+        <td class="num" th:text="${r.totalQuantity}">0</td>
+        <td></td>
+        <td class="num" th:text="${#numbers.formatInteger(r.totalValue, 1, 'POINT')}">0</td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

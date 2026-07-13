@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'Kardex — ' + ${r.productName}">Kardex de inventario</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 14mm 20mm 14mm;
+      @bottom-center {
+        content: "Kardex de inventario · Documento interno";
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #9a8e80;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page) "/" counter(pages);
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #6b6363;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #2a2424; }
+    .header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
+    .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
+    .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 12px; font-size: 9pt; }
+    .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
+    .meta .kv .val { color: #2a2424; font-weight: 600; }
+    .balances { display: flex; gap: 12px; margin-bottom: 12px; }
+    .bal { flex: 1; background: #f8f4ee; border: 1px solid #e6dccf; border-radius: 7px; padding: 8px 12px; }
+    .bal .lbl { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #5c2d8c; }
+    .bal .val { font-size: 15pt; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody td { padding: 5px 8px; border-bottom: 1px solid #eee4d8; }
+    tbody tr:nth-child(even) { background: #faf7f2; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pos { color: #2f7d4f; font-weight: 600; }
+    .neg { color: #b4453a; font-weight: 600; }
+    .empty { text-align: center; color: #9a8e80; padding: 22px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Vetrina</div>
+      <div style="font-size:8pt;color:#6b6363;">Kardex de inventario</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Kardex</div>
+      <div th:text="'Generado: ' + ${#temporals.format(r.generatedAt, 'dd MMM yyyy, HH:mm')}">Generado</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="kv"><span class="lbl">Producto</span><span class="val" th:text="${r.productName} ?: '—'">Producto</span></div>
+    <div class="kv"><span class="lbl">SKU</span><span class="val" th:text="${r.productCode} ?: '—'">SKU</span></div>
+    <div class="kv"><span class="lbl">Sede</span><span class="val" th:text="${r.branchName} ?: '—'">Sede</span></div>
+    <div class="kv"><span class="lbl">Desde</span><span class="val" th:text="${r.fromDate != null ? #temporals.format(r.fromDate, 'dd MMM yyyy') : 'Inicio'}">—</span></div>
+    <div class="kv"><span class="lbl">Hasta</span><span class="val" th:text="${r.toDate != null ? #temporals.format(r.toDate, 'dd MMM yyyy') : 'Hoy'}">—</span></div>
+  </div>
+
+  <div class="balances">
+    <div class="bal"><span class="lbl">Saldo inicial</span><div class="val" th:text="${r.openingBalance}">0</div></div>
+    <div class="bal"><span class="lbl">Saldo final</span><div class="val" th:text="${r.closingBalance}">0</div></div>
+    <div class="bal"><span class="lbl">Movimientos</span><div class="val" th:text="${#lists.size(r.lines)}">0</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th><th>Tipo</th><th>Referencia</th><th>Lote</th>
+        <th class="num">Cantidad</th><th class="num">Costo unit.</th><th class="num">Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(r.lines)}"><td colspan="7" class="empty">Sin movimientos en el rango.</td></tr>
+      <tr th:each="l : ${r.lines}">
+        <td th:text="${#temporals.format(l.createdDate, 'dd/MM/yyyy HH:mm')}">fecha</td>
+        <td th:text="${l.typeLabel}">tipo</td>
+        <td th:text="${l.referenceLabel}">ref</td>
+        <td th:text="${l.lotId} ?: '—'">lote</td>
+        <td class="num" th:classappend="${l.quantity >= 0 ? 'pos' : 'neg'}"
+            th:text="${l.quantity > 0 ? '+' + l.quantity : l.quantity}">0</td>
+        <td class="num" th:text="${#numbers.formatInteger(l.unitCost, 1, 'POINT')}">0</td>
+        <td class="num" th:text="${l.runningBalance}">0</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

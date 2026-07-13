@@ -4,6 +4,7 @@ import com.vetsoftware.app.inventory.application.command.SearchKardexCommand;
 import com.vetsoftware.app.inventory.application.command.SearchPurchasesQuery;
 import com.vetsoftware.app.inventory.application.command.SearchStockCommand;
 import com.vetsoftware.app.inventory.application.dto.ExpiringLotView;
+import com.vetsoftware.app.inventory.application.dto.KardexExportRow;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
@@ -109,6 +110,37 @@ public class StockQueryAdapter implements StockQueryPort {
             })
             .toList();
         return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+    }
+
+    @Override
+    public List<KardexExportRow> kardexForExport(SearchKardexCommand c) {
+        LocalDateTime from = c.from() == null ? null : c.from().atStartOfDay();
+        LocalDateTime to = c.to() == null ? null : c.to().plusDays(1).atStartOfDay();
+        return movementRepository.kardexForExport(c.companyId(), c.productId(), c.branchId(), from, to).stream()
+            .map(r -> new KardexExportRow(r.getProductName(), r.getProductCode(), r.getBranchName(),
+                r.getCreatedDate(), r.getType(), r.getReferenceType(), r.getReferenceId(), r.getLotId(),
+                r.getQuantity(), r.getUnitCost() == null ? BigDecimal.ZERO : r.getUnitCost()))
+            .toList();
+    }
+
+    @Override
+    public int openingBalance(Long companyId, Long productId, Long branchId, LocalDate from) {
+        return movementRepository.sumQuantityBefore(companyId, productId, branchId, from.atStartOfDay());
+    }
+
+    @Override
+    public List<PurchaseView> purchasesForExport(SearchPurchasesQuery c) {
+        LocalDateTime from = c.from() == null ? null : c.from().atStartOfDay();
+        LocalDateTime to = c.to() == null ? null : c.to().plusDays(1).atStartOfDay();
+        return movementRepository.purchasesForExport(c.companyId(), c.branchId(), from, to).stream()
+            .map(r -> {
+                BigDecimal unitCost = r.getUnitCost() == null ? BigDecimal.ZERO : r.getUnitCost();
+                return new PurchaseView(r.getId(), r.getProductId(), r.getProductName(), r.getProductCode(),
+                    r.getLotId(), r.getBranchId(), r.getBranchName(), r.getQuantity(), unitCost,
+                    unitCost.multiply(BigDecimal.valueOf(Math.abs(r.getQuantity()))), r.getReferenceId(),
+                    r.getCreatedDate());
+            })
+            .toList();
     }
 
     private static StockView toStockView(StockRow r) {

@@ -17,13 +17,16 @@ import com.vetsoftware.app.inventory.application.command.TransferStockCommand;
 import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
+import com.vetsoftware.app.inventory.application.dto.KardexReport;
 import com.vetsoftware.app.inventory.application.dto.PageResult;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
+import com.vetsoftware.app.inventory.application.dto.PurchasesReport;
 import com.vetsoftware.app.inventory.application.dto.StockLotView;
 import com.vetsoftware.app.inventory.application.dto.StockMovementView;
 import com.vetsoftware.app.inventory.application.dto.StockView;
 import com.vetsoftware.app.inventory.application.port.in.AdjustStockUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ConsumeStockUseCase;
+import com.vetsoftware.app.inventory.application.port.in.ExportInventoryUseCase;
 import com.vetsoftware.app.inventory.application.port.in.GetCountUseCase;
 import com.vetsoftware.app.inventory.application.port.in.GetInventoryAlertsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.GetInventoryValuationUseCase;
@@ -43,12 +46,18 @@ import com.vetsoftware.app.inventory.infrastructure.web.request.ReceiveStockRequ
 import com.vetsoftware.app.inventory.infrastructure.web.request.RecordCountRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.SetMinStockRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.TransferStockRequest;
+import com.vetsoftware.app.inventory.application.port.out.InventoryReportPdfPort;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import jakarta.validation.Valid;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -74,6 +83,8 @@ public class InventoryController {
     private final RecordCountUseCase recordCountUseCase;
     private final ListCountsUseCase listCountsUseCase;
     private final GetCountUseCase getCountUseCase;
+    private final ExportInventoryUseCase exportInventoryUseCase;
+    private final InventoryReportPdfPort inventoryReportPdf;
     private final Authz authz;
 
     public InventoryController(ListStockUseCase listStockUseCase,
@@ -90,6 +101,8 @@ public class InventoryController {
                               RecordCountUseCase recordCountUseCase,
                               ListCountsUseCase listCountsUseCase,
                               GetCountUseCase getCountUseCase,
+                              ExportInventoryUseCase exportInventoryUseCase,
+                              InventoryReportPdfPort inventoryReportPdf,
                               Authz authz) {
         this.listStockUseCase = listStockUseCase;
         this.listLotsUseCase = listLotsUseCase;
@@ -105,6 +118,8 @@ public class InventoryController {
         this.recordCountUseCase = recordCountUseCase;
         this.listCountsUseCase = listCountsUseCase;
         this.getCountUseCase = getCountUseCase;
+        this.exportInventoryUseCase = exportInventoryUseCase;
+        this.inventoryReportPdf = inventoryReportPdf;
         this.authz = authz;
     }
 
@@ -233,6 +248,48 @@ public class InventoryController {
     @GetMapping("/counts/{id}")
     public InventoryCountView count(@PathVariable Long id) {
         return getCountUseCase.get(authz.currentCompanyId(), id);
+    }
+
+    // ── Exportación (CSV/PDF) ─────────────────────────────────────────────────────
+    private static final MediaType CSV = new MediaType("text", "csv", StandardCharsets.UTF_8);
+
+    @GetMapping("/products/{productId}/kardex/export")
+    public ResponseEntity<byte[]> exportKardex(@PathVariable Long productId,
+                                               @RequestParam(required = false) Long branchId,
+                                               @RequestParam(required = false)
+                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                               @RequestParam(required = false)
+                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                               @RequestParam(defaultValue = "csv") String format) {
+        KardexReport report = exportInventoryUseCase.kardexReport(new SearchKardexCommand(
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), productId, from, to, 0, 0));
+        String base = "kardex_" + productId;
+        return "pdf".equalsIgnoreCase(format)
+            ? file(inventoryReportPdf.renderKardex(report), base + ".pdf", MediaType.APPLICATION_PDF)
+            : file(InventoryCsv.kardex(report), base + ".csv", CSV);
+    }
+
+    @GetMapping("/purchases/export")
+    public ResponseEntity<byte[]> exportPurchases(@RequestParam(required = false) Long branchId,
+                                                  @RequestParam(required = false)
+                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                  @RequestParam(required = false)
+                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                  @RequestParam(defaultValue = "csv") String format) {
+        PurchasesReport report = exportInventoryUseCase.purchasesReport(new SearchPurchasesQuery(
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), from, to, 0, 0));
+        return "pdf".equalsIgnoreCase(format)
+            ? file(inventoryReportPdf.renderPurchases(report), "compras.pdf", MediaType.APPLICATION_PDF)
+            : file(InventoryCsv.purchases(report), "compras.csv", CSV);
+    }
+
+    private static ResponseEntity<byte[]> file(byte[] body, String filename, MediaType type) {
+        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+            .contentType(type)
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + filename + "\"; filename*=UTF-8''" + encoded)
+            .body(body);
     }
 
     private static <T> PageResponse<T> toPageResponse(PageResult<T> r) {
