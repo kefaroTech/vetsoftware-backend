@@ -2,6 +2,8 @@ package com.vetsoftware.app.employee.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -28,6 +30,18 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // perezosamente al mapear (el servicio corre @Transactional).
     @Query(value = "SELECT * FROM employees WHERE company_id = :companyId ORDER BY id", nativeQuery = true)
     List<EmployeeJpaEntity> findAllByCompanyIdIncludingDisabled(@Param("companyId") Long companyId);
+
+    // Búsqueda paginada de la company INCLUYENDO desactivados (la pantalla muestra el estado). Nativa para saltar
+    // el @SQLRestriction("enabled = true"); la company se hidrata perezosamente al mapear (caller @Transactional).
+    // El filtro de texto es opcional (:q == null → sin filtro); LIKE usa la collation CI de MySQL (case-insensitive).
+    @Query(value = "SELECT * FROM employees e WHERE e.company_id = :companyId "
+        + "AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q) "
+        + "ORDER BY e.name ASC",
+        countQuery = "SELECT COUNT(*) FROM employees e WHERE e.company_id = :companyId "
+        + "AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q)",
+        nativeQuery = true)
+    Page<EmployeeJpaEntity> searchByCompanyIncludingDisabled(@Param("companyId") Long companyId,
+                                                             @Param("q") String q, Pageable pageable);
 
     @EntityGraph(attributePaths = "company")
     Optional<EmployeeJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);

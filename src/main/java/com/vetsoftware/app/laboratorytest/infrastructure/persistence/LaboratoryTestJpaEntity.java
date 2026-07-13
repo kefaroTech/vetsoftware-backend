@@ -51,6 +51,11 @@ public class LaboratoryTestJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
+    // Sede de la muestra (multi-sucursal). Se mapea como id plano — solo se filtra por él en la bandeja; la FK la
+    // garantiza la BD (migración 188). No hace falta el agregado Branch aquí.
+    @Column(name = "branch_id", nullable = false)
+    private Long branchId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "processed_by_id")
     private EmployeeJpaEntity processedBy;
@@ -86,6 +91,8 @@ public class LaboratoryTestJpaEntity {
     public void setConsultation(ConsultationJpaEntity consultation) { this.consultation = consultation; }
     public CompanyJpaEntity getCompany() { return company; }
     public void setCompany(CompanyJpaEntity company) { this.company = company; }
+    public Long getBranchId() { return branchId; }
+    public void setBranchId(Long branchId) { this.branchId = branchId; }
     public EmployeeJpaEntity getProcessedBy() { return processedBy; }
     public void setProcessedBy(EmployeeJpaEntity processedBy) { this.processedBy = processedBy; }
     public LocalDateTime getProcessedDate() { return processedDate; }

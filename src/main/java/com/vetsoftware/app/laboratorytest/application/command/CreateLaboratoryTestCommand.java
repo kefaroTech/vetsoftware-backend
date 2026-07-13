@@ -13,6 +13,7 @@ public record CreateLaboratoryTestCommand(
         Long animalId,
         Long consultationId,
         Long companyId,
+        Long branchId,
         Long processedById,
         LocalDateTime processedDate
 ) {}

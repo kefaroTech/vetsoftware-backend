@@ -15,6 +15,8 @@ public record CreateLaboratoryTestRequest(
         String prioridad,
         @NotNull Long animalId,
         Long consultationId,
+        // Sede de la muestra (default = sede activa por defecto si no viene). La bandeja se scopea por ella.
+        Long branchId,
         Long processedById,
         LocalDateTime processedDate
 ) {}

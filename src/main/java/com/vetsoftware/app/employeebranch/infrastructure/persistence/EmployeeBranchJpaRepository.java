@@ -14,6 +14,12 @@ public interface EmployeeBranchJpaRepository extends JpaRepository<EmployeeBranc
     @Query("select eb.branch.id from EmployeeBranchJpaEntity eb where eb.employee.id = :employeeId")
     List<Long> findBranchIdsByEmployeeId(Long employeeId);
 
+    // Asignaciones vigentes (con nombre de la sede) de un conjunto de empleados, para pintar las sedes en el
+    // listado/detalle. El @SQLRestriction("enabled = true") de la entidad ya excluye asignaciones desactivadas.
+    @Query("select eb.employee.id as employeeId, eb.branch.id as branchId, eb.branch.name as branchName "
+        + "from EmployeeBranchJpaEntity eb where eb.employee.id in :employeeIds")
+    List<EmployeeBranchAssignmentView> findAssignmentsByEmployeeIds(@Param("employeeIds") List<Long> employeeIds);
+
     // Soft-delete de TODAS las asignaciones vigentes del empleado (primer paso del set atómico). Nativa para saltar
     // el @SQLRestriction y actualizar por employee_id directamente.
     @Modifying(flushAutomatically = true, clearAutomatically = true)

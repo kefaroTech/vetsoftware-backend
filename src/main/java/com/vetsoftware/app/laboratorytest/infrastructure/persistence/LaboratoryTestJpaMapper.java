@@ -35,6 +35,7 @@ public class LaboratoryTestJpaMapper {
         entity.setAnimal(animal);
         entity.setConsultation(consultation);
         entity.setCompany(company);
+        entity.setBranchId(laboratoryTest.getBranchId());
         entity.setProcessedBy(processedBy);
         entity.setProcessedDate(laboratoryTest.getProcessedDate());
         entity.setCreatedDate(laboratoryTest.getCreatedDate());
@@ -64,7 +65,7 @@ public class LaboratoryTestJpaMapper {
             entity.getQuantity(), entity.getDiagnosis(),
             LaboratoryTestStatus.valueOf(entity.getStatus()),
             LaboratoryTestPriority.valueOf(entity.getPrioridad()),
-            animalRef, consultationRef, companyRef,
+            animalRef, consultationRef, companyRef, entity.getBranchId(),
             processedByRef, entity.getProcessedDate(),
             entity.getCreatedDate(), entity.isEnabled());
     }

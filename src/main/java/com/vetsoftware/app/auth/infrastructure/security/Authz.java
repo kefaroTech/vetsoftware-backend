@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.infrastructure.security;
 
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
+import java.util.Collection;
 import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -52,6 +53,30 @@ public class Authz {
         return auth != null
             && auth.getPrincipal() instanceof EmployeeContext me
             && me.permissions().contains(ADMIN_PERMISSION);
+    }
+
+    /** Sedes asignadas al empleado autenticado (para acotar qué sedes puede asignar a otros). */
+    public Set<Long> currentBranchIds() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
+            return me.branchIds();
+        }
+        throw new AccessDeniedException("No employee context");
+    }
+
+    /**
+     * Exige que el caller pueda ASIGNAR todas esas sedes a un empleado: un admin puede asignar cualquier sede de su
+     * empresa; un no-admin (p.ej. un manager con employee.create) solo las sedes que él mismo tiene asignadas.
+     * Lanza {@link BranchAccessDeniedException} (→ 403) si alguna sede está fuera de su alcance.
+     */
+    public void requireAssignableBranches(Collection<Long> branchIds) {
+        if (branchIds == null || isAdmin()) return;
+        Set<Long> mine = currentBranchIds();
+        for (Long id : branchIds) {
+            if (id == null || !mine.contains(id)) {
+                throw new BranchAccessDeniedException("Branch not assignable by employee: " + id);
+            }
+        }
     }
 
     /** ¿El empleado puede operar sobre esta sede? Admin siempre; el resto, solo si la tiene asignada. */

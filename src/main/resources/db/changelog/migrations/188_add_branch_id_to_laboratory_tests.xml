@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Multi-sucursal (muestras). Añade branch_id a laboratory_tests: la bandeja de muestras se scopea por sede.
+         Backfilleado a la sede "Principal" de cada empresa (migración 180) antes de exigir NOT NULL + FK. -->
+    <changeSet id="188_add_branch_id_to_laboratory_tests" author="orlando">
+        <addColumn tableName="laboratory_tests">
+            <column name="branch_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="188_backfill_laboratory_test_branch" author="orlando">
+        <sql>
+            UPDATE laboratory_tests t
+            JOIN branches b ON b.company_id = t.company_id AND b.code = 'PRINCIPAL'
+            SET t.branch_id = b.id
+            WHERE t.branch_id IS NULL
+        </sql>
+        <rollback>
+            UPDATE laboratory_tests SET branch_id = NULL
+        </rollback>
+    </changeSet>
+
+    <changeSet id="188_laboratory_test_branch_not_null_fk" author="orlando">
+        <addNotNullConstraint tableName="laboratory_tests" columnName="branch_id" columnDataType="BIGINT"/>
+        <addForeignKeyConstraint baseTableName="laboratory_tests" baseColumnNames="branch_id"
+                                 constraintName="fk_laboratory_tests_branch"
+                                 referencedTableName="branches" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

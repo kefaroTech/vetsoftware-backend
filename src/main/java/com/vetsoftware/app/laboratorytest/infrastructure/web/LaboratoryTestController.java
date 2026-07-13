@@ -84,7 +84,8 @@ public class LaboratoryTestController {
                 request.date(), request.testTypeId(), request.quantity(),
                 request.diagnosis(), request.status(), request.prioridad(),
                 request.animalId(), request.consultationId(),
-                authz.currentCompanyId(), request.processedById(), request.processedDate())));
+                authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()),
+                request.processedById(), request.processedDate())));
     }
 
     @GetMapping
@@ -105,6 +106,7 @@ public class LaboratoryTestController {
             @RequestParam(required = false) String prioridad,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(name = "branchId", required = false) Long branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         List<LaboratoryTestStatus> statusList = statuses == null ? List.of()
@@ -112,8 +114,8 @@ public class LaboratoryTestController {
         LaboratoryTestPriority priority = prioridad == null || prioridad.isBlank()
             ? null : LaboratoryTestPriority.valueOf(prioridad.toUpperCase());
         PageResult<LaboratoryTestDto> result = searchUseCase.execute(new SearchLaboratoryTestsCommand(
-            authz.currentCompanyId(), statusList, animalId, testTypeId, priority,
-            dateFrom, dateTo, page, pageSize));
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), statusList, animalId, testTypeId,
+            priority, dateFrom, dateTo, page, pageSize));
         return new PageResponse<>(
             result.content().stream().map(this::toResponse).toList(),
             result.page(), result.pageSize(), result.totalElements(), result.totalPages());

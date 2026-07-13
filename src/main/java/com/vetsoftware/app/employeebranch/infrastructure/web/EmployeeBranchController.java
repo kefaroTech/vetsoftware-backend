@@ -8,6 +8,8 @@ import com.vetsoftware.app.employeebranch.application.port.in.SetEmployeeBranche
 import com.vetsoftware.app.employeebranch.infrastructure.web.request.SetEmployeeBranchesRequest;
 import com.vetsoftware.app.employeebranch.infrastructure.web.response.EmployeeBranchesResponse;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,8 +46,20 @@ public class EmployeeBranchController {
     @PutMapping
     public EmployeeBranchesResponse set(@PathVariable Long employeeId,
                                         @Valid @RequestBody SetEmployeeBranchesRequest request) {
+        boolean allBranches = request.allBranches();
+        List<Long> branchIds = request.branchIds();
+        // Un no-admin solo puede asignar sedes que él mismo tiene: "todas" = todas SUS sedes (no toda la empresa);
+        // si vienen explícitas, cada una debe estar en su alcance. Un admin gestiona toda la empresa (sin acotar).
+        if (!authz.isAdmin()) {
+            if (allBranches) {
+                allBranches = false;
+                branchIds = new ArrayList<>(authz.currentBranchIds());
+            } else {
+                authz.requireAssignableBranches(branchIds);
+            }
+        }
         EmployeeBranchesDto dto = setUseCase.execute(new SetEmployeeBranchesCommand(
-            employeeId, authz.currentCompanyId(), request.allBranches(), request.branchIds()));
+            employeeId, authz.currentCompanyId(), allBranches, branchIds));
         return new EmployeeBranchesResponse(dto.employeeId(), dto.branchIds());
     }
 }

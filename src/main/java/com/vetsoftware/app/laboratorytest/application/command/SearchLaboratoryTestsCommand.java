@@ -7,6 +7,7 @@ import java.util.List;
 
 public record SearchLaboratoryTestsCommand(
         Long companyId,
+        Long branchId,
         List<LaboratoryTestStatus> statuses,
         Long animalId,
         Long testTypeId,

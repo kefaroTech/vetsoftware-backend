@@ -108,6 +108,9 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
             }
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("company").get("id"), command.companyId()));
+            if (command.branchId() != null) {
+                predicates.add(cb.equal(root.get("branchId"), command.branchId()));
+            }
             if (command.statuses() != null && !command.statuses().isEmpty()) {
                 predicates.add(root.get("status").in(
                     command.statuses().stream().map(Enum::name).toList()));

@@ -5,9 +5,11 @@ import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.employee.application.command.ChangeMyPasswordCommand;
 import com.vetsoftware.app.employee.application.command.InviteEmployeeCommand;
 import com.vetsoftware.app.employee.application.command.ResendInvitationCommand;
+import com.vetsoftware.app.employee.application.command.SearchEmployeesCommand;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
+import com.vetsoftware.app.employee.application.dto.PageResult;
 import com.vetsoftware.app.employee.application.port.in.ChangeMyPasswordUseCase;
 import com.vetsoftware.app.employee.application.port.in.CheckEmployeeCodeAvailabilityUseCase;
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
@@ -17,12 +19,15 @@ import com.vetsoftware.app.employee.application.port.in.ListEmployeesByCompanyUs
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.in.ReactivateEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.in.ResendInvitationUseCase;
+import com.vetsoftware.app.employee.application.port.in.SearchEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.in.SuggestEmployeeCodeUseCase;
 import com.vetsoftware.app.employee.application.port.in.UpdateEmployeeUseCase;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.employee.infrastructure.web.request.ChangeMyPasswordRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.ResendInvitationRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.UpdateEmployeeRequest;
+import com.vetsoftware.app.employee.infrastructure.web.response.BranchSummary;
 import com.vetsoftware.app.employee.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeCodeAvailabilityResponse;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeCodeSuggestionResponse;
@@ -43,6 +48,7 @@ public class EmployeeController {
     private final FindEmployeeUseCase findUseCase;
     private final ListEmployeesUseCase listUseCase;
     private final ListEmployeesByCompanyUseCase listByCompanyUseCase;
+    private final SearchEmployeesUseCase searchUseCase;
     private final DeleteEmployeeUseCase deleteUseCase;
     private final ReactivateEmployeeUseCase reactivateUseCase;
     private final SuggestEmployeeCodeUseCase suggestCodeUseCase;
@@ -56,6 +62,7 @@ public class EmployeeController {
                                UpdateEmployeeUseCase updateUseCase,
                                FindEmployeeUseCase findUseCase, ListEmployeesUseCase listUseCase,
                                ListEmployeesByCompanyUseCase listByCompanyUseCase,
+                               SearchEmployeesUseCase searchUseCase,
                                DeleteEmployeeUseCase deleteUseCase,
                                ReactivateEmployeeUseCase reactivateUseCase,
                                SuggestEmployeeCodeUseCase suggestCodeUseCase,
@@ -69,6 +76,7 @@ public class EmployeeController {
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
+        this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.suggestCodeUseCase = suggestCodeUseCase;
@@ -80,6 +88,8 @@ public class EmployeeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
+        // Un no-admin solo puede asignar al nuevo empleado sedes que él mismo tiene (admin: cualquiera de la empresa).
+        authz.requireAssignableBranches(request.branchIds());
         EmployeeDto dto = inviteUseCase.execute(
             new InviteEmployeeCommand(request.employeeCode(), request.password(), request.name(),
                 request.email(), request.companyId(), request.roleIds(), request.branchIds()));
@@ -119,6 +129,19 @@ public class EmployeeController {
     public List<EmployeeResponse> listByCompany() {
         return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
             .stream().map(this::toResponse).toList();
+    }
+
+    /** Listado paginado + búsqueda server-side (nombre/código/correo) de los empleados de la empresa. */
+    @GetMapping("/search")
+    public PageResponse<EmployeeResponse> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int pageSize) {
+        PageResult<EmployeeDto> result = searchUseCase.search(
+            new SearchEmployeesCommand(authz.currentCompanyId(), q, page, pageSize));
+        return new PageResponse<>(
+            result.content().stream().map(this::toResponse).toList(),
+            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     /** Sugiere un código de empleado disponible a partir del nombre (prefijo = iniciales de la empresa). */
@@ -163,9 +186,13 @@ public class EmployeeController {
         List<RoleSummary> roles = dto.roles().stream()
             .map(r -> new RoleSummary(r.employeeRoleId(), r.id(), r.name(), r.code()))
             .toList();
+        List<BranchSummary> branches = dto.branches().stream()
+            .map(b -> new BranchSummary(b.id(), b.name()))
+            .toList();
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),
             new CompanySummary(c.id(), c.name(), c.identifier()),
             roles,
+            branches,
             dto.createdDate(),
             dto.enabled(),
             dto.mustChangePassword(),

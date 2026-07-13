@@ -4,6 +4,7 @@ import com.vetsoftware.app.laboratorytest.application.command.CreateLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
 import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.laboratorytest.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.ConsultationQueryPort;
 import com.vetsoftware.app.laboratorytest.application.port.out.EmployeeQueryPort;
@@ -29,19 +30,22 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
     private final ConsultationQueryPort consultationQueryPort;
     private final CompanyQueryPort companyQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
+    private final BranchQueryPort branchQueryPort;
 
     public CreateLaboratoryTestService(LaboratoryTestRepository repository,
                                        LaboratoryTestTypeQueryPort testTypeQueryPort,
                                        AnimalQueryPort animalQueryPort,
                                        ConsultationQueryPort consultationQueryPort,
                                        CompanyQueryPort companyQueryPort,
-                                       EmployeeQueryPort employeeQueryPort) {
+                                       EmployeeQueryPort employeeQueryPort,
+                                       BranchQueryPort branchQueryPort) {
         this.repository = repository;
         this.testTypeQueryPort = testTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
         this.consultationQueryPort = consultationQueryPort;
         this.companyQueryPort = companyQueryPort;
         this.employeeQueryPort = employeeQueryPort;
+        this.branchQueryPort = branchQueryPort;
     }
 
     @Override
@@ -67,9 +71,17 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
             ? LaboratoryTestPriority.NORMAL
             : LaboratoryTestPriority.valueOf(command.prioridad().toUpperCase());
 
+        // Sede de la muestra: si el request trae branchId debe pertenecer a la empresa y estar ACTIVA; si no, la
+        // sede activa por defecto. La bandeja de muestras se scopea por esta sede.
+        Long branchId = command.branchId() != null
+            ? branchQueryPort.findActiveIdByIdAndCompanyId(command.branchId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Branch is not active or not found: " + command.branchId()))
+            : branchQueryPort.findDefaultActiveIdByCompanyId(command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Company has no active branch: " + command.companyId()));
+
         LaboratoryTest laboratoryTest = LaboratoryTest.create(
             command.date(), testType, command.quantity(), command.diagnosis(),
-            initialStatus, prioridad, animal, consultation, company,
+            initialStatus, prioridad, animal, consultation, company, branchId,
             processedBy, command.processedDate());
         return LaboratoryTestDto.from(repository.save(laboratoryTest));
     }
