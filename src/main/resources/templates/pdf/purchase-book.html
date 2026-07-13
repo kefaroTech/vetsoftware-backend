@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Libro de compras</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 14mm 12mm 18mm 12mm;
+      @bottom-center {
+        content: "Libro de compras · Documento interno";
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #9a8e80;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page) "/" counter(pages);
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #6b6363;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9pt; color: #2a2424; }
+    .header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
+    .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
+    .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 12px; font-size: 9pt; }
+    .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
+    .meta .kv .val { color: #2a2424; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 6px; }
+    thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 5px 6px; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.03em; }
+    tbody td { padding: 4px 6px; border-bottom: 1px solid #eee4d8; }
+    tbody tr:nth-child(even) { background: #faf7f2; }
+    tfoot td { padding: 6px; border-top: 2px solid #5c2d8c; font-weight: 700; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .empty { text-align: center; color: #9a8e80; padding: 22px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Vetrina</div>
+      <div style="font-size:8pt;color:#6b6363;">Reporte de compras</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Libro de compras</div>
+      <div th:text="'Periodo: ' + ${#temporals.format(b.dateFrom, 'dd MMM yyyy')} + ' — ' + ${#temporals.format(b.dateTo, 'dd MMM yyyy')}">Periodo</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Proveedor</th><th>NIT</th><th>Factura</th><th>Fecha</th><th>Vence</th>
+        <th class="num">Base</th><th class="num">Impuesto</th><th class="num">Retención</th>
+        <th class="num">Total</th><th class="num">Pagado</th><th class="num">Saldo</th><th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(b.entries)}"><td colspan="12" class="empty">Sin compras en el periodo.</td></tr>
+      <tr th:each="e : ${b.entries}">
+        <td th:text="${e.supplierName}">Proveedor</td>
+        <td th:text="${e.supplierTaxId} ?: '—'">—</td>
+        <td th:text="${e.invoiceNumber}">F-001</td>
+        <td th:text="${#temporals.format(e.issueDate, 'dd/MM/yyyy')}">fecha</td>
+        <td th:text="${e.dueDate != null ? #temporals.format(e.dueDate, 'dd/MM/yyyy') : '—'}">vence</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.subtotal, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.taxAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.withholdingAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.total, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.paidAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(e.balance, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td th:switch="${e.status}">
+          <span th:case="'PENDING'">Pendiente</span>
+          <span th:case="'PARTIAL'">Parcial</span>
+          <span th:case="'PAID'">Pagada</span>
+          <span th:case="*" th:text="${e.status}">—</span>
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" th:text="'TOTAL (' + ${b.totals.invoiceCount} + ')'">TOTAL</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.subtotal, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.taxAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.withholdingAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.total, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.paidAmount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(b.totals.balance, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

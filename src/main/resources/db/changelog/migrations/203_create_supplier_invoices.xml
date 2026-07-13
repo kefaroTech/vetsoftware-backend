@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F3 Compras: factura de proveedor + cuenta por pagar (cabecera) y sus abonos (append-only). Los enlaces a
+         orden de compra / recepción son columnas Long peladas (sin FK JPA) para no acoplar las features. -->
+    <changeSet id="203_create_supplier_invoices" author="orlando">
+        <createTable tableName="supplier_invoices">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_supplier_invoices_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_supplier_invoices_branch"
+                             references="branches(id)"/>
+            </column>
+            <column name="supplier_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_supplier_invoices_supplier"
+                             references="suppliers(id)"/>
+            </column>
+            <column name="purchase_order_id" type="BIGINT"/>
+            <column name="goods_receipt_id" type="BIGINT"/>
+            <column name="invoice_number" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="issue_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="due_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subtotal" type="DECIMAL(14,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_amount" type="DECIMAL(14,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="withholding_amount" type="DECIMAL(14,2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total" type="DECIMAL(14,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="203_create_supplier_invoice_payments" author="orlando">
+        <createTable tableName="supplier_invoice_payments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="supplier_invoice_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_supplier_invoice_payments_invoice"
+                             references="supplier_invoices(id)"/>
+            </column>
+            <column name="amount" type="DECIMAL(14,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="VARCHAR(80)"/>
+            <column name="note" type="VARCHAR(300)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Unicidad del NÚMERO de factura por (empresa, proveedor) entre las ACTIVAS. Mismo patrón que la 197
+         (proveedores): columna generada que vale el número solo si enabled=TRUE y NULL en otro caso; el índice
+         único sobre (company_id, supplier_id, active_invoice_number) deduplica solo facturas activas (MySQL
+         permite múltiples NULL). Evita registrar dos veces la misma factura de un proveedor. -->
+    <changeSet id="203_unique_supplier_invoice_number" author="orlando">
+        <sql>
+            ALTER TABLE supplier_invoices
+                ADD COLUMN active_invoice_number VARCHAR(60)
+                GENERATED ALWAYS AS (
+                    CASE WHEN enabled = TRUE THEN invoice_number ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_supplier_invoices_active_number UNIQUE (company_id, supplier_id, active_invoice_number)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE supplier_invoices
+                    DROP INDEX uq_supplier_invoices_active_number,
+                    DROP COLUMN active_invoice_number
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

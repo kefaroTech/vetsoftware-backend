@@ -132,6 +132,13 @@ import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExis
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
 import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
 import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
+import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
+import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
+import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptNotFoundException;
+import com.vetsoftware.app.goodsreceipt.domain.InvalidGoodsReceiptStatusTransitionException;
+import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundException;
+import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
+import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
 import com.vetsoftware.app.tax.domain.TaxHasActiveChildrenException;
 import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
@@ -231,7 +238,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class,
             DianProviderConfigNotFoundException.class, WithholdingConfigNotFoundException.class,
             BranchNotFoundException.class, InventoryCountNotFoundException.class,
-            CashSessionNotFoundException.class, SupplierNotFoundException.class
+            CashSessionNotFoundException.class, SupplierNotFoundException.class,
+            PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
+            SupplierInvoiceNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -288,6 +297,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "INVALID_APPOINTMENT_TRANSITION", ex.getMessage());
     }
 
+    // Compras: transición de estado inválida en orden de compra o recepción (p. ej. editar una PO ya recibida,
+    // confirmar una recepción no-borrador, cancelar una recepción no-confirmada). Código propio derivado por clase
+    // (INVALID_PURCHASE_ORDER_STATUS_TRANSITION / INVALID_GOODS_RECEIPT_STATUS_TRANSITION) para el front.
+    @ExceptionHandler({
+        InvalidPurchaseOrderStatusTransitionException.class,
+        InvalidGoodsReceiptStatusTransitionException.class
+    })
+    public ProblemDetail handlePurchaseStatusTransition(RuntimeException ex) {
+        log.warn("Invalid purchase status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
+    }
+
+    // CxP (F3): operación no válida para el estado de la factura de proveedor (editar/anular con abonos, abonar una
+    // anulada/pagada, sobrepago). 409 con código propio INVALID_SUPPLIER_INVOICE_STATE para el front.
+    @ExceptionHandler(InvalidSupplierInvoiceStateException.class)
+    public ProblemDetail handleInvalidSupplierInvoiceState(InvalidSupplierInvoiceStateException ex) {
+        log.warn("Invalid supplier invoice state: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_SUPPLIER_INVOICE_STATE", ex.getMessage());
+    }
+
     @ExceptionHandler(CompanyTaxProfileAlreadyExistsException.class)
     public ProblemDetail handleCompanyTaxProfileAlreadyExists(CompanyTaxProfileAlreadyExistsException ex) {
         log.warn("Company tax profile already exists: {}", ex.getMessage());
@@ -307,7 +336,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProductCategoryNameAlreadyExistsException.class,
         ServiceCategoryNameAlreadyExistsException.class,
         TaxNameAlreadyExistsException.class,
-        SupplierNameAlreadyExistsException.class
+        SupplierNameAlreadyExistsException.class,
+        SupplierInvoiceNumberAlreadyExistsException.class
     })
     public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
         log.warn("Name already exists: {}", ex.getMessage());
@@ -542,6 +572,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (cause != null && cause.contains("uq_suppliers_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "SUPPLIER_NAME_ALREADY_EXISTS",
                 "Ya existe un proveedor activo con ese nombre en esta empresa.");
+        }
+        // Carrera en la unicidad del número de factura de proveedor por (empresa, proveedor) (migración 203).
+        if (cause != null && cause.contains("uq_supplier_invoices_active_number")) {
+            return problem(HttpStatus.CONFLICT, "SUPPLIER_INVOICE_NUMBER_ALREADY_EXISTS",
+                "Ya existe una factura activa con ese número para ese proveedor.");
         }
         // Carrera en "un documento por cuenta cerrada" (constraint de la migración 134): dos cierres
         // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª emisión fiscal.

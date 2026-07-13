@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- F4 Compras: permiso de lectura del libro de compras (purchasereport.read) bajo el sub_module PURCHASES
+         (ya creado por la 199). Mismo patrón que 199/204. Idempotente (guardas NOT EXISTS / claves por code).
+         OJO (memoria): sembrar por SQL NO invalida la cache Redis `employee-permissions`; hace falta rebuild/restart. -->
+
+    <changeSet id="205_purchasereport_base_permission" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver libro de compras', 'purchasereport.read', (SELECT id FROM sub_modules WHERE code = 'PURCHASES'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'purchasereport.read');
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code = 'purchasereport.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="205_purchasereport_base_role_permission_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'purchasereport.read'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (SELECT id FROM base_permissions WHERE code = 'purchasereport.read');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="205_purchasereport_permission_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, c.id, sm.id, 1
+            FROM companies c
+            CROSS JOIN base_permissions bp
+            JOIN sub_modules sm ON sm.code = 'PURCHASES'
+            WHERE bp.code = 'purchasereport.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p WHERE p.company_id = c.id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'purchasereport.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="205_purchasereport_role_permission_backfill_admin" author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id AND p.code = 'purchasereport.read'
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (SELECT id FROM permissions WHERE code = 'purchasereport.read');
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

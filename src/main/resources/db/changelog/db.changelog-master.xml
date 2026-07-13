@@ -205,5 +205,8 @@
     <include file="db/changelog/migrations/200_create_purchase_orders.xml"/>
     <include file="db/changelog/migrations/201_create_goods_receipts.xml"/>
     <include file="db/changelog/migrations/202_seed_purchase_order_receipt_permissions.xml"/>
+    <include file="db/changelog/migrations/203_create_supplier_invoices.xml"/>
+    <include file="db/changelog/migrations/204_seed_accounts_payable_permissions.xml"/>
+    <include file="db/changelog/migrations/205_seed_purchase_report_permission.xml"/>
 
 </databaseChangeLog>
