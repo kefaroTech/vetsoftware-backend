@@ -1,0 +1,13 @@
+package com.vetsoftware.app.cashregister.application.port.in;
+
+import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQuery;
+import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
+import com.vetsoftware.app.cashregister.application.dto.PageResult;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+/** Historial paginado de sesiones de caja por sede (resumen, sin movimientos). Gate: leer caja. */
+public interface ListCashSessionsUseCase {
+    @PreAuthorize("hasAuthority('admin.all') or "
+        + "(hasAuthority('cashregister.read') and @authz.isMyCompany(#query.companyId))")
+    PageResult<CashSessionView> list(SearchCashSessionsQuery query);
+}

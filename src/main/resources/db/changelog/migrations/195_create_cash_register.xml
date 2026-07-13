@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Punto 5 — Dominio de caja / arqueo. Una sesión de caja por (empresa, sede, terminal) con sus movimientos
+      (append-only: ventas, abonos, ingresos/retiros/gastos, reversas) y, al cerrar, sus counts (esperado vs contado
+      por método). El efectivo cuenta para el conteo físico; tarjeta/transferencia se registran para conciliar por
+      medio de pago. Solo el efectivo suma la base inicial en el esperado.
+    -->
+    <changeSet id="195_create_cash_session" author="orlando">
+        <createTable tableName="cash_session">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_session_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_session_branch" references="branches(id)"/>
+            </column>
+            <column name="terminal" type="VARCHAR(60)" defaultValue="principal">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opened_by_employee_id" type="BIGINT">
+                <constraints foreignKeyName="fk_cash_session_opened_by" references="employees(id)"/>
+            </column>
+            <column name="opened_at" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opening_float" type="DECIMAL(12, 2)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(10)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closed_by_employee_id" type="BIGINT">
+                <constraints foreignKeyName="fk_cash_session_closed_by" references="employees(id)"/>
+            </column>
+            <column name="closed_at" type="DATETIME"/>
+            <column name="note" type="VARCHAR(255)"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!--
+          Invariante "una sola sesión OPEN por (empresa, sede, terminal)". MySQL no soporta índices únicos parciales,
+          así que se replica el patrón de la migración 144: una columna generada que vale 1 solo cuando status=OPEN y
+          NULL en otro caso; el índice único sobre (company_id, branch_id, terminal, open_marker) deduplica únicamente
+          las ABIERTAS (MySQL permite múltiples NULL), dejando convivir todas las cerradas.
+        -->
+        <sql>
+            ALTER TABLE cash_session
+                ADD COLUMN open_marker TINYINT
+                GENERATED ALWAYS AS (
+                    CASE WHEN status = 'OPEN' THEN 1 ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_cash_session_open UNIQUE (company_id, branch_id, terminal, open_marker)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE cash_session
+                    DROP INDEX uq_cash_session_open,
+                    DROP COLUMN open_marker
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="195_create_cash_movement" author="orlando">
+        <createTable tableName="cash_movement">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="session_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_movement_session"
+                             references="cash_session(id)"/>
+            </column>
+            <column name="type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(12, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_id" type="BIGINT"/>
+            <column name="created_by_employee_id" type="BIGINT"/>
+            <column name="created_at" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(255)"/>
+        </createTable>
+        <createIndex tableName="cash_movement" indexName="idx_cash_movement_session">
+            <column name="session_id"/>
+        </createIndex>
+        <!-- Idempotencia de la orquestación (F2/F3): una venta/abono no se registra dos veces por método, y su reversa
+             (VOID_OUT) tampoco. Índice único parcial emulado con columna generada (NULL cuando no hay referencia → no
+             participa del unique). Incluye `type` en la clave para que el ingreso (SALE_IN/OPEN_ACCOUNT_IN) y su
+             compensación (VOID_OUT) puedan convivir en la misma sesión sin colisionar. -->
+        <sql>
+            ALTER TABLE cash_movement
+                ADD COLUMN reference_key VARCHAR(80)
+                GENERATED ALWAYS AS (
+                    CASE WHEN reference_id IS NULL THEN NULL
+                         ELSE CONCAT(reference_type, ':', reference_id, ':', method, ':', type) END
+                ) STORED,
+                ADD CONSTRAINT uq_cash_movement_reference UNIQUE (session_id, reference_key)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE cash_movement
+                    DROP INDEX uq_cash_movement_reference,
+                    DROP COLUMN reference_key
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="195_create_cash_session_count" author="orlando">
+        <createTable tableName="cash_session_count">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="session_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_session_count_session"
+                             references="cash_session(id)"/>
+            </column>
+            <column name="method" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expected_amount" type="DECIMAL(12, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="counted_amount" type="DECIMAL(12, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="difference" type="DECIMAL(12, 2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="cash_session_count" indexName="idx_cash_session_count_session">
+            <column name="session_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

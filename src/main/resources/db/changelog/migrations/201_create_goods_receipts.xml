@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="201_create_goods_receipts" author="orlando">
+        <createTable tableName="goods_receipts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_goods_receipts_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_goods_receipts_branch"
+                             references="branches(id)"/>
+            </column>
+            <column name="supplier_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_goods_receipts_supplier"
+                             references="suppliers(id)"/>
+            </column>
+            <column name="purchase_order_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_goods_receipts_po"
+                             references="purchase_orders(id)"/>
+            </column>
+            <column name="receipt_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supplier_invoice_number" type="VARCHAR(60)"/>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="201_create_goods_receipt_lines" author="orlando">
+        <createTable tableName="goods_receipt_lines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="goods_receipt_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_goods_receipt_lines_receipt"
+                             references="goods_receipts(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_goods_receipt_lines_product"
+                             references="products(id)"/>
+            </column>
+            <column name="purchase_order_line_id" type="BIGINT"/>
+            <column name="lot_number" type="VARCHAR(60)"/>
+            <column name="expire_date" type="DATE"/>
+            <column name="quantity_received" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_cost" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

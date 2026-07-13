@@ -1,0 +1,22 @@
+package com.vetsoftware.app.purchaseorder.infrastructure.persistence;
+
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaRepository;
+import com.vetsoftware.app.purchaseorder.application.port.out.BranchQueryPort;
+import com.vetsoftware.app.purchaseorder.domain.BranchRef;
+import java.util.Optional;
+import org.springframework.stereotype.Component;
+
+@Component("purchaseOrderJpaBranchQueryPort")
+public class JpaBranchQueryPort implements BranchQueryPort {
+    private final BranchJpaRepository branchJpaRepository;
+
+    public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
+        this.branchJpaRepository = branchJpaRepository;
+    }
+
+    @Override
+    public Optional<BranchRef> findById(Long branchId, Long companyId) {
+        return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
+            .map(e -> new BranchRef(e.getId(), e.getName()));
+    }
+}

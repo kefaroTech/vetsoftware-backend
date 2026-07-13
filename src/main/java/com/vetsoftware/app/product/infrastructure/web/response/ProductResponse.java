@@ -10,6 +10,7 @@ public record ProductResponse(
         String code,
         BigDecimal salePrice,
         String provider,
+        SupplierSummary supplier,
         TaxTreatment taxTreatment,
         String notes,
         ProductCategorySummary productCategory,

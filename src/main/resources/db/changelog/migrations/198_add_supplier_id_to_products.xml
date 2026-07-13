@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Migra el proveedor de producto de texto libre (columna `provider`) a FK real hacia `suppliers`.
+         supplier_id es NULLABLE: un producto puede no tener proveedor asociado. La columna `provider`
+         se CONSERVA como fallback durante la migración de datos (no se dropea aquí). -->
+    <changeSet id="198_add_supplier_id_to_products" author="orlando">
+        <addColumn tableName="products">
+            <column name="supplier_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_products_supplier"
+                             references="suppliers(id)"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="products" columnName="supplier_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

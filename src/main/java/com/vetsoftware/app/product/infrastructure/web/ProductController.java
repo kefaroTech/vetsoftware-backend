@@ -9,6 +9,7 @@ import com.vetsoftware.app.product.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.product.application.dto.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductCategorySummaryDto;
 import com.vetsoftware.app.product.application.dto.ProductDto;
+import com.vetsoftware.app.product.application.dto.SupplierSummaryDto;
 import com.vetsoftware.app.product.application.dto.TaxSummaryDto;
 import com.vetsoftware.app.product.application.port.in.CreateProductUseCase;
 import com.vetsoftware.app.product.application.port.in.DeleteProductUseCase;
@@ -22,6 +23,7 @@ import com.vetsoftware.app.product.infrastructure.web.request.UpdateProductReque
 import com.vetsoftware.app.product.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.product.infrastructure.web.response.ProductCategorySummary;
 import com.vetsoftware.app.product.infrastructure.web.response.ProductResponse;
+import com.vetsoftware.app.product.infrastructure.web.response.SupplierSummary;
 import com.vetsoftware.app.product.infrastructure.web.response.TaxSummary;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -64,7 +66,7 @@ public class ProductController {
         return toResponse(createUseCase.execute(
             new CreateProductCommand(
                 request.name(), request.code(), request.salePrice(),
-                request.provider(), request.notes(), request.taxTreatment(),
+                request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
@@ -106,7 +108,7 @@ public class ProductController {
         return toResponse(updateUseCase.execute(
             new UpdateProductCommand(
                 id, request.name(), request.code(), request.salePrice(),
-                request.provider(), request.notes(), request.taxTreatment(),
+                request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
@@ -126,9 +128,11 @@ public class ProductController {
         ProductCategorySummaryDto pc = dto.productCategory();
         TaxSummaryDto t = dto.tax();
         CompanySummaryDto c = dto.company();
+        SupplierSummaryDto s = dto.supplier();
         return new ProductResponse(
             dto.id(), dto.name(), dto.code(), dto.salePrice(),
-            dto.provider(), dto.taxTreatment(), dto.notes(),
+            dto.provider(), s == null ? null : new SupplierSummary(s.id(), s.name()),
+            dto.taxTreatment(), dto.notes(),
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),

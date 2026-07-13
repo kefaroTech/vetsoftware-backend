@@ -9,6 +9,7 @@ public record UpdateProductCommand(
         String code,
         BigDecimal salePrice,
         String provider,
+        Long supplierId,
         String notes,
         TaxTreatment taxTreatment,
         Long productCategoryId,

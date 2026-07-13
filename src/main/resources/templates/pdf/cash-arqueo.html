@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'Arqueo de caja — sesión ' + ${r.sessionId}">Arqueo de caja</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 14mm 20mm 14mm;
+      @bottom-center {
+        content: "Arqueo de caja · Documento interno";
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #9a8e80;
+      }
+      @bottom-right {
+        content: "Pág. " counter(page) "/" counter(pages);
+        font-family: "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #6b6363;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #2a2424; }
+    .header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
+    .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
+    .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 12px; font-size: 9pt; }
+    .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
+    .meta .kv .val { color: #2a2424; font-weight: 600; }
+    .balances { display: flex; gap: 12px; margin-bottom: 12px; }
+    .bal { flex: 1; background: #f8f4ee; border: 1px solid #e6dccf; border-radius: 7px; padding: 8px 12px; }
+    .bal .lbl { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #5c2d8c; }
+    .bal .val { font-size: 15pt; font-weight: 700; }
+    h2 { font-family: "Georgia", serif; font-size: 11pt; color: #5c2d8c; margin: 14px 0 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
+    thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody td { padding: 5px 8px; border-bottom: 1px solid #eee4d8; }
+    tbody tr:nth-child(even) { background: #faf7f2; }
+    tfoot td { padding: 6px 8px; border-top: 2px solid #5c2d8c; font-weight: 700; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pos { color: #2f7d4f; font-weight: 600; }
+    .neg { color: #b4453a; font-weight: 600; }
+    .empty { text-align: center; color: #9a8e80; padding: 22px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Vetrina</div>
+      <div style="font-size:8pt;color:#6b6363;">Control de caja</div>
+    </div>
+    <div class="header-right">
+      <div class="doc-title">Arqueo de caja</div>
+      <div th:text="'Generado: ' + ${#temporals.format(r.generatedAt, 'dd MMM yyyy, HH:mm')}">Generado</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="kv"><span class="lbl">Sesión</span><span class="val" th:text="'#' + ${r.sessionId}">#</span></div>
+    <div class="kv"><span class="lbl">Sede</span><span class="val" th:text="${r.branchId}">—</span></div>
+    <div class="kv"><span class="lbl">Terminal</span><span class="val" th:text="${r.terminal}">—</span></div>
+    <div class="kv"><span class="lbl">Estado</span><span class="val" th:text="${r.status}">—</span></div>
+    <div class="kv"><span class="lbl">Apertura</span><span class="val" th:text="${r.openedAt != null ? #temporals.format(r.openedAt, 'dd MMM yyyy, HH:mm') : '—'}">—</span></div>
+    <div class="kv"><span class="lbl">Cierre</span><span class="val" th:text="${r.closedAt != null ? #temporals.format(r.closedAt, 'dd MMM yyyy, HH:mm') : '—'}">—</span></div>
+  </div>
+
+  <div class="balances">
+    <div class="bal"><span class="lbl">Base inicial</span><div class="val" th:text="${#numbers.formatDecimal(r.openingFloat, 1, 'POINT', 2, 'COMMA')}">0</div></div>
+    <div class="bal"><span class="lbl">Esperado total</span><div class="val" th:text="${#numbers.formatDecimal(r.totalExpected, 1, 'POINT', 2, 'COMMA')}">0</div></div>
+    <div class="bal"><span class="lbl">Diferencia</span><div class="val" th:classappend="${r.totalDifference == null ? '' : (r.totalDifference.signum() < 0 ? 'neg' : 'pos')}" th:text="${r.totalDifference != null ? #numbers.formatDecimal(r.totalDifference, 1, 'POINT', 2, 'COMMA') : '—'}">0</div></div>
+  </div>
+
+  <h2>Conciliación por medio de pago</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Método</th>
+        <th class="num">Base</th><th class="num">Ventas</th><th class="num">Abonos</th>
+        <th class="num">Ingresos</th><th class="num">Retiros</th><th class="num">Gastos</th><th class="num">Reversas</th>
+        <th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="m : ${r.methods}">
+        <td th:switch="${m.method.name()}">
+          <span th:case="'CASH'">Efectivo</span>
+          <span th:case="'CARD'">Tarjeta</span>
+          <span th:case="'TRANSFER'">Transferencia</span>
+        </td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.opening, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.salesIn, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.accountIn, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.manualIn, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.withdrawals, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.expenses, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.voidOut, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${#numbers.formatDecimal(m.expected, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${m.counted != null ? #numbers.formatDecimal(m.counted, 1, 'POINT', 2, 'COMMA') : '—'}">—</td>
+        <td class="num" th:classappend="${m.difference == null ? '' : (m.difference.signum() < 0 ? 'neg' : (m.difference.signum() > 0 ? 'pos' : ''))}"
+            th:text="${m.difference != null ? #numbers.formatDecimal(m.difference, 1, 'POINT', 2, 'COMMA') : '—'}">—</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="8">TOTAL</td>
+        <td class="num" th:text="${#numbers.formatDecimal(r.totalExpected, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td class="num" th:text="${r.totalCounted != null ? #numbers.formatDecimal(r.totalCounted, 1, 'POINT', 2, 'COMMA') : '—'}">—</td>
+        <td class="num" th:classappend="${r.totalDifference == null ? '' : (r.totalDifference.signum() < 0 ? 'neg' : 'pos')}"
+            th:text="${r.totalDifference != null ? #numbers.formatDecimal(r.totalDifference, 1, 'POINT', 2, 'COMMA') : '—'}">—</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <h2>Movimientos</h2>
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Tipo</th><th>Método</th><th class="num">Monto</th><th>Referencia</th><th>Nota</th></tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(r.movements)}"><td colspan="6" class="empty">Sin movimientos.</td></tr>
+      <tr th:each="mv : ${r.movements}">
+        <td th:text="${#temporals.format(mv.createdAt, 'dd/MM/yyyy HH:mm')}">fecha</td>
+        <td th:switch="${mv.type.name()}">
+          <span th:case="'SALE_IN'">Venta</span>
+          <span th:case="'OPEN_ACCOUNT_IN'">Abono</span>
+          <span th:case="'MANUAL_IN'">Ingreso</span>
+          <span th:case="'WITHDRAWAL'">Retiro</span>
+          <span th:case="'EXPENSE'">Gasto</span>
+          <span th:case="'VOID_OUT'">Reversa</span>
+        </td>
+        <td th:switch="${mv.method.name()}">
+          <span th:case="'CASH'">Efectivo</span>
+          <span th:case="'CARD'">Tarjeta</span>
+          <span th:case="'TRANSFER'">Transferencia</span>
+        </td>
+        <td class="num" th:classappend="${mv.type.inflow ? 'pos' : 'neg'}"
+            th:text="${(mv.type.inflow ? '+' : '−') + #numbers.formatDecimal(mv.amount, 1, 'POINT', 2, 'COMMA')}">0</td>
+        <td th:text="${mv.referenceId != null ? (mv.referenceType + ' #' + mv.referenceId) : '—'}">—</td>
+        <td th:text="${mv.note} ?: '—'">—</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

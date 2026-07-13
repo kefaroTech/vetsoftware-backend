@@ -3,6 +3,7 @@ package com.vetsoftware.app.product.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.product.domain.TaxTreatment;
 import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCategoryJpaEntity;
+import com.vetsoftware.app.supplier.infrastructure.persistence.SupplierJpaEntity;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -30,6 +31,10 @@ public class ProductJpaEntity {
 
     @Column(length = 150)
     private String provider;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", nullable = true)
+    private SupplierJpaEntity supplier;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tax_treatment", nullable = false, length = 20)
@@ -78,6 +83,8 @@ public class ProductJpaEntity {
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
+    public SupplierJpaEntity getSupplier() { return supplier; }
+    public void setSupplier(SupplierJpaEntity supplier) { this.supplier = supplier; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
     public String getNotes() { return notes; }

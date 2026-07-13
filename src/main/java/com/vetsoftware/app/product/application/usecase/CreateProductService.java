@@ -6,12 +6,14 @@ import com.vetsoftware.app.product.application.port.in.CreateProductUseCase;
 import com.vetsoftware.app.product.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.product.application.port.out.ProductCategoryQueryPort;
 import com.vetsoftware.app.product.application.port.out.ProductRepository;
+import com.vetsoftware.app.product.application.port.out.SupplierQueryPort;
 import com.vetsoftware.app.product.application.port.out.TaxQueryPort;
 import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
+import com.vetsoftware.app.product.domain.SupplierRef;
 import com.vetsoftware.app.product.domain.TaxRef;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
@@ -23,15 +25,18 @@ public class CreateProductService implements CreateProductUseCase {
     private final CompanyQueryPort companyQueryPort;
     private final ProductCategoryQueryPort productCategoryQueryPort;
     private final TaxQueryPort taxQueryPort;
+    private final SupplierQueryPort supplierQueryPort;
 
     public CreateProductService(ProductRepository repository,
                                 CompanyQueryPort companyQueryPort,
                                 ProductCategoryQueryPort productCategoryQueryPort,
-                                TaxQueryPort taxQueryPort) {
+                                TaxQueryPort taxQueryPort,
+                                SupplierQueryPort supplierQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.productCategoryQueryPort = productCategoryQueryPort;
         this.taxQueryPort = taxQueryPort;
+        this.supplierQueryPort = supplierQueryPort;
     }
 
     @Override
@@ -49,9 +54,12 @@ public class CreateProductService implements CreateProductUseCase {
         TaxRef tax = command.taxId() == null ? null
             : taxQueryPort.findById(command.taxId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
+        SupplierRef supplier = command.supplierId() == null ? null
+            : supplierQueryPort.findById(command.supplierId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
 
         Product product = Product.create(
-            command.name(), command.code(), command.salePrice(), command.provider(),
+            command.name(), command.code(), command.salePrice(), command.provider(), supplier,
             command.taxTreatment(), command.notes(),
             productCategory, tax, company);
         return ProductDto.from(repository.save(product));

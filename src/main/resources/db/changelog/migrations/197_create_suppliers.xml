@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="197_create_suppliers" author="orlando">
+        <createTable tableName="suppliers">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_id" type="VARCHAR(30)"/>
+            <column name="contact_name" type="VARCHAR(100)"/>
+            <column name="phone" type="VARCHAR(30)"/>
+            <column name="email" type="VARCHAR(150)"/>
+            <column name="address" type="VARCHAR(200)"/>
+            <column name="payment_terms_days" type="INT"/>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_suppliers_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Unicidad de NOMBRE de proveedor por empresa (entre ACTIVOS). Mismo patrón de la migración 151
+         (producto): columna generada que vale `name` solo si enabled=TRUE y NULL en otro caso; índice único
+         sobre (company_id, active_name) deduplica solo proveedores activos (MySQL permite múltiples NULL). -->
+    <changeSet id="197_unique_supplier_name_per_company" author="orlando">
+        <sql>
+            ALTER TABLE suppliers
+                ADD COLUMN active_name VARCHAR(150)
+                GENERATED ALWAYS AS (
+                    CASE WHEN enabled = TRUE THEN name ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_suppliers_company_active_name UNIQUE (company_id, active_name)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE suppliers
+                    DROP INDEX uq_suppliers_company_active_name,
+                    DROP COLUMN active_name
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -14,6 +14,7 @@ public class Product {
     private String code;
     private BigDecimal salePrice;
     private String provider;
+    private SupplierRef supplier;
     private TaxTreatment taxTreatment;
     private String notes;
     private ProductCategoryRef productCategory;
@@ -26,7 +27,7 @@ public class Product {
     private boolean enabled;
 
     public Product(Long id, String name, String code, BigDecimal salePrice, String provider,
-                   TaxTreatment taxTreatment, String notes, ProductCategoryRef productCategory,
+                   SupplierRef supplier, TaxTreatment taxTreatment, String notes, ProductCategoryRef productCategory,
                    TaxRef tax, CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate,
                    Long updatedBy, Long version, boolean enabled) {
         validate(name, code, salePrice, provider, notes, productCategory, company);
@@ -36,6 +37,7 @@ public class Product {
         this.code = code;
         this.salePrice = salePrice;
         this.provider = provider;
+        this.supplier = supplier;
         this.taxTreatment = taxTreatment;
         this.notes = notes;
         this.productCategory = productCategory;
@@ -49,14 +51,14 @@ public class Product {
     }
 
     public static Product create(String name, String code, BigDecimal salePrice, String provider,
-                                 TaxTreatment taxTreatment, String notes,
+                                 SupplierRef supplier, TaxTreatment taxTreatment, String notes,
                                  ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
-        return new Product(null, name, code, salePrice, provider, taxTreatment, notes,
+        return new Product(null, name, code, salePrice, provider, supplier, taxTreatment, notes,
                            productCategory, tax, company, LocalDateTime.now(), null, null, null, true);
     }
 
     public void update(String name, String code, BigDecimal salePrice, String provider,
-                       TaxTreatment taxTreatment, String notes,
+                       SupplierRef supplier, TaxTreatment taxTreatment, String notes,
                        ProductCategoryRef productCategory, TaxRef tax, CompanyRef company, Long updatedBy,
                        Long expectedVersion) {
         validate(name, code, salePrice, provider, notes, productCategory, company);
@@ -65,6 +67,7 @@ public class Product {
         this.code = code;
         this.salePrice = salePrice;
         this.provider = provider;
+        this.supplier = supplier;
         this.taxTreatment = taxTreatment;
         this.notes = notes;
         this.productCategory = productCategory;
@@ -110,6 +113,7 @@ public class Product {
     public String getCode() { return code; }
     public BigDecimal getSalePrice() { return salePrice; }
     public String getProvider() { return provider; }
+    public SupplierRef getSupplier() { return supplier; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public String getNotes() { return notes; }
     public ProductCategoryRef getProductCategory() { return productCategory; }

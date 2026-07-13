@@ -197,5 +197,13 @@
     <include file="db/changelog/migrations/192_add_client_email_to_appointments.xml"/>
     <include file="db/changelog/migrations/193_create_company_settings.xml"/>
     <include file="db/changelog/migrations/194_create_inventory_counts.xml"/>
+    <include file="db/changelog/migrations/195_create_cash_register.xml"/>
+    <include file="db/changelog/migrations/196_seed_cashregister_permissions.xml"/>
+    <include file="db/changelog/migrations/197_create_suppliers.xml"/>
+    <include file="db/changelog/migrations/198_add_supplier_id_to_products.xml"/>
+    <include file="db/changelog/migrations/199_seed_purchases_permissions.xml"/>
+    <include file="db/changelog/migrations/200_create_purchase_orders.xml"/>
+    <include file="db/changelog/migrations/201_create_goods_receipts.xml"/>
+    <include file="db/changelog/migrations/202_seed_purchase_order_receipt_permissions.xml"/>
 
 </databaseChangeLog>

@@ -10,17 +10,17 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, Lo
         JpaSpecificationExecutor<ProductJpaEntity> {
 
     @Override
-    @EntityGraph(attributePaths = {"productCategory", "tax", "company"})
+    @EntityGraph(attributePaths = {"productCategory", "tax", "company", "supplier"})
     List<ProductJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"productCategory", "tax", "company"})
+    @EntityGraph(attributePaths = {"productCategory", "tax", "company", "supplier"})
     Optional<ProductJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"productCategory", "tax", "company"})
+    @EntityGraph(attributePaths = {"productCategory", "tax", "company", "supplier"})
     List<ProductJpaEntity> findAllByCompanyId(Long companyId);
 
-    @EntityGraph(attributePaths = {"productCategory", "tax", "company"})
+    @EntityGraph(attributePaths = {"productCategory", "tax", "company", "supplier"})
     Optional<ProductJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     // Query nativa: el @SQLRestriction("enabled = true") NO aplica a SQL nativo, así que ésta es la

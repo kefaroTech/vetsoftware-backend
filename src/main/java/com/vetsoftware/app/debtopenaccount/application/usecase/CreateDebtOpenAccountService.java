@@ -3,6 +3,7 @@ package com.vetsoftware.app.debtopenaccount.application.usecase;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
 import com.vetsoftware.app.debtopenaccount.application.port.in.CreateDebtOpenAccountUseCase;
+import com.vetsoftware.app.debtopenaccount.application.port.out.CashPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository;
 import com.vetsoftware.app.debtopenaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountQueryPort;
@@ -26,17 +27,20 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
+    private final CashPort cashPort;
 
     public CreateDebtOpenAccountService(DebtOpenAccountRepository repository,
                                         OpenAccountQueryPort openAccountQueryPort,
                                         EmployeeQueryPort employeeQueryPort,
                                         OpenAccountRefresher refresher,
-                                        OpenAccountVersionGuard versionGuard) {
+                                        OpenAccountVersionGuard versionGuard,
+                                        CashPort cashPort) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
+        this.cashPort = cashPort;
     }
 
     @Override
@@ -75,11 +79,19 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
         EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
+        // Bloqueo "caja requerida" (F4): corta ANTES de registrar el abono si la empresa exige caja y la sede no
+        // tiene una OPEN. No-op si no se exige.
+        cashPort.requireOpenSession(command.companyId(), command.openAccountId());
+
         DebtOpenAccount debtOpenAccount = DebtOpenAccount.create(
             command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount, createdBy,
             command.clientRequestId());
-        DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
+        DebtOpenAccount saved = repository.save(debtOpenAccount);
         refresher.refresh(command.companyId(), command.openAccountId());
-        return dto;
+        // Registra el abono en la caja OPEN de la sede de la cuenta (OPEN_ACCOUNT_IN). Idempotente y no-op si no hay
+        // caja abierta. Misma transacción del abono.
+        cashPort.registerPayment(command.companyId(), command.openAccountId(), saved.getId(),
+            saved.getPaymentMethod(), saved.getAmount(), command.createdById());
+        return DebtOpenAccountDto.from(saved);
     }
 }

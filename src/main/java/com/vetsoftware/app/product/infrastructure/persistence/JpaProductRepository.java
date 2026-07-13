@@ -8,6 +8,8 @@ import com.vetsoftware.app.product.application.port.out.ProductRepository;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCategoryJpaEntity;
 import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCategoryJpaRepository;
+import com.vetsoftware.app.supplier.infrastructure.persistence.SupplierJpaEntity;
+import com.vetsoftware.app.supplier.infrastructure.persistence.SupplierJpaRepository;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaRepository;
 import jakarta.persistence.criteria.JoinType;
@@ -28,17 +30,20 @@ public class JpaProductRepository implements ProductRepository {
     private final ProductCategoryJpaRepository productCategoryJpaRepository;
     private final TaxJpaRepository taxJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
+    private final SupplierJpaRepository supplierJpaRepository;
 
     public JpaProductRepository(ProductJpaRepository jpaRepository,
                                 ProductJpaMapper mapper,
                                 ProductCategoryJpaRepository productCategoryJpaRepository,
                                 TaxJpaRepository taxJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
+                                CompanyJpaRepository companyJpaRepository,
+                                SupplierJpaRepository supplierJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.productCategoryJpaRepository = productCategoryJpaRepository;
         this.taxJpaRepository = taxJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
+        this.supplierJpaRepository = supplierJpaRepository;
     }
 
     @Override
@@ -48,8 +53,12 @@ public class JpaProductRepository implements ProductRepository {
         TaxJpaEntity tax = product.getTax() == null ? null
             : taxJpaRepository.getReferenceById(product.getTax().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(product.getCompany().id());
-        ProductJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company));
-        return mapper.toDomain(saved, product.getProductCategory(), product.getTax(), product.getCompany());
+        SupplierJpaEntity supplier = product.getSupplier() == null ? null
+            : supplierJpaRepository.getReferenceById(product.getSupplier().id());
+        ProductJpaEntity saved =
+            jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company, supplier));
+        return mapper.toDomain(saved, product.getProductCategory(), product.getTax(), product.getCompany(),
+            product.getSupplier());
     }
 
     @Override
@@ -117,6 +126,7 @@ public class JpaProductRepository implements ProductRepository {
                 root.fetch("productCategory", JoinType.LEFT);
                 root.fetch("tax", JoinType.LEFT);
                 root.fetch("company", JoinType.LEFT);
+                root.fetch("supplier", JoinType.LEFT);
                 query.distinct(true);
             }
             List<Predicate> predicates = new ArrayList<>();

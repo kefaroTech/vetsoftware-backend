@@ -5,11 +5,13 @@ import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSal
 import com.vetsoftware.app.electronicdocument.application.command.SaleLineKind;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
 import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSaleUseCase;
+import com.vetsoftware.app.electronicdocument.application.port.out.CashPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,17 +33,20 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
     private final DeliverElectronicDocumentService deliverService;
     private final ElectronicDocumentRepository repository;
     private final InventoryLedgerPort inventoryLedger;
+    private final CashPort cashPort;
 
     public RegisterPosSaleService(PosSaleDocumentBuilder documentBuilder,
                                   ElectronicDocumentEmitter emitter,
                                   DeliverElectronicDocumentService deliverService,
                                   ElectronicDocumentRepository repository,
-                                  InventoryLedgerPort inventoryLedger) {
+                                  InventoryLedgerPort inventoryLedger,
+                                  CashPort cashPort) {
         this.documentBuilder = documentBuilder;
         this.emitter = emitter;
         this.deliverService = deliverService;
         this.repository = repository;
         this.inventoryLedger = inventoryLedger;
+        this.cashPort = cashPort;
     }
 
     @Override
@@ -62,12 +67,27 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
         validateProductQuantities(command);
 
         ElectronicDocument document = documentBuilder.build(command);
+        // Bloqueo "caja requerida" (F4): si la empresa lo exige y la sede no tiene caja OPEN, corta ANTES de emitir
+        // (nada se transmite a la DIAN). No-op si la empresa no exige caja.
+        cashPort.requireOpenSession(command.companyId(), document.getBranchId());
         ElectronicDocument emitted = emitter.emit(document);
         // Descuenta inventario por cada línea de producto (misma transacción). El documento POS no lleva cuenta
         // abierta, así que ninguna otra ruta descontó estas líneas.
         discountStock(command, emitted);
+        // Registra el cobro en la caja OPEN de la sede (SALE_IN por método, ref POS_DOCUMENT). Idempotente y no-op si
+        // no hay caja abierta. Solo POS directo: una emisión desde cuenta cerrada ya movió caja como abono (F3).
+        registerCash(command, emitted);
         deliverService.deliverIfValidated(emitted);
         return ElectronicDocumentDto.from(emitted);
+    }
+
+    private void registerCash(RegisterPosSaleCommand command, ElectronicDocument document) {
+        if (document.getOpenAccountId() != null || document.getPayments().isEmpty()) return;
+        List<CashPort.PaymentLine> payments = document.getPayments().stream()
+            .map(p -> new CashPort.PaymentLine(p.getPaymentMeans(), p.getAmount()))
+            .toList();
+        cashPort.registerSale(command.companyId(), document.getBranchId(), document.getId(), payments,
+            command.issuedByEmployeeId());
     }
 
     private void validateProductQuantities(RegisterPosSaleCommand command) {

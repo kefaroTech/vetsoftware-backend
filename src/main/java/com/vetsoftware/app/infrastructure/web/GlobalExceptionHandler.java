@@ -27,6 +27,10 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundExc
 import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
 import com.vetsoftware.app.inventory.domain.InsufficientStockException;
 import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
+import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
+import com.vetsoftware.app.cashregister.domain.CashSessionClosedException;
+import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
+import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -126,6 +130,8 @@ import com.vetsoftware.app.service.domain.ServiceNotFoundException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
+import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
+import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
 import com.vetsoftware.app.tax.domain.TaxHasActiveChildrenException;
 import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
@@ -224,7 +230,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class,
             NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class,
             DianProviderConfigNotFoundException.class, WithholdingConfigNotFoundException.class,
-            BranchNotFoundException.class, InventoryCountNotFoundException.class
+            BranchNotFoundException.class, InventoryCountNotFoundException.class,
+            CashSessionNotFoundException.class, SupplierNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -299,7 +306,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProductNameAlreadyExistsException.class,
         ProductCategoryNameAlreadyExistsException.class,
         ServiceCategoryNameAlreadyExistsException.class,
-        TaxNameAlreadyExistsException.class
+        TaxNameAlreadyExistsException.class,
+        SupplierNameAlreadyExistsException.class
     })
     public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
         log.warn("Name already exists: {}", ex.getMessage());
@@ -359,6 +367,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
         log.warn("Insufficient stock: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", ex.getMessage());
+    }
+
+    // Caja: conflictos de estado de la sesión. Códigos propios (derivados por clase) para que el front distinga
+    // "ya hay caja abierta" / "la caja está cerrada" / "no hay caja abierta para cobrar".
+    @ExceptionHandler({
+        CashSessionAlreadyOpenException.class,
+        CashSessionClosedException.class,
+        NoOpenCashSessionException.class
+    })
+    public ProblemDetail handleCashSessionConflict(RuntimeException ex) {
+        log.warn("Cash session conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
     // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).
@@ -519,6 +539,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return problem(HttpStatus.CONFLICT, "TAX_NAME_ALREADY_EXISTS",
                 "Ya existe un impuesto activo con ese nombre en esta empresa.");
         }
+        if (cause != null && cause.contains("uq_suppliers_company_active_name")) {
+            return problem(HttpStatus.CONFLICT, "SUPPLIER_NAME_ALREADY_EXISTS",
+                "Ya existe un proveedor activo con ese nombre en esta empresa.");
+        }
         // Carrera en "un documento por cuenta cerrada" (constraint de la migración 134): dos cierres
         // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª emisión fiscal.
         if (cause != null && cause.contains("uq_electronic_documents_open_account")) {
@@ -552,6 +576,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (cause != null && cause.contains("employee_code")) {
             return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
                 "Ese usuario ya está en uso. Elige otro.");
+        }
+        // Carrera en "una sola caja OPEN por (empresa, sede, terminal)" (índice único condicional de la migración
+        // 195): la 2ª apertura concurrente que pasó el check del service la atrapa la BD. Mismo código de negocio.
+        if (cause != null && cause.contains("uq_cash_session_open")) {
+            return problem(HttpStatus.CONFLICT, "CASH_SESSION_ALREADY_OPEN",
+                "Ya hay una caja abierta en esa sede.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

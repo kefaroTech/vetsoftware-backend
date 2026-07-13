@@ -1,12 +1,14 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.AccountReversalPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.CashPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,13 +23,16 @@ public class CreditNoteReversalApplier {
     private final ElectronicDocumentRepository repository;
     private final AccountReversalPort accountReversalPort;
     private final InventoryLedgerPort inventoryLedger;
+    private final CashPort cashPort;
 
     public CreditNoteReversalApplier(ElectronicDocumentRepository repository,
                                      AccountReversalPort accountReversalPort,
-                                     InventoryLedgerPort inventoryLedger) {
+                                     InventoryLedgerPort inventoryLedger,
+                                     CashPort cashPort) {
         this.repository = repository;
         this.accountReversalPort = accountReversalPort;
         this.inventoryLedger = inventoryLedger;
+        this.cashPort = cashPort;
     }
 
     /** No hace nada salvo que {@code note} sea una nota credito VALIDADA con referencia. */
@@ -51,6 +56,15 @@ public class CreditNoteReversalApplier {
                 // solo se marca reversada la factura y su cartera. Idempotente (el ledger no re-compensa).
                 if (original.getOpenAccountId() == null) {
                     inventoryLedger.reversePosSale(original.getId(), null);
+                    // Compensa el cobro en la caja OPEN actual (VOID_OUT por método). Idempotente; no-op si la
+                    // sede no tiene caja abierta (no se compensa contra un cajón ya cerrado/arqueado).
+                    List<CashPort.PaymentLine> payments = original.getPayments().stream()
+                        .map(p -> new CashPort.PaymentLine(p.getPaymentMeans(), p.getAmount()))
+                        .toList();
+                    if (!payments.isEmpty()) {
+                        cashPort.reverseSale(original.getCompanyId(), original.getBranchId(), original.getId(),
+                            payments, null);
+                    }
                 }
             }
             if (note.getOpenAccountId() != null) {

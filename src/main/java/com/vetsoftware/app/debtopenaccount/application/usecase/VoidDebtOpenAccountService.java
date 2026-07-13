@@ -3,6 +3,7 @@ package com.vetsoftware.app.debtopenaccount.application.usecase;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
 import com.vetsoftware.app.debtopenaccount.application.port.in.VoidDebtOpenAccountUseCase;
+import com.vetsoftware.app.debtopenaccount.application.port.out.CashPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository;
 import com.vetsoftware.app.debtopenaccount.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountQueryPort;
@@ -23,17 +24,20 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
+    private final CashPort cashPort;
 
     public VoidDebtOpenAccountService(DebtOpenAccountRepository repository,
                                       OpenAccountQueryPort openAccountQueryPort,
                                       EmployeeQueryPort employeeQueryPort,
                                       OpenAccountRefresher refresher,
-                                      OpenAccountVersionGuard versionGuard) {
+                                      OpenAccountVersionGuard versionGuard,
+                                      CashPort cashPort) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
+        this.cashPort = cashPort;
     }
 
     @Override
@@ -57,8 +61,12 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
 
         debtOpenAccount.voidPayment(voidedBy, command.reason());
-        DebtOpenAccountDto dto = DebtOpenAccountDto.from(repository.save(debtOpenAccount));
+        DebtOpenAccount saved = repository.save(debtOpenAccount);
         refresher.refresh(command.companyId(), openAccountId);
-        return dto;
+        // Compensa el abono en la caja OPEN actual (VOID_OUT). voidPayment ya garantizó que no estaba anulado, así
+        // que la reversa ocurre una sola vez. Idempotente y no-op si la sede no tiene caja abierta.
+        cashPort.reversePayment(command.companyId(), openAccountId, saved.getId(), saved.getPaymentMethod(),
+            saved.getAmount(), command.voidedById());
+        return DebtOpenAccountDto.from(saved);
     }
 }
