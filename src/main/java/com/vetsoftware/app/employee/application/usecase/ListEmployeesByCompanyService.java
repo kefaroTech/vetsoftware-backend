@@ -2,8 +2,10 @@ package com.vetsoftware.app.employee.application.usecase;
 
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.ListEmployeesByCompanyUseCase;
+import com.vetsoftware.app.employee.application.port.out.EmployeeBranchesQueryPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRolesQueryPort;
+import com.vetsoftware.app.employee.domain.BranchRef;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.RoleSnapshot;
 import io.micrometer.observation.annotation.Observed;
@@ -17,11 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ListEmployeesByCompanyService implements ListEmployeesByCompanyUseCase {
     private final EmployeeRepository repository;
     private final EmployeeRolesQueryPort rolesQueryPort;
+    private final EmployeeBranchesQueryPort branchesQueryPort;
 
     public ListEmployeesByCompanyService(EmployeeRepository repository,
-                                          EmployeeRolesQueryPort rolesQueryPort) {
+                                          EmployeeRolesQueryPort rolesQueryPort,
+                                          EmployeeBranchesQueryPort branchesQueryPort) {
         this.repository = repository;
         this.rolesQueryPort = rolesQueryPort;
+        this.branchesQueryPort = branchesQueryPort;
     }
 
     @Override
@@ -32,8 +37,12 @@ public class ListEmployeesByCompanyService implements ListEmployeesByCompanyUseC
         List<Long> ids = employees.stream().map(Employee::getId).toList();
         // Para el listado: los desactivados muestran el rol que tenían (asignaciones aunque deshabilitadas).
         Map<Long, List<RoleSnapshot>> rolesByEmployee = rolesQueryPort.findRolesForListing(ids);
+        // Sedes asignadas (batch por ids) para poder filtrar p.ej. los veterinarios por sede en la agenda.
+        Map<Long, List<BranchRef>> branchesByEmployee = branchesQueryPort.findBranchesByEmployeeIds(ids);
         return employees.stream()
-            .map(e -> EmployeeDto.from(e, rolesByEmployee.getOrDefault(e.getId(), List.of())))
+            .map(e -> EmployeeDto.from(e,
+                rolesByEmployee.getOrDefault(e.getId(), List.of()),
+                branchesByEmployee.getOrDefault(e.getId(), List.of())))
             .toList();
     }
 }
