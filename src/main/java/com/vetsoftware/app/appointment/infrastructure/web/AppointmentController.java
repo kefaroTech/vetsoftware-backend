@@ -73,8 +73,8 @@ public class AppointmentController {
     public AppointmentResponse create(@Valid @RequestBody CreateAppointmentRequest request) {
         return toResponse(createUseCase.execute(new CreateAppointmentCommand(
             request.startAt(), request.type(), request.employeeId(), request.animalId(),
-            request.ownerId(), request.clientName(), request.clientPhone(), request.notes(),
-            authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId())));
+            request.ownerId(), request.clientName(), request.clientPhone(), request.clientEmail(),
+            request.notes(), authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -102,8 +102,8 @@ public class AppointmentController {
                                       @Valid @RequestBody UpdateAppointmentRequest request) {
         return toResponse(updateUseCase.execute(new UpdateAppointmentCommand(
             id, request.startAt(), request.type(), request.employeeId(), request.animalId(),
-            request.ownerId(), request.clientName(), request.clientPhone(), request.notes(),
-            authz.currentCompanyId())));
+            request.ownerId(), request.clientName(), request.clientPhone(), request.clientEmail(),
+            request.notes(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/reschedule")
@@ -143,7 +143,7 @@ public class AppointmentController {
             dto.id(), dto.startAt(), dto.type(), dto.status(), dto.notes(), dto.cancellationReason(),
             a == null ? null : new AnimalSummary(a.id(), a.name(), a.code()),
             o == null ? null : new OwnerSummary(o.id(), o.name()),
-            dto.clientName(), dto.clientPhone(),
+            dto.clientName(), dto.clientPhone(), dto.clientEmail(),
             new EmployeeSummary(e.id(), e.name()),
             new BranchSummary(b.id(), b.name(), b.code()),
             dto.version(), dto.enabled(), dto.createdDate(), dto.overlappingAppointmentIds());

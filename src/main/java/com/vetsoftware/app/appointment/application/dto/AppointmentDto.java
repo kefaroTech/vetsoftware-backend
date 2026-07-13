@@ -17,6 +17,7 @@ public record AppointmentDto(
         OwnerSummaryDto owner,
         String clientName,
         String clientPhone,
+        String clientEmail,
         EmployeeSummaryDto employee,
         BranchSummaryDto branch,
         long version,
@@ -36,7 +37,7 @@ public record AppointmentDto(
                 : new AnimalSummaryDto(a.getAnimal().id(), a.getAnimal().name(), a.getAnimal().code()),
             a.getOwner() == null ? null
                 : new OwnerSummaryDto(a.getOwner().id(), a.getOwner().name()),
-            a.getClientName(), a.getClientPhone(),
+            a.getClientName(), a.getClientPhone(), a.getClientEmail(),
             new EmployeeSummaryDto(a.getEmployee().id(), a.getEmployee().name()),
             new BranchSummaryDto(a.getBranch().id(), a.getBranch().name(), a.getBranch().code()),
             a.getVersion(), a.isEnabled(), a.getCreatedDate(),

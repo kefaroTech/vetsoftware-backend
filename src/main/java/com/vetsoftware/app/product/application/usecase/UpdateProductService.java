@@ -56,9 +56,8 @@ public class UpdateProductService implements UpdateProductUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
 
         product.update(
-            command.name(), command.code(), command.purchasePrice(), command.salePrice(),
-            command.currentStock(), command.minStock(), command.provider(),
-            command.taxTreatment(), command.expireDate(), command.lotNumber(), command.notes(),
+            command.name(), command.code(), command.salePrice(), command.provider(),
+            command.taxTreatment(), command.notes(),
             productCategory, tax, company, command.updatedBy(), command.version());
         return ProductDto.from(repository.save(product));
     }

@@ -4,11 +4,11 @@ import com.vetsoftware.app.productchargeopenaccount.application.command.VoidProd
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.VoidProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.EmployeeQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
-import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductStockPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
@@ -25,20 +25,20 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
-    private final ProductStockPort stockPort;
+    private final InventoryLedgerPort inventoryLedger;
 
     public VoidProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
                                                OpenAccountQueryPort openAccountQueryPort,
                                                EmployeeQueryPort employeeQueryPort,
                                                OpenAccountRefresher refresher,
                                                OpenAccountVersionGuard versionGuard,
-                                               ProductStockPort stockPort) {
+                                               InventoryLedgerPort inventoryLedger) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
-        this.stockPort = stockPort;
+        this.inventoryLedger = inventoryLedger;
     }
 
     @Override
@@ -71,8 +71,9 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
 
         charge.voidCharge(voidedBy, command.reason());
         ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
-        // Repone el stock descontado al crear el cargo: la venta se revierte.
-        stockPort.increaseStock(charge.getProduct().id(), command.companyId(), charge.getQuantity());
+        // Repone el inventario descontado al crear el cargo: compensa en el kardex los movimientos de esta referencia
+        // (idempotente). La sede/lote se toman de los movimientos originales, no hace falta recalcularlos.
+        inventoryLedger.reverseSale(command.id(), command.voidedById());
         refresher.refresh(command.companyId(), openAccountId);
         return dto;
     }

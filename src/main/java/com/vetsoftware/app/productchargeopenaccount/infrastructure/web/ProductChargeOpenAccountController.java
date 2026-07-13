@@ -68,7 +68,10 @@ public class ProductChargeOpenAccountController {
                 request.animalId(), request.productId(),
                 request.quantity() == null ? 1 : request.quantity(),
                 request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
+                authz.currentCompanyId(), authz.currentEmployeeId(),
+                // Alcance por empleado: no-admin acotado a sus sedes; admin usa la pedida o null → Principal.
+                authz.resolveAccessibleBranch(request.branchId()),
+                request.clientRequestId(),
                 request.expectedVersion())));
     }
 

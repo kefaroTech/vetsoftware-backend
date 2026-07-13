@@ -6,7 +6,6 @@ import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCat
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,17 +25,8 @@ public class ProductJpaEntity {
     @Column(nullable = false, length = 50)
     private String code;
 
-    @Column(name = "purchase_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal purchasePrice;
-
     @Column(name = "sale_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal salePrice;
-
-    @Column(name = "current_stock", nullable = false)
-    private Integer currentStock;
-
-    @Column(name = "min_stock", nullable = false)
-    private Integer minStock;
 
     @Column(length = 150)
     private String provider;
@@ -44,12 +34,6 @@ public class ProductJpaEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "tax_treatment", nullable = false, length = 20)
     private TaxTreatment taxTreatment;
-
-    @Column(name = "expire_date")
-    private LocalDate expireDate;
-
-    @Column(name = "lot_number", length = 50)
-    private String lotNumber;
 
     @Column(length = 500)
     private String notes;
@@ -90,22 +74,12 @@ public class ProductJpaEntity {
     public void setName(String name) { this.name = name; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
-    public BigDecimal getPurchasePrice() { return purchasePrice; }
-    public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
     public BigDecimal getSalePrice() { return salePrice; }
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
-    public Integer getCurrentStock() { return currentStock; }
-    public void setCurrentStock(Integer currentStock) { this.currentStock = currentStock; }
-    public Integer getMinStock() { return minStock; }
-    public void setMinStock(Integer minStock) { this.minStock = minStock; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }
     public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
-    public LocalDate getExpireDate() { return expireDate; }
-    public void setExpireDate(LocalDate expireDate) { this.expireDate = expireDate; }
-    public String getLotNumber() { return lotNumber; }
-    public void setLotNumber(String lotNumber) { this.lotNumber = lotNumber; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     public ProductCategoryJpaEntity getProductCategory() { return productCategory; }

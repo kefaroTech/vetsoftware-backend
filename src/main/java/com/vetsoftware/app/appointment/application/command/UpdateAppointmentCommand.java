@@ -12,6 +12,7 @@ public record UpdateAppointmentCommand(
         Long ownerId,
         String clientName,
         String clientPhone,
+        String clientEmail,
         String notes,
         Long companyId
 ) {}

@@ -47,7 +47,7 @@ public class UpdateAppointmentService implements UpdateAppointmentUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
 
         appointment.update(command.startAt(), command.type(), command.notes(), animal, owner,
-            command.clientName(), command.clientPhone(), employee);
+            command.clientName(), command.clientPhone(), command.clientEmail(), employee);
         Appointment saved = repository.save(appointment);
 
         List<Long> clashes = repository.findClashingIds(

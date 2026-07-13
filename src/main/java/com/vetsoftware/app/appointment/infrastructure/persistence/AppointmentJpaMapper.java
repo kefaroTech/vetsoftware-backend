@@ -32,6 +32,7 @@ public class AppointmentJpaMapper {
         entity.setOwner(owner);
         entity.setClientName(appointment.getClientName());
         entity.setClientPhone(appointment.getClientPhone());
+        entity.setClientEmail(appointment.getClientEmail());
         entity.setEmployee(employee);
         entity.setCompany(company);
         entity.setBranch(branch);
@@ -62,7 +63,8 @@ public class AppointmentJpaMapper {
             entity.getId(), entity.getStartAt(),
             AppointmentType.valueOf(entity.getType()), AppointmentStatus.valueOf(entity.getStatus()),
             entity.getNotes(), entity.getCancellationReason(), animalRef, ownerRef,
-            entity.getClientName(), entity.getClientPhone(), employeeRef, companyRef, branchRef,
+            entity.getClientName(), entity.getClientPhone(), entity.getClientEmail(), employeeRef,
+            companyRef, branchRef,
             entity.getVersion(), entity.isEnabled(), entity.getCreatedDate());
     }
 }

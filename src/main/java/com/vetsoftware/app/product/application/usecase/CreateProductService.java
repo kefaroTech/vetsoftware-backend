@@ -51,9 +51,8 @@ public class CreateProductService implements CreateProductUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
 
         Product product = Product.create(
-            command.name(), command.code(), command.purchasePrice(), command.salePrice(),
-            command.currentStock(), command.minStock(), command.provider(),
-            command.taxTreatment(), command.expireDate(), command.lotNumber(), command.notes(),
+            command.name(), command.code(), command.salePrice(), command.provider(),
+            command.taxTreatment(), command.notes(),
             productCategory, tax, company);
         return ProductDto.from(repository.save(product));
     }

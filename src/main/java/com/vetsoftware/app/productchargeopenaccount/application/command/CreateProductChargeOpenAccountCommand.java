@@ -7,6 +7,8 @@ public record CreateProductChargeOpenAccountCommand(
         Long openAccountId,
         Long companyId,
         Long createdById,
+        // Sede que descuenta el inventario. Puede venir null (admin sin elegir) → el service resuelve la Principal.
+        Long branchId,
         String clientRequestId,
         // Versión esperada de la cuenta (opt-in) para detección temprana de conflicto. null = sin chequeo.
         Long expectedVersion

@@ -11,8 +11,10 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.appointment.application.command.CreateAppointmentCommand;
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
+import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.appointment.domain.Appointment;
@@ -42,6 +44,8 @@ class CreateAppointmentServiceBranchTest {
     @Mock private OwnerQueryPort ownerQueryPort;
     @Mock private EmployeeQueryPort employeeQueryPort;
     @Mock private BranchQueryPort branchQueryPort;
+    @Mock private CompanyQueryPort companyQueryPort;
+    @Mock private AppointmentConfirmationEmailSender confirmationEmailSender;
     @InjectMocks private CreateAppointmentService service;
 
     private static final long COMPANY = 9L;
@@ -52,7 +56,7 @@ class CreateAppointmentServiceBranchTest {
 
     private CreateAppointmentCommand command(Long branchId) {
         return new CreateAppointmentCommand(startAt, AppointmentType.CONSULTATION, 4L,
-            null, null, "Walk-in", null, null, branchId, COMPANY);
+            null, null, "Walk-in", null, null, null, branchId, COMPANY);
     }
 
     private ArgumentCaptor<Appointment> stubSaveAndClashes() {

@@ -18,4 +18,7 @@ public interface BranchQueryPort {
 
     /** Sede ACTIVA por defecto: la "Principal" activa, o la primera activa. Vacío si no hay ninguna activa. */
     Optional<BranchRef> findDefaultActiveByCompanyId(Long companyId);
+
+    /** Dirección de la sucursal (para el correo de confirmación). Vacío si no existe o no tiene dirección. */
+    Optional<String> findAddressById(Long branchId);
 }

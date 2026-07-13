@@ -27,10 +27,52 @@ enum WeightType {
   KILOGRAMS
 }
 
+enum WeightSource {
+  MANUAL
+  CONSULTATION
+  HOSPITALIZATION
+}
+
 enum AnimalType {
   SERVICE
   SUPPORT
   NONE
+}
+
+enum AlertType {
+  ALLERGY
+  DRUG_REACTION
+  CHRONIC_CONDITION
+  BEHAVIOR
+  OTHER
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AppointmentType {
+  CONSULTATION
+  CONTROL
+  VACCINATION
+  DEWORMING
+  SURGERY
+  IMAGING
+  LABORATORY
+  GROOMING
+  OTHER
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -177,6 +219,14 @@ enum TaxRegime {
   NO_RESPONSABLE_IVA
 }
 
+enum FiscalResponsibility {
+  NO_APLICA
+  GRAN_CONTRIBUYENTE
+  AUTORRETENEDOR
+  AGENTE_RETENCION_IVA
+  REGIMEN_SIMPLE
+}
+
 enum ElectronicDocumentType {
   FE_VENTA
   DOC_EQUIV_POS
@@ -267,6 +317,38 @@ enum WebhookOutcome {
   IGNORED
 }
 
+enum EmployeeStatus {
+  INVITED
+  ACTIVE
+}
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  CLINICAL_USE
+  TRANSFER_OUT
+  TRANSFER_IN
+  VOID_IN
+  VOID_OUT
+}
+
+enum StockReferenceType {
+  POS_DOCUMENT
+  OPEN_ACCOUNT_CHARGE
+  GOODS_RECEIPT
+  ADJUSTMENT
+  TRANSFER
+  CLINICAL_EVENT
+}
+
+enum ProblemStatus {
+  ACTIVE
+  RESOLVED
+  CHRONIC
+}
+
 ' =========================
 ' System / Auth
 ' =========================
@@ -288,6 +370,40 @@ class SystemPermission {
 class SystemUserPermission {
   -systemUser: SystemUser
   -systemPermission: SystemPermission
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class RefreshToken {
+  -tokenHash: String
+  -subjectId: Long
+  -subjectType: String
+  -expiresAt: LocalDateTime
+  -revoked: boolean
+  -createdDate: LocalDateTime
+}
+
+class PasswordResetToken {
+  -employeeId: Long
+  -companyId: Long
+  -tokenHash: String
+  -expiresAt: LocalDateTime
+  -consumedAt: LocalDateTime
+  -createdDate: LocalDateTime
+}
+
+class EmailVerificationToken {
+  -employeeId: Long
+  -companyId: Long
+  -tokenHash: String
+  -expiresAt: LocalDateTime
+  -consumedAt: LocalDateTime
+  -createdDate: LocalDateTime
+}
+
+class SystemConfiguration {
+  -propertyName: String
+  -value: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -349,6 +465,17 @@ class Company {
   -enabled: boolean
 }
 
+class Branch {
+  -name: String
+  -code: String
+  -address: String
+  -phone: String
+  -city: City
+  -company: Company
+  -createdDate: LocalDateTime
+  -active: boolean
+}
+
 class Employee {
   -employeeCode: String
   -hashPassword: String
@@ -357,6 +484,40 @@ class Employee {
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
+  -emailVerified: boolean
+  -mustChangePassword: boolean
+  -status: EmployeeStatus
+  -authVersion: Long
+}
+
+class EmployeeBranch {
+  -employee: Employee
+  -branch: Branch
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' =========================
+' Scheduling
+' =========================
+
+class Appointment {
+  -startAt: LocalDateTime
+  -type: AppointmentType
+  -status: AppointmentStatus
+  -notes: String
+  -cancellationReason: String
+  -animal: Animal
+  -owner: Owner
+  -clientName: String
+  -clientPhone: String
+  -clientEmail: String
+  -employee: Employee
+  -company: Company
+  -branch: Branch
+  -version: long
+  -enabled: boolean
+  -createdDate: LocalDateTime
 }
 
 ' =========================
@@ -380,6 +541,7 @@ class CompanyTaxProfile {
   -fiscalEmail: String
   -commercialName: String
   -economicActivity: EconomicActivity
+  -responsibilities: List<CompanyTaxProfileResponsibility>
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -393,6 +555,7 @@ class CompanyTaxProfileResponsibility {
 
 class NumberingResolution {
   -company: Company
+  -branchId: Long
   -documentType: ElectronicDocumentType
   -resolutionNumber: String
   -resolutionDate: LocalDate
@@ -493,6 +656,8 @@ class Owner {
   -document: String
   -documentType: OwnerDocumentType
   -personType: PersonType
+  -taxRegime: TaxRegime
+  -fiscalResponsibility: FiscalResponsibility
   -verificationDigit: String
   -legalName: String
   -withholdingAgent: boolean
@@ -527,7 +692,9 @@ class Animal {
   -name: String
   -code: String
   -bod: LocalDate
-  -weight: Integer
+  -currentWeight: BigDecimal
+  -currentWeightUnit: WeightType
+  -currentWeightMeasuredAt: LocalDate
   -size: Integer
   -gender: Gender
   -weightType: WeightType
@@ -540,6 +707,41 @@ class Animal {
   -color: AnimalColor
   -owner: Owner
   -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class WeightRecord {
+  -animal: Animal
+  -value: BigDecimal
+  -unit: WeightType
+  -measuredAt: LocalDate
+  -source: WeightSource
+  -sourceId: Long
+  -note: String
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class AnimalAlert {
+  -animal: Animal
+  -company: Company
+  -type: AlertType
+  -description: String
+  -severity: AlertSeverity
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Problem {
+  -animal: Animal
+  -company: Company
+  -description: String
+  -status: ProblemStatus
+  -onsetDate: LocalDate
+  -resolvedDate: LocalDate
+  -notes: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -557,16 +759,29 @@ class ConsultationType {
 
 class Consultation {
   -date: LocalDate
-  -type: ConsultationType
+  -consultationType: ConsultationType
   -anamnesis: String
   -diagnosis: String
-  -therapeuticPlan: String
-  -diagnosisPlan: String
+  -prognosis: String
+  -physicalExam: PhysicalExam
   -nextControl: LocalDate
   -animal: Animal
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
+}
+
+class PhysicalExam <<value object>> {
+  -temperature: BigDecimal
+  -heartRate: Integer
+  -respiratoryRate: Integer
+  -mucousMembranes: String
+  -capillaryRefill: String
+  -hydration: String
+  -bodyConditionScore: Integer
+  -painScore: Integer
+  -attitude: String
+  -findings: String
 }
 
 class VaccinationType {
@@ -580,9 +795,11 @@ class VaccinationType {
 
 class Vaccination {
   -date: LocalDate
-  -type: VaccinationType
+  -vaccinationType: VaccinationType
   -lot: String
   -notes: String
+  -route: String
+  -applicationSite: String
   -nextVaccination: LocalDate
   -animal: Animal
   -consultation: Consultation
@@ -726,18 +943,17 @@ class DayCare {
 class Product {
   -name: String
   -code: String
-  -purchasePrice: BigDecimal
   -salePrice: BigDecimal
-  -currentStock: Integer
-  -minStock: Integer
   -provider: String
   -taxTreatment: TaxTreatment
-  -expireDate: Boolean
   -notes: String
   -productCategory: ProductCategory
   -tax: Tax
   -company: Company
   -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
   -enabled: boolean
 }
 
@@ -750,6 +966,9 @@ class Service {
   -tax: Tax
   -company: Company
   -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
   -enabled: boolean
 }
 
@@ -758,6 +977,9 @@ class ProductCategory {
   -description: String
   -company: Company
   -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
   -enabled: boolean
 }
 
@@ -766,6 +988,9 @@ class ServiceCategory {
   -description: String
   -company: Company
   -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
   -enabled: boolean
 }
 
@@ -775,7 +1000,47 @@ class Tax {
   -taxScheme: TaxScheme
   -company: Company
   -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
   -enabled: boolean
+}
+
+class StockBalance {
+  -companyId: Long
+  -branchId: Long
+  -productId: Long
+  -quantity: int
+  -minStock: int
+  -version: Long
+}
+
+class StockLot {
+  -companyId: Long
+  -branchId: Long
+  -productId: Long
+  -lotNumber: String
+  -expireDate: LocalDate
+  -quantityAvailable: int
+  -unitCost: BigDecimal
+  -receivedDate: LocalDateTime
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class StockMovement {
+  -companyId: Long
+  -branchId: Long
+  -productId: Long
+  -lotId: Long
+  -type: StockMovementType
+  -quantity: int
+  -unitCost: BigDecimal
+  -referenceType: StockReferenceType
+  -referenceId: Long
+  -reason: String
+  -createdBy: Long
+  -createdDate: LocalDateTime
 }
 
 class Promotion {
@@ -809,6 +1074,7 @@ class LaboratoryTestType {
 class LaboratoryTest {
   -date: LocalDate
   -testType: LaboratoryTestType
+  -branchId: Long
   -quantity: Integer
   -diagnosis: String
   -status: LaboratoryTestStatus
@@ -834,6 +1100,15 @@ class LaboratoryTestFile {
   - laboratoryTest: LaboratoryTest
 }
 
+class Medicament {
+  -name: String
+  -description: String
+  -company: Company
+  -general: Boolean
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
 class Prescription {
   -date: LocalDate
   -diagnosis: String
@@ -846,10 +1121,11 @@ class Prescription {
 }
 
 class MedicamentPrescription {
-  -name: String
+  -medicament: Medicament
   -presentation: String
   -quantity: Double
   -posology: String
+  -observation: String
   -prescription: Prescription
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -881,7 +1157,7 @@ class DiagnosticImagingType {
 
 class DiagnosticImaging {
   -date: LocalDate
-  -type: DiagnosticImagingType
+  -diagnosticImagingType: DiagnosticImagingType
   -clinicalSigns: String
   -studyType: String
   -diagnosis: String
@@ -903,7 +1179,7 @@ class SpaType {
 
 class Spa {
   -date: LocalDate
-  -type: SpaType
+  -spaType: SpaType
   -reason: String
   -details: String
   -observations: String
@@ -942,6 +1218,7 @@ class OpenAccount {
   -paidAmount: BigDecimal
   -outstandingAmount: BigDecimal
   -company: Company
+  -branch: Branch
   -status: OpenAccountStatus
   -createdDate: LocalDateTime
   -createdBy: Employee
@@ -971,7 +1248,9 @@ class DebtOpenAccount {
 class ProductChargeOpenAccount {
   -animal: Animal
   -product: Product
+  -quantity: int
   -unitPrice: BigDecimal
+  -taxTreatment: String
   -tax: Tax
   -hasTax: Boolean
   -taxPercentage: BigDecimal
@@ -981,6 +1260,7 @@ class ProductChargeOpenAccount {
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
   -openAccount: OpenAccount
+  -clientRequestId: String
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -994,6 +1274,7 @@ class ServiceChargeOpenAccount {
   -animal: Animal
   -service: Service
   -unitPrice: BigDecimal
+  -taxTreatment: String
   -tax: Tax
   -hasTax: Boolean
   -taxPercentage: BigDecimal
@@ -1003,6 +1284,7 @@ class ServiceChargeOpenAccount {
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
   -openAccount: OpenAccount
+  -clientRequestId: String
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -1025,6 +1307,7 @@ class GeneralChargeOpenAccount {
   -taxAmount: BigDecimal
   -totalAmount: BigDecimal
   -openAccount: OpenAccount
+  -clientRequestId: String
   -createdBy: Employee
   -createdDate: LocalDateTime
   -enabled: boolean
@@ -1060,8 +1343,9 @@ class CustomerSnapshot {
 }
 
 class ElectronicDocument {
-  -company: Company
-  -openAccount: OpenAccount
+  -companyId: Long
+  -openAccountId: Long
+  -branchId: Long
   -documentType: ElectronicDocumentType
   -prefix: String
   -consecutive: Long
@@ -1084,6 +1368,8 @@ class ElectronicDocument {
   -taxInclusiveAmount: BigDecimal
   -payableAmount: BigDecimal
   -paymentForm: PaymentForm
+  -lines: List<ElectronicDocumentLine>
+  -payments: List<ElectronicDocumentPayment>
   -reference: DocumentReference
   -noteReasonCode: String
   -noteReasonText: String
@@ -1091,6 +1377,8 @@ class ElectronicDocument {
   -reteFuenteAmount: BigDecimal
   -reteIvaAmount: BigDecimal
   -reteIcaAmount: BigDecimal
+  -clientRequestId: String
+  -issuedByEmployeeId: Long
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -1103,7 +1391,7 @@ class DocumentReference {
 }
 
 class ElectronicDocumentTransmission {
-  -electronicDocument: ElectronicDocument
+  -electronicDocumentId: Long
   -provider: String
   -attempt: int
   -httpStatus: Integer
@@ -1140,7 +1428,6 @@ class WithholdingConfig {
 }
 
 class ElectronicDocumentLine {
-  -electronicDocument: ElectronicDocument
   -lineNumber: int
   -description: String
   -quantity: BigDecimal
@@ -1155,7 +1442,6 @@ class ElectronicDocumentLine {
 }
 
 class ElectronicDocumentPayment {
-  -electronicDocument: ElectronicDocument
   -paymentMeans: PaymentMeans
   -amount: BigDecimal
 }
@@ -1178,7 +1464,21 @@ BasePermission      --> SubModule
 ' --- Company / Employee ---
 Company  --> Membership
 Company  --> City
+Branch   --> Company
+Branch   --> City
 Employee --> Company
+Employee --> EmployeeStatus
+EmployeeBranch --> Employee
+EmployeeBranch --> Branch
+
+' --- Scheduling ---
+Appointment --> AppointmentType
+Appointment --> AppointmentStatus
+Appointment --> Animal
+Appointment --> Owner
+Appointment "0..*" --> "0..1" Employee
+Appointment --> Company
+Appointment --> Branch
 
 ' --- Company Tax Profile (DIAN) ---
 CompanyTaxProfile               --> Company
@@ -1187,6 +1487,7 @@ CompanyTaxProfile               --> TaxRegime
 CompanyTaxProfile               "0..*" --> "0..1" EconomicActivity
 CompanyTaxProfileResponsibility --> CompanyTaxProfile
 NumberingResolution             --> Company
+NumberingResolution             "0..*" ..> "0..1" Branch : branchId
 NumberingResolution             --> ElectronicDocumentType
 
 ' --- Authorization ---
@@ -1209,6 +1510,8 @@ Owner  "0..*" --> "1" City
 Owner         --> Company
 Owner         --> OwnerDocumentType
 Owner         --> PersonType
+Owner         --> TaxRegime
+Owner         --> FiscalResponsibility
 Breed         --> Specie
 Animal        --> Specie
 Animal        --> Breed
@@ -1219,9 +1522,21 @@ Animal        --> Gender
 Animal        --> WeightType
 Animal        --> AnimalType
 Animal        --> ReproductiveState
+WeightRecord  --> Animal
+WeightRecord  --> Company
+WeightRecord  --> WeightType
+WeightRecord  --> WeightSource
+AnimalAlert   --> Animal
+AnimalAlert   --> Company
+AnimalAlert   --> AlertType
+AnimalAlert   --> AlertSeverity
+Problem       --> Animal
+Problem       --> Company
+Problem       --> ProblemStatus
 
 ' --- Medical Records ---
 Consultation          --> ConsultationType
+Consultation          --> PhysicalExam
 Consultation          --> Animal
 Consultation          --> Company
 
@@ -1267,6 +1582,7 @@ LaboratoryTest        --> LaboratoryTestType
 LaboratoryTestFile    --> LaboratoryTest
 LaboratoryTest        --> Animal
 LaboratoryTest        --> Company
+LaboratoryTest        "0..*" ..> "0..1" Branch : branchId
 LaboratoryTest        --> LaboratoryTestStatus
 LaboratoryTest        --> LaboratoryTestPriority
 LaboratoryTest        "0..*" --> "0..1" Consultation
@@ -1275,7 +1591,9 @@ LaboratoryTest        "0..*" --> "0..1" Employee : processedBy
 Prescription          --> Animal
 Prescription          --> Company
 Prescription          --> Consultation
+Medicament            "0..*" --> "0..1" Company
 MedicamentPrescription --> Prescription
+MedicamentPrescription --> Medicament
 
 Deworming             --> DewormingType
 Deworming             --> Animal
@@ -1310,6 +1628,18 @@ ProductCategory       --> Company
 ServiceCategory       --> Company
 Tax                   --> TaxScheme
 Tax                   --> Company
+StockBalance          ..> Company : companyId
+StockBalance          ..> Branch : branchId
+StockBalance          ..> Product : productId
+StockLot              ..> Company : companyId
+StockLot              ..> Branch : branchId
+StockLot              ..> Product : productId
+StockMovement         ..> Company : companyId
+StockMovement         ..> Branch : branchId
+StockMovement         ..> Product : productId
+StockMovement         "0..*" ..> "0..1" StockLot : lotId
+StockMovement         --> StockMovementType
+StockMovement         --> StockReferenceType
 
 Promotion             --> PromotionType
 Promotion             --> ApplicationType
@@ -1320,6 +1650,7 @@ Promotion             --> Company
 ' --- Billing / Open Accounts ---
 OpenAccount                --> Owner
 OpenAccount                --> Company
+OpenAccount                --> Branch
 DebtOpenAccount            --> PaymentMethod
 DebtOpenAccount            --> OpenAccount
 ProductChargeOpenAccount   --> Animal
@@ -1334,24 +1665,25 @@ GeneralChargeOpenAccount   "0..*" --> "0..1" Tax
 GeneralChargeOpenAccount   --> OpenAccount
 
 ' --- Electronic Document (DIAN) ---
-ElectronicDocument         --> Company
-ElectronicDocument         "0..*" --> "0..1" OpenAccount
+ElectronicDocument         ..> Company : companyId
+ElectronicDocument         "0..*" ..> "0..1" OpenAccount : openAccountId
+ElectronicDocument         ..> Branch : branchId
 ElectronicDocument         --> ElectronicDocumentType
 ElectronicDocument         --> DianStatus
 ElectronicDocument         --> PaymentForm
 ElectronicDocument         --> IssuerSnapshot
 ElectronicDocument         --> CustomerSnapshot
 ElectronicDocument         "0..*" --> "0..1" DocumentReference
-ElectronicDocumentLine     --> ElectronicDocument
+ElectronicDocument         "1" *-- "1..*" ElectronicDocumentLine
+ElectronicDocument         "1" *-- "0..*" ElectronicDocumentPayment
 ElectronicDocumentLine     --> TaxCategory
 ElectronicDocumentLine     "0..*" --> "0..1" TaxScheme
-ElectronicDocumentPayment  --> ElectronicDocument
 ElectronicDocumentPayment  --> PaymentMeans
 
 ' --- Integración proveedor DIAN (F3) ---
 DianProviderConfig          --> Company
 DianProviderConfig          --> ProviderType
-ElectronicDocumentTransmission --> ElectronicDocument
+ElectronicDocumentTransmission ..> ElectronicDocument : electronicDocumentId
 ElectronicDocumentTransmission --> TransmissionResult
 
 ' --- Retenciones (F6) ---

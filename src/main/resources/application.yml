@@ -124,6 +124,12 @@ vetsoftware:
     invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:cbf57a10-3f2c-439a-8fe1-fc0935778d52}
     # URL de login a la que apunta el botón del correo de invitación.
     login-url: ${EMPLOYEE_LOGIN_URL:http://localhost:5174/login}
+  # Confirmación de cita: al agendar una cita nueva se notifica por correo al propietario (plantilla de Resend).
+  appointment:
+    # ID de la plantilla de Resend del correo de confirmación (variables RECIPIENT_NAME, RECIPIENT_EMAIL,
+    # COMPANY_NAME, APPOINTMENT_DATE, APPOINTMENT_TIME, APPOINTMENT_TYPE, VET_NAME, PET_NAME, BRANCH_NAME,
+    # BRANCH_ADDRESS, NOTES). Vacío = no se envía (warning).
+    confirmation-template-id: ${APPOINTMENT_CONFIRMATION_TEMPLATE_ID:b9db56e1-3ebf-4764-ae5b-b59814e29ad8}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

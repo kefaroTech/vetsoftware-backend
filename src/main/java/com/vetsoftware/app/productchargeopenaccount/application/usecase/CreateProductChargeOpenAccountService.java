@@ -4,13 +4,14 @@ import com.vetsoftware.app.productchargeopenaccount.application.command.CreatePr
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.CreateProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.BranchResolverPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.EmployeeQueryPort;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountVersionGuard;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductQueryPort;
-import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductStockPort;
 import com.vetsoftware.app.productchargeopenaccount.domain.AnimalRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.productchargeopenaccount.domain.OpenAccountRef;
@@ -31,7 +32,8 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
     private final EmployeeQueryPort employeeQueryPort;
     private final OpenAccountRefresher refresher;
     private final OpenAccountVersionGuard versionGuard;
-    private final ProductStockPort stockPort;
+    private final InventoryLedgerPort inventoryLedger;
+    private final BranchResolverPort branchResolver;
 
     public CreateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
                                                  AnimalQueryPort animalQueryPort,
@@ -40,7 +42,8 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
                                                  EmployeeQueryPort employeeQueryPort,
                                                  OpenAccountRefresher refresher,
                                                  OpenAccountVersionGuard versionGuard,
-                                                 ProductStockPort stockPort) {
+                                                 InventoryLedgerPort inventoryLedger,
+                                                 BranchResolverPort branchResolver) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.productQueryPort = productQueryPort;
@@ -48,7 +51,8 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         this.employeeQueryPort = employeeQueryPort;
         this.refresher = refresher;
         this.versionGuard = versionGuard;
-        this.stockPort = stockPort;
+        this.inventoryLedger = inventoryLedger;
+        this.branchResolver = branchResolver;
     }
 
     @Override
@@ -85,12 +89,20 @@ public class CreateProductChargeOpenAccountService implements CreateProductCharg
         EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
+        // Sede que descuenta el inventario: la pedida (validada activa/empresa) o la Principal por defecto.
+        Long branchId = branchResolver.resolve(command.companyId(), command.branchId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                "No se pudo resolver la sede para descontar inventario (empresa " + command.companyId() + ")"));
+
         ProductChargeOpenAccount charge = ProductChargeOpenAccount.create(animal, product, command.quantity(),
             openAccount, createdBy, command.clientRequestId());
-        ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
-        // Descuenta stock del catálogo por la venta (atómico; permite negativo). Va dentro de la misma
-        // transacción: si algo falla después, el descuento se revierte con el resto.
-        stockPort.decreaseStock(command.productId(), command.companyId(), command.quantity());
+        ProductChargeOpenAccount saved = repository.save(charge);
+        ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(saved);
+        // Registra la salida de inventario en el kardex de la sede (FEFO + costo por lote), idempotente por el id del
+        // cargo. Dentro de la misma transacción: si algo falla después, el movimiento se revierte con el resto. Puede
+        // lanzar InsufficientStockException si no hay stock y la empresa no permite negativo.
+        inventoryLedger.recordSale(command.companyId(), branchId, command.productId(), command.quantity(),
+            saved.getId(), command.createdById());
         refresher.refresh(command.companyId(), command.openAccountId());
         return dto;
     }

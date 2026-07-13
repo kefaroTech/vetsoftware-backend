@@ -16,6 +16,7 @@ public record AppointmentResponse(
         OwnerSummary owner,
         String clientName,
         String clientPhone,
+        String clientEmail,
         EmployeeSummary employee,
         BranchSummary branch,
         long version,

@@ -48,6 +48,9 @@ public class AppointmentJpaEntity {
     @Column(name = "client_phone", length = 30)
     private String clientPhone;
 
+    @Column(name = "client_email", length = 150)
+    private String clientEmail;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private EmployeeJpaEntity employee;
@@ -92,6 +95,8 @@ public class AppointmentJpaEntity {
     public void setClientName(String clientName) { this.clientName = clientName; }
     public String getClientPhone() { return clientPhone; }
     public void setClientPhone(String clientPhone) { this.clientPhone = clientPhone; }
+    public String getClientEmail() { return clientEmail; }
+    public void setClientEmail(String clientEmail) { this.clientEmail = clientEmail; }
     public EmployeeJpaEntity getEmployee() { return employee; }
     public void setEmployee(EmployeeJpaEntity employee) { this.employee = employee; }
     public CompanyJpaEntity getCompany() { return company; }

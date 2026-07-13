@@ -25,6 +25,7 @@ import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
 import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
+import com.vetsoftware.app.inventory.domain.InsufficientStockException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -349,6 +350,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleDocumentAlreadyReversed(DocumentAlreadyReversedException ex) {
         log.warn("Document already reversed: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_REVERSED", ex.getMessage());
+    }
+
+    // Inventario: la venta/consumo no alcanza y la empresa no permite stock negativo. 409 con código propio
+    // para que el front distinga "sin existencias" de otros conflictos y lo muestre al usuario.
+    @ExceptionHandler(InsufficientStockException.class)
+    public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
+        log.warn("Insufficient stock: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", ex.getMessage());
     }
 
     // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).

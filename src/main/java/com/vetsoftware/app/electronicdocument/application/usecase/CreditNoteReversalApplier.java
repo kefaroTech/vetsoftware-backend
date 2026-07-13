@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.AccountReversalPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
+import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
@@ -19,11 +20,14 @@ import org.springframework.stereotype.Component;
 public class CreditNoteReversalApplier {
     private final ElectronicDocumentRepository repository;
     private final AccountReversalPort accountReversalPort;
+    private final InventoryLedgerPort inventoryLedger;
 
     public CreditNoteReversalApplier(ElectronicDocumentRepository repository,
-                                     AccountReversalPort accountReversalPort) {
+                                     AccountReversalPort accountReversalPort,
+                                     InventoryLedgerPort inventoryLedger) {
         this.repository = repository;
         this.accountReversalPort = accountReversalPort;
+        this.inventoryLedger = inventoryLedger;
     }
 
     /** No hace nada salvo que {@code note} sea una nota credito VALIDADA con referencia. */
@@ -42,6 +46,12 @@ public class CreditNoteReversalApplier {
             if (!original.isReversed()) {
                 original.markReversed();
                 repository.updateDianResult(original);
+                // POS directo (sin cuenta): repone el inventario descontado por la venta. Las ventas por cuenta
+                // abierta NO se reponen aquí — su stock se repone al anular cada cargo (OPEN_ACCOUNT_CHARGE); aquí
+                // solo se marca reversada la factura y su cartera. Idempotente (el ledger no re-compensa).
+                if (original.getOpenAccountId() == null) {
+                    inventoryLedger.reversePosSale(original.getId(), null);
+                }
             }
             if (note.getOpenAccountId() != null) {
                 accountReversalPort.markReversed(note.getOpenAccountId());

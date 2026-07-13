@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Inventario con lotes + kardex + costo por lote, multi-sucursal (punto 6 / B-4). Fuente de verdad = stock_movement
+      (append-only); stock_lot lleva el costo real y el vencimiento (FEFO); stock_balance es el saldo materializado por
+      (producto, sede) con lock optimista. Todo scopeado por (empresa, sede). F1: crear tablas + backfill del stock plano
+      actual a la sede Principal. El DROP de las columnas planas de products (current_stock/min_stock/expire_date/
+      lot_number/purchase_price) y el rewire de POS/cuenta van en F2.
+    -->
+
+    <changeSet id="189_create_stock_lot" author="orlando">
+        <createTable tableName="stock_lot">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_lot_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_lot_branch" references="branches(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_lot_product" references="products(id)"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(50)"/>
+            <column name="expire_date" type="DATE"/>
+            <column name="quantity_available" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_cost" type="DECIMAL(19,4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="received_date" type="DATETIME"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="stock_lot" indexName="ix_stock_lot_fefo">
+            <column name="product_id"/>
+            <column name="branch_id"/>
+            <column name="expire_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="189_create_stock_balance" author="orlando">
+        <createTable tableName="stock_balance">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_balance_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_balance_branch" references="branches(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_balance_product" references="products(id)"/>
+            </column>
+            <column name="quantity" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_stock" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="stock_balance" columnNames="product_id, branch_id"
+                             constraintName="uq_stock_balance_product_branch"/>
+        <createIndex tableName="stock_balance" indexName="ix_stock_balance_company_branch">
+            <column name="company_id"/>
+            <column name="branch_id"/>
+            <column name="quantity"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="189_create_stock_movement" author="orlando">
+        <createTable tableName="stock_movement">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_movement_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_movement_branch" references="branches(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_movement_product" references="products(id)"/>
+            </column>
+            <column name="lot_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_stock_movement_lot" references="stock_lot(id)"/>
+            </column>
+            <column name="type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_cost" type="DECIMAL(19,4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_id" type="BIGINT"/>
+            <column name="reason" type="VARCHAR(255)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="stock_movement" indexName="ix_stock_movement_kardex">
+            <column name="company_id"/>
+            <column name="branch_id"/>
+            <column name="product_id"/>
+            <column name="created_date"/>
+        </createIndex>
+        <createIndex tableName="stock_movement" indexName="ix_stock_movement_reference">
+            <column name="reference_type"/>
+            <column name="reference_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Backfill: el stock plano actual (products.current_stock) se materializa como un lote en la sede Principal. -->
+    <changeSet id="189_backfill_stock_lot" author="orlando">
+        <sql>
+            INSERT INTO stock_lot (company_id, branch_id, product_id, lot_number, expire_date,
+                                   quantity_available, unit_cost, received_date, created_date, enabled)
+            SELECT p.company_id, b.id, p.id, p.lot_number, p.expire_date,
+                   p.current_stock, p.purchase_price, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true
+            FROM products p
+            JOIN branches b ON b.company_id = p.company_id AND b.code = 'PRINCIPAL'
+            WHERE p.enabled = true AND p.current_stock > 0
+        </sql>
+        <rollback>
+            DELETE FROM stock_lot
+        </rollback>
+    </changeSet>
+
+    <!-- Saldo Principal por producto (incluye stock 0, para llevar el mínimo aunque no haya stock). -->
+    <changeSet id="189_backfill_stock_balance_principal" author="orlando">
+        <sql>
+            INSERT INTO stock_balance (company_id, branch_id, product_id, quantity, min_stock, version)
+            SELECT p.company_id, b.id, p.id, p.current_stock, p.min_stock, 0
+            FROM products p
+            JOIN branches b ON b.company_id = p.company_id AND b.code = 'PRINCIPAL'
+            WHERE p.enabled = true
+        </sql>
+        <rollback>
+            DELETE FROM stock_balance
+        </rollback>
+    </changeSet>
+
+    <!-- Saldo 0 para las demás sedes ACTIVAS (para mínimos/alertas por sede). -->
+    <changeSet id="189_backfill_stock_balance_other_branches" author="orlando">
+        <sql>
+            INSERT INTO stock_balance (company_id, branch_id, product_id, quantity, min_stock, version)
+            SELECT p.company_id, b.id, p.id, 0, p.min_stock, 0
+            FROM products p
+            JOIN branches b ON b.company_id = p.company_id
+            WHERE p.enabled = true AND b.active = true AND b.code &lt;&gt; 'PRINCIPAL'
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <!-- Movimiento inicial (ADJUSTMENT_IN) por cada lote sembrado, para que el kardex cuadre con el saldo. -->
+    <changeSet id="189_backfill_stock_movement" author="orlando">
+        <sql>
+            INSERT INTO stock_movement (company_id, branch_id, product_id, lot_id, type, quantity, unit_cost,
+                                        reference_type, reference_id, reason, created_by, created_date)
+            SELECT l.company_id, l.branch_id, l.product_id, l.id, 'ADJUSTMENT_IN', l.quantity_available, l.unit_cost,
+                   'ADJUSTMENT', l.id, 'Saldo inicial migración inventario', NULL, CURRENT_TIMESTAMP
+            FROM stock_lot l
+        </sql>
+        <rollback>
+            DELETE FROM stock_movement
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

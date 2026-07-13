@@ -63,9 +63,8 @@ public class ProductController {
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
         return toResponse(createUseCase.execute(
             new CreateProductCommand(
-                request.name(), request.code(), request.purchasePrice(), request.salePrice(),
-                request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.lotNumber(), request.notes(), request.taxTreatment(),
+                request.name(), request.code(), request.salePrice(),
+                request.provider(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
     }
@@ -106,9 +105,8 @@ public class ProductController {
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
         return toResponse(updateUseCase.execute(
             new UpdateProductCommand(
-                id, request.name(), request.code(), request.purchasePrice(), request.salePrice(),
-                request.currentStock(), request.minStock(), request.provider(),
-                request.expireDate(), request.lotNumber(), request.notes(), request.taxTreatment(),
+                id, request.name(), request.code(), request.salePrice(),
+                request.provider(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
@@ -129,9 +127,8 @@ public class ProductController {
         TaxSummaryDto t = dto.tax();
         CompanySummaryDto c = dto.company();
         return new ProductResponse(
-            dto.id(), dto.name(), dto.code(), dto.purchasePrice(), dto.salePrice(),
-            dto.currentStock(), dto.minStock(), dto.provider(), dto.taxTreatment(), dto.expireDate(),
-            dto.lotNumber(), dto.notes(),
+            dto.id(), dto.name(), dto.code(), dto.salePrice(),
+            dto.provider(), dto.taxTreatment(), dto.notes(),
             new ProductCategorySummary(pc.id(), pc.name()),
             t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
             new CompanySummary(c.id(), c.name(), c.identifier()),

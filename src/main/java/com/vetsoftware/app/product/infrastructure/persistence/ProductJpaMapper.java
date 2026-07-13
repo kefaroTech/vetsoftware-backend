@@ -20,14 +20,9 @@ public class ProductJpaMapper {
         entity.setId(product.getId());
         entity.setName(product.getName());
         entity.setCode(product.getCode());
-        entity.setPurchasePrice(product.getPurchasePrice());
         entity.setSalePrice(product.getSalePrice());
-        entity.setCurrentStock(product.getCurrentStock());
-        entity.setMinStock(product.getMinStock());
         entity.setProvider(product.getProvider());
         entity.setTaxTreatment(product.getTaxTreatment());
-        entity.setExpireDate(product.getExpireDate());
-        entity.setLotNumber(product.getLotNumber());
         entity.setNotes(product.getNotes());
         entity.setProductCategory(productCategory);
         entity.setTax(tax);
@@ -56,14 +51,9 @@ public class ProductJpaMapper {
             entity.getId(),
             entity.getName(),
             entity.getCode(),
-            entity.getPurchasePrice(),
             entity.getSalePrice(),
-            entity.getCurrentStock(),
-            entity.getMinStock(),
             entity.getProvider(),
             entity.getTaxTreatment(),
-            entity.getExpireDate(),
-            entity.getLotNumber(),
             entity.getNotes(),
             productCategoryRef,
             taxRef,

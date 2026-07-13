@@ -1,11 +1,14 @@
 package com.vetsoftware.app.appointment.application.usecase;
 
 import com.vetsoftware.app.appointment.application.command.CreateAppointmentCommand;
+import com.vetsoftware.app.appointment.application.dto.AppointmentConfirmationData;
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.in.CreateAppointmentUseCase;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
+import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.appointment.domain.AnimalRef;
@@ -27,15 +30,20 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     private final OwnerQueryPort ownerQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
     private final BranchQueryPort branchQueryPort;
+    private final CompanyQueryPort companyQueryPort;
+    private final AppointmentConfirmationEmailSender confirmationEmailSender;
 
     public CreateAppointmentService(AppointmentRepository repository, AnimalQueryPort animalQueryPort,
                                     OwnerQueryPort ownerQueryPort, EmployeeQueryPort employeeQueryPort,
-                                    BranchQueryPort branchQueryPort) {
+                                    BranchQueryPort branchQueryPort, CompanyQueryPort companyQueryPort,
+                                    AppointmentConfirmationEmailSender confirmationEmailSender) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.ownerQueryPort = ownerQueryPort;
         this.employeeQueryPort = employeeQueryPort;
         this.branchQueryPort = branchQueryPort;
+        this.companyQueryPort = companyQueryPort;
+        this.confirmationEmailSender = confirmationEmailSender;
     }
 
     @Override
@@ -60,12 +68,47 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
 
         Appointment appointment = Appointment.create(
             command.startAt(), command.type(), command.notes(), animal, owner,
-            command.clientName(), command.clientPhone(), employee, CompanyRef.of(command.companyId()), branch);
+            command.clientName(), command.clientPhone(), command.clientEmail(), employee,
+            CompanyRef.of(command.companyId()), branch);
         Appointment saved = repository.save(appointment);
+
+        // Notificación al cliente (async y no bloqueante; si falla, el agendamiento sigue).
+        sendConfirmationEmail(saved, employee, owner, animal, branch, command.companyId());
 
         List<Long> clashes = repository.findClashingIds(
             command.companyId(), command.employeeId(), command.startAt(), saved.getId());
         return AppointmentDto.from(saved, clashes);
+    }
+
+    /**
+     * Envía el correo de confirmación al cliente. Destinatario:
+     * <ul>
+     *   <li>propietario registrado → su correo (si tiene), nombre = nombre del propietario;</li>
+     *   <li>contacto libre → el {@code clientEmail} opcional de la cita, nombre = clientName.</li>
+     * </ul>
+     * Si no hay correo (propietario sin email o contacto libre sin email), no se envía nada. El envío es
+     * {@code @Async} en el adaptador y nunca lanza.
+     */
+    private void sendConfirmationEmail(Appointment saved, EmployeeRef employee, OwnerRef owner,
+                                       AnimalRef animal, BranchRef branch, Long companyId) {
+        String recipientEmail;
+        String recipientName;
+        if (owner != null) {
+            recipientEmail = ownerQueryPort.findEmailByIdAndCompanyId(owner.id(), companyId)
+                .filter(e -> !e.isBlank()).orElse(null);
+            recipientName = owner.name();
+        } else {
+            recipientEmail = saved.getClientEmail();     // ya normalizado (blank → null) en el dominio
+            recipientName = saved.getClientName();
+        }
+        if (recipientEmail == null || recipientEmail.isBlank()) return;
+
+        String companyName = companyQueryPort.findNameById(companyId).orElse(null);
+        String branchAddress = branchQueryPort.findAddressById(branch.id()).orElse(null);
+        String petName = animal != null ? animal.name() : null;
+        confirmationEmailSender.send(new AppointmentConfirmationData(
+            recipientEmail, recipientName, companyName, saved.getStartAt(), saved.getType(),
+            employee.name(), petName, branch.name(), branchAddress, saved.getNotes()));
     }
 
     // Sede solicitada explícitamente: activa y de la empresa. Distingue "inactiva" de "inexistente" para dar

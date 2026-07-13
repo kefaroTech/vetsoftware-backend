@@ -191,5 +191,9 @@
     <include file="db/changelog/migrations/185_add_branch_to_numbering_resolutions.xml"/>
     <include file="db/changelog/migrations/187_create_employee_branches.xml"/>
     <include file="db/changelog/migrations/188_add_branch_id_to_laboratory_tests.xml"/>
+    <include file="db/changelog/migrations/189_create_inventory.xml"/>
+    <include file="db/changelog/migrations/190_drop_product_flat_stock_columns.xml"/>
+    <include file="db/changelog/migrations/191_seed_inventory_permissions.xml"/>
+    <include file="db/changelog/migrations/192_add_client_email_to_appointments.xml"/>
 
 </databaseChangeLog>
