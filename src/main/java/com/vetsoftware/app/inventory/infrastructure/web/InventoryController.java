@@ -9,10 +9,13 @@ import com.vetsoftware.app.inventory.application.command.SearchStockCommand;
 import com.vetsoftware.app.inventory.application.command.InventoryAlertsQuery;
 import com.vetsoftware.app.inventory.application.command.InventoryValuationQuery;
 import com.vetsoftware.app.inventory.application.command.RecordClinicalUseCommand;
+import com.vetsoftware.app.inventory.application.command.RecordCountCommand;
+import com.vetsoftware.app.inventory.application.command.SearchCountsQuery;
 import com.vetsoftware.app.inventory.application.command.SearchPurchasesQuery;
 import com.vetsoftware.app.inventory.application.command.SetMinStockCommand;
 import com.vetsoftware.app.inventory.application.command.TransferStockCommand;
 import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
+import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
 import com.vetsoftware.app.inventory.application.dto.PageResult;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
@@ -21,19 +24,23 @@ import com.vetsoftware.app.inventory.application.dto.StockMovementView;
 import com.vetsoftware.app.inventory.application.dto.StockView;
 import com.vetsoftware.app.inventory.application.port.in.AdjustStockUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ConsumeStockUseCase;
+import com.vetsoftware.app.inventory.application.port.in.GetCountUseCase;
 import com.vetsoftware.app.inventory.application.port.in.GetInventoryAlertsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.GetInventoryValuationUseCase;
+import com.vetsoftware.app.inventory.application.port.in.ListCountsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListKardexUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListProductLotsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListPurchasesUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListStockUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ReceiveStockUseCase;
+import com.vetsoftware.app.inventory.application.port.in.RecordCountUseCase;
 import com.vetsoftware.app.inventory.application.port.in.SetMinStockUseCase;
 import com.vetsoftware.app.inventory.application.port.in.TransferStockUseCase;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import com.vetsoftware.app.inventory.infrastructure.web.request.AdjustStockRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.ConsumeStockRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.ReceiveStockRequest;
+import com.vetsoftware.app.inventory.infrastructure.web.request.RecordCountRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.SetMinStockRequest;
 import com.vetsoftware.app.inventory.infrastructure.web.request.TransferStockRequest;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
@@ -64,6 +71,9 @@ public class InventoryController {
     private final GetInventoryAlertsUseCase alertsUseCase;
     private final GetInventoryValuationUseCase valuationUseCase;
     private final ListPurchasesUseCase listPurchasesUseCase;
+    private final RecordCountUseCase recordCountUseCase;
+    private final ListCountsUseCase listCountsUseCase;
+    private final GetCountUseCase getCountUseCase;
     private final Authz authz;
 
     public InventoryController(ListStockUseCase listStockUseCase,
@@ -77,6 +87,9 @@ public class InventoryController {
                               GetInventoryAlertsUseCase alertsUseCase,
                               GetInventoryValuationUseCase valuationUseCase,
                               ListPurchasesUseCase listPurchasesUseCase,
+                              RecordCountUseCase recordCountUseCase,
+                              ListCountsUseCase listCountsUseCase,
+                              GetCountUseCase getCountUseCase,
                               Authz authz) {
         this.listStockUseCase = listStockUseCase;
         this.listLotsUseCase = listLotsUseCase;
@@ -89,6 +102,9 @@ public class InventoryController {
         this.alertsUseCase = alertsUseCase;
         this.valuationUseCase = valuationUseCase;
         this.listPurchasesUseCase = listPurchasesUseCase;
+        this.recordCountUseCase = recordCountUseCase;
+        this.listCountsUseCase = listCountsUseCase;
+        this.getCountUseCase = getCountUseCase;
         this.authz = authz;
     }
 
@@ -191,6 +207,32 @@ public class InventoryController {
         setMinStockUseCase.setMinStock(new SetMinStockCommand(
             authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()), productId,
             request.minStock()));
+    }
+
+    // Conteo físico (cíclico): confirma la hoja de conteo y devuelve la sesión con las diferencias aplicadas.
+    @PostMapping("/counts")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InventoryCountView recordCount(@Valid @RequestBody RecordCountRequest request) {
+        return recordCountUseCase.record(new RecordCountCommand(
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()), request.note(),
+            authz.currentEmployeeIdOrNull(),
+            request.lines().stream()
+                .map(l -> new RecordCountCommand.Line(l.productId(), l.countedQuantity()))
+                .toList()));
+    }
+
+    @GetMapping("/counts")
+    public PageResponse<InventoryCountView> counts(@RequestParam(required = false) Long branchId,
+                                                   @RequestParam(defaultValue = "0") int page,
+                                                   @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<InventoryCountView> result = listCountsUseCase.list(new SearchCountsQuery(
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), page, pageSize));
+        return toPageResponse(result);
+    }
+
+    @GetMapping("/counts/{id}")
+    public InventoryCountView count(@PathVariable Long id) {
+        return getCountUseCase.get(authz.currentCompanyId(), id);
     }
 
     private static <T> PageResponse<T> toPageResponse(PageResult<T> r) {

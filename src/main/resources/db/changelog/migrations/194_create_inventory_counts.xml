@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Conteo físico (cíclico) de inventario. Una sesión de conteo por (empresa, sede) con sus líneas contadas por
+      producto. Al confirmar, el servicio genera ADJUSTMENT_IN/OUT en el ledger por la diferencia (conteo − sistema)
+      de cada línea, referenciando la sesión (stock_movement.reference_type=ADJUSTMENT, reference_id=id de la sesión).
+      Estas tablas son el rastro de auditoría de qué se contó; los ajustes viven en el kardex (append-only).
+    -->
+    <changeSet id="194_create_inventory_counts" author="orlando">
+        <createTable tableName="inventory_count">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_inventory_count_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_inventory_count_branch" references="branches(id)"/>
+            </column>
+            <column name="note" type="VARCHAR(255)"/>
+            <column name="counted_by" type="BIGINT"/>
+            <column name="total_lines" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="adjusted_lines" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="inventory_count_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="count_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_inventory_count_line_count"
+                             references="inventory_count(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_inventory_count_line_product"
+                             references="products(id)"/>
+            </column>
+            <column name="system_quantity" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="counted_quantity" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="difference" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="inventory_count_line" indexName="idx_inventory_count_line_count">
+            <column name="count_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

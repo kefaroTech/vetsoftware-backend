@@ -196,5 +196,6 @@
     <include file="db/changelog/migrations/191_seed_inventory_permissions.xml"/>
     <include file="db/changelog/migrations/192_add_client_email_to_appointments.xml"/>
     <include file="db/changelog/migrations/193_create_company_settings.xml"/>
+    <include file="db/changelog/migrations/194_create_inventory_counts.xml"/>
 
 </databaseChangeLog>
