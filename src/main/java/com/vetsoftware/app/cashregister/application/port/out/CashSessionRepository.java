@@ -32,7 +32,7 @@ public interface CashSessionRepository {
     /** Sesión OPEN del empleado, independientemente de su terminal. */
     Optional<CashSession> findOpenByEmployee(Long companyId, Long employeeId);
 
-    /** Historial paginado por (empresa, [sede], [rango]), más reciente primero (resumen, sin movimientos). */
+    /** Historial paginado por empresa, sede, empleado de apertura y rango, más reciente primero. */
     PageResult<CashSessionView> search(SearchCashSessionsQuery query);
 
     /**

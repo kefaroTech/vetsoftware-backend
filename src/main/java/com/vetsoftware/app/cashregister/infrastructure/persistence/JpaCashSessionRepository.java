@@ -107,8 +107,8 @@ public class JpaCashSessionRepository implements CashSessionRepository {
     public PageResult<CashSessionView> search(SearchCashSessionsQuery query) {
         LocalDateTime from = query.from() == null ? null : query.from().atStartOfDay();
         LocalDateTime to = query.to() == null ? null : query.to().plusDays(1).atStartOfDay();
-        Page<CashSessionSummaryRow> page = jpaRepository.search(query.companyId(), query.branchId(), from, to,
-            PageRequest.of(query.page(), query.pageSize()));
+        Page<CashSessionSummaryRow> page = jpaRepository.search(query.companyId(), query.branchId(),
+            query.employeeId(), from, to, PageRequest.of(query.page(), query.pageSize()));
         List<CashSessionView> content = page.getContent().stream().map(this::toSummary).toList();
         return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
             page.getTotalPages());

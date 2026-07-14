@@ -11,8 +11,8 @@ public class CashSessionAlreadyOpenException extends RuntimeException {
         String branch = textOr(branchName, "seleccionada");
         String terminalCode = textOr(terminal, "sin nombre");
         String employee = textOr(employeeName, "Empleado no identificado");
-        return "Ya hay una caja abierta en la sede '" + branch + "' (terminal '" + terminalCode
-            + "'). Responsable: " + employee + ".";
+        return "La terminal '" + terminalCode + "' de la sede '" + branch
+            + "' ya tiene una caja abierta. Responsable: " + employee + ".";
     }
 
     private static String textOr(String value, String fallback) {

@@ -71,12 +71,13 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
     Optional<CashSessionJpaEntity> findFirstByCompanyIdAndOpenedByEmployeeIdAndStatus(
         Long companyId, Long openedByEmployeeId, CashSessionStatus status);
 
-    // Historial por empresa y (opcional) sede + rango de fechas sobre la apertura, más reciente primero.
+    // Historial por empresa y filtros opcionales de sede, empleado que abrió y fechas de apertura.
     // Los LEFT JOIN nativos incluyen el nombre aunque el empleado haya sido desactivado (EmployeeJpaEntity tiene
     // @SQLRestriction enabled=true) y evitan resolver responsables con una consulta por fila.
     @Query(value = SUMMARY_SELECT + """
          WHERE s.company_id = :companyId
            AND (:branchId IS NULL OR s.branch_id = :branchId)
+           AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
            AND (:from IS NULL OR s.opened_at >= :from)
            AND (:to IS NULL OR s.opened_at < :to)
          ORDER BY s.opened_at DESC
@@ -86,13 +87,14 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
           FROM cash_session s
          WHERE s.company_id = :companyId
            AND (:branchId IS NULL OR s.branch_id = :branchId)
+           AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
            AND (:from IS NULL OR s.opened_at >= :from)
            AND (:to IS NULL OR s.opened_at < :to)
         """,
         nativeQuery = true)
     Page<CashSessionSummaryRow> search(@Param("companyId") Long companyId, @Param("branchId") Long branchId,
-                                       @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
-                                       Pageable pageable);
+                                       @Param("employeeId") Long employeeId, @Param("from") LocalDateTime from,
+                                       @Param("to") LocalDateTime to, Pageable pageable);
 
     /** Admin: todas las cajas OPEN de la empresa, sin acotar por sede. */
     @Query(value = SUMMARY_SELECT + """

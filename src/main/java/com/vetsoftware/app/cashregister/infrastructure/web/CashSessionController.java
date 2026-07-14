@@ -124,6 +124,7 @@ public class CashSessionController {
 
     @GetMapping
     public PageResponse<CashSessionView> list(@RequestParam(required = false) Long branchId,
+                                              @RequestParam(required = false) Long employeeId,
                                               @RequestParam(required = false)
                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                               @RequestParam(required = false)
@@ -131,7 +132,7 @@ public class CashSessionController {
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<CashSessionView> result = listUseCase.list(new SearchCashSessionsQuery(
-            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), from, to, page, pageSize));
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), employeeId, from, to, page, pageSize));
         return new PageResponse<>(result.content(), result.page(), result.pageSize(), result.totalElements(),
             result.totalPages());
     }

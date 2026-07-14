@@ -632,7 +632,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // 195): la 2ª apertura concurrente que pasó el check del service la atrapa la BD. Mismo código de negocio.
         if (cause != null && cause.contains("uq_cash_session_open")) {
             return problem(HttpStatus.CONFLICT, "CASH_SESSION_ALREADY_OPEN",
-                "Ya hay una caja abierta en esa sede.");
+                "La terminal seleccionada ya tiene una caja abierta.");
         }
         return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
     }

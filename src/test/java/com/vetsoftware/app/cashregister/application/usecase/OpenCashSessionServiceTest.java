@@ -62,13 +62,13 @@ class OpenCashSessionServiceTest {
     }
 
     @Test
-    void open_rejects_when_a_session_is_already_open() {
+    void open_rejects_when_another_employee_uses_the_same_terminal() {
         repo.save(CashSession.open(CO, BR, "CAJA-2", OTHER_USER, bd("50"), null));
 
         assertThatThrownBy(() -> service.open(
             new OpenCashSessionCommand(CO, BR, TERMINAL, bd("100"), USER, null)))
             .isInstanceOf(CashSessionAlreadyOpenException.class)
-            .hasMessage("Ya hay una caja abierta en la sede 'Sede Centro' (terminal 'CAJA-2'). "
+            .hasMessage("La terminal 'CAJA-2' de la sede 'Sede Centro' ya tiene una caja abierta. "
                 + "Responsable: Laura Gómez.");
     }
 
