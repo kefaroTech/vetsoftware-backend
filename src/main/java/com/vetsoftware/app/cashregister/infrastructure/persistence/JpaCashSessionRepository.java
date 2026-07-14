@@ -11,6 +11,7 @@ import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -79,24 +80,54 @@ public class JpaCashSessionRepository implements CashSessionRepository {
     }
 
     @Override
+    public Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId, String terminal) {
+        return jpaRepository.findOpenSummary(companyId, branchId, terminal).map(this::toSummary);
+    }
+
+    @Override
     public boolean existsOpen(Long companyId, Long branchId, String terminal) {
         return jpaRepository.existsByCompanyIdAndBranchIdAndTerminalAndStatus(
             companyId, branchId, terminal, CashSessionStatus.OPEN);
     }
 
     @Override
+    public boolean existsOpenByEmployee(Long companyId, Long employeeId) {
+        return employeeId != null && jpaRepository.existsByCompanyIdAndOpenedByEmployeeIdAndStatus(
+            companyId, employeeId, CashSessionStatus.OPEN);
+    }
+
+    @Override
+    public Optional<CashSession> findOpenByEmployee(Long companyId, Long employeeId) {
+        if (employeeId == null) return Optional.empty();
+        return jpaRepository.findFirstByCompanyIdAndOpenedByEmployeeIdAndStatus(
+            companyId, employeeId, CashSessionStatus.OPEN).map(this::toDomain);
+    }
+
+    @Override
     public PageResult<CashSessionView> search(SearchCashSessionsQuery query) {
         LocalDateTime from = query.from() == null ? null : query.from().atStartOfDay();
         LocalDateTime to = query.to() == null ? null : query.to().plusDays(1).atStartOfDay();
-        Page<CashSessionJpaEntity> page = jpaRepository.search(query.companyId(), query.branchId(), from, to,
+        Page<CashSessionSummaryRow> page = jpaRepository.search(query.companyId(), query.branchId(), from, to,
             PageRequest.of(query.page(), query.pageSize()));
-        List<CashSessionView> content = page.getContent().stream()
-            .map(e -> CashSessionView.summary(e.getId(), e.getBranchId(), e.getTerminal(), e.getStatus(),
-                e.getOpenedByEmployeeId(), e.getOpenedAt(), e.getOpeningFloat(), e.getClosedByEmployeeId(),
-                e.getClosedAt(), e.getNote(), e.getVersion()))
-            .toList();
+        List<CashSessionView> content = page.getContent().stream().map(this::toSummary).toList();
         return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
             page.getTotalPages());
+    }
+
+    @Override
+    public List<CashSessionView> findOpenSummaries(Long companyId, Set<Long> accessibleBranchIds) {
+        if (accessibleBranchIds != null && accessibleBranchIds.isEmpty()) return List.of();
+        List<CashSessionSummaryRow> rows = accessibleBranchIds == null
+            ? jpaRepository.findAllOpenByCompany(companyId)
+            : jpaRepository.findAllOpenByCompanyAndBranchIdIn(companyId, accessibleBranchIds);
+        return rows.stream().map(this::toSummary).toList();
+    }
+
+    private CashSessionView toSummary(CashSessionSummaryRow e) {
+        return CashSessionView.summary(e.getId(), e.getBranchId(), e.getBranchName(), e.getTerminal(),
+            CashSessionStatus.valueOf(e.getStatus()), e.getOpenedByEmployeeId(), e.getOpenedByEmployeeName(),
+            e.getOpenedAt(), e.getOpeningFloat(), e.getClosingTotal(), e.getClosedByEmployeeId(),
+            e.getClosedByEmployeeName(), e.getClosedAt(), e.getNote(), e.getVersion());
     }
 
     private CashSession toDomain(CashSessionJpaEntity e) {

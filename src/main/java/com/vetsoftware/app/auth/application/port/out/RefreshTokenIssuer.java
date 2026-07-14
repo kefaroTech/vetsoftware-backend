@@ -5,5 +5,5 @@ package com.vetsoftware.app.auth.application.port.out;
  * opaco, persiste su hash con la expiración configurada y devuelve el valor en claro.
  */
 public interface RefreshTokenIssuer {
-    String issue(Long subjectId, String subjectType);
+    String issue(Long subjectId, String subjectType, Long authVersion);
 }

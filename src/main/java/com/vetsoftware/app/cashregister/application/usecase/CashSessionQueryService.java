@@ -6,16 +6,19 @@ import com.vetsoftware.app.cashregister.application.dto.PageResult;
 import com.vetsoftware.app.cashregister.application.port.in.GetCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.GetCurrentCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.ListCashSessionsUseCase;
+import com.vetsoftware.app.cashregister.application.port.in.ListOpenCashSessionsUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
-import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
+import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Lecturas de caja: sesión actual (OPEN) de una sede, detalle por id e historial paginado. */
 @Service
 public class CashSessionQueryService
-        implements GetCurrentCashSessionUseCase, GetCashSessionUseCase, ListCashSessionsUseCase {
+        implements GetCurrentCashSessionUseCase, GetCashSessionUseCase, ListCashSessionsUseCase,
+        ListOpenCashSessionsUseCase {
 
     private final CashSessionRepository repository;
 
@@ -25,9 +28,8 @@ public class CashSessionQueryService
 
     @Override
     @Transactional(readOnly = true)
-    public CashSessionView current(Long companyId, Long branchId, String terminal) {
-        String resolved = (terminal == null || terminal.isBlank()) ? CashSession.DEFAULT_TERMINAL : terminal.trim();
-        return repository.findOpen(companyId, branchId, resolved).map(CashSessionView::from).orElse(null);
+    public CashSessionView current(Long companyId, Long employeeId) {
+        return repository.findOpenByEmployee(companyId, employeeId).map(CashSessionView::from).orElse(null);
     }
 
     @Override
@@ -41,5 +43,11 @@ public class CashSessionQueryService
     @Transactional(readOnly = true)
     public PageResult<CashSessionView> list(SearchCashSessionsQuery query) {
         return repository.search(query);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CashSessionView> listOpen(Long companyId, Set<Long> accessibleBranchIds) {
+        return repository.findOpenSummaries(companyId, accessibleBranchIds);
     }
 }

@@ -9,8 +9,8 @@ import java.util.List;
 
 /**
  * Sesión de caja. La columna generada {@code open_marker} (= 1 solo cuando status=OPEN, NULL en otro caso) vive en la
- * BD para el índice único condicional "una sola OPEN por (empresa, sede, terminal)"; no se mapea aquí (ddl-auto:
- * validate ignora columnas no mapeadas). Movimientos y counts son append-only (cascade ALL, sin orphanRemoval).
+ * BD para los índices únicos condicionales por terminal y por empleado; no se mapea aquí (ddl-auto: validate ignora
+ * columnas no mapeadas). Movimientos y counts son append-only (cascade ALL, sin orphanRemoval).
  */
 @Entity
 @Table(name = "cash_session")

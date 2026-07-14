@@ -16,7 +16,7 @@ public interface CashPort {
      * Bloqueo "caja requerida": si la empresa lo exige y la sede no tiene caja OPEN, lanza
      * {@code NoOpenCashSessionException} (→ 409 NO_OPEN_CASH_SESSION) ANTES de emitir. No-op si no se exige.
      */
-    void requireOpenSession(Long companyId, Long branchId);
+    void requireOpenSession(Long companyId, Long branchId, Long employeeId);
 
     /** Registra el cobro de la venta POS en la caja OPEN de la sede. Idempotente. No-op si no hay caja abierta. */
     void registerSale(Long companyId, Long branchId, Long documentId, List<PaymentLine> payments, Long employeeId);

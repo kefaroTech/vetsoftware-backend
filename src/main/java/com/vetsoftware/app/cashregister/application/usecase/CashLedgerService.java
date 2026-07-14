@@ -11,6 +11,7 @@ import com.vetsoftware.app.cashregister.domain.CashMovementType;
 import com.vetsoftware.app.cashregister.domain.CashPaymentMethod;
 import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSession;
+import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionRequiredException;
 import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -39,8 +40,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     @Override
     @Transactional
     public void registerInflow(RegisterCashInflowCommand command) {
-        Optional<CashSession> open = repository.findOpen(
-            command.companyId(), command.branchId(), resolveTerminal(command.terminal()));
+        Optional<CashSession> open = resolveOpenSession(command);
         if (open.isEmpty()) return;
         CashSession session = open.get();
         CashMovementType type = inflowTypeFor(command.referenceType());
@@ -83,6 +83,24 @@ public class CashLedgerService implements CashLedgerUseCase {
         if (!repository.existsOpen(companyId, branchId, resolveTerminal(terminal))) {
             throw new NoOpenCashSessionException(branchId);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void ensureEmployeeCashAvailable(Long companyId, Long branchId, Long employeeId) {
+        boolean available = repository.findOpenByEmployee(companyId, employeeId)
+            .filter(session -> session.getBranchId().equals(branchId))
+            .isPresent();
+        if (!available) throw new EmployeeCashSessionRequiredException(branchId);
+    }
+
+    private Optional<CashSession> resolveOpenSession(RegisterCashInflowCommand command) {
+        if (command.referenceType() == CashReferenceType.POS_DOCUMENT && command.employeeId() != null) {
+            return repository.findOpenByEmployee(command.companyId(), command.employeeId())
+                .filter(session -> session.getBranchId().equals(command.branchId()));
+        }
+        return repository.findOpen(
+            command.companyId(), command.branchId(), resolveTerminal(command.terminal()));
     }
 
     /** Suma los pagos por método (positivos); descarta montos nulos o ≤ 0. Orden estable. */

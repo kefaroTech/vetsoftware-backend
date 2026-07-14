@@ -27,8 +27,8 @@ public class CashRegisterAdapter implements CashPort {
     }
 
     @Override
-    public void requireOpenSession(Long companyId, Long branchId) {
-        cashLedger.ensureCashAvailable(companyId, branchId, null);
+    public void requireOpenSession(Long companyId, Long branchId, Long employeeId) {
+        cashLedger.ensureEmployeeCashAvailable(companyId, branchId, employeeId);
     }
 
     @Override

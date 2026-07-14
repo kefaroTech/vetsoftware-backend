@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="207_create_cash_terminals" author="codex">
+        <createTable tableName="cash_terminals">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_terminal_company" references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cash_terminal_branch" references="branches(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="code" type="VARCHAR(60)"><constraints nullable="false"/></column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="created_at" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="cash_terminals" columnNames="branch_id,code"
+                             constraintName="uq_cash_terminal_branch_code"/>
+        <createIndex tableName="cash_terminals" indexName="idx_cash_terminal_company_branch">
+            <column name="company_id"/><column name="branch_id"/><column name="active"/>
+        </createIndex>
+
+        <!-- Convierte los terminales escritos históricamente en el catálogo inicial. -->
+        <sql>
+            INSERT INTO cash_terminals (company_id, branch_id, name, code, active, created_at)
+            SELECT s.company_id, s.branch_id, MIN(TRIM(s.terminal)), UPPER(MIN(TRIM(s.terminal))), 1, CURRENT_TIMESTAMP
+              FROM cash_session s
+             GROUP BY s.company_id, s.branch_id, UPPER(TRIM(s.terminal));
+
+            INSERT INTO cash_terminals (company_id, branch_id, name, code, active, created_at)
+            SELECT b.company_id, b.id, 'Principal', 'PRINCIPAL', 1, CURRENT_TIMESTAMP
+              FROM branches b
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM cash_terminals t
+                  WHERE t.branch_id = b.id AND UPPER(t.code) = 'PRINCIPAL'
+             );
+        </sql>
+
+        <rollback>
+            <dropTable tableName="cash_terminals"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

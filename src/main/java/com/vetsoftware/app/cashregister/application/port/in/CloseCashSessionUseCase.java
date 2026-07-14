@@ -6,7 +6,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Cerrar la caja con el conteo por método (esperado vs contado → diferencia). Gate: cerrar caja (≠ operar). */
 public interface CloseCashSessionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
-        + "(hasAuthority('cashregister.close') and @authz.isMyCompany(#command.companyId))")
-    CashSessionView close(CloseCashSessionCommand command);
+    @PreAuthorize("@authz.isMyCompany(#command.companyId) and "
+        + "@authz.isCurrentEmployee(#command.closedByEmployeeId) and "
+        + "((#adminOverride and hasAuthority('admin.all')) or "
+        + "(!#adminOverride and hasAuthority('cashregister.close')))")
+    CashSessionView close(CloseCashSessionCommand command, boolean adminOverride);
 }

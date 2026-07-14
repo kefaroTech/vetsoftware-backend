@@ -4,7 +4,10 @@ import com.vetsoftware.app.auth.application.command.LoginSystemUserCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.port.in.LoginSystemUserUseCase;
+import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository;
+import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository.AuthSystemUser;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenIssuer;
+import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsRepository;
 import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsRepository.SystemUserCredentials;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
@@ -19,15 +22,21 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
     private final TokenGenerator tokenGenerator;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final PasswordHasher passwordHasher;
+    private final AuthSystemUserRepository authSystemUserRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public LoginSystemUserService(SystemUserCredentialsRepository credentialsRepository,
                                   TokenGenerator tokenGenerator,
                                   RefreshTokenIssuer refreshTokenIssuer,
-                                  PasswordHasher passwordHasher) {
+                                  PasswordHasher passwordHasher,
+                                  AuthSystemUserRepository authSystemUserRepository,
+                                  RefreshTokenRepository refreshTokenRepository) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
         this.passwordHasher = passwordHasher;
+        this.authSystemUserRepository = authSystemUserRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Override
@@ -39,8 +48,14 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
 
-        String accessToken = tokenGenerator.generate(credentials.id(), "SYSTEM_USER", null, null);
-        String refreshToken = refreshTokenIssuer.issue(credentials.id(), "SYSTEM_USER");
+        AuthSystemUser activeSession = authSystemUserRepository.rotateAuthVersion(credentials.id())
+                .orElseThrow(InvalidCredentialsException::new);
+        refreshTokenRepository.revokeAllForSubject(credentials.id(), "SYSTEM_USER");
+
+        String accessToken = tokenGenerator.generate(
+                activeSession.id(), "SYSTEM_USER", null, activeSession.authVersion());
+        String refreshToken = refreshTokenIssuer.issue(
+                activeSession.id(), "SYSTEM_USER", activeSession.authVersion());
         return new TokenDto(accessToken, "SYSTEM_USER", refreshToken);
     }
 }

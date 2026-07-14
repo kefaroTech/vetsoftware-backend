@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="206_unique_open_cash_session_per_employee" author="orlando">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                  FROM (
+                    SELECT company_id, opened_by_employee_id
+                      FROM cash_session
+                     WHERE status = 'OPEN'
+                       AND opened_by_employee_id IS NOT NULL
+                     GROUP BY company_id, opened_by_employee_id
+                    HAVING COUNT(*) &gt; 1
+                  ) duplicate_open_sessions
+            </sqlCheck>
+        </preConditions>
+
+        <!-- open_marker vale 1 para OPEN y NULL para CLOSED; MySQL permite múltiples NULL en un índice único. -->
+        <addUniqueConstraint tableName="cash_session"
+                             columnNames="company_id, opened_by_employee_id, open_marker"
+                             constraintName="uq_cash_session_employee_open"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="cash_session"
+                                  constraintName="uq_cash_session_employee_open"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

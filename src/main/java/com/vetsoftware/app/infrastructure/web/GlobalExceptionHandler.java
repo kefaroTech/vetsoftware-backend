@@ -10,6 +10,7 @@ import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionException;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
+import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleHasActiveChildrenException;
@@ -30,6 +31,8 @@ import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
 import com.vetsoftware.app.cashregister.domain.CashSessionClosedException;
 import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
+import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionAlreadyOpenException;
+import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionRequiredException;
 import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
@@ -403,6 +406,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // "ya hay caja abierta" / "la caja está cerrada" / "no hay caja abierta para cobrar".
     @ExceptionHandler({
         CashSessionAlreadyOpenException.class,
+        EmployeeCashSessionAlreadyOpenException.class,
+        EmployeeCashSessionRequiredException.class,
         CashSessionClosedException.class,
         NoOpenCashSessionException.class
     })
@@ -440,6 +445,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Unauthorized: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
+    }
+
+    @ExceptionHandler(SessionReplacedException.class)
+    public ProblemDetail handleSessionReplaced(SessionReplacedException ex) {
+        log.warn("Authentication session replaced");
+        return problem(HttpStatus.UNAUTHORIZED, "SESSION_REPLACED", ex.getMessage());
     }
 
     // Auto-registro Opción B: login rechazado por correo sin verificar. 403 con código propio para
@@ -611,6 +622,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (cause != null && cause.contains("employee_code")) {
             return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
                 "Ese usuario ya está en uso. Elige otro.");
+        }
+        // Carrera en "una sola caja OPEN por empleado". Mismo código que la validación del servicio.
+        if (cause != null && cause.contains("uq_cash_session_employee_open")) {
+            return problem(HttpStatus.CONFLICT, "EMPLOYEE_CASH_SESSION_ALREADY_OPEN",
+                "Ya tienes una caja abierta. Debes cerrarla antes de abrir otra.");
         }
         // Carrera en "una sola caja OPEN por (empresa, sede, terminal)" (índice único condicional de la migración
         // 195): la 2ª apertura concurrente que pasó el check del service la atrapa la BD. Mismo código de negocio.

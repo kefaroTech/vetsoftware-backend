@@ -10,9 +10,10 @@ import java.util.List;
  * Salida de una sesión de caja. En el detalle / current va completa (totales por método + movimientos + counts); en
  * el listado va como {@link #summary} (sin movimientos ni counts, solo la cabecera).
  */
-public record CashSessionView(Long id, Long branchId, String terminal, CashSessionStatus status,
-                              Long openedByEmployeeId, LocalDateTime openedAt, BigDecimal openingFloat,
-                              Long closedByEmployeeId, LocalDateTime closedAt, String note, Long version,
+public record CashSessionView(Long id, Long branchId, String branchName, String terminal, CashSessionStatus status,
+                              Long openedByEmployeeId, String openedByEmployeeName, LocalDateTime openedAt,
+                              BigDecimal openingFloat, BigDecimal closingTotal, Long closedByEmployeeId,
+                              String closedByEmployeeName, LocalDateTime closedAt, String note, Long version,
                               List<MethodTotalView> totals, List<CashMovementView> movements,
                               List<CashSessionCountView> counts) {
 
@@ -21,18 +22,25 @@ public record CashSessionView(Long id, Long branchId, String terminal, CashSessi
         List<MethodTotalView> totals = s.expectedByMethod().entrySet().stream()
             .map(e -> new MethodTotalView(e.getKey(), e.getValue()))
             .toList();
-        return new CashSessionView(s.getId(), s.getBranchId(), s.getTerminal(), s.getStatus(),
-            s.getOpenedByEmployeeId(), s.getOpenedAt(), s.getOpeningFloat(), s.getClosedByEmployeeId(),
-            s.getClosedAt(), s.getNote(), s.getVersion(), totals,
+        BigDecimal closingTotal = s.getStatus() == CashSessionStatus.CLOSED
+            ? s.getCounts().stream().map(c -> c.getCountedAmount()).reduce(BigDecimal.ZERO, BigDecimal::add)
+            : null;
+        return new CashSessionView(s.getId(), s.getBranchId(), null, s.getTerminal(), s.getStatus(),
+            s.getOpenedByEmployeeId(), null, s.getOpenedAt(), s.getOpeningFloat(), closingTotal,
+            s.getClosedByEmployeeId(), null, s.getClosedAt(), s.getNote(), s.getVersion(), totals,
             s.getMovements().stream().map(CashMovementView::from).toList(),
             s.getCounts().stream().map(CashSessionCountView::from).toList());
     }
 
     /** Vista de resumen (listado / historial): solo la cabecera, sin movimientos ni counts. */
-    public static CashSessionView summary(Long id, Long branchId, String terminal, CashSessionStatus status,
-                                          Long openedByEmployeeId, LocalDateTime openedAt, BigDecimal openingFloat,
-                                          Long closedByEmployeeId, LocalDateTime closedAt, String note, Long version) {
-        return new CashSessionView(id, branchId, terminal, status, openedByEmployeeId, openedAt, openingFloat,
-            closedByEmployeeId, closedAt, note, version, List.of(), List.of(), List.of());
+    public static CashSessionView summary(Long id, Long branchId, String branchName, String terminal,
+                                          CashSessionStatus status, Long openedByEmployeeId,
+                                          String openedByEmployeeName, LocalDateTime openedAt,
+                                          BigDecimal openingFloat, BigDecimal closingTotal,
+                                          Long closedByEmployeeId, String closedByEmployeeName,
+                                          LocalDateTime closedAt, String note, Long version) {
+        return new CashSessionView(id, branchId, branchName, terminal, status, openedByEmployeeId,
+            openedByEmployeeName, openedAt, openingFloat, closingTotal, closedByEmployeeId, closedByEmployeeName,
+            closedAt, note, version, List.of(), List.of(), List.of());
     }
 }

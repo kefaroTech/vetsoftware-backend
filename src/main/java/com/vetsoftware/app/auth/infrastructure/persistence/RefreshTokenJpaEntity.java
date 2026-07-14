@@ -20,6 +20,9 @@ public class RefreshTokenJpaEntity {
     @Column(name = "subject_type", nullable = false, length = 20)
     private String subjectType;
 
+    @Column(name = "auth_version", nullable = false)
+    private Long authVersion;
+
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
@@ -39,6 +42,8 @@ public class RefreshTokenJpaEntity {
     public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
     public String getSubjectType() { return subjectType; }
     public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
+    public Long getAuthVersion() { return authVersion; }
+    public void setAuthVersion(Long authVersion) { this.authVersion = authVersion; }
     public LocalDateTime getExpiresAt() { return expiresAt; }
     public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
     public boolean isRevoked() { return revoked; }

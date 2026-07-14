@@ -7,5 +7,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface GetCurrentCashSessionUseCase {
     @PreAuthorize("hasAuthority('admin.all') or "
         + "(hasAuthority('cashregister.read') and @authz.isMyCompany(#companyId))")
-    CashSessionView current(Long companyId, Long branchId, String terminal);
+    CashSessionView current(Long companyId, Long employeeId);
 }

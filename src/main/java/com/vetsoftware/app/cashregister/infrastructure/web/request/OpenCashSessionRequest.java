@@ -7,6 +7,6 @@ import java.math.BigDecimal;
 /** Apertura de caja. {@code terminal} opcional (default "principal"); {@code branchId} lo acota el alcance del empleado. */
 public record OpenCashSessionRequest(
         @NotNull Long branchId,
+        @NotNull Long terminalId,
         @NotNull @PositiveOrZero BigDecimal openingFloat,
-        String terminal,
         String note) {}

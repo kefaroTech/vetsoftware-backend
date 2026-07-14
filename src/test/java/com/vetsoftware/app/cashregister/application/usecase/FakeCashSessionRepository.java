@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Fake in-memory de {@link CashSessionRepository} para los tests de servicio (patrón "stubs manuales" del proyecto).
@@ -47,8 +48,35 @@ class FakeCashSessionRepository implements CashSessionRepository {
     }
 
     @Override
+    public Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId, String terminal) {
+        return findOpen(companyId, branchId, terminal)
+            .map(s -> CashSessionView.summary(s.getId(), s.getBranchId(), "Sede Centro", s.getTerminal(),
+                s.getStatus(), s.getOpenedByEmployeeId(), "Laura Gómez", s.getOpenedAt(), s.getOpeningFloat(),
+                CashSessionView.from(s).closingTotal(), s.getClosedByEmployeeId(), null, s.getClosedAt(),
+                s.getNote(), s.getVersion()));
+    }
+
+    @Override
     public boolean existsOpen(Long companyId, Long branchId, String terminal) {
         return findOpen(companyId, branchId, terminal).isPresent();
+    }
+
+    @Override
+    public boolean existsOpenByEmployee(Long companyId, Long employeeId) {
+        return employeeId != null && store.values().stream()
+            .anyMatch(s -> s.isOpen()
+                && Objects.equals(s.getCompanyId(), companyId)
+                && Objects.equals(s.getOpenedByEmployeeId(), employeeId));
+    }
+
+    @Override
+    public Optional<CashSession> findOpenByEmployee(Long companyId, Long employeeId) {
+        if (employeeId == null) return Optional.empty();
+        return store.values().stream()
+            .filter(CashSession::isOpen)
+            .filter(s -> Objects.equals(s.getCompanyId(), companyId))
+            .filter(s -> Objects.equals(s.getOpenedByEmployeeId(), employeeId))
+            .findFirst();
     }
 
     @Override
@@ -57,10 +85,21 @@ class FakeCashSessionRepository implements CashSessionRepository {
         for (CashSession s : store.values()) {
             if (!Objects.equals(s.getCompanyId(), query.companyId())) continue;
             if (query.branchId() != null && !Objects.equals(s.getBranchId(), query.branchId())) continue;
-            content.add(CashSessionView.summary(s.getId(), s.getBranchId(), s.getTerminal(), s.getStatus(),
-                s.getOpenedByEmployeeId(), s.getOpenedAt(), s.getOpeningFloat(), s.getClosedByEmployeeId(),
-                s.getClosedAt(), s.getNote(), s.getVersion()));
+            content.add(CashSessionView.summary(s.getId(), s.getBranchId(), null, s.getTerminal(), s.getStatus(),
+                s.getOpenedByEmployeeId(), null, s.getOpenedAt(), s.getOpeningFloat(),
+                CashSessionView.from(s).closingTotal(), s.getClosedByEmployeeId(), null, s.getClosedAt(),
+                s.getNote(), s.getVersion()));
         }
         return new PageResult<>(content, query.page(), query.pageSize(), content.size(), 1);
+    }
+
+    @Override
+    public List<CashSessionView> findOpenSummaries(Long companyId, Set<Long> accessibleBranchIds) {
+        return store.values().stream()
+            .filter(s -> Objects.equals(s.getCompanyId(), companyId))
+            .filter(CashSession::isOpen)
+            .filter(s -> accessibleBranchIds == null || accessibleBranchIds.contains(s.getBranchId()))
+            .map(CashSessionView::from)
+            .toList();
     }
 }

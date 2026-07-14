@@ -24,11 +24,12 @@ public class RefreshTokenIssuerAdapter implements RefreshTokenIssuer {
     }
 
     @Override
-    public String issue(Long subjectId, String subjectType) {
+    public String issue(Long subjectId, String subjectType, Long authVersion) {
         String raw = refreshTokenSecret.generateRaw();
         String hash = refreshTokenSecret.hash(raw);
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(refreshExpirationDays);
-        refreshTokenRepository.save(new NewRefreshToken(hash, subjectId, subjectType, expiresAt));
+        refreshTokenRepository.save(new NewRefreshToken(
+                hash, subjectId, subjectType, authVersion, expiresAt));
         return raw;
     }
 }

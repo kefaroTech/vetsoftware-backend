@@ -2,6 +2,7 @@ package com.vetsoftware.app.auth.application.usecase;
 
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
+import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.BranchAccessResolver;
@@ -26,14 +27,16 @@ public class ResolveAuthContextService implements ResolveAuthContextUseCase {
 
     @Override
     public AuthContext execute(Long employeeId, Long authVersion) {
-        if (employeeId == null || authVersion == null) return null;
-        return employeeRepository.findActiveById(employeeId)
-            .filter(employee -> Objects.equals(employee.authVersion(), authVersion))
-            .map(employee -> new EmployeeContext(
+        if (employeeId == null) return null;
+        var employee = employeeRepository.findActiveById(employeeId).orElse(null);
+        if (employee == null) return null;
+        if (!Objects.equals(employee.authVersion(), authVersion)) {
+            throw new SessionReplacedException();
+        }
+        return new EmployeeContext(
                 employee.id(),
                 employee.companyId(),
                 permissionResolver.resolveFor(employee.id()),
-                branchAccessResolver.resolveFor(employee.id())))
-            .orElse(null);
+                branchAccessResolver.resolveFor(employee.id()));
     }
 }

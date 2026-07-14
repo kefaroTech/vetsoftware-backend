@@ -5,10 +5,13 @@ import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
+import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
+import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository.AuthEmployee;
 import com.vetsoftware.app.auth.application.port.out.EmployeeActivationPort;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository;
 import com.vetsoftware.app.auth.application.port.out.EmployeeCredentialsRepository.EmployeeCredentials;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenIssuer;
+import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import org.springframework.stereotype.Service;
@@ -22,17 +25,23 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final PasswordHasher passwordHasher;
     private final EmployeeActivationPort employeeActivationPort;
+    private final AuthEmployeeRepository authEmployeeRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public LoginEmployeeService(EmployeeCredentialsRepository credentialsRepository,
                                 TokenGenerator tokenGenerator,
                                 RefreshTokenIssuer refreshTokenIssuer,
                                 PasswordHasher passwordHasher,
-                                EmployeeActivationPort employeeActivationPort) {
+                                EmployeeActivationPort employeeActivationPort,
+                                AuthEmployeeRepository authEmployeeRepository,
+                                RefreshTokenRepository refreshTokenRepository) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
         this.passwordHasher = passwordHasher;
         this.employeeActivationPort = employeeActivationPort;
+        this.authEmployeeRepository = authEmployeeRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Override
@@ -51,9 +60,15 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
         // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba activo).
         employeeActivationPort.activateOnLogin(credentials.id());
 
+        // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la misma cuenta.
+        AuthEmployee activeSession = authEmployeeRepository.rotateAuthVersion(credentials.id())
+                .orElseThrow(InvalidCredentialsException::new);
+        refreshTokenRepository.revokeAllForSubject(credentials.id(), "EMPLOYEE");
+
         String accessToken = tokenGenerator.generate(
-                credentials.id(), "EMPLOYEE", credentials.companyId(), credentials.authVersion());
-        String refreshToken = refreshTokenIssuer.issue(credentials.id(), "EMPLOYEE");
+                activeSession.id(), "EMPLOYEE", activeSession.companyId(), activeSession.authVersion());
+        String refreshToken = refreshTokenIssuer.issue(
+                activeSession.id(), "EMPLOYEE", activeSession.authVersion());
         return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
     }
 }

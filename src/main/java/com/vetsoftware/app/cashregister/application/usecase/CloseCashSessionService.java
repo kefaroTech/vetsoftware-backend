@@ -10,6 +10,8 @@ import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +30,12 @@ public class CloseCashSessionService implements CloseCashSessionUseCase {
 
     @Override
     @Transactional
-    public CashSessionView close(CloseCashSessionCommand command) {
+    public CashSessionView close(CloseCashSessionCommand command, boolean adminOverride) {
         CashSession session = repository.findByIdAndCompany(command.sessionId(), command.companyId())
             .orElseThrow(() -> new CashSessionNotFoundException(command.sessionId()));
+        if (!adminOverride && !Objects.equals(session.getOpenedByEmployeeId(), command.closedByEmployeeId())) {
+            throw new AccessDeniedException("Only the employee who opened the cash session or an admin can close it");
+        }
         Map<CashPaymentMethod, BigDecimal> counted = new LinkedHashMap<>();
         if (command.counts() != null) {
             for (CloseCashSessionCommand.Count c : command.counts()) {

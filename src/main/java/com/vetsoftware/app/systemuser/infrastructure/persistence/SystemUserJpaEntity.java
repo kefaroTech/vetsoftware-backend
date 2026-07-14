@@ -7,7 +7,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "system_users")
-@SQLDelete(sql = "UPDATE system_users SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE system_users SET enabled = false, auth_version = auth_version + 1 WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class SystemUserJpaEntity {
     @Id
@@ -26,6 +26,9 @@ public class SystemUserJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "auth_version", nullable = false)
+    private Long authVersion = 0L;
+
     protected SystemUserJpaEntity() {}
 
     public Long getId() { return id; }
@@ -38,4 +41,6 @@ public class SystemUserJpaEntity {
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getAuthVersion() { return authVersion; }
+    public void setAuthVersion(Long authVersion) { this.authVersion = authVersion; }
 }

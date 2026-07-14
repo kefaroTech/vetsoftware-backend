@@ -1,11 +1,13 @@
 package com.vetsoftware.app.employee.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -69,6 +71,10 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
 
     @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled = true AND c.enabled = true")
     Optional<EmployeeJpaEntity> findActiveWithCompanyById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled = true AND c.enabled = true")
+    Optional<EmployeeJpaEntity> findActiveWithCompanyByIdForUpdate(@Param("id") Long id);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional

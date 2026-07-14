@@ -20,6 +20,7 @@ public class JpaRefreshTokenRepository implements RefreshTokenRepository {
         entity.setTokenHash(token.tokenHash());
         entity.setSubjectId(token.subjectId());
         entity.setSubjectType(token.subjectType());
+        entity.setAuthVersion(token.authVersion());
         entity.setExpiresAt(token.expiresAt());
         entity.setRevoked(false);
         entity.setCreatedDate(LocalDateTime.now());
@@ -30,7 +31,8 @@ public class JpaRefreshTokenRepository implements RefreshTokenRepository {
     public Optional<StoredRefreshToken> findByHash(String tokenHash) {
         return jpaRepository.findByTokenHash(tokenHash)
                 .map(e -> new StoredRefreshToken(
-                        e.getId(), e.getSubjectId(), e.getSubjectType(), e.getExpiresAt(), e.isRevoked()));
+                        e.getId(), e.getSubjectId(), e.getSubjectType(), e.getAuthVersion(),
+                        e.getExpiresAt(), e.isRevoked()));
     }
 
     @Override

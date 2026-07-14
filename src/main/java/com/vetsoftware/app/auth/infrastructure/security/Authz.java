@@ -38,6 +38,15 @@ public class Authz {
         throw new AccessDeniedException("No employee context");
     }
 
+    /** Verifica que un identificador de empleado provenga del actor autenticado y no haya sido suplantado. */
+    public boolean isCurrentEmployee(Long employeeId) {
+        if (employeeId == null) return false;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+            && auth.getPrincipal() instanceof EmployeeContext me
+            && employeeId.equals(me.employeeId());
+    }
+
     /** Como {@link #currentEmployeeId()} pero devuelve null si no hay contexto de empleado (p.ej. SYSTEM). */
     public Long currentEmployeeIdOrNull() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

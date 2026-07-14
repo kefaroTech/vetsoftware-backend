@@ -208,5 +208,9 @@
     <include file="db/changelog/migrations/203_create_supplier_invoices.xml"/>
     <include file="db/changelog/migrations/204_seed_accounts_payable_permissions.xml"/>
     <include file="db/changelog/migrations/205_seed_purchase_report_permission.xml"/>
+    <include file="db/changelog/migrations/206_unique_open_cash_session_per_employee.xml"/>
+    <include file="db/changelog/migrations/207_create_cash_terminals.xml"/>
+    <include file="db/changelog/migrations/208_single_active_auth_session.xml"/>
+    <include file="db/changelog/migrations/209_seed_cashregister_history_permission.xml"/>
 
 </databaseChangeLog>

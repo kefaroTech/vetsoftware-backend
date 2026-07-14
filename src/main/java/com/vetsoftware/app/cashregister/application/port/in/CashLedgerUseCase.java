@@ -22,4 +22,7 @@ public interface CashLedgerUseCase {
      * la empresa no la exige, es no-op. Lo invocan POS y cuenta abierta al inicio del cobro.
      */
     void ensureCashAvailable(Long companyId, Long branchId, String terminal);
+
+    /** El POS solo puede vender contra la caja OPEN del empleado autenticado en la sede seleccionada. */
+    void ensureEmployeeCashAvailable(Long companyId, Long branchId, Long employeeId);
 }

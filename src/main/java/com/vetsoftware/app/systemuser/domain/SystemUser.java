@@ -8,8 +8,10 @@ public class SystemUser {
     private String hashPassword;
     private final LocalDateTime createdDate;
     private boolean enabled;
+    private Long authVersion;
 
-    public SystemUser(Long id, String code, String hashPassword, LocalDateTime createdDate, boolean enabled) {
+    public SystemUser(Long id, String code, String hashPassword, LocalDateTime createdDate,
+                      boolean enabled, Long authVersion) {
         if (code == null || code.isBlank()) throw new IllegalArgumentException("code is required");
         if (code.length() > 50) throw new IllegalArgumentException("code must be 50 chars or less");
         if (hashPassword == null || hashPassword.isBlank()) throw new IllegalArgumentException("password is required");
@@ -18,10 +20,11 @@ public class SystemUser {
         this.hashPassword = hashPassword;
         this.createdDate = createdDate;
         this.enabled = enabled;
+        this.authVersion = authVersion == null ? 0L : authVersion;
     }
 
     public static SystemUser create(String code, String hashPassword) {
-        return new SystemUser(null, code, hashPassword, LocalDateTime.now(), true);
+        return new SystemUser(null, code, hashPassword, LocalDateTime.now(), true, 0L);
     }
 
     public void update(String code) {
@@ -38,4 +41,5 @@ public class SystemUser {
     public String getHashPassword() { return hashPassword; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public boolean isEnabled() { return enabled; }
+    public Long getAuthVersion() { return authVersion; }
 }

@@ -13,6 +13,7 @@ import com.vetsoftware.app.cashregister.application.port.in.ExportArqueoUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.GetCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.GetCurrentCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.ListCashSessionsUseCase;
+import com.vetsoftware.app.cashregister.application.port.in.ListOpenCashSessionsUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.OpenCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.RegisterCashMovementUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.CashReportPdfPort;
@@ -24,6 +25,8 @@ import jakarta.validation.Valid;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -47,6 +50,7 @@ public class CashSessionController {
     private final GetCurrentCashSessionUseCase getCurrentUseCase;
     private final GetCashSessionUseCase getUseCase;
     private final ListCashSessionsUseCase listUseCase;
+    private final ListOpenCashSessionsUseCase listOpenUseCase;
     private final ExportArqueoUseCase exportArqueoUseCase;
     private final CashReportPdfPort cashReportPdf;
     private final Authz authz;
@@ -57,6 +61,7 @@ public class CashSessionController {
                                  GetCurrentCashSessionUseCase getCurrentUseCase,
                                  GetCashSessionUseCase getUseCase,
                                  ListCashSessionsUseCase listUseCase,
+                                 ListOpenCashSessionsUseCase listOpenUseCase,
                                  ExportArqueoUseCase exportArqueoUseCase,
                                  CashReportPdfPort cashReportPdf,
                                  Authz authz) {
@@ -66,6 +71,7 @@ public class CashSessionController {
         this.getCurrentUseCase = getCurrentUseCase;
         this.getUseCase = getUseCase;
         this.listUseCase = listUseCase;
+        this.listOpenUseCase = listOpenUseCase;
         this.exportArqueoUseCase = exportArqueoUseCase;
         this.cashReportPdf = cashReportPdf;
         this.authz = authz;
@@ -75,7 +81,7 @@ public class CashSessionController {
     @ResponseStatus(HttpStatus.CREATED)
     public CashSessionView open(@Valid @RequestBody OpenCashSessionRequest request) {
         return openUseCase.open(new OpenCashSessionCommand(
-            authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()), request.terminal(),
+            authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()), request.terminalId(),
             request.openingFloat(), authz.currentEmployeeIdOrNull(), request.note()));
     }
 
@@ -95,19 +101,25 @@ public class CashSessionController {
             request.counts() == null ? java.util.List.of()
                 : request.counts().stream()
                     .map(c -> new CloseCashSessionCommand.Count(c.method(), c.countedAmount()))
-                    .toList()));
+                    .toList()), authz.isAdmin());
     }
 
     @GetMapping("/current")
-    public CashSessionView current(@RequestParam(required = false) Long branchId,
-                                   @RequestParam(required = false) String terminal) {
-        return getCurrentUseCase.current(
-            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), terminal);
+    public CashSessionView current() {
+        return getCurrentUseCase.current(authz.currentCompanyId(), authz.currentEmployeeIdOrNull());
     }
 
     @GetMapping("/{id}")
     public CashSessionView get(@PathVariable Long id) {
-        return getUseCase.get(authz.currentCompanyId(), id);
+        CashSessionView session = getUseCase.get(authz.currentCompanyId(), id);
+        authz.resolveAccessibleBranch(session.branchId());
+        return session;
+    }
+
+    @GetMapping("/open")
+    public List<CashSessionView> openSessions() {
+        Set<Long> accessibleBranchIds = authz.isAdmin() ? null : authz.currentBranchIds();
+        return listOpenUseCase.listOpen(authz.currentCompanyId(), accessibleBranchIds);
     }
 
     @GetMapping

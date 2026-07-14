@@ -4,6 +4,7 @@ import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import com.vetsoftware.app.auth.application.port.in.LogoutUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
+import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -16,11 +17,14 @@ public class LogoutService implements LogoutUseCase {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthEmployeeRepository authEmployeeRepository;
+    private final AuthSystemUserRepository authSystemUserRepository;
 
     public LogoutService(RefreshTokenRepository refreshTokenRepository,
-                         AuthEmployeeRepository authEmployeeRepository) {
+                         AuthEmployeeRepository authEmployeeRepository,
+                         AuthSystemUserRepository authSystemUserRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.authEmployeeRepository = authEmployeeRepository;
+        this.authSystemUserRepository = authSystemUserRepository;
     }
 
     @Override
@@ -35,7 +39,7 @@ public class LogoutService implements LogoutUseCase {
             authEmployeeRepository.bumpAuthVersion(me.employeeId());
         } else if (principal instanceof SystemUserContext me) {
             refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");
-            // SYSTEM_USER no tiene authVersion; su access token muere por su TTL corto.
+            authSystemUserRepository.bumpAuthVersion(me.systemUserId());
         } else {
             throw new AccessDeniedException("Not an authenticated user context");
         }

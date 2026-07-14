@@ -13,8 +13,9 @@ public interface RefreshTokenRepository {
 
     void revokeAllForSubject(Long subjectId, String subjectType);
 
-    record NewRefreshToken(String tokenHash, Long subjectId, String subjectType, LocalDateTime expiresAt) {}
+    record NewRefreshToken(String tokenHash, Long subjectId, String subjectType, Long authVersion,
+                           LocalDateTime expiresAt) {}
 
     record StoredRefreshToken(Long id, Long subjectId, String subjectType,
-                              LocalDateTime expiresAt, boolean revoked) {}
+                              Long authVersion, LocalDateTime expiresAt, boolean revoked) {}
 }

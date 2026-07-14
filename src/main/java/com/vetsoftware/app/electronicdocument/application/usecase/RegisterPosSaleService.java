@@ -69,7 +69,7 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
         ElectronicDocument document = documentBuilder.build(command);
         // Bloqueo "caja requerida" (F4): si la empresa lo exige y la sede no tiene caja OPEN, corta ANTES de emitir
         // (nada se transmite a la DIAN). No-op si la empresa no exige caja.
-        cashPort.requireOpenSession(command.companyId(), document.getBranchId());
+        cashPort.requireOpenSession(command.companyId(), document.getBranchId(), command.issuedByEmployeeId());
         ElectronicDocument emitted = emitter.emit(document);
         // Descuenta inventario por cada línea de producto (misma transacción). El documento POS no lleva cuenta
         // abierta, así que ninguna otra ruta descontó estas líneas.

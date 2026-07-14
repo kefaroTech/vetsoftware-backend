@@ -5,6 +5,7 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
+import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
@@ -125,11 +126,17 @@ public class AuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        AuthContext authContext = switch (type) {
-            case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, authVersion);
-            case "SYSTEM_USER" -> resolveSystemAuthContextUseCase.execute(id);
-            default            -> null;
-        };
+        AuthContext authContext;
+        try {
+            authContext = switch (type) {
+                case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, authVersion);
+                case "SYSTEM_USER" -> resolveSystemAuthContextUseCase.execute(id, authVersion);
+                default            -> null;
+            };
+        } catch (SessionReplacedException e) {
+            writeUnauthorized(request, response, "SESSION_REPLACED", e.getMessage());
+            return;
+        }
 
         if (authContext == null) {
             writeUnauthorized(request, response, "TOKEN_INVALID", "Unknown or revoked user");
@@ -182,8 +189,8 @@ public class AuthFilter extends OncePerRequestFilter {
     /**
      * Rechazo de autenticación en formato ProblemDetail (RFC 7807), consistente con
      * {@code GlobalExceptionHandler}. El {@code code} discrimina el motivo para que el
-     * front decida: {@code TOKEN_EXPIRED} → intentar refrescar; {@code TOKEN_INVALID} /
-     * {@code TOKEN_MISSING} → desloguear.
+     * front decida: {@code TOKEN_EXPIRED} → intentar refrescar; {@code SESSION_REPLACED},
+     * {@code TOKEN_INVALID} o {@code TOKEN_MISSING} → desloguear.
      */
     private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response,
                                    String code, String detail) throws IOException {

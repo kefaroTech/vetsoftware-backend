@@ -322,6 +322,60 @@ enum EmployeeStatus {
   ACTIVE
 }
 
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  SALE_IN
+  OPEN_ACCOUNT_IN
+  MANUAL_IN
+  WITHDRAWAL
+  EXPENSE
+  VOID_OUT
+}
+
+enum CashPaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum CashReferenceType {
+  POS_DOCUMENT
+  OPEN_ACCOUNT_PAYMENT
+  MANUAL
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PLACED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum SupplierInvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum SupplierInvoicePaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
 enum StockMovementType {
   PURCHASE
   SALE
@@ -945,6 +999,7 @@ class Product {
   -code: String
   -salePrice: BigDecimal
   -provider: String
+  -supplier: Supplier
   -taxTreatment: TaxTreatment
   -notes: String
   -productCategory: ProductCategory
@@ -1056,6 +1111,112 @@ class Promotion {
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
+}
+
+' =========================
+' Purchasing / Suppliers
+' =========================
+
+class Supplier {
+  -name: String
+  -taxId: String
+  -contactName: String
+  -phone: String
+  -email: String
+  -address: String
+  -paymentTermsDays: Integer
+  -notes: String
+  -company: Company
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class PurchaseOrder {
+  -company: Company
+  -branch: Branch
+  -supplier: Supplier
+  -status: PurchaseOrderStatus
+  -orderDate: LocalDate
+  -expectedDate: LocalDate
+  -notes: String
+  -lines: List<PurchaseOrderLine>
+  -createdDate: LocalDateTime
+  -createdBy: Long
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class PurchaseOrderLine <<value object>> {
+  -product: Product
+  -quantityOrdered: int
+  -unitCost: BigDecimal
+  -quantityReceived: int
+}
+
+class GoodsReceipt {
+  -company: Company
+  -branch: Branch
+  -supplier: Supplier
+  -purchaseOrderId: Long
+  -receiptDate: LocalDate
+  -supplierInvoiceNumber: String
+  -notes: String
+  -status: GoodsReceiptStatus
+  -lines: List<GoodsReceiptLine>
+  -createdDate: LocalDateTime
+  -createdBy: Long
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class GoodsReceiptLine <<value object>> {
+  -product: Product
+  -purchaseOrderLineId: Long
+  -lotNumber: String
+  -expireDate: LocalDate
+  -quantityReceived: int
+  -unitCost: BigDecimal
+}
+
+class SupplierInvoice {
+  -company: Company
+  -branch: Branch
+  -supplier: Supplier
+  -purchaseOrderId: Long
+  -goodsReceiptId: Long
+  -invoiceNumber: String
+  -issueDate: LocalDate
+  -dueDate: LocalDate
+  -subtotal: BigDecimal
+  -taxAmount: BigDecimal
+  -withholdingAmount: BigDecimal
+  -total: BigDecimal
+  -status: SupplierInvoiceStatus
+  -notes: String
+  -payments: List<SupplierInvoicePayment>
+  -createdDate: LocalDateTime
+  -createdBy: Long
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class SupplierInvoicePayment {
+  -amount: BigDecimal
+  -paymentDate: LocalDate
+  -method: SupplierInvoicePaymentMethod
+  -reference: String
+  -note: String
+  -createdDate: LocalDateTime
+  -createdBy: Long
 }
 
 ' =========================
@@ -1206,6 +1367,43 @@ class ClinicalEventView <<view>> {
   -endDate: LocalDate
   -eventType: ClinicalEventType
   -summary: String
+}
+
+' =========================
+' Cash Register
+' =========================
+
+class CashSession {
+  -companyId: Long
+  -branchId: Long
+  -terminal: String
+  -openedByEmployeeId: Long
+  -openedAt: LocalDateTime
+  -openingFloat: BigDecimal
+  -status: CashSessionStatus
+  -closedByEmployeeId: Long
+  -closedAt: LocalDateTime
+  -note: String
+  -version: Long
+  -movements: List<CashMovement>
+  -counts: List<CashSessionCount>
+}
+
+class CashMovement {
+  -type: CashMovementType
+  -method: CashPaymentMethod
+  -amount: BigDecimal
+  -referenceType: CashReferenceType
+  -referenceId: Long
+  -createdByEmployeeId: Long
+  -createdAt: LocalDateTime
+  -note: String
+}
+
+class CashSessionCount {
+  -method: CashPaymentMethod
+  -expectedAmount: BigDecimal
+  -countedAmount: BigDecimal
 }
 
 ' =========================
@@ -1618,6 +1816,7 @@ ClinicalEventView     --> ClinicalEventType
 ' --- Inventory / Catalog ---
 Product               --> ProductCategory
 Product               "0..*" --> "0..1" Tax
+Product               "0..*" --> "0..1" Supplier
 Product               --> TaxTreatment
 Product               --> Company
 Service               --> ServiceCategory
@@ -1646,6 +1845,45 @@ Promotion             --> ApplicationType
 Promotion             --> ValueType
 Promotion             --> PromotionStatus
 Promotion             --> Company
+
+' --- Purchasing / Suppliers ---
+Supplier              --> Company
+PurchaseOrder         --> Company
+PurchaseOrder         --> Branch
+PurchaseOrder         --> Supplier
+PurchaseOrder         --> PurchaseOrderStatus
+PurchaseOrder         "1" *-- "1..*" PurchaseOrderLine
+PurchaseOrderLine     --> Product
+GoodsReceipt          --> Company
+GoodsReceipt          --> Branch
+GoodsReceipt          --> Supplier
+GoodsReceipt          --> GoodsReceiptStatus
+GoodsReceipt          "0..*" ..> "0..1" PurchaseOrder : purchaseOrderId
+GoodsReceipt          "1" *-- "1..*" GoodsReceiptLine
+GoodsReceiptLine      --> Product
+GoodsReceiptLine      "0..*" ..> "0..1" PurchaseOrderLine : purchaseOrderLineId
+SupplierInvoice       --> Company
+SupplierInvoice       --> Branch
+SupplierInvoice       --> Supplier
+SupplierInvoice       --> SupplierInvoiceStatus
+SupplierInvoice       "0..*" ..> "0..1" PurchaseOrder : purchaseOrderId
+SupplierInvoice       "0..*" ..> "0..1" GoodsReceipt : goodsReceiptId
+SupplierInvoice       "1" *-- "0..*" SupplierInvoicePayment
+SupplierInvoicePayment --> SupplierInvoicePaymentMethod
+
+' --- Cash Register ---
+CashSession           ..> Company : companyId
+CashSession           ..> Branch : branchId
+CashSession           "0..*" ..> "0..1" Employee : openedByEmployeeId
+CashSession           "0..*" ..> "0..1" Employee : closedByEmployeeId
+CashSession           --> CashSessionStatus
+CashSession           "1" *-- "0..*" CashMovement
+CashSession           "1" *-- "0..*" CashSessionCount
+CashMovement          --> CashMovementType
+CashMovement          --> CashPaymentMethod
+CashMovement          --> CashReferenceType
+CashMovement          "0..*" ..> "0..1" Employee : createdByEmployeeId
+CashSessionCount      --> CashPaymentMethod
 
 ' --- Billing / Open Accounts ---
 OpenAccount                --> Owner
