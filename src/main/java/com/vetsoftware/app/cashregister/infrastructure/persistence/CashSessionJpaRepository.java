@@ -17,6 +17,7 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
         SELECT s.id AS id,
                s.branch_id AS branchId,
                branch.name AS branchName,
+               s.terminal_id AS terminalId,
                s.terminal AS terminal,
                s.status AS status,
                s.opened_by_employee_id AS openedByEmployeeId,
@@ -62,8 +63,22 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
                                                      @Param("branchId") Long branchId,
                                                      @Param("terminal") String terminal);
 
+    @Query(value = SUMMARY_SELECT + """
+         WHERE s.company_id = :companyId
+           AND s.branch_id = :branchId
+           AND s.terminal_id = :terminalId
+           AND s.status = 'OPEN'
+         LIMIT 1
+        """, nativeQuery = true)
+    Optional<CashSessionSummaryRow> findOpenSummaryByTerminalId(@Param("companyId") Long companyId,
+                                                                 @Param("branchId") Long branchId,
+                                                                 @Param("terminalId") Long terminalId);
+
     boolean existsByCompanyIdAndBranchIdAndTerminalAndStatus(
         Long companyId, Long branchId, String terminal, CashSessionStatus status);
+
+    boolean existsByCompanyIdAndBranchIdAndTerminalIdAndStatus(
+        Long companyId, Long branchId, Long terminalId, CashSessionStatus status);
 
     boolean existsByCompanyIdAndOpenedByEmployeeIdAndStatus(
         Long companyId, Long openedByEmployeeId, CashSessionStatus status);

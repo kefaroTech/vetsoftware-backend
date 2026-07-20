@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Los pasos son changesets separados porque MySQL confirma cada ALTER TABLE aunque una migración posterior falle.
+      Las precondiciones permiten reanudar instalaciones que ya alcanzaron parcialmente esta migración.
+    -->
+    <changeSet id="211_01_add_cash_session_terminal_id" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="cash_session" columnName="terminal_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="cash_session">
+            <column name="terminal_id" type="BIGINT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="cash_session" columnName="terminal_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Los terminales históricos fueron sembrados en la migración 207 usando empresa, sede y código. -->
+    <changeSet id="211_02_backfill_cash_session_terminal_id" author="orlando">
+        <sql>
+            UPDATE cash_session s
+            JOIN cash_terminals t
+              ON t.company_id = s.company_id
+             AND t.branch_id = s.branch_id
+             AND UPPER(TRIM(t.code)) = UPPER(TRIM(s.terminal))
+               SET s.terminal_id = t.id
+             WHERE s.terminal_id IS NULL
+        </sql>
+        <rollback>
+            <sql>UPDATE cash_session SET terminal_id = NULL</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Una sesión puede haberse creado después de la migración 207 con un código que luego fue renombrado en el
+      catálogo. Se conserva ese terminal como histórico; solo queda activo si todavía tiene una sesión OPEN.
+    -->
+    <changeSet id="211_02a_repair_missing_historical_terminals" author="orlando">
+        <sql>
+            INSERT INTO cash_terminals (company_id, branch_id, name, code, active, created_at)
+            SELECT s.company_id,
+                   s.branch_id,
+                   MIN(TRIM(s.terminal)),
+                   UPPER(TRIM(s.terminal)),
+                   CASE WHEN SUM(CASE WHEN s.status = 'OPEN' THEN 1 ELSE 0 END) &gt; 0 THEN 1 ELSE 0 END,
+                   MIN(s.opened_at)
+              FROM cash_session s
+              LEFT JOIN cash_terminals t
+                ON t.company_id = s.company_id
+               AND t.branch_id = s.branch_id
+               AND UPPER(TRIM(t.code)) = UPPER(TRIM(s.terminal))
+             WHERE s.terminal_id IS NULL
+               AND t.id IS NULL
+             GROUP BY s.company_id, s.branch_id, UPPER(TRIM(s.terminal));
+
+            UPDATE cash_session s
+            JOIN cash_terminals t
+              ON t.company_id = s.company_id
+             AND t.branch_id = s.branch_id
+             AND UPPER(TRIM(t.code)) = UPPER(TRIM(s.terminal))
+               SET s.terminal_id = t.id
+             WHERE s.terminal_id IS NULL
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="211_03_require_cash_session_terminal_id" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="YES">
+                SELECT IF(EXISTS(
+                    SELECT 1
+                      FROM information_schema.columns
+                     WHERE table_schema = DATABASE()
+                       AND table_name = 'cash_session'
+                       AND column_name = 'terminal_id'
+                       AND is_nullable = 'YES'
+                ), 'YES', 'NO')
+            </sqlCheck>
+        </preConditions>
+        <addNotNullConstraint tableName="cash_session" columnName="terminal_id" columnDataType="BIGINT"/>
+        <rollback>
+            <dropNotNullConstraint tableName="cash_session" columnName="terminal_id" columnDataType="BIGINT"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="211_04_add_cash_session_terminal_fk" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_cash_session_terminal"
+                                            foreignKeyTableName="cash_session"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="cash_session" baseColumnNames="terminal_id"
+                                 referencedTableName="cash_terminals" referencedColumnNames="id"
+                                 constraintName="fk_cash_session_terminal"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="cash_session" constraintName="fk_cash_session_terminal"/>
+        </rollback>
+    </changeSet>
+
+    <!-- La identidad estable de la terminal reemplaza el código mutable en la unicidad de sesiones OPEN. -->
+    <changeSet id="211_05_drop_legacy_cash_session_terminal_unique" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="cash_session" indexName="uq_cash_session_open"/>
+        </preConditions>
+        <dropUniqueConstraint tableName="cash_session" constraintName="uq_cash_session_open"/>
+        <rollback>
+            <addUniqueConstraint tableName="cash_session"
+                                 columnNames="company_id,branch_id,terminal,open_marker"
+                                 constraintName="uq_cash_session_open"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="211_06_add_cash_session_terminal_unique" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="cash_session" indexName="uq_cash_session_terminal_open"/>
+            </not>
+        </preConditions>
+        <addUniqueConstraint tableName="cash_session" columnNames="company_id,terminal_id,open_marker"
+                             constraintName="uq_cash_session_terminal_open"/>
+        <rollback>
+            <dropUniqueConstraint tableName="cash_session" constraintName="uq_cash_session_terminal_open"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="211_07_index_cash_session_terminal_history" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="cash_session" indexName="idx_cash_session_terminal_history"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="cash_session" indexName="idx_cash_session_terminal_history">
+            <column name="terminal_id"/>
+            <column name="opened_at"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="cash_session" indexName="idx_cash_session_terminal_history"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

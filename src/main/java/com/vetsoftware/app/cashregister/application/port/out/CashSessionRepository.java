@@ -23,8 +23,14 @@ public interface CashSessionRepository {
     /** Resumen de la sesión OPEN de la terminal, incluyendo nombres de sede y responsable. */
     Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId, String terminal);
 
+    /** Resumen de la sesión OPEN asociada a la entidad terminal. */
+    Optional<CashSessionView> findOpenSummaryByTerminalId(Long companyId, Long branchId, Long terminalId);
+
     /** ¿Hay ya una sesión OPEN para (empresa, sede, terminal)? Red de negocio antes del índice único de la BD. */
     boolean existsOpen(Long companyId, Long branchId, String terminal);
+
+    /** ¿La entidad terminal tiene una sesión OPEN? */
+    boolean existsOpenByTerminalId(Long companyId, Long branchId, Long terminalId);
 
     /** ¿El empleado ya tiene una sesión OPEN en cualquier sede o terminal de la empresa? */
     boolean existsOpenByEmployee(Long companyId, Long employeeId);

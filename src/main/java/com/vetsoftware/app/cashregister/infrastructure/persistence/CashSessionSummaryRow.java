@@ -8,6 +8,7 @@ public interface CashSessionSummaryRow {
     Long getId();
     Long getBranchId();
     String getBranchName();
+    Long getTerminalId();
     String getTerminal();
     String getStatus();
     Long getOpenedByEmployeeId();

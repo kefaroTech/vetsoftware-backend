@@ -94,8 +94,9 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
-    public boolean existsActiveByOwnerId(Long ownerId) {
-        return jpaRepository.existsByOwnerIdAndStatusAndEnabledTrue(ownerId, OpenAccountStatus.OPEN);
+    public boolean existsActiveByOwnerIdAndBranchId(Long ownerId, Long branchId) {
+        return jpaRepository.existsByOwnerIdAndBranchIdAndStatusAndEnabledTrue(
+            ownerId, branchId, OpenAccountStatus.OPEN);
     }
 
     @Override

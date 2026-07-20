@@ -10,10 +10,10 @@ import com.vetsoftware.app.cashregister.application.command.ReverseCashMovements
  */
 public interface CashLedgerUseCase {
 
-    /** Registra el ingreso (SALE_IN / OPEN_ACCOUNT_IN según referencia) en la caja OPEN de la sede. Idempotente. */
+    /** Registra el ingreso en la caja OPEN del empleado y valida que corresponda a la sede. Idempotente. */
     void registerInflow(RegisterCashInflowCommand command);
 
-    /** Compensa con VOID_OUT los ingresos de una venta/abono anulado en la caja OPEN actual. Idempotente. */
+    /** Compensa con VOID_OUT en la caja OPEN del empleado que ejecuta la anulación. Idempotente. */
     void reverse(ReverseCashMovementsCommand command);
 
     /**

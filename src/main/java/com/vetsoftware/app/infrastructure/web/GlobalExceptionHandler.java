@@ -550,12 +550,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no ERROR.
         log.warn("Data integrity violation: {}", ex.getMessage());
         String cause = ex.getMostSpecificCause().getMessage();
-        // Carrera en "1 cuenta abierta por propietario": la constraint única (migración 106) atrapa
+        // Carrera en "1 cuenta abierta por propietario y sede": la constraint única atrapa
         // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo código que
         // el guard de negocio para que el front lo trate igual.
-        if (cause != null && cause.contains("uq_open_accounts_active_owner")) {
+        if (cause != null && (cause.contains("uq_open_accounts_active_owner_branch")
+                || cause.contains("uq_open_accounts_active_owner"))) {
             return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT",
-                "El propietario ya tiene una cuenta abierta.");
+                "El propietario ya tiene una cuenta abierta en esta sede.");
         }
         // Carrera en la unicidad de SKU por empresa (constraint de la migración 133): la 2ª inserción
         // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo código de negocio.

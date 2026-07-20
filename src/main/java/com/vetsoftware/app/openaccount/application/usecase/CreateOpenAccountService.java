@@ -46,15 +46,21 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
     // cargo juntos; nunca llama a este create de forma aislada sin cargos a continuación).
     // El back no la enforza atómicamente para no acoplar openaccount con las features de cargos.
     // Si un fallo parcial deja una cuenta vacía, el get-or-create de abajo la REUTILIZA (no se
-    // crea otra ni bloquea el cupo de 1-por-dueño).
+    // crea otra ni bloquea el cupo de 1-por-dueño-y-sede).
     @Override
     public OpenAccountDto execute(CreateOpenAccountCommand command) {
-        // Get-or-create idempotente por dueño: la regla es UNA cuenta abierta por propietario,
-        // así que el ownerId ES la clave de idempotencia. Si ya existe una cuenta OPEN se
-        // devuelve esa en vez de fallar — un reintento tras perder la respuesta no duplica ni
-        // choca con el 409 de la constraint, y una cuenta abierta vacía se reutiliza.
+        // La cuenta se administra por sede: primero se resuelve la sede solicitada y el get-or-create
+        // se limita a (empresa, sede, propietario). El mismo propietario puede tener una cuenta OPEN
+        // independiente en otra sede, pero nunca dos en la misma.
+        BranchRef branch = command.branchId() != null
+            ? resolveRequestedBranch(command.branchId(), command.companyId())
+            : branchQueryPort.findDefaultActiveByCompanyId(command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "Company has no active branch: " + command.companyId()));
+
         Optional<OpenAccount> existing = repository
-            .search(new SearchOpenAccountsCommand(command.companyId(), command.ownerId(), true, 0, 50, null))
+            .search(new SearchOpenAccountsCommand(
+                command.companyId(), command.ownerId(), true, 0, 50, branch.id()))
             .content().stream()
             .filter(a -> a.getStatus() == OpenAccountStatus.OPEN)
             .findFirst();
@@ -68,14 +74,6 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
-        // Sede: si el request trae branchId debe pertenecer a la empresa y estar ACTIVA; si no, la sede activa
-        // por defecto ("Principal" activa / primera activa). No se abre cuenta en una sede fuera de operación.
-        BranchRef branch = command.branchId() != null
-            ? resolveRequestedBranch(command.branchId(), command.companyId())
-            : branchQueryPort.findDefaultActiveByCompanyId(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                    "Company has no active branch: " + command.companyId()));
-
         OpenAccount openAccount = OpenAccount.create(owner, company, branch, createdBy);
         return OpenAccountDto.from(repository.save(openAccount));
     }

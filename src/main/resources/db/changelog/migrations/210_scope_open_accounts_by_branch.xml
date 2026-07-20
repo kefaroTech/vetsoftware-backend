@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Permite una cuenta OPEN del mismo propietario en sedes distintas, manteniendo la
+         garantía dura de que no existan dos cuentas OPEN en la misma sede. -->
+    <changeSet id="210_scope_open_accounts_by_branch" author="orlando">
+        <sql>
+            ALTER TABLE open_accounts
+                DROP INDEX uq_open_accounts_active_owner,
+                ADD COLUMN active_open_branch_id BIGINT
+                GENERATED ALWAYS AS (
+                    CASE WHEN status = 'OPEN' AND enabled = TRUE THEN branch_id ELSE NULL END
+                ) STORED,
+                ADD CONSTRAINT uq_open_accounts_active_owner_branch
+                    UNIQUE (active_open_owner_id, active_open_branch_id)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE open_accounts
+                    DROP INDEX uq_open_accounts_active_owner_branch,
+                    DROP COLUMN active_open_branch_id,
+                    ADD CONSTRAINT uq_open_accounts_active_owner UNIQUE (active_open_owner_id)
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

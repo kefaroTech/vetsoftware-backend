@@ -32,17 +32,15 @@ public class CashRegisterAdapter implements CashPort {
     }
 
     @Override
-    public void requireOpenSession(Long companyId, Long openAccountId) {
+    public void requireOpenSession(Long companyId, Long openAccountId, Long employeeId) {
         Long branchId = resolveBranch(openAccountId);
-        if (branchId == null) return;
-        cashLedger.ensureCashAvailable(companyId, branchId, null);
+        cashLedger.ensureEmployeeCashAvailable(companyId, branchId, employeeId);
     }
 
     @Override
     public void registerPayment(Long companyId, Long openAccountId, Long paymentId, PaymentMethod method,
                                 BigDecimal amount, Long employeeId) {
         Long branchId = resolveBranch(openAccountId);
-        if (branchId == null) return;
         cashLedger.registerInflow(new RegisterCashInflowCommand(companyId, branchId, null,
             CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
             List.of(new CashPaymentLine(toCashMethod(method), amount)), employeeId));
@@ -52,7 +50,6 @@ public class CashRegisterAdapter implements CashPort {
     public void reversePayment(Long companyId, Long openAccountId, Long paymentId, PaymentMethod method,
                                BigDecimal amount, Long actorId) {
         Long branchId = resolveBranch(openAccountId);
-        if (branchId == null) return;
         cashLedger.reverse(new ReverseCashMovementsCommand(companyId, branchId, null,
             CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
             List.of(new CashPaymentLine(toCashMethod(method), amount)), actorId));
@@ -62,7 +59,7 @@ public class CashRegisterAdapter implements CashPort {
         return openAccountJpaRepository.findById(openAccountId)
             .map(OpenAccountJpaEntity::getBranch)
             .map(b -> b.getId())
-            .orElse(null);
+            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + openAccountId));
     }
 
     /** CASH→CASH, CARD→CARD, BANK_TRANSFER→TRANSFER. */

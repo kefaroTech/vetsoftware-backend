@@ -47,9 +47,9 @@ public interface OpenAccountJpaRepository extends JpaRepository<OpenAccountJpaEn
     Optional<OpenAccountJpaEntity> findByIdForUpdateAndCompanyId(@Param("id") Long id,
                                                                  @Param("companyId") Long companyId);
 
-    // Regla "1 cuenta abierta por propietario": cuenta el estado OPEN (las CLOSE/CANCEL
-    // siguen enabled=true pero ya no bloquean). AndEnabledTrue explícito (no depender del @SQLRestriction).
-    boolean existsByOwnerIdAndStatusAndEnabledTrue(Long ownerId, OpenAccountStatus status);
+    // Regla "1 cuenta abierta por propietario y sede". Las CLOSE/CANCEL no bloquean una nueva cuenta.
+    boolean existsByOwnerIdAndBranchIdAndStatusAndEnabledTrue(
+        Long ownerId, Long branchId, OpenAccountStatus status);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

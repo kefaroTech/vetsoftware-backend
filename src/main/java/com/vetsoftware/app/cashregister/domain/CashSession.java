@@ -21,6 +21,7 @@ public class CashSession {
     private Long id;
     private final Long companyId;
     private final Long branchId;
+    private final Long terminalId;
     private final String terminal;
     private final Long openedByEmployeeId;
     private final LocalDateTime openedAt;
@@ -33,18 +34,21 @@ public class CashSession {
     private final List<CashMovement> movements;
     private final List<CashSessionCount> counts;
 
-    public CashSession(Long id, Long companyId, Long branchId, String terminal, Long openedByEmployeeId,
+    public CashSession(Long id, Long companyId, Long branchId, Long terminalId, String terminal,
+                       Long openedByEmployeeId,
                        LocalDateTime openedAt, BigDecimal openingFloat, CashSessionStatus status,
                        Long closedByEmployeeId, LocalDateTime closedAt, String note, Long version,
                        List<CashMovement> movements, List<CashSessionCount> counts) {
         if (companyId == null) throw new IllegalArgumentException("companyId is required");
         if (branchId == null) throw new IllegalArgumentException("branchId is required");
+        if (terminalId == null) throw new IllegalArgumentException("terminalId is required");
         if (openingFloat == null || openingFloat.signum() < 0)
             throw new IllegalArgumentException("openingFloat must be >= 0");
         if (status == null) throw new IllegalArgumentException("status is required");
         this.id = id;
         this.companyId = companyId;
         this.branchId = branchId;
+        this.terminalId = terminalId;
         this.terminal = normalizeTerminal(terminal);
         this.openedByEmployeeId = openedByEmployeeId;
         this.openedAt = openedAt;
@@ -59,9 +63,10 @@ public class CashSession {
     }
 
     /** Abre una nueva sesión OPEN con la base inicial. */
-    public static CashSession open(Long companyId, Long branchId, String terminal, Long openedByEmployeeId,
-                                   BigDecimal openingFloat, String note) {
-        return new CashSession(null, companyId, branchId, terminal, openedByEmployeeId, LocalDateTime.now(),
+    public static CashSession open(Long companyId, Long branchId, Long terminalId, String terminal,
+                                   Long openedByEmployeeId, BigDecimal openingFloat, String note) {
+        return new CashSession(null, companyId, branchId, terminalId, terminal, openedByEmployeeId,
+            LocalDateTime.now(),
             openingFloat, CashSessionStatus.OPEN, null, null, note, null, new ArrayList<>(), new ArrayList<>());
     }
 
@@ -131,6 +136,7 @@ public class CashSession {
     public void assignId(Long id) { this.id = id; }
     public Long getCompanyId() { return companyId; }
     public Long getBranchId() { return branchId; }
+    public Long getTerminalId() { return terminalId; }
     public String getTerminal() { return terminal; }
     public Long getOpenedByEmployeeId() { return openedByEmployeeId; }
     public LocalDateTime getOpenedAt() { return openedAt; }

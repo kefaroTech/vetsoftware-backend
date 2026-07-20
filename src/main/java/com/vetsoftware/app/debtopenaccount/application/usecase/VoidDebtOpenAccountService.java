@@ -60,11 +60,12 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         EmployeeRef voidedBy = employeeQueryPort.findByIdAndCompanyId(command.voidedById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
 
+        // La anulación mueve dinero en la caja propia del actor y exige que esté abierta en la sede de la cuenta.
+        cashPort.requireOpenSession(command.companyId(), openAccountId, command.voidedById());
         debtOpenAccount.voidPayment(voidedBy, command.reason());
         DebtOpenAccount saved = repository.save(debtOpenAccount);
         refresher.refresh(command.companyId(), openAccountId);
-        // Compensa el abono en la caja OPEN actual (VOID_OUT). voidPayment ya garantizó que no estaba anulado, así
-        // que la reversa ocurre una sola vez. Idempotente y no-op si la sede no tiene caja abierta.
+        // Compensa el abono en la caja OPEN del actor (VOID_OUT). voidPayment ya garantizó que no estaba anulado.
         cashPort.reversePayment(command.companyId(), openAccountId, saved.getId(), saved.getPaymentMethod(),
             saved.getAmount(), command.voidedById());
         return DebtOpenAccountDto.from(saved);

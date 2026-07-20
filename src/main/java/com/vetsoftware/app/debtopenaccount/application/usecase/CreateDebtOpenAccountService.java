@@ -79,9 +79,8 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
         EmployeeRef createdBy = employeeQueryPort.findByIdAndCompanyId(command.createdById(), command.companyId())
             .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        // Bloqueo "caja requerida" (F4): corta ANTES de registrar el abono si la empresa exige caja y la sede no
-        // tiene una OPEN. No-op si no se exige.
-        cashPort.requireOpenSession(command.companyId(), command.openAccountId());
+        // El cobro siempre pertenece a la caja propia del empleado y a la misma sede de la cuenta.
+        cashPort.requireOpenSession(command.companyId(), command.openAccountId(), command.createdById());
 
         DebtOpenAccount debtOpenAccount = DebtOpenAccount.create(
             command.amount(), PaymentMethod.valueOf(command.paymentMethod()), openAccount, createdBy,

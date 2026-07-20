@@ -43,12 +43,12 @@ public class OpenCashSessionService implements OpenCashSessionUseCase {
         if (repository.existsOpenByEmployee(command.companyId(), command.openedByEmployeeId())) {
             throw new EmployeeCashSessionAlreadyOpenException();
         }
-        repository.findOpenSummary(command.companyId(), command.branchId(), terminal.code())
+        repository.findOpenSummaryByTerminalId(command.companyId(), command.branchId(), terminal.id())
             .ifPresent(open -> {
                 throw new CashSessionAlreadyOpenException(
                     open.branchName(), open.terminal(), open.openedByEmployeeName());
             });
-        CashSession session = CashSession.open(command.companyId(), command.branchId(), terminal.code(),
+        CashSession session = CashSession.open(command.companyId(), command.branchId(), terminal.id(), terminal.code(),
             command.openedByEmployeeId(), command.openingFloat(), command.note());
         return CashSessionView.from(repository.save(session));
     }

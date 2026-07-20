@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
+import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.out.BranchQueryPort;
@@ -34,8 +35,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  * Resolución de sede al abrir cuenta (multi-sucursal). Reglas: sede solicitada debe ser de la empresa y estar
  * ACTIVA (inactiva ⇒ error distinto de inexistente); sin branchId, la sede ACTIVA por defecto. Además la
- * invariante del get-or-create: si ya hay una cuenta OPEN del dueño se DEVUELVE esa con SU sede, sin re-resolver
- * ni tocar el estado active — un branchId del request no "cambia" la sede de una cuenta viva.
+ * invariante del get-or-create: una cuenta OPEN se reutiliza únicamente dentro de la misma sede; el mismo dueño
+ * puede mantener cuentas independientes en sedes diferentes.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateOpenAccountServiceBranchTest {
@@ -65,14 +66,6 @@ class CreateOpenAccountServiceBranchTest {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    /** Sin cuenta previa + owner/company/employee OK, pero SIN stub de save (para casos de error de sede). */
-    private void stubLookupsWithoutSave() {
-        when(repository.search(any())).thenReturn(page());
-        when(ownerQueryPort.findById(2L)).thenReturn(Optional.of(owner));
-        when(companyQueryPort.findById(COMPANY)).thenReturn(Optional.of(company));
-        when(employeeQueryPort.findById(4L)).thenReturn(Optional.of(createdBy));
-    }
-
     @Test
     void crea_con_la_sede_solicitada_cuando_es_valida_y_activa() {
         when(repository.search(any())).thenReturn(page());
@@ -87,6 +80,10 @@ class CreateOpenAccountServiceBranchTest {
         assertThat(saved.getBranch()).isEqualTo(requested);
         assertThat(saved.getStatus()).isEqualTo(OpenAccountStatus.OPEN);
         assertThat(dto.branch().id()).isEqualTo(11L);
+        ArgumentCaptor<SearchOpenAccountsCommand> searchCaptor =
+            ArgumentCaptor.forClass(SearchOpenAccountsCommand.class);
+        verify(repository).search(searchCaptor.capture());
+        assertThat(searchCaptor.getValue().branchId()).isEqualTo(11L);
         verify(branchQueryPort, never()).findDefaultActiveByCompanyId(any());
     }
 
@@ -107,7 +104,6 @@ class CreateOpenAccountServiceBranchTest {
 
     @Test
     void rechaza_una_sede_solicitada_INACTIVA_con_error_distinto_y_no_escribe() {
-        stubLookupsWithoutSave();
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
         when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true);
 
@@ -117,11 +113,11 @@ class CreateOpenAccountServiceBranchTest {
             .hasMessageContaining("11");
 
         verify(repository, never()).save(any());
+        verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
     }
 
     @Test
     void rechaza_una_sede_inexistente_o_ajena_con_error_not_found_y_no_escribe() {
-        stubLookupsWithoutSave();
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
         when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false);
 
@@ -130,11 +126,11 @@ class CreateOpenAccountServiceBranchTest {
             .hasMessageContaining("Branch not found");
 
         verify(repository, never()).save(any());
+        verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
     }
 
     @Test
     void falla_si_la_empresa_no_tiene_ninguna_sede_activa_y_no_escribe() {
-        stubLookupsWithoutSave();
         when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.execute(new CreateOpenAccountCommand(2L, null, COMPANY, 4L)))
@@ -142,19 +138,20 @@ class CreateOpenAccountServiceBranchTest {
             .hasMessageContaining("Company has no active branch");
 
         verify(repository, never()).save(any());
+        verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
     }
 
     @Test
-    void reutiliza_la_cuenta_open_existente_sin_re_resolver_sede_ni_crear_otra() {
-        OpenAccount existing = OpenAccount.create(owner, company, principal, createdBy); // OPEN, sede Principal
+    void reutiliza_la_cuenta_open_existente_en_la_misma_sede() {
+        OpenAccount existing = OpenAccount.create(owner, company, requested, createdBy);
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(requested));
         when(repository.search(any())).thenReturn(page(existing));
 
-        // El request pide branchId=11 (Norte), pero como ya hay una cuenta OPEN debe devolverse esa TAL CUAL.
         OpenAccountDto dto = service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L));
 
-        assertThat(dto.branch().code()).as("no debe cambiar la sede de una cuenta viva").isEqualTo("PRINCIPAL");
+        assertThat(dto.branch().code()).isEqualTo("NORTE");
         verify(repository, never()).save(any());
-        verifyNoInteractions(ownerQueryPort, companyQueryPort, employeeQueryPort, branchQueryPort);
+        verifyNoInteractions(ownerQueryPort, companyQueryPort, employeeQueryPort);
     }
 
     @Test

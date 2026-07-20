@@ -25,6 +25,9 @@ public class CashSessionJpaEntity {
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
 
+    @Column(name = "terminal_id", nullable = false)
+    private Long terminalId;
+
     @Column(name = "terminal", nullable = false, length = 60)
     private String terminal;
 
@@ -78,6 +81,8 @@ public class CashSessionJpaEntity {
     public void setCompanyId(Long companyId) { this.companyId = companyId; }
     public Long getBranchId() { return branchId; }
     public void setBranchId(Long branchId) { this.branchId = branchId; }
+    public Long getTerminalId() { return terminalId; }
+    public void setTerminalId(Long terminalId) { this.terminalId = terminalId; }
     public String getTerminal() { return terminal; }
     public void setTerminal(String terminal) { this.terminal = terminal; }
     public Long getOpenedByEmployeeId() { return openedByEmployeeId; }

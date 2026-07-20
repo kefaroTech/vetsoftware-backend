@@ -24,9 +24,9 @@ class CashSessionQueryServiceTest {
         repository = new FakeCashSessionRepository();
         service = new CashSessionQueryService(repository);
 
-        repository.save(CashSession.open(COMPANY, BRANCH_ONE, "principal", 101L, BigDecimal.TEN, null));
-        repository.save(CashSession.open(COMPANY, BRANCH_TWO, "principal", 102L, BigDecimal.ONE, null));
-        repository.save(CashSession.open(2L, 30L, "principal", 103L, BigDecimal.ZERO, null));
+        repository.save(CashSession.open(COMPANY, BRANCH_ONE, 100L, "principal", 101L, BigDecimal.TEN, null));
+        repository.save(CashSession.open(COMPANY, BRANCH_TWO, 200L, "principal", 102L, BigDecimal.ONE, null));
+        repository.save(CashSession.open(2L, 30L, 300L, "principal", 103L, BigDecimal.ZERO, null));
     }
 
     @Test

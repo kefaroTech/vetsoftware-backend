@@ -50,6 +50,7 @@ class OpenCashSessionServiceTest {
 
         assertThat(view.status()).isEqualTo(CashSessionStatus.OPEN);
         assertThat(view.openingFloat()).isEqualByComparingTo("100");
+        assertThat(view.terminalId()).isEqualTo(TERMINAL);
         assertThat(view.terminal()).isEqualTo("CAJA-2");
         assertThat(repo.existsOpen(CO, BR, "CAJA-2")).isTrue();
     }
@@ -63,7 +64,7 @@ class OpenCashSessionServiceTest {
 
     @Test
     void open_rejects_when_another_employee_uses_the_same_terminal() {
-        repo.save(CashSession.open(CO, BR, "CAJA-2", OTHER_USER, bd("50"), null));
+        repo.save(CashSession.open(CO, BR, TERMINAL, "CAJA-2", OTHER_USER, bd("50"), null));
 
         assertThatThrownBy(() -> service.open(
             new OpenCashSessionCommand(CO, BR, TERMINAL, bd("100"), USER, null)))
@@ -74,7 +75,7 @@ class OpenCashSessionServiceTest {
 
     @Test
     void open_rejects_when_employee_has_an_open_session_in_another_branch_and_terminal() {
-        repo.save(CashSession.open(CO, BR, "caja-1", USER, bd("50"), null));
+        repo.save(CashSession.open(CO, BR, 101L, "caja-1", USER, bd("50"), null));
 
         assertThatThrownBy(() -> service.open(
             new OpenCashSessionCommand(CO, OTHER_BR, TERMINAL, bd("100"), USER, null)))

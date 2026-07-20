@@ -59,8 +59,8 @@ public class CashLedgerService implements CashLedgerUseCase {
     @Override
     @Transactional
     public void reverse(ReverseCashMovementsCommand command) {
-        Optional<CashSession> open = repository.findOpen(
-            command.companyId(), command.branchId(), resolveTerminal(command.terminal()));
+        Optional<CashSession> open = resolveOpenSession(
+            command.companyId(), command.branchId(), command.terminal(), command.employeeId());
         if (open.isEmpty()) return;
         CashSession session = open.get();
         boolean changed = false;
@@ -95,12 +95,17 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     private Optional<CashSession> resolveOpenSession(RegisterCashInflowCommand command) {
-        if (command.referenceType() == CashReferenceType.POS_DOCUMENT && command.employeeId() != null) {
-            return repository.findOpenByEmployee(command.companyId(), command.employeeId())
-                .filter(session -> session.getBranchId().equals(command.branchId()));
+        return resolveOpenSession(command.companyId(), command.branchId(), command.terminal(), command.employeeId());
+    }
+
+    /** Los cobros/anulaciones con actor se enrutan siempre a su caja; el terminal queda como fallback interno. */
+    private Optional<CashSession> resolveOpenSession(Long companyId, Long branchId, String terminal,
+                                                     Long employeeId) {
+        if (employeeId != null) {
+            return repository.findOpenByEmployee(companyId, employeeId)
+                .filter(session -> session.getBranchId().equals(branchId));
         }
-        return repository.findOpen(
-            command.companyId(), command.branchId(), resolveTerminal(command.terminal()));
+        return repository.findOpen(companyId, branchId, resolveTerminal(terminal));
     }
 
     /** Suma los pagos por método (positivos); descarta montos nulos o ≤ 0. Orden estable. */

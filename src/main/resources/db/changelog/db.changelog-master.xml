@@ -212,5 +212,7 @@
     <include file="db/changelog/migrations/207_create_cash_terminals.xml"/>
     <include file="db/changelog/migrations/208_single_active_auth_session.xml"/>
     <include file="db/changelog/migrations/209_seed_cashregister_history_permission.xml"/>
+    <include file="db/changelog/migrations/210_scope_open_accounts_by_branch.xml"/>
+    <include file="db/changelog/migrations/211_link_cash_session_terminal.xml"/>
 
 </databaseChangeLog>

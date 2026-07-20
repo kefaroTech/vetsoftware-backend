@@ -43,7 +43,7 @@ class CloseCashSessionServiceTest {
 
     /** Sesión OPEN con base 100 efectivo + venta 50 efectivo + 30 tarjeta. Esperado: CASH 150, CARD 30. */
     private CashSession seedOpenSession() {
-        CashSession s = CashSession.open(CO, BR, "principal", USER, bd("100"), null);
+        CashSession s = CashSession.open(CO, BR, 100L, "principal", USER, bd("100"), null);
         s.addMovement(CashMovement.create(CashMovementType.SALE_IN, CashPaymentMethod.CASH, bd("50"),
             CashReferenceType.POS_DOCUMENT, 1L, USER, null));
         s.addMovement(CashMovement.create(CashMovementType.SALE_IN, CashPaymentMethod.CARD, bd("30"),

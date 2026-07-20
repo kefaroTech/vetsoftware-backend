@@ -56,7 +56,7 @@ public class CashTerminalService {
         String normalizedName = normalizeName(name);
         String normalizedCode = normalizeCode(code);
         if (!entity.getCode().equalsIgnoreCase(normalizedCode)
-                && cashSessionRepository.existsOpen(companyId, entity.getBranchId(), entity.getCode())) {
+                && cashSessionRepository.existsOpenByTerminalId(companyId, entity.getBranchId(), entity.getId())) {
             throw new IllegalStateException("No se puede cambiar el código de un terminal con una caja abierta");
         }
         if (repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(
@@ -72,7 +72,7 @@ public class CashTerminalService {
     public CashTerminalDto setActive(Long companyId, Long id, boolean active) {
         CashTerminalJpaEntity entity = get(companyId, id);
         if (!active && entity.isActive()
-                && cashSessionRepository.existsOpen(companyId, entity.getBranchId(), entity.getCode())) {
+                && cashSessionRepository.existsOpenByTerminalId(companyId, entity.getBranchId(), entity.getId())) {
             throw new IllegalStateException("No se puede desactivar un terminal con una caja abierta");
         }
         entity.setActive(active);

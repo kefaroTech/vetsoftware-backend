@@ -34,6 +34,7 @@ public class JpaCashSessionRepository implements CashSessionRepository {
         entity.setId(session.getId());
         entity.setCompanyId(session.getCompanyId());
         entity.setBranchId(session.getBranchId());
+        entity.setTerminalId(session.getTerminalId());
         entity.setTerminal(session.getTerminal());
         entity.setOpenedByEmployeeId(session.getOpenedByEmployeeId());
         entity.setOpenedAt(session.getOpenedAt());
@@ -85,9 +86,20 @@ public class JpaCashSessionRepository implements CashSessionRepository {
     }
 
     @Override
+    public Optional<CashSessionView> findOpenSummaryByTerminalId(Long companyId, Long branchId, Long terminalId) {
+        return jpaRepository.findOpenSummaryByTerminalId(companyId, branchId, terminalId).map(this::toSummary);
+    }
+
+    @Override
     public boolean existsOpen(Long companyId, Long branchId, String terminal) {
         return jpaRepository.existsByCompanyIdAndBranchIdAndTerminalAndStatus(
             companyId, branchId, terminal, CashSessionStatus.OPEN);
+    }
+
+    @Override
+    public boolean existsOpenByTerminalId(Long companyId, Long branchId, Long terminalId) {
+        return jpaRepository.existsByCompanyIdAndBranchIdAndTerminalIdAndStatus(
+            companyId, branchId, terminalId, CashSessionStatus.OPEN);
     }
 
     @Override
@@ -124,7 +136,7 @@ public class JpaCashSessionRepository implements CashSessionRepository {
     }
 
     private CashSessionView toSummary(CashSessionSummaryRow e) {
-        return CashSessionView.summary(e.getId(), e.getBranchId(), e.getBranchName(), e.getTerminal(),
+        return CashSessionView.summary(e.getId(), e.getBranchId(), e.getBranchName(), e.getTerminalId(), e.getTerminal(),
             CashSessionStatus.valueOf(e.getStatus()), e.getOpenedByEmployeeId(), e.getOpenedByEmployeeName(),
             e.getOpenedAt(), e.getOpeningFloat(), e.getClosingTotal(), e.getClosedByEmployeeId(),
             e.getClosedByEmployeeName(), e.getClosedAt(), e.getNote(), e.getVersion());
@@ -138,7 +150,7 @@ public class JpaCashSessionRepository implements CashSessionRepository {
         List<CashSessionCount> counts = e.getCounts().stream()
             .map(c -> new CashSessionCount(c.getId(), c.getMethod(), c.getExpectedAmount(), c.getCountedAmount()))
             .toList();
-        return new CashSession(e.getId(), e.getCompanyId(), e.getBranchId(), e.getTerminal(),
+        return new CashSession(e.getId(), e.getCompanyId(), e.getBranchId(), e.getTerminalId(), e.getTerminal(),
             e.getOpenedByEmployeeId(), e.getOpenedAt(), e.getOpeningFloat(), e.getStatus(),
             e.getClosedByEmployeeId(), e.getClosedAt(), e.getNote(), e.getVersion(), movements, counts);
     }
