@@ -20,7 +20,7 @@ import org.hibernate.annotations.SQLRestriction;
 /** Cabecera comercial del combo. Sus componentes vigentes viven en product_bundle_items. */
 @Entity
 @Table(name = "product_bundles")
-@SQLDelete(sql = "UPDATE product_bundles SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE product_bundles SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class ProductBundleJpaEntity {
     @Id
@@ -61,6 +61,31 @@ public class ProductBundleJpaEntity {
     private boolean enabled = true;
 
     protected ProductBundleJpaEntity() {}
+
+    public static ProductBundleJpaEntity create(
+            CompanyJpaEntity company, String name, String code,
+            UnitMeasureCatalogJpaEntity unitMeasure, BigDecimal salePrice, Long actorId) {
+        ProductBundleJpaEntity entity = new ProductBundleJpaEntity();
+        entity.company = company;
+        entity.apply(name, code, unitMeasure, salePrice, actorId);
+        entity.createdDate = LocalDateTime.now();
+        return entity;
+    }
+
+    public void update(String name, String code, UnitMeasureCatalogJpaEntity unitMeasure,
+                       BigDecimal salePrice, Long actorId) {
+        apply(name, code, unitMeasure, salePrice, actorId);
+    }
+
+    private void apply(String name, String code, UnitMeasureCatalogJpaEntity unitMeasure,
+                       BigDecimal salePrice, Long actorId) {
+        this.name = name;
+        this.code = code;
+        this.unitMeasure = unitMeasure;
+        this.salePrice = salePrice;
+        this.updatedBy = actorId;
+        this.updatedDate = LocalDateTime.now();
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

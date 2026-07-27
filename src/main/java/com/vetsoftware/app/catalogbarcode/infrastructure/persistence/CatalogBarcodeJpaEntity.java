@@ -23,7 +23,7 @@ import org.hibernate.annotations.SQLRestriction;
 /** Registro central que garantiza que un barcode activo resuelve un único artículo por empresa. */
 @Entity
 @Table(name = "catalog_barcodes")
-@SQLDelete(sql = "UPDATE catalog_barcodes SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE catalog_barcodes SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class CatalogBarcodeJpaEntity {
     @Id
@@ -66,6 +66,33 @@ public class CatalogBarcodeJpaEntity {
     private boolean enabled = true;
 
     protected CatalogBarcodeJpaEntity() {}
+
+    public static CatalogBarcodeJpaEntity forPresentation(
+            CompanyJpaEntity company, String barcode,
+            ProductPresentationJpaEntity presentation, Long actorId) {
+        CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.PRESENTATION, actorId);
+        entity.presentation = presentation;
+        return entity;
+    }
+
+    public static CatalogBarcodeJpaEntity forBundle(
+            CompanyJpaEntity company, String barcode,
+            ProductBundleJpaEntity bundle, Long actorId) {
+        CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.BUNDLE, actorId);
+        entity.bundle = bundle;
+        return entity;
+    }
+
+    private static CatalogBarcodeJpaEntity base(
+            CompanyJpaEntity company, String barcode, SellableItemType itemType, Long actorId) {
+        CatalogBarcodeJpaEntity entity = new CatalogBarcodeJpaEntity();
+        entity.company = company;
+        entity.barcode = barcode;
+        entity.itemType = itemType;
+        entity.createdDate = LocalDateTime.now();
+        entity.updatedBy = actorId;
+        return entity;
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

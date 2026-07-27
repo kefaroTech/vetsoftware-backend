@@ -11,6 +11,7 @@ public record CreateProductRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 50) String code,
         @NotNull @DecimalMin("0.0") BigDecimal salePrice,
+        @Size(max = 10) String baseUnitMeasureCode,
         @Size(max = 150) String provider,
         Long supplierId,
         @Size(max = 500) String notes,

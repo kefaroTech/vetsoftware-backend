@@ -24,6 +24,7 @@ public class ProductJpaMapper {
         entity.setName(product.getName());
         entity.setCode(product.getCode());
         entity.setSalePrice(product.getSalePrice());
+        entity.setBaseUnitMeasureCode(product.getBaseUnitMeasureCode());
         entity.setProvider(product.getProvider());
         entity.setSupplier(supplier);
         entity.setTaxTreatment(product.getTaxTreatment());
@@ -58,6 +59,7 @@ public class ProductJpaMapper {
             entity.getName(),
             entity.getCode(),
             entity.getSalePrice(),
+            entity.getBaseUnitMeasureCode(),
             entity.getProvider(),
             supplierRef,
             entity.getTaxTreatment(),

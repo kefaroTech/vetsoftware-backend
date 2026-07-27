@@ -9,6 +9,7 @@ public record ProductResponse(
         String name,
         String code,
         BigDecimal salePrice,
+        String baseUnitMeasureCode,
         String provider,
         SupplierSummary supplier,
         TaxTreatment taxTreatment,

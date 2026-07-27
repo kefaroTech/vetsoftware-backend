@@ -93,6 +93,8 @@ import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAcco
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
@@ -243,7 +245,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             BranchNotFoundException.class, InventoryCountNotFoundException.class,
             CashSessionNotFoundException.class, SupplierNotFoundException.class,
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
-            SupplierInvoiceNotFoundException.class
+            SupplierInvoiceNotFoundException.class,
+            PetshopCatalogNotFoundException.class
     })
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
@@ -429,6 +432,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
             "El registro fue modificado por otra operación. Reintenta.");
+    }
+
+    @ExceptionHandler(PetshopCatalogConflictException.class)
+    public ProblemDetail handlePetshopCatalogConflict(PetshopCatalogConflictException ex) {
+        log.warn("Petshop catalog conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, ex.getCode(), ex.getMessage());
     }
 
     // Detección temprana del mismo conflicto: la versión que envió el front (expectedVersion) ya no es

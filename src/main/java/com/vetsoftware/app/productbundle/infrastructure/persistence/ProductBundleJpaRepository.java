@@ -14,4 +14,6 @@ public interface ProductBundleJpaRepository extends JpaRepository<ProductBundleJ
 
     boolean existsByCompany_IdAndCode(Long companyId, String code);
     boolean existsByCompany_IdAndName(Long companyId, String name);
+    boolean existsByCompany_IdAndCodeAndIdNot(Long companyId, String code, Long id);
+    boolean existsByCompany_IdAndNameAndIdNot(Long companyId, String name, Long id);
 }

@@ -66,6 +66,8 @@ public class ProductController {
         return toResponse(createUseCase.execute(
             new CreateProductCommand(
                 request.name(), request.code(), request.salePrice(),
+                request.baseUnitMeasureCode() == null || request.baseUnitMeasureCode().isBlank()
+                    ? "94" : request.baseUnitMeasureCode(),
                 request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId())));
@@ -108,6 +110,8 @@ public class ProductController {
         return toResponse(updateUseCase.execute(
             new UpdateProductCommand(
                 id, request.name(), request.code(), request.salePrice(),
+                request.baseUnitMeasureCode() == null || request.baseUnitMeasureCode().isBlank()
+                    ? "94" : request.baseUnitMeasureCode(),
                 request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
                 request.productCategoryId(), request.taxId(),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
@@ -131,6 +135,7 @@ public class ProductController {
         SupplierSummaryDto s = dto.supplier();
         return new ProductResponse(
             dto.id(), dto.name(), dto.code(), dto.salePrice(),
+            dto.baseUnitMeasureCode(),
             dto.provider(), s == null ? null : new SupplierSummary(s.id(), s.name()),
             dto.taxTreatment(), dto.notes(),
             new ProductCategorySummary(pc.id(), pc.name()),

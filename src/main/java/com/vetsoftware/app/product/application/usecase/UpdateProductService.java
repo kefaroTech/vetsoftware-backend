@@ -4,10 +4,12 @@ import com.vetsoftware.app.product.application.command.UpdateProductCommand;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import com.vetsoftware.app.product.application.port.in.UpdateProductUseCase;
 import com.vetsoftware.app.product.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.product.application.port.out.DefaultProductPresentationPort;
 import com.vetsoftware.app.product.application.port.out.ProductCategoryQueryPort;
 import com.vetsoftware.app.product.application.port.out.ProductRepository;
 import com.vetsoftware.app.product.application.port.out.SupplierQueryPort;
 import com.vetsoftware.app.product.application.port.out.TaxQueryPort;
+import com.vetsoftware.app.product.application.port.out.UnitMeasureQueryPort;
 import com.vetsoftware.app.product.domain.CompanyRef;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.product.domain.ProductCategoryRef;
@@ -28,17 +30,23 @@ public class UpdateProductService implements UpdateProductUseCase {
     private final ProductCategoryQueryPort productCategoryQueryPort;
     private final TaxQueryPort taxQueryPort;
     private final SupplierQueryPort supplierQueryPort;
+    private final UnitMeasureQueryPort unitMeasureQueryPort;
+    private final DefaultProductPresentationPort defaultPresentationPort;
 
     public UpdateProductService(ProductRepository repository,
                                 CompanyQueryPort companyQueryPort,
                                 ProductCategoryQueryPort productCategoryQueryPort,
                                 TaxQueryPort taxQueryPort,
-                                SupplierQueryPort supplierQueryPort) {
+                                SupplierQueryPort supplierQueryPort,
+                                UnitMeasureQueryPort unitMeasureQueryPort,
+                                DefaultProductPresentationPort defaultPresentationPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.productCategoryQueryPort = productCategoryQueryPort;
         this.taxQueryPort = taxQueryPort;
         this.supplierQueryPort = supplierQueryPort;
+        this.unitMeasureQueryPort = unitMeasureQueryPort;
+        this.defaultPresentationPort = defaultPresentationPort;
     }
 
     @Override
@@ -62,11 +70,20 @@ public class UpdateProductService implements UpdateProductUseCase {
         SupplierRef supplier = command.supplierId() == null ? null
             : supplierQueryPort.findById(command.supplierId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
+        if (!unitMeasureQueryPort.exists(command.baseUnitMeasureCode())) {
+            throw new IllegalArgumentException(
+                "Unit measure not found: " + command.baseUnitMeasureCode());
+        }
 
         product.update(
-            command.name(), command.code(), command.salePrice(), command.provider(), supplier,
+            command.name(), command.code(), command.salePrice(), command.baseUnitMeasureCode(),
+            command.provider(), supplier,
             command.taxTreatment(), command.notes(),
             productCategory, tax, company, command.updatedBy(), command.version());
-        return ProductDto.from(repository.save(product));
+        Product saved = repository.save(product);
+        defaultPresentationPort.synchronizeDefault(
+            saved.getId(), command.companyId(), command.baseUnitMeasureCode(),
+            command.salePrice(), command.updatedBy());
+        return ProductDto.from(saved);
     }
 }

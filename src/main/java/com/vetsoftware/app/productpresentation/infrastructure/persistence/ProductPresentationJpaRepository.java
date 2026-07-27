@@ -15,4 +15,9 @@ public interface ProductPresentationJpaRepository extends JpaRepository<ProductP
 
     Optional<ProductPresentationJpaEntity>
         findByCompany_IdAndProduct_IdAndDefaultPresentationTrue(Long companyId, Long productId);
+
+    boolean existsByCompany_IdAndProduct_IdAndName(Long companyId, Long productId, String name);
+
+    boolean existsByCompany_IdAndProduct_IdAndNameAndIdNot(
+        Long companyId, Long productId, String name, Long id);
 }

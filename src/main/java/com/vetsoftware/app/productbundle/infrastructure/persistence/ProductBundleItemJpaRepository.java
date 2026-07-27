@@ -8,4 +8,9 @@ public interface ProductBundleItemJpaRepository extends JpaRepository<ProductBun
     @EntityGraph(attributePaths = {"presentation", "presentation.product", "presentation.unitMeasure"})
     List<ProductBundleItemJpaEntity> findAllByCompany_IdAndBundle_IdOrderByDisplayOrderAsc(
         Long companyId, Long bundleId);
+
+    boolean existsByCompany_IdAndPresentation_IdAndBundle_EnabledTrue(
+        Long companyId, Long presentationId);
+
+    void deleteAllByCompany_IdAndBundle_Id(Long companyId, Long bundleId);
 }

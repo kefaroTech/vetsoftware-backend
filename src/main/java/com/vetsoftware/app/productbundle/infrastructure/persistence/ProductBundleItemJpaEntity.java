@@ -44,6 +44,19 @@ public class ProductBundleItemJpaEntity {
 
     protected ProductBundleItemJpaEntity() {}
 
+    public static ProductBundleItemJpaEntity create(
+            CompanyJpaEntity company, ProductBundleJpaEntity bundle,
+            ProductPresentationJpaEntity presentation, int quantity, int displayOrder) {
+        ProductBundleItemJpaEntity entity = new ProductBundleItemJpaEntity();
+        entity.company = company;
+        entity.bundle = bundle;
+        entity.presentation = presentation;
+        entity.quantity = quantity;
+        entity.displayOrder = displayOrder;
+        entity.createdDate = LocalDateTime.now();
+        return entity;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public CompanyJpaEntity getCompany() { return company; }

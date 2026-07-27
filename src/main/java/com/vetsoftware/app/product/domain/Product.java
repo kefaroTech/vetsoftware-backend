@@ -13,6 +13,7 @@ public class Product {
     private String name;
     private String code;
     private BigDecimal salePrice;
+    private String baseUnitMeasureCode;
     private String provider;
     private SupplierRef supplier;
     private TaxTreatment taxTreatment;
@@ -26,16 +27,17 @@ public class Product {
     private Long version;
     private boolean enabled;
 
-    public Product(Long id, String name, String code, BigDecimal salePrice, String provider,
+    public Product(Long id, String name, String code, BigDecimal salePrice, String baseUnitMeasureCode, String provider,
                    SupplierRef supplier, TaxTreatment taxTreatment, String notes, ProductCategoryRef productCategory,
                    TaxRef tax, CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate,
                    Long updatedBy, Long version, boolean enabled) {
-        validate(name, code, salePrice, provider, notes, productCategory, company);
+        validate(name, code, salePrice, baseUnitMeasureCode, provider, notes, productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.id = id;
         this.name = name;
         this.code = code;
         this.salePrice = salePrice;
+        this.baseUnitMeasureCode = baseUnitMeasureCode;
         this.provider = provider;
         this.supplier = supplier;
         this.taxTreatment = taxTreatment;
@@ -50,22 +52,24 @@ public class Product {
         this.enabled = enabled;
     }
 
-    public static Product create(String name, String code, BigDecimal salePrice, String provider,
+    public static Product create(String name, String code, BigDecimal salePrice, String baseUnitMeasureCode,
+                                 String provider,
                                  SupplierRef supplier, TaxTreatment taxTreatment, String notes,
                                  ProductCategoryRef productCategory, TaxRef tax, CompanyRef company) {
-        return new Product(null, name, code, salePrice, provider, supplier, taxTreatment, notes,
+        return new Product(null, name, code, salePrice, baseUnitMeasureCode, provider, supplier, taxTreatment, notes,
                            productCategory, tax, company, LocalDateTime.now(), null, null, null, true);
     }
 
-    public void update(String name, String code, BigDecimal salePrice, String provider,
+    public void update(String name, String code, BigDecimal salePrice, String baseUnitMeasureCode, String provider,
                        SupplierRef supplier, TaxTreatment taxTreatment, String notes,
                        ProductCategoryRef productCategory, TaxRef tax, CompanyRef company, Long updatedBy,
                        Long expectedVersion) {
-        validate(name, code, salePrice, provider, notes, productCategory, company);
+        validate(name, code, salePrice, baseUnitMeasureCode, provider, notes, productCategory, company);
         validateTaxTreatment(taxTreatment, tax);
         this.name = name;
         this.code = code;
         this.salePrice = salePrice;
+        this.baseUnitMeasureCode = baseUnitMeasureCode;
         this.provider = provider;
         this.supplier = supplier;
         this.taxTreatment = taxTreatment;
@@ -78,7 +82,8 @@ public class Product {
         this.version = expectedVersion;
     }
 
-    private static void validate(String name, String code, BigDecimal salePrice, String provider,
+    private static void validate(String name, String code, BigDecimal salePrice, String baseUnitMeasureCode,
+                                 String provider,
                                  String notes, ProductCategoryRef productCategory, CompanyRef company) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
         if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
@@ -86,6 +91,10 @@ public class Product {
         if (code.length() > 50) throw new IllegalArgumentException("code must be 50 chars or less");
         if (salePrice == null) throw new IllegalArgumentException("salePrice is required");
         if (salePrice.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("salePrice cannot be negative");
+        if (baseUnitMeasureCode == null || baseUnitMeasureCode.isBlank())
+            throw new IllegalArgumentException("baseUnitMeasureCode is required");
+        if (baseUnitMeasureCode.length() > 10)
+            throw new IllegalArgumentException("baseUnitMeasureCode must be 10 chars or less");
         if (provider != null && provider.length() > 150) throw new IllegalArgumentException("provider must be 150 chars or less");
         if (notes != null && notes.length() > 500) throw new IllegalArgumentException("notes must be 500 chars or less");
         if (productCategory == null) throw new IllegalArgumentException("productCategory is required");
@@ -112,6 +121,7 @@ public class Product {
     public String getName() { return name; }
     public String getCode() { return code; }
     public BigDecimal getSalePrice() { return salePrice; }
+    public String getBaseUnitMeasureCode() { return baseUnitMeasureCode; }
     public String getProvider() { return provider; }
     public SupplierRef getSupplier() { return supplier; }
     public TaxTreatment getTaxTreatment() { return taxTreatment; }

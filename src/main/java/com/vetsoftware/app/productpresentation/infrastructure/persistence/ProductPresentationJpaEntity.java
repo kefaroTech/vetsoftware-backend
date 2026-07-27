@@ -21,7 +21,7 @@ import org.hibernate.annotations.SQLRestriction;
 /** SKU vendible de un producto y conversión entera a su unidad base de inventario. */
 @Entity
 @Table(name = "product_presentations")
-@SQLDelete(sql = "UPDATE product_presentations SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE product_presentations SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class ProductPresentationJpaEntity {
     @Id
@@ -69,6 +69,42 @@ public class ProductPresentationJpaEntity {
     private boolean enabled = true;
 
     protected ProductPresentationJpaEntity() {}
+
+    public static ProductPresentationJpaEntity create(
+            CompanyJpaEntity company, ProductJpaEntity product, String name,
+            UnitMeasureCatalogJpaEntity unitMeasure, int conversionFactor,
+            BigDecimal salePrice, boolean defaultPresentation, Long actorId) {
+        ProductPresentationJpaEntity entity = new ProductPresentationJpaEntity();
+        entity.company = company;
+        entity.product = product;
+        entity.apply(name, unitMeasure, conversionFactor, salePrice, defaultPresentation, actorId);
+        entity.createdDate = LocalDateTime.now();
+        return entity;
+    }
+
+    public void update(String name, UnitMeasureCatalogJpaEntity unitMeasure,
+                       int conversionFactor, BigDecimal salePrice,
+                       boolean defaultPresentation, Long actorId) {
+        apply(name, unitMeasure, conversionFactor, salePrice, defaultPresentation, actorId);
+    }
+
+    public void markDefault(boolean value, Long actorId) {
+        this.defaultPresentation = value;
+        this.updatedBy = actorId;
+        this.updatedDate = LocalDateTime.now();
+    }
+
+    private void apply(String name, UnitMeasureCatalogJpaEntity unitMeasure,
+                       int conversionFactor, BigDecimal salePrice,
+                       boolean defaultPresentation, Long actorId) {
+        this.name = name;
+        this.unitMeasure = unitMeasure;
+        this.conversionFactor = conversionFactor;
+        this.salePrice = salePrice;
+        this.defaultPresentation = defaultPresentation;
+        this.updatedBy = actorId;
+        this.updatedDate = LocalDateTime.now();
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

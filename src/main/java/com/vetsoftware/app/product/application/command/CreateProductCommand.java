@@ -7,6 +7,7 @@ public record CreateProductCommand(
         String name,
         String code,
         BigDecimal salePrice,
+        String baseUnitMeasureCode,
         String provider,
         Long supplierId,
         String notes,
