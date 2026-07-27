@@ -75,6 +75,12 @@ management:
           endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
 
 vetsoftware:
+  observability:
+    # Ruta absoluta y estable, independiente del directorio desde el que se inicia Java.
+    # En servidores con varias instancias, cada proceso debe definir un identificador único.
+    service-instance-id: ${VETSOFTWARE_INSTANCE_ID:local}
+    logging:
+      directory: ${VETSOFTWARE_LOG_DIR:${user.home}/.vetsoftware/logs}
   pdf:
     gotenberg:
       url: ${GOTENBERG_URL:http://localhost:3001}

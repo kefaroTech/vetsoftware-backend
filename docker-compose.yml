@@ -64,10 +64,15 @@ services:
     image: grafana/alloy:v1.18.0
     container_name: vetsoftware_alloy
     restart: unless-stopped
+    environment:
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+      SERVICE_NAME: ${OTEL_SERVICE_NAME:-vetsoftware}
     ports:
       - "127.0.0.1:12345:12345"
     volumes:
-      - ./logs:/logs:ro
+      # Debe coincidir con VETSOFTWARE_LOG_DIR del backend. El valor por defecto
+      # es estable y no depende del directorio de trabajo de Java o IntelliJ.
+      - ${VETSOFTWARE_LOG_DIR:-${HOME}/.vetsoftware/logs}:/logs:ro
       - ./docker/alloy.alloy:/etc/alloy/config.alloy:ro
       - vetsoftware_alloy_data:/var/lib/alloy/data
     command:
