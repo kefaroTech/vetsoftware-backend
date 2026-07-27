@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Catálogo mínimo y extensible. El conjunto completo se sincronizará con el proveedor DIAN en una fase posterior. -->
+    <changeSet id="212_01_create_unit_measure_catalog" author="codex">
+        <createTable tableName="unit_measure_catalog">
+            <column name="code" type="VARCHAR(10)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="symbol" type="VARCHAR(20)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <insert tableName="unit_measure_catalog">
+            <column name="code" value="94"/>
+            <column name="name" value="Unidad"/>
+            <column name="symbol" value="und"/>
+        </insert>
+        <rollback>
+            <dropTable tableName="unit_measure_catalog"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Mantiene compatible el alta actual de Product: Hibernate enviará 94 como valor inicial. -->
+    <changeSet id="212_02_add_product_base_unit" author="codex">
+        <addColumn tableName="products">
+            <column name="base_unit_measure_code" type="VARCHAR(10)" defaultValue="94">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="products" baseColumnNames="base_unit_measure_code"
+                                 referencedTableName="unit_measure_catalog" referencedColumnNames="code"
+                                 constraintName="fk_products_base_unit_measure"/>
+        <createIndex tableName="products" indexName="idx_products_base_unit_measure">
+            <column name="base_unit_measure_code"/>
+        </createIndex>
+        <!-- Habilita FKs compuestas que garantizan el mismo tenant en las tablas nuevas. -->
+        <addUniqueConstraint tableName="products" columnNames="id,company_id"
+                             constraintName="uq_products_id_company"/>
+        <addUniqueConstraint tableName="branches" columnNames="id,company_id"
+                             constraintName="uq_branches_id_company"/>
+        <rollback>
+            <dropUniqueConstraint tableName="branches" constraintName="uq_branches_id_company"/>
+            <dropUniqueConstraint tableName="products" constraintName="uq_products_id_company"/>
+            <dropIndex tableName="products" indexName="idx_products_base_unit_measure"/>
+            <dropForeignKeyConstraint baseTableName="products" constraintName="fk_products_base_unit_measure"/>
+            <dropColumn tableName="products" columnName="base_unit_measure_code"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="212_03_create_product_presentations" author="codex">
+        <createTable tableName="product_presentations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_product_presentations_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="product_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="unit_measure_code" type="VARCHAR(10)">
+                <constraints nullable="false" foreignKeyName="fk_product_presentations_unit_measure"
+                             references="unit_measure_catalog(code)"/>
+            </column>
+            <column name="conversion_factor" type="INT"><constraints nullable="false"/></column>
+            <column name="sale_price" type="DECIMAL(12,2)"><constraints nullable="false"/></column>
+            <column name="default_presentation" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="product_presentations" baseColumnNames="product_id,company_id"
+                                 referencedTableName="products" referencedColumnNames="id,company_id"
+                                 constraintName="fk_product_presentations_product_company"/>
+        <addUniqueConstraint tableName="product_presentations" columnNames="id,company_id"
+                             constraintName="uq_product_presentations_id_company"/>
+        <createIndex tableName="product_presentations" indexName="idx_product_presentations_company_product">
+            <column name="company_id"/><column name="product_id"/><column name="enabled"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE product_presentations
+                ADD CONSTRAINT chk_product_presentations_factor CHECK (conversion_factor &gt; 0),
+                ADD CONSTRAINT chk_product_presentations_price CHECK (sale_price &gt;= 0),
+                ADD COLUMN active_name VARCHAR(120)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD COLUMN active_default_marker TINYINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN enabled = TRUE AND default_presentation = TRUE THEN 1 ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_product_presentations_active_name UNIQUE (product_id, active_name),
+                ADD CONSTRAINT uq_product_presentations_active_default UNIQUE (product_id, active_default_marker)
+        </sql>
+        <rollback>
+            <dropTable tableName="product_presentations"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Todo producto previo obtiene una presentación vendible equivalente a su comportamiento actual. -->
+    <changeSet id="212_04_backfill_default_product_presentations" author="codex">
+        <sql>
+            INSERT INTO product_presentations
+                (company_id, product_id, name, unit_measure_code, conversion_factor, sale_price,
+                 default_presentation, created_date, updated_date, updated_by, version, enabled)
+            SELECT p.company_id, p.id, 'Unidad', p.base_unit_measure_code, 1, p.sale_price,
+                   TRUE, p.created_date, p.updated_date, p.updated_by, 0, p.enabled
+              FROM products p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM product_presentations pp
+                  WHERE pp.product_id = p.id AND pp.default_presentation = TRUE
+             )
+        </sql>
+        <rollback>
+            <sql>
+                DELETE pp FROM product_presentations pp
+                WHERE pp.name = 'Unidad'
+                  AND pp.conversion_factor = 1
+                  AND pp.default_presentation = TRUE
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="212_05_create_product_bundles" author="codex">
+        <createTable tableName="product_bundles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_product_bundles_company" references="companies(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="code" type="VARCHAR(60)"><constraints nullable="false"/></column>
+            <column name="unit_measure_code" type="VARCHAR(10)" defaultValue="94">
+                <constraints nullable="false" foreignKeyName="fk_product_bundles_unit_measure"
+                             references="unit_measure_catalog(code)"/>
+            </column>
+            <column name="sale_price" type="DECIMAL(12,2)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="product_bundles" columnNames="id,company_id"
+                             constraintName="uq_product_bundles_id_company"/>
+        <createIndex tableName="product_bundles" indexName="idx_product_bundles_company_enabled">
+            <column name="company_id"/><column name="enabled"/><column name="name"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE product_bundles
+                ADD CONSTRAINT chk_product_bundles_price CHECK (sale_price &gt;= 0),
+                ADD COLUMN active_name VARCHAR(120)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD COLUMN active_code VARCHAR(60)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN code ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_product_bundles_company_active_name UNIQUE (company_id, active_name),
+                ADD CONSTRAINT uq_product_bundles_company_active_code UNIQUE (company_id, active_code)
+        </sql>
+        <rollback>
+            <dropTable tableName="product_bundles"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="212_06_create_product_bundle_items" author="codex">
+        <createTable tableName="product_bundle_items">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_product_bundle_items_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="bundle_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="presentation_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="display_order" type="INT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="product_bundle_items" baseColumnNames="bundle_id,company_id"
+                                 referencedTableName="product_bundles" referencedColumnNames="id,company_id"
+                                 constraintName="fk_product_bundle_items_bundle_company"
+                                 onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="product_bundle_items" baseColumnNames="presentation_id,company_id"
+                                 referencedTableName="product_presentations" referencedColumnNames="id,company_id"
+                                 constraintName="fk_product_bundle_items_presentation_company"/>
+        <addUniqueConstraint tableName="product_bundle_items" columnNames="bundle_id,presentation_id"
+                             constraintName="uq_product_bundle_items_presentation"/>
+        <addUniqueConstraint tableName="product_bundle_items" columnNames="bundle_id,display_order"
+                             constraintName="uq_product_bundle_items_display_order"/>
+        <createIndex tableName="product_bundle_items" indexName="idx_product_bundle_items_company_presentation">
+            <column name="company_id"/><column name="presentation_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE product_bundle_items
+                ADD CONSTRAINT chk_product_bundle_items_quantity CHECK (quantity &gt; 0),
+                ADD CONSTRAINT chk_product_bundle_items_display_order CHECK (display_order &gt;= 0)
+        </sql>
+        <rollback>
+            <dropTable tableName="product_bundle_items"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Registro único entre todos los tipos vendibles; permite varios barcodes por ítem sin colisiones globales. -->
+    <changeSet id="212_07_create_catalog_barcodes" author="codex">
+        <createTable tableName="catalog_barcodes">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_barcodes_company" references="companies(id)"/>
+            </column>
+            <column name="barcode" type="VARCHAR(64)"><constraints nullable="false"/></column>
+            <column name="item_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="presentation_id" type="BIGINT"/>
+            <column name="bundle_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_date" type="DATETIME"/>
+            <column name="updated_by" type="BIGINT"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="catalog_barcodes" baseColumnNames="presentation_id,company_id"
+                                 referencedTableName="product_presentations" referencedColumnNames="id,company_id"
+                                 constraintName="fk_catalog_barcodes_presentation_company"/>
+        <addForeignKeyConstraint baseTableName="catalog_barcodes" baseColumnNames="bundle_id,company_id"
+                                 referencedTableName="product_bundles" referencedColumnNames="id,company_id"
+                                 constraintName="fk_catalog_barcodes_bundle_company"/>
+        <createIndex tableName="catalog_barcodes" indexName="idx_catalog_barcodes_presentation">
+            <column name="presentation_id"/>
+        </createIndex>
+        <createIndex tableName="catalog_barcodes" indexName="idx_catalog_barcodes_bundle">
+            <column name="bundle_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE catalog_barcodes
+                ADD CONSTRAINT chk_catalog_barcodes_target CHECK (
+                    (item_type = 'PRESENTATION' AND presentation_id IS NOT NULL AND bundle_id IS NULL)
+                    OR
+                    (item_type = 'BUNDLE' AND bundle_id IS NOT NULL AND presentation_id IS NULL)
+                ),
+                ADD COLUMN active_barcode VARCHAR(64)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN barcode ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_catalog_barcodes_company_active UNIQUE (company_id, active_barcode)
+        </sql>
+        <rollback>
+            <dropTable tableName="catalog_barcodes"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Fotografía append-only para idempotencia y reversión; se poblará al integrar los flujos de venta. -->
+    <changeSet id="212_08_create_sale_inventory_allocations" author="codex">
+        <createTable tableName="sale_inventory_allocations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_sale_inventory_allocations_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="branch_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="reference_type" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="reference_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="commercial_line_key" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="component_sequence" type="INT"><constraints nullable="false"/></column>
+            <column name="source_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="source_presentation_id" type="BIGINT"/>
+            <column name="source_bundle_id" type="BIGINT"/>
+            <column name="component_presentation_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="component_product_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="source_quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="component_quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="conversion_factor" type="INT"><constraints nullable="false"/></column>
+            <column name="base_quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="sale_inventory_allocations" baseColumnNames="branch_id,company_id"
+                                 referencedTableName="branches" referencedColumnNames="id,company_id"
+                                 constraintName="fk_sale_inventory_allocations_branch_company"/>
+        <addForeignKeyConstraint baseTableName="sale_inventory_allocations"
+                                 baseColumnNames="source_presentation_id,company_id"
+                                 referencedTableName="product_presentations" referencedColumnNames="id,company_id"
+                                 constraintName="fk_sale_inventory_allocations_source_presentation"/>
+        <addForeignKeyConstraint baseTableName="sale_inventory_allocations"
+                                 baseColumnNames="source_bundle_id,company_id"
+                                 referencedTableName="product_bundles" referencedColumnNames="id,company_id"
+                                 constraintName="fk_sale_inventory_allocations_source_bundle"/>
+        <addForeignKeyConstraint baseTableName="sale_inventory_allocations"
+                                 baseColumnNames="component_presentation_id,company_id"
+                                 referencedTableName="product_presentations" referencedColumnNames="id,company_id"
+                                 constraintName="fk_sale_inventory_allocations_component_presentation"/>
+        <addForeignKeyConstraint baseTableName="sale_inventory_allocations"
+                                 baseColumnNames="component_product_id,company_id"
+                                 referencedTableName="products" referencedColumnNames="id,company_id"
+                                 constraintName="fk_sale_inventory_allocations_component_product"/>
+        <addUniqueConstraint tableName="sale_inventory_allocations"
+                             columnNames="company_id,reference_type,reference_id,commercial_line_key,component_sequence"
+                             constraintName="uq_sale_inventory_allocations_idempotency"/>
+        <createIndex tableName="sale_inventory_allocations" indexName="idx_sale_inventory_allocations_reference">
+            <column name="reference_type"/><column name="reference_id"/>
+        </createIndex>
+        <createIndex tableName="sale_inventory_allocations" indexName="idx_sale_inventory_allocations_component">
+            <column name="company_id"/><column name="branch_id"/><column name="component_product_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE sale_inventory_allocations
+                ADD CONSTRAINT chk_sale_inventory_allocations_source CHECK (
+                    (source_type = 'PRESENTATION' AND source_presentation_id IS NOT NULL AND source_bundle_id IS NULL)
+                    OR
+                    (source_type = 'BUNDLE' AND source_bundle_id IS NOT NULL AND source_presentation_id IS NULL)
+                ),
+                ADD CONSTRAINT chk_sale_inventory_allocations_sequence CHECK (component_sequence &gt;= 0),
+                ADD CONSTRAINT chk_sale_inventory_allocations_quantities CHECK (
+                    source_quantity &gt; 0 AND component_quantity &gt; 0
+                    AND conversion_factor &gt; 0 AND base_quantity &gt; 0
+                )
+        </sql>
+        <rollback>
+            <dropTable tableName="sale_inventory_allocations"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

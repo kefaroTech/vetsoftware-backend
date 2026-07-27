@@ -29,6 +29,10 @@ public class ProductJpaEntity {
     @Column(name = "sale_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal salePrice;
 
+    /** Unidad mínima en la que se controla el inventario. 94 conserva la semántica histórica. */
+    @Column(name = "base_unit_measure_code", nullable = false, length = 10)
+    private String baseUnitMeasureCode = "94";
+
     @Column(length = 150)
     private String provider;
 
@@ -81,6 +85,8 @@ public class ProductJpaEntity {
     public void setCode(String code) { this.code = code; }
     public BigDecimal getSalePrice() { return salePrice; }
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
+    public String getBaseUnitMeasureCode() { return baseUnitMeasureCode; }
+    public void setBaseUnitMeasureCode(String baseUnitMeasureCode) { this.baseUnitMeasureCode = baseUnitMeasureCode; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
     public SupplierJpaEntity getSupplier() { return supplier; }
