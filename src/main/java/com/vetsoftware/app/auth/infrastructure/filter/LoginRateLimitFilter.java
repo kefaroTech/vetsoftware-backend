@@ -1,6 +1,6 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
