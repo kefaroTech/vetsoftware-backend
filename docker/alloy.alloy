@@ -1,0 +1,53 @@
+// Canalización de logs de VetSoftware:
+// archivo JSON de Logback -> Grafana Alloy -> Loki.
+//
+// Solo se indexan dimensiones de cardinalidad acotada. traceId y spanId
+// permanecen en el JSON y se consultan en Loki con:
+//   {job="vetsoftware"} | json | traceId="<id>"
+
+livedebugging {
+  enabled = true
+}
+
+loki.source.file "vetsoftware" {
+  targets = [
+    {
+      __path__     = "/logs/vetsoftware.log",
+      job          = "vetsoftware",
+      env          = "local",
+      service_name = "vetsoftware",
+    },
+  ]
+
+  forward_to   = [loki.process.vetsoftware.receiver]
+  tail_from_end = true
+
+  file_match {
+    enabled     = true
+    sync_period = "5s"
+  }
+}
+
+loki.process "vetsoftware" {
+  stage.json {
+    expressions = {
+      level  = "level",
+      logger = "logger_name",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level  = "",
+      logger = "",
+    }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

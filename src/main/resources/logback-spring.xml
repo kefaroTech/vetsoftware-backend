@@ -20,7 +20,7 @@
         </appender>
     </springProfile>
 
-    <!-- Archivo: JSON para Promtail → Loki, con rotación por fecha Y tamaño + tope total -->
+    <!-- Archivo: JSON para Grafana Alloy → Loki, con rotación por fecha y tamaño + tope total -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/vetsoftware.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">

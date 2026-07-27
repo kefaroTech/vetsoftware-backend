@@ -60,13 +60,21 @@ services:
     volumes:
       - vetsoftware_loki_data:/loki
 
-  promtail:
-    image: grafana/promtail:latest
-    container_name: vetsoftware_promtail
+  alloy:
+    image: grafana/alloy:v1.18.0
+    container_name: vetsoftware_alloy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:12345:12345"
     volumes:
-      - ./logs:/logs
-      - ./docker/promtail.yml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
+      - ./logs:/logs:ro
+      - ./docker/alloy.alloy:/etc/alloy/config.alloy:ro
+      - vetsoftware_alloy_data:/var/lib/alloy/data
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
     depends_on:
       - loki
 
@@ -123,6 +131,7 @@ volumes:
   vetsoftware_mysql_data:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
+  vetsoftware_alloy_data:
   vetsoftware_sonarqube_data:
   vetsoftware_sonarqube_extensions:
   vetsoftware_sonarqube_logs:
