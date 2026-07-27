@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ProviderWebho
 import com.vetsoftware.app.electronicdocument.domain.WebhookOutcome;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.HexFormat;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
@@ -83,9 +84,7 @@ public class MatiasWebhookParser implements ProviderWebhookParser {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] raw = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) hex.append(String.format("%02x", b));
-            return hex.toString();
+            return HexFormat.of().formatHex(raw);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to compute HMAC", e);
         }
@@ -94,7 +93,7 @@ public class MatiasWebhookParser implements ProviderWebhookParser {
     private static String text(JsonNode node, String key) {
         if (node == null) return null;
         JsonNode value = node.get(key);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static String firstNonNull(String... values) {

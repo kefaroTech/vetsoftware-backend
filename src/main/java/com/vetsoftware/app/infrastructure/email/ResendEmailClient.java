@@ -45,14 +45,15 @@ public class ResendEmailClient {
             @Value("${vetsoftware.email.enabled:true}") boolean enabled,
             @Value("${vetsoftware.email.from}") String from,
             @Value("${vetsoftware.email.resend.api-key:}") String apiKey,
-            @Value("${vetsoftware.email.resend.base-url:https://api.resend.com}") String baseUrl) {
+            @Value("${vetsoftware.email.resend.base-url:https://api.resend.com}") String baseUrl,
+            RestClient.Builder restClientBuilder) {
         this.enabled = enabled;
         this.from = from;
         this.apiKey = apiKey;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10_000);
         factory.setReadTimeout(30_000);
-        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).requestFactory(factory).build();
     }
 
     /** {@code true} si el envío de correo está habilitado (permite a los llamadores dar fallback en dev). */

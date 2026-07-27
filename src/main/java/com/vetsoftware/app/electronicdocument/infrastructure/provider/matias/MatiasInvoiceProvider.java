@@ -1,6 +1,5 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.provider.matias;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.EmployeeNameQueryPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigSnapshot;
@@ -35,6 +34,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Adaptador MATIAS (UBL 2.1). Modelo de la API oficial (Colección Postman sandbox):
@@ -731,7 +731,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private static String text(JsonNode node, String key) {
         if (node == null) return null;
         JsonNode value = node.get(key);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static int intOf(JsonNode node, String key) {

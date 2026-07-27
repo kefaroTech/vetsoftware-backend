@@ -14,10 +14,10 @@ import org.springframework.web.client.RestClient;
 public class DianHttpConfig {
 
     @Bean(name = "dianRestClient")
-    public RestClient dianRestClient() {
+    public RestClient dianRestClient(RestClient.Builder restClientBuilder) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(15_000);
         factory.setReadTimeout(60_000);
-        return RestClient.builder().requestFactory(factory).build();
+        return restClientBuilder.requestFactory(factory).build();
     }
 }

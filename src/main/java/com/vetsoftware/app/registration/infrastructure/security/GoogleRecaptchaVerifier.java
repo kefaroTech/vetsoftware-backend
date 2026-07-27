@@ -39,7 +39,8 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
             @Value("${vetsoftware.recaptcha.enabled:false}") boolean enabled,
             @Value("${vetsoftware.recaptcha.secret:}") String secret,
             @Value("${vetsoftware.recaptcha.verify-url:https://www.google.com/recaptcha/api/siteverify}") String verifyUrl,
-            @Value("${vetsoftware.recaptcha.min-score:0.5}") double minScore) {
+            @Value("${vetsoftware.recaptcha.min-score:0.5}") double minScore,
+            RestClient.Builder restClientBuilder) {
         this.enabled = enabled;
         this.secret = secret;
         this.verifyUrl = verifyUrl;
@@ -47,7 +48,7 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(10_000);
-        this.restClient = RestClient.builder().requestFactory(factory).build();
+        this.restClient = restClientBuilder.requestFactory(factory).build();
     }
 
     @Override

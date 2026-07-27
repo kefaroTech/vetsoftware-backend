@@ -7,6 +7,12 @@ management:
       # El muestreo real vive en docker/otel-collector.yml, no aquí.
       probability: ${TRACING_SAMPLING:1.0}
 
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+
 vetsoftware:
   storage:
     s3:

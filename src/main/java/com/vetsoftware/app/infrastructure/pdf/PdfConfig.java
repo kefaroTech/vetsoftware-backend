@@ -12,12 +12,12 @@ import org.springframework.web.client.RestClient;
 public class PdfConfig {
 
     @Bean(name = "gotenbergRestClient")
-    public RestClient gotenbergRestClient(PdfProperties properties) {
+    public RestClient gotenbergRestClient(PdfProperties properties, RestClient.Builder restClientBuilder) {
         Duration timeout = Duration.ofSeconds(properties.timeoutSeconds());
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) timeout.toMillis());
         factory.setReadTimeout((int) timeout.toMillis());
-        return RestClient.builder()
+        return restClientBuilder
                 .baseUrl(properties.url())
                 .requestFactory(factory)
                 .build();

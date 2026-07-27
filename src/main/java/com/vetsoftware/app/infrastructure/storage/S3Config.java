@@ -40,6 +40,6 @@ public class S3Config {
             return StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(properties.accessKey(), properties.secretKey()));
         }
-        return DefaultCredentialsProvider.create();
+        return DefaultCredentialsProvider.builder().build();
     }
 }

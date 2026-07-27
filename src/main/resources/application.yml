@@ -5,7 +5,7 @@ server:
   # apps en localhost (NextAuth de :3000/:3003, etc.), inflando el header Cookie por
   # encima de 8KB → Tomcat responde 400 (HTML) antes de llegar al controller. Subimos
   # el límite para tolerarlo. Override por env si hiciera falta.
-  max-http-header-size: ${MAX_HTTP_HEADER_SIZE:32KB}
+  max-http-request-header-size: ${MAX_HTTP_HEADER_SIZE:32KB}
   # 'native' → Tomcat (RemoteIpValve) solo confía en X-Forwarded-For/Proto de proxies INTERNOS de
   # confianza (rangos privados por defecto); un cliente externo no puede falsear su IP. Así
   # request.getRemoteAddr() devuelve la IP real del cliente tanto detrás de balanceador como en local.
@@ -29,6 +29,7 @@ spring:
     password: ${DB_PASSWORD:cronos2026*}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     properties:
@@ -62,9 +63,16 @@ management:
   tracing:
     sampling:
       probability: 1.0
+  # Las métricas se exponen por Prometheus; no se duplican por OTLP salvo habilitación explícita.
   otlp:
+    metrics:
+      export:
+        enabled: ${OTLP_METRICS_EXPORT_ENABLED:false}
+  opentelemetry:
     tracing:
-      endpoint: http://localhost:4318/v1/traces
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
 
 vetsoftware:
   pdf:

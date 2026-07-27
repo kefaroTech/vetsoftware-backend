@@ -1,7 +1,7 @@
 package com.vetsoftware.app.auth.infrastructure.config;
 
 import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
-import io.github.bucket4j.distributed.proxy.ClientSideConfig;
+import io.github.bucket4j.redis.lettuce.Bucket4jLettuce;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
@@ -46,11 +46,9 @@ public class RateLimitConfig {
             StatefulRedisConnection<String, byte[]> rateLimitRedisConnection) {
         // TTL de la clave basado en el tiempo de recarga del bucket → los buckets ociosos se evictan
         // solos de Redis (no hay fuga). 1 hora cubre la ventana mas larga del rate limiter.
-        ClientSideConfig clientSideConfig = ClientSideConfig.getDefault()
-                .withExpirationAfterWriteStrategy(ExpirationAfterWriteStrategy
-                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofHours(1)));
-        return LettuceBasedProxyManager.builderFor(rateLimitRedisConnection)
-                .withClientSideConfig(clientSideConfig)
+        return Bucket4jLettuce.casBasedBuilder(rateLimitRedisConnection)
+                .expirationAfterWrite(ExpirationAfterWriteStrategy
+                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofHours(1)))
                 .build();
     }
 }
