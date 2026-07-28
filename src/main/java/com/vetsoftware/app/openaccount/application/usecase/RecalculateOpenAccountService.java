@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "open_account.recalculate")
+@Observed(name = "open.account.recalculate")
 @Service
 public class RecalculateOpenAccountService implements RecalculateOpenAccountUseCase {
     private final OpenAccountRepository repository;

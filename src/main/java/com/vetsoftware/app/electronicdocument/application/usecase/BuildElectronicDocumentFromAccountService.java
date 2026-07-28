@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "electronicDocument.build")
+@Observed(name = "electronic.document.build")
 @Service
 public class BuildElectronicDocumentFromAccountService implements BuildElectronicDocumentFromAccountUseCase {
     private final DocumentBuilder documentBuilder;

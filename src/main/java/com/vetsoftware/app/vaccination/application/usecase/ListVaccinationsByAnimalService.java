@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "vaccination.list.byAnimal")
+@Observed(name = "vaccination.list.by.animal")
 @Service
 public class ListVaccinationsByAnimalService implements ListVaccinationsByAnimalUseCase {
     private final VaccinationRepository repository;

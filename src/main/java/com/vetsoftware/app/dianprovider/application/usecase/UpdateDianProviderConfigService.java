@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "dianProviderConfig.update")
+@Observed(name = "dian.provider.config.update")
 @Service
 public class UpdateDianProviderConfigService implements UpdateDianProviderConfigUseCase {
     private final DianProviderConfigRepository repository;

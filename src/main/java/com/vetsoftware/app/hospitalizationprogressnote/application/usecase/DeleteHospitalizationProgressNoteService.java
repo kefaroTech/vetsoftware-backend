@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "hospitalization_progress_note.delete")
+@Observed(name = "hospitalization.progress.note.delete")
 @Service
 public class DeleteHospitalizationProgressNoteService implements DeleteHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;

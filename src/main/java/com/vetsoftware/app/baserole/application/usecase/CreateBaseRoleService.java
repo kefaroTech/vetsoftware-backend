@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "baserole.create")
+@Observed(name = "base.role.create")
 @Service
 public class CreateBaseRoleService implements CreateBaseRoleUseCase {
     private final BaseRoleRepository repository;

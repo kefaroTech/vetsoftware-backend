@@ -8,7 +8,7 @@ import com.vetsoftware.app.economicactivity.domain.EconomicActivity;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "economicActivity.create")
+@Observed(name = "economic.activity.create")
 @Service
 public class CreateEconomicActivityService implements CreateEconomicActivityUseCase {
     private final EconomicActivityRepository repository;

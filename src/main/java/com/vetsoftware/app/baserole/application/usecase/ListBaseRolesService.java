@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "baserole.list")
+@Observed(name = "base.role.list")
 @Service
 public class ListBaseRolesService implements ListBaseRolesUseCase {
     private final BaseRoleRepository repository;

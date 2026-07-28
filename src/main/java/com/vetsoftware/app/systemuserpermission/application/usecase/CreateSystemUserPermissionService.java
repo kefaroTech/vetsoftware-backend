@@ -15,7 +15,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "systemuserpermission.create")
+@Observed(name = "system.user.permission.create")
 @Service
 public class CreateSystemUserPermissionService implements CreateSystemUserPermissionUseCase {
     private final SystemUserPermissionRepository repository;

@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "clinicalhistory.export")
+@Observed(name = "clinical.history.export")
 @Service
 public class ExportClinicalHistoryService implements ExportClinicalHistoryUseCase {
 

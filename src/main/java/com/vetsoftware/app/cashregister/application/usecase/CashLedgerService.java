@@ -39,7 +39,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "cashRegister.registerInflow")
+    @Observed(name = "cash.register.register.inflow")
     @Transactional
     public void registerInflow(RegisterCashInflowCommand command) {
         Optional<CashSession> open = resolveOpenSession(command);
@@ -59,7 +59,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "cashRegister.reverseMovements")
+    @Observed(name = "cash.register.reverse.movements")
     @Transactional
     public void reverse(ReverseCashMovementsCommand command) {
         Optional<CashSession> open = resolveOpenSession(
@@ -80,7 +80,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "cashRegister.ensureCashAvailable")
+    @Observed(name = "cash.register.ensure.cash.available")
     @Transactional(readOnly = true)
     public void ensureCashAvailable(Long companyId, Long branchId, String terminal) {
         if (!cashRequiredPolicy.isCashRequired(companyId)) return;
@@ -90,7 +90,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "cashRegister.ensureEmployeeCashAvailable")
+    @Observed(name = "cash.register.ensure.employee.cash.available")
     @Transactional(readOnly = true)
     public void ensureEmployeeCashAvailable(Long companyId, Long branchId, Long employeeId) {
         boolean available = repository.findOpenByEmployee(companyId, employeeId)

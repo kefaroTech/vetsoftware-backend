@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * anterior ya está ofuscada en hash, por eso el admin escribe una nueva), vuelve a exigir el cambio en el
  * primer login y reenvía el correo con sus datos de acceso. El correo es async/best-effort (no bloquea).
  */
-@Observed(name = "employee.resendInvitation")
+@Observed(name = "employee.resend.invitation")
 @Service
 public class ResendInvitationService implements ResendInvitationUseCase {
 

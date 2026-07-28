@@ -8,7 +8,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "procedure_schedule.suspend_pending")
+@Observed(name = "procedure.schedule.suspend.pending")
 @Service
 public class SuspendPendingProcedureSchedulesService
         implements SuspendPendingProcedureSchedulesUseCase {

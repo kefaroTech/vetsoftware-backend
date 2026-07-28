@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "surgery_type.delete")
+@Observed(name = "surgery.type.delete")
 @Service
 public class DeleteSurgeryTypeService implements DeleteSurgeryTypeUseCase {
     private final SurgeryTypeRepository repository;

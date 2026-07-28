@@ -12,7 +12,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "vaccination_type.update")
+@Observed(name = "vaccination.type.update")
 @Service
 public class UpdateVaccinationTypeService implements UpdateVaccinationTypeUseCase {
     private final VaccinationTypeRepository repository;

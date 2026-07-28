@@ -15,7 +15,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "baserolepermission.create")
+@Observed(name = "base.role.permission.create")
 @Service
 public class CreateBaseRolePermissionService implements CreateBaseRolePermissionUseCase {
     private final BaseRolePermissionRepository repository;

@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "publishadminpermissions.publish")
+@Observed(name = "publish.admin.permissions.publish")
 @Service
 public class PublishAdminPermissionsService implements PublishAdminPermissionsUseCase {
 

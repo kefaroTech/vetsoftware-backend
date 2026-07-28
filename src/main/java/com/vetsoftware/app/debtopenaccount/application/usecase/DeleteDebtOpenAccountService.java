@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "debt_open_account.delete")
+@Observed(name = "debt.open.account.delete")
 @Service
 public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCase {
     private final DebtOpenAccountRepository repository;

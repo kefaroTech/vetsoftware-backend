@@ -20,7 +20,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "rolepermission.sync")
+@Observed(name = "role.permission.sync")
 @Service
 public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
     private final RolePermissionRepository repository;

@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Confirma el restablecimiento: re-hashea el token plano, lo consume de forma irreversible y aplica la nueva
  * contraseña al empleado (que además invalida sus sesiones vivas). La posesión del token es la autorización.
  */
-@Observed(name = "passwordReset.reset")
+@Observed(name = "password.reset.reset")
 @Service
 public class ResetPasswordService implements ResetPasswordUseCase {
 

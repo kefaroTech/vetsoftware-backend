@@ -8,7 +8,7 @@ import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test.search")
+@Observed(name = "laboratory.test.search")
 @Service
 public class SearchLaboratoryTestsService implements SearchLaboratoryTestsUseCase {
     private final LaboratoryTestRepository repository;

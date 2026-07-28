@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systempermission.list")
+@Observed(name = "system.permission.list")
 @Service
 public class ListSystemPermissionsService implements ListSystemPermissionsUseCase {
     private final SystemPermissionRepository repository;

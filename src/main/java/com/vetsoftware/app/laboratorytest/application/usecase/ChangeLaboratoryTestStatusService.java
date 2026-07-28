@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "laboratory_test.change_status")
+@Observed(name = "laboratory.test.change.status")
 @Service
 public class ChangeLaboratoryTestStatusService implements ChangeLaboratoryTestStatusUseCase {
     private final LaboratoryTestRepository repository;

@@ -7,7 +7,7 @@ import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundExcep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systempermission.find")
+@Observed(name = "system.permission.find")
 @Service
 public class FindSystemPermissionService implements FindSystemPermissionUseCase {
     private final SystemPermissionRepository repository;

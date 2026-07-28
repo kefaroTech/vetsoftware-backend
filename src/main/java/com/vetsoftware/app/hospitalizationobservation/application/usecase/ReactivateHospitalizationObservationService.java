@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "hospitalization_observation.reactivate")
+@Observed(name = "hospitalization.observation.reactivate")
 @Service
 public class ReactivateHospitalizationObservationService implements ReactivateHospitalizationObservationUseCase {
     private final HospitalizationObservationRepository repository;

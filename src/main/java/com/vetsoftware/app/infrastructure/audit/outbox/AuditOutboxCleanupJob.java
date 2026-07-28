@@ -34,7 +34,7 @@ final class AuditOutboxCleanupJob {
             fixedDelayString = "${vetsoftware.audit.outbox.cleanup-interval:PT24H}",
             initialDelayString = "${vetsoftware.audit.outbox.cleanup-initial-delay:PT1H}")
     void cleanup() {
-        telemetry.observe("audit_outbox_cleanup", () -> {
+        telemetry.observe("audit.outbox.cleanup", () -> {
             int deleted = repository.deletePublishedBefore(
                     Instant.now().minus(properties.getRetention()),
                     properties.getCleanupBatchSize());

@@ -17,7 +17,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "companyTaxProfile.create")
+@Observed(name = "company.tax.profile.create")
 @Service
 public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUseCase {
     private final CompanyTaxProfileRepository repository;

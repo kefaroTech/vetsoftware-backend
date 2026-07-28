@@ -10,7 +10,7 @@ import com.vetsoftware.app.dianprovider.domain.DianProviderConfig;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "dianProviderConfig.create")
+@Observed(name = "dian.provider.config.create")
 @Service
 public class CreateDianProviderConfigService implements CreateDianProviderConfigUseCase {
     private final DianProviderConfigRepository repository;

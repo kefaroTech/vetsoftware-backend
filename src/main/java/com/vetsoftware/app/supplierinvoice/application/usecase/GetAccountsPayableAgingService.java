@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Arma el reporte de cuentas por pagar por antigüedad: toma las facturas con saldo (PENDING/PARTIAL) y reparte el
  * saldo de cada una en un tramo según los días transcurridos desde su vencimiento hasta {@code asOf}.
  */
-@Observed(name = "supplierInvoice.accountsPayableAging")
+@Observed(name = "supplier.invoice.accounts.payable.aging")
 @Service
 public class GetAccountsPayableAgingService implements GetAccountsPayableAgingUseCase {
     private final SupplierInvoiceRepository repository;

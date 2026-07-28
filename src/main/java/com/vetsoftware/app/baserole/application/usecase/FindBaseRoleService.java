@@ -7,7 +7,7 @@ import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "baserole.find")
+@Observed(name = "base.role.find")
 @Service
 public class FindBaseRoleService implements FindBaseRoleUseCase {
     private final BaseRoleRepository repository;

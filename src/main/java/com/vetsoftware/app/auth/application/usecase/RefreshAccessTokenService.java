@@ -19,7 +19,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "auth.refreshAccessToken")
+@Observed(name = "auth.refresh.access.token")
 @Service
 public class RefreshAccessTokenService implements RefreshTokenUseCase {
 

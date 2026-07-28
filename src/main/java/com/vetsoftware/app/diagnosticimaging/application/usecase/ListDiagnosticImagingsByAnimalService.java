@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "diagnosticimaging.list.byAnimal")
+@Observed(name = "diagnostic.imaging.list.by.animal")
 @Service
 public class ListDiagnosticImagingsByAnimalService implements ListDiagnosticImagingsByAnimalUseCase {
     private final DiagnosticImagingRepository repository;

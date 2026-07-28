@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * no es elegible (correo sin verificar), termina sin error y sin enviar nada. Si es elegible, invalida los
  * tokens previos, guarda el HASH de un token nuevo y envía el enlace por correo (async/best-effort).
  */
-@Observed(name = "passwordReset.request")
+@Observed(name = "password.reset.request")
 @Service
 public class RequestPasswordResetService implements RequestPasswordResetUseCase {
 

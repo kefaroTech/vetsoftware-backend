@@ -7,7 +7,7 @@ import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundExcepti
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "debt_open_account.find")
+@Observed(name = "debt.open.account.find")
 @Service
 public class FindDebtOpenAccountService implements FindDebtOpenAccountUseCase {
     private final DebtOpenAccountRepository repository;

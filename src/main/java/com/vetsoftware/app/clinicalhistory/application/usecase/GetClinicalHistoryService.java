@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "clinicalhistory.get")
+@Observed(name = "clinical.history.get")
 @Service
 public class GetClinicalHistoryService implements GetClinicalHistoryUseCase {
     private final ClinicalEventRepository repository;

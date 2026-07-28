@@ -9,7 +9,7 @@ import com.vetsoftware.app.systemuser.domain.SystemUser;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systemuser.create")
+@Observed(name = "system.user.create")
 @Service
 public class CreateSystemUserService implements CreateSystemUserUseCase {
     private final SystemUserRepository repository;

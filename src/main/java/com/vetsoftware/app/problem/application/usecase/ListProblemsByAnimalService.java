@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "problem.list.byAnimal")
+@Observed(name = "problem.list.by.animal")
 @Service
 public class ListProblemsByAnimalService implements ListProblemsByAnimalUseCase {
     private final ProblemRepository repository;

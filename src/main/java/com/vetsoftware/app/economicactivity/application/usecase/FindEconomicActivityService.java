@@ -7,7 +7,7 @@ import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundExcep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "economicActivity.find")
+@Observed(name = "economic.activity.find")
 @Service
 public class FindEconomicActivityService implements FindEconomicActivityUseCase {
     private final EconomicActivityRepository repository;

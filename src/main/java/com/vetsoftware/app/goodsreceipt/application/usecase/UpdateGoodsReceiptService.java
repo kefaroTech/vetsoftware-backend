@@ -19,7 +19,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "goods_receipt.update")
+@Observed(name = "goods.receipt.update")
 @Service
 public class UpdateGoodsReceiptService implements UpdateGoodsReceiptUseCase {
     private final GoodsReceiptRepository repository;

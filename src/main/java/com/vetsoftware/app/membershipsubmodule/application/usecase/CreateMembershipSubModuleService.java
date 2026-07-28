@@ -15,7 +15,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "membershipsubmodule.create")
+@Observed(name = "membership.submodule.create")
 @Service
 public class CreateMembershipSubModuleService implements CreateMembershipSubModuleUseCase {
     private final MembershipSubModuleRepository repository;

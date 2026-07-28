@@ -24,7 +24,7 @@ public class CashTerminalService {
         this.cashSessionRepository = cashSessionRepository;
     }
 
-    @Observed(name = "cashTerminal.list")
+    @Observed(name = "cash.terminal.list")
     @Transactional(readOnly = true)
     public List<CashTerminalDto> list(Long companyId, Long branchId, boolean activeOnly) {
         validateActiveBranch(companyId, branchId);
@@ -34,7 +34,7 @@ public class CashTerminalService {
         return terminals.stream().map(CashTerminalDto::from).toList();
     }
 
-    @Observed(name = "cashTerminal.create")
+    @Observed(name = "cash.terminal.create")
     @Transactional
     public CashTerminalDto create(Long companyId, Long branchId, String name, String code) {
         validateActiveBranch(companyId, branchId);
@@ -53,7 +53,7 @@ public class CashTerminalService {
         return CashTerminalDto.from(repository.save(entity));
     }
 
-    @Observed(name = "cashTerminal.update")
+    @Observed(name = "cash.terminal.update")
     @Transactional
     public CashTerminalDto update(Long companyId, Long id, String name, String code) {
         CashTerminalJpaEntity entity = get(companyId, id);
@@ -72,7 +72,7 @@ public class CashTerminalService {
         return CashTerminalDto.from(repository.save(entity));
     }
 
-    @Observed(name = "cashTerminal.setActive")
+    @Observed(name = "cash.terminal.set.active")
     @Transactional
     public CashTerminalDto setActive(Long companyId, Long id, boolean active) {
         CashTerminalJpaEntity entity = get(companyId, id);

@@ -11,7 +11,7 @@ import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExis
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "service_category.create")
+@Observed(name = "service.category.create")
 @Service
 public class CreateServiceCategoryService implements CreateServiceCategoryUseCase {
     private final ServiceCategoryRepository repository;

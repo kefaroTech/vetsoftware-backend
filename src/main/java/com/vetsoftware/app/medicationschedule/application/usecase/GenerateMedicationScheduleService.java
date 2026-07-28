@@ -20,7 +20,7 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "medication_schedule.generate")
+@Observed(name = "medication.schedule.generate")
 @Service
 public class GenerateMedicationScheduleService implements GenerateMedicationScheduleUseCase {
     private final MedicationScheduleRepository repository;

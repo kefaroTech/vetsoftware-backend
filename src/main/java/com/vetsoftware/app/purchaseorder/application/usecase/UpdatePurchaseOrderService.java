@@ -19,7 +19,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "purchaseOrder.update")
+@Observed(name = "purchase.order.update")
 @Service
 public class UpdatePurchaseOrderService implements UpdatePurchaseOrderUseCase {
     private final PurchaseOrderRepository repository;

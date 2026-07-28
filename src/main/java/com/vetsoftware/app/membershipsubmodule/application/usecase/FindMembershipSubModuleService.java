@@ -7,7 +7,7 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoun
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "membershipsubmodule.find")
+@Observed(name = "membership.submodule.find")
 @Service
 public class FindMembershipSubModuleService implements FindMembershipSubModuleUseCase {
     private final MembershipSubModuleRepository repository;

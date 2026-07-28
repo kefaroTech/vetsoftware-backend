@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "rolepermission.delete")
+@Observed(name = "role.permission.delete")
 @Service
 public class DeleteRolePermissionService implements DeleteRolePermissionUseCase {
     private final RolePermissionRepository repository;

@@ -7,7 +7,7 @@ import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "surgery_type.find")
+@Observed(name = "surgery.type.find")
 @Service
 public class FindSurgeryTypeService implements FindSurgeryTypeUseCase {
     private final SurgeryTypeRepository repository;

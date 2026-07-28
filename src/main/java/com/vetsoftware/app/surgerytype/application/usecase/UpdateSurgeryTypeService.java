@@ -12,7 +12,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "surgery_type.update")
+@Observed(name = "surgery.type.update")
 @Service
 public class UpdateSurgeryTypeService implements UpdateSurgeryTypeUseCase {
     private final SurgeryTypeRepository repository;

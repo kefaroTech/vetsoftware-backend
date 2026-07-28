@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test_type.list")
+@Observed(name = "laboratory.test.type.list")
 @Service
 public class ListLaboratoryTestTypesService implements ListLaboratoryTestTypesUseCase {
     private final LaboratoryTestTypeRepository repository;

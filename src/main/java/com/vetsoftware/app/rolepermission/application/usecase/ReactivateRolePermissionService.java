@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "rolepermission.reactivate")
+@Observed(name = "role.permission.reactivate")
 @Service
 public class ReactivateRolePermissionService implements ReactivateRolePermissionUseCase {
     private final RolePermissionRepository repository;

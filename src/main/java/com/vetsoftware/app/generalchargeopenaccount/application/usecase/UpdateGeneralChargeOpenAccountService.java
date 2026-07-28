@@ -16,7 +16,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "general_charge_open_account.update")
+@Observed(name = "general.charge.open.account.update")
 @Service
 public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralChargeOpenAccountUseCase {
     private final GeneralChargeOpenAccountRepository repository;

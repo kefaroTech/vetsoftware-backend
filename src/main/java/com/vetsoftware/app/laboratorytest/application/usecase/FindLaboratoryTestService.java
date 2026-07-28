@@ -7,7 +7,7 @@ import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test.find")
+@Observed(name = "laboratory.test.find")
 @Service
 public class FindLaboratoryTestService implements FindLaboratoryTestUseCase {
     private final LaboratoryTestRepository repository;

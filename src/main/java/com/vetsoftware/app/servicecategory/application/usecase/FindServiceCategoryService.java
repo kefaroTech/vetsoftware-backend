@@ -7,7 +7,7 @@ import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundExcepti
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "service_category.find")
+@Observed(name = "service.category.find")
 @Service
 public class FindServiceCategoryService implements FindServiceCategoryUseCase {
     private final ServiceCategoryRepository repository;

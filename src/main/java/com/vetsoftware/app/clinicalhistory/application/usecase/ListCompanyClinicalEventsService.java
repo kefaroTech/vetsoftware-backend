@@ -9,7 +9,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "clinicalhistory.list_by_company")
+@Observed(name = "clinical.history.list.by.company")
 @Service
 public class ListCompanyClinicalEventsService implements ListCompanyClinicalEventsUseCase {
     private final ClinicalEventRepository repository;

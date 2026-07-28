@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "supplierInvoice.cancel")
+@Observed(name = "supplier.invoice.cancel")
 @Service
 public class CancelSupplierInvoiceService implements CancelSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

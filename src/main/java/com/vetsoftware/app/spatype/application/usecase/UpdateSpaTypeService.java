@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "spa_type.update")
+@Observed(name = "spa.type.update")
 @Service
 public class UpdateSpaTypeService implements UpdateSpaTypeUseCase {
     private final SpaTypeRepository repository;

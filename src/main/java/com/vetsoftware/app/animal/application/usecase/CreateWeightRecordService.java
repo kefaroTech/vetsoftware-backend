@@ -15,7 +15,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "weightRecord.create")
+@Observed(name = "weight.record.create")
 @Service
 public class CreateWeightRecordService implements CreateWeightRecordUseCase {
     private final AnimalRepository animalRepository;

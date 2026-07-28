@@ -8,7 +8,7 @@ import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepositor
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "open_account.search")
+@Observed(name = "open.account.search")
 @Service
 public class SearchOpenAccountsService implements SearchOpenAccountsUseCase {
     private final OpenAccountRepository repository;

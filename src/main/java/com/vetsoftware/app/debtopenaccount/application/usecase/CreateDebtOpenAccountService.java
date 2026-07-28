@@ -19,7 +19,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "debt_open_account.create")
+@Observed(name = "debt.open.account.create")
 @Service
 public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCase {
     private final DebtOpenAccountRepository repository;

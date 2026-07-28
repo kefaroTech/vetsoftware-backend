@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "animal_alert.delete")
+@Observed(name = "animal.alert.delete")
 @Service
 public class DeleteAnimalAlertService implements DeleteAnimalAlertUseCase {
     private final AnimalAlertRepository repository;

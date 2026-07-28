@@ -5,7 +5,7 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "employee.checkCodeAvailability")
+@Observed(name = "employee.check.code.availability")
 @Service
 public class CheckEmployeeCodeAvailabilityService implements CheckEmployeeCodeAvailabilityUseCase {
 

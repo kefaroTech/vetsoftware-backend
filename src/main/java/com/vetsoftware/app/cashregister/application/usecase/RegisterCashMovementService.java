@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Registra un movimiento manual (ingreso/retiro/gasto) en una sesión de caja abierta. Rechaza tipos no manuales
  * (venta/abono/reversa los inyecta la orquestación) y delega el guard de "solo con caja abierta" al agregado.
  */
-@Observed(name = "cashRegister.registerMovement")
+@Observed(name = "cash.register.register.movement")
 @Service
 public class RegisterCashMovementService implements RegisterCashMovementUseCase {
 

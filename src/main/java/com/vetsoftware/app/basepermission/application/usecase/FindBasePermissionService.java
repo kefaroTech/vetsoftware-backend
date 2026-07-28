@@ -7,7 +7,7 @@ import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "basepermission.find")
+@Observed(name = "base.permission.find")
 @Service
 public class FindBasePermissionService implements FindBasePermissionUseCase {
     private final BasePermissionRepository repository;

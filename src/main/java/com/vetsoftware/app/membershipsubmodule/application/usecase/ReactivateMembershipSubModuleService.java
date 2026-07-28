@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "membershipsubmodule.reactivate")
+@Observed(name = "membership.submodule.reactivate")
 @Service
 public class ReactivateMembershipSubModuleService implements ReactivateMembershipSubModuleUseCase {
     private final MembershipSubModuleRepository repository;

@@ -7,7 +7,7 @@ import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundExcep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "consultation_type.find")
+@Observed(name = "consultation.type.find")
 @Service
 public class FindConsultationTypeService implements FindConsultationTypeUseCase {
     private final ConsultationTypeRepository repository;

@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "purchaseReport.purchaseBook")
+@Observed(name = "purchase.report.purchase.book")
 @Service
 public class GetPurchaseBookService implements GetPurchaseBookUseCase {
 

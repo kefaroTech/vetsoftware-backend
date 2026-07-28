@@ -7,7 +7,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundE
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "electronicDocument.find")
+@Observed(name = "electronic.document.find")
 @Service
 public class FindElectronicDocumentService implements FindElectronicDocumentUseCase {
     private final ElectronicDocumentRepository repository;

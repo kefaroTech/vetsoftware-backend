@@ -8,7 +8,7 @@ import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundExcep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systempermission.delete")
+@Observed(name = "system.permission.delete")
 @Service
 public class DeleteSystemPermissionService implements DeleteSystemPermissionUseCase {
     private final SystemPermissionRepository repository;

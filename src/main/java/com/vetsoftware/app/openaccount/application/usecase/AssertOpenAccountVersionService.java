@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "open_account.assert_version")
+@Observed(name = "open.account.assert.version")
 @Service
 public class AssertOpenAccountVersionService implements AssertOpenAccountVersionUseCase {
     private final OpenAccountRepository repository;

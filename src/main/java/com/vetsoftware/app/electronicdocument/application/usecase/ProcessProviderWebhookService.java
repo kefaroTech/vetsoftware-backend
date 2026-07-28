@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
  * proveedor (bitácora), verifica HMAC con el secret de la empresa y aplica la transición DIAN.
  * Idempotente: ignora webhooks de documentos ya terminales o de claves desconocidas.
  */
-@Observed(name = "electronicDocument.webhook")
+@Observed(name = "electronic.document.webhook")
 @Service
 public class ProcessProviderWebhookService implements ProcessProviderWebhookUseCase {
     private final ElectronicDocumentRepository repository;

@@ -12,7 +12,7 @@ import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlready
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "numberingResolution.create")
+@Observed(name = "numbering.resolution.create")
 @Service
 public class CreateNumberingResolutionService implements CreateNumberingResolutionUseCase {
     private final NumberingResolutionRepository repository;

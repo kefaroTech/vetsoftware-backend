@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "role.list_by_company")
+@Observed(name = "role.list.by.company")
 @Service
 public class ListRolesByCompanyService implements ListRolesByCompanyUseCase {
     private final RoleRepository repository;

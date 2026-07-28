@@ -10,7 +10,7 @@ import java.util.Objects;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "auth.resolveSystemContext")
+@Observed(name = "auth.resolve.system.context")
 @Service
 public class ResolveSystemAuthContextService implements ResolveSystemAuthContextUseCase {
 

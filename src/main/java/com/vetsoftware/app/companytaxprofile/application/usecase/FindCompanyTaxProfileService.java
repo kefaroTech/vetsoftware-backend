@@ -7,7 +7,7 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundExc
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "companyTaxProfile.find")
+@Observed(name = "company.tax.profile.find")
 @Service
 public class FindCompanyTaxProfileService implements FindCompanyTaxProfileUseCase {
     private final CompanyTaxProfileRepository repository;

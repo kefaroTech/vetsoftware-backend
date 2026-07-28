@@ -11,7 +11,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "withholdingConfig.set")
+@Observed(name = "withholding.config.set")
 @Service
 public class SetWithholdingConfigService implements SetWithholdingConfigUseCase {
     private final WithholdingConfigRepository repository;

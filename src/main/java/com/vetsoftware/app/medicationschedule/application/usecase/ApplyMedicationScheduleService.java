@@ -11,7 +11,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "medication_schedule.apply")
+@Observed(name = "medication.schedule.apply")
 @Service
 public class ApplyMedicationScheduleService implements ApplyMedicationScheduleUseCase {
     private final MedicationScheduleRepository repository;

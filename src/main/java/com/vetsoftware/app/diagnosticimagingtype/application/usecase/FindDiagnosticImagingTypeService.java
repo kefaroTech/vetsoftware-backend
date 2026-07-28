@@ -7,7 +7,7 @@ import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNot
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "diagnostic_imaging_type.find")
+@Observed(name = "diagnostic.imaging.type.find")
 @Service
 public class FindDiagnosticImagingTypeService implements FindDiagnosticImagingTypeUseCase {
     private final DiagnosticImagingTypeRepository repository;

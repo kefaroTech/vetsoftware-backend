@@ -28,14 +28,14 @@ public class CashSessionQueryService
     }
 
     @Override
-    @Observed(name = "cashRegister.currentSession")
+    @Observed(name = "cash.register.current.session")
     @Transactional(readOnly = true)
     public CashSessionView current(Long companyId, Long employeeId) {
         return repository.findOpenByEmployee(companyId, employeeId).map(CashSessionView::from).orElse(null);
     }
 
     @Override
-    @Observed(name = "cashRegister.getSession")
+    @Observed(name = "cash.register.get.session")
     @Transactional(readOnly = true)
     public CashSessionView get(Long companyId, Long id) {
         return repository.findByIdAndCompany(id, companyId).map(CashSessionView::from)
@@ -43,14 +43,14 @@ public class CashSessionQueryService
     }
 
     @Override
-    @Observed(name = "cashRegister.listSessions")
+    @Observed(name = "cash.register.list.sessions")
     @Transactional(readOnly = true)
     public PageResult<CashSessionView> list(SearchCashSessionsQuery query) {
         return repository.search(query);
     }
 
     @Override
-    @Observed(name = "cashRegister.listOpenSessions")
+    @Observed(name = "cash.register.list.open.sessions")
     @Transactional(readOnly = true)
     public List<CashSessionView> listOpen(Long companyId, Set<Long> accessibleBranchIds) {
         return repository.findOpenSummaries(companyId, accessibleBranchIds);

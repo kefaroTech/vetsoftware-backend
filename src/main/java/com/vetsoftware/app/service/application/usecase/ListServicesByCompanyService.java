@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "service.list_by_company")
+@Observed(name = "service.list.by.company")
 @org.springframework.stereotype.Service
 public class ListServicesByCompanyService implements ListServicesByCompanyUseCase {
     private final ServiceRepository repository;

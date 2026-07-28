@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * de acceso (una fila por veterinaria). Anti-enumeración: si no hay coincidencias, termina sin error y sin
  * enviar nada. El código no es un secreto (es el usuario), pero solo se envía al correo registrado.
  */
-@Observed(name = "codeRecovery.recoverEmployeeCode")
+@Observed(name = "code.recovery.recover.employee.code")
 @Service
 public class RecoverEmployeeCodeService implements RecoverEmployeeCodeUseCase {
 

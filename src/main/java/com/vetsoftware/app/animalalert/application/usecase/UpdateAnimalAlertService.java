@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "animal_alert.update")
+@Observed(name = "animal.alert.update")
 @Service
 public class UpdateAnimalAlertService implements UpdateAnimalAlertUseCase {
     private final AnimalAlertRepository repository;

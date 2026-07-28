@@ -31,7 +31,7 @@ public class InventoryReportService implements ExportInventoryUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.exportKardex")
+    @Observed(name = "inventory.export.kardex")
     public KardexReport kardexReport(SearchKardexCommand command) {
         List<KardexExportRow> rows = stockQueryPort.kardexForExport(command);
         int opening = command.from() == null ? 0
@@ -53,7 +53,7 @@ public class InventoryReportService implements ExportInventoryUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.exportPurchases")
+    @Observed(name = "inventory.export.purchases")
     public PurchasesReport purchasesReport(SearchPurchasesQuery query) {
         List<PurchaseView> lines = stockQueryPort.purchasesForExport(query);
         int totalQuantity = lines.stream().mapToInt(l -> Math.abs(l.quantity())).sum();

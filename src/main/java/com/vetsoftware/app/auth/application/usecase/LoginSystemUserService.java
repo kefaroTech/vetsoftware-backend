@@ -16,7 +16,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "auth.loginSystemUser")
+@Observed(name = "auth.login.system.user")
 @Service
 public class LoginSystemUserService implements LoginSystemUserUseCase {
 

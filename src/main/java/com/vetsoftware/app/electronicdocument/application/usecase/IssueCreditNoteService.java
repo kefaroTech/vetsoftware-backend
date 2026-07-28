@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Con MATIAS (async) la nota queda PENDIENTE y el reverso de cartera se aplica al llegar la validacion
  * (por webhook o por polling de estado) via CreditNoteReversalApplier. NUNCA se reversa antes de validar.
  */
-@Observed(name = "electronicDocument.creditNote")
+@Observed(name = "electronic.document.credit.note")
 @Service
 public class IssueCreditNoteService implements IssueCreditNoteUseCase {
     private final ElectronicDocumentRepository repository;

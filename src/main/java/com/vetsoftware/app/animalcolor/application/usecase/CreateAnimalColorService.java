@@ -8,7 +8,7 @@ import com.vetsoftware.app.animalcolor.domain.AnimalColor;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "animalColor.create")
+@Observed(name = "animal.color.create")
 @Service
 public class CreateAnimalColorService implements CreateAnimalColorUseCase {
     private final AnimalColorRepository repository;

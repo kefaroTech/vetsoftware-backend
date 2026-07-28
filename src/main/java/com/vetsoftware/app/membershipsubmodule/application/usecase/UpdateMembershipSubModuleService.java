@@ -14,7 +14,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "membershipsubmodule.update")
+@Observed(name = "membership.submodule.update")
 @Service
 public class UpdateMembershipSubModuleService implements UpdateMembershipSubModuleUseCase {
     private final MembershipSubModuleRepository repository;

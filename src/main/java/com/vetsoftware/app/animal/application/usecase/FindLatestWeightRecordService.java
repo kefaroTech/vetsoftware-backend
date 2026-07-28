@@ -7,7 +7,7 @@ import com.vetsoftware.app.animal.domain.WeightRecordNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "weightRecord.findLatest")
+@Observed(name = "weight.record.find.latest")
 @Service
 public class FindLatestWeightRecordService implements FindLatestWeightRecordUseCase {
     private final WeightRecordRepository repository;

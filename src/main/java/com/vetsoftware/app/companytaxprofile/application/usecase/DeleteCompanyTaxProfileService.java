@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "companyTaxProfile.delete")
+@Observed(name = "company.tax.profile.delete")
 @Service
 public class DeleteCompanyTaxProfileService implements DeleteCompanyTaxProfileUseCase {
     private final CompanyTaxProfileRepository repository;

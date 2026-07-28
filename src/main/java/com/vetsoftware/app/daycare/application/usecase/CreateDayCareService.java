@@ -12,7 +12,7 @@ import com.vetsoftware.app.daycare.domain.DayCare;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "dayCare.create")
+@Observed(name = "day.care.create")
 @Service
 public class CreateDayCareService implements CreateDayCareUseCase {
     private final DayCareRepository repository;

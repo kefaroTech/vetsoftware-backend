@@ -10,7 +10,7 @@ import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test_type.create")
+@Observed(name = "laboratory.test.type.create")
 @Service
 public class CreateLaboratoryTestTypeService implements CreateLaboratoryTestTypeUseCase {
     private final LaboratoryTestTypeRepository repository;

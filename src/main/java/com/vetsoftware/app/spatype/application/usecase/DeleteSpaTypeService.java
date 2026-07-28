@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "spa_type.delete")
+@Observed(name = "spa.type.delete")
 @Service
 public class DeleteSpaTypeService implements DeleteSpaTypeUseCase {
     private final SpaTypeRepository repository;

@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "economicActivity.update")
+@Observed(name = "economic.activity.update")
 @Service
 public class UpdateEconomicActivityService implements UpdateEconomicActivityUseCase {
     private final EconomicActivityRepository repository;

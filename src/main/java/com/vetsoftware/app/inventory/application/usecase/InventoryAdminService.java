@@ -69,7 +69,7 @@ public class InventoryAdminService implements AdjustStockUseCase, ReceiveStockUs
     }
 
     @Override
-    @Observed(name = "inventory.setMinStock")
+    @Observed(name = "inventory.set.min.stock")
     @Transactional
     public void setMinStock(SetMinStockCommand command) {
         if (command.minStock() < 0) throw new IllegalArgumentException("minStock cannot be negative");

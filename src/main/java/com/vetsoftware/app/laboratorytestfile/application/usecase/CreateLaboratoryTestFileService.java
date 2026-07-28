@@ -15,7 +15,7 @@ import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestStoragePathRe
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test_file.create")
+@Observed(name = "laboratory.test.file.create")
 @Service
 public class CreateLaboratoryTestFileService implements CreateLaboratoryTestFileUseCase {
     private final LaboratoryTestFileRepository repository;

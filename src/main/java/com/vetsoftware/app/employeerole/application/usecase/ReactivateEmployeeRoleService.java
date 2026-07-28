@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employeerole.reactivate")
+@Observed(name = "employee.role.reactivate")
 @Service
 public class ReactivateEmployeeRoleService implements ReactivateEmployeeRoleUseCase {
     private final EmployeeRoleRepository repository;

@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "hospitalization_progress_note.list.byHospitalization")
+@Observed(name = "hospitalization.progress.note.list.by.hospitalization")
 @Service
 public class ListHospitalizationProgressNotesByHospitalizationService
         implements ListHospitalizationProgressNotesByHospitalizationUseCase {

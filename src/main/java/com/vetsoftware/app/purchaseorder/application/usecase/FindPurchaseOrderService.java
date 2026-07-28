@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "purchaseOrder.find")
+@Observed(name = "purchase.order.find")
 @Service
 public class FindPurchaseOrderService implements FindPurchaseOrderUseCase {
     private final PurchaseOrderRepository repository;

@@ -14,7 +14,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "baserolepermission.update")
+@Observed(name = "base.role.permission.update")
 @Service
 public class UpdateBaseRolePermissionService implements UpdateBaseRolePermissionUseCase {
     private final BaseRolePermissionRepository repository;

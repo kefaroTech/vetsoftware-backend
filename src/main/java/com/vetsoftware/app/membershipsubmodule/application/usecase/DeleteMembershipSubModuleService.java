@@ -6,7 +6,7 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoun
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "membershipsubmodule.delete")
+@Observed(name = "membership.submodule.delete")
 @Service
 public class DeleteMembershipSubModuleService implements DeleteMembershipSubModuleUseCase {
     private final MembershipSubModuleRepository repository;

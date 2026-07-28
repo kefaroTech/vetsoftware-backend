@@ -7,7 +7,7 @@ import com.vetsoftware.app.daycare.domain.DayCareNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "dayCare.find")
+@Observed(name = "day.care.find")
 @Service
 public class FindDayCareService implements FindDayCareUseCase {
     private final DayCareRepository repository;

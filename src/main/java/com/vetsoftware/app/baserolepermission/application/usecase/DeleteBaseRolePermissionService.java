@@ -6,7 +6,7 @@ import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundE
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "baserolepermission.delete")
+@Observed(name = "base.role.permission.delete")
 @Service
 public class DeleteBaseRolePermissionService implements DeleteBaseRolePermissionUseCase {
     private final BaseRolePermissionRepository repository;

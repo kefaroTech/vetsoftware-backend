@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Registra un abono (total o parcial) sobre la factura y persiste el nuevo estado (PARTIAL/PAID). */
-@Observed(name = "supplierInvoice.registerPayment")
+@Observed(name = "supplier.invoice.register.payment")
 @Service
 public class RegisterSupplierPaymentService implements RegisterSupplierPaymentUseCase {
     private final SupplierInvoiceRepository repository;

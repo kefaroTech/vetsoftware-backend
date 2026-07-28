@@ -8,7 +8,7 @@ import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "baserole.delete")
+@Observed(name = "base.role.delete")
 @Service
 public class DeleteBaseRoleService implements DeleteBaseRoleUseCase {
     private final BaseRoleRepository repository;

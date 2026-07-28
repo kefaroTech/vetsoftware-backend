@@ -11,7 +11,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "spa.change_status")
+@Observed(name = "spa.change.status")
 @Service
 public class ChangeSpaStatusService implements ChangeSpaStatusUseCase {
     private final SpaRepository repository;

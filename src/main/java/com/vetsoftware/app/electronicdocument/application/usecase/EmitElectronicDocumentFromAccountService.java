@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Con MATIAS (asíncrono) el documento queda PENDIENTE y la entrega de la representación la dispara el
  * cierre async (webhook o polling de estado) al validar. (Un proveedor síncrono entregaría en el acto.)
  */
-@Observed(name = "electronicDocument.emit")
+@Observed(name = "electronic.document.emit")
 @Service
 public class EmitElectronicDocumentFromAccountService implements EmitElectronicDocumentFromAccountUseCase {
     private final DocumentBuilder documentBuilder;

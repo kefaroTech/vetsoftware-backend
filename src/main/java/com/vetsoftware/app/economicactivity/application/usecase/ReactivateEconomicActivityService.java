@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "economicActivity.reactivate")
+@Observed(name = "economic.activity.reactivate")
 @Service
 public class ReactivateEconomicActivityService implements ReactivateEconomicActivityUseCase {
     private final EconomicActivityRepository repository;

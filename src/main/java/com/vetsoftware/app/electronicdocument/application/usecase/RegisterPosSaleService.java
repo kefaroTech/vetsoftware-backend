@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  * idempotente por el id del documento). Ocurre aunque el documento quede PENDIENTE (la venta física ya sucedió) y
  * SIEMPRE permite negativo (mostrador no se frena por stock). Las líneas de servicio/general no mueven inventario.
  */
-@Observed(name = "electronicDocument.posSale")
+@Observed(name = "electronic.document.pos.sale")
 @Service
 public class RegisterPosSaleService implements RegisterPosSaleUseCase {
     private final PosSaleDocumentBuilder documentBuilder;

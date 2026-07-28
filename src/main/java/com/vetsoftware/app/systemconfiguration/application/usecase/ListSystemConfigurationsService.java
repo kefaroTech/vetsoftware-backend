@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systemConfiguration.list")
+@Observed(name = "system.configuration.list")
 @Service
 public class ListSystemConfigurationsService implements ListSystemConfigurationsUseCase {
     private final SystemConfigurationRepository repository;

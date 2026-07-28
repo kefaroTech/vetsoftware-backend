@@ -20,7 +20,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "service_charge_open_account.create")
+@Observed(name = "service.charge.open.account.create")
 @Service
 public class CreateServiceChargeOpenAccountService implements CreateServiceChargeOpenAccountUseCase {
     private final ServiceChargeOpenAccountRepository repository;

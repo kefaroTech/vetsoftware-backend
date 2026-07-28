@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "supplierInvoice.find")
+@Observed(name = "supplier.invoice.find")
 @Service
 public class FindSupplierInvoiceService implements FindSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

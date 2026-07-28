@@ -7,7 +7,7 @@ import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "employeerole.find")
+@Observed(name = "employee.role.find")
 @Service
 public class FindEmployeeRoleService implements FindEmployeeRoleUseCase {
     private final EmployeeRoleRepository repository;

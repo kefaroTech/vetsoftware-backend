@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
  * envía por correo al adquiriente (copia al emisor). Idempotente: no reprocesa si el documento ya tiene
  * PDF o no está VALIDADO. Reutilizable por la emisión y por el cierre async de MATIAS (webhook/polling).
  */
-@Observed(name = "electronicDocument.deliver")
+@Observed(name = "electronic.document.deliver")
 @Component
 public class DeliverElectronicDocumentService {
     private static final Logger log = LoggerFactory.getLogger(DeliverElectronicDocumentService.class);

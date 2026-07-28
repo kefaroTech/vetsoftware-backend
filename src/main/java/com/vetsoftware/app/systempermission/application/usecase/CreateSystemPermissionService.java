@@ -8,7 +8,7 @@ import com.vetsoftware.app.systempermission.domain.SystemPermission;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systempermission.create")
+@Observed(name = "system.permission.create")
 @Service
 public class CreateSystemPermissionService implements CreateSystemPermissionUseCase {
     private final SystemPermissionRepository repository;

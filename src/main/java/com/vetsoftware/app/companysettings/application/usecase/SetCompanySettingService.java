@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "companySettings.set")
+@Observed(name = "company.settings.set")
 @Service
 public class SetCompanySettingService implements SetCompanySettingUseCase {
 

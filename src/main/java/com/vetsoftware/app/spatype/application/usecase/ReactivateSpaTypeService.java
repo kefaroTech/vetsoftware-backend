@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "spatype.reactivate")
+@Observed(name = "spa.type.reactivate")
 @Service
 public class ReactivateSpaTypeService implements ReactivateSpaTypeUseCase {
     private final SpaTypeRepository repository;

@@ -14,7 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "auth.currentUser")
+@Observed(name = "auth.current.user")
 @Service
 public class GetCurrentUserService implements GetCurrentUserUseCase {
 

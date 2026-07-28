@@ -16,7 +16,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "supplierInvoice.update")
+@Observed(name = "supplier.invoice.update")
 @Service
 public class UpdateSupplierInvoiceService implements UpdateSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

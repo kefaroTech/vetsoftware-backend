@@ -15,7 +15,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "numberingResolution.update")
+@Observed(name = "numbering.resolution.update")
 @Service
 public class UpdateNumberingResolutionService implements UpdateNumberingResolutionUseCase {
     private final NumberingResolutionRepository repository;

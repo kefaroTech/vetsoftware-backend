@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "city.listByState")
+@Observed(name = "city.list.by.state")
 @Service
 public class ListCitiesByStateService implements ListCitiesByStateUseCase {
     private final CityRepository repository;

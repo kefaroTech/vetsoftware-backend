@@ -16,7 +16,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employeerole.create")
+@Observed(name = "employee.role.create")
 @Service
 public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
     private final EmployeeRoleRepository repository;

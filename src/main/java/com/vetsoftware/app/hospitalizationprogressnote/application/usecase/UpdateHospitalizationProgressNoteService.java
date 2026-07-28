@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "hospitalization_progress_note.update")
+@Observed(name = "hospitalization.progress.note.update")
 @Service
 public class UpdateHospitalizationProgressNoteService implements UpdateHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;

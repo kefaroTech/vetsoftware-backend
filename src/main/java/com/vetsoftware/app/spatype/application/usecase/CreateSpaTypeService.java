@@ -8,7 +8,7 @@ import com.vetsoftware.app.spatype.domain.SpaType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "spa_type.create")
+@Observed(name = "spa.type.create")
 @Service
 public class CreateSpaTypeService implements CreateSpaTypeUseCase {
     private final SpaTypeRepository repository;

@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "animalColor.update")
+@Observed(name = "animal.color.update")
 @Service
 public class UpdateAnimalColorService implements UpdateAnimalColorUseCase {
     private final AnimalColorRepository repository;

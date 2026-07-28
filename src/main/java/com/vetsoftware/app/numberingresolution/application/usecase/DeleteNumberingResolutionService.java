@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "numberingResolution.delete")
+@Observed(name = "numbering.resolution.delete")
 @Service
 public class DeleteNumberingResolutionService implements DeleteNumberingResolutionUseCase {
     private final NumberingResolutionRepository repository;

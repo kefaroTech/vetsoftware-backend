@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Chequea (sin consumir) si el token de la pantalla de restablecimiento sigue siendo usable. */
-@Observed(name = "passwordReset.validateToken")
+@Observed(name = "password.reset.validate.token")
 @Service
 public class ValidatePasswordResetTokenService implements ValidatePasswordResetTokenUseCase {
 

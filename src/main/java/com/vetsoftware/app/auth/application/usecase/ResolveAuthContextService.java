@@ -11,7 +11,7 @@ import java.util.Objects;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "auth.resolveContext")
+@Observed(name = "auth.resolve.context")
 @Service
 public class ResolveAuthContextService implements ResolveAuthContextUseCase {
 

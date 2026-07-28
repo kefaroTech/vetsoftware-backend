@@ -12,7 +12,7 @@ import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationRef
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "hospitalization_progress_note.create")
+@Observed(name = "hospitalization.progress.note.create")
 @Service
 public class CreateHospitalizationProgressNoteService implements CreateHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;

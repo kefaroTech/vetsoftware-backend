@@ -16,7 +16,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "companyTaxProfile.update")
+@Observed(name = "company.tax.profile.update")
 @Service
 public class UpdateCompanyTaxProfileService implements UpdateCompanyTaxProfileUseCase {
     private final CompanyTaxProfileRepository repository;

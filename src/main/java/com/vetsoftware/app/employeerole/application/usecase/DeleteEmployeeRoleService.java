@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employeerole.delete")
+@Observed(name = "employee.role.delete")
 @Service
 public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
     private final EmployeeRoleRepository repository;

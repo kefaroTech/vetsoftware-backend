@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "supplierInvoice.delete")
+@Observed(name = "supplier.invoice.delete")
 @Service
 public class DeleteSupplierInvoiceService implements DeleteSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

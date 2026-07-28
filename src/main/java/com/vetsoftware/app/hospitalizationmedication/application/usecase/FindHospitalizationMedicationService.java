@@ -7,7 +7,7 @@ import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedic
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "hospitalization_medication.find")
+@Observed(name = "hospitalization.medication.find")
 @Service
 public class FindHospitalizationMedicationService implements FindHospitalizationMedicationUseCase {
     private final HospitalizationMedicationRepository repository;

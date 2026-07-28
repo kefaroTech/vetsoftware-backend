@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "spa_type.list")
+@Observed(name = "spa.type.list")
 @Service
 public class ListSpaTypesService implements ListSpaTypesUseCase {
     private final SpaTypeRepository repository;

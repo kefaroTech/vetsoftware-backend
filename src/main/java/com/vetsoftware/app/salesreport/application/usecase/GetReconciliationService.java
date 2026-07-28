@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "salesReport.reconciliation")
+@Observed(name = "sales.report.reconciliation")
 @Service
 public class GetReconciliationService implements GetReconciliationUseCase {
 

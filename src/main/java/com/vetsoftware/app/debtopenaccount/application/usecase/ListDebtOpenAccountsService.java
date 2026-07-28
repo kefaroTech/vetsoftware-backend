@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "debt_open_account.list_all")
+@Observed(name = "debt.open.account.list.all")
 @Service
 public class ListDebtOpenAccountsService implements ListDebtOpenAccountsUseCase {
     private final DebtOpenAccountRepository repository;

@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "laboratorytesttype.reactivate")
+@Observed(name = "laboratory.test.type.reactivate")
 @Service
 public class ReactivateLaboratoryTestTypeService implements ReactivateLaboratoryTestTypeUseCase {
     private final LaboratoryTestTypeRepository repository;

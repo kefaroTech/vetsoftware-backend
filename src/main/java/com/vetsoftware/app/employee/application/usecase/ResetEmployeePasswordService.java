@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Restablece la contraseña del empleado: hashea la nueva, limpia mustChangePassword e invalida sesiones. */
-@Observed(name = "employee.resetPassword")
+@Observed(name = "employee.reset.password")
 @Service
 public class ResetEmployeePasswordService implements ResetEmployeePasswordUseCase {
 

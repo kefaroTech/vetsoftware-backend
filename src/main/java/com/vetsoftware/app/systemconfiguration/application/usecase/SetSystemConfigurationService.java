@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "systemConfiguration.set")
+@Observed(name = "system.configuration.set")
 @Service
 public class SetSystemConfigurationService implements SetSystemConfigurationUseCase {
     private final SystemConfigurationRepository repository;

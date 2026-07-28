@@ -17,7 +17,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "procedure_schedule.reschedule")
+@Observed(name = "procedure.schedule.reschedule")
 @Service
 public class RescheduleProcedureScheduleService implements RescheduleProcedureScheduleUseCase {
     private final ProcedureScheduleRepository repository;

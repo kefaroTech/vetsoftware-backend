@@ -19,7 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * ClosedAccountEmissionCompleter} tras el commit (A1: el I/O externo NO corre bajo el lock pesimista de la
  * cuenta). Idempotente: si la cuenta ya tiene documento, no emite otro (evita duplicar el documento fiscal).
  */
-@Observed(name = "electronicDocument.emitOnClose")
+@Observed(name = "electronic.document.emit.on.close")
 @Service
 public class EmitElectronicDocumentOnCloseService implements EmitElectronicDocumentOnCloseUseCase {
     private static final Logger log = LoggerFactory.getLogger(EmitElectronicDocumentOnCloseService.class);

@@ -17,7 +17,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "medication_schedule.reschedule")
+@Observed(name = "medication.schedule.reschedule")
 @Service
 public class RescheduleMedicationScheduleService implements RescheduleMedicationScheduleUseCase {
     private final MedicationScheduleRepository repository;

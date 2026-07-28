@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Cierra la caja: arma el conteo declarado por método y delega en el agregado el cálculo esperado vs contado →
  * diferencia y la materialización de los {@code CashSessionCount}. El guard de "solo si está abierta" vive en el dominio.
  */
-@Observed(name = "cashRegister.closeSession")
+@Observed(name = "cash.register.close.session")
 @Service
 public class CloseCashSessionService implements CloseCashSessionUseCase {
 

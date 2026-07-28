@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employee.verifyEmail")
+@Observed(name = "employee.verify.email")
 @Service
 public class VerifyEmployeeEmailService implements VerifyEmployeeEmailUseCase {
 

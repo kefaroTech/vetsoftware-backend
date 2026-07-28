@@ -43,7 +43,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.recordPurchase")
+    @Observed(name = "inventory.record.purchase")
     @Transactional
     public void recordPurchase(RecordPurchaseCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -64,7 +64,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.recordSale")
+    @Observed(name = "inventory.record.sale")
     @Transactional
     public List<StockConsumptionDto> recordSale(RecordSaleCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -88,7 +88,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.recordClinicalUse")
+    @Observed(name = "inventory.record.clinical.use")
     @Transactional
     public List<StockConsumptionDto> recordClinicalUse(RecordClinicalUseCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -112,7 +112,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.recordAdjustment")
+    @Observed(name = "inventory.record.adjustment")
     @Transactional
     public void recordAdjustment(RecordAdjustmentCommand c) {
         if (c.delta() == 0) throw new IllegalArgumentException("delta cannot be 0");
@@ -140,7 +140,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.transferLedger")
+    @Observed(name = "inventory.transfer.ledger")
     @Transactional
     public void transfer(TransferStockCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -196,7 +196,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
-    @Observed(name = "inventory.reverseLedger")
+    @Observed(name = "inventory.reverse.ledger")
     @Transactional
     public void reverse(StockReferenceType referenceType, Long referenceId, Long createdBy) {
         List<StockMovement> movements = movementRepository.findByReference(referenceType, referenceId);

@@ -6,7 +6,7 @@ import com.vetsoftware.app.animal.domain.WeightRecordNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "weightRecord.delete")
+@Observed(name = "weight.record.delete")
 @Service
 public class DeleteWeightRecordService implements DeleteWeightRecordUseCase {
     private final WeightRecordRepository repository;

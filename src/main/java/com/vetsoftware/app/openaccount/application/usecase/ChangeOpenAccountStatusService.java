@@ -15,7 +15,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "open_account.change_status")
+@Observed(name = "open.account.change.status")
 @Service
 public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUseCase {
     private final OpenAccountRepository repository;

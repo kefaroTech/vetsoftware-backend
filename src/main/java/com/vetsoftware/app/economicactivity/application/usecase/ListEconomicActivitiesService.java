@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "economicActivity.list")
+@Observed(name = "economic.activity.list")
 @Service
 public class ListEconomicActivitiesService implements ListEconomicActivitiesUseCase {
     private final EconomicActivityRepository repository;

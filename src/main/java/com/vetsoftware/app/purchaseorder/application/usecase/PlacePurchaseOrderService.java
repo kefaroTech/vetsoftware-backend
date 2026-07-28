@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "purchaseOrder.place")
+@Observed(name = "purchase.order.place")
 @Service
 public class PlacePurchaseOrderService implements PlacePurchaseOrderUseCase {
     private final PurchaseOrderRepository repository;

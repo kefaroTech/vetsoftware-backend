@@ -7,7 +7,7 @@ import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systemuser.find")
+@Observed(name = "system.user.find")
 @Service
 public class FindSystemUserService implements FindSystemUserUseCase {
     private final SystemUserRepository repository;

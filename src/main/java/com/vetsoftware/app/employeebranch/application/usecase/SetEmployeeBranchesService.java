@@ -14,7 +14,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employeebranch.set")
+@Observed(name = "employee.branch.set")
 @Service
 public class SetEmployeeBranchesService implements SetEmployeeBranchesUseCase {
     private final EmployeeBranchRepository repository;

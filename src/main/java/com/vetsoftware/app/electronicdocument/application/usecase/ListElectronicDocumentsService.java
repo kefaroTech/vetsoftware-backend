@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "electronicDocument.list")
+@Observed(name = "electronic.document.list")
 @Service
 public class ListElectronicDocumentsService implements ListElectronicDocumentsUseCase {
     private final ElectronicDocumentRepository repository;

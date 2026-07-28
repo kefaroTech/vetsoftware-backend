@@ -54,19 +54,19 @@ public class InventoryQueryService implements ListStockUseCase, ListProductLotsU
     }
 
     @Override
-    @Observed(name = "inventory.searchStock")
+    @Observed(name = "inventory.search.stock")
     public PageResult<StockView> search(SearchStockCommand command) {
         return stockQueryPort.searchStock(command);
     }
 
     @Override
-    @Observed(name = "inventory.listLots")
+    @Observed(name = "inventory.list.lots")
     public List<StockLotView> listLots(ListLotsCommand command) {
         return stockQueryPort.listLots(command.companyId(), command.branchId(), command.productId());
     }
 
     @Override
-    @Observed(name = "inventory.searchKardex")
+    @Observed(name = "inventory.search.kardex")
     public PageResult<StockMovementView> searchKardex(SearchKardexCommand command) {
         return stockQueryPort.searchKardex(command);
     }

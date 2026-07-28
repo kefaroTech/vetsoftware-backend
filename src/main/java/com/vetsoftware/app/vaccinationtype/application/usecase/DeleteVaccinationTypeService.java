@@ -9,7 +9,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "vaccination_type.delete")
+@Observed(name = "vaccination.type.delete")
 @Service
 public class DeleteVaccinationTypeService implements DeleteVaccinationTypeUseCase {
     private final VaccinationTypeRepository repository;

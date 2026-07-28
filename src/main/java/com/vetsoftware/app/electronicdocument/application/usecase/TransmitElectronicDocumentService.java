@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * y delega el envío en {@link DocumentTransmitter}. Con MATIAS (async) el documento queda PENDIENTE
  * tras transmitir; lo cierra el webhook o el polling de estado. (Un proveedor síncrono cerraría aquí.)
  */
-@Observed(name = "electronicDocument.transmit")
+@Observed(name = "electronic.document.transmit")
 @Service
 public class TransmitElectronicDocumentService implements TransmitElectronicDocumentUseCase {
     private final ElectronicDocumentRepository repository;

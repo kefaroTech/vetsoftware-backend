@@ -7,7 +7,7 @@ import com.vetsoftware.app.spatype.domain.SpaTypeNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "spa_type.find")
+@Observed(name = "spa.type.find")
 @Service
 public class FindSpaTypeService implements FindSpaTypeUseCase {
     private final SpaTypeRepository repository;

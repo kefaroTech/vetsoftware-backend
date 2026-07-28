@@ -4,6 +4,7 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,6 +20,8 @@ public final class ScheduledJobTelemetry {
     static final String OBSERVATION_NAME = "tasks.scheduled.execution";
     static final String JOB_NAME_KEY = "job.name";
     static final String JOB_OUTCOME_KEY = "job.outcome";
+    private static final Pattern JOB_NAME_PATTERN =
+            Pattern.compile("^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+$");
 
     private final ObservationRegistry observationRegistry;
 
@@ -27,7 +30,7 @@ public final class ScheduledJobTelemetry {
     }
 
     public void observe(String jobName, Supplier<Outcome> action) {
-        Objects.requireNonNull(jobName, "jobName es obligatorio");
+        validateJobName(jobName);
         Objects.requireNonNull(action, "action es obligatoria");
 
         Observation current = observationRegistry.getCurrentObservation();
@@ -37,8 +40,16 @@ public final class ScheduledJobTelemetry {
         }
 
         Observation root = Observation.createNotStarted(OBSERVATION_NAME, observationRegistry)
-                .contextualName("task " + jobName);
+                .contextualName("run " + jobName.replace('.', ' '));
         root.observe(() -> execute(root, jobName, action));
+    }
+
+    private static void validateJobName(String jobName) {
+        Objects.requireNonNull(jobName, "jobName es obligatorio");
+        if (!JOB_NAME_PATTERN.matcher(jobName).matches()) {
+            throw new IllegalArgumentException(
+                    "jobName debe usar lowercase.dot.notation: " + jobName);
+        }
     }
 
     private static void execute(Observation observation, String jobName, Supplier<Outcome> action) {

@@ -7,7 +7,7 @@ import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundExc
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "withholdingConfig.find")
+@Observed(name = "withholding.config.find")
 @Service
 public class FindWithholdingConfigService implements FindWithholdingConfigUseCase {
     private final WithholdingConfigRepository repository;

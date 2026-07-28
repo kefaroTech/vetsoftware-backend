@@ -11,7 +11,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "diagnostic_imaging.change_status")
+@Observed(name = "diagnostic.imaging.change.status")
 @Service
 public class ChangeDiagnosticImagingStatusService implements ChangeDiagnosticImagingStatusUseCase {
     private final DiagnosticImagingRepository repository;

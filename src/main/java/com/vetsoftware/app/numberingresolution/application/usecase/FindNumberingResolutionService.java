@@ -7,7 +7,7 @@ import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoun
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "numberingResolution.find")
+@Observed(name = "numbering.resolution.find")
 @Service
 public class FindNumberingResolutionService implements FindNumberingResolutionUseCase {
     private final NumberingResolutionRepository repository;

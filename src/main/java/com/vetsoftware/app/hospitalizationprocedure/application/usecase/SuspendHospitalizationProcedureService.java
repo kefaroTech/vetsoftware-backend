@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "hospitalization_procedure.suspend")
+@Observed(name = "hospitalization.procedure.suspend")
 @Service
 public class SuspendHospitalizationProcedureService implements SuspendHospitalizationProcedureUseCase {
     private final HospitalizationProcedureRepository repository;

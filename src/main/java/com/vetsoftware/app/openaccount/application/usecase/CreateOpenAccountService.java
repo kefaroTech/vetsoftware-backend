@@ -19,7 +19,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "open_account.create")
+@Observed(name = "open.account.create")
 @Service
 public class CreateOpenAccountService implements CreateOpenAccountUseCase {
     private final OpenAccountRepository repository;

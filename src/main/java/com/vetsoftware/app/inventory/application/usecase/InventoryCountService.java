@@ -47,7 +47,7 @@ public class InventoryCountService implements RecordCountUseCase, ListCountsUseC
     }
 
     @Override
-    @Observed(name = "inventory.recordCount")
+    @Observed(name = "inventory.record.count")
     @Transactional
     public InventoryCountView record(RecordCountCommand command) {
         if (!branchQueryPort.existsActiveInCompany(command.branchId(), command.companyId())) {
@@ -75,14 +75,14 @@ public class InventoryCountService implements RecordCountUseCase, ListCountsUseC
     }
 
     @Override
-    @Observed(name = "inventory.listCounts")
+    @Observed(name = "inventory.list.counts")
     @Transactional(readOnly = true)
     public PageResult<InventoryCountView> list(SearchCountsQuery query) {
         return countRepository.search(query);
     }
 
     @Override
-    @Observed(name = "inventory.getCount")
+    @Observed(name = "inventory.get.count")
     @Transactional(readOnly = true)
     public InventoryCountView get(Long companyId, Long id) {
         return countRepository.findDetail(companyId, id)

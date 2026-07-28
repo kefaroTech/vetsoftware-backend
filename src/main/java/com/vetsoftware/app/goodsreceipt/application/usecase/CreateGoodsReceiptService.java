@@ -19,7 +19,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "goods_receipt.create")
+@Observed(name = "goods.receipt.create")
 @Service
 public class CreateGoodsReceiptService implements CreateGoodsReceiptUseCase {
     private final GoodsReceiptRepository repository;

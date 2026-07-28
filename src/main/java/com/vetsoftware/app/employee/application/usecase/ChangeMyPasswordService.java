@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code mustChangePassword}. No toca {@code authVersion}: la sesión en curso sigue válida y el empleado
  * pasa directo al panel sin re-login.
  */
-@Observed(name = "employee.changeMyPassword")
+@Observed(name = "employee.change.my.password")
 @Service
 public class ChangeMyPasswordService implements ChangeMyPasswordUseCase {
 

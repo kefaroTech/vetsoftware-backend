@@ -10,7 +10,7 @@ import com.vetsoftware.app.vaccinationtype.domain.VaccinationType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "vaccination_type.create")
+@Observed(name = "vaccination.type.create")
 @Service
 public class CreateVaccinationTypeService implements CreateVaccinationTypeUseCase {
     private final VaccinationTypeRepository repository;

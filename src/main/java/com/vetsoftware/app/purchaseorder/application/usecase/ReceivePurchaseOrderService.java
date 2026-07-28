@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * compra. Lo invoca la feature {@code goodsreceipt} dentro de su transacción ya autorizada — igual que el ledger
  * de inventario. No se expone por REST.
  */
-@Observed(name = "purchaseOrder.receive")
+@Observed(name = "purchase.order.receive")
 @Service
 public class ReceivePurchaseOrderService implements ReceivePurchaseOrderUseCase {
     private final PurchaseOrderRepository repository;

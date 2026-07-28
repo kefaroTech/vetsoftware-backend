@@ -10,7 +10,7 @@ import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "diagnostic_imaging_type.create")
+@Observed(name = "diagnostic.imaging.type.create")
 @Service
 public class CreateDiagnosticImagingTypeService implements CreateDiagnosticImagingTypeUseCase {
     private final DiagnosticImagingTypeRepository repository;

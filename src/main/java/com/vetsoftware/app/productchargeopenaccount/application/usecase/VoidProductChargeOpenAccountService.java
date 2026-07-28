@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "product_charge_open_account.void")
+@Observed(name = "product.charge.open.account.void")
 @Service
 public class VoidProductChargeOpenAccountService implements VoidProductChargeOpenAccountUseCase {
     private final ProductChargeOpenAccountRepository repository;

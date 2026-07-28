@@ -7,7 +7,7 @@ import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "open_account.find")
+@Observed(name = "open.account.find")
 @Service
 public class FindOpenAccountService implements FindOpenAccountUseCase {
     private final OpenAccountRepository repository;

@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Verificacion de correo (Opcion B). Recibe el token plano, lo re-hashea, lo consume de forma irreversible
  * y marca al empleado como verificado, habilitando su login. La posesion del token es la autorizacion.
  */
-@Observed(name = "registration.verifyEmail")
+@Observed(name = "registration.verify.email")
 @Service
 public class VerifyEmailService implements VerifyEmailUseCase {
 

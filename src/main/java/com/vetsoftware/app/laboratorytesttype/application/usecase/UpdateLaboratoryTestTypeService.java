@@ -12,7 +12,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "laboratory_test_type.update")
+@Observed(name = "laboratory.test.type.update")
 @Service
 public class UpdateLaboratoryTestTypeService implements UpdateLaboratoryTestTypeUseCase {
     private final LaboratoryTestTypeRepository repository;

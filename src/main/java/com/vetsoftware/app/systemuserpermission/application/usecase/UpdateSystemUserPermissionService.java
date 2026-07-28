@@ -14,7 +14,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "systemuserpermission.update")
+@Observed(name = "system.user.permission.update")
 @Service
 public class UpdateSystemUserPermissionService implements UpdateSystemUserPermissionUseCase {
     private final SystemUserPermissionRepository repository;

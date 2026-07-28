@@ -18,7 +18,7 @@ public class HtmlPdfRenderer {
         this.pdfEngine = pdfEngine;
     }
 
-    @Observed(name = "pdf.render", contextualName = "render-pdf")
+    @Observed(name = "pdf.render", contextualName = "render pdf")
     public byte[] render(String templateName, Map<String, Object> model) {
         Context ctx = new Context(Locale.forLanguageTag("es"));
         ctx.setVariables(model);

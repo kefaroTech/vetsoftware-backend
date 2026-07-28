@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "salesReport.salesBook")
+@Observed(name = "sales.report.sales.book")
 @Service
 public class GetSalesBookService implements GetSalesBookUseCase {
     private static final String IVA = "IVA";

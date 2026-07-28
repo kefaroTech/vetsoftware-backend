@@ -10,7 +10,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "product_charge_open_account.reactivate")
+@Observed(name = "product.charge.open.account.reactivate")
 @Service
 public class ReactivateProductChargeOpenAccountService implements ReactivateProductChargeOpenAccountUseCase {
     private final ProductChargeOpenAccountRepository repository;

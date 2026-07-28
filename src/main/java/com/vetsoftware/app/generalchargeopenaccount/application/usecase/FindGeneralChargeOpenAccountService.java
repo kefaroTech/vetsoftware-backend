@@ -7,7 +7,7 @@ import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAcco
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "general_charge_open_account.find")
+@Observed(name = "general.charge.open.account.find")
 @Service
 public class FindGeneralChargeOpenAccountService implements FindGeneralChargeOpenAccountUseCase {
     private final GeneralChargeOpenAccountRepository repository;

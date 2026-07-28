@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "systemuserpermission.reactivate")
+@Observed(name = "system.user.permission.reactivate")
 @Service
 public class ReactivateSystemUserPermissionService implements ReactivateSystemUserPermissionUseCase {
     private final SystemUserPermissionRepository repository;

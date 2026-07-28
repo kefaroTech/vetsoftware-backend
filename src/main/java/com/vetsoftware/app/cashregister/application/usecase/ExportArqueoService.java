@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Construye el reporte de arqueo desde el agregado de la sesión (movimientos + counts). */
-@Observed(name = "cashRegister.exportArqueo")
+@Observed(name = "cash.register.export.arqueo")
 @Service
 public class ExportArqueoService implements ExportArqueoUseCase {
 

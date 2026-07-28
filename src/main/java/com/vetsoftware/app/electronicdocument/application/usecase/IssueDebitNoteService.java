@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Emite una nota debito (aumento) sobre una factura VALIDADA y la transmite. A diferencia de la nota
  * credito, NO reversa la cartera: solo aumenta el valor del documento referenciado.
  */
-@Observed(name = "electronicDocument.debitNote")
+@Observed(name = "electronic.document.debit.note")
 @Service
 public class IssueDebitNoteService implements IssueDebitNoteUseCase {
     private final ElectronicDocumentRepository repository;

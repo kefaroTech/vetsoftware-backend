@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "electronicDocument.findByAccount")
+@Observed(name = "electronic.document.find.by.account")
 @Service
 public class FindElectronicDocumentByAccountService implements FindElectronicDocumentByAccountUseCase {
     private final ElectronicDocumentRepository repository;

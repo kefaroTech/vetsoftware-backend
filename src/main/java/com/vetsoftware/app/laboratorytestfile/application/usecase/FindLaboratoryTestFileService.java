@@ -7,7 +7,7 @@ import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundE
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "laboratory_test_file.find")
+@Observed(name = "laboratory.test.file.find")
 @Service
 public class FindLaboratoryTestFileService implements FindLaboratoryTestFileUseCase {
     private final LaboratoryTestFileRepository repository;

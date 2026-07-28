@@ -8,7 +8,7 @@ import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "systemuser.delete")
+@Observed(name = "system.user.delete")
 @Service
 public class DeleteSystemUserService implements DeleteSystemUserUseCase {
     private final SystemUserRepository repository;

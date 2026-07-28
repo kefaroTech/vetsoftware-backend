@@ -8,7 +8,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "purchaseOrder.list_by_company")
+@Observed(name = "purchase.order.list.by.company")
 @Service
 public class ListPurchaseOrdersService implements ListPurchaseOrdersUseCase {
     private final PurchaseOrderRepository repository;

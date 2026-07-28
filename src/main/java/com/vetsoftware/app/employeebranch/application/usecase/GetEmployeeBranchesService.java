@@ -7,7 +7,7 @@ import com.vetsoftware.app.employeebranch.application.port.out.EmployeeQueryPort
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "employeebranch.get")
+@Observed(name = "employee.branch.get")
 @Service
 public class GetEmployeeBranchesService implements GetEmployeeBranchesUseCase {
     private final EmployeeBranchRepository repository;

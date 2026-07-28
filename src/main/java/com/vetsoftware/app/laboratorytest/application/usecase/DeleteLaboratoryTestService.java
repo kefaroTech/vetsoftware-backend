@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "laboratory_test.delete")
+@Observed(name = "laboratory.test.delete")
 @Service
 public class DeleteLaboratoryTestService implements DeleteLaboratoryTestUseCase {
     private final LaboratoryTestRepository repository;

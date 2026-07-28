@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "numberingResolution.reactivate")
+@Observed(name = "numbering.resolution.reactivate")
 @Service
 public class ReactivateNumberingResolutionService implements ReactivateNumberingResolutionUseCase {
     private final NumberingResolutionRepository repository;

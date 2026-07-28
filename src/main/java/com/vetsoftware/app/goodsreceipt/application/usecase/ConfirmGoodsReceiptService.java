@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * compra, aplica lo recibido en ella; luego marca CONFIRMED. La transición DRAFT→CONFIRMED es la guarda de
  * idempotencia porque {@code recordReceipt} NO es idempotente.
  */
-@Observed(name = "goods_receipt.confirm")
+@Observed(name = "goods.receipt.confirm")
 @Service
 public class ConfirmGoodsReceiptService implements ConfirmGoodsReceiptUseCase {
     private final GoodsReceiptRepository repository;

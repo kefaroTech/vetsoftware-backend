@@ -8,7 +8,7 @@ import com.vetsoftware.app.consultationtype.domain.ConsultationType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "consultation_type.create")
+@Observed(name = "consultation.type.create")
 @Service
 public class CreateConsultationTypeService implements CreateConsultationTypeUseCase {
     private final ConsultationTypeRepository repository;

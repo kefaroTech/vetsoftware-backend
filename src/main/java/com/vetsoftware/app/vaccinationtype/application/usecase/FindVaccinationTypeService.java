@@ -7,7 +7,7 @@ import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundExcepti
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "vaccination_type.find")
+@Observed(name = "vaccination.type.find")
 @Service
 public class FindVaccinationTypeService implements FindVaccinationTypeUseCase {
     private final VaccinationTypeRepository repository;

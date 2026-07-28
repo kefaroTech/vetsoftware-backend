@@ -11,7 +11,7 @@ import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExis
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "product_category.create")
+@Observed(name = "product.category.create")
 @Service
 public class CreateProductCategoryService implements CreateProductCategoryUseCase {
     private final ProductCategoryRepository repository;

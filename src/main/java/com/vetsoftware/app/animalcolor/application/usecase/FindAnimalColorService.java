@@ -7,7 +7,7 @@ import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "animalColor.find")
+@Observed(name = "animal.color.find")
 @Service
 public class FindAnimalColorService implements FindAnimalColorUseCase {
     private final AnimalColorRepository repository;

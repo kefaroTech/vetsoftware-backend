@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * TODO: vincular formalmente la FE con el POS (referencedCude) — depende del soporte del proveedor; hoy
  * la conversión emite una FE independiente sobre la misma venta.
  */
-@Observed(name = "electronicDocument.convertPos")
+@Observed(name = "electronic.document.convert.pos")
 @Service
 public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
     private final ElectronicDocumentRepository repository;

@@ -7,7 +7,7 @@ import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundExcepti
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "product_category.find")
+@Observed(name = "product.category.find")
 @Service
 public class FindProductCategoryService implements FindProductCategoryUseCase {
     private final ProductCategoryRepository repository;

@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Abre la caja de una sede con la base inicial. Cada empleado puede mantener una sola sesión OPEN y cada terminal
  * solo una por sede; los índices únicos condicionales de la BD cubren las carreras residuales.
  */
-@Observed(name = "cashRegister.openSession")
+@Observed(name = "cash.register.open.session")
 @Service
 public class OpenCashSessionService implements OpenCashSessionUseCase {
 

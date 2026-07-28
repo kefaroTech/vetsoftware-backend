@@ -14,7 +14,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "employee.list_by_company")
+@Observed(name = "employee.list.by.company")
 @Service
 public class ListEmployeesByCompanyService implements ListEmployeesByCompanyUseCase {
     private final EmployeeRepository repository;

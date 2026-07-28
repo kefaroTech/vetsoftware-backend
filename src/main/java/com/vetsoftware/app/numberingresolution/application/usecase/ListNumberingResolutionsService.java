@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "numberingResolution.list")
+@Observed(name = "numbering.resolution.list")
 @Service
 public class ListNumberingResolutionsService implements ListNumberingResolutionsUseCase {
     private final NumberingResolutionRepository repository;

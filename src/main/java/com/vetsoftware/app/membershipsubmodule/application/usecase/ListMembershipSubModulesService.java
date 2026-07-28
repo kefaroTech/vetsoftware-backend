@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "membershipsubmodule.list")
+@Observed(name = "membership.submodule.list")
 @Service
 public class ListMembershipSubModulesService implements ListMembershipSubModulesUseCase {
     private final MembershipSubModuleRepository repository;

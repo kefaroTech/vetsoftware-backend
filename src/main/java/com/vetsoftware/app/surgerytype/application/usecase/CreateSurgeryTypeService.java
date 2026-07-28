@@ -10,7 +10,7 @@ import com.vetsoftware.app.surgerytype.domain.SurgeryType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "surgery_type.create")
+@Observed(name = "surgery.type.create")
 @Service
 public class CreateSurgeryTypeService implements CreateSurgeryTypeUseCase {
     private final SurgeryTypeRepository repository;

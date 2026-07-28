@@ -8,7 +8,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "consultationtype.reactivate")
+@Observed(name = "consultation.type.reactivate")
 @Service
 public class ReactivateConsultationTypeService implements ReactivateConsultationTypeUseCase {
     private final ConsultationTypeRepository repository;

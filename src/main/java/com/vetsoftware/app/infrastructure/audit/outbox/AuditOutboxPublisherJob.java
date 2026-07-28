@@ -53,7 +53,7 @@ final class AuditOutboxPublisherJob {
             fixedDelayString = "${vetsoftware.audit.outbox.publish-interval:PT5S}",
             initialDelayString = "${vetsoftware.audit.outbox.publish-initial-delay:PT10S}")
     void publish() {
-        telemetry.observe("audit_outbox_publish", this::publishBatch);
+        telemetry.observe("audit.outbox.publish", this::publishBatch);
     }
 
     ScheduledJobTelemetry.Outcome publishBatch() {

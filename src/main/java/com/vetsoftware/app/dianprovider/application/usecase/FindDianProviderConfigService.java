@@ -7,7 +7,7 @@ import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundExcepti
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "dianProviderConfig.find")
+@Observed(name = "dian.provider.config.find")
 @Service
 public class FindDianProviderConfigService implements FindDianProviderConfigUseCase {
     private final DianProviderConfigRepository repository;

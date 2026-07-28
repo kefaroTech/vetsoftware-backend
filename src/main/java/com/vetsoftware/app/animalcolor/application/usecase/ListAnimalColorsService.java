@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "animalColor.list")
+@Observed(name = "animal.color.list")
 @Service
 public class ListAnimalColorsService implements ListAnimalColorsUseCase {
     private final AnimalColorRepository repository;

@@ -24,7 +24,7 @@ class ScheduledJobTelemetryTest {
         assertThat(handler.stopped).hasSize(1);
         Observation.Context context = handler.stopped.getFirst();
         assertThat(context.getName()).isEqualTo(ScheduledJobTelemetry.OBSERVATION_NAME);
-        assertThat(context.getContextualName()).isEqualTo("task dian.test");
+        assertThat(context.getContextualName()).isEqualTo("run dian test");
         assertThat(context.getParentObservation()).isNull();
         assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY)).isEqualTo("dian.test");
         assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY)).isEqualTo("success");
@@ -77,6 +77,19 @@ class ScheduledJobTelemetryTest {
         assertThat(Outcome.from(2, 0)).isEqualTo(Outcome.SUCCESS);
         assertThat(Outcome.from(2, 1)).isEqualTo(Outcome.PARTIAL_FAILURE);
         assertThat(Outcome.from(2, 2)).isEqualTo(Outcome.FAILURE);
+    }
+
+    @Test
+    void rejectsJobNamesOutsideLowercaseDotNotation() {
+        ScheduledJobTelemetry telemetry =
+                new ScheduledJobTelemetry(ObservationRegistry.create());
+
+        assertThatThrownBy(() -> telemetry.observe("audit_outbox.publish", () -> Outcome.SUCCESS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lowercase.dot.notation");
+        assertThatThrownBy(() -> telemetry.observe("auditOutbox.publish", () -> Outcome.SUCCESS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lowercase.dot.notation");
     }
 
     private static ObservationRegistry registryWith(CapturingHandler handler) {

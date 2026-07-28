@@ -7,7 +7,7 @@ import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-@Observed(name = "rolepermission.find")
+@Observed(name = "role.permission.find")
 @Service
 public class FindRolePermissionService implements FindRolePermissionUseCase {
     private final RolePermissionRepository repository;

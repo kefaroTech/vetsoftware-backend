@@ -7,7 +7,7 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Observed(name = "purchaseOrder.delete")
+@Observed(name = "purchase.order.delete")
 @Service
 public class DeletePurchaseOrderService implements DeletePurchaseOrderUseCase {
     private final PurchaseOrderRepository repository;
