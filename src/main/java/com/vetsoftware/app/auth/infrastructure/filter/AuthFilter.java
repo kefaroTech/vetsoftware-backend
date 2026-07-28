@@ -11,6 +11,8 @@ import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseC
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,17 +43,20 @@ public class AuthFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final AuditLogger auditLogger;
+    private final Tracer tracer;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
                       ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
                       JwtProvider jwtProvider,
                       ObjectMapper objectMapper,
-                      AuditLogger auditLogger) {
+                      AuditLogger auditLogger,
+                      Tracer tracer) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
         this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
         this.auditLogger = auditLogger;
+        this.tracer = tracer;
     }
 
     private record PublicRoute(String method, String pattern) {}
@@ -198,8 +203,10 @@ public class AuthFilter extends OncePerRequestFilter {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
         problem.setTitle(HttpStatus.UNAUTHORIZED.getReasonPhrase());
         problem.setProperty("code", code);
-        String traceId = MDC.get("traceId");
-        if (traceId != null) problem.setProperty("traceId", traceId);
+        Span currentSpan = tracer.currentSpan();
+        if (currentSpan != null) {
+            problem.setProperty("traceId", currentSpan.context().traceId());
+        }
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(), problem);

@@ -2,10 +2,8 @@
 management:
   tracing:
     sampling:
-      # Política vigente de retención total: la app envía TODAS las trazas al
-      # otel-collector y este conserva errores, trazas lentas y el 100% del resto.
-      # Cualquier reducción futura debe aplicarse de forma coordinada con
-      # docker/otel-collector.yml.
+      # La app envía TODAS las trazas. El collector conserva siempre errores y trazas lentas,
+      # y decide mediante OTEL_TAIL_SAMPLING_PERCENTAGE cuánto tráfico normal retener.
       probability: ${TRACING_SAMPLING:1.0}
 
 springdoc:

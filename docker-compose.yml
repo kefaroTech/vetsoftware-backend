@@ -24,30 +24,55 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: vetsoftware_otel_collector
+    restart: unless-stopped
     command: ["--config=/etc/otel/otel-collector.yml"]
+    environment:
+      OTEL_TAIL_SAMPLING_PERCENTAGE: ${OTEL_TAIL_SAMPLING_PERCENTAGE:-100}
     volumes:
-      - ./docker/otel-collector.yml:/etc/otel/otel-collector.yml
+      - ./docker/otel-collector.yml:/etc/otel/otel-collector.yml:ro
     ports:
       - "4317:4317"
       - "4318:4318"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - zipkin
+      tempo:
+        condition: service_healthy
 
-  zipkin:
-    image: openzipkin/zipkin:latest
-    container_name: vetsoftware_zipkin
+  tempo:
+    image: grafana/tempo:3.0.2
+    container_name: vetsoftware_tempo
+    restart: unless-stopped
+    command:
+      - -target=all
+      - -config.file=/etc/tempo/tempo.yml
+    volumes:
+      - ./docker/tempo.yml:/etc/tempo/tempo.yml:ro
+      - vetsoftware_tempo_data:/var/tempo
     ports:
-      - "9411:9411"
+      # La API de consulta queda limitada al host local; la ingesta OTLP viaja por la red interna.
+      - "127.0.0.1:3200:3200"
+    healthcheck:
+      test: ["CMD", "/tempo", "-health", "-health.url=http://127.0.0.1:3200/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.1
     container_name: vetsoftware_prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=5GB
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
     ports:
       - "9090:9090"
     volumes:
-      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - vetsoftware_prometheus_data:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -86,15 +111,21 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: vetsoftware_grafana
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
     volumes:
       - vetsoftware_grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning/datasources/datasources.yml:/etc/grafana/provisioning/datasources/vetsoftware.yml:ro
     depends_on:
-      - prometheus
-      - loki
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_healthy
 
   sonarqube:
     image: sonarqube:lts-community
@@ -137,6 +168,8 @@ volumes:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
   vetsoftware_alloy_data:
+  vetsoftware_prometheus_data:
+  vetsoftware_tempo_data:
   vetsoftware_sonarqube_data:
   vetsoftware_sonarqube_extensions:
   vetsoftware_sonarqube_logs:

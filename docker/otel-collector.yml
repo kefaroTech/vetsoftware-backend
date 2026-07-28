@@ -35,7 +35,7 @@ processors:
       - name: sample-rest
         type: probabilistic
         probabilistic:
-          sampling_percentage: 100
+          sampling_percentage: ${env:OTEL_TAIL_SAMPLING_PERCENTAGE}
 
   # Agrupa spans antes de exportar (eficiencia de red).
   batch:
@@ -43,8 +43,10 @@ processors:
     send_batch_size: 512
 
 exporters:
-  zipkin:
-    endpoint: http://zipkin:9411/api/v2/spans
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
 
 service:
   pipelines:
@@ -52,4 +54,4 @@ service:
       receivers: [otlp]
       # Orden importa: memory_limiter primero, tail_sampling antes de batch.
       processors: [memory_limiter, tail_sampling, batch]
-      exporters: [zipkin]
+      exporters: [otlp_grpc/tempo]

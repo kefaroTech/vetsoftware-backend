@@ -62,17 +62,29 @@ management:
       show-details: always
   tracing:
     sampling:
-      probability: 1.0
+      # El collector aplica tail sampling. La aplicación debe enviar todas las trazas para que
+      # los errores y operaciones lentas nunca se descarten antes de llegar a esa decisión.
+      probability: ${TRACING_SAMPLING:1.0}
   # Las métricas se exponen por Prometheus; no se duplican por OTLP salvo habilitación explícita.
   otlp:
     metrics:
       export:
         enabled: ${OTLP_METRICS_EXPORT_ENABLED:false}
   opentelemetry:
+    resource-attributes:
+      # Distingue réplicas, versiones y ambientes sin cambiar el nombre lógico del servicio.
+      service.instance.id: ${VETSOFTWARE_INSTANCE_ID:local}
+      service.version: ${VETSOFTWARE_VERSION:@project.version@}
+      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:${spring.profiles.active:default}}
     tracing:
       export:
         otlp:
           endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  structured:
+    json:
+      customizer: com.vetsoftware.app.infrastructure.logging.TraceCorrelationJsonCustomizer
 
 vetsoftware:
   observability:

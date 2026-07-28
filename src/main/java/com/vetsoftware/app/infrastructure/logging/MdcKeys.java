@@ -1,11 +1,13 @@
 package com.vetsoftware.app.infrastructure.logging;
 
 /**
- * Claves MDC del actor, fuente única de verdad para que el productor ({@code AuthFilter}) y la
- * limpieza defensiva ({@code TraceContextResetFilter}) usen exactamente los mismos nombres.
+ * Claves MDC propiedad de VetSoftware, fuente única de verdad para productores y limpieza.
  *
  * <p>Notación con punto, alineada con los eventos {@code AUDIT} y las semantic conventions de
- * OpenTelemetry. El {@code LogstashEncoder} las emite como campos JSON.
+ * OpenTelemetry. Spring Boot las emite como campos del log JSON estructurado.
+ *
+ * <p>{@code traceId} y {@code spanId} no se declaran aquí: Micrometer Tracing es su único dueño
+ * y administra automáticamente su alta, restauración y limpieza en el MDC.
  */
 public final class MdcKeys {
 

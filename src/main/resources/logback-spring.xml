@@ -21,9 +21,9 @@
     <!-- Consola JSON estructurado en el resto de perfiles (prod, etc.) -->
     <springProfile name="!dev">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <timeZone>UTC</timeZone>
-                <customFields>{"service":"${appName}"}</customFields>
+            <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+                <format>logstash</format>
+                <charset>UTF-8</charset>
             </encoder>
         </appender>
     </springProfile>
@@ -42,9 +42,9 @@
             <maxHistory>7</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <timeZone>UTC</timeZone>
-            <customFields>{"service":"${appName}"}</customFields>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
@@ -81,9 +81,9 @@
             <maxHistory>365</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <timeZone>UTC</timeZone>
-            <customFields>{"service":"${appName}"}</customFields>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 

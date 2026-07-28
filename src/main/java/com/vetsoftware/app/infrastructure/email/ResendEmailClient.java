@@ -5,6 +5,9 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.observation.annotation.Observed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,13 +43,15 @@ public class ResendEmailClient {
     private final String from;
     private final String apiKey;
     private final RestClient restClient;
+    private final ObservationRegistry observationRegistry;
 
     public ResendEmailClient(
             @Value("${vetsoftware.email.enabled:true}") boolean enabled,
             @Value("${vetsoftware.email.from}") String from,
             @Value("${vetsoftware.email.resend.api-key:}") String apiKey,
             @Value("${vetsoftware.email.resend.base-url:https://api.resend.com}") String baseUrl,
-            RestClient.Builder restClientBuilder) {
+            RestClient.Builder restClientBuilder,
+            ObservationRegistry observationRegistry) {
         this.enabled = enabled;
         this.from = from;
         this.apiKey = apiKey;
@@ -54,6 +59,7 @@ public class ResendEmailClient {
         factory.setConnectTimeout(10_000);
         factory.setReadTimeout(30_000);
         this.restClient = restClientBuilder.baseUrl(baseUrl).requestFactory(factory).build();
+        this.observationRegistry = observationRegistry;
     }
 
     /** {@code true} si el envío de correo está habilitado (permite a los llamadores dar fallback en dev). */
@@ -66,6 +72,7 @@ public class ResendEmailClient {
 
     /** Envía un correo con HTML propio y adjuntos opcionales. Ver contrato en el javadoc de la clase. */
     @Async("emailTaskExecutor")
+    @Observed(name = "email.send", contextualName = "send email")
     public void send(String to, String cc, String subject, String html, List<Attachment> attachments) {
         if (!ready(to, subject)) return;
 
@@ -89,10 +96,12 @@ public class ResendEmailClient {
      * {@code null} para dejar que la plantilla defina el suyo.
      */
     @Async("emailTaskExecutor")
+    @Observed(name = "email.send.template", contextualName = "send email template")
     public void sendTemplate(String to, String cc, String subject, String templateId,
                              Map<String, Object> variables) {
         if (!ready(to, subject)) return;
         if (templateId == null || templateId.isBlank()) {
+            recordOutcome("invalid");
             log.warn("No se envía correo a {}: templateId de Resend no configurado", to);
             return;
         }
@@ -107,14 +116,17 @@ public class ResendEmailClient {
 
     private boolean ready(String to, String subject) {
         if (!enabled) {
+            recordOutcome("skipped");
             log.info("Email deshabilitado (vetsoftware.email.enabled=false); se omite el envío a {}", to);
             return false;
         }
         if (to == null || to.isBlank()) {
+            recordOutcome("invalid");
             log.warn("No se envía correo: destinatario vacío (asunto '{}')", subject);
             return false;
         }
         if (apiKey == null || apiKey.isBlank()) {
+            recordOutcome("misconfigured");
             log.warn("No se envía correo a {}: RESEND_API_KEY no configurada (asunto '{}')", to, subject);
             return false;
         }
@@ -143,11 +155,29 @@ public class ResendEmailClient {
                     .body(body)
                     .retrieve()
                     .toBodilessEntity();
+            recordOutcome("success");
         } catch (RestClientResponseException e) {
+            recordFailure(e);
             log.warn("No se pudo enviar el correo a {} (Resend respondió {}): {}",
                     to, e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (Exception e) {
+            recordFailure(e);
             log.warn("No se pudo enviar el correo a {} por Resend: {}", to, e.getMessage());
         }
+    }
+
+    private void recordOutcome(String outcome) {
+        Observation current = observationRegistry.getCurrentObservation();
+        if (current != null) {
+            current.lowCardinalityKeyValue("email.outcome", outcome);
+        }
+    }
+
+    private void recordFailure(Throwable error) {
+        Observation current = observationRegistry.getCurrentObservation();
+        if (current != null) {
+            current.error(error);
+        }
+        recordOutcome("failure");
     }
 }

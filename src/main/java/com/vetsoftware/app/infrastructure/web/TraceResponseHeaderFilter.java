@@ -14,13 +14,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
-public class RequestIdFilter extends OncePerRequestFilter {
+public final class TraceResponseHeaderFilter extends OncePerRequestFilter {
 
-    public static final String HEADER = "X-Request-Id";
+    public static final String TRACE_HEADER = "X-Trace-Id";
+    public static final String LEGACY_REQUEST_HEADER = "X-Request-Id";
 
     private final Tracer tracer;
 
-    public RequestIdFilter(Tracer tracer) {
+    public TraceResponseHeaderFilter(Tracer tracer) {
         this.tracer = tracer;
     }
 
@@ -29,7 +30,10 @@ public class RequestIdFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
         Span span = tracer.currentSpan();
         if (span != null) {
-            response.setHeader(HEADER, span.context().traceId());
+            String traceId = span.context().traceId();
+            response.setHeader(TRACE_HEADER, traceId);
+            // Compatibilidad temporal con clientes existentes. X-Trace-Id es el contrato nuevo.
+            response.setHeader(LEGACY_REQUEST_HEADER, traceId);
         }
         chain.doFilter(request, response);
     }

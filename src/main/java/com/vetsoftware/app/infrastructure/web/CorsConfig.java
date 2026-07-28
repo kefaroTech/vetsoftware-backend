@@ -22,7 +22,7 @@ public class CorsConfig {
         config.setAllowedOrigins(List.of(allowedOrigins));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization", "X-Request-Id"));
+        config.setExposedHeaders(List.of("Authorization", "X-Trace-Id", "X-Request-Id"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

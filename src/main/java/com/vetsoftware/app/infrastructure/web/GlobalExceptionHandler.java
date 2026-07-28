@@ -57,6 +57,8 @@ import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationPro
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
@@ -152,7 +154,6 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -170,6 +171,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 // @Order(HIGHEST_PRECEDENCE): gana sobre el ProblemDetailsExceptionHandler interno de
@@ -184,14 +187,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final AuditLogger auditLogger;
+    private final Tracer tracer;
 
-    public GlobalExceptionHandler(AuditLogger auditLogger) {
+    public GlobalExceptionHandler(AuditLogger auditLogger, Tracer tracer) {
         this.auditLogger = auditLogger;
+        this.tracer = tracer;
     }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        if (statusCode.is5xxServerError() && request instanceof ServletWebRequest servletWebRequest) {
+            markObservationError(servletWebRequest.getRequest(), ex);
+        }
         if (statusCode.is5xxServerError()) {
             log.error("Server error {} on {}", statusCode.value(), request.getDescription(false), ex);
         } else if (statusCode.is4xxClientError()) {
@@ -648,32 +656,42 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(PdfRenderException.class)
-    public ProblemDetail handlePdfRender(PdfRenderException ex) {
+    public ProblemDetail handlePdfRender(PdfRenderException ex, HttpServletRequest request) {
+        markObservationError(request, ex);
         log.error("PDF render failed", ex);
         return problem(HttpStatus.BAD_GATEWAY, "PDF_RENDER_FAILED",
                 "Failed to generate PDF document");
     }
 
     @ExceptionHandler(S3StorageException.class)
-    public ProblemDetail handleS3Storage(S3StorageException ex) {
+    public ProblemDetail handleS3Storage(S3StorageException ex, HttpServletRequest request) {
+        markObservationError(request, ex);
         log.error("S3 storage operation failed", ex);
         return problem(HttpStatus.BAD_GATEWAY, "FILE_STORAGE_FAILED",
                 "Failed to access file storage");
     }
 
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleUnexpected(Exception ex) {
+    public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
+        markObservationError(request, ex);
         log.error("Unexpected error", ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error");
     }
 
-    private static ProblemDetail problem(HttpStatus status, String code, String detail) {
+    private ProblemDetail problem(HttpStatus status, String code, String detail) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
         pd.setTitle(status.getReasonPhrase());
         pd.setProperty("code", code);
-        String traceId = MDC.get("traceId");
-        if (traceId != null) pd.setProperty("traceId", traceId);
+        Span currentSpan = tracer.currentSpan();
+        if (currentSpan != null) {
+            pd.setProperty("traceId", currentSpan.context().traceId());
+        }
         return pd;
+    }
+
+    private static void markObservationError(HttpServletRequest request, Throwable error) {
+        ServerHttpObservationFilter.findObservationContext(request)
+                .ifPresent(context -> context.setError(error));
     }
 
     private static String errorCode(RuntimeException ex) {
