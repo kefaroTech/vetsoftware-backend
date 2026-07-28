@@ -398,7 +398,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         body.put("operation_type_id", operationTypeId(doc.getDocumentType()));
         body.put("type_document_id", typeDocumentId(doc.getDocumentType()));
         body.put("graphic_representation", 0);
-        body.put("send_email", 0); // la representación/correo la genera el sistema (Gotenberg), no MATIAS.
+        body.put("send_email", 0); // La representación y el correo los genera el sistema, no MATIAS.
         body.put("payments", buildPayments(doc));
         // Consumidor final: los ejemplos oficiales (invoice-final-consumer / pos-final-consumer) OMITEN
         // el bloque customer. Solo lo enviamos cuando el adquiriente está identificado.
@@ -633,7 +633,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                     text(attached, "url"),                                // xmlSigned: URL del XML firmado
                     firstNonNull(text(qr, "qrDian"), text(qr, "data")),   // qrData: contenido/URL DIAN
                     text(qr, "url"),                                      // qrUrl: imagen QR
-                    null,                                                 // pdf: lo genera nuestra entrega (Gotenberg)
+                    null,                                                 // PDF: lo genera nuestra entrega
                     key, null, LocalDateTime.now(), http, safe(body));
         }
         if (queued) {

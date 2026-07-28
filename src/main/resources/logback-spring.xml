@@ -1,113 +1,37 @@
 <configuration>
-    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="vetsoftware"/>
-    <springProperty scope="context" name="logDirectory"
-                    source="vetsoftware.observability.logging.directory"
-                    defaultValue="${user.home}/.vetsoftware/logs"/>
-    <springProperty scope="context" name="instanceId"
-                    source="vetsoftware.observability.service-instance-id"
-                    defaultValue="local"/>
-    <property name="applicationLog" value="${logDirectory}/${appName}-${instanceId}"/>
-    <property name="auditLog" value="${logDirectory}/audit-${instanceId}"/>
-
-    <!-- Consola legible para humanos en dev (no JSON crudo) -->
-    <springProfile name="dev">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder>
-                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%X{traceId:-no-trace}] %magenta(%X{actor.type:-}) %cyan(%logger{30}) : %msg%n</pattern>
-            </encoder>
-        </appender>
-    </springProfile>
-
-    <!-- Consola JSON estructurado en el resto de perfiles (prod, etc.) -->
-    <springProfile name="!dev">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-                <format>logstash</format>
-                <charset>UTF-8</charset>
-            </encoder>
-        </appender>
-    </springProfile>
-
-    <!--
-      Archivo JSON para Alloy → Loki.
-      La ruta absoluta configurable evita depender de user.dir. El identificador de instancia
-      impide que dos procesos escriban el mismo archivo. Los rotados permanecen sin comprimir
-      durante siete días para que Alloy pueda recuperar una interrupción sin perder el intervalo.
-    -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${applicationLog}.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${applicationLog}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-            <format>logstash</format>
-            <charset>UTF-8</charset>
+    <!-- Desarrollo conserva una consola legible. No se crea ningún archivo local. -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%X{traceId:-no-trace}] %magenta(%X{actor.type:-}) %cyan(%logger{30}) : %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- Reducir ruido de frameworks -->
+    <!-- Producción envía los eventos directamente al SDK de logs de OpenTelemetry. -->
+    <appender name="OTEL"
+              class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureKeyValuePairAttributes>true</captureKeyValuePairAttributes>
+        <captureMdcAttributes>*</captureMdcAttributes>
+        <numLogsCapturedBeforeOtelInstall>1000</numLogsCapturedBeforeOtelInstall>
+    </appender>
+
     <logger name="org.hibernate" level="WARN"/>
     <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR"/>
     <logger name="org.springframework" level="WARN"/>
     <logger name="liquibase" level="WARN"/>
     <logger name="com.zaxxer.hikari" level="WARN"/>
-
-    <!-- Logs propios de la app en INFO -->
     <logger name="com.vetsoftware" level="INFO"/>
+    <logger name="AUDIT" level="INFO"/>
 
-    <!-- Auditoría: archivo dedicado con retención larga (cumplimiento), bajo volumen.
+    <springProfile name="prod | dev">
+        <root level="INFO">
+            <appender-ref ref="OTEL"/>
+        </root>
+    </springProfile>
 
-         TAMPER-RESISTANCE (OWASP ASVS V7.3): el archivo audit-<instancia>.log es local y editable,
-         así que por sí solo
-         no es prueba de manipulación. Para cumplimiento clínico real el audit trail debe salir del host
-         hacia un destino append-only/WORM o un SIEM. Dos vías, según la infra disponible:
-
-           1. Reenvío off-host (recomendado): descomentar el appender SYSLOG_AUDIT de abajo, definir
-              `audit.syslog.host` (propiedad/env del colector del SIEM) y añadir su <appender-ref> al
-              logger AUDIT. El SIEM guarda los eventos fuera del alcance del host (inmutables).
-           2. OS-level: dejar ${auditLog}.log como append-only (`chattr +a`) y rotarlo hacia un
-              volumen WORM.
-
-         Hoy los eventos ya llegan a Loki por el stream principal (additivity) — bueno para consulta,
-         no para inmutabilidad. El paso 1 queda pendiente solo del host del SIEM (decisión de infra). -->
-    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${auditLog}.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${auditLog}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>365</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
-            <format>logstash</format>
-            <charset>UTF-8</charset>
-        </encoder>
-    </appender>
-
-    <!-- Reenvío off-host del audit trail a un SIEM (tamper-resistance). Listo para habilitar:
-         descomentar y definir `audit.syslog.host`; luego añadir <appender-ref ref="SYSLOG_AUDIT"/>
-         al logger AUDIT de abajo.
-    <springProperty scope="context" name="auditSyslogHost" source="audit.syslog.host"/>
-    <appender name="SYSLOG_AUDIT" class="ch.qos.logback.classic.net.SyslogAppender">
-        <syslogHost>${auditSyslogHost}</syslogHost>
-        <port>514</port>
-        <facility>AUTH</facility>
-        <suffixPattern>[%thread] %logger %msg</suffixPattern>
-    </appender>
-    -->
-
-    <!-- Flujo de auditoría (OWASP ASVS V7): además del stream normal (Loki/consola por additivity),
-         va al archivo dedicado AUDIT_FILE de retención larga. Filtrable por logger_name="AUDIT".
-         Para tamper-resistance off-host, añadir aquí <appender-ref ref="SYSLOG_AUDIT"/>. -->
-    <logger name="AUDIT" level="INFO" additivity="true">
-        <appender-ref ref="AUDIT_FILE"/>
-    </logger>
-
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
-    </root>
+    <springProfile name="!prod &amp; !dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="OTEL"/>
+        </root>
+    </springProfile>
 </configuration>

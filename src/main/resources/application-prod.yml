@@ -1,10 +1,54 @@
-# Perfil prod — S3 real de AWS.
+# Producción: conexiones administradas/remotas; no contiene fallbacks locales.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      url: ${REDIS_URL}
+
+jwt:
+  secret: ${JWT_SECRET}
+
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
   tracing:
     sampling:
-      # La app envía TODAS las trazas. El collector conserva siempre errores y trazas lentas,
-      # y decide mediante OTEL_TAIL_SAMPLING_PERCENTAGE cuánto tráfico normal retener.
       probability: ${TRACING_SAMPLING:1.0}
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+  opentelemetry:
+    resource-attributes:
+      service.name: vetsoftware
+      service.namespace: mainvet
+      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:production}
+      service.instance.id: ${VETSOFTWARE_INSTANCE_ID}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
+    logging:
+      export:
+        schedule-delay: 5s
+        max-queue-size: 4096
+        max-batch-size: 512
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT}
+      limits:
+        max-attributes: 128
+        max-attribute-value-length: 4096
 
 springdoc:
   api-docs:
@@ -12,15 +56,40 @@ springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 vetsoftware:
+  email:
+    enabled: true
+    from: ${EMAIL_FROM}
+    resend:
+      api-key: ${RESEND_API_KEY}
+  registration:
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL}
+  password-reset:
+    reset-base-url: ${PASSWORD_RESET_URL}
+  code-recovery:
+    login-url: ${CODE_RECOVERY_LOGIN_URL}
+  employee:
+    login-url: ${EMPLOYEE_LOGIN_URL}
+  recaptcha:
+    enabled: ${RECAPTCHA_ENABLED:true}
+    secret: ${RECAPTCHA_SECRET}
+  audit:
+    outbox:
+      enabled: true
+      publisher-enabled: true
+      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM}
+      region: ${AWS_REGION}
+      endpoint: ""
+      access-key: ""
+      secret-key: ""
   storage:
     s3:
       bucket: ${S3_BUCKET}
-      region: ${S3_REGION:us-east-1}
-      # sin endpoint override → SDK usa el endpoint real de AWS
-      endpoint: ${S3_ENDPOINT:}
-      # credenciales vacías → DefaultCredentialsProvider (IAM role / env vars / perfil)
-      access-key: ${S3_ACCESS_KEY:}
-      secret-key: ${S3_SECRET_KEY:}
-      # virtual-hosted style (estándar en S3 real)
-      path-style-access: ${S3_PATH_STYLE_ACCESS:false}
+      region: ${AWS_REGION}
+      endpoint: ""
+      access-key: ""
+      secret-key: ""
+      path-style-access: false

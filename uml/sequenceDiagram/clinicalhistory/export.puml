@@ -68,8 +68,8 @@ Service -> Service : new ClinicalHistoryReportModel(\n  animal, from, to, types,
 
 Service -> PdfPort : render(model)
 note right of PdfPort
-  Implementación: ClinicalHistoryGotenbergAdapter
-  (renderiza HTML y delega a Gotenberg para PDF)
+  Implementación: ClinicalHistoryPdfAdapter
+  (renderiza HTML con OpenHTMLToPDF dentro del backend)
 end note
 PdfPort --> Service : byte[] pdf
 

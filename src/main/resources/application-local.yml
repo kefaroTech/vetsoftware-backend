@@ -1,0 +1,83 @@
+# Entorno individual: dependencias levantadas por docker-compose.yml.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/vetsoftware_db}
+    username: ${DB_USERNAME:cronos}
+    password: ${DB_PASSWORD:cronos2026*}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+jwt:
+  secret: ${JWT_SECRET:REMOVED_SENSITIVE_VALUE}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  opentelemetry:
+    resource-attributes:
+      service.name: vetsoftware
+      service.namespace: mainvet
+      deployment.environment.name: local
+      service.instance.id: ${VETSOFTWARE_INSTANCE_ID:local-1}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:http://localhost:4318/v1/logs}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176}
+
+vetsoftware:
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from: "${EMAIL_FROM:VetSoftware Local <local@vetsoftware.test>}"
+    resend:
+      api-key: ${RESEND_API_KEY:}
+  registration:
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5174/verify-email}
+  password-reset:
+    reset-base-url: ${PASSWORD_RESET_URL:http://localhost:5174/restablecer-contrasena}
+  code-recovery:
+    login-url: ${CODE_RECOVERY_LOGIN_URL:http://localhost:5174/login}
+  employee:
+    login-url: ${EMPLOYEE_LOGIN_URL:http://localhost:5174/login}
+  recaptcha:
+    enabled: ${RECAPTCHA_ENABLED:false}
+    secret: ${RECAPTCHA_SECRET:}
+  audit:
+    outbox:
+      enabled: true
+      publisher-enabled: ${AUDIT_FIREHOSE_ENABLED:true}
+      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM:vetsoftware-audit-local}
+      region: ${AWS_REGION:us-east-1}
+      endpoint: ${AUDIT_FIREHOSE_ENDPOINT:http://localhost:4566}
+      access-key: ${AWS_ACCESS_KEY_ID:test}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+  storage:
+    s3:
+      bucket: ${S3_BUCKET:vetsoftware-local}
+      region: ${AWS_REGION:us-east-1}
+      endpoint: ${S3_ENDPOINT:http://localhost:4566}
+      access-key: ${AWS_ACCESS_KEY_ID:test}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      path-style-access: true

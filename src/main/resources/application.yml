@@ -15,7 +15,7 @@ spring:
   application:
     name: vetsoftware
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: ${SPRING_PROFILES_ACTIVE:local}
   mvc:
     problemdetails:
       enabled: true
@@ -24,9 +24,6 @@ spring:
       max-file-size: ${MAX_FILE_SIZE:25MB}
       max-request-size: ${MAX_REQUEST_SIZE:25MB}
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/vetsoftware_db
-    username: ${DB_USERNAME:cronos}
-    password: ${DB_PASSWORD:cronos2026*}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
@@ -38,15 +35,10 @@ spring:
           preferred_boolean_jdbc_type: TINYINT
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
   cache:
     type: redis
 
 jwt:
-  secret: ${JWT_SECRET:c2VjcmV0LWtleS12ZXRzb2Z0d2FyZS0yMDI2LXN1cGVyc2VjcmV0LWtleS0xMjM0NTY3ODk=}
   # Access token corto: se renueva vía refresh token sin re-login (ver /auth/refresh).
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
   # Refresh token largo (opaco, persistido y rotado). Controla cuánto dura la sesión sin re-login.
@@ -62,8 +54,8 @@ management:
       show-details: always
   tracing:
     sampling:
-      # El collector aplica tail sampling. La aplicación debe enviar todas las trazas para que
-      # los errores y operaciones lentas nunca se descarten antes de llegar a esa decisión.
+      # Política vigente: conservar el 100 %. La aplicación no descarta trazas antes de
+      # entregarlas al collector y el pipeline de prod tampoco aplica sampling.
       probability: ${TRACING_SAMPLING:1.0}
   # Las métricas se exponen por Prometheus; no se duplican por OTLP salvo habilitación explícita.
   otlp:
@@ -72,42 +64,17 @@ management:
         enabled: ${OTLP_METRICS_EXPORT_ENABLED:false}
   opentelemetry:
     resource-attributes:
-      # Distingue réplicas, versiones y ambientes sin cambiar el nombre lógico del servicio.
-      service.instance.id: ${VETSOFTWARE_INSTANCE_ID:local}
       service.version: ${VETSOFTWARE_VERSION:@project.version@}
-      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:${spring.profiles.active:default}}
-    tracing:
-      export:
-        otlp:
-          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
-
-logging:
-  structured:
-    json:
-      customizer: com.vetsoftware.app.infrastructure.logging.TraceCorrelationJsonCustomizer
 
 vetsoftware:
-  observability:
-    # Ruta absoluta y estable, independiente del directorio desde el que se inicia Java.
-    # En servidores con varias instancias, cada proceso debe definir un identificador único.
-    service-instance-id: ${VETSOFTWARE_INSTANCE_ID:local}
-    logging:
-      directory: ${VETSOFTWARE_LOG_DIR:${user.home}/.vetsoftware/logs}
   pdf:
-    gotenberg:
-      url: ${GOTENBERG_URL:http://localhost:3001}
-      timeout-seconds: 30
-  # vetsoftware.storage.s3 se define por perfil:
-  #   - application-dev.yml  → LocalStack
-  #   - application-prod.yml → S3 real
-  # Correo saliente vía Resend (https://resend.com) — cubre TODO el correo (factura y verificación).
-  # En prod: EMAIL_ENABLED=true, RESEND_API_KEY con la API key, y EMAIL_FROM con un remitente de un dominio
-  # verificado en Resend. El sandbox "onboarding@resend.dev" solo entrega al correo de tu propia cuenta Resend.
+    max-concurrent-renders: ${PDF_MAX_CONCURRENT_RENDERS:2}
+    acquire-timeout: ${PDF_ACQUIRE_TIMEOUT:30s}
+    max-html-size: ${PDF_MAX_HTML_SIZE:5MB}
+    max-pdf-size: ${PDF_MAX_PDF_SIZE:25MB}
+  # Correo saliente vía Resend. Enabled, API key y remitente se definen por perfil.
   email:
-    enabled: ${EMAIL_ENABLED:true}
-    from: "${EMAIL_FROM:VetSoftware <onboarding@resend.dev>}"
     resend:
-      api-key: ${RESEND_API_KEY:re_RWUsKz84_FZTexui2SQudvFHM4zgjyGac}
       base-url: ${RESEND_BASE_URL:https://api.resend.com}
     # Enlaces del pie de los correos (variables de plantilla HELP_URL / PRIVACY_URL / TERMS_URL).
     help-url: ${EMAIL_HELP_URL:https://vetsoftware.co/ayuda}
@@ -116,7 +83,6 @@ vetsoftware:
   # Auto-registro público (Opción B): el dueño debe verificar su correo antes de poder iniciar sesión.
   registration:
     # Página del front a la que apunta el enlace del correo; recibe ?token=... y llama a POST /register/verify.
-    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5173/verify-email}
     # Vigencia del enlace de verificación.
     verification-token-ttl-hours: ${REGISTRATION_VERIFICATION_TTL_HOURS:24}
     # ID de la plantilla de Resend para el correo de verificación (variables ADMIN_NAME, COMPANY_NAME,
@@ -125,7 +91,6 @@ vetsoftware:
   # Restablecimiento de contraseña ("olvidé mi contraseña"). Se identifica por employeeCode; el enlace del
   # correo apunta a reset-base-url?token=... y el front llama a POST /auth/reset-password.
   password-reset:
-    reset-base-url: ${PASSWORD_RESET_URL:http://localhost:5174/restablecer-contrasena}
     # Vigencia del enlace de restablecimiento.
     token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
     # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
@@ -133,13 +98,8 @@ vetsoftware:
   # "Recordar mi código de usuario": por correo se envían todas las cuentas (código + veterinaria) del email.
   # Este correo NO usa plantilla de Resend (el listado es de tamaño variable y superaría el límite de 2.000
   # caracteres por variable): se renderiza en resources/email-templates/recover-code.html y se envía como HTML.
-  code-recovery:
-    login-url: ${CODE_RECOVERY_LOGIN_URL:http://localhost:5174/login}
-  # reCAPTCHA en el registro. Deshabilitado por defecto (dev/local); en prod poner RECAPTCHA_ENABLED=true
-  # y RECAPTCHA_SECRET con la clave secreta del sitio (asignar la variable de entorno, no versionarla).
+  # reCAPTCHA se configura por perfil; dev/prod exigen un secreto remoto y local lo deshabilita.
   recaptcha:
-    enabled: ${RECAPTCHA_ENABLED:false}
-    secret: ${RECAPTCHA_SECRET:}
     verify-url: ${RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
     # Umbral mínimo para reCAPTCHA v3 (ignorado en v2, que no envía score).
     min-score: ${RECAPTCHA_MIN_SCORE:0.5}
@@ -148,8 +108,20 @@ vetsoftware:
     # ID de la plantilla de Resend del correo de invitación (variables EMPLOYEE_NAME, COMPANY_NAME,
     # EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL). Vacío = no se envía (warning).
     invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:cbf57a10-3f2c-439a-8fe1-fc0935778d52}
-    # URL de login a la que apunta el botón del correo de invitación.
-    login-url: ${EMPLOYEE_LOGIN_URL:http://localhost:5174/login}
+  audit:
+    outbox:
+      enabled: false
+      publisher-enabled: false
+      batch-size: ${AUDIT_OUTBOX_BATCH_SIZE:100}
+      lease-duration: ${AUDIT_OUTBOX_LEASE_DURATION:PT2M}
+      publish-interval: ${AUDIT_OUTBOX_PUBLISH_INTERVAL:PT5S}
+      publish-initial-delay: ${AUDIT_OUTBOX_PUBLISH_INITIAL_DELAY:PT10S}
+      base-retry-delay: ${AUDIT_OUTBOX_BASE_RETRY_DELAY:PT5S}
+      max-retry-delay: ${AUDIT_OUTBOX_MAX_RETRY_DELAY:PT15M}
+      retention: ${AUDIT_OUTBOX_RETENTION:P7D}
+      cleanup-interval: ${AUDIT_OUTBOX_CLEANUP_INTERVAL:PT24H}
+      cleanup-initial-delay: ${AUDIT_OUTBOX_CLEANUP_INITIAL_DELAY:PT1H}
+      cleanup-batch-size: ${AUDIT_OUTBOX_CLEANUP_BATCH_SIZE:10000}
   # Confirmación de cita: al agendar una cita nueva se notifica por correo al propietario (plantilla de Resend).
   appointment:
     # ID de la plantilla de Resend del correo de confirmación (variables RECIPIENT_NAME, RECIPIENT_EMAIL,

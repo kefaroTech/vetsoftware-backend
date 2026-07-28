@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Modelo de la fórmula médica veterinaria para el PDF (Thymeleaf + Gotenberg). */
+/** Modelo de la fórmula médica veterinaria para el PDF. */
 public record PrescriptionReportModel(
         PrescriptionSignalment signalment,
         String prescriberName,

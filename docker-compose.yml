@@ -1,28 +1,41 @@
+name: vetsoftware-local
+
 services:
   redis:
     image: redis:7-alpine
     container_name: vetsoftware_redis
     ports:
-      - "6379:6379"
+      - "${LOCAL_REDIS_PORT:-6379}:6379"
     volumes:
       - vetsoftware_redis_data:/data
     command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   mysql:
     image: mysql:8.0
     container_name: vetsoftware_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: cronos2026*
-      MYSQL_DATABASE: vetsoftware_db
-      MYSQL_USER: cronos
-      MYSQL_PASSWORD: "cronos2026*"
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_ROOT_PASSWORD:-cronos2026*}
+      MYSQL_DATABASE: ${LOCAL_DB_NAME:-vetsoftware_db}
+      MYSQL_USER: ${LOCAL_DB_USERNAME:-cronos}
+      MYSQL_PASSWORD: ${LOCAL_DB_PASSWORD:-cronos2026*}
     ports:
-      - "3306:3306"
+      - "${LOCAL_MYSQL_PORT:-3306}:3306"
     volumes:
       - vetsoftware_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.153.0
     container_name: vetsoftware_otel_collector
     restart: unless-stopped
     command: ["--config=/etc/otel/otel-collector.yml"]
@@ -31,11 +44,13 @@ services:
     volumes:
       - ./docker/otel-collector.yml:/etc/otel/otel-collector.yml:ro
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "${LOCAL_OTLP_GRPC_PORT:-4317}:4317"
+      - "${LOCAL_OTLP_HTTP_PORT:-4318}:4318"
     depends_on:
       tempo:
         condition: service_healthy
+      loki:
+        condition: service_started
 
   tempo:
     image: grafana/tempo:3.0.2
@@ -85,29 +100,6 @@ services:
     volumes:
       - vetsoftware_loki_data:/loki
 
-  alloy:
-    image: grafana/alloy:v1.18.0
-    container_name: vetsoftware_alloy
-    restart: unless-stopped
-    environment:
-      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
-      SERVICE_NAME: ${OTEL_SERVICE_NAME:-vetsoftware}
-    ports:
-      - "127.0.0.1:12345:12345"
-    volumes:
-      # Debe coincidir con VETSOFTWARE_LOG_DIR del backend. El valor por defecto
-      # es estable y no depende del directorio de trabajo de Java o IntelliJ.
-      - ${VETSOFTWARE_LOG_DIR:-${HOME}/.vetsoftware/logs}:/logs:ro
-      - ./docker/alloy.alloy:/etc/alloy/config.alloy:ro
-      - vetsoftware_alloy_data:/var/lib/alloy/data
-    command:
-      - run
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy/data
-      - /etc/alloy/config.alloy
-    depends_on:
-      - loki
-
   grafana:
     image: grafana/grafana:latest
     container_name: vetsoftware_grafana
@@ -139,37 +131,39 @@ services:
       - vetsoftware_sonarqube_extensions:/opt/sonarqube/extensions
       - vetsoftware_sonarqube_logs:/opt/sonarqube/logs
 
-  gotenberg:
-    image: gotenberg/gotenberg:8
-    container_name: vetsoftware_gotenberg
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    command:
-      - "gotenberg"
-      - "--api-timeout=30s"
-
   localstack:
-    # community 3.x: gratis y con S3 sin token (el tag :latest exige licencia Pro)
+    # 3.x conserva el modo local sin cuenta/token. Las versiones 2026 requieren licencia.
     image: localstack/localstack:3
     container_name: vetsoftware_localstack
+    restart: unless-stopped
     ports:
-      - "4566:4566"
+      - "${LOCALSTACK_PORT:-4566}:4566"
     environment:
-      SERVICES: s3
+      SERVICES: s3,firehose,iam,sts
       AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      S3_BUCKET: ${S3_BUCKET:-vetsoftware-local}
+      FIREHOSE_STREAM: ${AUDIT_FIREHOSE_DELIVERY_STREAM:-vetsoftware-audit-local}
+      PERSISTENCE: "1"
     volumes:
-      # init script: crea el bucket por defecto al estar lista
       - ./docker/localstack/ready.d:/etc/localstack/init/ready.d
+      - vetsoftware_localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
 
 volumes:
   vetsoftware_redis_data:
   vetsoftware_mysql_data:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
-  vetsoftware_alloy_data:
   vetsoftware_prometheus_data:
   vetsoftware_tempo_data:
   vetsoftware_sonarqube_data:
   vetsoftware_sonarqube_extensions:
   vetsoftware_sonarqube_logs:
+  vetsoftware_localstack_data:

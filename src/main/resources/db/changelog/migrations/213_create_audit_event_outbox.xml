@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="213_01_create_audit_event_outbox" author="codex">
+        <createTable tableName="audit_event_outbox">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="event_id" type="CHAR(36)">
+                <constraints nullable="false" unique="true"
+                             uniqueConstraintName="uq_audit_outbox_event_id"/>
+            </column>
+            <column name="event_type" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payload" type="JSON">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(16)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_attempt_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="locked_until" type="DATETIME(6)"/>
+            <column name="created_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="DATETIME(6)"/>
+            <column name="last_error" type="VARCHAR(1000)"/>
+        </createTable>
+
+        <createIndex tableName="audit_event_outbox" indexName="idx_audit_outbox_dispatch">
+            <column name="status"/>
+            <column name="next_attempt_at"/>
+            <column name="locked_until"/>
+            <column name="id"/>
+        </createIndex>
+        <createIndex tableName="audit_event_outbox" indexName="idx_audit_outbox_cleanup">
+            <column name="status"/>
+            <column name="published_at"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE audit_event_outbox
+                ADD CONSTRAINT chk_audit_outbox_status
+                CHECK (status IN ('PENDING', 'PROCESSING', 'PUBLISHED', 'FAILED')),
+                ADD CONSTRAINT chk_audit_outbox_attempts CHECK (attempts &gt;= 0)
+        </sql>
+
+        <rollback>
+            <dropTable tableName="audit_event_outbox"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

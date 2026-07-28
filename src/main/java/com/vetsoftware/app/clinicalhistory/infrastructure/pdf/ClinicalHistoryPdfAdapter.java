@@ -5,7 +5,6 @@ import com.vetsoftware.app.clinicalhistory.application.dto.ReportClinicalEvent;
 import com.vetsoftware.app.clinicalhistory.application.port.out.ClinicalHistoryPdfPort;
 import com.vetsoftware.app.clinicalhistory.domain.ClinicalEventType;
 import com.vetsoftware.app.infrastructure.pdf.HtmlPdfRenderer;
-import com.vetsoftware.app.infrastructure.pdf.PdfOptions;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -14,7 +13,7 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
+public class ClinicalHistoryPdfAdapter implements ClinicalHistoryPdfPort {
 
     private static final String[] SPANISH_MONTHS = {
             "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -35,7 +34,7 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
 
     private final HtmlPdfRenderer renderer;
 
-    public ClinicalHistoryGotenbergAdapter(HtmlPdfRenderer renderer) {
+    public ClinicalHistoryPdfAdapter(HtmlPdfRenderer renderer) {
         this.renderer = renderer;
     }
 
@@ -56,7 +55,7 @@ public class ClinicalHistoryGotenbergAdapter implements ClinicalHistoryPdfPort {
         ctx.put("hasEvents", !model.events().isEmpty());
         ctx.put("eventCount", model.events().size());
         ctx.put("generatedAt", model.generatedAt());
-        return renderer.render("clinical-history", ctx, PdfOptions.defaults());
+        return renderer.render("clinical-history", ctx);
     }
 
     private Map<String, String> labelsByName() {

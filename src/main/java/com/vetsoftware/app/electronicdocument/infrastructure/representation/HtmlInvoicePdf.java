@@ -4,7 +4,6 @@ import com.vetsoftware.app.electronicdocument.application.port.out.InvoicePdfPor
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.infrastructure.pdf.HtmlPdfRenderer;
-import com.vetsoftware.app.infrastructure.pdf.PdfOptions;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,15 +12,15 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * Representación gráfica PDF vía Gotenberg + plantilla Thymeleaf {@code pdf/electronic-invoice.html}.
+ * Representación gráfica con Thymeleaf y el motor PDF embebido.
  * Arma un modelo de tipos planos (Map/String/BigDecimal) para que Thymeleaf navegue sin getters de records.
  */
 @Component
-public class GotenbergInvoicePdf implements InvoicePdfPort {
+public class HtmlInvoicePdf implements InvoicePdfPort {
 
     private final HtmlPdfRenderer renderer;
 
-    public GotenbergInvoicePdf(HtmlPdfRenderer renderer) {
+    public HtmlInvoicePdf(HtmlPdfRenderer renderer) {
         this.renderer = renderer;
     }
 
@@ -88,6 +87,6 @@ public class GotenbergInvoicePdf implements InvoicePdfPort {
 
         model.put("qr", "data:image/png;base64," + qrPngBase64);
 
-        return renderer.render("electronic-invoice", model, PdfOptions.defaults());
+        return renderer.render("electronic-invoice", model);
     }
 }

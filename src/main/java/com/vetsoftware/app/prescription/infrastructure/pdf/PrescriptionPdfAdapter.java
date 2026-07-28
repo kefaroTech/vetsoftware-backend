@@ -1,7 +1,6 @@
 package com.vetsoftware.app.prescription.infrastructure.pdf;
 
 import com.vetsoftware.app.infrastructure.pdf.HtmlPdfRenderer;
-import com.vetsoftware.app.infrastructure.pdf.PdfOptions;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionReportModel;
 import com.vetsoftware.app.prescription.application.port.out.PrescriptionPdfPort;
 import com.vetsoftware.app.prescription.domain.MedicamentRef;
@@ -13,11 +12,11 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PrescriptionGotenbergAdapter implements PrescriptionPdfPort {
+public class PrescriptionPdfAdapter implements PrescriptionPdfPort {
 
     private final HtmlPdfRenderer renderer;
 
-    public PrescriptionGotenbergAdapter(HtmlPdfRenderer renderer) {
+    public PrescriptionPdfAdapter(HtmlPdfRenderer renderer) {
         this.renderer = renderer;
     }
 
@@ -44,7 +43,7 @@ public class PrescriptionGotenbergAdapter implements PrescriptionPdfPort {
         ctx.put("medicaments", lines);
         ctx.put("hasMedicaments", !lines.isEmpty());
         ctx.put("generatedAt", model.generatedAt());
-        return renderer.render("prescription", ctx, PdfOptions.defaults());
+        return renderer.render("prescription", ctx);
     }
 
     private static String formatQuantity(Double quantity) {

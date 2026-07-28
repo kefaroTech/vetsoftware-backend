@@ -1,0 +1,34 @@
+groups:
+  - name: vetsoftware-audit-outbox
+    interval: 1m
+    rules:
+      - alert: AuditOutboxHasFailedEvents
+        expr: audit_outbox_failed > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Hay eventos de auditoría en FAILED"
+          description: "El publicador Firehose no ha podido entregar uno o más eventos."
+
+      - alert: AuditOutboxDeliveryDelayed
+        expr: audit_outbox_pending > 0 and audit_outbox_oldest_age_seconds > 900
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "La auditoría lleva más de 15 minutos sin archivarse"
+
+      - alert: AuditOutboxPublishFailures
+        expr: increase(audit_outbox_publish_failures_total[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Firehose rechazó intentos de publicación de auditoría"
+
+      - alert: VetSoftwareTelemetryMissing
+        expr: absent_over_time(target_info{service_name="vetsoftware"}[10m])
+        labels:
+          severity: critical
+        annotations:
+          summary: "Grafana Cloud no recibe métricas OTLP de VetSoftware"

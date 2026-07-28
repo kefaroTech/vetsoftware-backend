@@ -25,8 +25,10 @@
         <sonar.java.source>25</sonar.java.source>
         <argLine></argLine>
         <aws.sdk.version>2.49.3</aws.sdk.version>
+        <opentelemetry.instrumentation.version>2.30.0-alpha</opentelemetry.instrumentation.version>
         <bucket4j.version>8.19.0</bucket4j.version>
         <jjwt.version>0.13.0</jjwt.version>
+        <openhtmltopdf.version>1.1.65</openhtmltopdf.version>
         <zxing.version>3.5.4</zxing.version>
     </properties>
 
@@ -79,6 +81,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
 
         <!-- Persistencia -->
         <dependency>
@@ -110,10 +117,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- AWS S3 -->
+        <!-- AWS -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>firehose</artifactId>
         </dependency>
 
         <!-- Envío de correo (representación gráfica factura electrónica F4) -->
@@ -166,8 +177,17 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-otlp</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>${opentelemetry.instrumentation.version}</version>
         </dependency>
 
         <!-- JDBC tracing — crea spans por cada query SQL -->

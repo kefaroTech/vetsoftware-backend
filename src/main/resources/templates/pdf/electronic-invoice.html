@@ -4,24 +4,30 @@
     <meta charset="UTF-8"/>
     <title>Factura electrónica</title>
     <style>
+        @page { size: A4; margin: 18mm 15mm 20mm; }
         * { box-sizing: border-box; }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #222; margin: 0; }
-        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .header > div { display: table-cell; vertical-align: top; }
         .doc-title { text-align: right; }
         .doc-title h1 { font-size: 16px; margin: 0; }
         .doc-title .number { font-size: 14px; font-weight: bold; color: #0a5; }
-        .parties { display: flex; justify-content: space-between; margin-top: 12px; gap: 16px; }
-        .party { width: 50%; }
+        .parties { display: table; width: 100%; table-layout: fixed; border-spacing: 16px 0; margin: 12px -16px 0; }
+        .party { display: table-cell; width: 50%; vertical-align: top; }
         .party h3 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; color: #555; }
-        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; -fs-table-paginate: paginate; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
         th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
         th { background: #f2f2f2; }
         td.num, th.num { text-align: right; }
         .totals { margin-top: 12px; width: 45%; margin-left: 55%; }
         .totals td { border: none; padding: 2px 6px; }
         .totals .grand { font-weight: bold; border-top: 1px solid #333; }
-        .footer { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; }
-        .cufe { font-size: 9px; word-break: break-all; width: 70%; }
+        .footer { margin-top: 18px; display: table; width: 100%; }
+        .footer > div { display: table-cell; vertical-align: middle; }
+        .cufe { font-size: 9px; word-wrap: break-word; width: 70%; }
+        .qr { text-align: right; }
         .qr img { width: 120px; height: 120px; }
         .status { font-size: 10px; color: #0a5; }
     </style>

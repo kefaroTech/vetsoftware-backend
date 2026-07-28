@@ -18,14 +18,19 @@
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #2a2424; }
-    .header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .header { display: table; width: 100%; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    .header > div { display: table-cell; vertical-align: bottom; }
     .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
     .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
     .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
-    .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 12px; font-size: 9pt; }
+    .meta { margin-bottom: 12px; font-size: 9pt; }
+    .meta .kv { display: inline-block; vertical-align: top; margin: 0 22px 6px 0; }
     .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
     .meta .kv .val { color: #2a2424; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; -fs-table-paginate: paginate; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
     thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
     tbody td { padding: 5px 8px; border-bottom: 1px solid #eee4d8; }
     tbody tr:nth-child(even) { background: #faf7f2; }

@@ -1,26 +1,90 @@
-# Perfil dev — idéntico al entorno local actual, pero S3 apunta a LocalStack.
+# Desarrollo compartido: todos los servicios viven fuera del proceso y de la máquina.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      url: ${REDIS_URL}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING:1.0}
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+  opentelemetry:
+    resource-attributes:
+      service.name: vetsoftware
+      service.namespace: mainvet
+      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:development}
+      service.instance.id: ${VETSOFTWARE_INSTANCE_ID}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
+    logging:
+      export:
+        schedule-delay: 5s
+        max-queue-size: 4096
+        max-batch-size: 512
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT}
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 vetsoftware:
-  # reCAPTCHA habilitado en dev con las llaves de TEST de Google (siempre validan success:true).
-  # Site key para el front: 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+  email:
+    enabled: true
+    from: ${EMAIL_FROM}
+    resend:
+      api-key: ${RESEND_API_KEY}
+  registration:
+    verification-base-url: ${REGISTRATION_VERIFICATION_URL}
+  password-reset:
+    reset-base-url: ${PASSWORD_RESET_URL}
+  code-recovery:
+    login-url: ${CODE_RECOVERY_LOGIN_URL}
+  employee:
+    login-url: ${EMPLOYEE_LOGIN_URL}
   recaptcha:
     enabled: ${RECAPTCHA_ENABLED:true}
-    secret: ${RECAPTCHA_SECRET:6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe}
-  # En dev el correo Resend está APAGADO por defecto: el registro no requiere API key y el enlace de
-  # verificación se escribe en el log (buscar "Enlace de verificación"). Para probar Resend real en dev:
-  # EMAIL_ENABLED=true + RESEND_API_KEY=<tu key> (y EMAIL_FROM verificado, o el sandbox de Resend).
-  email:
-    enabled: ${EMAIL_ENABLED:true}
-  # El enlace del correo de verificación apunta a la página del PublicFront (Vite dev en 5174, puerto fijo).
-  registration:
-    verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5174/verify-email}
+    secret: ${RECAPTCHA_SECRET}
+  audit:
+    outbox:
+      enabled: true
+      publisher-enabled: true
+      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM}
+      region: ${AWS_REGION}
+      endpoint: ${AUDIT_FIREHOSE_ENDPOINT:}
+      access-key: ""
+      secret-key: ""
   storage:
     s3:
-      bucket: ${S3_BUCKET:vetsoftware}
-      region: ${S3_REGION:us-east-1}
-      # endpoint de LocalStack (edge port por defecto)
-      endpoint: ${S3_ENDPOINT:http://localhost:4566}
-      # LocalStack acepta cualquier credencial; se usan valores de prueba
-      access-key: ${S3_ACCESS_KEY:test}
-      secret-key: ${S3_SECRET_KEY:test}
-      # path-style obligatorio contra LocalStack (no soporta virtual-hosted buckets)
-      path-style-access: ${S3_PATH_STYLE_ACCESS:true}
+      bucket: ${S3_BUCKET}
+      region: ${AWS_REGION}
+      endpoint: ${S3_ENDPOINT:}
+      access-key: ""
+      secret-key: ""
+      path-style-access: ${S3_PATH_STYLE_ACCESS:false}

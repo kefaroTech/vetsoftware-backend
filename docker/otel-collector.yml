@@ -47,9 +47,15 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
 
 service:
   pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
     traces:
       receivers: [otlp]
       # Orden importa: memory_limiter primero, tail_sampling antes de batch.

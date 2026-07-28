@@ -38,13 +38,13 @@
     }
 
     .header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
+      display: table;
+      width: 100%;
       border-bottom: 2px solid #5c2d8c;
       padding-bottom: 10px;
       margin-bottom: 16px;
     }
+    .header > div { display: table-cell; vertical-align: bottom; }
     .brand {
       font-family: "Georgia", "Times New Roman", serif;
       font-size: 22pt;
@@ -72,9 +72,11 @@
       color: #2a2424;
     }
 
-    .cards { display: flex; gap: 12px; margin-bottom: 12px; }
+    .cards { display: table; width: 100%; table-layout: fixed; border-spacing: 8px 0; margin: 0 -8px 12px; }
     .card {
-      flex: 1;
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
       background: #f8f4ee;
       border: 1px solid #e6dccf;
       border-radius: 8px;
@@ -108,11 +110,9 @@
       vertical-align: middle;
     }
     .kv-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 18px;
+      display: block;
     }
-    .kv { min-width: 118px; }
+    .kv { display: inline-block; min-width: 118px; margin: 0 18px 8px 0; vertical-align: top; }
     .kv-label {
       font-size: 8.5pt;
       color: #6b6363;
@@ -169,25 +169,24 @@
     }
     .event:last-child { border-bottom: none; }
     .event-head {
-      display: flex;
-      align-items: baseline;
-      gap: 10px;
+      display: table;
+      width: 100%;
       margin-bottom: 3px;
     }
+    .event-head > * { display: table-cell; vertical-align: baseline; }
     .event-date {
       width: 132px;
-      flex-shrink: 0;
       font-size: 9.5pt;
       color: #6b6363;
       white-space: nowrap;
     }
-    .event-title { font-weight: 600; font-size: 11pt; color: #2a2424; }
+    .event-title { font-weight: 600; font-size: 11pt; color: #2a2424; padding-right: 10px; }
     .event-id {
-      margin-left: auto;
       font-size: 8.5pt;
       color: #b3a89a;
       font-family: "Courier New", monospace;
       white-space: nowrap;
+      text-align: right;
     }
     .event-body { margin-left: 142px; }
     .field { margin-bottom: 2px; font-size: 10.5pt; }
@@ -204,7 +203,9 @@
       letter-spacing: 0.04em;
       margin-bottom: 3px;
     }
-    table.dt { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    table.dt { width: 100%; border-collapse: collapse; font-size: 9.5pt; -fs-table-paginate: paginate; }
+    table.dt thead { display: table-header-group; }
+    table.dt tr { page-break-inside: avoid; }
     table.dt th {
       text-align: left;
       background: #f3eee6;
@@ -230,7 +231,6 @@
       font-size: 8.5pt;
       font-weight: 600;
       letter-spacing: 0.01em;
-      flex-shrink: 0;
     }
     .t-CONSULTATION { background: #ede3f5; color: #5c2d8c; }
     .t-SURGERY { background: #f8dada; color: #9a3030; }
@@ -291,7 +291,9 @@
       padding-bottom: 4px;
       margin-bottom: 6px;
     }
-    table.problems-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+    table.problems-table { width: 100%; border-collapse: collapse; font-size: 10pt; -fs-table-paginate: paginate; }
+    table.problems-table thead { display: table-header-group; }
+    table.problems-table tr { page-break-inside: avoid; }
     table.problems-table th {
       text-align: left; background: #f3eee6; color: #6b6363; font-weight: 600;
       padding: 4px 8px; border: 1px solid #e6dccf; font-size: 8pt;

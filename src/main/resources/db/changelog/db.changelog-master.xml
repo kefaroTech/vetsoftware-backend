@@ -215,5 +215,6 @@
     <include file="db/changelog/migrations/210_scope_open_accounts_by_branch.xml"/>
     <include file="db/changelog/migrations/211_link_cash_session_terminal.xml"/>
     <include file="db/changelog/migrations/212_create_petshop_catalog.xml"/>
+    <include file="db/changelog/migrations/213_create_audit_event_outbox.xml"/>
 
 </databaseChangeLog>
