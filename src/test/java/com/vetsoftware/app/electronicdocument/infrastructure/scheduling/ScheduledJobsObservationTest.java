@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
@@ -31,8 +32,9 @@ class ScheduledJobsObservationTest {
         when(repository.findByDianStatus(DianStatus.CONTINGENCIA)).thenReturn(List.of(successful, failed));
         when(transmissionLog.countAttempts(101L)).thenReturn(0);
         when(transmissionLog.countAttempts(202L)).thenReturn(0);
-        when(transmitter.transmit(successful)).thenReturn(successful);
-        when(transmitter.transmit(failed)).thenThrow(new IllegalStateException("provider unavailable"));
+        when(transmitter.transmit(successful, Origin.RETRY)).thenReturn(successful);
+        when(transmitter.transmit(failed, Origin.RETRY))
+                .thenThrow(new IllegalStateException("provider unavailable"));
         ObservationCapture capture = new ObservationCapture();
 
         ContingencyRetryJob job = new ContingencyRetryJob(

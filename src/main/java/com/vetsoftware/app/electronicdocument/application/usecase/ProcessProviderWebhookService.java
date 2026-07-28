@@ -3,6 +3,8 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 import com.vetsoftware.app.electronicdocument.application.command.ProcessProviderWebhookCommand;
 import com.vetsoftware.app.electronicdocument.application.port.in.ProcessProviderWebhookUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingEntitlementQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ParsedWebhook;
 import com.vetsoftware.app.electronicdocument.application.port.out.ProviderConfigQueryPort;
@@ -14,6 +16,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.TransmissionResult;
 import com.vetsoftware.app.electronicdocument.domain.WebhookOutcome;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +40,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final BillingEntitlementQueryPort billingEntitlement;
     private final DocumentTransmitter documentTransmitter;
     private final NumberAssigner numberAssigner;
+    private final BillingMetrics billingMetrics;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
@@ -45,6 +49,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
                                          BillingEntitlementQueryPort billingEntitlement,
                                          DocumentTransmitter documentTransmitter,
                                          NumberAssigner numberAssigner,
+                                         BillingMetrics billingMetrics,
                                          List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
@@ -52,6 +57,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         this.billingEntitlement = billingEntitlement;
         this.documentTransmitter = documentTransmitter;
         this.numberAssigner = numberAssigner;
+        this.billingMetrics = billingMetrics;
         this.parsers = webhookParsers.stream()
                 .collect(Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
@@ -59,6 +65,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     @Override
     @Transactional
     public void execute(ProcessProviderWebhookCommand command) {
+        long startedAt = System.nanoTime();
         ProviderWebhookParser parser = parsers.get(command.provider().toUpperCase());
         if (parser == null) {
             throw new IllegalArgumentException("Proveedor de webhook desconocido: " + command.provider());
@@ -99,7 +106,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
             // reversa la cartera y se entrega la representación gráfica. Si el proveedor aún no tiene el sello
             // listo, el documento queda PENDIENTE y el job de reconciliación lo reintenta — nunca se marca
             // VALIDADO sin sello.
-            documentTransmitter.reconcile(document);
+            documentTransmitter.reconcile(document, Origin.WEBHOOK);
             return;
         }
         if (parsed.outcome() != WebhookOutcome.REJECTED) {
@@ -112,5 +119,10 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         repository.updateDianResult(document);
         transmissionLog.record(document.getId(), config.provider(), 200, parsed.providerDocumentKey(),
                 TransmissionResult.REJECTED, parsed.rejectionReason());
+        billingMetrics.finished(
+                DianStatus.RECHAZADO,
+                Origin.WEBHOOK,
+                document.getDocumentType(),
+                Duration.ofNanos(System.nanoTime() - startedAt));
     }
 }

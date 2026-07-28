@@ -4,6 +4,7 @@ import com.vetsoftware.app.cashregister.application.command.CloseCashSessionComm
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
 import com.vetsoftware.app.cashregister.application.port.in.CloseCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
+import com.vetsoftware.app.cashregister.application.port.out.CashMetrics;
 import com.vetsoftware.app.cashregister.domain.CashPaymentMethod;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
@@ -25,9 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CloseCashSessionService implements CloseCashSessionUseCase {
 
     private final CashSessionRepository repository;
+    private final CashMetrics cashMetrics;
 
-    public CloseCashSessionService(CashSessionRepository repository) {
+    public CloseCashSessionService(CashSessionRepository repository, CashMetrics cashMetrics) {
         this.repository = repository;
+        this.cashMetrics = cashMetrics;
     }
 
     @Override
@@ -45,6 +48,8 @@ public class CloseCashSessionService implements CloseCashSessionUseCase {
             }
         }
         session.close(command.closedByEmployeeId(), counted, command.note());
-        return CashSessionView.from(repository.save(session));
+        CashSession saved = repository.save(session);
+        cashMetrics.closed(saved.getCounts().stream().map(count -> count.difference()).toList());
+        return CashSessionView.from(saved);
     }
 }

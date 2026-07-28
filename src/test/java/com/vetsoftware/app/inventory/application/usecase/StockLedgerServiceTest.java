@@ -2,6 +2,7 @@ package com.vetsoftware.app.inventory.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.vetsoftware.app.inventory.application.command.RecordAdjustmentCommand;
 import com.vetsoftware.app.inventory.application.command.RecordClinicalUseCommand;
@@ -9,6 +10,7 @@ import com.vetsoftware.app.inventory.application.command.RecordPurchaseCommand;
 import com.vetsoftware.app.inventory.application.command.RecordSaleCommand;
 import com.vetsoftware.app.inventory.application.command.TransferStockCommand;
 import com.vetsoftware.app.inventory.application.dto.StockConsumptionDto;
+import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.application.port.out.NegativeStockPolicyPort;
 import com.vetsoftware.app.inventory.application.port.out.StockBalanceRepository;
 import com.vetsoftware.app.inventory.application.port.out.StockLotRepository;
@@ -64,7 +66,7 @@ class StockLedgerServiceTest {
         balances = new FakeBalanceRepository();
         movements = new FakeMovementRepository();
         policy = new FakeNegativeStockPolicy(false); // por defecto: bloquear stock negativo
-        service = new StockLedgerService(lots, balances, movements, policy);
+        service = new StockLedgerService(lots, balances, movements, policy, mock(InventoryMetrics.class));
     }
 
     private static BigDecimal bd(String v) {

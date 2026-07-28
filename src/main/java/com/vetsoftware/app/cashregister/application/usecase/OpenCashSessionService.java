@@ -5,6 +5,7 @@ import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
 import com.vetsoftware.app.cashregister.application.port.in.OpenCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
+import com.vetsoftware.app.cashregister.application.port.out.CashMetrics;
 import com.vetsoftware.app.cashregister.application.port.out.CashTerminalQueryPort;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
@@ -24,12 +25,14 @@ public class OpenCashSessionService implements OpenCashSessionUseCase {
     private final CashSessionRepository repository;
     private final BranchQueryPort branchQueryPort;
     private final CashTerminalQueryPort terminalQueryPort;
+    private final CashMetrics cashMetrics;
 
     public OpenCashSessionService(CashSessionRepository repository, BranchQueryPort branchQueryPort,
-                                  CashTerminalQueryPort terminalQueryPort) {
+                                  CashTerminalQueryPort terminalQueryPort, CashMetrics cashMetrics) {
         this.repository = repository;
         this.branchQueryPort = branchQueryPort;
         this.terminalQueryPort = terminalQueryPort;
+        this.cashMetrics = cashMetrics;
     }
 
     @Override
@@ -52,7 +55,9 @@ public class OpenCashSessionService implements OpenCashSessionUseCase {
             });
         CashSession session = CashSession.open(command.companyId(), command.branchId(), terminal.id(), terminal.code(),
             command.openedByEmployeeId(), command.openingFloat(), command.note());
-        return CashSessionView.from(repository.save(session));
+        CashSession saved = repository.save(session);
+        cashMetrics.opened();
+        return CashSessionView.from(saved);
     }
 
 }

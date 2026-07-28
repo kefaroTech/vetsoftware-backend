@@ -1,6 +1,7 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -33,6 +34,20 @@ public interface ElectronicDocumentJpaRepository extends JpaRepository<Electroni
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByDianStatus(DianStatus dianStatus);
+
+    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
+        + "WHERE e.dianStatus = :status AND e.createdDate >= :from")
+    long countBacklogSince(@Param("status") DianStatus status, @Param("from") LocalDateTime from);
+
+    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
+        + "WHERE e.dianStatus = :status AND e.createdDate >= :from AND e.createdDate < :to")
+    long countBacklogBetween(@Param("status") DianStatus status,
+                             @Param("from") LocalDateTime from,
+                             @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
+        + "WHERE e.dianStatus = :status AND e.createdDate < :before")
+    long countBacklogBefore(@Param("status") DianStatus status, @Param("before") LocalDateTime before);
 
     boolean existsByOpenAccountId(Long openAccountId);
 

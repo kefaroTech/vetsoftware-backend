@@ -7,6 +7,8 @@ import com.vetsoftware.app.inventory.application.command.RecordSaleCommand;
 import com.vetsoftware.app.inventory.application.command.TransferStockCommand;
 import com.vetsoftware.app.inventory.application.dto.StockConsumptionDto;
 import com.vetsoftware.app.inventory.application.port.in.StockLedgerUseCase;
+import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
+import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics.Result;
 import com.vetsoftware.app.inventory.application.port.out.NegativeStockPolicyPort;
 import com.vetsoftware.app.inventory.application.port.out.StockBalanceRepository;
 import com.vetsoftware.app.inventory.application.port.out.StockLotRepository;
@@ -31,22 +33,28 @@ public class StockLedgerService implements StockLedgerUseCase {
     private final StockBalanceRepository balanceRepository;
     private final StockMovementRepository movementRepository;
     private final NegativeStockPolicyPort negativeStockPolicy;
+    private final InventoryMetrics inventoryMetrics;
 
     public StockLedgerService(StockLotRepository lotRepository,
                               StockBalanceRepository balanceRepository,
                               StockMovementRepository movementRepository,
-                              NegativeStockPolicyPort negativeStockPolicy) {
+                              NegativeStockPolicyPort negativeStockPolicy,
+                              InventoryMetrics inventoryMetrics) {
         this.lotRepository = lotRepository;
         this.balanceRepository = balanceRepository;
         this.movementRepository = movementRepository;
         this.negativeStockPolicy = negativeStockPolicy;
+        this.inventoryMetrics = inventoryMetrics;
     }
 
     @Override
     @Observed(name = "inventory.record.purchase")
     @Transactional
     public void recordPurchase(RecordPurchaseCommand c) {
-        if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
+        if (c.quantity() <= 0) {
+            inventoryMetrics.movement(StockMovementType.PURCHASE, Result.VALIDATION_ERROR, 0);
+            throw new IllegalArgumentException("quantity must be greater than 0");
+        }
         BigDecimal cost = c.unitCost() == null ? BigDecimal.ZERO : c.unitCost();
         StockLot lot = lotRepository
             .findByIdentity(c.companyId(), c.branchId(), c.productId(), c.lotNumber(), c.expireDate(), cost)
@@ -61,21 +69,27 @@ public class StockLedgerService implements StockLedgerUseCase {
 
         movementRepository.save(StockMovement.of(c.companyId(), c.branchId(), c.productId(), savedLot.getId(),
             StockMovementType.PURCHASE, c.quantity(), cost, c.referenceType(), c.referenceId(), null, c.createdBy()));
+        inventoryMetrics.movement(StockMovementType.PURCHASE, Result.SUCCESS, c.quantity());
     }
 
     @Override
     @Observed(name = "inventory.record.sale")
     @Transactional
     public List<StockConsumptionDto> recordSale(RecordSaleCommand c) {
-        if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
+        if (c.quantity() <= 0) {
+            inventoryMetrics.movement(StockMovementType.SALE, Result.VALIDATION_ERROR, 0);
+            throw new IllegalArgumentException("quantity must be greater than 0");
+        }
         // Idempotencia: si ya se registró esta referencia (reintento POS), no volver a descontar.
         if (movementRepository.existsByReference(c.referenceType(), c.referenceId())) {
+            inventoryMetrics.movement(StockMovementType.SALE, Result.DUPLICATE_IGNORED, 0);
             return List.of();
         }
         StockBalance balance = balanceForUpdate(c.companyId(), c.branchId(), c.productId());
         // POS fuerza negativo (c.allowNegative()); cuenta abierta respeta el flag de empresa.
         boolean allowNegative = c.allowNegative() || negativeStockPolicy.allowsNegative(c.companyId());
         if (balance.getQuantity() < c.quantity() && !allowNegative) {
+            inventoryMetrics.movement(StockMovementType.SALE, Result.INSUFFICIENT_STOCK, 0);
             throw new InsufficientStockException(
                 "Stock insuficiente para el producto " + c.productId() + " en la sede " + c.branchId()
                     + " (disponible " + balance.getQuantity() + ", requerido " + c.quantity() + ")");
@@ -84,6 +98,7 @@ public class StockLedgerService implements StockLedgerUseCase {
             c.quantity(), StockMovementType.SALE, c.referenceType(), c.referenceId(), null, c.createdBy());
         balance.subtract(c.quantity());
         balanceRepository.save(balance);
+        inventoryMetrics.movement(StockMovementType.SALE, Result.SUCCESS, c.quantity());
         return consumptions;
     }
 
@@ -91,14 +106,19 @@ public class StockLedgerService implements StockLedgerUseCase {
     @Observed(name = "inventory.record.clinical.use")
     @Transactional
     public List<StockConsumptionDto> recordClinicalUse(RecordClinicalUseCommand c) {
-        if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
+        if (c.quantity() <= 0) {
+            inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.VALIDATION_ERROR, 0);
+            throw new IllegalArgumentException("quantity must be greater than 0");
+        }
         // Idempotencia por evento clínico (si viene referencia).
         if (c.referenceId() != null
             && movementRepository.existsByReference(StockReferenceType.CLINICAL_EVENT, c.referenceId())) {
+            inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.DUPLICATE_IGNORED, 0);
             return List.of();
         }
         StockBalance balance = balanceForUpdate(c.companyId(), c.branchId(), c.productId());
         if (balance.getQuantity() < c.quantity() && !negativeStockPolicy.allowsNegative(c.companyId())) {
+            inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.INSUFFICIENT_STOCK, 0);
             throw new InsufficientStockException(
                 "Stock insuficiente para el consumo clínico del producto " + c.productId() + " en la sede "
                     + c.branchId() + " (disponible " + balance.getQuantity() + ", requerido " + c.quantity() + ")");
@@ -108,6 +128,7 @@ public class StockLedgerService implements StockLedgerUseCase {
             c.reason(), c.createdBy());
         balance.subtract(c.quantity());
         balanceRepository.save(balance);
+        inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.SUCCESS, c.quantity());
         return consumptions;
     }
 
@@ -116,7 +137,12 @@ public class StockLedgerService implements StockLedgerUseCase {
     @Transactional
     public void recordAdjustment(RecordAdjustmentCommand c) {
         if (c.delta() == 0) throw new IllegalArgumentException("delta cannot be 0");
-        if (c.reason() == null || c.reason().isBlank()) throw new IllegalArgumentException("reason is required");
+        StockMovementType movementType =
+            c.delta() > 0 ? StockMovementType.ADJUSTMENT_IN : StockMovementType.ADJUSTMENT_OUT;
+        if (c.reason() == null || c.reason().isBlank()) {
+            inventoryMetrics.movement(movementType, Result.VALIDATION_ERROR, 0);
+            throw new IllegalArgumentException("reason is required");
+        }
         StockBalance balance = balanceForUpdate(c.companyId(), c.branchId(), c.productId());
         if (c.delta() > 0) {
             BigDecimal cost = c.unitCost() == null ? BigDecimal.ZERO : c.unitCost();
@@ -137,13 +163,17 @@ public class StockLedgerService implements StockLedgerUseCase {
             balance.subtract(out);
         }
         balanceRepository.save(balance);
+        inventoryMetrics.movement(movementType, Result.SUCCESS, Math.abs(c.delta()));
     }
 
     @Override
     @Observed(name = "inventory.transfer.ledger")
     @Transactional
     public void transfer(TransferStockCommand c) {
-        if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
+        if (c.quantity() <= 0) {
+            inventoryMetrics.movement(StockMovementType.TRANSFER_OUT, Result.VALIDATION_ERROR, 0);
+            throw new IllegalArgumentException("quantity must be greater than 0");
+        }
         if (c.fromBranchId().equals(c.toBranchId()))
             throw new IllegalArgumentException("origen y destino no pueden ser la misma sede");
         // Bloquea ambos saldos SIEMPRE en el mismo orden (por id de sede) para evitar deadlocks entre
@@ -156,6 +186,7 @@ public class StockLedgerService implements StockLedgerUseCase {
         StockBalance fromBal = fromFirst ? first : second;
         StockBalance toBal = fromFirst ? second : first;
         if (fromBal.getQuantity() < c.quantity()) {
+            inventoryMetrics.movement(StockMovementType.TRANSFER_OUT, Result.INSUFFICIENT_STOCK, 0);
             throw new InsufficientStockException(
                 "Stock insuficiente para transferir el producto " + c.productId() + " desde la sede "
                     + c.fromBranchId() + " (disponible " + fromBal.getQuantity() + ", requerido " + c.quantity() + ")");
@@ -185,6 +216,7 @@ public class StockLedgerService implements StockLedgerUseCase {
             remaining -= take;
         }
         if (remaining > 0) {
+            inventoryMetrics.movement(StockMovementType.TRANSFER_OUT, Result.INSUFFICIENT_STOCK, 0);
             // Saldo y lotes divergen (no debería): aborta para no crear stock negativo por transferencia.
             throw new InsufficientStockException(
                 "Lotes insuficientes para completar la transferencia del producto " + c.productId());
@@ -193,6 +225,8 @@ public class StockLedgerService implements StockLedgerUseCase {
         balanceRepository.save(fromBal);
         toBal.add(c.quantity());
         balanceRepository.save(toBal);
+        inventoryMetrics.movement(StockMovementType.TRANSFER_OUT, Result.SUCCESS, c.quantity());
+        inventoryMetrics.movement(StockMovementType.TRANSFER_IN, Result.SUCCESS, c.quantity());
     }
 
     @Override
@@ -218,6 +252,7 @@ public class StockLedgerService implements StockLedgerUseCase {
                 movementRepository.save(StockMovement.of(m.getCompanyId(), m.getBranchId(), m.getProductId(),
                     lot.getId(), StockMovementType.VOID_OUT, abs, m.getUnitCost(), referenceType, referenceId,
                     "reversa", createdBy));
+                inventoryMetrics.movement(StockMovementType.VOID_OUT, Result.SUCCESS, abs);
             } else {
                 // El original restó stock → la reversa lo repone al mismo lote.
                 lot.add(abs);
@@ -226,6 +261,7 @@ public class StockLedgerService implements StockLedgerUseCase {
                 movementRepository.save(StockMovement.of(m.getCompanyId(), m.getBranchId(), m.getProductId(),
                     lot.getId(), StockMovementType.VOID_IN, abs, m.getUnitCost(), referenceType, referenceId,
                     "reversa", createdBy));
+                inventoryMetrics.movement(StockMovementType.VOID_IN, Result.SUCCESS, abs);
             }
             balanceRepository.save(balance);
         }

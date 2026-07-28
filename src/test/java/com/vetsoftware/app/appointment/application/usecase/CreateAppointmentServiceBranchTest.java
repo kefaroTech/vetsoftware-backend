@@ -12,6 +12,7 @@ import com.vetsoftware.app.appointment.application.command.CreateAppointmentComm
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
@@ -46,6 +47,7 @@ class CreateAppointmentServiceBranchTest {
     @Mock private BranchQueryPort branchQueryPort;
     @Mock private CompanyQueryPort companyQueryPort;
     @Mock private AppointmentConfirmationEmailSender confirmationEmailSender;
+    @Mock private AppointmentMetrics appointmentMetrics;
     @InjectMocks private CreateAppointmentService service;
 
     private static final long COMPANY = 9L;

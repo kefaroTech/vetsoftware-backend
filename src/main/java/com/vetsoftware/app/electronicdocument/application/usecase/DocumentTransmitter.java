@@ -1,6 +1,8 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingEntitlementQueryPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
 import com.vetsoftware.app.electronicdocument.application.port.out.ContingencyMonitorPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicInvoiceProviderPort;
@@ -11,6 +13,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionL
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.TransmissionResult;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,7 @@ public class DocumentTransmitter {
     private final BillingEntitlementQueryPort billingEntitlement;
     private final NumberAssigner numberAssigner;
     private final ContingencyMonitorPort contingencyMonitor;
+    private final BillingMetrics billingMetrics;
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
@@ -50,6 +54,7 @@ public class DocumentTransmitter {
                                BillingEntitlementQueryPort billingEntitlement,
                                NumberAssigner numberAssigner,
                                ContingencyMonitorPort contingencyMonitor,
+                               BillingMetrics billingMetrics,
                                List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
@@ -59,12 +64,24 @@ public class DocumentTransmitter {
         this.billingEntitlement = billingEntitlement;
         this.numberAssigner = numberAssigner;
         this.contingencyMonitor = contingencyMonitor;
+        this.billingMetrics = billingMetrics;
         this.providers = providerAdapters.stream()
                 .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
 
     @Transactional
     public ElectronicDocument transmit(ElectronicDocument document) {
+        return transmitInternal(document, Origin.INITIAL);
+    }
+
+    @Transactional
+    public ElectronicDocument transmit(ElectronicDocument document, Origin origin) {
+        return transmitInternal(document, origin);
+    }
+
+    private ElectronicDocument transmitInternal(ElectronicDocument document, Origin origin) {
+        long startedAt = System.nanoTime();
+        try {
         // Gate de facturación electrónica: sin submódulo BILLING nunca se contacta al proveedor (MATIAS).
         // El documento se deja como está (PENDIENTE si nunca se transmitió): datos guardados, emisión diferida
         // y re-emitible al habilitar el módulo. No se degrada a NO_ELECTRONICO.
@@ -94,7 +111,12 @@ public class DocumentTransmitter {
         // Subordinacion del void: si esta transmision dejo VALIDADA una nota credito (proveedor sincrono),
         // reversa la factura referenciada y la cartera en el acto. Para async no pasa nada aqui (PENDIENTE).
         reversalApplier.applyIfCreditNoteValidated(saved);
+        billingMetrics.finished(result.status(), origin, saved.getDocumentType(), elapsedSince(startedAt));
         return saved;
+        } catch (RuntimeException | Error exception) {
+            billingMetrics.failed(origin, document.getDocumentType(), elapsedSince(startedAt));
+            throw exception;
+        }
     }
 
     /**
@@ -105,6 +127,17 @@ public class DocumentTransmitter {
      */
     @Transactional
     public ElectronicDocument reconcile(ElectronicDocument document) {
+        return reconcileInternal(document, Origin.RECONCILIATION);
+    }
+
+    @Transactional
+    public ElectronicDocument reconcile(ElectronicDocument document, Origin origin) {
+        return reconcileInternal(document, origin);
+    }
+
+    private ElectronicDocument reconcileInternal(ElectronicDocument document, Origin origin) {
+        long startedAt = System.nanoTime();
+        try {
         if (document.getDianStatus() != DianStatus.PENDIENTE) return document;
         // Sin BILLING: nunca se consulta al proveedor (los NO_ELECTRONICO ya quedan fuera por el filtro de estado).
         if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) return document;
@@ -123,7 +156,10 @@ public class DocumentTransmitter {
         Optional<ProviderResult> maybeResult = provider.fetchStatus(providerKey, config);
         if (maybeResult.isEmpty()) return document; // proveedor síncrono / sin polling
         ProviderResult result = maybeResult.get();
-        if (result.status() == DianStatus.PENDIENTE) return document; // sigue en cola
+        if (result.status() == DianStatus.PENDIENTE) {
+            billingMetrics.finished(result.status(), origin, document.getDocumentType(), elapsedSince(startedAt));
+            return document; // sigue en cola
+        }
 
         applyResult(document, result);
         ElectronicDocument saved = repository.updateDianResult(document);
@@ -132,7 +168,12 @@ public class DocumentTransmitter {
 
         reversalApplier.applyIfCreditNoteValidated(saved);
         deliverService.deliverIfValidated(saved);
+        billingMetrics.finished(result.status(), origin, saved.getDocumentType(), elapsedSince(startedAt));
         return saved;
+        } catch (RuntimeException | Error exception) {
+            billingMetrics.failed(origin, document.getDocumentType(), elapsedSince(startedAt));
+            throw exception;
+        }
     }
 
     private void applyResult(ElectronicDocument document, ProviderResult r) {
@@ -173,5 +214,9 @@ public class DocumentTransmitter {
             case NO_ELECTRONICO -> throw new IllegalStateException(
                     "NO_ELECTRONICO no es un resultado de transmisión");
         };
+    }
+
+    private static Duration elapsedSince(long startedAt) {
+        return Duration.ofNanos(System.nanoTime() - startedAt);
     }
 }

@@ -2,10 +2,12 @@ package com.vetsoftware.app.cashregister.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.vetsoftware.app.cashregister.application.command.CloseCashSessionCommand;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionCountView;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
+import com.vetsoftware.app.cashregister.application.port.out.CashMetrics;
 import com.vetsoftware.app.cashregister.domain.CashMovement;
 import com.vetsoftware.app.cashregister.domain.CashMovementType;
 import com.vetsoftware.app.cashregister.domain.CashPaymentMethod;
@@ -34,7 +36,7 @@ class CloseCashSessionServiceTest {
     @BeforeEach
     void setUp() {
         repo = new FakeCashSessionRepository();
-        service = new CloseCashSessionService(repo);
+        service = new CloseCashSessionService(repo, mock(CashMetrics.class));
     }
 
     private static BigDecimal bd(String v) {

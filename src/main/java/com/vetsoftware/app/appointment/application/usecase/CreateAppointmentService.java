@@ -5,6 +5,8 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentConfirmationDa
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.in.CreateAppointmentUseCase;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
@@ -32,11 +34,13 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     private final BranchQueryPort branchQueryPort;
     private final CompanyQueryPort companyQueryPort;
     private final AppointmentConfirmationEmailSender confirmationEmailSender;
+    private final AppointmentMetrics appointmentMetrics;
 
     public CreateAppointmentService(AppointmentRepository repository, AnimalQueryPort animalQueryPort,
                                     OwnerQueryPort ownerQueryPort, EmployeeQueryPort employeeQueryPort,
                                     BranchQueryPort branchQueryPort, CompanyQueryPort companyQueryPort,
-                                    AppointmentConfirmationEmailSender confirmationEmailSender) {
+                                    AppointmentConfirmationEmailSender confirmationEmailSender,
+                                    AppointmentMetrics appointmentMetrics) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.ownerQueryPort = ownerQueryPort;
@@ -44,6 +48,7 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
         this.branchQueryPort = branchQueryPort;
         this.companyQueryPort = companyQueryPort;
         this.confirmationEmailSender = confirmationEmailSender;
+        this.appointmentMetrics = appointmentMetrics;
     }
 
     @Override
@@ -77,6 +82,7 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
 
         List<Long> clashes = repository.findClashingIds(
             command.companyId(), command.employeeId(), command.startAt(), saved.getId());
+        appointmentMetrics.transitioned(saved.getStatus(), Channel.STAFF);
         return AppointmentDto.from(saved, clashes);
     }
 

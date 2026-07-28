@@ -60,4 +60,19 @@ public interface StockLotJpaRepository extends JpaRepository<StockLotJpaEntity, 
         + "ORDER BY p.name ASC",
         nativeQuery = true)
     List<ValuationRow> valuationRows(@Param("companyId") Long companyId, @Param("branchId") Long branchId);
+
+    @Query("SELECT COUNT(l) FROM StockLotJpaEntity l "
+        + "WHERE l.enabled = true AND l.quantityAvailable > 0 "
+        + "AND l.expireDate IS NOT NULL AND l.expireDate < :before")
+    long countExpiredBefore(@Param("before") LocalDate before);
+
+    @Query("SELECT COUNT(l) FROM StockLotJpaEntity l "
+        + "WHERE l.enabled = true AND l.quantityAvailable > 0 "
+        + "AND l.expireDate >= :from AND l.expireDate <= :to")
+    long countExpiringBetweenInclusive(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT COUNT(l) FROM StockLotJpaEntity l "
+        + "WHERE l.enabled = true AND l.quantityAvailable > 0 "
+        + "AND l.expireDate > :fromExclusive AND l.expireDate <= :to")
+    long countExpiringAfterUntil(@Param("fromExclusive") LocalDate fromExclusive, @Param("to") LocalDate to);
 }

@@ -8,6 +8,9 @@ import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSal
 import com.vetsoftware.app.electronicdocument.application.port.out.CashPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics;
+import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics.Channel;
+import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics.Result;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
@@ -34,19 +37,22 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
     private final ElectronicDocumentRepository repository;
     private final InventoryLedgerPort inventoryLedger;
     private final CashPort cashPort;
+    private final SalesMetrics salesMetrics;
 
     public RegisterPosSaleService(PosSaleDocumentBuilder documentBuilder,
                                   ElectronicDocumentEmitter emitter,
                                   DeliverElectronicDocumentService deliverService,
                                   ElectronicDocumentRepository repository,
                                   InventoryLedgerPort inventoryLedger,
-                                  CashPort cashPort) {
+                                  CashPort cashPort,
+                                  SalesMetrics salesMetrics) {
         this.documentBuilder = documentBuilder;
         this.emitter = emitter;
         this.deliverService = deliverService;
         this.repository = repository;
         this.inventoryLedger = inventoryLedger;
         this.cashPort = cashPort;
+        this.salesMetrics = salesMetrics;
     }
 
     @Override
@@ -62,23 +68,27 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
                 return ElectronicDocumentDto.from(existing.get());
             }
         }
-        // Rechaza cantidades de producto no enteras ANTES de construir/transmitir: no queremos transmitir a la DIAN
-        // una venta que luego revertiríamos localmente. Un producto se vende por unidad entera.
-        validateProductQuantities(command);
+        try {
+            // Rechaza cantidades de producto no enteras antes de construir/transmitir.
+            validateProductQuantities(command);
 
-        ElectronicDocument document = documentBuilder.build(command);
-        // Bloqueo "caja requerida" (F4): si la empresa lo exige y la sede no tiene caja OPEN, corta ANTES de emitir
-        // (nada se transmite a la DIAN). No-op si la empresa no exige caja.
-        cashPort.requireOpenSession(command.companyId(), document.getBranchId(), command.issuedByEmployeeId());
-        ElectronicDocument emitted = emitter.emit(document);
-        // Descuenta inventario por cada línea de producto (misma transacción). El documento POS no lleva cuenta
-        // abierta, así que ninguna otra ruta descontó estas líneas.
-        discountStock(command, emitted);
-        // Registra el cobro en la caja OPEN de la sede (SALE_IN por método, ref POS_DOCUMENT). Idempotente y no-op si
-        // no hay caja abierta. Solo POS directo: una emisión desde cuenta cerrada ya movió caja como abono (F3).
-        registerCash(command, emitted);
-        deliverService.deliverIfValidated(emitted);
-        return ElectronicDocumentDto.from(emitted);
+            ElectronicDocument document = documentBuilder.build(command);
+            // Si la empresa exige caja, se valida antes de transmitir.
+            cashPort.requireOpenSession(command.companyId(), document.getBranchId(), command.issuedByEmployeeId());
+            ElectronicDocument emitted = emitter.emit(document);
+            discountStock(command, emitted);
+            registerCash(command, emitted);
+            deliverService.deliverIfValidated(emitted);
+            salesMetrics.completed(Channel.POS, emitted.getDocumentType(), emitted.getPayableAmount(),
+                    emitted.getLines().size());
+            return ElectronicDocumentDto.from(emitted);
+        } catch (IllegalArgumentException exception) {
+            salesMetrics.failed(Channel.POS, command.documentType(), Result.REJECTED);
+            throw exception;
+        } catch (RuntimeException | Error exception) {
+            salesMetrics.failed(Channel.POS, command.documentType(), Result.ERROR);
+            throw exception;
+        }
     }
 
     private void registerCash(RegisterPosSaleCommand command, ElectronicDocument document) {

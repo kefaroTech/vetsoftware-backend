@@ -1,6 +1,7 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.scheduling;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
+import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
@@ -71,7 +72,7 @@ public class ContingencyRetryJob {
             if (isExhausted(document, deadlineThreshold)) continue;
             attempted++;
             try {
-                transmitter.transmit(document);
+                transmitter.transmit(document, Origin.RETRY);
             } catch (Exception e) {
                 failures++;
                 log.warn("Reintento de contingencia falló para documento {}: {}",

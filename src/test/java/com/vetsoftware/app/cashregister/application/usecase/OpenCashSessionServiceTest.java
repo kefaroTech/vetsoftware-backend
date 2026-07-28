@@ -2,11 +2,13 @@ package com.vetsoftware.app.cashregister.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.vetsoftware.app.cashregister.application.command.OpenCashSessionCommand;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
 import com.vetsoftware.app.cashregister.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.cashregister.application.port.out.CashTerminalQueryPort;
+import com.vetsoftware.app.cashregister.application.port.out.CashMetrics;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
 import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
@@ -36,7 +38,8 @@ class OpenCashSessionServiceTest {
         service = new OpenCashSessionService(repo, branchQuery,
             (terminalId, companyId, branchId) -> terminalId == null ? java.util.Optional.empty()
                 : java.util.Optional.of(new CashTerminalQueryPort.TerminalRef(
-                    terminalId, "Caja 2", "CAJA-2")));
+                    terminalId, "Caja 2", "CAJA-2")),
+            mock(CashMetrics.class));
     }
 
     private static BigDecimal bd(String v) {

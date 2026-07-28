@@ -53,4 +53,10 @@ public interface StockBalanceJpaRepository extends JpaRepository<StockBalanceJpa
         + "ORDER BY (sb.min_stock - sb.quantity) DESC, p.name ASC",
         nativeQuery = true)
     java.util.List<StockRow> lowStockRows(@Param("companyId") Long companyId, @Param("branchId") Long branchId);
+
+    @Query(value = "SELECT COUNT(*) FROM stock_balance sb "
+        + "JOIN products p ON p.id = sb.product_id "
+        + "WHERE p.enabled = true AND sb.quantity < sb.min_stock",
+        nativeQuery = true)
+    long countLowStock();
 }

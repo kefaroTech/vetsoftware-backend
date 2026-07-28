@@ -1,0 +1,57 @@
+groups:
+  - name: vetsoftware-business
+    interval: 30s
+    rules:
+      - alert: VetSoftwareDianContingencyRateHigh
+        expr: |
+          (
+            sum(increase(vetsoftware_business_dian_transmissions_total{result="contingency"}[15m]))
+            /
+            clamp_min(sum(increase(vetsoftware_business_dian_transmissions_total[15m])), 1)
+          ) > 0.05
+          and
+          sum(increase(vetsoftware_business_dian_transmissions_total[15m])) >= 10
+        for: 10m
+        labels:
+          severity: warning
+          domain: billing
+        annotations:
+          summary: "La tasa de contingencia DIAN supera el 5 %"
+          description: "Al menos 10 transmisiones ocurrieron en 15 minutos y más del 5 % terminó en contingencia."
+
+      - alert: VetSoftwareDianBacklogOlderThanOneHour
+        expr: sum(vetsoftware_business_dian_backlog_documents{age="gt_1h"}) > 0
+        for: 10m
+        labels:
+          severity: warning
+          domain: billing
+        annotations:
+          summary: "Existen documentos DIAN sin resolver por más de una hora"
+          description: "El backlog de documentos pendientes o en contingencia requiere revisión."
+
+      - alert: VetSoftwareInventoryInsufficientStockRateHigh
+        expr: |
+          (
+            sum(increase(vetsoftware_business_inventory_movements_total{result="insufficient_stock"}[15m]))
+            /
+            clamp_min(sum(increase(vetsoftware_business_inventory_movements_total[15m])), 1)
+          ) > 0.05
+          and
+          sum(increase(vetsoftware_business_inventory_movements_total[15m])) >= 10
+        for: 15m
+        labels:
+          severity: warning
+          domain: inventory
+        annotations:
+          summary: "Aumentaron los rechazos por inventario insuficiente"
+          description: "Más del 5 % de los movimientos de inventario fueron rechazados durante una ventana con volumen suficiente."
+
+      - alert: VetSoftwareBusinessMetricsSnapshotStale
+        expr: vetsoftware_business_metrics_snapshot_age_seconds > 180
+        for: 2m
+        labels:
+          severity: warning
+          domain: observability
+        annotations:
+          summary: "El snapshot de métricas de negocio está desactualizado"
+          description: "Las métricas de backlog e inventario no se actualizan desde hace más de tres minutos."

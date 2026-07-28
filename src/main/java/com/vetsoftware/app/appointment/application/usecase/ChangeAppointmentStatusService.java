@@ -4,6 +4,8 @@ import com.vetsoftware.app.appointment.application.command.ChangeAppointmentStat
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.in.ChangeAppointmentStatusUseCase;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import io.micrometer.observation.annotation.Observed;
@@ -14,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ChangeAppointmentStatusService implements ChangeAppointmentStatusUseCase {
     private final AppointmentRepository repository;
+    private final AppointmentMetrics appointmentMetrics;
 
-    public ChangeAppointmentStatusService(AppointmentRepository repository) {
+    public ChangeAppointmentStatusService(AppointmentRepository repository, AppointmentMetrics appointmentMetrics) {
         this.repository = repository;
+        this.appointmentMetrics = appointmentMetrics;
     }
 
     @Override
@@ -25,6 +29,8 @@ public class ChangeAppointmentStatusService implements ChangeAppointmentStatusUs
         Appointment appointment = repository.findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
         appointment.transitionTo(command.status());
-        return AppointmentDto.from(repository.save(appointment));
+        Appointment saved = repository.save(appointment);
+        appointmentMetrics.transitioned(saved.getStatus(), Channel.STAFF);
+        return AppointmentDto.from(saved);
     }
 }

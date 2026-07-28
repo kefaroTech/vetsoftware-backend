@@ -95,9 +95,18 @@ management:
   opentelemetry:
     resource-attributes:
       service.version: ${VETSOFTWARE_VERSION:@project.version@}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        vetsoftware.business.dian.transmission.duration: true
+      slo:
+        vetsoftware.business.dian.transmission.duration: 2s,5s,15s,60s
 
 vetsoftware:
   observability:
+    business-metrics:
+      initial-delay-ms: ${BUSINESS_METRICS_INITIAL_DELAY_MS:10000}
+      snapshot-refresh-ms: ${BUSINESS_METRICS_SNAPSHOT_REFRESH_MS:60000}
     actuator:
       authentication:
         enabled: ${ACTUATOR_AUTH_ENABLED:false}
