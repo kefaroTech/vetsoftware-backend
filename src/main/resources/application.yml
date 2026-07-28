@@ -80,7 +80,8 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
+      roles: OBSERVABILITY
   tracing:
     sampling:
       # Política vigente: conservar el 100 %. La aplicación no descarta trazas antes de
@@ -96,6 +97,12 @@ management:
       service.version: ${VETSOFTWARE_VERSION:@project.version@}
 
 vetsoftware:
+  observability:
+    actuator:
+      authentication:
+        enabled: ${ACTUATOR_AUTH_ENABLED:false}
+        username: ${ACTUATOR_PROMETHEUS_USERNAME:}
+        password: ${ACTUATOR_PROMETHEUS_PASSWORD:}
   pdf:
     max-concurrent-renders: ${PDF_MAX_CONCURRENT_RENDERS:2}
     acquire-timeout: ${PDF_ACQUIRE_TIMEOUT:30s}

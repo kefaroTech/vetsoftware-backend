@@ -4,6 +4,9 @@ global:
 scrape_configs:
   - job_name: vetsoftware
     metrics_path: /api/v1/actuator/prometheus
+    basic_auth:
+      username_file: /run/secrets/prometheus_metrics_username
+      password_file: /run/secrets/prometheus_metrics_password
     static_configs:
       - targets:
           - host.docker.internal:8080

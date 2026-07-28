@@ -18,7 +18,8 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
+      roles: OBSERVABILITY
   otlp:
     metrics:
       export:
@@ -48,6 +49,10 @@ cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176}
 
 vetsoftware:
+  observability:
+    actuator:
+      authentication:
+        enabled: true
   email:
     enabled: ${EMAIL_ENABLED:false}
     from: "${EMAIL_FROM:VetSoftware Local <local@vetsoftware.test>}"

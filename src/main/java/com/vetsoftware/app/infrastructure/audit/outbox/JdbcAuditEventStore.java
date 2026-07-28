@@ -1,7 +1,7 @@
 package com.vetsoftware.app.infrastructure.audit.outbox;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
         prefix = "vetsoftware.audit.outbox",
         name = "enabled",
         havingValue = "true")
-final class JdbcAuditEventStore implements AuditEventStore {
+class JdbcAuditEventStore implements AuditEventStore {
 
     private static final Set<String> CONTEXT_KEYS = Set.of(
             "traceId", "spanId",
@@ -75,7 +75,7 @@ final class JdbcAuditEventStore implements AuditEventStore {
     private String serialize(Map<String, Object> payload) {
         try {
             return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("No se pudo serializar el evento de auditoría", exception);
         }
     }

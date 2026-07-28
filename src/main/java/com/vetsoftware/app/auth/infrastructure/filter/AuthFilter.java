@@ -59,33 +59,34 @@ public class AuthFilter extends OncePerRequestFilter {
         this.tracer = tracer;
     }
 
-    private record PublicRoute(String method, String pattern) {}
+    private record JwtExcludedRoute(String method, String pattern) {}
 
-    private static final List<PublicRoute> PUBLIC_PATHS = List.of(
-            new PublicRoute("POST", "/auth/login/**"),
-            new PublicRoute("POST", "/auth/refresh"),
-            new PublicRoute("POST", "/register"),
-            new PublicRoute("POST", "/register/verify"),
-            new PublicRoute("POST", "/auth/forgot-password"),
-            new PublicRoute("GET",  "/auth/reset-password/validate"),
-            new PublicRoute("POST", "/auth/reset-password"),
-            new PublicRoute("POST", "/auth/recover-code"),
-            new PublicRoute("POST", "/dian/webhooks/**"),
-            new PublicRoute("GET",  "/countries"),
-            new PublicRoute("GET",  "/countries/{countryId}/states"),
-            new PublicRoute("GET",  "/states/{stateId}/cities"),
-            new PublicRoute("GET",  "/species/{specieId}/breeds"),
-            new PublicRoute("GET",  "/species"),
-            new PublicRoute("GET",  "/animal-colors"),
-            new PublicRoute("GET",  "/consultation-types"),
-            new PublicRoute("GET",  "/modules"),
-            new PublicRoute("GET",  "/sub-modules"),
-            new PublicRoute("GET",  "/spa-types"),
-            new PublicRoute(null,   "/swagger-ui/**"),
-            new PublicRoute(null,   "/v3/api-docs/**"),
-            new PublicRoute(null,   "/swagger-resources/**"),
-            new PublicRoute(null,   "/webjars/**"),
-            new PublicRoute(null,   "/actuator/**")
+    private static final List<JwtExcludedRoute> JWT_EXCLUDED_PATHS = List.of(
+            new JwtExcludedRoute("POST", "/auth/login/**"),
+            new JwtExcludedRoute("POST", "/auth/refresh"),
+            new JwtExcludedRoute("POST", "/register"),
+            new JwtExcludedRoute("POST", "/register/verify"),
+            new JwtExcludedRoute("POST", "/auth/forgot-password"),
+            new JwtExcludedRoute("GET",  "/auth/reset-password/validate"),
+            new JwtExcludedRoute("POST", "/auth/reset-password"),
+            new JwtExcludedRoute("POST", "/auth/recover-code"),
+            new JwtExcludedRoute("POST", "/dian/webhooks/**"),
+            new JwtExcludedRoute("GET",  "/countries"),
+            new JwtExcludedRoute("GET",  "/countries/{countryId}/states"),
+            new JwtExcludedRoute("GET",  "/states/{stateId}/cities"),
+            new JwtExcludedRoute("GET",  "/species/{specieId}/breeds"),
+            new JwtExcludedRoute("GET",  "/species"),
+            new JwtExcludedRoute("GET",  "/animal-colors"),
+            new JwtExcludedRoute("GET",  "/consultation-types"),
+            new JwtExcludedRoute("GET",  "/modules"),
+            new JwtExcludedRoute("GET",  "/sub-modules"),
+            new JwtExcludedRoute("GET",  "/spa-types"),
+            new JwtExcludedRoute(null,   "/swagger-ui/**"),
+            new JwtExcludedRoute(null,   "/v3/api-docs/**"),
+            new JwtExcludedRoute(null,   "/swagger-resources/**"),
+            new JwtExcludedRoute(null,   "/webjars/**"),
+            // Actuator pertenece a su propia SecurityFilterChain; este filtro solo procesa JWT de negocio.
+            new JwtExcludedRoute(null,   "/actuator/**")
     );
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
@@ -95,7 +96,7 @@ public class AuthFilter extends OncePerRequestFilter {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
         String method = request.getMethod();
         String path = request.getServletPath();
-        return PUBLIC_PATHS.stream().anyMatch(r ->
+        return JWT_EXCLUDED_PATHS.stream().anyMatch(r ->
                 (r.method() == null || r.method().equalsIgnoreCase(method))
                         && PATH_MATCHER.match(r.pattern(), path));
     }

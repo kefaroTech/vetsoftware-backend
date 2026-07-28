@@ -88,6 +88,9 @@ services:
     volumes:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - vetsoftware_prometheus_data:/prometheus
+    secrets:
+      - prometheus_metrics_username
+      - prometheus_metrics_password
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -155,6 +158,12 @@ services:
       timeout: 5s
       retries: 20
       start_period: 15s
+
+secrets:
+  prometheus_metrics_username:
+    environment: ACTUATOR_PROMETHEUS_USERNAME
+  prometheus_metrics_password:
+    environment: ACTUATOR_PROMETHEUS_PASSWORD
 
 volumes:
   vetsoftware_redis_data:
