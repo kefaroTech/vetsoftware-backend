@@ -1,4 +1,4 @@
-name: vetsoftware-local
+name: vetsoftware
 
 services:
   redis:

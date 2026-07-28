@@ -38,6 +38,35 @@ spring:
   cache:
     type: redis
 
+# Instrumentación JDBC centrada en la operación SQL. CONNECTION, FETCH y KEYS se
+# observan mejor mediante las métricas agregadas de HikariCP y no tienen una
+# convención semántica estable de OpenTelemetry.
+jdbc:
+  includes:
+    - QUERY
+  datasource-proxy:
+    # Política de privacidad: nunca exportar parámetros reales ni duplicar SQL en logs.
+    include-parameter-values: false
+    query:
+      enable-logging: false
+  opentelemetry:
+    enabled: true
+    spans:
+      enabled: true
+    # Se conservan las métricas de Micrometer/HikariCP. El handler OTel de esta
+    # librería añade texto y resumen SQL como tags, lo que elevaría la cardinalidad.
+    metrics:
+      enabled: false
+    analysis:
+      enabled: true
+      summary:
+        enabled: true
+      sanitize:
+        enabled: true
+      cache:
+        enabled: true
+        max-size: 1000
+
 jwt:
   # Access token corto: se renueva vía refresh token sin re-login (ver /auth/refresh).
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
