@@ -7,8 +7,10 @@ import com.vetsoftware.app.appointment.application.query.ListAppointmentsQuery;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "appointment.list")
 @Service
 public class ListAppointmentsService implements ListAppointmentsUseCase {
     private final AppointmentRepository repository;

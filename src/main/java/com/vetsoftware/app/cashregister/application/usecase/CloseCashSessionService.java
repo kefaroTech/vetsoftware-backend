@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Cierra la caja: arma el conteo declarado por método y delega en el agregado el cálculo esperado vs contado →
  * diferencia y la materialización de los {@code CashSessionCount}. El guard de "solo si está abierta" vive en el dominio.
  */
+@Observed(name = "cashRegister.closeSession")
 @Service
 public class CloseCashSessionService implements CloseCashSessionUseCase {
 

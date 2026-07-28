@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.InvoicePdfPor
 import com.vetsoftware.app.electronicdocument.application.port.out.QrGeneratorPort;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import io.micrometer.observation.annotation.Observed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  * envía por correo al adquiriente (copia al emisor). Idempotente: no reprocesa si el documento ya tiene
  * PDF o no está VALIDADO. Reutilizable por la emisión y por el cierre async de MATIAS (webhook/polling).
  */
+@Observed(name = "electronicDocument.deliver")
 @Component
 public class DeliverElectronicDocumentService {
     private static final Logger log = LoggerFactory.getLogger(DeliverElectronicDocumentService.class);

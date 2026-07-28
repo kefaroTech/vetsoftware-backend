@@ -13,9 +13,11 @@ import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoice;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierRef;
 import java.math.BigDecimal;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "supplierInvoice.create")
 @Service
 public class CreateSupplierInvoiceService implements CreateSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

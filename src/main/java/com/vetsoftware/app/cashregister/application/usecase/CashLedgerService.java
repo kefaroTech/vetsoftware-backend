@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "cashRegister.registerInflow")
     @Transactional
     public void registerInflow(RegisterCashInflowCommand command) {
         Optional<CashSession> open = resolveOpenSession(command);
@@ -57,6 +59,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "cashRegister.reverseMovements")
     @Transactional
     public void reverse(ReverseCashMovementsCommand command) {
         Optional<CashSession> open = resolveOpenSession(
@@ -77,6 +80,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "cashRegister.ensureCashAvailable")
     @Transactional(readOnly = true)
     public void ensureCashAvailable(Long companyId, Long branchId, String terminal) {
         if (!cashRequiredPolicy.isCashRequired(companyId)) return;
@@ -86,6 +90,7 @@ public class CashLedgerService implements CashLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "cashRegister.ensureEmployeeCashAvailable")
     @Transactional(readOnly = true)
     public void ensureEmployeeCashAvailable(Long companyId, Long branchId, Long employeeId) {
         boolean available = repository.findOpenByEmployee(companyId, employeeId)

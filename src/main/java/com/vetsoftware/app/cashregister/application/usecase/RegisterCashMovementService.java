@@ -8,6 +8,7 @@ import com.vetsoftware.app.cashregister.domain.CashMovement;
 import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Registra un movimiento manual (ingreso/retiro/gasto) en una sesión de caja abierta. Rechaza tipos no manuales
  * (venta/abono/reversa los inyecta la orquestación) y delega el guard de "solo con caja abierta" al agregado.
  */
+@Observed(name = "cashRegister.registerMovement")
 @Service
 public class RegisterCashMovementService implements RegisterCashMovementUseCase {
 

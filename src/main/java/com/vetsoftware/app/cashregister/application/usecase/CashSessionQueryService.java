@@ -9,6 +9,7 @@ import com.vetsoftware.app.cashregister.application.port.in.ListCashSessionsUseC
 import com.vetsoftware.app.cashregister.application.port.in.ListOpenCashSessionsUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,14 @@ public class CashSessionQueryService
     }
 
     @Override
+    @Observed(name = "cashRegister.currentSession")
     @Transactional(readOnly = true)
     public CashSessionView current(Long companyId, Long employeeId) {
         return repository.findOpenByEmployee(companyId, employeeId).map(CashSessionView::from).orElse(null);
     }
 
     @Override
+    @Observed(name = "cashRegister.getSession")
     @Transactional(readOnly = true)
     public CashSessionView get(Long companyId, Long id) {
         return repository.findByIdAndCompany(id, companyId).map(CashSessionView::from)
@@ -40,12 +43,14 @@ public class CashSessionQueryService
     }
 
     @Override
+    @Observed(name = "cashRegister.listSessions")
     @Transactional(readOnly = true)
     public PageResult<CashSessionView> list(SearchCashSessionsQuery query) {
         return repository.search(query);
     }
 
     @Override
+    @Observed(name = "cashRegister.listOpenSessions")
     @Transactional(readOnly = true)
     public List<CashSessionView> listOpen(Long companyId, Set<Long> accessibleBranchIds) {
         return repository.findOpenSummaries(companyId, accessibleBranchIds);

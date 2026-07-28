@@ -5,9 +5,11 @@ import com.vetsoftware.app.companysettings.application.dto.CompanySettingDto;
 import com.vetsoftware.app.companysettings.application.port.in.SetCompanySettingUseCase;
 import com.vetsoftware.app.companysettings.application.port.out.CompanySettingRepository;
 import com.vetsoftware.app.companysettings.domain.CompanySetting;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "companySettings.set")
 @Service
 public class SetCompanySettingService implements SetCompanySettingUseCase {
 

@@ -9,6 +9,7 @@ import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.PurchasesReport;
 import com.vetsoftware.app.inventory.application.port.in.ExportInventoryUseCase;
 import com.vetsoftware.app.inventory.application.port.out.StockQueryPort;
+import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class InventoryReportService implements ExportInventoryUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.exportKardex")
     public KardexReport kardexReport(SearchKardexCommand command) {
         List<KardexExportRow> rows = stockQueryPort.kardexForExport(command);
         int opening = command.from() == null ? 0
@@ -51,6 +53,7 @@ public class InventoryReportService implements ExportInventoryUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.exportPurchases")
     public PurchasesReport purchasesReport(SearchPurchasesQuery query) {
         List<PurchaseView> lines = stockQueryPort.purchasesForExport(query);
         int totalQuantity = lines.stream().mapToInt(l -> Math.abs(l.quantity())).sum();

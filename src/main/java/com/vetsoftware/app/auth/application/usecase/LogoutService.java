@@ -9,9 +9,11 @@ import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "auth.logout")
 @Service
 public class LogoutService implements LogoutUseCase {
 

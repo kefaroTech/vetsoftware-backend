@@ -5,9 +5,11 @@ import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
 import com.vetsoftware.app.supplierinvoice.application.dto.SupplierInvoiceDto;
 import com.vetsoftware.app.supplierinvoice.application.port.in.SearchSupplierInvoicesUseCase;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "supplierInvoice.search")
 @Service
 public class SearchSupplierInvoicesService implements SearchSupplierInvoicesUseCase {
     private final SupplierInvoiceRepository repository;

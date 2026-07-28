@@ -6,9 +6,11 @@ import com.vetsoftware.app.appointment.application.port.in.ChangeAppointmentStat
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "appointment.changeStatus")
 @Service
 public class ChangeAppointmentStatusService implements ChangeAppointmentStatusUseCase {
     private final AppointmentRepository repository;

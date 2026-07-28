@@ -8,6 +8,7 @@ import com.vetsoftware.app.coderecovery.application.port.out.EmployeeAccountsByE
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * de acceso (una fila por veterinaria). Anti-enumeración: si no hay coincidencias, termina sin error y sin
  * enviar nada. El código no es un secreto (es el usuario), pero solo se envía al correo registrado.
  */
+@Observed(name = "codeRecovery.recoverEmployeeCode")
 @Service
 public class RecoverEmployeeCodeService implements RecoverEmployeeCodeUseCase {
 

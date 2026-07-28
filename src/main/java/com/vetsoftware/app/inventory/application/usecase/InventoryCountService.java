@@ -17,6 +17,7 @@ import com.vetsoftware.app.inventory.domain.InventoryCountLine;
 import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
 import com.vetsoftware.app.inventory.domain.StockBalance;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,7 @@ public class InventoryCountService implements RecordCountUseCase, ListCountsUseC
     }
 
     @Override
+    @Observed(name = "inventory.recordCount")
     @Transactional
     public InventoryCountView record(RecordCountCommand command) {
         if (!branchQueryPort.existsActiveInCompany(command.branchId(), command.companyId())) {
@@ -73,12 +75,14 @@ public class InventoryCountService implements RecordCountUseCase, ListCountsUseC
     }
 
     @Override
+    @Observed(name = "inventory.listCounts")
     @Transactional(readOnly = true)
     public PageResult<InventoryCountView> list(SearchCountsQuery query) {
         return countRepository.search(query);
     }
 
     @Override
+    @Observed(name = "inventory.getCount")
     @Transactional(readOnly = true)
     public InventoryCountView get(Long companyId, Long id) {
         return countRepository.findDetail(companyId, id)

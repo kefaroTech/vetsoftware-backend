@@ -13,6 +13,7 @@ import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import java.util.ArrayList;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * y obligación de cambiarla en el primer login), le asigna los roles y le envía la invitación por correo con
  * sus datos de acceso. El correo es async/best-effort (no bloquea ni revierte el alta).
  */
+@Observed(name = "employee.invite")
 @Service
 public class InviteEmployeeService implements InviteEmployeeUseCase {
 

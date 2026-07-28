@@ -5,8 +5,10 @@ import com.vetsoftware.app.appointment.application.port.in.GetAppointmentUseCase
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "appointment.find")
 @Service
 public class GetAppointmentService implements GetAppointmentUseCase {
     private final AppointmentRepository repository;

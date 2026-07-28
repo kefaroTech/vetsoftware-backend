@@ -12,9 +12,11 @@ import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsReposi
 import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsRepository.SystemUserCredentials;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "auth.loginSystemUser")
 @Service
 public class LoginSystemUserService implements LoginSystemUserUseCase {
 

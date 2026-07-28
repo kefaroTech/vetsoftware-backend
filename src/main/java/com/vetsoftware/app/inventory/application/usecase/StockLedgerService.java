@@ -17,6 +17,7 @@ import com.vetsoftware.app.inventory.domain.StockLot;
 import com.vetsoftware.app.inventory.domain.StockMovement;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
+import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.recordPurchase")
     @Transactional
     public void recordPurchase(RecordPurchaseCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -62,6 +64,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.recordSale")
     @Transactional
     public List<StockConsumptionDto> recordSale(RecordSaleCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -85,6 +88,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.recordClinicalUse")
     @Transactional
     public List<StockConsumptionDto> recordClinicalUse(RecordClinicalUseCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -108,6 +112,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.recordAdjustment")
     @Transactional
     public void recordAdjustment(RecordAdjustmentCommand c) {
         if (c.delta() == 0) throw new IllegalArgumentException("delta cannot be 0");
@@ -135,6 +140,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.transferLedger")
     @Transactional
     public void transfer(TransferStockCommand c) {
         if (c.quantity() <= 0) throw new IllegalArgumentException("quantity must be greater than 0");
@@ -190,6 +196,7 @@ public class StockLedgerService implements StockLedgerUseCase {
     }
 
     @Override
+    @Observed(name = "inventory.reverseLedger")
     @Transactional
     public void reverse(StockReferenceType referenceType, Long referenceId, Long createdBy) {
         List<StockMovement> movements = movementRepository.findByReference(referenceType, referenceId);

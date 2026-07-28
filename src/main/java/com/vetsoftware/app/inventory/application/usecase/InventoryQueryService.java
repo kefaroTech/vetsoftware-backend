@@ -20,6 +20,7 @@ import com.vetsoftware.app.inventory.application.port.in.ListProductLotsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListPurchasesUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListStockUseCase;
 import com.vetsoftware.app.inventory.application.port.out.StockQueryPort;
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -35,31 +36,37 @@ public class InventoryQueryService implements ListStockUseCase, ListProductLotsU
     }
 
     @Override
+    @Observed(name = "inventory.alerts")
     public InventoryAlertsView alerts(InventoryAlertsQuery query) {
         return stockQueryPort.alerts(query.companyId(), query.branchId(), query.expiringInDays());
     }
 
     @Override
+    @Observed(name = "inventory.valuation")
     public InventoryValuationView valuation(InventoryValuationQuery query) {
         return stockQueryPort.valuation(query.companyId(), query.branchId());
     }
 
     @Override
+    @Observed(name = "inventory.purchases")
     public PageResult<PurchaseView> purchases(SearchPurchasesQuery query) {
         return stockQueryPort.purchases(query);
     }
 
     @Override
+    @Observed(name = "inventory.searchStock")
     public PageResult<StockView> search(SearchStockCommand command) {
         return stockQueryPort.searchStock(command);
     }
 
     @Override
+    @Observed(name = "inventory.listLots")
     public List<StockLotView> listLots(ListLotsCommand command) {
         return stockQueryPort.listLots(command.companyId(), command.branchId(), command.productId());
     }
 
     @Override
+    @Observed(name = "inventory.searchKardex")
     public PageResult<StockMovementView> searchKardex(SearchKardexCommand command) {
         return stockQueryPort.searchKardex(command);
     }

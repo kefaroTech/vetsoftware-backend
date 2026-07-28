@@ -8,8 +8,10 @@ import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.BranchAccessResolver;
 import com.vetsoftware.app.auth.application.port.out.PermissionResolver;
 import java.util.Objects;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "auth.resolveContext")
 @Service
 public class ResolveAuthContextService implements ResolveAuthContextUseCase {
 

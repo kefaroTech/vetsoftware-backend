@@ -4,8 +4,10 @@ import com.vetsoftware.app.employeebranch.application.dto.EmployeeBranchesDto;
 import com.vetsoftware.app.employeebranch.application.port.in.GetEmployeeBranchesUseCase;
 import com.vetsoftware.app.employeebranch.application.port.out.EmployeeBranchRepository;
 import com.vetsoftware.app.employeebranch.application.port.out.EmployeeQueryPort;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "employeebranch.get")
 @Service
 public class GetEmployeeBranchesService implements GetEmployeeBranchesUseCase {
     private final EmployeeBranchRepository repository;

@@ -6,6 +6,7 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code mustChangePassword}. No toca {@code authVersion}: la sesión en curso sigue válida y el empleado
  * pasa directo al panel sin re-login.
  */
+@Observed(name = "employee.changeMyPassword")
 @Service
 public class ChangeMyPasswordService implements ChangeMyPasswordUseCase {
 

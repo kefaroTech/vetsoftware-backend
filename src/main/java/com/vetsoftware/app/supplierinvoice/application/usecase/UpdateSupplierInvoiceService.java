@@ -12,9 +12,11 @@ import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundExcepti
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierRef;
 import java.math.BigDecimal;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "supplierInvoice.update")
 @Service
 public class UpdateSupplierInvoiceService implements UpdateSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

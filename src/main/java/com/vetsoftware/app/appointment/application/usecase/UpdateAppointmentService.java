@@ -13,9 +13,11 @@ import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.appointment.domain.OwnerRef;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "appointment.update")
 @Service
 public class UpdateAppointmentService implements UpdateAppointmentUseCase {
     private final AppointmentRepository repository;

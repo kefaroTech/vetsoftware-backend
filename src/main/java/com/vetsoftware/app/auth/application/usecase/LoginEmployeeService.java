@@ -14,9 +14,11 @@ import com.vetsoftware.app.auth.application.port.out.RefreshTokenIssuer;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "auth.loginEmployee")
 @Service
 public class LoginEmployeeService implements LoginEmployeeUseCase {
 

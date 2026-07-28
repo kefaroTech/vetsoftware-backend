@@ -9,9 +9,11 @@ import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "appointment.reschedule")
 @Service
 public class RescheduleAppointmentService implements RescheduleAppointmentUseCase {
     private final AppointmentRepository repository;

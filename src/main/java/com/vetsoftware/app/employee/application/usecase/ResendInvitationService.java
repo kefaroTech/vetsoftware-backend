@@ -12,6 +12,7 @@ import com.vetsoftware.app.employee.domain.EmployeeStatus;
 import com.vetsoftware.app.employee.domain.RoleSnapshot;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import java.util.List;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * anterior ya está ofuscada en hash, por eso el admin escribe una nueva), vuelve a exigir el cambio en el
  * primer login y reenvía el correo con sus datos de acceso. El correo es async/best-effort (no bloquea).
  */
+@Observed(name = "employee.resendInvitation")
 @Service
 public class ResendInvitationService implements ResendInvitationUseCase {
 

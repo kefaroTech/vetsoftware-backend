@@ -2,9 +2,10 @@
 management:
   tracing:
     sampling:
-      # Head-sampling al 100%: la app envía TODAS las trazas al otel-collector, que es quien
-      # decide qué retener vía tail_sampling (errores + lentas + 10% del resto).
-      # El muestreo real vive en docker/otel-collector.yml, no aquí.
+      # Política vigente de retención total: la app envía TODAS las trazas al
+      # otel-collector y este conserva errores, trazas lentas y el 100% del resto.
+      # Cualquier reducción futura debe aplicarse de forma coordinada con
+      # docker/otel-collector.yml.
       probability: ${TRACING_SAMPLING:1.0}
 
 springdoc:

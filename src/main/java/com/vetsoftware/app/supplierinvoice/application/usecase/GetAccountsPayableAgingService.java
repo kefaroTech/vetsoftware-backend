@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Arma el reporte de cuentas por pagar por antigüedad: toma las facturas con saldo (PENDING/PARTIAL) y reparte el
  * saldo de cada una en un tramo según los días transcurridos desde su vencimiento hasta {@code asOf}.
  */
+@Observed(name = "supplierInvoice.accountsPayableAging")
 @Service
 public class GetAccountsPayableAgingService implements GetAccountsPayableAgingUseCase {
     private final SupplierInvoiceRepository repository;

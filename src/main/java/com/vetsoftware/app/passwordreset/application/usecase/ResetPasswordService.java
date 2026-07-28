@@ -7,6 +7,7 @@ import com.vetsoftware.app.passwordreset.application.port.out.PasswordResetToken
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
 import com.vetsoftware.app.passwordreset.domain.PasswordResetToken;
 import java.time.LocalDateTime;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Confirma el restablecimiento: re-hashea el token plano, lo consume de forma irreversible y aplica la nueva
  * contraseña al empleado (que además invalida sus sesiones vivas). La posesión del token es la autorización.
  */
+@Observed(name = "passwordReset.reset")
 @Service
 public class ResetPasswordService implements ResetPasswordUseCase {
 

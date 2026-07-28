@@ -13,10 +13,12 @@ processors:
     limit_mib: 512
     spike_limit_mib: 128
 
-  # Decide qué trazas retener una vez completas (tail-based, no ciego al outcome como el head):
+  # Política vigente: conservar el 100% de las trazas.
+  # Las reglas de errores y latencia se mantienen explícitas para facilitar una posible
+  # revisión futura, pero sample-rest al 100% hace que actualmente se retengan todas:
   #   - errores (span status = ERROR) → siempre
   #   - lentas (>2s) → siempre
-  #   - el resto → 10%
+  #   - el resto → 100%
   tail_sampling:
     decision_wait: 10s
     num_traces: 50000

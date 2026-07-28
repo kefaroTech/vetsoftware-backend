@@ -11,8 +11,10 @@ import com.vetsoftware.app.auth.application.port.out.SystemUserProfileQueryPort.
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "auth.currentUser")
 @Service
 public class GetCurrentUserService implements GetCurrentUserUseCase {
 

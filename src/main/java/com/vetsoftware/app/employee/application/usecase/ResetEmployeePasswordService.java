@@ -6,10 +6,12 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Restablece la contraseña del empleado: hashea la nueva, limpia mustChangePassword e invalida sesiones. */
+@Observed(name = "employee.resetPassword")
 @Service
 public class ResetEmployeePasswordService implements ResetEmployeePasswordUseCase {
 

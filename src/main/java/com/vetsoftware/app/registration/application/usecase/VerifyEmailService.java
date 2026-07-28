@@ -7,6 +7,7 @@ import com.vetsoftware.app.registration.application.port.out.EmployeeEmailVerifi
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
 import java.time.LocalDateTime;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Verificacion de correo (Opcion B). Recibe el token plano, lo re-hashea, lo consume de forma irreversible
  * y marca al empleado como verificado, habilitando su login. La posesion del token es la autorizacion.
  */
+@Observed(name = "registration.verifyEmail")
 @Service
 public class VerifyEmailService implements VerifyEmailUseCase {
 

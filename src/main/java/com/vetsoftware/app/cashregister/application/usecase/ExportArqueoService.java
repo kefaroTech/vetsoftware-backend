@@ -4,10 +4,12 @@ import com.vetsoftware.app.cashregister.application.dto.CashArqueoReport;
 import com.vetsoftware.app.cashregister.application.port.in.ExportArqueoUseCase;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
 import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Construye el reporte de arqueo desde el agregado de la sesión (movimientos + counts). */
+@Observed(name = "cashRegister.exportArqueo")
 @Service
 public class ExportArqueoService implements ExportArqueoUseCase {
 

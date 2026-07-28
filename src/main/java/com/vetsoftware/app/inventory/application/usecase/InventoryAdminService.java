@@ -14,6 +14,7 @@ import com.vetsoftware.app.inventory.application.port.in.TransferStockUseCase;
 import com.vetsoftware.app.inventory.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.inventory.application.port.out.StockBalanceRepository;
 import com.vetsoftware.app.inventory.domain.StockBalance;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,18 +40,21 @@ public class InventoryAdminService implements AdjustStockUseCase, ReceiveStockUs
     }
 
     @Override
+    @Observed(name = "inventory.adjust")
     public void adjust(RecordAdjustmentCommand command) {
         requireBranch(command.companyId(), command.branchId());
         stockLedger.recordAdjustment(command);
     }
 
     @Override
+    @Observed(name = "inventory.receive")
     public void receive(RecordPurchaseCommand command) {
         requireBranch(command.companyId(), command.branchId());
         stockLedger.recordPurchase(command);
     }
 
     @Override
+    @Observed(name = "inventory.transfer")
     public void transfer(TransferStockCommand command) {
         requireBranch(command.companyId(), command.fromBranchId());
         requireBranch(command.companyId(), command.toBranchId());
@@ -58,12 +62,14 @@ public class InventoryAdminService implements AdjustStockUseCase, ReceiveStockUs
     }
 
     @Override
+    @Observed(name = "inventory.consume")
     public void consume(RecordClinicalUseCommand command) {
         requireBranch(command.companyId(), command.branchId());
         stockLedger.recordClinicalUse(command);
     }
 
     @Override
+    @Observed(name = "inventory.setMinStock")
     @Transactional
     public void setMinStock(SetMinStockCommand command) {
         if (command.minStock() < 0) throw new IllegalArgumentException("minStock cannot be negative");

@@ -4,9 +4,11 @@ import com.vetsoftware.app.employee.application.port.in.VerifyEmployeeEmailUseCa
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "employee.verifyEmail")
 @Service
 public class VerifyEmployeeEmailService implements VerifyEmployeeEmailUseCase {
 

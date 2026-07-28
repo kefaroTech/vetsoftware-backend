@@ -15,9 +15,11 @@ import com.vetsoftware.app.auth.application.port.out.RefreshTokenSecret;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "auth.refreshAccessToken")
 @Service
 public class RefreshAccessTokenService implements RefreshTokenUseCase {
 

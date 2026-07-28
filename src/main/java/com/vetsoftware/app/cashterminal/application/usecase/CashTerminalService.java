@@ -5,6 +5,7 @@ import com.vetsoftware.app.cashregister.application.port.out.CashSessionReposito
 import com.vetsoftware.app.cashterminal.application.dto.CashTerminalDto;
 import com.vetsoftware.app.cashterminal.infrastructure.persistence.CashTerminalJpaEntity;
 import com.vetsoftware.app.cashterminal.infrastructure.persistence.CashTerminalJpaRepository;
+import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class CashTerminalService {
         this.cashSessionRepository = cashSessionRepository;
     }
 
+    @Observed(name = "cashTerminal.list")
     @Transactional(readOnly = true)
     public List<CashTerminalDto> list(Long companyId, Long branchId, boolean activeOnly) {
         validateActiveBranch(companyId, branchId);
@@ -32,6 +34,7 @@ public class CashTerminalService {
         return terminals.stream().map(CashTerminalDto::from).toList();
     }
 
+    @Observed(name = "cashTerminal.create")
     @Transactional
     public CashTerminalDto create(Long companyId, Long branchId, String name, String code) {
         validateActiveBranch(companyId, branchId);
@@ -50,6 +53,7 @@ public class CashTerminalService {
         return CashTerminalDto.from(repository.save(entity));
     }
 
+    @Observed(name = "cashTerminal.update")
     @Transactional
     public CashTerminalDto update(Long companyId, Long id, String name, String code) {
         CashTerminalJpaEntity entity = get(companyId, id);
@@ -68,6 +72,7 @@ public class CashTerminalService {
         return CashTerminalDto.from(repository.save(entity));
     }
 
+    @Observed(name = "cashTerminal.setActive")
     @Transactional
     public CashTerminalDto setActive(Long companyId, Long id, boolean active) {
         CashTerminalJpaEntity entity = get(companyId, id);

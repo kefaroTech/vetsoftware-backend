@@ -7,8 +7,10 @@ import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseC
 import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository;
 import com.vetsoftware.app.auth.application.port.out.SystemPermissionResolver;
 import java.util.Objects;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
+@Observed(name = "auth.resolveSystemContext")
 @Service
 public class ResolveSystemAuthContextService implements ResolveSystemAuthContextUseCase {
 

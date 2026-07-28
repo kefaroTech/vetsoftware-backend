@@ -3,10 +3,12 @@ package com.vetsoftware.app.passwordreset.application.usecase;
 import com.vetsoftware.app.passwordreset.application.port.in.ValidatePasswordResetTokenUseCase;
 import com.vetsoftware.app.passwordreset.application.port.out.PasswordResetTokenRepository;
 import java.time.LocalDateTime;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Chequea (sin consumir) si el token de la pantalla de restablecimiento sigue siendo usable. */
+@Observed(name = "passwordReset.validateToken")
 @Service
 public class ValidatePasswordResetTokenService implements ValidatePasswordResetTokenUseCase {
 

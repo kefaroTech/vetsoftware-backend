@@ -5,6 +5,8 @@ import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionL
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
@@ -28,21 +30,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContingencyRetryJob {
     private static final Logger log = LoggerFactory.getLogger(ContingencyRetryJob.class);
+    private static final String JOB_NAME = "dian.contingency.retry";
 
     private final ElectronicDocumentRepository repository;
     private final DocumentTransmitter transmitter;
     private final TransmissionLogPort transmissionLog;
+    private final ScheduledJobTelemetry telemetry;
     private final int maxAttempts;
     private final long deadlineHours;
 
     public ContingencyRetryJob(ElectronicDocumentRepository repository,
                                DocumentTransmitter transmitter,
                                TransmissionLogPort transmissionLog,
+                               ScheduledJobTelemetry telemetry,
                                @Value("${dian.contingency.max-attempts:12}") int maxAttempts,
                                @Value("${dian.contingency.deadline-hours:48}") long deadlineHours) {
         this.repository = repository;
         this.transmitter = transmitter;
         this.transmissionLog = transmissionLog;
+        this.telemetry = telemetry;
         this.maxAttempts = maxAttempts;
         this.deadlineHours = deadlineHours;
     }
@@ -51,19 +57,31 @@ public class ContingencyRetryJob {
             initialDelayString = "${dian.contingency.initial-delay-ms:60000}",
             fixedDelayString = "${dian.contingency.retry-delay-ms:300000}")
     public void retryContingencies() {
+        telemetry.observe(JOB_NAME, this::executeRetries);
+    }
+
+    private Outcome executeRetries() {
         List<ElectronicDocument> pending = repository.findByDianStatus(DianStatus.CONTINGENCIA);
-        if (pending.isEmpty()) return;
+        if (pending.isEmpty()) return Outcome.NO_WORK;
         LocalDateTime deadlineThreshold = LocalDateTime.now().minusHours(deadlineHours);
         log.info("Reintentando documento(s) en contingencia DIAN: {} candidato(s)", pending.size());
+        int attempted = 0;
+        int failures = 0;
         for (ElectronicDocument document : pending) {
             if (isExhausted(document, deadlineThreshold)) continue;
+            attempted++;
             try {
                 transmitter.transmit(document);
             } catch (Exception e) {
+                failures++;
                 log.warn("Reintento de contingencia falló para documento {}: {}",
                         document.getId(), e.getMessage());
             }
         }
+        Outcome outcome = Outcome.from(attempted, failures);
+        log.info("Reintento de contingencias DIAN finalizado: intentado(s)={}, fallido(s)={}, resultado={}",
+                attempted, failures, outcome.value());
+        return outcome;
     }
 
     /** Un documento ya no se reintenta si superó el cap de intentos o la ventana de plazo. */

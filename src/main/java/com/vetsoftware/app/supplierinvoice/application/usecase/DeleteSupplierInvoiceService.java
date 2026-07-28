@@ -3,9 +3,11 @@ package com.vetsoftware.app.supplierinvoice.application.usecase;
 import com.vetsoftware.app.supplierinvoice.application.port.in.DeleteSupplierInvoiceUseCase;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Observed(name = "supplierInvoice.delete")
 @Service
 public class DeleteSupplierInvoiceService implements DeleteSupplierInvoiceUseCase {
     private final SupplierInvoiceRepository repository;

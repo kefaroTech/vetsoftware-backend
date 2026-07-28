@@ -9,6 +9,7 @@ import com.vetsoftware.app.cashregister.application.port.out.CashTerminalQueryPo
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionAlreadyOpenException;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Abre la caja de una sede con la base inicial. Cada empleado puede mantener una sola sesión OPEN y cada terminal
  * solo una por sede; los índices únicos condicionales de la BD cubren las carreras residuales.
  */
+@Observed(name = "cashRegister.openSession")
 @Service
 public class OpenCashSessionService implements OpenCashSessionUseCase {
 
