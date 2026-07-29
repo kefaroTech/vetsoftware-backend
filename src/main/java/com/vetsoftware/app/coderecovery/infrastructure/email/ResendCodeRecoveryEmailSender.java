@@ -3,6 +3,7 @@ package com.vetsoftware.app.coderecovery.infrastructure.email;
 import com.vetsoftware.app.coderecovery.application.port.out.CodeRecoveryEmailSender;
 import com.vetsoftware.app.coderecovery.application.port.out.EmployeeAccountsByEmailPort.EmployeeAccount;
 import com.vetsoftware.app.infrastructure.email.ResendEmailClient;
+import com.vetsoftware.app.infrastructure.logging.DevEmailPreview;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -51,7 +52,7 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
             String preview = accounts.stream()
                 .map(a -> a.companyName() + "=" + a.code())
                 .collect(Collectors.joining(", "));
-            log.info("[dev] Envío de correo deshabilitado. Códigos para {}: {}", toEmail, preview);
+            DevEmailPreview.show(toEmail, "Códigos de usuario", preview);
             return;
         }
         String template = loadTemplate();

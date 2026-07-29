@@ -1,13 +1,12 @@
 package com.vetsoftware.app.passwordreset.infrastructure.email;
 
 import com.vetsoftware.app.infrastructure.email.ResendEmailClient;
+import com.vetsoftware.app.infrastructure.logging.DevEmailPreview;
 import com.vetsoftware.app.passwordreset.application.port.out.PasswordResetEmailSender;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResendPasswordResetEmailSender implements PasswordResetEmailSender {
 
-    private static final Logger log = LoggerFactory.getLogger(ResendPasswordResetEmailSender.class);
     private static final String SUBJECT = "Restablece tu contraseña de Vetrina";
 
     private final ResendEmailClient email;
@@ -44,7 +42,9 @@ public class ResendPasswordResetEmailSender implements PasswordResetEmailSender 
                      String rawToken) {
         String link = buildLink(rawToken);
         if (!email.isEnabled()) {
-            log.info("[dev] Envío de correo deshabilitado. Enlace de restablecimiento para {}: {}", toEmail, link);
+            // El enlace lleva el token de restablecimiento en claro: va por el canal de
+            // previsualización local, que no alcanza el pipeline exportado (ver DevEmailPreview).
+            DevEmailPreview.show(toEmail, "Enlace de restablecimiento", link);
             return;
         }
         Map<String, Object> variables = new LinkedHashMap<>();

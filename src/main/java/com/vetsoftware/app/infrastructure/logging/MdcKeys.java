@@ -8,6 +8,11 @@ package com.vetsoftware.app.infrastructure.logging;
  *
  * <p>{@code traceId} y {@code spanId} no se declaran aquí: Micrometer Tracing es su único dueño
  * y administra automáticamente su alta, restauración y limpieza en el MDC.
+ *
+ * <p><b>Una clave nueva debe declararse también en {@link LogFieldPolicy}.</b> El MDC se emite bajo
+ * allowlist: lo que no esté declarado allí sale como {@code ***}. Es deliberado — un campo nuevo es
+ * opaco por defecto — pero significa que añadir una constante aquí sin declarar su política deja el
+ * valor invisible en Grafana. Ver {@code docs/POLITICA_REDACCION_LOGS.md}.
  */
 public final class MdcKeys {
 
