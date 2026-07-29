@@ -15,6 +15,16 @@ services:
       timeout: 3s
       retries: 12
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.87.0
+    container_name: vetsoftware_redis_exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
   mysql:
     image: mysql:8.0
     container_name: vetsoftware_mysql
@@ -79,21 +89,70 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
-      - --storage.tsdb.retention.size=5GB
+      # La ventana rodante de los SLO es de 30 días: la retención debe cubrirla con margen o
+      # `vetsoftware:slo_compliance:ratio30d` se calcularía sobre una ventana truncada.
+      # En producción la retención larga la aporta Grafana Cloud (docs/OBSERVABILIDAD_PROD_GRAFANA_S3.md).
+      - --storage.tsdb.retention.time=35d
+      - --storage.tsdb.retention.size=15GB
       - --web.enable-remote-write-receiver
       - --enable-feature=exemplar-storage
     ports:
       - "9090:9090"
     volumes:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus-slo-rules.yml:/etc/prometheus/rules/slo-rules.yml:ro
+      - ./docker/prometheus-slo-alerts.yml:/etc/prometheus/rules/slo-alerts.yml:ro
       - ./docker/prometheus-business-alerts.yml:/etc/prometheus/rules/business-alerts.yml:ro
+      - ./docker/prometheus-platform-alerts.yml:/etc/prometheus/rules/platform-alerts.yml:ro
       - vetsoftware_prometheus_data:/prometheus
     secrets:
       - prometheus_metrics_username
       - prometheus_metrics_password
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    container_name: vetsoftware_alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --enable-feature=utf8-strict-mode
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ${ALERTMANAGER_CONFIG_PATH:-./docker/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+      - vetsoftware_alertmanager_data:/alertmanager
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:9093/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  mailpit:
+    image: axllent/mailpit:v1.30.6
+    container_name: vetsoftware_mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 500
+    volumes:
+      - vetsoftware_mailpit_data:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   loki:
     image: grafana/loki:latest
@@ -173,6 +232,8 @@ volumes:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
   vetsoftware_prometheus_data:
+  vetsoftware_alertmanager_data:
+  vetsoftware_mailpit_data:
   vetsoftware_tempo_data:
   vetsoftware_sonarqube_data:
   vetsoftware_sonarqube_extensions:

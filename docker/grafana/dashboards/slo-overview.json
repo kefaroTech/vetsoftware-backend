@@ -1,0 +1,425 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "1.0 = presupuesto intacto. 0 = agotado, el SLO se cumple justo en el límite. Negativo = SLO incumplido en la ventana de 30 días.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "max": 1,
+          "min": -1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 0.25
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "displayMode": "basic",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "text"
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:slo_error_budget_remaining:ratio30d{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Presupuesto de error restante (ventana rodante de 30 días)",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Cumplimiento observado en los últimos 30 días. Comparar con el objetivo declarado en docs/SLO_VETSOFTWARE.md; el objetivo también está disponible como serie vetsoftware:slo_objective:ratio.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:slo_compliance:ratio30d{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cumplimiento observado (30 días)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Ventana de la alerta VetSoftwareSloFastBurn. Por encima de 14.4 el presupuesto de 30 días se agotaría en poco más de dos días.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 14.4
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:slo_burn_rate:ratio_rate1h{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Burn rate · ventana de 1 hora",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Ventana de la alerta VetSoftwareSloSlowBurn. Por encima de 6 la degradación es sostenida y no un pico.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 6
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:slo_burn_rate:ratio_rate6h{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Burn rate · ventana de 6 horas",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Tendencia del presupuesto. Una pendiente descendente constante indica gasto sostenido aunque ninguna alerta esté activa.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 8
+          },
+          "decimals": 1,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:slo_error_budget_remaining:ratio30d{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Evolución del presupuesto de error",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Proporción de eventos que gastan presupuesto, en ventana de 1 hora. Es el SLI crudo antes de dividirlo por el objetivo.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:sli_bad:ratio_rate1h{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Proporción de eventos malos · ventana de 1 hora",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Volumen de eventos que entran al SLI. Las alertas de burn rate exigen un mínimo de eventos en su ventana; con volumen bajo un SLO puede degradarse sin que ninguna alerta se dispare, y este panel es la única forma de verlo. Una serie ausente significa que ese SLI no se está midiendo.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 8
+          },
+          "decimals": 3,
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vetsoftware:sli_total_events:rate5m{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}} · total",
+          "refId": "A"
+        },
+        {
+          "expr": "vetsoftware:sli_bad_events:rate5m{slo=~\"$slo\"}",
+          "legendFormat": "{{slo}} · {{sli}} · malos",
+          "refId": "B"
+        }
+      ],
+      "title": "Volumen de eventos por SLI",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 41,
+  "tags": [
+    "vetsoftware",
+    "slo"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "includeAll": true,
+        "label": "SLO",
+        "multi": true,
+        "name": "slo",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(vetsoftware:slo_objective:ratio, slo)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "VetSoftware — SLO y presupuesto de error",
+  "uid": "vetsoftware-slo",
+  "version": 1
+}

@@ -1,0 +1,87 @@
+global:
+  resolve_timeout: 5m
+  smtp_from: alertmanager@vetsoftware.local
+  smtp_smarthost: mailpit:1025
+  smtp_require_tls: false
+
+route:
+  receiver: local-email
+  group_by:
+    - alertname
+    - severity
+    - domain
+    # Dos SLO degradados a la vez son dos incidentes distintos y no deben agruparse en un
+    # solo correo. `sli` separa además la falla de disponibilidad de la de latencia.
+    - slo
+    - sli
+  group_wait: 15s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # El agotamiento del presupuesto se mueve en escala de días: reenviarlo cada 30 minutos
+    # solo entrena al equipo a ignorarlo.
+    - receiver: local-email
+      matchers:
+        - alertname="VetSoftwareSloErrorBudgetExhausted"
+      group_wait: 30s
+      repeat_interval: 24h
+
+    - receiver: local-email
+      matchers:
+        - severity="critical"
+      group_wait: 5s
+      repeat_interval: 30m
+
+receivers:
+  - name: local-email
+    email_configs:
+      - to: observability@vetsoftware.local
+        send_resolved: true
+        headers:
+          Subject: '[VetSoftware][{{ .Status | toUpper }}][{{ .CommonLabels.severity }}] {{ .CommonLabels.alertname }}'
+
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal:
+      - domain
+      - instance
+
+  # Los tres niveles de burn rate miden el mismo incidente a distinta velocidad: el nivel más
+  # rápido implica los más lentos. Sin esto, una caída dispara FastBurn, SlowBurn y TicketBurn
+  # del mismo SLO como si fueran tres problemas.
+  - source_matchers:
+      - alertname="VetSoftwareSloFastBurn"
+    target_matchers:
+      - alertname=~"VetSoftwareSloSlowBurn|VetSoftwareSloTicketBurn"
+    equal:
+      - slo
+      - sli
+
+  - source_matchers:
+      - alertname="VetSoftwareSloSlowBurn"
+    target_matchers:
+      - alertname="VetSoftwareSloTicketBurn"
+    equal:
+      - slo
+      - sli
+
+  # Presupuesto agotado implica presupuesto bajo.
+  - source_matchers:
+      - alertname="VetSoftwareSloErrorBudgetExhausted"
+    target_matchers:
+      - alertname="VetSoftwareSloErrorBudgetLow"
+    equal:
+      - slo
+      - sli
+
+  # Si un SLI dejó de producir datos, su burn rate y su presupuesto no son interpretables.
+  - source_matchers:
+      - alertname="VetSoftwareSloSeriesAbsent"
+    target_matchers:
+      - alertname=~"VetSoftwareSlo(FastBurn|SlowBurn|TicketBurn|ErrorBudgetLow|ErrorBudgetExhausted)"
+    equal:
+      - slo
+      - sli

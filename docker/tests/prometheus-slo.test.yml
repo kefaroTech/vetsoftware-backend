@@ -1,0 +1,215 @@
+# Pruebas de la cadena completa de SLO: reglas de grabación -> burn rate -> alerta.
+#
+# El orden de evaluación importa: las ventanas derivadas leen las series base y el burn rate lee
+# las razones, así que `group_eval_order` debe reproducir el orden real de prometheus-slo-rules.yml.
+#
+# Las ventanas largas (1d, 30d) se evalúan sobre los datos disponibles en la prueba; no se busca
+# reproducir 30 días de historia, sino verificar que la cadena calcula y alerta como se espera.
+
+rule_files:
+  - ../prometheus-slo-rules.yml
+  - ../prometheus-slo-alerts.yml
+
+evaluation_interval: 1m
+
+group_eval_order:
+  - vetsoftware-slo-objectives
+  - vetsoftware-slo-events-5m
+  - vetsoftware-slo-windows-short
+  - vetsoftware-slo-windows-long
+  - vetsoftware-slo-ratios
+  - vetsoftware-slo-burn-rate
+  - vetsoftware-slo-compliance
+  - vetsoftware-slo-burn-rate-alerts
+  - vetsoftware-slo-error-budget
+  - vetsoftware-slo-integrity
+
+tests:
+  # 10 % de 5xx contra un objetivo de 99.5 % => burn rate 20, por encima del umbral de 14.4.
+  - name: sustained five hundred rate burns the availability budget fast
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="200",method="GET",uri="/owners"}'
+        values: '0+90x90'
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="500",method="GET",uri="/owners"}'
+        values: '0+10x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: VetSoftwareSloFastBurn
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareSloFastBurn
+              domain: slo
+              service: vetsoftware
+              severity: critical
+              sli: availability
+              slo: api-availability
+            exp_annotations:
+              summary: "El SLO api-availability (availability) agota su presupuesto en ~2 días"
+              description: "El burn rate supera 14.4 en las ventanas de 1 hora y 5 minutos. A este ritmo el presupuesto de error de 30 días se consume en poco más de dos días."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareslofastburn"
+
+  # 8 % de respuestas por encima de 1 s contra un objetivo de 99 % => burn rate 8:
+  # supera el nivel sostenido (6) pero no el rápido (14.4).
+  - name: latency above the bucket edge burns the latency budget at the sustained level
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="200",method="GET",uri="/owners"}'
+        values: '0+100x400'
+      - series: 'http_server_requests_seconds_bucket{job="vetsoftware",status="200",method="GET",uri="/owners",le="1.0"}'
+        values: '0+92x400'
+      - series: 'http_server_requests_seconds_bucket{job="vetsoftware",status="200",method="GET",uri="/owners",le="+Inf"}'
+        values: '0+100x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: VetSoftwareSloSlowBurn
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareSloSlowBurn
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: latency
+              slo: api-latency
+            exp_annotations:
+              summary: "El SLO api-latency (latency) agota su presupuesto en ~5 días"
+              description: "El burn rate supera 6 en las ventanas de 6 horas y 30 minutos. La degradación es sostenida, no un pico."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloslowburn"
+      # El mismo escenario no debe alcanzar el nivel rápido.
+      - eval_time: 390m
+        alertname: VetSoftwareSloFastBurn
+        exp_alerts: []
+
+  # Un servicio sano no debe producir ninguna alerta de burn rate.
+  - name: healthy traffic produces no burn rate alert
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="200",method="GET",uri="/owners"}'
+        values: '0+100x90'
+      - series: 'http_server_requests_seconds_bucket{job="vetsoftware",status="200",method="GET",uri="/owners",le="1.0"}'
+        values: '0+100x90'
+      - series: 'http_server_requests_seconds_bucket{job="vetsoftware",status="200",method="GET",uri="/owners",le="+Inf"}'
+        values: '0+100x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: VetSoftwareSloFastBurn
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: VetSoftwareSloSlowBurn
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: VetSoftwareSloErrorBudgetExhausted
+        exp_alerts: []
+
+  # Una tasa de error alta con muy poco tráfico no debe alertar: la guarda de volumen exige
+  # al menos 20 eventos en la ventana de una hora.
+  - name: high error ratio with negligible traffic does not alert
+    interval: 1m
+    input_series:
+      # 1 solicitud cada 10 minutos => ~6 eventos en una hora, por debajo del mínimo de 20.
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="500",method="GET",uri="/owners"}'
+        values: '0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5 6 6 6 6 6 6 6 6 6 7 7 7 7 7 7 7 7 7 8 8 8 8 8 8 8 8 8 9 9 9 9 9'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: VetSoftwareSloFastBurn
+        exp_alerts: []
+
+  # Un SLO declarado sin serie de eventos no se está midiendo. Esta prueba es el canario de la
+  # integridad del catálogo: si se declara un objetivo nuevo sin su regla de eventos, falla aquí.
+  - name: declared slos without event series are reported as unmeasured
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="200",method="GET",uri="/owners"}'
+        values: '0+100x90'
+    alert_rule_test:
+      - eval_time: 85m
+        alertname: VetSoftwareSloSeriesAbsent
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: availability
+              slo: auth-login
+            exp_annotations:
+              summary: "El SLO auth-login (availability) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: availability
+              slo: clinical-write
+            exp_annotations:
+              summary: "El SLO clinical-write (availability) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: latency
+              slo: clinical-write
+            exp_annotations:
+              summary: "El SLO clinical-write (latency) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: availability
+              slo: dian-transmission
+            exp_annotations:
+              summary: "El SLO dian-transmission (availability) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: latency
+              slo: dian-transmission
+            exp_annotations:
+              summary: "El SLO dian-transmission (latency) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: availability
+              slo: inventory-movement
+            exp_annotations:
+              summary: "El SLO inventory-movement (availability) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: availability
+              slo: pos-checkout
+            exp_annotations:
+              summary: "El SLO pos-checkout (availability) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+          - exp_labels:
+              alertname: VetSoftwareSloSeriesAbsent
+              domain: slo
+              service: vetsoftware
+              severity: warning
+              sli: latency
+              slo: pos-checkout
+            exp_annotations:
+              summary: "El SLO pos-checkout (latency) no está produciendo datos"
+              description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
