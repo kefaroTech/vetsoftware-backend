@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class AuditFilter extends OncePerRequestFilter {
 
-    private static final Set<String> MUTATING = Set.of("PUT", "PATCH", "DELETE");
+    private static final Set<String> MUTATING = Set.of("POST", "PUT", "PATCH", "DELETE");
 
     private final AuditLogger auditLogger;
 
