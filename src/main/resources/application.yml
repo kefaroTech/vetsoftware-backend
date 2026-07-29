@@ -98,8 +98,10 @@ management:
   metrics:
     distribution:
       percentiles-histogram:
+        http.server.requests: true
         vetsoftware.business.dian.transmission.duration: true
       slo:
+        http.server.requests: 250ms,500ms,1s,2s,5s
         vetsoftware.business.dian.transmission.duration: 2s,5s,15s,60s
 
 vetsoftware:

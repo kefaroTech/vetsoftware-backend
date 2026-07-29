@@ -51,6 +51,17 @@ exporters:
     endpoint: http://loki:3100/otlp
 
 service:
+  telemetry:
+    resource:
+      service.name: vetsoftware-otel-collector
+    metrics:
+      level: normal
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
   pipelines:
     logs:
       receivers: [otlp]

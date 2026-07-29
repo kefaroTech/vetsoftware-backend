@@ -1,0 +1,120 @@
+rule_files:
+  - ../prometheus-platform-alerts.yml
+
+evaluation_interval: 1m
+
+group_eval_order:
+  - vetsoftware-availability
+  - vetsoftware-http
+  - vetsoftware-dependencies
+  - vetsoftware-telemetry-pipeline
+
+tests:
+  - name: backend down becomes critical
+    interval: 1m
+    input_series:
+      - series: 'up{job="vetsoftware",instance="backend:8080"}'
+        values: '0x5'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: VetSoftwareBackendDown
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareBackendDown
+              domain: availability
+              instance: backend:8080
+              job: vetsoftware
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "El backend de VetSoftware no responde"
+              description: "Prometheus no puede extraer las métricas del backend desde hace al menos dos minutos."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarebackenddown"
+
+  - name: sustained five hundred rate with enough traffic becomes critical
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="200"}'
+        values: '0+100x15'
+      - series: 'http_server_requests_seconds_count{job="vetsoftware",status="500"}'
+        values: '0+10x15'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: VetSoftwareHttp5xxRateHigh
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareHttp5xxRateHigh
+              domain: backend
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "La tasa HTTP 5xx supera el 5 %"
+              description: "El backend superó el 5 % de respuestas 5xx con al menos 20 solicitudes en cinco minutos."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttp5xxratehigh"
+
+  - name: observability target down fires and then resolves
+    interval: 1m
+    input_series:
+      - series: 'up{job="loki",instance="loki:3100"}'
+        values: '1 0 0 0 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: VetSoftwareObservabilityTargetDown
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareObservabilityTargetDown
+              domain: observability
+              instance: loki:3100
+              job: loki
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "Un componente de observabilidad no responde"
+              description: "El target indicado por las etiquetas job e instance no puede ser consultado por Prometheus."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareobservabilitytargetdown"
+      - eval_time: 4m
+        alertname: VetSoftwareObservabilityTargetDown
+        exp_alerts: []
+
+  - name: database connection timeout becomes critical
+    interval: 1m
+    input_series:
+      - series: 'hikaricp_connections_timeout_total{job="vetsoftware",instance="backend:8080",pool="HikariPool-1"}'
+        values: '0 0 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: VetSoftwareDatabaseConnectionTimeouts
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareDatabaseConnectionTimeouts
+              domain: database
+              instance: backend:8080
+              job: vetsoftware
+              pool: HikariPool-1
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "Se agotó el tiempo esperando una conexión"
+              description: "HikariCP registró al menos un timeout de conexión durante los últimos cinco minutos."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectiontimeouts"
+
+  - name: collector log export failure becomes critical
+    interval: 1m
+    input_series:
+      - series: 'otelcol_exporter_send_failed_log_records{job="otel-collector",exporter="otlphttp/loki"}'
+        values: '0 0 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: VetSoftwareOtelLogExportFailures
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareOtelLogExportFailures
+              domain: observability
+              exporter: otlphttp/loki
+              job: otel-collector
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "El Collector no puede exportar logs"
+              description: "Se descartó o no se pudo enviar al menos un registro de log durante los últimos cinco minutos."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailures"
