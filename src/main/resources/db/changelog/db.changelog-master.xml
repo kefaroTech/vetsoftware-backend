@@ -217,5 +217,6 @@
     <include file="db/changelog/migrations/212_create_petshop_catalog.xml"/>
     <include file="db/changelog/migrations/213_create_audit_event_outbox.xml"/>
     <include file="db/changelog/migrations/214_add_business_metrics_query_indexes.xml"/>
+    <include file="db/changelog/migrations/215_add_audit_chain_integrity.xml"/>
 
 </databaseChangeLog>

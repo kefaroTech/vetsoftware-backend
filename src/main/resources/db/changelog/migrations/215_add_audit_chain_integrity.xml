@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Cadena de hash sobre la outbox de auditoría (OBS-020).
+
+      El bucket WORM con Object Lock protege el objeto una vez entregado, pero no demuestra que
+      no se haya suprimido o alterado un evento ANTES de publicarlo: la tabla de MySQL es mutable
+      para cualquiera con acceso a la base. La cadena hace detectable ese tramo.
+    -->
+
+    <!--
+      `payload` pasa de JSON a LONGTEXT. Es obligatorio para que el hash sea verificable: MySQL
+      normaliza el tipo JSON al leerlo (p.ej. inserta un espacio tras cada `:`), así que un hash
+      calculado sobre la cadena serializada por Jackson NUNCA coincidiría con el de la relectura y
+      la verificación fallaría siempre. Con LONGTEXT los bytes hacen round-trip exacto.
+      Ninguna consulta usa funciones JSON sobre esta columna; es un búfer de serialización.
+    -->
+    <changeSet id="215_01_audit_payload_to_longtext" author="claude">
+        <sql>
+            ALTER TABLE audit_event_outbox
+                MODIFY COLUMN payload LONGTEXT NOT NULL
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE audit_event_outbox
+                    MODIFY COLUMN payload JSON NOT NULL
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="215_02_add_audit_chain_columns" author="claude">
+        <addColumn tableName="audit_event_outbox">
+            <!-- SHA-256 hex del payload tal como se serializó. Se fija en el INSERT. -->
+            <column name="payload_hash" type="CHAR(64)"/>
+            <!-- Posición en la cadena. La asigna el secuenciador, no el INSERT: así las
+                 transacciones de negocio no se serializan sobre una fila común. -->
+            <column name="chain_sequence" type="BIGINT"/>
+            <column name="previous_hash" type="CHAR(64)"/>
+            <column name="chain_hash" type="CHAR(64)"/>
+        </addColumn>
+
+        <addUniqueConstraint tableName="audit_event_outbox"
+                             columnNames="chain_sequence"
+                             constraintName="uq_audit_outbox_chain_sequence"/>
+
+        <!-- Búsqueda de filas aún sin secuenciar, en orden de inserción. -->
+        <createIndex tableName="audit_event_outbox" indexName="idx_audit_outbox_unsequenced">
+            <column name="chain_sequence"/>
+            <column name="id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="audit_event_outbox" indexName="idx_audit_outbox_unsequenced"/>
+            <dropUniqueConstraint tableName="audit_event_outbox"
+                                  constraintName="uq_audit_outbox_chain_sequence"/>
+            <dropColumn tableName="audit_event_outbox" columnName="chain_hash"/>
+            <dropColumn tableName="audit_event_outbox" columnName="previous_hash"/>
+            <dropColumn tableName="audit_event_outbox" columnName="chain_sequence"/>
+            <dropColumn tableName="audit_event_outbox" columnName="payload_hash"/>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Relleno de las filas anteriores a la cadena. `SHA2(payload, 256)` produce hex minúsculo sobre
+      los bytes utf8mb4 de la columna, que es exactamente lo que la aplicación recalcula al
+      verificar. Sin este relleno esas filas quedarían sin secuenciar y nunca se publicarían,
+      dejando la outbox con pendientes permanentes.
+    -->
+    <changeSet id="215_03_backfill_payload_hash" author="claude">
+        <sql>
+            UPDATE audit_event_outbox
+               SET payload_hash = SHA2(payload, 256)
+             WHERE payload_hash IS NULL
+        </sql>
+        <rollback>
+            <sql>UPDATE audit_event_outbox SET payload_hash = NULL</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="215_04_payload_hash_not_null" author="claude">
+        <sql>
+            ALTER TABLE audit_event_outbox
+                MODIFY COLUMN payload_hash CHAR(64) NOT NULL
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE audit_event_outbox
+                    MODIFY COLUMN payload_hash CHAR(64) NULL
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Cabeza de la cadena. Fila única: el secuenciador la bloquea con SELECT ... FOR UPDATE durante
+      una transacción corta y propia, de forma que varias réplicas no bifurquen la cadena. Este
+      bloqueo NUNCA se toma dentro de una transacción de negocio.
+    -->
+    <changeSet id="215_05_create_audit_chain_head" author="claude">
+        <createTable tableName="audit_chain_head">
+            <column name="id" type="TINYINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="last_sequence" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_chain_hash" type="CHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Hasta dónde quedó anclada la cadena en almacenamiento inmutable. La depuración de
+                 la outbox no puede rebasar esta marca. -->
+            <column name="last_checkpoint_sequence" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE audit_chain_head
+                ADD CONSTRAINT chk_audit_chain_head_singleton CHECK (id = 1)
+        </sql>
+
+        <!-- Génesis: 64 ceros. Es el `previous_hash` del primer evento de la cadena. -->
+        <insert tableName="audit_chain_head">
+            <column name="id" valueNumeric="1"/>
+            <column name="last_sequence" valueNumeric="0"/>
+            <column name="last_chain_hash"
+                    value="0000000000000000000000000000000000000000000000000000000000000000"/>
+            <column name="last_checkpoint_sequence" valueNumeric="0"/>
+            <column name="updated_at" valueComputed="UTC_TIMESTAMP(6)"/>
+        </insert>
+
+        <rollback>
+            <dropTable tableName="audit_chain_head"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
