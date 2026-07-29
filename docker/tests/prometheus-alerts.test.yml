@@ -98,23 +98,72 @@ tests:
               description: "HikariCP registró al menos un timeout de conexión durante los últimos cinco minutos."
               runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectiontimeouts"
 
-  - name: collector log export failure becomes critical
+  # Con `retry_on_failure` activo (OBS-027), un envío fallido es un reintento en curso, no pérdida.
+  # La alerta exige 10 minutos de fallo sostenido y es warning, no critical.
+  - name: sustained collector log export failure becomes a warning
     interval: 1m
     input_series:
       - series: 'otelcol_exporter_send_failed_log_records{job="otel-collector",exporter="otlphttp/loki"}'
-        values: '0 0 1 1 1 1 1 1'
+        values: '0 0 1+1x20'
     alert_rule_test:
+      # A los 4 minutos todavía no debe alertar: el reintento puede resolverlo.
       - eval_time: 4m
-        alertname: VetSoftwareOtelLogExportFailures
+        alertname: VetSoftwareOtelLogExportFailing
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: VetSoftwareOtelLogExportFailing
         exp_alerts:
           - exp_labels:
-              alertname: VetSoftwareOtelLogExportFailures
+              alertname: VetSoftwareOtelLogExportFailing
               domain: observability
               exporter: otlphttp/loki
               job: otel-collector
               service: vetsoftware
+              severity: warning
+            exp_annotations:
+              summary: "El Collector lleva minutos sin poder exportar logs"
+              description: "Los envíos a Loki fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo; si se llena, empezará a descartar."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailing"
+
+  # El descarte por cola llena sí es pérdida consumada y sí es crítico.
+  - name: queue overflow drops telemetry and becomes critical
+    interval: 1m
+    input_series:
+      - series: 'otelcol_exporter_enqueue_failed_log_records{job="otel-collector",exporter="otlphttp/loki"}'
+        values: '0 0 5 10 15 20 25 30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: VetSoftwareOtelQueueDroppingTelemetry
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareOtelQueueDroppingTelemetry
+              domain: observability
+              service: vetsoftware
               severity: critical
             exp_annotations:
-              summary: "El Collector no puede exportar logs"
-              description: "Se descartó o no se pudo enviar al menos un registro de log durante los últimos cinco minutos."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailures"
+              summary: "El Collector está descartando telemetría por cola llena"
+              description: "La cola de envío se llenó y se perdieron datos. Es pérdida consumada, no un reintento pendiente."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuedroppingtelemetry"
+
+  - name: queue near capacity warns before dropping
+    interval: 1m
+    input_series:
+      - series: 'otelcol_exporter_queue_size{job="otel-collector",exporter="otlphttp/loki"}'
+        values: '1800x10'
+      - series: 'otelcol_exporter_queue_capacity{job="otel-collector",exporter="otlphttp/loki"}'
+        values: '2000x10'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: VetSoftwareOtelQueueNearCapacity
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareOtelQueueNearCapacity
+              domain: observability
+              exporter: otlphttp/loki
+              job: otel-collector
+              service: vetsoftware
+              severity: warning
+            exp_annotations:
+              summary: "La cola de envío del Collector supera el 80 %"
+              description: "El destino no drena al ritmo de entrada. Si la cola se llena, la telemetría se descartará."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuenearcapacity"

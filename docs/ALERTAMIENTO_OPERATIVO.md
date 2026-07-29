@@ -141,12 +141,35 @@ se activa cuando Redis tiene un límite de memoria explícito.
 
 Revise `maxclients`, conexiones activas y clientes que no liberan recursos.
 
-## VetSoftwareOtelLogExportFailures
+## VetSoftwareOtelLogExportFailing
 
 Revise la disponibilidad de Loki, respuestas HTTP del exporter, límites de memoria,
 batch y reintentos del Collector.
 
-## VetSoftwareOtelTraceExportFailures
+Con los reintentos activos (OBS-027) esta alerta **no significa pérdida**: significa que los envíos
+llevan minutos fallando y la cola en disco está creciendo. Hay margen para intervenir antes de que se
+llene. Si llega a llenarse, salta `VetSoftwareOtelQueueDroppingTelemetry`, que sí es pérdida
+consumada.
+
+## VetSoftwareOtelQueueDroppingTelemetry
+
+**Pérdida de datos en curso.** La cola de envío se llenó y el Collector está descartando. Ya no basta
+con esperar el reintento.
+
+1. Averiguar por qué el destino no drena: `docker logs vetsoftware_loki` / `vetsoftware_tempo`,
+   y si están vivos, si están aplicando rate limiting.
+2. Si el destino tarda en recuperarse, subir `queue_size` en `docker/otel-collector.yml` compra
+   tiempo a cambio de disco.
+3. La cantidad perdida está en `otelcol_exporter_enqueue_failed_log_records` y
+   `otelcol_exporter_enqueue_failed_spans`.
+
+## VetSoftwareOtelQueueNearCapacity
+
+Indicador adelantado: la cola pasa del 80 %. Nadie ha perdido nada todavía, pero el destino no drena
+al ritmo de entrada. Es el momento de intervenir; cuando salte
+`VetSoftwareOtelQueueDroppingTelemetry` ya habrá pérdida.
+
+## VetSoftwareOtelTraceExportFailing
 
 Revise conectividad OTLP entre Collector y Tempo, límites de Tempo y cola del
 exporter.

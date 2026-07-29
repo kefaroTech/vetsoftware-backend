@@ -1,10 +1,38 @@
+extensions:
+  # Respalda las colas de los exportadores en disco (OBS-027). Sin esto, la cola vive solo en
+  # memoria y un reinicio del collector descarta en silencio todo lo pendiente de entregar.
+  file_storage/queue:
+    directory: /var/lib/otelcol/queue
+    # El volumen monta /var/lib/otelcol vacío; sin esto el collector no arranca porque el
+    # subdirectorio no existe todavía.
+    create_directory: true
+    timeout: 10s
+    compaction:
+      on_start: true
+      directory: /var/lib/otelcol/queue
+      max_transaction_size: 65536
+
 receivers:
+  # Origen esperado del OTLP (OBS-025): el backend corriendo en el host, que llega por el puerto
+  # publicado en 127.0.0.1, y los contenedores del propio stack. El endpoint escucha en 0.0.0.0
+  # porque el tráfico entra por una interfaz del contenedor, no por loopback del contenedor; el
+  # recorte real lo hace el `ports:` del compose. Este receptor NO exige credencial: la variante con
+  # TLS y autenticación, para cuando el stack no es de un solo desarrollador, está en
+  # docker/otel-collector-secure.yml.
+  #
+  # Los límites de tamaño acotan lo que un emisor —legítimo o no— puede empujar en una sola llamada.
+  # Un lote del backend queda muy por debajo de 8 MiB; los ensayos de `resilience.sh` también.
   otlp:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 8
+        max_concurrent_streams: 32
       http:
         endpoint: 0.0.0.0:4318
+        max_request_body_size: 8388608
+        # Sin `cors`: no se declara ningún origen permitido, así que el navegador no puede empujar
+        # telemetría a este receptor desde una página cualquiera.
 
 processors:
   # Protege al collector de OOM bajo picos de carga.
@@ -43,14 +71,45 @@ processors:
     send_batch_size: 512
 
 exporters:
+  # Cola persistente + reintentos en ambos exportadores. Antes no había ninguno de los dos: si Loki
+  # o Tempo no respondían, el lote se descartaba en el primer fallo. Ahora el collector lo retiene
+  # en disco y reintenta con backoff, así que una caída del destino se absorbe en lugar de perderse.
+  #
+  # Cuando la cola se llena, el exportador rechaza y el `memory_limiter` empieza a rechazar telemetría
+  # entrante: la pérdida pasa a ser visible en `otelcol_exporter_enqueue_failed_*` y
+  # `otelcol_receiver_refused_*`, que ya tienen alertas, en vez de silenciosa.
   otlp_grpc/tempo:
     endpoint: tempo:4317
     tls:
       insecure: true
+    sending_queue:
+      enabled: true
+      storage: file_storage/queue
+      num_consumers: 4
+      queue_size: 2000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      # Ventana amplia para cubrir el reinicio de un destino sin descartar el lote. Si se agota, el
+      # lote se pierde y queda contabilizado en las métricas del exportador.
+      max_elapsed_time: 30m
+
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
+    sending_queue:
+      enabled: true
+      storage: file_storage/queue
+      num_consumers: 4
+      queue_size: 2000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 30m
 
 service:
+  extensions: [file_storage/queue]
   telemetry:
     resource:
       service.name: vetsoftware-otel-collector

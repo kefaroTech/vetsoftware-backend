@@ -1,0 +1,54 @@
+# Override de ambiente compartido (OBS-025). Opt-in:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.secure.yml --env-file .env.local up -d
+#
+# El archivo base asume un stack de un solo desarrollador: todo en loopback y sin credencial en el
+# transporte de telemetría. Ese modelo se rompe en cuanto la máquina es compartida o alcanzable desde
+# otra red. Este override cambia tres cosas:
+#
+#   1. El receptor OTLP exige TLS y usuario/contraseña (docker/otel-collector-secure.yml).
+#   2. Grafana sirve HTTPS y no acepta anónimos.
+#   3. Prometheus, Alertmanager y Mailpit dejan de publicar puerto: no tienen autenticación propia,
+#      así que en un ambiente compartido se consultan por la red del stack o por un túnel SSH, no por
+#      un puerto abierto.
+#
+# Lo que este archivo NO hace, y hay que decidir aparte:
+#   - MySQL, Redis, SonarQube y LocalStack son dependencias de desarrollo. En un ambiente compartido
+#     no deberían levantarse desde este compose; se apuntan a servicios administrados por variables
+#     de entorno (ver deploy/env/dev.env.example).
+#   - Producción no usa este compose en absoluto: envía OTLP directo a Grafana Cloud, que ya aporta
+#     TLS y credencial (docs/OBSERVABILIDAD_PROD_GRAFANA_S3.md).
+#
+# Para que emisores remotos alcancen el receptor hay que publicarlo fuera de loopback de forma
+# explícita: `LOCAL_BIND_HOST=0.0.0.0`. Este override es lo que hace que eso sea defendible.
+
+services:
+  otel-collector:
+    command:
+      - --config=/etc/otel/otel-collector.yml
+      - --config=/etc/otel/otel-collector-secure.yml
+    volumes:
+      - ./docker/otel-collector-secure.yml:/etc/otel/otel-collector-secure.yml:ro
+      - ${OBS_SECURE_MATERIAL:-./docker/secure/material}:/etc/otel/secure:ro
+
+  grafana:
+    environment:
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /etc/grafana/secure/grafana.crt
+      GF_SERVER_KEY_FILE: /etc/grafana/secure/grafana.key
+      # Sin valor predeterminado: la URL pública es específica del ambiente y Grafana la usa para
+      # armar enlaces y cookies.
+      GF_SERVER_ROOT_URL: "${GRAFANA_ROOT_URL:?defina GRAFANA_ROOT_URL con la URL https pública de Grafana}"
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_STRICT_TRANSPORT_SECURITY: "true"
+    volumes:
+      - ${OBS_SECURE_MATERIAL:-./docker/secure/material}:/etc/grafana/secure:ro
+
+  prometheus:
+    ports: !reset []
+
+  alertmanager:
+    ports: !reset []
+
+  mailpit:
+    ports: !reset []

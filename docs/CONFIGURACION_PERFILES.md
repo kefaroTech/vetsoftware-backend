@@ -17,8 +17,14 @@ Copiar el contrato local y levantar los contenedores:
 
 ```bash
 cp deploy/env/local.env.example .env.local
+# Definir GRAFANA_PASSWORD en .env.local: el compose ya no tiene fallback `admin` y aborta si falta.
 docker compose --env-file .env.local up -d
 ```
+
+Todos los puertos se publican en `127.0.0.1` (`LOCAL_BIND_HOST`), y Loki y Tempo no publican ninguno:
+se consultan desde Grafana. Para alcanzarlos con `curl` hay un override de depuración, y para una
+máquina compartida hay otro con TLS y autenticación en el receptor OTLP. Ver
+`docs/SEGURIDAD_OBSERVABILIDAD.md`.
 
 Iniciar el backend usando el mismo archivo de variables. Los valores predeterminados sirven
 cuando Java corre directamente en el host. El compose levanta:
