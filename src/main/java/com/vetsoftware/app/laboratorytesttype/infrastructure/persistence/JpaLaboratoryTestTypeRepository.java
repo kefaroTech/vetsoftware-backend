@@ -36,6 +36,11 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
     }
 
     @Override
+    public Optional<LaboratoryTestType> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findAvailableById(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<LaboratoryTestType> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

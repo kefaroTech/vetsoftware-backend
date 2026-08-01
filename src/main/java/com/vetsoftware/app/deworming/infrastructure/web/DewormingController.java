@@ -78,7 +78,7 @@ public class DewormingController {
 
     @GetMapping("/{id}")
     public DewormingResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

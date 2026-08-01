@@ -16,6 +16,9 @@ public interface HospitalizationJpaRepository extends JpaRepository<Hospitalizat
     Optional<HospitalizationJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    Optional<HospitalizationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     List<HospitalizationJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

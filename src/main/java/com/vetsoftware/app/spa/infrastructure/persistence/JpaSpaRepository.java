@@ -47,6 +47,11 @@ public class JpaSpaRepository implements SpaRepository {
     }
 
     @Override
+    public Optional<Spa> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Spa> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

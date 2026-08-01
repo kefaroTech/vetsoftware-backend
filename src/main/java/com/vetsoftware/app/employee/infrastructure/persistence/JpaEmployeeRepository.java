@@ -39,6 +39,11 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
+    public Optional<Employee> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<Employee> findByIdIncludingDisabled(Long id) {
         return jpaRepository.findByIdIncludingDisabled(id).map(mapper::toDomain);
     }

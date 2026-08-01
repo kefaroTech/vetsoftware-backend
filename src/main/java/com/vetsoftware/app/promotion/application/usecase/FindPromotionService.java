@@ -17,8 +17,8 @@ public class FindPromotionService implements FindPromotionUseCase {
     }
 
     @Override
-    public PromotionDto findById(Long id) {
-        return PromotionDto.from(repository.findById(id)
+    public PromotionDto findById(Long id, Long companyId) {
+        return PromotionDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new PromotionNotFoundException(id)));
     }
 }

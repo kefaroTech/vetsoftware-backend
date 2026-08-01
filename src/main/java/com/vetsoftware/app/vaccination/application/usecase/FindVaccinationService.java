@@ -17,8 +17,8 @@ public class FindVaccinationService implements FindVaccinationUseCase {
     }
 
     @Override
-    public VaccinationDto findById(Long id) {
-        return VaccinationDto.from(repository.findById(id)
+    public VaccinationDto findById(Long id, Long companyId) {
+        return VaccinationDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new VaccinationNotFoundException(id)));
     }
 }

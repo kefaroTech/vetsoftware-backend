@@ -4,6 +4,6 @@ import com.vetsoftware.app.hospitalizationprocedure.application.dto.Hospitalizat
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindHospitalizationProcedureUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.read') or hasRole('SYSTEM')")
-    HospitalizationProcedureDto findById(Long id);
+    @PreAuthorize("hasRole('SYSTEM') or ((hasAuthority('admin.all') or hasAuthority('hospitalization.read')) and @authz.isMyCompany(#companyId))")
+    HospitalizationProcedureDto findById(Long id, Long companyId);
 }

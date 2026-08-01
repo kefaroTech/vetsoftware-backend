@@ -4,6 +4,6 @@ import com.vetsoftware.app.vaccination.application.dto.VaccinationDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindVaccinationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('vaccination.read') or hasRole('SYSTEM')")
-    VaccinationDto findById(Long id);
+    @PreAuthorize("hasRole('SYSTEM') or ((hasAuthority('admin.all') or hasAuthority('vaccination.read')) and @authz.isMyCompany(#companyId))")
+    VaccinationDto findById(Long id, Long companyId);
 }

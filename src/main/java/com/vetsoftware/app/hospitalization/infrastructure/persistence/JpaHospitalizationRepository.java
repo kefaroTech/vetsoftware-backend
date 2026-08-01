@@ -50,6 +50,11 @@ public class JpaHospitalizationRepository implements HospitalizationRepository {
     }
 
     @Override
+    public Optional<Hospitalization> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Hospitalization> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

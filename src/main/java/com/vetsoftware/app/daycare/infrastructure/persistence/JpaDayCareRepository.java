@@ -41,6 +41,11 @@ public class JpaDayCareRepository implements DayCareRepository {
     }
 
     @Override
+    public Optional<DayCare> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<DayCare> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

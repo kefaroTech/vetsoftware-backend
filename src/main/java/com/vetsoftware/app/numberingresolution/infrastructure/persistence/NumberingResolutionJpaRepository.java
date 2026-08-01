@@ -16,6 +16,9 @@ public interface NumberingResolutionJpaRepository extends JpaRepository<Numberin
     Optional<NumberingResolutionJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
+    Optional<NumberingResolutionJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = "company")
     List<NumberingResolutionJpaEntity> findAllByCompanyId(Long companyId);
 
     /**

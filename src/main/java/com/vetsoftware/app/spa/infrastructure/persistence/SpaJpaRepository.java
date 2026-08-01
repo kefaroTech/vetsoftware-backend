@@ -16,6 +16,9 @@ public interface SpaJpaRepository extends JpaRepository<SpaJpaEntity, Long> {
     Optional<SpaJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"spaType", "animal", "company"})
+    Optional<SpaJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"spaType", "animal", "company"})
     List<SpaJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

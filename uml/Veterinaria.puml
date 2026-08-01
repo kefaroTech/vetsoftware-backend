@@ -1645,6 +1645,175 @@ class ElectronicDocumentPayment {
 }
 
 ' =========================
+' Configuración por empresa
+' =========================
+
+' Almacén clave-valor por empresa (company_settings). Complementa a SystemConfiguration, que es global.
+class CompanySettings {
+  -companyId: Long
+  -propertyName: String
+  -value: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' =========================
+' Caja — terminales
+' =========================
+
+' Punto de cobro físico por sede. Una CashSession se abre contra un terminal.
+class CashTerminal {
+  -companyId: Long
+  -branchId: Long
+  -name: String
+  -code: String
+  -active: boolean
+  -createdAt: LocalDateTime
+}
+
+' =========================
+' Catálogo petshop (presentaciones, combos y códigos de barras)
+' =========================
+
+' Catálogo técnico de unidades DIAN admitidas por el proveedor tecnológico. La PK es el código, no un id.
+class UnitMeasureCatalog {
+  -code: String
+  -name: String
+  -symbol: String
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -enabled: boolean
+}
+
+' Unidad vendible de un producto. Todo producto tiene una presentación predeterminada con factor 1.
+class ProductPresentation {
+  -companyId: Long
+  -productId: Long
+  -name: String
+  -unitMeasureCode: String
+  -conversionFactor: int
+  -salePrice: BigDecimal
+  -defaultPresentation: boolean
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+' Combo vendible como una sola línea comercial. No admite combos anidados.
+class ProductBundle {
+  -companyId: Long
+  -name: String
+  -code: String
+  -unitMeasureCode: String
+  -salePrice: BigDecimal
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class ProductBundleItem {
+  -companyId: Long
+  -bundleId: Long
+  -presentationId: Long
+  -quantity: int
+  -displayOrder: int
+  -createdDate: LocalDateTime
+}
+
+' Registro central de barcodes: garantiza unicidad entre presentaciones y combos activos de una empresa.
+class CatalogBarcode {
+  -companyId: Long
+  -barcode: String
+  -itemType: String
+  -presentationId: Long
+  -bundleId: Long
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+' =========================
+' Inventario — conteo físico y asignación de venta
+' =========================
+
+class InventoryCount {
+  -companyId: Long
+  -branchId: Long
+  -note: String
+  -countedBy: Long
+  -totalLines: int
+  -adjustedLines: int
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class InventoryCountLine {
+  -countId: Long
+  -productId: Long
+  -systemQuantity: int
+  -countedQuantity: int
+  -difference: int
+}
+
+' Fotografía inmutable de cómo una línea comercial (presentación o combo) se descompuso en inventario.
+' La idempotencia del kardex se apoya en (referenceType, referenceId, commercialLineKey, componentSequence).
+class SaleInventoryAllocation {
+  -companyId: Long
+  -branchId: Long
+  -referenceType: String
+  -referenceId: Long
+  -commercialLineKey: String
+  -componentSequence: int
+  -sourceType: String
+  -sourcePresentationId: Long
+  -sourceBundleId: Long
+  -componentPresentationId: Long
+  -componentProductId: Long
+  -sourceQuantity: int
+  -componentQuantity: int
+  -conversionFactor: int
+  -baseQuantity: int
+  -createdBy: Long
+  -createdDate: LocalDateTime
+}
+
+' =========================
+' Auditoría — outbox y cadena de integridad
+' =========================
+
+' Outbox transaccional de eventos de auditoría con reintentos, lease y cadena de hash encadenada.
+class AuditEventOutbox {
+  -eventId: String
+  -eventType: String
+  -payload: String
+  -status: String
+  -attempts: int
+  -nextAttemptAt: LocalDateTime
+  -lockedUntil: LocalDateTime
+  -createdAt: LocalDateTime
+  -publishedAt: LocalDateTime
+  -lastError: String
+  -payloadHash: String
+  -chainSequence: Long
+  -previousHash: String
+  -chainHash: String
+}
+
+' Fila única (id=1) con la cabeza de la cadena y el último checkpoint anclado en el bucket WORM.
+class AuditChainHead {
+  -lastSequence: Long
+  -lastChainHash: String
+  -lastCheckpointSequence: Long
+  -updatedAt: LocalDateTime
+}
+
+' =========================
 ' Relationships
 ' =========================
 
@@ -1926,5 +2095,44 @@ ElectronicDocumentTransmission --> TransmissionResult
 
 ' --- Retenciones (F6) ---
 WithholdingConfig           --> Company
+
+' --- Configuración por empresa ---
+CompanySettings       ..> Company : companyId
+
+' --- Caja: terminales ---
+CashTerminal          ..> Company : companyId
+CashTerminal          ..> Branch : branchId
+CashSession           "0..*" ..> "1" CashTerminal : terminal (code)
+
+' --- Catálogo petshop ---
+ProductPresentation   ..> Company : companyId
+ProductPresentation   "0..*" --> "1" Product
+ProductPresentation   "0..*" ..> "1" UnitMeasureCatalog : unitMeasureCode
+ProductBundle         ..> Company : companyId
+ProductBundle         "0..*" ..> "1" UnitMeasureCatalog : unitMeasureCode
+ProductBundle         "1" *-- "1..*" ProductBundleItem
+ProductBundleItem     "0..*" --> "1" ProductPresentation
+CatalogBarcode        ..> Company : companyId
+CatalogBarcode        "0..*" ..> "0..1" ProductPresentation : presentationId
+CatalogBarcode        "0..*" ..> "0..1" ProductBundle : bundleId
+
+' --- Inventario: conteo físico ---
+InventoryCount        ..> Company : companyId
+InventoryCount        ..> Branch : branchId
+InventoryCount        "0..*" ..> "0..1" Employee : countedBy
+InventoryCount        "1" *-- "0..*" InventoryCountLine
+InventoryCountLine    "0..*" --> "1" Product
+
+' --- Inventario: descomposición de la venta ---
+SaleInventoryAllocation ..> Company : companyId
+SaleInventoryAllocation ..> Branch : branchId
+SaleInventoryAllocation --> StockReferenceType
+SaleInventoryAllocation "0..*" ..> "0..1" ProductPresentation : sourcePresentationId
+SaleInventoryAllocation "0..*" ..> "0..1" ProductBundle : sourceBundleId
+SaleInventoryAllocation "0..*" ..> "1" ProductPresentation : componentPresentationId
+SaleInventoryAllocation "0..*" ..> "1" Product : componentProductId
+
+' --- Auditoría: outbox + cadena de integridad ---
+AuditChainHead        ..> AuditEventOutbox : ancla la cabeza de la cadena
 
 @enduml

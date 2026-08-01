@@ -4,6 +4,6 @@ import com.vetsoftware.app.medicamentprescription.application.dto.MedicamentPres
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindMedicamentPrescriptionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
-    MedicamentPrescriptionDto findById(Long id);
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('admin.all') and @authz.isMyCompany(#companyId))")
+    MedicamentPrescriptionDto findById(Long id, Long companyId);
 }

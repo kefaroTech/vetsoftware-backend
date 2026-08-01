@@ -85,7 +85,7 @@ public class DiagnosticImagingController {
 
     @GetMapping("/{id}")
     public DiagnosticImagingResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

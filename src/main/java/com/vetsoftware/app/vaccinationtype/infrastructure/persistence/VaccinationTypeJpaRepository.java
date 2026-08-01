@@ -16,6 +16,14 @@ public interface VaccinationTypeJpaRepository extends JpaRepository<VaccinationT
     Optional<VaccinationTypeJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT e FROM VaccinationTypeJpaEntity e LEFT JOIN e.company c "
+            + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
+    Optional<VaccinationTypeJpaEntity> findAvailableById(
+        @org.springframework.data.repository.query.Param("id") Long id,
+        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+
+    @EntityGraph(attributePaths = "company")
     List<VaccinationTypeJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface NumberingResolutionRepository {
     NumberingResolution save(NumberingResolution resolution);
     Optional<NumberingResolution> findById(Long id);
+    Optional<NumberingResolution> findByIdAndCompanyId(Long id, Long companyId);
     List<NumberingResolution> findAllByCompanyId(Long companyId);
     /**
      * Invariante "una sola resolución activa por (company, sede, tipo)": true si ya existe una activa en ese

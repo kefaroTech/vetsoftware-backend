@@ -16,6 +16,9 @@ public interface SurgeryJpaRepository extends JpaRepository<SurgeryJpaEntity, Lo
     Optional<SurgeryJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"surgeryType", "animal", "consultation", "company"})
+    Optional<SurgeryJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"surgeryType", "animal", "consultation", "company"})
     List<SurgeryJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

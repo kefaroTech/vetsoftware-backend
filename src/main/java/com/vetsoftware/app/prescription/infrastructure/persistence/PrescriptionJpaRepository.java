@@ -15,6 +15,9 @@ public interface PrescriptionJpaRepository extends JpaRepository<PrescriptionJpa
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<PrescriptionJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    Optional<PrescriptionJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(

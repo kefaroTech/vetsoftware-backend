@@ -44,6 +44,11 @@ public class JpaHospitalizationProgressNoteRepository implements Hospitalization
     }
 
     @Override
+    public Optional<HospitalizationProgressNote> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<HospitalizationProgressNote> findAllByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationId(hospitalizationId).stream()
             .map(mapper::toDomain).toList();

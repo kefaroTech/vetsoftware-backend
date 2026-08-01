@@ -17,8 +17,8 @@ public class FindNumberingResolutionService implements FindNumberingResolutionUs
     }
 
     @Override
-    public NumberingResolutionDto findById(Long id) {
-        return NumberingResolutionDto.from(repository.findById(id)
+    public NumberingResolutionDto findById(Long id, Long companyId) {
+        return NumberingResolutionDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
     }
 }

@@ -17,8 +17,8 @@ public class FindHospitalizationService implements FindHospitalizationUseCase {
     }
 
     @Override
-    public HospitalizationDto findById(Long id) {
-        return HospitalizationDto.from(repository.findById(id)
+    public HospitalizationDto findById(Long id, Long companyId) {
+        return HospitalizationDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new HospitalizationNotFoundException(id)));
     }
 }

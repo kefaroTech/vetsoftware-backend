@@ -75,7 +75,7 @@ public class PrescriptionController {
 
     @GetMapping("/{id}")
     public PrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

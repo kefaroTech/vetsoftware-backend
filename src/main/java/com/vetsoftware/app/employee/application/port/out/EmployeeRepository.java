@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface EmployeeRepository {
     Employee save(Employee employee);
     Optional<Employee> findById(Long id);
+    Optional<Employee> findByIdAndCompanyId(Long id, Long companyId);
 
     /** Busca por id incluyendo empleados desactivados (para operaciones idempotentes como desactivar). */
     Optional<Employee> findByIdIncludingDisabled(Long id);

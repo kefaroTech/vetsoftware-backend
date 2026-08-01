@@ -85,7 +85,7 @@ public class SurgeryController {
 
     @GetMapping("/{id}")
     public SurgeryResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

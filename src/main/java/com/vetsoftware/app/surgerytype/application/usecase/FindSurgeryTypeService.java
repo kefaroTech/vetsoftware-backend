@@ -17,8 +17,8 @@ public class FindSurgeryTypeService implements FindSurgeryTypeUseCase {
     }
 
     @Override
-    public SurgeryTypeDto findById(Long id) {
-        return SurgeryTypeDto.from(repository.findById(id)
+    public SurgeryTypeDto findById(Long id, Long companyId) {
+        return SurgeryTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new SurgeryTypeNotFoundException(id)));
     }
 }

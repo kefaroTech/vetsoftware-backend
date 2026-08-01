@@ -4,6 +4,6 @@ import com.vetsoftware.app.hospitalizationobservation.application.dto.Hospitaliz
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindHospitalizationObservationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('hospitalization.read') or hasRole('SYSTEM')")
-    HospitalizationObservationDto findById(Long id);
+    @PreAuthorize("hasRole('SYSTEM') or ((hasAuthority('admin.all') or hasAuthority('hospitalization.read')) and @authz.isMyCompany(#companyId))")
+    HospitalizationObservationDto findById(Long id, Long companyId);
 }

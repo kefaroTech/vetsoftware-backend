@@ -43,6 +43,11 @@ public class JpaLaboratoryTestFileRepository implements LaboratoryTestFileReposi
     }
 
     @Override
+    public Optional<LaboratoryTestFile> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndLaboratoryTest_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<LaboratoryTestFile> findAllByLaboratoryTestId(Long laboratoryTestId) {
         return jpaRepository.findAllByLaboratoryTest_Id(laboratoryTestId).stream()
             .map(mapper::toDomain).toList();

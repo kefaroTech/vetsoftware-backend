@@ -47,6 +47,11 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
     }
 
     @Override
+    public Optional<HospitalizationProcedure> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<HospitalizationProcedure> findAllByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationId(hospitalizationId).stream()
             .map(mapper::toDomain).toList();

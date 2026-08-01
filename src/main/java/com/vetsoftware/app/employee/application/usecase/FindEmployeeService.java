@@ -17,8 +17,8 @@ public class FindEmployeeService implements FindEmployeeUseCase {
     }
 
     @Override
-    public EmployeeDto findById(Long id) {
-        return repository.findById(id)
+    public EmployeeDto findById(Long id, Long companyId) {
+        return repository.findByIdAndCompanyId(id, companyId)
             .map(EmployeeDto::from)
             .orElseThrow(() -> new EmployeeNotFoundException(id));
     }

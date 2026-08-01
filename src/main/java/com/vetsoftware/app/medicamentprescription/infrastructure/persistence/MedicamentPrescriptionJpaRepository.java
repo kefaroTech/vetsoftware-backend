@@ -15,6 +15,9 @@ public interface MedicamentPrescriptionJpaRepository extends JpaRepository<Medic
     @EntityGraph(attributePaths = {"prescription", "medicament"})
     Optional<MedicamentPrescriptionJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"prescription", "medicament"})
+    Optional<MedicamentPrescriptionJpaEntity> findByIdAndPrescription_Company_Id(Long id, Long companyId);
+
     List<MedicamentPrescriptionJpaEntity> findByPrescriptionId(Long prescriptionId);
 
     boolean existsByMedicament_Id(Long medicamentId);

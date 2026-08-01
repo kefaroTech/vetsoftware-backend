@@ -18,6 +18,9 @@ public interface LaboratoryTestJpaRepository extends JpaRepository<LaboratoryTes
     Optional<LaboratoryTestJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company", "processedBy"})
+    Optional<LaboratoryTestJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company", "processedBy"})
     List<LaboratoryTestJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

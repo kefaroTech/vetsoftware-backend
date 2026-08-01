@@ -16,6 +16,14 @@ public interface DiagnosticImagingTypeJpaRepository extends JpaRepository<Diagno
     Optional<DiagnosticImagingTypeJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT e FROM DiagnosticImagingTypeJpaEntity e LEFT JOIN e.company c "
+            + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
+    Optional<DiagnosticImagingTypeJpaEntity> findAvailableById(
+        @org.springframework.data.repository.query.Param("id") Long id,
+        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+
+    @EntityGraph(attributePaths = "company")
     List<DiagnosticImagingTypeJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

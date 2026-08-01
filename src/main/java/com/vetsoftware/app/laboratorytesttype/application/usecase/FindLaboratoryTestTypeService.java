@@ -17,8 +17,8 @@ public class FindLaboratoryTestTypeService implements FindLaboratoryTestTypeUseC
     }
 
     @Override
-    public LaboratoryTestTypeDto findById(Long id) {
-        return LaboratoryTestTypeDto.from(repository.findById(id)
+    public LaboratoryTestTypeDto findById(Long id, Long companyId) {
+        return LaboratoryTestTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id)));
     }
 }

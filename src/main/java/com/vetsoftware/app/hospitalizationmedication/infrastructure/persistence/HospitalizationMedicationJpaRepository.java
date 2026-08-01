@@ -13,6 +13,9 @@ public interface HospitalizationMedicationJpaRepository
     Optional<HospitalizationMedicationJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"hospitalization", "createdBy", "suspensionBy"})
+    Optional<HospitalizationMedicationJpaEntity> findByIdAndHospitalization_Company_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"hospitalization", "createdBy", "suspensionBy"})
     List<HospitalizationMedicationJpaEntity> findByHospitalizationId(Long hospitalizationId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
