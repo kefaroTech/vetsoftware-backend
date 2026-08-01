@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 
 public interface ListEmployeesUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM')")
     List<EmployeeDto> listAll();
 }

@@ -4,6 +4,6 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateDiagnosticImagingUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('diagnosticimaging.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('diagnosticimaging.update')")
     DiagnosticImagingDto execute(Long id);
 }

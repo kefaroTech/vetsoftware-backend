@@ -6,7 +6,7 @@ import com.vetsoftware.app.goodsreceipt.application.dto.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchGoodsReceiptsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('goodsReceipt.read') and @authz.isMyCompany(#command.companyId))")
     PageResult<GoodsReceiptDto> execute(SearchGoodsReceiptsCommand command);
 }

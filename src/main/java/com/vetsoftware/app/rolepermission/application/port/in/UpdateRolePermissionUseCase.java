@@ -5,6 +5,7 @@ import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateRolePermissionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or "
+        + "(hasAuthority('rolePermissions.update') and @authz.isMyCompany(#command.companyId))")
     RolePermissionDto execute(UpdateRolePermissionCommand command);
 }

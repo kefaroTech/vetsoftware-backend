@@ -15,6 +15,9 @@ public interface PermissionJpaRepository extends JpaRepository<PermissionJpaEnti
     @EntityGraph(attributePaths = {"company", "subModule"})
     Optional<PermissionJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"company", "subModule"})
+    Optional<PermissionJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
     Optional<PermissionJpaEntity> findByCompanyIdAndCode(Long companyId, String code);
 
     @EntityGraph(attributePaths = {"company", "subModule"})

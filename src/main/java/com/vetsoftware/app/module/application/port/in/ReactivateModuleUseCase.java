@@ -4,6 +4,6 @@ import com.vetsoftware.app.module.application.dto.ModuleDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateModuleUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('module.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('module.update')")
     ModuleDto execute(Long id);
 }

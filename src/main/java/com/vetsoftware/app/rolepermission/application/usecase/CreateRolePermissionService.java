@@ -37,9 +37,13 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
     @Override
     @Transactional
     public RolePermissionDto execute(CreateRolePermissionCommand command) {
-        RoleRef role = roleQueryPort.findById(command.roleId())
+        RoleRef role = (command.companyId() == null
+            ? roleQueryPort.findById(command.roleId())
+            : roleQueryPort.findByIdAndCompanyId(command.roleId(), command.companyId()))
             .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
-        PermissionRef permission = permissionQueryPort.findById(command.permissionId())
+        PermissionRef permission = (command.companyId() == null
+            ? permissionQueryPort.findById(command.permissionId())
+            : permissionQueryPort.findByIdAndCompanyId(command.permissionId(), command.companyId()))
             .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + command.permissionId()));
 
         Optional<Long> disabledId = repository

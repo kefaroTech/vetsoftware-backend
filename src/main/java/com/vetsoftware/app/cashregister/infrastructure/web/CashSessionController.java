@@ -101,7 +101,7 @@ public class CashSessionController {
             request.counts() == null ? java.util.List.of()
                 : request.counts().stream()
                     .map(c -> new CloseCashSessionCommand.Count(c.method(), c.countedAmount()))
-                    .toList()), authz.isAdmin());
+                    .toList()), false);
     }
 
     @GetMapping("/current")
@@ -118,7 +118,7 @@ public class CashSessionController {
 
     @GetMapping("/open")
     public List<CashSessionView> openSessions() {
-        Set<Long> accessibleBranchIds = authz.isAdmin() ? null : authz.currentBranchIds();
+        Set<Long> accessibleBranchIds = authz.currentBranchIds();
         return listOpenUseCase.listOpen(authz.currentCompanyId(), accessibleBranchIds);
     }
 

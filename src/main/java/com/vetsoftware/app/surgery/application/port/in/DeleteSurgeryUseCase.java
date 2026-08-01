@@ -3,6 +3,6 @@ package com.vetsoftware.app.surgery.application.port.in;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteSurgeryUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('surgery.delete') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('surgery.delete')")
     void execute(Long id);
 }

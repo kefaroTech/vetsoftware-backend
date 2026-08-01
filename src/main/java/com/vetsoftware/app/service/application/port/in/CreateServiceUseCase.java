@@ -5,7 +5,7 @@ import com.vetsoftware.app.service.application.dto.ServiceDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateServiceUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('service.create') and @authz.isMyCompany(#command.companyId))")
     ServiceDto execute(CreateServiceCommand command);
 }

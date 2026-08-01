@@ -5,7 +5,7 @@ import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateGeneralChargeOpenAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('chargeOpenAccount.update') and @authz.isMyCompany(#command.companyId)) or "
         + "hasRole('SYSTEM')")
     GeneralChargeOpenAccountDto execute(UpdateGeneralChargeOpenAccountCommand command);

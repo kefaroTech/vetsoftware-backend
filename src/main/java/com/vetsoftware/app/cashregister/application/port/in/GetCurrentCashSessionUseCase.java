@@ -5,7 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Sesión OPEN de una sede (con totales por método), o null si no hay caja abierta. Gate: leer caja. */
 public interface GetCurrentCashSessionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('cashregister.read') and @authz.isMyCompany(#companyId))")
     CashSessionView current(Long companyId, Long employeeId);
 }

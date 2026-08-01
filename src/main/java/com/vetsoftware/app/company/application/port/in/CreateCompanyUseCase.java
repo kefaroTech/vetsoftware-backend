@@ -5,6 +5,6 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateCompanyUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('company.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('company.create')")
     CompanyDto execute(CreateCompanyCommand command);
 }

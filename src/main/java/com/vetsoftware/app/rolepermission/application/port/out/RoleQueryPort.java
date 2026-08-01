@@ -5,4 +5,5 @@ import java.util.Optional;
 
 public interface RoleQueryPort {
     Optional<RoleRef> findById(Long roleId);
+    Optional<RoleRef> findByIdAndCompanyId(Long roleId, Long companyId);
 }

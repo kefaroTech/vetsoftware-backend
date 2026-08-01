@@ -19,10 +19,10 @@ public class ReactivateRoleService implements ReactivateRoleUseCase {
 
     @Override
     @Transactional
-    public RoleDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public RoleDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0) throw new RoleNotFoundException(id);
-        return RoleDto.from(repository.findById(id)
+        return RoleDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new RoleNotFoundException(id)));
     }
 }

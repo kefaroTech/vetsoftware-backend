@@ -18,8 +18,9 @@ public class DeleteMedicamentPrescriptionService implements DeleteMedicamentPres
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
+            .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id));
         repository.delete(id);
     }
 }

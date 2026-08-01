@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSpasByAnimalUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('spa.read') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('spa.read')")
     List<SpaDto> listByAnimal(Long animalId);
 }

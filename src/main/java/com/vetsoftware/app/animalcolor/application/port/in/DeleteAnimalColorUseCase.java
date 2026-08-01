@@ -3,6 +3,6 @@ package com.vetsoftware.app.animalcolor.application.port.in;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteAnimalColorUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM')")
     void execute(Long id);
 }

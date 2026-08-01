@@ -4,6 +4,6 @@ import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateMembershipUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('membership.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('membership.update')")
     MembershipDto execute(Long id);
 }

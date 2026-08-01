@@ -81,7 +81,7 @@ public class ConsultationController {
             new UpdateConsultationCommand(
                 id, request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
-                authz.currentCompanyId(),
+                authz.currentCompanyIdOrNull(),
                 request.temperature(), request.heartRate(), request.respiratoryRate(),
                 request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
                 request.bodyConditionScore(), request.painScore(), request.attitude(),
@@ -91,7 +91,7 @@ public class ConsultationController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")

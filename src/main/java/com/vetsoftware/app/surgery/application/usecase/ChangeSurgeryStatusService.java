@@ -23,7 +23,9 @@ public class ChangeSurgeryStatusService implements ChangeSurgeryStatusUseCase {
     @Override
     @Transactional
     public SurgeryDto execute(ChangeSurgeryStatusCommand command) {
-        Surgery surgery = repository.findById(command.id())
+        Surgery surgery = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new SurgeryNotFoundException(command.id()));
         SurgeryStatus newStatus = SurgeryStatus.valueOf(command.status().toUpperCase());
         surgery.changeStatus(newStatus);

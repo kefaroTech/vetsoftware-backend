@@ -7,9 +7,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 /**
  * Crea o actualiza (upsert por {@code propertyName}) una configuración general del sistema. Es global
  * (no por empresa), así que solo lo gestiona un administrador. NOTA: `systemConfiguration.manage` aún
- * no está en el catálogo de permisos; hasta que se agregue, solo `admin.all` puede escribir.
+ * Por su alcance global no admite permisos empresariales granulares.
  */
 public interface SetSystemConfigurationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('systemConfiguration.manage')")
+    @PreAuthorize("hasRole('SYSTEM')")
     SystemConfigurationDto execute(SetSystemConfigurationCommand command);
 }

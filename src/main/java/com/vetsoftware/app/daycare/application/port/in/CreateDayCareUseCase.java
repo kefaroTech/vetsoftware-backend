@@ -5,6 +5,6 @@ import com.vetsoftware.app.daycare.application.dto.DayCareDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateDayCareUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('dayCare.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('dayCare.create')")
     DayCareDto execute(CreateDayCareCommand command);
 }

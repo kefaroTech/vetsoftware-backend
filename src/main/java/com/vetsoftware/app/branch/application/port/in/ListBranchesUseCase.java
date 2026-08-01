@@ -8,6 +8,6 @@ public interface ListBranchesUseCase {
     // Multi-sucursal (Fase C): listar las sedes de la PROPIA empresa no requiere un permiso específico —
     // es el insumo del selector de sede que usa cualquier empleado (dato no sensible; sin authz por sede).
     // La gestión (crear/editar) sí está gateada por branch.create/branch.update.
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') or @authz.isMyCompany(#companyId)")
+    @PreAuthorize("hasRole('SYSTEM') or @authz.isMyCompany(#companyId)")
     List<BranchDto> listAll(Long companyId);
 }

@@ -48,15 +48,12 @@ public class EmployeeBranchController {
                                         @Valid @RequestBody SetEmployeeBranchesRequest request) {
         boolean allBranches = request.allBranches();
         List<Long> branchIds = request.branchIds();
-        // Un no-admin solo puede asignar sedes que él mismo tiene: "todas" = todas SUS sedes (no toda la empresa);
-        // si vienen explícitas, cada una debe estar en su alcance. Un admin gestiona toda la empresa (sin acotar).
-        if (!authz.isAdmin()) {
-            if (allBranches) {
-                allBranches = false;
-                branchIds = new ArrayList<>(authz.currentBranchIds());
-            } else {
-                authz.requireAssignableBranches(branchIds);
-            }
+        // "Todas" significa todas las sedes del alcance explícito del actor; nunca toda la empresa por comodín.
+        if (allBranches) {
+            allBranches = false;
+            branchIds = new ArrayList<>(authz.currentBranchIds());
+        } else {
+            authz.requireAssignableBranches(branchIds);
         }
         EmployeeBranchesDto dto = setUseCase.execute(new SetEmployeeBranchesCommand(
             employeeId, authz.currentCompanyId(), allBranches, branchIds));

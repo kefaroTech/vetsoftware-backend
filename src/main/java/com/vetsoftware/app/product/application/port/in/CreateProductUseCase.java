@@ -5,7 +5,7 @@ import com.vetsoftware.app.product.application.dto.ProductDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateProductUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('product.create') and @authz.isMyCompany(#command.companyId))")
     ProductDto execute(CreateProductCommand command);
 }

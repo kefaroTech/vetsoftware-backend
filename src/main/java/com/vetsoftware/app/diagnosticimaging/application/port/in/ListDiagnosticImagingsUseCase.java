@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDiagnosticImagingsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('diagnosticimaging.read') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('diagnosticimaging.read')")
     List<DiagnosticImagingDto> listAll();
 }

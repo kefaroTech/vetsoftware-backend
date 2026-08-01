@@ -5,4 +5,5 @@ import java.util.Optional;
 
 public interface AnimalQueryPort {
     Optional<AnimalRef> findById(Long animalId);
+    Optional<AnimalRef> findByIdAndCompanyId(Long animalId, Long companyId);
 }

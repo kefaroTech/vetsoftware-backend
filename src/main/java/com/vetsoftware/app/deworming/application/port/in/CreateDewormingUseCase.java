@@ -5,6 +5,6 @@ import com.vetsoftware.app.deworming.application.dto.DewormingDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateDewormingUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('deworming.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('deworming.create')")
     DewormingDto execute(CreateDewormingCommand command);
 }

@@ -72,13 +72,14 @@ public class MedicamentPrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdateMedicamentPrescriptionCommand(
                 id, request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId())));
+                request.posology(), request.observation(), request.prescriptionId(),
+                authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")

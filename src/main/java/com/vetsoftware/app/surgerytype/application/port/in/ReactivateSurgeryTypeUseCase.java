@@ -4,6 +4,6 @@ import com.vetsoftware.app.surgerytype.application.dto.SurgeryTypeDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateSurgeryTypeUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('surgery.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('surgery.update')")
     SurgeryTypeDto execute(Long id);
 }

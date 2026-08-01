@@ -102,7 +102,7 @@ public class SurgeryController {
     public SurgeryResponse changeStatus(@PathVariable Long id,
                                         @Valid @RequestBody ChangeSurgeryStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeSurgeryStatusCommand(id, request.status())));
+            new ChangeSurgeryStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")

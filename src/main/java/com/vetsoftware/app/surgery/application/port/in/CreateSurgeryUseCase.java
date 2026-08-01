@@ -5,6 +5,6 @@ import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateSurgeryUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('surgery.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('surgery.create')")
     SurgeryDto execute(CreateSurgeryCommand command);
 }

@@ -102,7 +102,7 @@ public class DiagnosticImagingController {
     public DiagnosticImagingResponse changeStatus(@PathVariable Long id,
                                                   @Valid @RequestBody ChangeDiagnosticImagingStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeDiagnosticImagingStatusCommand(id, request.status())));
+            new ChangeDiagnosticImagingStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")

@@ -36,12 +36,18 @@ public class UpdateRolePermissionService implements UpdateRolePermissionUseCase 
     @Override
     @Transactional
     public RolePermissionDto execute(UpdateRolePermissionCommand command) {
-        RolePermission rolePermission = repository.findById(command.id())
+        RolePermission rolePermission = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new RolePermissionNotFoundException(command.id()));
         Long previousRoleId = rolePermission.getRole().id();
-        RoleRef role = roleQueryPort.findById(command.roleId())
+        RoleRef role = (command.companyId() == null
+            ? roleQueryPort.findById(command.roleId())
+            : roleQueryPort.findByIdAndCompanyId(command.roleId(), command.companyId()))
             .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
-        PermissionRef permission = permissionQueryPort.findById(command.permissionId())
+        PermissionRef permission = (command.companyId() == null
+            ? permissionQueryPort.findById(command.permissionId())
+            : permissionQueryPort.findByIdAndCompanyId(command.permissionId(), command.companyId()))
             .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + command.permissionId()));
         rolePermission.update(role, permission);
         RolePermissionDto dto = RolePermissionDto.from(repository.save(rolePermission));

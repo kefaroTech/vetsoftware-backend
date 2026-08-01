@@ -35,6 +35,11 @@ public class JpaRoleRepository implements RoleRepository {
     }
 
     @Override
+    public Optional<Role> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Role> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
@@ -50,7 +55,7 @@ public class JpaRoleRepository implements RoleRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

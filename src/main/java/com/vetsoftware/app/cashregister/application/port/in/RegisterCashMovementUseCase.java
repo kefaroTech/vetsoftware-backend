@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Registrar un movimiento manual (ingreso/retiro/gasto) en una sesión de caja abierta. Gate: operar caja. */
 public interface RegisterCashMovementUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('cashregister.operate') and @authz.isMyCompany(#command.companyId))")
     CashSessionView register(RegisterCashMovementCommand command);
 }

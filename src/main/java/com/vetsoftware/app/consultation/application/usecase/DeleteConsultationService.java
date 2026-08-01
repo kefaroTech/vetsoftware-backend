@@ -49,7 +49,11 @@ public class DeleteConsultationService implements DeleteConsultationUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new ConsultationNotFoundException(id));
+        var consultation = (companyId == null
+            ? repository.findById(id)
+            : repository.findByIdAndCompanyId(id, companyId))
+            .orElseThrow(() -> new ConsultationNotFoundException(id));
+        Long effectiveCompanyId = companyId == null ? consultation.getCompany().id() : companyId;
         if (vaccinationChildrenQueryPort.existsActiveByConsultationId(id)) {
             throw new ConsultationHasActiveChildrenException(id, "vaccination");
         }
@@ -71,6 +75,6 @@ public class DeleteConsultationService implements DeleteConsultationUseCase {
         if (prescriptionChildrenQueryPort.existsActiveByConsultationId(id)) {
             throw new ConsultationHasActiveChildrenException(id, "prescription");
         }
-        repository.delete(id, companyId);
+        repository.delete(id, effectiveCompanyId);
     }
 }

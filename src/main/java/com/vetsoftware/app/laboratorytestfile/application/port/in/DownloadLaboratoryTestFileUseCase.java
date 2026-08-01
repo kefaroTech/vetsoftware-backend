@@ -4,6 +4,6 @@ import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestFile
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DownloadLaboratoryTestFileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTest.read') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.read')")
     LaboratoryTestFileDownloadDto download(Long id);
 }

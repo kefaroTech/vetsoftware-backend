@@ -24,7 +24,7 @@ public class CashTerminalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('cashregister.read') or hasAuthority('cashregister.operate')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('cashregister.read') or hasAuthority('cashregister.operate')")
     public List<CashTerminalDto> list(@RequestParam Long branchId,
                                       @RequestParam(defaultValue = "false") boolean activeOnly) {
         Long resolvedBranchId = authz.resolveAccessibleBranch(branchId);
@@ -33,26 +33,26 @@ public class CashTerminalController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('branch.update')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
     public CashTerminalDto create(@Valid @RequestBody SaveTerminalRequest request) {
         Long branchId = authz.resolveAccessibleBranch(request.branchId());
         return service.create(authz.currentCompanyId(), branchId, request.name(), request.code());
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('branch.update')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
     public CashTerminalDto update(@PathVariable Long id, @Valid @RequestBody UpdateTerminalRequest request) {
         return service.update(authz.currentCompanyId(), id, request.name(), request.code());
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('branch.update')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
     public CashTerminalDto deactivate(@PathVariable Long id) {
         return service.setActive(authz.currentCompanyId(), id, false);
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('branch.update')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
     public CashTerminalDto activate(@PathVariable Long id) {
         return service.setActive(authz.currentCompanyId(), id, true);
     }

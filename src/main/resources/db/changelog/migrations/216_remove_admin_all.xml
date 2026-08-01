@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!-- El superadmin se identifica por SYSTEM_USER/ROLE_SYSTEM. Se retira el comodín legado
+         de todos los catálogos para que ningún rol empresarial dependa de un permiso especial. -->
+    <changeSet id="216-remove-admin-all" author="openai">
+        <sql>
+            DELETE sup
+            FROM system_user_permissions sup
+            JOIN system_permissions sp ON sp.id = sup.system_permission_id
+            WHERE LOWER(TRIM(sp.code)) = 'admin.all';
+
+            DELETE FROM system_permissions
+            WHERE LOWER(TRIM(code)) = 'admin.all';
+
+            DELETE rp
+            FROM role_permissions rp
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE LOWER(TRIM(p.code)) = 'admin.all';
+
+            DELETE FROM permissions
+            WHERE LOWER(TRIM(code)) = 'admin.all';
+
+            DELETE brp
+            FROM base_role_permissions brp
+            JOIN base_permissions bp ON bp.id = brp.base_permission_id
+            WHERE LOWER(TRIM(bp.code)) = 'admin.all';
+
+            DELETE FROM base_permissions
+            WHERE LOWER(TRIM(code)) = 'admin.all';
+        </sql>
+        <rollback>
+            INSERT INTO system_permissions (name, code, enabled)
+            SELECT 'TOTAL_ACCESS', 'admin.all', TRUE
+            WHERE NOT EXISTS (
+                SELECT 1 FROM system_permissions WHERE LOWER(TRIM(code)) = 'admin.all'
+            );
+
+            INSERT INTO system_user_permissions (system_user_id, system_permission_id, enabled)
+            SELECT su.id, sp.id, TRUE
+            FROM system_users su
+            JOIN system_permissions sp ON LOWER(TRIM(sp.code)) = 'admin.all'
+            WHERE su.code = 'superadmin'
+              AND NOT EXISTS (
+                  SELECT 1 FROM system_user_permissions sup
+                  WHERE sup.system_user_id = su.id
+                    AND sup.system_permission_id = sp.id
+              );
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -5,4 +5,5 @@ import java.util.Optional;
 
 public interface ConsultationQueryPort {
     Optional<ConsultationRef> findById(Long consultationId);
+    Optional<ConsultationRef> findByIdAndCompanyId(Long consultationId, Long companyId);
 }

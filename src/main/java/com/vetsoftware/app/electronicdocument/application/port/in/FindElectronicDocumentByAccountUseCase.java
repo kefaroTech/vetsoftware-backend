@@ -10,7 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * vacio cuando la cuenta no genero documento (cancelada o cobrada sin el modulo de facturacion).
  */
 public interface FindElectronicDocumentByAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
             + "((hasAuthority('pos.read') or hasAuthority('pos.read')) "
             + "and @authz.isMyCompany(#companyId))")
     Optional<ElectronicDocumentDto> findByOpenAccount(Long openAccountId, Long companyId);

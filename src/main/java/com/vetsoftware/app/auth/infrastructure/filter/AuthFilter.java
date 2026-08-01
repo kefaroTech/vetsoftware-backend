@@ -186,7 +186,7 @@ public class AuthFilter extends OncePerRequestFilter {
                 .<GrantedAuthority>map(SimpleGrantedAuthority::new)
                 .toList()
         );
-        if (authContext instanceof SystemContext) {
+        if (authContext instanceof SystemContext || authContext instanceof SystemUserContext) {
             authorities.add(new SimpleGrantedAuthority(SYSTEM_ROLE));
         }
         return new UsernamePasswordAuthenticationToken(authContext, null, authorities);

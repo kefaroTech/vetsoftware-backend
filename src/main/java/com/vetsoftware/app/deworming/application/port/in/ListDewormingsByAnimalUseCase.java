@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDewormingsByAnimalUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('deworming.read') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('deworming.read')")
     List<DewormingDto> listByAnimal(Long animalId);
 }

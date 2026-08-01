@@ -8,7 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface CloseCashSessionUseCase {
     @PreAuthorize("@authz.isMyCompany(#command.companyId) and "
         + "@authz.isCurrentEmployee(#command.closedByEmployeeId) and "
-        + "((#adminOverride and hasAuthority('admin.all')) or "
+        + "((#adminOverride and hasRole('SYSTEM')) or "
         + "(!#adminOverride and hasAuthority('cashregister.close')))")
     CashSessionView close(CloseCashSessionCommand command, boolean adminOverride);
 }

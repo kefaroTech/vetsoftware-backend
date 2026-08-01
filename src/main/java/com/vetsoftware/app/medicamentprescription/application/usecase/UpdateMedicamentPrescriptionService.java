@@ -32,12 +32,20 @@ public class UpdateMedicamentPrescriptionService implements UpdateMedicamentPres
     @Override
     @Transactional
     public MedicamentPrescriptionDto execute(UpdateMedicamentPrescriptionCommand command) {
-        MedicamentPrescription medicament = repository.findById(command.id())
+        MedicamentPrescription medicament = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(command.id()));
-        PrescriptionRef prescription = prescriptionQueryPort.findById(command.prescriptionId())
-            .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()));
-        MedicamentRef medicamentRef = medicamentQueryPort.findById(command.medicamentId())
-            .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()));
+        PrescriptionRef prescription = command.companyId() == null
+            ? prescriptionQueryPort.findById(command.prescriptionId())
+                .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()))
+            : prescriptionQueryPort.findByIdAndCompanyId(command.prescriptionId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()));
+        MedicamentRef medicamentRef = command.companyId() == null
+            ? medicamentQueryPort.findById(command.medicamentId())
+                .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()))
+            : medicamentQueryPort.findAvailableById(command.medicamentId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()));
 
         medicament.update(medicamentRef, command.presentation(), command.quantity(),
             command.posology(), command.observation(), prescription);

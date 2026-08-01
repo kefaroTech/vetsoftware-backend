@@ -4,6 +4,6 @@ import com.vetsoftware.app.systempermission.application.dto.SystemPermissionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateSystemPermissionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('systempermission.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('systempermission.update')")
     SystemPermissionDto execute(Long id);
 }
