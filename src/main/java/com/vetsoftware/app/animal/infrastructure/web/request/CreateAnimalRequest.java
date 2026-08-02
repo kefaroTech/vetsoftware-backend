@@ -29,6 +29,5 @@ public record CreateAnimalRequest(
         @Positive BigDecimal weight,
         @PositiveOrZero Integer size,
         boolean deceased,
-        LocalDate deceasedDate,
-        @NotNull Long companyId
+        LocalDate deceasedDate
 ) {}

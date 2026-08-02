@@ -81,7 +81,7 @@ public class ConsultationController {
             new UpdateConsultationCommand(
                 id, request.date(), request.consultationTypeId(), request.anamnesis(),
                 request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
-                authz.currentCompanyIdOrNull(),
+                authz.currentCompanyId(),
                 request.temperature(), request.heartRate(), request.respiratoryRate(),
                 request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
                 request.bodyConditionScore(), request.painScore(), request.attitude(),
