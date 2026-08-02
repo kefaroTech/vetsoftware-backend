@@ -17,12 +17,13 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenJpa
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true WHERE r.id = :id")
+    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
+            + "WHERE r.id = :id AND r.revoked = false")
     int revokeById(@Param("id") Long id);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true "
+    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
             + "WHERE r.subjectId = :subjectId AND r.subjectType = :subjectType AND r.revoked = false")
     int revokeAllForSubject(@Param("subjectId") Long subjectId, @Param("subjectType") String subjectType);
 }

@@ -219,5 +219,6 @@
     <include file="db/changelog/migrations/214_add_business_metrics_query_indexes.xml"/>
     <include file="db/changelog/migrations/215_add_audit_chain_integrity.xml"/>
     <include file="db/changelog/migrations/216_remove_admin_all.xml"/>
+    <include file="db/changelog/migrations/217_add_token_retention_support.xml"/>
 
 </databaseChangeLog>

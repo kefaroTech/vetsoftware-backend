@@ -167,3 +167,30 @@ tests:
               summary: "La cola de envío del Collector supera el 80 %"
               description: "El destino no drena al ritmo de entrada. Si la cola se llena, la telemetría se descartará."
               runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuenearcapacity"
+
+  - name: security token table growth remains above its configured threshold
+    interval: 5m
+    input_series:
+      - series: 'vetsoftware_security_tokens_rows{job="vetsoftware",instance="backend:8080",token_type="refresh"}'
+        values: '60000x10'
+      - series: 'vetsoftware_security_tokens_growth_threshold{job="vetsoftware",instance="backend:8080"}'
+        values: '50000x10'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VetSoftwareSecurityTokenTableGrowth
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: VetSoftwareSecurityTokenTableGrowth
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareSecurityTokenTableGrowth
+              domain: database
+              instance: backend:8080
+              job: vetsoftware
+              service: vetsoftware
+              severity: warning
+              token_type: refresh
+            exp_annotations:
+              summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
+              description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
+              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresecuritytokentablegrowth"

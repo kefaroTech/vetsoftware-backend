@@ -413,6 +413,24 @@ groups:
           description: "Sin checkpoint reciente, el tramo nuevo de la cadena no tiene ancla inmutable y la depuración de la outbox queda bloqueada."
           runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareauditchaincheckpointstale"
 
+  - name: vetsoftware-security-token-retention
+    interval: 30s
+    rules:
+      - alert: VetSoftwareSecurityTokenTableGrowth
+        expr: |
+          vetsoftware_security_tokens_rows{job="vetsoftware"}
+          > on(job, instance)
+          vetsoftware_security_tokens_growth_threshold{job="vetsoftware"}
+        for: 30m
+        labels:
+          severity: warning
+          domain: database
+          service: vetsoftware
+        annotations:
+          summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
+          description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresecuritytokentablegrowth"
+
   - name: vetsoftware-alert-delivery
     interval: 30s
     rules:

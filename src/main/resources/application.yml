@@ -142,6 +142,15 @@ vetsoftware:
     token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
     # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
     template-id: ${PASSWORD_RESET_TEMPLATE_ID:79e6eeea-ae6a-4475-b17d-beb39279705c}
+  token-cleanup:
+    enabled: ${TOKEN_CLEANUP_ENABLED:true}
+    # Los tokens terminales o expirados se conservan brevemente para diagnóstico y luego se eliminan.
+    retention: ${TOKEN_CLEANUP_RETENTION:P7D}
+    interval: ${TOKEN_CLEANUP_INTERVAL:PT1H}
+    initial-delay: ${TOKEN_CLEANUP_INITIAL_DELAY:PT5M}
+    batch-size: ${TOKEN_CLEANUP_BATCH_SIZE:1000}
+    max-batches-per-run: ${TOKEN_CLEANUP_MAX_BATCHES_PER_RUN:10}
+    growth-warning-threshold: ${TOKEN_CLEANUP_GROWTH_WARNING_THRESHOLD:50000}
   # "Recordar mi código de usuario": por correo se envían todas las cuentas (código + veterinaria) del email.
   # Este correo NO usa plantilla de Resend (el listado es de tamaño variable y superaría el límite de 2.000
   # caracteres por variable): se renderiza en resources/email-templates/recover-code.html y se envía como HTML.

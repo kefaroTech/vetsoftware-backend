@@ -29,6 +29,9 @@ public class RefreshTokenJpaEntity {
     @Column(name = "revoked", nullable = false)
     private boolean revoked = false;
 
+    @Column(name = "revoked_at")
+    private LocalDateTime revokedAt;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -48,6 +51,8 @@ public class RefreshTokenJpaEntity {
     public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
     public boolean isRevoked() { return revoked; }
     public void setRevoked(boolean revoked) { this.revoked = revoked; }
+    public LocalDateTime getRevokedAt() { return revokedAt; }
+    public void setRevokedAt(LocalDateTime revokedAt) { this.revokedAt = revokedAt; }
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }

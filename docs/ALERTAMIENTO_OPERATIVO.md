@@ -238,6 +238,16 @@ La cabeza de la cadena lleva horas sin anclarse en almacenamiento inmutable. Dos
 tramo nuevo no tiene ancla que impida recalcularlo, y la depuración de la outbox queda bloqueada
 (por diseño), así que la tabla crecerá. Revisar el trabajo `audit.chain.checkpoint`.
 
+## VetSoftwareSecurityTokenTableGrowth
+
+La tabla indicada por `token_type` superó durante treinta minutos el umbral publicado en
+`vetsoftware_security_tokens_growth_threshold`. Revise primero los logs del trabajo
+`security.tokens.cleanup` y la métrica `tasks_scheduled_execution_seconds_count` con
+`job_name="security.tokens.cleanup"`. Si el trabajo funciona pero alcanza su límite por ejecución,
+ajuste con prudencia `TOKEN_CLEANUP_BATCH_SIZE` o `TOKEN_CLEANUP_MAX_BATCHES_PER_RUN`; si no hay
+filas elegibles, el crecimiento corresponde a sesiones o solicitudes todavía vigentes y debe
+investigarse antes de reducir la retención.
+
 ## Alertas de SLO
 
 Las seis alertas siguientes no vigilan un umbral técnico sino el **consumo del presupuesto de
