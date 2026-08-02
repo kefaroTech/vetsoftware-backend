@@ -19,4 +19,10 @@ public class JpaPermissionQueryPort implements PermissionQueryPort {
         return permissionJpaRepository.findById(permissionId)
             .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
     }
+
+    @Override
+    public Optional<PermissionRef> findByIdAndCompanyId(Long permissionId, Long companyId) {
+        return permissionJpaRepository.findByIdAndCompany_Id(permissionId, companyId)
+            .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
+    }
 }

@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
-/** Ajustes por empresa (clave-valor). Solo el admin (admin.all) los ve/togglea (gate en los @PreAuthorize). */
+/** Ajustes por empresa (clave-valor), protegidos por permisos granulares y alcance tenant. */
 @RestController
 @RequestMapping("/company-settings")
 public class CompanySettingController {

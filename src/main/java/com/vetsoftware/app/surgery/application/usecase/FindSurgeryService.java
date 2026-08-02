@@ -17,8 +17,8 @@ public class FindSurgeryService implements FindSurgeryUseCase {
     }
 
     @Override
-    public SurgeryDto findById(Long id) {
-        return SurgeryDto.from(repository.findById(id)
+    public SurgeryDto findById(Long id, Long companyId) {
+        return SurgeryDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new SurgeryNotFoundException(id)));
     }
 }

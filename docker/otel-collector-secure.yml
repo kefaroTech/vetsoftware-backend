@@ -1,0 +1,43 @@
+# Capa de seguridad del receptor OTLP (OBS-025).
+#
+# NO es un archivo completo: es un overlay que se pasa como SEGUNDO `--config` después de
+# `otel-collector.yml`. El collector fusiona ambos, así que aquí solo aparece lo que cambia. Nada de
+# lo que ya está en el archivo base (pipelines, colas, tail sampling, límites) se repite: si se
+# repitiera, habría dos definiciones que mantener sincronizadas.
+#
+# Se activa mediante `docker-compose.secure.yml`. Requiere material en /etc/otel/secure:
+#   - otlp.htpasswd    credenciales de los emisores
+#   - collector.crt    certificado de servidor
+#   - collector.key    su llave privada
+# `docker/secure/generate-material.sh` lo genera para un laboratorio; en un ambiente real el
+# certificado y las credenciales vienen del gestor de secretos de la plataforma.
+
+extensions:
+  # Autenticador de servidor. El archivo htpasswd no tiene valor predeterminado: si falta, el
+  # collector no arranca — que es lo correcto, porque arrancar sin él dejaría el receptor abierto.
+  basicauth/otlp:
+    htpasswd:
+      file: /etc/otel/secure/otlp.htpasswd
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        auth:
+          authenticator: basicauth/otlp
+        tls:
+          cert_file: /etc/otel/secure/collector.crt
+          key_file: /etc/otel/secure/collector.key
+          min_version: "1.2"
+      http:
+        auth:
+          authenticator: basicauth/otlp
+        tls:
+          cert_file: /etc/otel/secure/collector.crt
+          key_file: /etc/otel/secure/collector.key
+          min_version: "1.2"
+
+service:
+  # La lista se reemplaza completa al fusionar, así que hay que repetir la extensión de la cola en
+  # disco del archivo base.
+  extensions: [file_storage/queue, basicauth/otlp]

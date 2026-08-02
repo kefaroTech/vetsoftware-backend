@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface DewormingRepository {
     Deworming save(Deworming deworming);
     Optional<Deworming> findById(Long id);
+    Optional<Deworming> findByIdAndCompanyId(Long id, Long companyId);
     List<Deworming> findAll();
     List<Deworming> findAllByAnimalId(Long animalId);
     void delete(Long id);

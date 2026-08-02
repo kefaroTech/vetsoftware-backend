@@ -4,6 +4,6 @@ import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivatePrescriptionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('prescription.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('prescription.update')")
     PrescriptionDto execute(Long id);
 }

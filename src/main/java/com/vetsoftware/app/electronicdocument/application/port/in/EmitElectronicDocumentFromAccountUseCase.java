@@ -9,6 +9,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * transmitir + entregar PDF/QR/correo si valida). El tipo (FE_VENTA / DOC_EQUIV_POS) lo elige el caller.
  */
 public interface EmitElectronicDocumentFromAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
     ElectronicDocumentDto execute(EmitElectronicDocumentCommand command);
 }

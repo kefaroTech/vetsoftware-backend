@@ -38,14 +38,19 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
     @Override
     @Transactional
     public ConsultationDto execute(UpdateConsultationCommand command) {
-        Consultation consultation = repository.findByIdAndCompanyId(command.id(), command.companyId())
+        Consultation consultation = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new ConsultationNotFoundException(command.id()));
+        Long companyId = command.companyId() == null
+            ? consultation.getCompany().id()
+            : command.companyId();
         ConsultationTypeRef consultationType = consultationTypeQueryPort.findById(command.consultationTypeId())
             .orElseThrow(() -> new IllegalArgumentException("ConsultationType not found: " + command.consultationTypeId()));
-        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(companyId)
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
         PhysicalExam physicalExam = new PhysicalExam(
             command.temperature(), command.heartRate(), command.respiratoryRate(),

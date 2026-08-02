@@ -9,10 +9,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * documentos), no solo lectura del catalogo: emitir un documento fiscal es una operacion de facturacion. El
  * gate del modulo BILLING (transmision a la DIAN) es independiente: sin el modulo el documento igual se
  * persiste PENDIENTE. Las lineas GENERAL (precio libre, sin validar contra catalogo) solo las puede emitir
- * {@code admin.all}; el resto valida el precio contra el catalogo en el builder.
+ * el superadmin {@code SYSTEM}; el resto valida el precio contra el catalogo en el builder.
  */
 public interface RegisterPosSaleUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('pos.create') "
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.create') "
             + "and @authz.isMyCompany(#command.companyId) and !#command.hasGeneralLine())")
     ElectronicDocumentDto execute(RegisterPosSaleCommand command);
 }

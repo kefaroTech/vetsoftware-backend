@@ -5,6 +5,7 @@ import com.vetsoftware.app.spa.application.dto.SpaDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ChangeSpaStatusUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or "
+        + "(hasAuthority('spa.update') and @authz.isMyCompany(#command.companyId))")
     SpaDto execute(ChangeSpaStatusCommand command);
 }

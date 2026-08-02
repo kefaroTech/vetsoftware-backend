@@ -5,7 +5,7 @@ import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateCompanyTaxProfileUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') " +
+    @PreAuthorize("hasRole('SYSTEM') " +
             "or (hasAuthority('electronicbilling.create') and @authz.isMyCompany(#command.companyId))")
     CompanyTaxProfileDto execute(CreateCompanyTaxProfileCommand command);
 }

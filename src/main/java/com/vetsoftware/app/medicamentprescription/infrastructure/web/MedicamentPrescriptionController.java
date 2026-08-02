@@ -1,5 +1,6 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.medicamentprescription.application.command.CreateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.application.command.UpdateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.application.dto.MedicamentPrescriptionDto;
@@ -28,19 +29,22 @@ public class MedicamentPrescriptionController {
     private final ListMedicamentPrescriptionsUseCase listUseCase;
     private final DeleteMedicamentPrescriptionUseCase deleteUseCase;
     private final ReactivateMedicamentPrescriptionUseCase reactivateUseCase;
+    private final Authz authz;
 
     public MedicamentPrescriptionController(CreateMedicamentPrescriptionUseCase createUseCase,
                                             UpdateMedicamentPrescriptionUseCase updateUseCase,
                                             FindMedicamentPrescriptionUseCase findUseCase,
                                             ListMedicamentPrescriptionsUseCase listUseCase,
                                             DeleteMedicamentPrescriptionUseCase deleteUseCase,
-                                            ReactivateMedicamentPrescriptionUseCase reactivateUseCase) {
+                                            ReactivateMedicamentPrescriptionUseCase reactivateUseCase,
+                                            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -59,7 +63,7 @@ public class MedicamentPrescriptionController {
 
     @GetMapping("/{id}")
     public MedicamentPrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -68,13 +72,14 @@ public class MedicamentPrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdateMedicamentPrescriptionCommand(
                 id, request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId())));
+                request.posology(), request.observation(), request.prescriptionId(),
+                authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")

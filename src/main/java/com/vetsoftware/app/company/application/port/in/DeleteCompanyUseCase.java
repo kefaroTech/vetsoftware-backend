@@ -3,6 +3,6 @@ package com.vetsoftware.app.company.application.port.in;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteCompanyUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('company.delete') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('company.delete')")
     void execute(Long id);
 }

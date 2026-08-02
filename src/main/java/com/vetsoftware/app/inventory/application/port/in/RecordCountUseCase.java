@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Confirmar un conteo físico: reconcilia el saldo generando ajustes por la diferencia. Gate: mismo permiso que ajustar. */
 public interface RecordCountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('inventory.adjust') and @authz.isMyCompany(#command.companyId))")
     InventoryCountView record(RecordCountCommand command);
 }

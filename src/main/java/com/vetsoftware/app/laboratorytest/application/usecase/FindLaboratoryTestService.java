@@ -17,8 +17,8 @@ public class FindLaboratoryTestService implements FindLaboratoryTestUseCase {
     }
 
     @Override
-    public LaboratoryTestDto findById(Long id) {
-        return LaboratoryTestDto.from(repository.findById(id)
+    public LaboratoryTestDto findById(Long id, Long companyId) {
+        return LaboratoryTestDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new LaboratoryTestNotFoundException(id)));
     }
 }

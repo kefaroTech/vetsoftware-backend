@@ -58,6 +58,11 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     }
 
     @Override
+    public Optional<Vaccination> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Vaccination> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

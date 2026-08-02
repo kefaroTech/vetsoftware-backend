@@ -4,6 +4,6 @@ import com.vetsoftware.app.permission.application.dto.PermissionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivatePermissionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('permission.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('permission.update')")
     PermissionDto execute(Long id);
 }

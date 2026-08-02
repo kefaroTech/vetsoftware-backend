@@ -17,8 +17,8 @@ public class FindHospitalizationObservationService implements FindHospitalizatio
     }
 
     @Override
-    public HospitalizationObservationDto findById(Long id) {
-        return HospitalizationObservationDto.from(repository.findById(id)
+    public HospitalizationObservationDto findById(Long id, Long companyId) {
+        return HospitalizationObservationDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new HospitalizationObservationNotFoundException(id)));
     }
 }

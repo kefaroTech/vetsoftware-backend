@@ -73,33 +73,33 @@ public interface PetshopCatalogUseCase {
         Integer conversionFactor
     ) {}
 
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('product.read')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('product.read')")
     List<UnitMeasureDto> listUnitMeasures();
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
     List<PresentationDto> listPresentations(Long productId, Long companyId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.create') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.create') and @authz.isMyCompany(#companyId))")
     PresentationDto createPresentation(PresentationWrite command, Long companyId, Long actorId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.update') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.update') and @authz.isMyCompany(#companyId))")
     PresentationDto updatePresentation(Long id, PresentationWrite command, Long companyId, Long actorId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
     void deletePresentation(Long id, Long expectedVersion, Long companyId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
     List<BundleDto> listBundles(Long companyId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.create') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.create') and @authz.isMyCompany(#companyId))")
     BundleDto createBundle(BundleWrite command, Long companyId, Long actorId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.update') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.update') and @authz.isMyCompany(#companyId))")
     BundleDto updateBundle(Long id, BundleWrite command, Long companyId, Long actorId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
     void deleteBundle(Long id, Long expectedVersion, Long companyId);
 
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
     BarcodeLookupDto findByBarcode(String barcode, Long companyId);
 }

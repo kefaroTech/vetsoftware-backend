@@ -17,8 +17,8 @@ public class FindDiagnosticImagingTypeService implements FindDiagnosticImagingTy
     }
 
     @Override
-    public DiagnosticImagingTypeDto findById(Long id) {
-        return DiagnosticImagingTypeDto.from(repository.findById(id)
+    public DiagnosticImagingTypeDto findById(Long id, Long companyId) {
+        return DiagnosticImagingTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
     }
 }

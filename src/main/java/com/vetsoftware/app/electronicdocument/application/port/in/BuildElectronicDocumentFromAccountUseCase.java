@@ -9,6 +9,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * para construir/probar el modelo; F4 reemplazara este disparador manual por la emision al cerrar.
  */
 public interface BuildElectronicDocumentFromAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
     ElectronicDocumentDto execute(BuildElectronicDocumentCommand command);
 }

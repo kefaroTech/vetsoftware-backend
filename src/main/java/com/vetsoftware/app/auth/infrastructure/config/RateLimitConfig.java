@@ -31,9 +31,13 @@ public class RateLimitConfig {
     @Bean(destroyMethod = "shutdown")
     public RedisClient rateLimitRedisClient(
             ClientResources clientResources,
+            @Value("${spring.data.redis.url:}") String url,
             @Value("${spring.data.redis.host:localhost}") String host,
             @Value("${spring.data.redis.port:6379}") int port) {
-        return RedisClient.create(clientResources, RedisURI.builder().withHost(host).withPort(port).build());
+        RedisURI redisUri = url == null || url.isBlank()
+                ? RedisURI.builder().withHost(host).withPort(port).build()
+                : RedisURI.create(url);
+        return RedisClient.create(clientResources, redisUri);
     }
 
     @Bean(destroyMethod = "close")

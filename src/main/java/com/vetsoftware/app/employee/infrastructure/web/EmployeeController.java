@@ -92,7 +92,7 @@ public class EmployeeController {
         authz.requireAssignableBranches(request.branchIds());
         EmployeeDto dto = inviteUseCase.execute(
             new InviteEmployeeCommand(request.employeeCode(), request.password(), request.name(),
-                request.email(), request.companyId(), request.roleIds(), request.branchIds()));
+                request.email(), authz.currentCompanyId(), request.roleIds(), request.branchIds()));
         auditLogger.employeeInvited(dto.id(), dto.employeeCode(), dto.company().id());
         return toResponse(dto);
     }
@@ -160,7 +160,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     public EmployeeResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

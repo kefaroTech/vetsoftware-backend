@@ -18,8 +18,9 @@ public class DeleteSpaService implements DeleteSpaUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SpaNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
+            .orElseThrow(() -> new SpaNotFoundException(id));
         repository.delete(id);
     }
 }

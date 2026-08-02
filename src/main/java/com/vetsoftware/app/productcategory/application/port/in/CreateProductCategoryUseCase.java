@@ -5,6 +5,6 @@ import com.vetsoftware.app.productcategory.application.dto.ProductCategoryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateProductCategoryUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('productCategory.create') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('productCategory.create') and @authz.isMyCompany(#command.companyId))")
     ProductCategoryDto execute(CreateProductCategoryCommand command);
 }

@@ -4,6 +4,6 @@ import com.vetsoftware.app.withholdingconfig.application.dto.WithholdingConfigDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindWithholdingConfigUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicbilling.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('electronicbilling.read') and @authz.isMyCompany(#companyId))")
     WithholdingConfigDto findByCompany(Long companyId);
 }

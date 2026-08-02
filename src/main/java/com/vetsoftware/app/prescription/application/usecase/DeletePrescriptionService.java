@@ -24,8 +24,9 @@ public class DeletePrescriptionService implements DeletePrescriptionUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new PrescriptionNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
+            .orElseThrow(() -> new PrescriptionNotFoundException(id));
         if (medicamentPrescriptionChildrenQueryPort.existsActiveByPrescriptionId(id)) {
             throw new PrescriptionHasActiveChildrenException(id, "medicamentPrescription");
         }

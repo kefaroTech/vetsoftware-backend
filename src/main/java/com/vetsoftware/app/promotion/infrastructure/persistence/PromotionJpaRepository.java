@@ -16,6 +16,9 @@ public interface PromotionJpaRepository extends JpaRepository<PromotionJpaEntity
     Optional<PromotionJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
+    Optional<PromotionJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = "company")
     List<PromotionJpaEntity> findAllByCompanyId(Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

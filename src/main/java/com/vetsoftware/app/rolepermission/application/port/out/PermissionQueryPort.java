@@ -5,4 +5,5 @@ import java.util.Optional;
 
 public interface PermissionQueryPort {
     Optional<PermissionRef> findById(Long permissionId);
+    Optional<PermissionRef> findByIdAndCompanyId(Long permissionId, Long companyId);
 }

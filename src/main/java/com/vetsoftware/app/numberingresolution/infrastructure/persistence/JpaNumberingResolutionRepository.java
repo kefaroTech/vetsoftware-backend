@@ -35,6 +35,11 @@ public class JpaNumberingResolutionRepository implements NumberingResolutionRepo
     }
 
     @Override
+    public Optional<NumberingResolution> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<NumberingResolution> findAllByCompanyId(Long companyId) {
         return jpaRepository.findAllByCompanyId(companyId)
                 .stream().map(mapper::toDomain).toList();

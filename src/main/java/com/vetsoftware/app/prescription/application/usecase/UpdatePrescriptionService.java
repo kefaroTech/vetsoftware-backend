@@ -37,14 +37,19 @@ public class UpdatePrescriptionService implements UpdatePrescriptionUseCase {
     @Override
     @Transactional
     public PrescriptionDto execute(UpdatePrescriptionCommand command) {
-        Prescription prescription = repository.findById(command.id())
+        Prescription prescription = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new PrescriptionNotFoundException(command.id()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        Long companyId = command.companyId() == null
+            ? prescription.getCompany().id()
+            : command.companyId();
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = consultationQueryPort.findById(command.consultationId())
+        ConsultationRef consultation = consultationQueryPort.findByIdAndCompanyId(command.consultationId(), companyId)
             .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(companyId)
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
         prescription.update(command.date(), command.diagnosis(), command.observations(),
             animal, consultation, company);

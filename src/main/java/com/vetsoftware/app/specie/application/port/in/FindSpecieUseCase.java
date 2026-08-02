@@ -4,6 +4,6 @@ import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindSpecieUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM')")
     SpecieDto findById(Long id);
 }

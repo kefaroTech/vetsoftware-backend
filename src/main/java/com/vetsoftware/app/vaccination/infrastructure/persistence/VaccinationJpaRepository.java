@@ -16,6 +16,9 @@ public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEn
     Optional<VaccinationJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+    Optional<VaccinationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
     List<VaccinationJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

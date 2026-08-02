@@ -1,13 +1,12 @@
 package com.vetsoftware.app.registration.infrastructure.email;
 
 import com.vetsoftware.app.infrastructure.email.ResendEmailClient;
+import com.vetsoftware.app.infrastructure.logging.DevEmailPreview;
 import com.vetsoftware.app.registration.application.port.out.VerificationEmailSender;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResendVerificationEmailSender implements VerificationEmailSender {
 
-    private static final Logger log = LoggerFactory.getLogger(ResendVerificationEmailSender.class);
     private static final String SUBJECT = "Verifica tu cuenta de VetSoftware";
 
     private final ResendEmailClient email;
@@ -53,7 +51,9 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
     public void send(String toEmail, String employeeName, String companyName, String rawToken) {
         String link = buildLink(rawToken);
         if (!email.isEnabled()) {
-            log.info("[dev] Envío de correo deshabilitado. Enlace de verificación para {}: {}", toEmail, link);
+            // El enlace lleva el token de verificación en claro: va por el canal de previsualización
+            // local, que no alcanza el pipeline exportado (ver DevEmailPreview).
+            DevEmailPreview.show(toEmail, "Enlace de verificación", link);
             return;
         }
         Map<String, Object> variables = new LinkedHashMap<>();

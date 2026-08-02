@@ -4,6 +4,6 @@ import com.vetsoftware.app.basepermission.application.dto.BasePermissionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindBasePermissionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM')")
     BasePermissionDto findById(Long id);
 }

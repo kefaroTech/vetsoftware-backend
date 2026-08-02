@@ -16,6 +16,9 @@ public interface DewormingJpaRepository extends JpaRepository<DewormingJpaEntity
     Optional<DewormingJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    Optional<DewormingJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     List<DewormingJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

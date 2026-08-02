@@ -36,6 +36,11 @@ public class JpaDiagnosticImagingTypeRepository implements DiagnosticImagingType
     }
 
     @Override
+    public Optional<DiagnosticImagingType> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findAvailableById(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<DiagnosticImagingType> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

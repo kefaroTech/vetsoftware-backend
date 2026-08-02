@@ -23,7 +23,9 @@ public class ChangeSpaStatusService implements ChangeSpaStatusUseCase {
     @Override
     @Transactional
     public SpaDto execute(ChangeSpaStatusCommand command) {
-        Spa spa = repository.findById(command.id())
+        Spa spa = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new SpaNotFoundException(command.id()));
         SpaStatus newStatus = SpaStatus.valueOf(command.status().toUpperCase());
         spa.changeStatus(newStatus);

@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAvailableMedicamentsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('prescription.read') or hasAuthority('prescription.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('prescription.read') or hasAuthority('prescription.create')")
     List<MedicamentDto> listAvailable(Long companyId);
 }

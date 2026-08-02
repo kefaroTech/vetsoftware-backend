@@ -6,6 +6,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAnimalAlertsByAnimalUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('animal.read') and @authz.isMyCompany(#query.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.read') and @authz.isMyCompany(#query.companyId))")
     List<AnimalAlertDto> execute(ListAnimalAlertsByAnimalQuery query);
 }

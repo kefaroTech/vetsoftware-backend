@@ -1,22 +1,82 @@
 name: vetsoftware
 
+# Límites de recursos (OBS-027). Ver docs/RESILIENCIA_OBSERVABILIDAD.md para la justificación de
+# cada valor y el comportamiento de backpressure esperado.
+#
+# Dos reglas que no conviene romper al ajustarlos:
+#   1. El límite del contenedor del collector debe quedar POR ENCIMA de su `memory_limiter`, para
+#      que el propio collector aplique backpressure antes de que el kernel lo mate por OOM.
+#   2. Un límite sin política de descarte solo cambia quién muere. Donde el servicio tiene su propio
+#      mecanismo (maxmemory de Redis, retención de Prometheus, colas del collector), hay que
+#      configurarlo además del límite del contenedor.
+#
+# Versiones de imagen (OBS-024). TODAS las imágenes están fijadas a una versión concreta: ni
+# `latest`, ni un tag de major/minor móvil (`8.0`, `3`, `7-alpine`), ni un alias de canal
+# (`lts-community`). Un tag móvil hace que `docker compose up` reinstale una versión distinta sin
+# ningún cambio en el repositorio, lo que rompe la reproducción de un incidente pasado.
+#
+# La matriz compatible, los digests esperados y el procedimiento para subir una versión están en
+# docs/MATRIZ_VERSIONES_STACK.md. `docker/tests/image-pins.sh` falla si alguien reintroduce un tag
+# móvil o si un tag fijado cambia de digest.
+#
+# Exposición y credenciales (OBS-025). Ver docs/SEGURIDAD_OBSERVABILIDAD.md. Tres reglas:
+#   1. Todo puerto publicado se enlaza a `${LOCAL_BIND_HOST}`, `127.0.0.1` por omisión. Antes se
+#      publicaba en todas las interfaces, así que cualquiera con ruta al host podía consultar Loki o
+#      inyectar telemetría falsa por OTLP.
+#   2. Loki y Tempo no publican puerto: viven solo en la red `telemetry`, marcada `internal: true`,
+#      sin ruta hacia ni desde fuera del stack. Se consultan por Grafana. Para alcanzarlos desde el
+#      host durante una depuración, ver `docker-compose.debug.yml`.
+#   3. Ningún secreto tiene valor predeterminado utilizable. `${VAR:?mensaje}` aborta el arranque
+#      cuando falta, en lugar de dejar una credencial conocida en pie.
+
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.8-alpine
     container_name: vetsoftware_redis
     ports:
-      - "${LOCAL_REDIS_PORT:-6379}:6379"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_REDIS_PORT:-6379}:6379"
     volumes:
       - vetsoftware_redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
+    # `maxmemory` estaba sin fijar (0 = sin límite), lo que tenía dos consecuencias: Redis podía
+    # crecer hasta agotar la memoria del host, y la alerta VetSoftwareRedisMemoryHigh **nunca podía
+    # dispararse**, porque exige `redis_memory_max_bytes > 0`.
+    #
+    # La política es `volatile-lru` y no `allkeys-lru` a propósito: solo desaloja claves con TTL.
+    # Todas las entradas de caché de la aplicación llevan TTL de 5 min (CacheConfig), así que son
+    # desalojables; cualquier clave sin TTL que se añada en el futuro queda intacta.
+    # Se deja margen entre maxmemory (384m) y el límite del contenedor (512m) para la
+    # fragmentación y los búferes de cliente, que no cuentan dentro de maxmemory.
+    command: >
+      redis-server --save 60 1 --loglevel warning
+      --maxmemory 384mb --maxmemory-policy volatile-lru
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 12
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.87.0
+    container_name: vetsoftware_redis_exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    depends_on:
+      redis:
+        condition: service_healthy
+
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.45
     container_name: vetsoftware_mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_ROOT_PASSWORD:-cronos2026*}
@@ -24,15 +84,47 @@ services:
       MYSQL_USER: ${LOCAL_DB_USERNAME:-cronos}
       MYSQL_PASSWORD: ${LOCAL_DB_PASSWORD:-cronos2026*}
     ports:
-      - "${LOCAL_MYSQL_PORT:-3306}:3306"
+      # Solo el backend del host necesita MySQL. Las credenciales locales conservan un valor
+      # predeterminado a propósito: MySQL solo las aplica al inicializar el volumen, así que exigir un
+      # secreto nuevo sobre un volumen ya creado no cambiaría la contraseña real, solo rompería el
+      # arranque. El control efectivo es que el puerto no salga del host.
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_MYSQL_PORT:-3306}:3306"
     volumes:
       - vetsoftware_mysql_data:/var/lib/mysql
+    # El buffer pool de InnoDB queda en su valor por omisión (128M), muy por debajo del límite, así
+    # que MySQL no intentará usar los 4G ni siquiera bajo carga.
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$$MYSQL_ROOT_PASSWORD\""]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 15s
+
+  # Un volumen nombrado se crea como root:root, pero la imagen del collector es distroless y corre
+  # como 10001:10001, así que no podría crear su directorio de cola. Este init de un solo uso ajusta
+  # la propiedad antes de que arranque el collector.
+  #
+  # La alternativa sería `user: "0:0"` en el collector, descartada a propósito: dejar el receptor
+  # OTLP corriendo como root es exactamente el tipo de exposición que señala OBS-025.
+  otel-queue-init:
+    image: busybox:1.37.0
+    container_name: vetsoftware_otel_queue_init
+    user: "0:0"
+    command: ["sh", "-c", "mkdir -p /var/lib/otelcol/queue && chown -R 10001:10001 /var/lib/otelcol"]
+    # Corre como root y solo toca un volumen: no necesita red en absoluto.
+    network_mode: none
+    volumes:
+      - vetsoftware_otel_queue:/var/lib/otelcol
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.153.0
@@ -43,10 +135,32 @@ services:
       OTEL_TAIL_SAMPLING_PERCENTAGE: ${OTEL_TAIL_SAMPLING_PERCENTAGE:-100}
     volumes:
       - ./docker/otel-collector.yml:/etc/otel/otel-collector.yml:ro
+      # Cola persistente: sobrevive a un reinicio del collector. Sin este volumen, "collector
+      # reiniciado" pierde todo lo que estuviera encolado.
+      - vetsoftware_otel_queue:/var/lib/otelcol
+    # El único emisor esperado en local es el backend corriendo en el host, así que el receptor OTLP
+    # se publica solo en loopback. Los emisores dentro del stack lo alcanzan por la red `telemetry`
+    # sin pasar por el host. Para un ambiente compartido, donde loopback ya no basta, ver
+    # `docker-compose.secure.yml` (TLS + autenticación en el receptor).
     ports:
-      - "${LOCAL_OTLP_GRPC_PORT:-4317}:4317"
-      - "${LOCAL_OTLP_HTTP_PORT:-4318}:4318"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_OTLP_GRPC_PORT:-4317}:4317"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_OTLP_HTTP_PORT:-4318}:4318"
+    networks:
+      # `default` para recibir del host por el puerto publicado; `telemetry` para exportar a Loki y
+      # Tempo, que no están en ninguna otra red.
+      - default
+      - telemetry
+    # El límite (1G) está deliberadamente por encima del `memory_limiter` del collector (512 MiB +
+    # 128 MiB de spike). Así el collector rechaza telemetría entrante y aplica backpressure al
+    # emisor, en lugar de que el kernel lo mate por OOM y se pierda la cola en memoria.
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
     depends_on:
+      otel-queue-init:
+        condition: service_completed_successfully
       tempo:
         condition: service_healthy
       loki:
@@ -62,9 +176,17 @@ services:
     volumes:
       - ./docker/tempo.yml:/etc/tempo/tempo.yml:ro
       - vetsoftware_tempo_data:/var/tempo
-    ports:
-      # La API de consulta queda limitada al host local; la ingesta OTLP viaja por la red interna.
-      - "127.0.0.1:3200:3200"
+    # Sin puerto publicado. La ingesta llega del collector y las consultas de Grafana, ambos dentro de
+    # `telemetry`; nada en el host necesita hablar con Tempo directamente. Su receptor OTLP escucha en
+    # 0.0.0.0 dentro del contenedor, pero la red es `internal`, así que el único origen posible es
+    # otro contenedor del stack.
+    networks:
+      - telemetry
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
     healthcheck:
       test: ["CMD", "/tempo", "-health", "-health.url=http://127.0.0.1:3200/ready"]
       interval: 5s
@@ -79,43 +201,156 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
-      - --storage.tsdb.retention.size=5GB
+      # La ventana rodante de los SLO es de 30 días: la retención debe cubrirla con margen o
+      # `vetsoftware:slo_compliance:ratio30d` se calcularía sobre una ventana truncada.
+      # En producción la retención larga la aporta Grafana Cloud (docs/OBSERVABILIDAD_PROD_GRAFANA_S3.md).
+      - --storage.tsdb.retention.time=35d
+      - --storage.tsdb.retention.size=15GB
       - --web.enable-remote-write-receiver
       - --enable-feature=exemplar-storage
     ports:
-      - "9090:9090"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:9090:9090"
+    networks:
+      # `default` para raspar el backend por `host.docker.internal`; `telemetry` para raspar Loki,
+      # Tempo y el collector, y para recibir el remote-write del metrics_generator de Tempo.
+      - default
+      - telemetry
     volumes:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus-slo-rules.yml:/etc/prometheus/rules/slo-rules.yml:ro
+      - ./docker/prometheus-slo-alerts.yml:/etc/prometheus/rules/slo-alerts.yml:ro
       - ./docker/prometheus-business-alerts.yml:/etc/prometheus/rules/business-alerts.yml:ro
+      - ./docker/prometheus-platform-alerts.yml:/etc/prometheus/rules/platform-alerts.yml:ro
       - vetsoftware_prometheus_data:/prometheus
     secrets:
       - prometheus_metrics_username
       - prometheus_metrics_password
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Prometheus mantiene bloques recientes en memoria y crece con el número de series. El tope real
+    # de disco lo pone `--storage.tsdb.retention.size=15GB`, no este límite.
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    container_name: vetsoftware_alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --enable-feature=utf8-strict-mode
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:9093:9093"
+    volumes:
+      - ${ALERTMANAGER_CONFIG_PATH:-./docker/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+      - vetsoftware_alertmanager_data:/alertmanager
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:9093/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  mailpit:
+    image: axllent/mailpit:v1.30.6
+    container_name: vetsoftware_mailpit
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:8025:8025"
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 500
+    volumes:
+      - vetsoftware_mailpit_data:/data
+    # MP_MAX_MESSAGES=500 ya acota el crecimiento del buzón.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   loki:
-    image: grafana/loki:latest
+    # 3.7.x usa el esquema TSDB v13 en su `local-config.yaml` por omisión. Bajar a 3.4 o menos con el
+    # volumen ya escrito deja índices que la versión antigua no sabe leer: la ruta de downgrade es
+    # borrar `vetsoftware_loki_data`, no cambiar el tag.
+    image: grafana/loki:3.7.1
     container_name: vetsoftware_loki
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+    # Sin puerto publicado: se consulta desde Grafana y recibe del collector, ambos en `telemetry`.
+    networks:
+      - telemetry
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+      # El reporte anónimo de uso llama a stats.grafana.org. En una red `internal` no tiene ruta de
+      # salida, así que solo generaría errores de DNS en el log; y un almacén de logs de una veterinaria
+      # no tiene por qué anunciarse a un tercero.
+      - -reporting.enabled=false
     volumes:
       - vetsoftware_loki_data:/loki
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
 
   grafana:
-    image: grafana/grafana:latest
+    # Grafana migra su base de datos interna al arrancar y no la revierte: una vez que 13.0.1 tocó
+    # `vetsoftware_grafana_data`, volver a un major anterior exige recrear el volumen. Los dashboards
+    # y datasources se aprovisionan desde ./docker/grafana, así que recrearlo no pierde nada nuestro.
+    image: grafana/grafana:13.0.1
     container_name: vetsoftware_grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:3000:3000"
+    networks:
+      # `default` para servir la interfaz al navegador del host; `telemetry` para consultar Loki y Tempo.
+      - default
+      - telemetry
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      # Sin fallback: antes `${GRAFANA_PASSWORD:-admin}` dejaba admin/admin en un puerto abierto a toda
+      # la red. Si la variable falta, `docker compose up` falla con este mensaje en lugar de arrancar
+      # con una credencial conocida.
+      #
+      # OJO: Grafana solo aplica esta variable cuando CREA el usuario admin, o sea al inicializar el
+      # volumen. Sobre un volumen existente hay que rotarla a mano:
+      #   docker compose exec grafana grafana cli --homepath /usr/share/grafana \
+      #     admin reset-admin-password "$GRAFANA_PASSWORD"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:?defina GRAFANA_PASSWORD (ver deploy/env/local.env.example); Grafana ya no arranca con la contraseña admin por omisión}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      # Sin llamadas a grafana.com desde una instancia de laboratorio.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
       - vetsoftware_grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
     depends_on:
       prometheus:
         condition: service_started
@@ -125,24 +360,36 @@ services:
         condition: service_healthy
 
   sonarqube:
-    image: sonarqube:lts-community
+    # `lts-community` es un alias de canal: apuntaba a 9.9.x y salta de major cuando Sonar promueve
+    # una nueva LTS. La versión concreta debe coincidir con la que documenta CLAUDE.md para
+    # `mvn sonar:sonar`.
+    image: sonarqube:9.9.8-community
     container_name: vetsoftware_sonarqube
     ports:
-      - "9000:9000"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:9000:9000"
     environment:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
     volumes:
       - vetsoftware_sonarqube_data:/opt/sonarqube/data
       - vetsoftware_sonarqube_extensions:/opt/sonarqube/extensions
       - vetsoftware_sonarqube_logs:/opt/sonarqube/logs
+    # SonarQube arranca un Elasticsearch embebido y es el servicio más hambriento del stack. Es
+    # herramienta de desarrollo, no parte del runtime: si hay que recortar memoria del host, es el
+    # primer candidato a apagar.
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
 
   localstack:
-    # 3.x conserva el modo local sin cuenta/token. Las versiones 2026 requieren licencia.
-    image: localstack/localstack:3
+    # 3.x conserva el modo local sin cuenta/token. Las versiones 2026 requieren licencia, así que el
+    # pin no es solo reproducibilidad: subir de major rompe el arranque sin credenciales.
+    image: localstack/localstack:3.8.1
     container_name: vetsoftware_localstack
     restart: unless-stopped
     ports:
-      - "${LOCALSTACK_PORT:-4566}:4566"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCALSTACK_PORT:-4566}:4566"
     environment:
       SERVICES: s3,firehose,iam,sts
       AWS_DEFAULT_REGION: us-east-1
@@ -154,12 +401,31 @@ services:
     volumes:
       - ./docker/localstack/ready.d:/etc/localstack/init/ready.d
       - vetsoftware_localstack_data:/var/lib/localstack
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 15s
+
+networks:
+  # Red compartida del stack. Se nombra explícitamente porque `docker/tests/resilience.sh` y la
+  # documentación la referencian por nombre; con la red implícita el nombre lo elegía Compose.
+  default:
+    name: vetsoftware_default
+
+  # Red del plano de telemetría. `internal: true` significa que Docker no le instala ruta hacia el
+  # exterior: sus contenedores no pueden salir a Internet ni recibir tráfico de fuera del host, y
+  # publicar un puerto sobre ella no funcionaría (verificado). Es lo que se quiere para Loki y Tempo:
+  # solo el collector escribe y solo Grafana y Prometheus leen.
+  telemetry:
+    name: vetsoftware_telemetry
+    internal: true
 
 secrets:
   prometheus_metrics_username:
@@ -168,11 +434,14 @@ secrets:
     environment: ACTUATOR_PROMETHEUS_PASSWORD
 
 volumes:
+  vetsoftware_otel_queue:
   vetsoftware_redis_data:
   vetsoftware_mysql_data:
   vetsoftware_grafana_data:
   vetsoftware_loki_data:
   vetsoftware_prometheus_data:
+  vetsoftware_alertmanager_data:
+  vetsoftware_mailpit_data:
   vetsoftware_tempo_data:
   vetsoftware_sonarqube_data:
   vetsoftware_sonarqube_extensions:

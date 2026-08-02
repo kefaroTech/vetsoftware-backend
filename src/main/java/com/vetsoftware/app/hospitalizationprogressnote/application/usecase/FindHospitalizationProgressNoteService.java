@@ -17,8 +17,8 @@ public class FindHospitalizationProgressNoteService implements FindHospitalizati
     }
 
     @Override
-    public HospitalizationProgressNoteDto findById(Long id) {
-        return HospitalizationProgressNoteDto.from(repository.findById(id)
+    public HospitalizationProgressNoteDto findById(Long id, Long companyId) {
+        return HospitalizationProgressNoteDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id)));
     }
 }

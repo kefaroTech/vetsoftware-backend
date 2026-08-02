@@ -75,7 +75,7 @@ public class PrescriptionController {
 
     @GetMapping("/{id}")
     public PrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -84,13 +84,13 @@ public class PrescriptionController {
         return toResponse(updateUseCase.execute(
             new UpdatePrescriptionCommand(
                 id, request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+                request.animalId(), request.consultationId(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")

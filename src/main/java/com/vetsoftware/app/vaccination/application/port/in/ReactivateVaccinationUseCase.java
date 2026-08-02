@@ -4,6 +4,6 @@ import com.vetsoftware.app.vaccination.application.dto.VaccinationDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateVaccinationUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('vaccination.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('vaccination.update')")
     VaccinationDto execute(Long id);
 }

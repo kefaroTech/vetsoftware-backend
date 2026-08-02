@@ -12,6 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * ya tiene documento. Devuelve null si no emite (cuenta ya facturada).
  */
 public interface EmitElectronicDocumentOnCloseUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM') or @authz.isMyCompany(#command.companyId)")
+    @PreAuthorize("hasRole('SYSTEM') or @authz.isMyCompany(#command.companyId)")
     ElectronicDocumentDto execute(EmitElectronicDocumentCommand command);
 }

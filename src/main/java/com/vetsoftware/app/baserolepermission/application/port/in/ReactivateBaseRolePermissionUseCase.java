@@ -4,6 +4,6 @@ import com.vetsoftware.app.baserolepermission.application.dto.BaseRolePermission
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateBaseRolePermissionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('base_role_permission.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('base_role_permission.update')")
     BaseRolePermissionDto execute(Long id);
 }

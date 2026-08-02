@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface DiagnosticImagingRepository {
     DiagnosticImaging save(DiagnosticImaging imaging);
     Optional<DiagnosticImaging> findById(Long id);
+    Optional<DiagnosticImaging> findByIdAndCompanyId(Long id, Long companyId);
     List<DiagnosticImaging> findAll();
     List<DiagnosticImaging> findAllByAnimalId(Long animalId);
     void delete(Long id);

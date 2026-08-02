@@ -25,7 +25,7 @@ public record RegisterPosSaleCommand(
         /** Sede emisora (opcional). Si no viene, se resuelve a la "Principal" de la empresa. */
         Long branchId
 ) {
-    /** true si alguna linea es GENERAL (precio libre): solo admin.all puede emitirlas (ver @PreAuthorize del use case). */
+    /** true si alguna linea es GENERAL (precio libre): solo SYSTEM puede emitirlas (ver el gate del caso de uso). */
     public boolean hasGeneralLine() {
         return lines != null && lines.stream().anyMatch(l -> l.kind() == SaleLineKind.GENERAL);
     }

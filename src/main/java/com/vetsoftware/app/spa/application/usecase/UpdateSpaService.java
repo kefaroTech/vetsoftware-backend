@@ -37,14 +37,17 @@ public class UpdateSpaService implements UpdateSpaUseCase {
     @Override
     @Transactional
     public SpaDto execute(UpdateSpaCommand command) {
-        Spa spa = repository.findById(command.id())
+        Spa spa = (command.companyId() == null
+            ? repository.findById(command.id())
+            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new SpaNotFoundException(command.id()));
+        Long companyId = command.companyId() == null ? spa.getCompany().id() : command.companyId();
         SpaTypeRef spaType = spaTypeQueryPort.findById(command.spaTypeId())
             .orElseThrow(() -> new IllegalArgumentException("SpaType not found: " + command.spaTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
             .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(companyId)
+            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
         spa.update(command.date(), spaType, command.reason(), command.details(),
             command.observations(), animal, company);

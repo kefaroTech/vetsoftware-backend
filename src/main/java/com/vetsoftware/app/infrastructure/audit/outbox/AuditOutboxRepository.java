@@ -28,12 +28,17 @@ class AuditOutboxRepository {
      */
     @Transactional
     public List<AuditOutboxRecord> claim(int limit, Instant now, Duration leaseDuration) {
+        // Solo se publica lo ya secuenciado: el registro que llega al archivo inmutable debe llevar
+        // su posición y su eslabón. Lo insertado entre el secuenciado y esta consulta espera al
+        // ciclo siguiente.
         List<AuditOutboxRecord> records = jdbcTemplate.query("""
-                SELECT id, event_id, payload, attempts
+                SELECT id, event_id, payload, attempts, chain_sequence, previous_hash,
+                       payload_hash, chain_hash
                   FROM audit_event_outbox
-                 WHERE ((status IN ('PENDING', 'FAILED') AND next_attempt_at <= ?)
+                 WHERE chain_sequence IS NOT NULL
+                   AND ((status IN ('PENDING', 'FAILED') AND next_attempt_at <= ?)
                     OR (status = 'PROCESSING' AND locked_until < ?))
-                 ORDER BY id
+                 ORDER BY chain_sequence
                  LIMIT ?
                  FOR UPDATE SKIP LOCKED
                 """,
@@ -41,7 +46,11 @@ class AuditOutboxRepository {
                         resultSet.getLong("id"),
                         resultSet.getString("event_id"),
                         resultSet.getString("payload"),
-                        resultSet.getInt("attempts") + 1),
+                        resultSet.getInt("attempts") + 1,
+                        resultSet.getLong("chain_sequence"),
+                        resultSet.getString("previous_hash"),
+                        resultSet.getString("payload_hash"),
+                        resultSet.getString("chain_hash")),
                 Timestamp.from(now), Timestamp.from(now), limit);
 
         if (records.isEmpty()) {
@@ -95,11 +104,20 @@ class AuditOutboxRepository {
                 Timestamp.from(nextAttemptAt), truncate(error), id);
     }
 
+    /**
+     * Depura eventos ya publicados. Nunca rebasa la marca de checkpoint: eliminar un eslabón que
+     * todavía no quedó anclado en almacenamiento inmutable abriría un hueco imposible de auditar
+     * después.
+     */
     @Transactional
     public int deletePublishedBefore(Instant cutoff, int limit) {
         return jdbcTemplate.update("""
                 DELETE FROM audit_event_outbox
-                 WHERE status = 'PUBLISHED' AND published_at < ?
+                 WHERE status = 'PUBLISHED'
+                   AND published_at < ?
+                   AND chain_sequence IS NOT NULL
+                   AND chain_sequence <= (
+                       SELECT last_checkpoint_sequence FROM audit_chain_head WHERE id = 1)
                  ORDER BY id
                  LIMIT ?
                 """,

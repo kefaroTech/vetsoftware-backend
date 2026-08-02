@@ -35,6 +35,11 @@ public class JpaPromotionRepository implements PromotionRepository {
     }
 
     @Override
+    public Optional<Promotion> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Promotion> findAllByCompanyId(Long companyId) {
         return jpaRepository.findAllByCompanyId(companyId)
                 .stream().map(mapper::toDomain).toList();

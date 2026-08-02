@@ -16,6 +16,9 @@ public interface DiagnosticImagingJpaRepository extends JpaRepository<Diagnostic
     Optional<DiagnosticImagingJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"diagnosticImagingType", "animal", "consultation", "company"})
+    Optional<DiagnosticImagingJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"diagnosticImagingType", "animal", "consultation", "company"})
     List<DiagnosticImagingJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

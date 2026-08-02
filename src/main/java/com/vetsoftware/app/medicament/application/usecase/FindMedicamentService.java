@@ -17,8 +17,8 @@ public class FindMedicamentService implements FindMedicamentUseCase {
     }
 
     @Override
-    public MedicamentDto findById(Long id) {
-        return MedicamentDto.from(repository.findById(id)
+    public MedicamentDto findById(Long id, Long companyId) {
+        return MedicamentDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new MedicamentNotFoundException(id)));
     }
 }

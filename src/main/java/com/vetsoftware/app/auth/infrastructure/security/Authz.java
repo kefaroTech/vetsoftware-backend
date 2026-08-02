@@ -1,18 +1,20 @@
 package com.vetsoftware.app.auth.infrastructure.security;
 
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
+import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import java.util.Collection;
 import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Component("authz")
 public class Authz {
 
-    /** Permiso comodín: el empleado admin ve/opera en TODA la empresa, sin acotar por sede. */
-    private static final String ADMIN_PERMISSION = "admin.all";
+    public static final String COMPANY_SCOPE_HEADER = "X-Company-Id";
 
     public boolean isMyCompany(Long companyId) {
         if (companyId == null) return false;
@@ -27,7 +29,19 @@ public class Authz {
         if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
             return me.companyId();
         }
-        throw new AccessDeniedException("No employee context");
+        if (auth != null && auth.getPrincipal() instanceof SystemUserContext) {
+            return requiredSystemCompanyId();
+        }
+        throw new AccessDeniedException("No company context");
+    }
+
+    /** Empresa del empleado o {@code null} para un superadmin/proceso global. */
+    public Long currentCompanyIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
+            return me.companyId();
+        }
+        return null;
     }
 
     public Long currentEmployeeId() {
@@ -56,12 +70,27 @@ public class Authz {
         return null;
     }
 
-    /** ¿El empleado autenticado es admin (permiso {@code admin.all})? El admin no se acota por sede. */
-    public boolean isAdmin() {
+    /** El bypass global sólo corresponde a una cuenta de sistema autenticada. */
+    public boolean isSuperAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null
-            && auth.getPrincipal() instanceof EmployeeContext me
-            && me.permissions().contains(ADMIN_PERMISSION);
+        return auth != null && auth.getPrincipal() instanceof SystemUserContext;
+    }
+
+    private static Long requiredSystemCompanyId() {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
+            throw new IllegalArgumentException(COMPANY_SCOPE_HEADER + " is required for tenant operations");
+        }
+        String raw = attributes.getRequest().getHeader(COMPANY_SCOPE_HEADER);
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(COMPANY_SCOPE_HEADER + " is required for tenant operations");
+        }
+        try {
+            long companyId = Long.parseLong(raw.trim());
+            if (companyId <= 0) throw new NumberFormatException("non-positive");
+            return companyId;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(COMPANY_SCOPE_HEADER + " must be a positive integer");
+        }
     }
 
     /** Sedes asignadas al empleado autenticado (para acotar qué sedes puede asignar a otros). */
@@ -74,12 +103,12 @@ public class Authz {
     }
 
     /**
-     * Exige que el caller pueda ASIGNAR todas esas sedes a un empleado: un admin puede asignar cualquier sede de su
-     * empresa; un no-admin (p.ej. un manager con employee.create) solo las sedes que él mismo tiene asignadas.
+     * Exige que el caller pueda ASIGNAR todas esas sedes a un empleado. El alcance total también se representa con
+     * asignaciones explícitas, por lo que nadie obtiene un bypass por código de permiso.
      * Lanza {@link BranchAccessDeniedException} (→ 403) si alguna sede está fuera de su alcance.
      */
     public void requireAssignableBranches(Collection<Long> branchIds) {
-        if (branchIds == null || isAdmin()) return;
+        if (branchIds == null) return;
         Set<Long> mine = currentBranchIds();
         for (Long id : branchIds) {
             if (id == null || !mine.contains(id)) {
@@ -88,28 +117,26 @@ public class Authz {
         }
     }
 
-    /** ¿El empleado puede operar sobre esta sede? Admin siempre; el resto, solo si la tiene asignada. */
+    /** ¿El empleado puede operar sobre esta sede? Solo si la tiene asignada. */
     public boolean canAccessBranch(Long branchId) {
         if (branchId == null) return false;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null
             && auth.getPrincipal() instanceof EmployeeContext me
-            && (me.permissions().contains(ADMIN_PERMISSION) || me.branchIds().contains(branchId));
+            && me.branchIds().contains(branchId);
     }
 
     /**
      * Resuelve la sede a aplicar (en escrituras y en filtros de lectura) honrando el alcance del empleado.
      *
      * <ul>
-     *   <li><b>Admin</b>: devuelve {@code requested} tal cual — {@code null} significa sin filtro (o que el caso de
-     *       uso resuelva la sede activa por defecto de la empresa en escrituras).</li>
-     *   <li><b>No-admin con {@code requested} != null</b>: exige que esté en su alcance; si no, lanza
+     *   <li>Con {@code requested} != null: exige que esté en su alcance; si no, lanza
      *       {@link BranchAccessDeniedException} (→ 403 {@code BRANCH_NOT_ALLOWED}).</li>
-     *   <li><b>No-admin con {@code requested} == null</b>: si tiene una única sede, la usa (default acotado); si no
+     *   <li>Con {@code requested} == null: si tiene una única sede, la usa (default acotado); si no
      *       tiene ninguna, 403; si tiene varias, {@code IllegalArgumentException} (→ 400) para forzar a elegir.</li>
      * </ul>
      *
-     * Nunca deja pasar {@code null} para un no-admin, así una lectura sin {@code branchId} no filtra por toda la
+     * Nunca deja pasar {@code null}, así una lectura sin {@code branchId} no filtra por toda la
      * empresa (evita fuga de datos de sedes ajenas) y una escritura no cae en la sede "Principal" fuera de alcance.
      */
     public Long resolveAccessibleBranch(Long requested) {
@@ -117,8 +144,6 @@ public class Authz {
         if (!(auth != null && auth.getPrincipal() instanceof EmployeeContext me)) {
             throw new AccessDeniedException("No employee context");
         }
-        if (me.permissions().contains(ADMIN_PERMISSION)) return requested;
-
         Set<Long> scope = me.branchIds();
         if (requested != null) {
             if (!scope.contains(requested)) {

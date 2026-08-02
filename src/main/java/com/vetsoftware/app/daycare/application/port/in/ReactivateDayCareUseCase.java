@@ -4,6 +4,6 @@ import com.vetsoftware.app.daycare.application.dto.DayCareDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateDayCareUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('daycare.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('daycare.update')")
     DayCareDto execute(Long id);
 }

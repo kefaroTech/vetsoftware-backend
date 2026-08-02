@@ -2,6 +2,7 @@ package com.vetsoftware.app.infrastructure.audit.outbox;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import com.vetsoftware.app.infrastructure.audit.chain.AuditChainHash;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -64,12 +65,19 @@ class JdbcAuditEventStore implements AuditEventStore {
         }
         payload.putAll(attributes);
 
+        // El hash se fija aquí, sobre los bytes exactos que se almacenan, y no requiere ningún
+        // bloqueo: la transacción de negocio no se serializa con las demás. La posición en la cadena
+        // la asigna después el secuenciador (ver AuditChainRepository#sequencePending).
+        String serialized = serialize(payload);
+
         jdbcTemplate.update("""
                 INSERT INTO audit_event_outbox
-                    (event_id, event_type, payload, status, attempts, next_attempt_at, created_at)
-                VALUES (?, ?, CAST(? AS JSON), 'PENDING', 0, ?, ?)
+                    (event_id, event_type, payload, payload_hash, status, attempts,
+                     next_attempt_at, created_at)
+                VALUES (?, ?, ?, ?, 'PENDING', 0, ?, ?)
                 """,
-                eventId, eventType, serialize(payload), Timestamp.from(now), Timestamp.from(now));
+                eventId, eventType, serialized, AuditChainHash.payloadHash(serialized),
+                Timestamp.from(now), Timestamp.from(now));
     }
 
     private String serialize(Map<String, Object> payload) {

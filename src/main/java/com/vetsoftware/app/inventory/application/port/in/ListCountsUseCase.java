@@ -7,7 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Historial de sesiones de conteo por sede (resumen, sin líneas). Gate: lectura de inventario. */
 public interface ListCountsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
     PageResult<InventoryCountView> list(SearchCountsQuery query);
 }

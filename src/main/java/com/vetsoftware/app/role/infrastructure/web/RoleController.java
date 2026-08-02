@@ -53,7 +53,7 @@ public class RoleController {
     @ResponseStatus(HttpStatus.CREATED)
     public RoleResponse create(@Valid @RequestBody CreateRoleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateRoleCommand(request.name(), request.code(), request.companyId())));
+            new CreateRoleCommand(request.name(), request.code(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -75,18 +75,18 @@ public class RoleController {
     @PutMapping("/{id}")
     public RoleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateRoleCommand(id, request.name(), request.code(), request.companyId())));
+            new UpdateRoleCommand(id, request.name(), request.code(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public RoleResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private RoleResponse toResponse(RoleDto dto) {

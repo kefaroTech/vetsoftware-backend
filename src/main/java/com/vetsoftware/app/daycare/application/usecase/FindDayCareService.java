@@ -17,8 +17,8 @@ public class FindDayCareService implements FindDayCareUseCase {
     }
 
     @Override
-    public DayCareDto findById(Long id) {
-        return DayCareDto.from(repository.findById(id)
+    public DayCareDto findById(Long id, Long companyId) {
+        return DayCareDto.from(repository.findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DayCareNotFoundException(id)));
     }
 }

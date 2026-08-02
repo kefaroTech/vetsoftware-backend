@@ -14,6 +14,24 @@
         <numLogsCapturedBeforeOtelInstall>1000</numLogsCapturedBeforeOtelInstall>
     </appender>
 
+    <!--
+      Política automática de redacción (OBS-019). Ningún appender se referencia directamente desde
+      <root>: todos van envueltos, de modo que mensaje, MDC, pares clave-valor y mensajes de
+      excepción pasan por LogRedactor antes de salir del proceso. Añadir un destino nuevo obliga a
+      envolverlo — si no se envuelve, no recibe eventos.
+
+      Los appenders envueltos se declaran arriba y como hijos directos de <configuration>; el gating
+      por perfil se hace abajo, en <root>. Ver docs/POLITICA_REDACCION_LOGS.md.
+    -->
+    <appender name="REDACTED_CONSOLE"
+              class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
+        <appender-ref ref="CONSOLE"/>
+    </appender>
+    <appender name="REDACTED_OTEL"
+              class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
+        <appender-ref ref="OTEL"/>
+    </appender>
+
     <logger name="org.hibernate" level="WARN"/>
     <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR"/>
     <logger name="org.springframework" level="WARN"/>
@@ -24,14 +42,25 @@
 
     <springProfile name="prod | dev">
         <root level="INFO">
-            <appender-ref ref="OTEL"/>
+            <appender-ref ref="REDACTED_OTEL"/>
         </root>
     </springProfile>
 
     <springProfile name="!prod &amp; !dev">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="OTEL"/>
+            <appender-ref ref="REDACTED_CONSOLE"/>
+            <appender-ref ref="REDACTED_OTEL"/>
         </root>
+
+        <!--
+          Previsualización de correos cuando el envío está deshabilitado (solo en local): imprime el
+          enlace o los códigos que el correo habría llevado. Es el único canal sin redacción y por eso
+          está acotado por construcción: additivity="false" + solo CONSOLE, así que no puede alcanzar
+          el pipeline exportado a Loki. Fuera de local este logger no se declara y sus eventos caen en
+          la raíz redactada. Ver DevEmailPreview.
+        -->
+        <logger name="DEV_EMAIL_PREVIEW" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+        </logger>
     </springProfile>
 </configuration>

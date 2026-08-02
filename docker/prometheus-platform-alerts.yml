@@ -1,0 +1,471 @@
+groups:
+  - name: vetsoftware-availability
+    interval: 30s
+    rules:
+      - alert: VetSoftwareBackendDown
+        expr: up{job="vetsoftware"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          domain: availability
+          service: vetsoftware
+        annotations:
+          summary: "El backend de VetSoftware no responde"
+          description: "Prometheus no puede extraer las métricas del backend desde hace al menos dos minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarebackenddown"
+
+      - alert: VetSoftwareObservabilityTargetDown
+        expr: up{job=~"alertmanager|grafana|loki|otel-collector|redis|tempo"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "Un componente de observabilidad no responde"
+          description: "El target indicado por las etiquetas job e instance no puede ser consultado por Prometheus."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareobservabilitytargetdown"
+
+  - name: vetsoftware-http
+    interval: 30s
+    rules:
+      - alert: VetSoftwareHttp5xxRateHigh
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{job="vetsoftware",status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{job="vetsoftware"}[5m])), 0.001)
+          ) > 0.05
+          and
+          sum(increase(http_server_requests_seconds_count{job="vetsoftware"}[5m])) >= 20
+        for: 5m
+        labels:
+          severity: critical
+          domain: backend
+          service: vetsoftware
+        annotations:
+          summary: "La tasa HTTP 5xx supera el 5 %"
+          description: "El backend superó el 5 % de respuestas 5xx con al menos 20 solicitudes en cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttp5xxratehigh"
+
+      - alert: VetSoftwareHttpP95LatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(http_server_requests_seconds_bucket{job="vetsoftware"}[5m])
+            )
+          ) > 1
+          and
+          sum(increase(http_server_requests_seconds_count{job="vetsoftware"}[5m])) >= 20
+        for: 10m
+        labels:
+          severity: warning
+          domain: backend
+          service: vetsoftware
+        annotations:
+          summary: "La latencia HTTP p95 supera un segundo"
+          description: "La latencia p95 agregada permaneció por encima de un segundo con volumen suficiente."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttpp95latencyhigh"
+
+      - alert: VetSoftwareHttpP99LatencyCritical
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le) (
+              rate(http_server_requests_seconds_bucket{job="vetsoftware"}[5m])
+            )
+          ) > 2
+          and
+          sum(increase(http_server_requests_seconds_count{job="vetsoftware"}[5m])) >= 20
+        for: 10m
+        labels:
+          severity: critical
+          domain: backend
+          service: vetsoftware
+        annotations:
+          summary: "La latencia HTTP p99 supera dos segundos"
+          description: "La latencia p99 agregada permaneció por encima de dos segundos con volumen suficiente."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttpp99latencycritical"
+
+  - name: vetsoftware-runtime
+    interval: 30s
+    rules:
+      - alert: VetSoftwareJvmHeapHigh
+        expr: |
+          (
+            sum(jvm_memory_used_bytes{job="vetsoftware",area="heap"})
+            /
+            clamp_min(sum(jvm_memory_max_bytes{job="vetsoftware",area="heap"}), 1)
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          domain: runtime
+          service: vetsoftware
+        annotations:
+          summary: "El uso de heap de la JVM supera el 85 %"
+          description: "El heap se mantuvo por encima del 85 % durante diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmheaphigh"
+
+      - alert: VetSoftwareProcessCpuHigh
+        expr: process_cpu_usage{job="vetsoftware"} > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          domain: runtime
+          service: vetsoftware
+        annotations:
+          summary: "El proceso Java supera el 85 % de CPU"
+          description: "El uso de CPU del proceso se mantuvo por encima del 85 % durante diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprocesscpuhigh"
+
+      - alert: VetSoftwareJvmGcOverheadHigh
+        expr: jvm_gc_overhead{job="vetsoftware"} > 0.20
+        for: 10m
+        labels:
+          severity: warning
+          domain: runtime
+          service: vetsoftware
+        annotations:
+          summary: "La JVM dedica demasiado tiempo al recolector de basura"
+          description: "El overhead de GC superó el 20 % durante diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmgcoverheadhigh"
+
+      - alert: VetSoftwareJvmThreadCountHigh
+        expr: jvm_threads_live_threads{job="vetsoftware"} > 200
+        for: 10m
+        labels:
+          severity: warning
+          domain: runtime
+          service: vetsoftware
+        annotations:
+          summary: "La JVM mantiene más de 200 hilos vivos"
+          description: "El número de hilos vivos se mantuvo por encima del umbral durante diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmthreadcounthigh"
+
+  - name: vetsoftware-dependencies
+    interval: 30s
+    rules:
+      - alert: VetSoftwareDatabasePoolSaturated
+        expr: |
+          (
+            hikaricp_connections_active{job="vetsoftware"}
+            /
+            clamp_min(hikaricp_connections_max{job="vetsoftware"}, 1)
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: critical
+          domain: database
+          service: vetsoftware
+        annotations:
+          summary: "El pool de conexiones está saturado"
+          description: "Más del 85 % de las conexiones HikariCP permanecen activas desde hace cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabasepoolsaturated"
+
+      - alert: VetSoftwareDatabaseConnectionPending
+        expr: hikaricp_connections_pending{job="vetsoftware"} > 0
+        for: 3m
+        labels:
+          severity: warning
+          domain: database
+          service: vetsoftware
+        annotations:
+          summary: "Hay solicitudes esperando conexión a la base de datos"
+          description: "HikariCP mantiene solicitudes pendientes desde hace al menos tres minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectionpending"
+
+      - alert: VetSoftwareDatabaseConnectionTimeouts
+        expr: increase(hikaricp_connections_timeout_total{job="vetsoftware"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: database
+          service: vetsoftware
+        annotations:
+          summary: "Se agotó el tiempo esperando una conexión"
+          description: "HikariCP registró al menos un timeout de conexión durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectiontimeouts"
+
+      - alert: VetSoftwareRedisDown
+        expr: redis_up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          domain: redis
+          service: vetsoftware
+        annotations:
+          summary: "Redis no responde"
+          description: "El exporter no puede ejecutar comandos contra Redis desde hace al menos dos minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredisdown"
+
+      - alert: VetSoftwareRedisMemoryHigh
+        expr: |
+          redis_memory_max_bytes{job="redis"} > 0
+          and
+          (
+            redis_memory_used_bytes{job="redis"}
+            /
+            redis_memory_max_bytes{job="redis"}
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          domain: redis
+          service: vetsoftware
+        annotations:
+          summary: "Redis supera el 85 % de su memoria configurada"
+          description: "El uso de memoria de Redis se mantuvo por encima del 85 % durante diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredismemoryhigh"
+
+      - alert: VetSoftwareRedisRejectedConnections
+        expr: increase(redis_rejected_connections_total{job="redis"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          domain: redis
+          service: vetsoftware
+        annotations:
+          summary: "Redis rechazó conexiones"
+          description: "Redis rechazó al menos una conexión durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredisrejectedconnections"
+
+  - name: vetsoftware-telemetry-pipeline
+    interval: 30s
+    rules:
+      # Desde que los exportadores tienen `retry_on_failure` (OBS-027), un envío fallido ya NO
+      # significa pérdida: significa un reintento. Estas dos alertas bajan a warning y exigen que el
+      # fallo sea sostenido, porque un fallo aislado que el reintento resuelve no merece despertar a
+      # nadie. La pérdida real la señalan las alertas de encolado, más abajo.
+      - alert: VetSoftwareOtelLogExportFailing
+        expr: increase(otelcol_exporter_send_failed_log_records[5m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "El Collector lleva minutos sin poder exportar logs"
+          description: "Los envíos a Loki fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo; si se llena, empezará a descartar."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailing"
+
+      - alert: VetSoftwareOtelTraceExportFailing
+        expr: increase(otelcol_exporter_send_failed_spans[5m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "El Collector lleva minutos sin poder exportar trazas"
+          description: "Los envíos a Tempo fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareoteltraceexportfailing"
+
+      # Estas sí son pérdida consumada: la cola estaba llena y el dato se descartó.
+      - alert: VetSoftwareOtelQueueDroppingTelemetry
+        expr: |
+          sum(increase(otelcol_exporter_enqueue_failed_log_records[5m])) > 0
+          or
+          sum(increase(otelcol_exporter_enqueue_failed_spans[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "El Collector está descartando telemetría por cola llena"
+          description: "La cola de envío se llenó y se perdieron datos. Es pérdida consumada, no un reintento pendiente."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuedroppingtelemetry"
+
+      # Indicador adelantado: avisa antes de que la cola se llene y empiece a descartar.
+      - alert: VetSoftwareOtelQueueNearCapacity
+        expr: |
+          (
+            otelcol_exporter_queue_size
+            / clamp_min(otelcol_exporter_queue_capacity, 1)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "La cola de envío del Collector supera el 80 %"
+          description: "El destino no drena al ritmo de entrada. Si la cola se llena, la telemetría se descartará."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuenearcapacity"
+
+      - alert: VetSoftwareOtelReceiverRefusedTelemetry
+        expr: |
+          sum(increase(otelcol_receiver_refused_log_records[5m])) > 0
+          or
+          sum(increase(otelcol_receiver_refused_spans[5m])) > 0
+          or
+          sum(increase(otelcol_receiver_failed_log_records[5m])) > 0
+          or
+          sum(increase(otelcol_receiver_failed_spans[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "El Collector rechazó telemetría entrante"
+          description: "El Collector rechazó logs o spans durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelreceiverrefusedtelemetry"
+
+      - alert: VetSoftwareLokiDiscardingLogs
+        expr: sum(increase(loki_discarded_samples_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "Loki está descartando logs"
+          description: "Loki descartó al menos una entrada durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarelokidiscardinglogs"
+
+      - alert: VetSoftwareLokiPanics
+        expr: sum(increase(loki_panic_total[10m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "Loki registró un panic"
+          description: "Loki registró al menos un panic durante los últimos diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarelokipanics"
+
+      - alert: VetSoftwareTempoDiscardingSpans
+        expr: |
+          sum(increase(tempo_discarded_spans_total[5m])) > 0
+          or
+          sum(increase(tempo_metrics_generator_spans_discarded_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: observability
+          service: vetsoftware
+        annotations:
+          summary: "Tempo está descartando spans"
+          description: "Tempo descartó al menos un span durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaretempodiscardingspans"
+
+  - name: vetsoftware-audit-integrity
+    interval: 30s
+    rules:
+      # La señal crítica de OBS-020: una cadena rota significa que un evento de auditoría fue
+      # suprimido o alterado en la base de datos. No es un problema de rendimiento ni de cupo.
+      - alert: VetSoftwareAuditChainBroken
+        expr: audit_chain_broken{job="vetsoftware"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          domain: audit
+          service: vetsoftware
+        annotations:
+          summary: "La cadena de integridad de auditoría está rota"
+          description: "La verificación encontró una divergencia. Contrastar contra el archivo inmutable ANTES de tocar la base de datos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareauditchainbroken"
+
+      # -1 es el valor inicial: nunca se verificó. Sin esta alerta, un verificador que no arranca
+      # se vería igual que una cadena sana.
+      - alert: VetSoftwareAuditChainNotVerified
+        expr: audit_chain_broken{job="vetsoftware"} == -1
+        for: 30m
+        labels:
+          severity: warning
+          domain: audit
+          service: vetsoftware
+        annotations:
+          summary: "La cadena de auditoría no se ha verificado nunca"
+          description: "El trabajo de verificación no ha completado ninguna pasada desde el arranque."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareauditchainnotverified"
+
+      - alert: VetSoftwareAuditChainUnsequencedBacklog
+        expr: audit_chain_unsequenced{job="vetsoftware"} > 0
+        for: 15m
+        labels:
+          severity: warning
+          domain: audit
+          service: vetsoftware
+        annotations:
+          summary: "Hay eventos de auditoría sin secuenciar"
+          description: "Solo se publica lo secuenciado, así que estos eventos no están llegando al archivo inmutable."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareauditchainunsequencedbacklog"
+
+      # El intervalo de checkpoint es de una hora; tres sin anclar indica que el trabajo falla.
+      - alert: VetSoftwareAuditChainCheckpointStale
+        expr: |
+          (
+            audit_chain_length{job="vetsoftware"}
+            - audit_chain_checkpoint_sequence{job="vetsoftware"}
+          ) > 0
+        for: 3h
+        labels:
+          severity: warning
+          domain: audit
+          service: vetsoftware
+        annotations:
+          summary: "La cadena de auditoría lleva horas sin anclarse"
+          description: "Sin checkpoint reciente, el tramo nuevo de la cadena no tiene ancla inmutable y la depuración de la outbox queda bloqueada."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareauditchaincheckpointstale"
+
+  - name: vetsoftware-security-token-retention
+    interval: 30s
+    rules:
+      - alert: VetSoftwareSecurityTokenTableGrowth
+        expr: |
+          vetsoftware_security_tokens_rows{job="vetsoftware"}
+          > on(job, instance)
+          vetsoftware_security_tokens_growth_threshold{job="vetsoftware"}
+        for: 30m
+        labels:
+          severity: warning
+          domain: database
+          service: vetsoftware
+        annotations:
+          summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
+          description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresecuritytokentablegrowth"
+
+  - name: vetsoftware-alert-delivery
+    interval: 30s
+    rules:
+      - alert: VetSoftwareAlertmanagerNotificationFailures
+        expr: sum(increase(alertmanager_notifications_failed_total[10m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: alerting
+          service: vetsoftware
+        annotations:
+          summary: "Alertmanager no puede entregar notificaciones"
+          description: "Alertmanager registró fallos de entrega durante los últimos diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarealertmanagernotificationfailures"
+
+      - alert: VetSoftwarePrometheusRuleEvaluationFailures
+        expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: alerting
+          service: vetsoftware
+        annotations:
+          summary: "Prometheus no puede evaluar una regla"
+          description: "Prometheus registró fallos de evaluación durante los últimos cinco minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprometheusruleevaluationfailures"
+
+      - alert: VetSoftwarePrometheusNotificationFailures
+        expr: increase(prometheus_notifications_errors_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: alerting
+          service: vetsoftware
+        annotations:
+          summary: "Prometheus no puede enviar alertas a Alertmanager"
+          description: "Prometheus registró errores al entregar alertas durante los últimos diez minutos."
+          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprometheusnotificationfailures"

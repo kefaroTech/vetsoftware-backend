@@ -44,6 +44,11 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
     }
 
     @Override
+    public Optional<MedicamentPrescription> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndPrescription_Company_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<MedicamentPrescription> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

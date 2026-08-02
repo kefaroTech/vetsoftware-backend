@@ -16,6 +16,9 @@ public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Lo
     Optional<DayCareJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"animal", "company"})
+    Optional<DayCareJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "company"})
     List<DayCareJpaEntity> findAllByAnimalId(Long animalId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)

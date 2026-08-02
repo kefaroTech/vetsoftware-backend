@@ -4,6 +4,6 @@ import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateLaboratoryTestUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('laboratoryTest.update') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.update')")
     LaboratoryTestDto execute(Long id);
 }

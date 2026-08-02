@@ -36,6 +36,11 @@ public class JpaSurgeryTypeRepository implements SurgeryTypeRepository {
     }
 
     @Override
+    public Optional<SurgeryType> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findAvailableById(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<SurgeryType> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

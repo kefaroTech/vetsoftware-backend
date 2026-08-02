@@ -51,3 +51,13 @@ dian.contingency.retry
 `ScheduledJobTelemetry` rechaza nombres que no cumplan la convención. La prueba
 `ObservationNamingConventionTest` examina todas las anotaciones `@Observed`, exige nombres
 únicos y evita regresiones de formato.
+
+## Campos de log estructurado
+
+Los campos de MDC y de `addKeyValue(...)` usan la misma `lowercase.dot.notation` que las
+observaciones (`actor.employeeId`, `http.status`, `company.identifier`), alineada con las semantic
+conventions de OpenTelemetry. Las claves propias se declaran en `MdcKeys`.
+
+A diferencia de los nombres de observación, aquí el nombre no basta: **cada campo debe declararse
+además en `LogFieldPolicy`**, que es la allowlist de salida. Un campo no declarado se emite como
+`***`. Ver `docs/POLITICA_REDACCION_LOGS.md`.

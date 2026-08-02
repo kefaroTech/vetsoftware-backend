@@ -5,6 +5,6 @@ import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateEmployeeRoleUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM')")
     EmployeeRoleDto execute(UpdateEmployeeRoleCommand command);
 }

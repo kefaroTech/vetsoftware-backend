@@ -57,7 +57,7 @@ public class PermissionController {
     @ResponseStatus(HttpStatus.CREATED)
     public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request) {
         return toResponse(createUseCase.execute(
-            new CreatePermissionCommand(request.name(), request.code(), request.companyId(), request.subModuleId())));
+            new CreatePermissionCommand(request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
     }
 
     @GetMapping
@@ -80,7 +80,7 @@ public class PermissionController {
     public PermissionResponse update(@PathVariable Long id,
                                       @Valid @RequestBody UpdatePermissionRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdatePermissionCommand(id, request.name(), request.code(), request.companyId(), request.subModuleId())));
+            new UpdatePermissionCommand(id, request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")

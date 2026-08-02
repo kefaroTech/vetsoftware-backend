@@ -1,0 +1,28 @@
+# Override de depuración (OBS-025). Opt-in y solo para una máquina individual:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml --env-file .env.local up -d
+#
+# Devuelve acceso desde el host a las APIs de Loki y Tempo, que el archivo base deja únicamente en la
+# red interna `telemetry`. Sirve para lanzar consultas con `curl`/`logcli` sin pasar por Grafana.
+#
+# Dos consecuencias que conviene tener presentes:
+#   - Ambos servicios quedan también en la red `default`, así que recuperan salida a Internet.
+#   - Ninguno de los dos tiene autenticación. Aunque el puerto se publique en loopback, cualquier
+#     proceso del host puede leer y escribir telemetría. No usar en una máquina compartida.
+#
+# `docker/tests/resilience.sh` NO necesita este override: alcanza Loki y Tempo por la red del stack.
+
+services:
+  loki:
+    networks:
+      - default
+      - telemetry
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:3100:3100"
+
+  tempo:
+    networks:
+      - default
+      - telemetry
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:3200:3200"

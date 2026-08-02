@@ -50,6 +50,11 @@ public class JpaDewormingRepository implements DewormingRepository {
     }
 
     @Override
+    public Optional<Deworming> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Deworming> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }

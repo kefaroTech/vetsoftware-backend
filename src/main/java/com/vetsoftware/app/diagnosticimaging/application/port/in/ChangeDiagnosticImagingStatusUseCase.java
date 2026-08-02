@@ -5,6 +5,7 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ChangeDiagnosticImagingStatusUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or "
+        + "(hasAuthority('diagnosticimaging.update') and @authz.isMyCompany(#command.companyId))")
     DiagnosticImagingDto execute(ChangeDiagnosticImagingStatusCommand command);
 }

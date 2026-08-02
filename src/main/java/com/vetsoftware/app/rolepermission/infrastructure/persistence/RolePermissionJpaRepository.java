@@ -15,6 +15,9 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     @EntityGraph(attributePaths = {"role", "permission"})
     Optional<RolePermissionJpaEntity> findById(Long id);
 
+    @EntityGraph(attributePaths = {"role", "permission"})
+    Optional<RolePermissionJpaEntity> findByIdAndRole_Company_Id(Long id, Long companyId);
+
     @EntityGraph(attributePaths = "permission")
     List<RolePermissionJpaEntity> findByRoleIdIn(List<Long> roleIds);
 
@@ -30,6 +33,12 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions SET enabled = true WHERE id = :id", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions rp JOIN roles r ON r.id = rp.role_id SET rp.enabled = true WHERE rp.id = :id AND r.company_id = :companyId", nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

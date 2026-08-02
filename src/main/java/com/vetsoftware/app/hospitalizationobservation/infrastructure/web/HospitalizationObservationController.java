@@ -64,7 +64,7 @@ public class HospitalizationObservationController {
 
     @GetMapping("/{id}")
     public HospitalizationObservationResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")

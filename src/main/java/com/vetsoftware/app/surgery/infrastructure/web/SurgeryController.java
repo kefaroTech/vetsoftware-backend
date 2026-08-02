@@ -85,7 +85,7 @@ public class SurgeryController {
 
     @GetMapping("/{id}")
     public SurgeryResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -102,7 +102,7 @@ public class SurgeryController {
     public SurgeryResponse changeStatus(@PathVariable Long id,
                                         @Valid @RequestBody ChangeSurgeryStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeSurgeryStatusCommand(id, request.status())));
+            new ChangeSurgeryStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")

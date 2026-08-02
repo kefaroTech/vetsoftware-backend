@@ -5,7 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /** Detalle de una sesión de conteo (con sus líneas y diferencias). Gate: lectura de inventario. */
 public interface GetCountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('inventory.read') and @authz.isMyCompany(#companyId))")
     InventoryCountView get(Long companyId, Long id);
 }

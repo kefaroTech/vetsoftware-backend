@@ -5,6 +5,6 @@ import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreatePrescriptionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or hasAuthority('prescription.create') or hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('prescription.create')")
     PrescriptionDto execute(CreatePrescriptionCommand command);
 }

@@ -12,5 +12,8 @@ public interface LaboratoryTestFileJpaRepository extends JpaRepository<Laborator
     Optional<LaboratoryTestFileJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"uploadedBy", "laboratoryTest"})
+    Optional<LaboratoryTestFileJpaEntity> findByIdAndLaboratoryTest_Company_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"uploadedBy", "laboratoryTest"})
     List<LaboratoryTestFileJpaEntity> findAllByLaboratoryTest_Id(Long laboratoryTestId);
 }

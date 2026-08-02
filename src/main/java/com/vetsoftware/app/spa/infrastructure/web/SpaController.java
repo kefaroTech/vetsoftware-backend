@@ -83,7 +83,7 @@ public class SpaController {
 
     @GetMapping("/{id}")
     public SpaResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
+        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @PutMapping("/{id}")
@@ -93,13 +93,13 @@ public class SpaController {
             new UpdateSpaCommand(
                 id, request.date(), request.spaTypeId(), request.reason(),
                 request.details(), request.observations(),
-                request.animalId(), authz.currentCompanyId())));
+                request.animalId(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")
@@ -111,7 +111,7 @@ public class SpaController {
     public SpaResponse changeStatus(@PathVariable Long id,
                                     @Valid @RequestBody ChangeSpaStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeSpaStatusCommand(id, request.status())));
+            new ChangeSpaStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     private SpaResponse toResponse(SpaDto dto) {

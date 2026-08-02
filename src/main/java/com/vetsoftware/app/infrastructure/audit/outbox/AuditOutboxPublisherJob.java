@@ -1,5 +1,6 @@
 package com.vetsoftware.app.infrastructure.audit.outbox;
 
+import com.vetsoftware.app.infrastructure.audit.chain.AuditChainRepository;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +31,7 @@ final class AuditOutboxPublisherJob {
     private static final Logger log = LoggerFactory.getLogger(AuditOutboxPublisherJob.class);
 
     private final AuditOutboxRepository repository;
+    private final AuditChainRepository chainRepository;
     private final AuditOutboxProperties properties;
     private final FirehoseClient firehose;
     private final AuditOutboxMetrics metrics;
@@ -37,12 +39,14 @@ final class AuditOutboxPublisherJob {
 
     AuditOutboxPublisherJob(
             AuditOutboxRepository repository,
+            AuditChainRepository chainRepository,
             AuditOutboxProperties properties,
             FirehoseClient firehose,
             AuditOutboxMetrics metrics,
             ScheduledJobTelemetry telemetry) {
         properties.validate();
         this.repository = repository;
+        this.chainRepository = chainRepository;
         this.properties = properties;
         this.firehose = firehose;
         this.metrics = metrics;
@@ -58,6 +62,11 @@ final class AuditOutboxPublisherJob {
 
     ScheduledJobTelemetry.Outcome publishBatch() {
         Instant now = Instant.now();
+
+        // Secuenciar antes de reclamar: solo se publica lo que ya tiene eslabón, de modo que el
+        // registro archivado lleve su prueba de integridad. Va en transacción propia y corta.
+        chainRepository.sequencePending(properties.getSequenceBatchSize(), now);
+
         List<AuditOutboxRecord> batch =
                 repository.claim(properties.getBatchSize(), now, properties.getLeaseDuration());
         if (batch.isEmpty()) {
@@ -130,9 +139,33 @@ final class AuditOutboxPublisherJob {
 
     private static Record toFirehoseRecord(AuditOutboxRecord record) {
         byte[] newlineDelimitedJson =
-                (record.payload() + "\n").getBytes(StandardCharsets.UTF_8);
+                (withIntegrity(record) + "\n").getBytes(StandardCharsets.UTF_8);
         return Record.builder()
                 .data(SdkBytes.fromByteBuffer(ByteBuffer.wrap(newlineDelimitedJson)))
                 .build();
+    }
+
+    /**
+     * Añade el bloque de integridad al objeto JSON del evento.
+     *
+     * <p>Se hace por concatenación y no reserializando con Jackson a propósito: el payload debe
+     * llegar al archivo con los mismos bytes cuyo hash se firmó. Reserializarlo podría cambiar el
+     * orden de claves o el formato y el registro archivado dejaría de corresponder a su
+     * {@code payloadHash}. Los cuatro valores insertados son un entero y tres hexadecimales de la
+     * base, así que no requieren escapado.
+     */
+    private static String withIntegrity(AuditOutboxRecord record) {
+        String integrity = "\"integrity\":{"
+                + "\"sequence\":" + record.chainSequence()
+                + ",\"payloadHash\":\"" + record.payloadHash() + "\""
+                + ",\"previousHash\":\"" + record.previousHash() + "\""
+                + ",\"chainHash\":\"" + record.chainHash() + "\"}";
+
+        String payload = record.payload();
+        // Un objeto vacío no puede llevar coma separadora.
+        if (payload.length() <= 2) {
+            return "{" + integrity + "}";
+        }
+        return "{" + integrity + "," + payload.substring(1);
     }
 }

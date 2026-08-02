@@ -91,7 +91,7 @@ public class ConsultationController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")

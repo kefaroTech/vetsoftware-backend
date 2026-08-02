@@ -18,7 +18,6 @@ public record UpdateConsultationRequest(
         @Size(max = 500) String prognosis,
         LocalDate nextControl,
         @NotNull Long animalId,
-        @NotNull Long companyId,
         // Examen físico / constantes vitales (Fase 3) — todos opcionales.
         @DecimalMin("0") @DecimalMax("60") BigDecimal temperature,
         @Min(0) @Max(1000) Integer heartRate,

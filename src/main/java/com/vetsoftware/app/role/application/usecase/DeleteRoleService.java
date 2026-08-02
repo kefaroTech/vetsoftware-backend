@@ -28,8 +28,8 @@ public class DeleteRoleService implements DeleteRoleUseCase {
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new RoleNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new RoleNotFoundException(id));
         if (employeeRoleChildrenQueryPort.existsActiveByRoleId(id)) {
             throw new RoleHasActiveChildrenException(id, "employeeRole");
         }

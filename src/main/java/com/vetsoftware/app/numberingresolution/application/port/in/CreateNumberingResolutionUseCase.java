@@ -5,6 +5,6 @@ import com.vetsoftware.app.numberingresolution.application.dto.NumberingResoluti
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateNumberingResolutionUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or (hasAuthority('electronicbilling.create') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('electronicbilling.create') and @authz.isMyCompany(#command.companyId))")
     NumberingResolutionDto execute(CreateNumberingResolutionCommand command);
 }

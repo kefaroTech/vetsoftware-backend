@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListGoodsReceiptsUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('goodsReceipt.read') and @authz.isMyCompany(#companyId))")
     List<GoodsReceiptDto> listByCompany(Long companyId);
 }

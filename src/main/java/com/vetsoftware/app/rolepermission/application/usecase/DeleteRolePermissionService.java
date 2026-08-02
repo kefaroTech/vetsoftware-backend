@@ -23,8 +23,10 @@ public class DeleteRolePermissionService implements DeleteRolePermissionUseCase 
 
     @Override
     @Transactional
-    public void execute(Long id) {
-        RolePermission rolePermission = repository.findById(id)
+    public void execute(Long id, Long companyId) {
+        RolePermission rolePermission = (companyId == null
+            ? repository.findById(id)
+            : repository.findByIdAndCompanyId(id, companyId))
             .orElseThrow(() -> new RolePermissionNotFoundException(id));
         repository.delete(id);
         permissionCachePort.evictByRoleId(rolePermission.getRole().id());

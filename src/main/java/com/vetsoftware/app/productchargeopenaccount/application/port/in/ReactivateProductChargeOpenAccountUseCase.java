@@ -4,7 +4,7 @@ import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateProductChargeOpenAccountUseCase {
-    @PreAuthorize("hasAuthority('admin.all') or "
+    @PreAuthorize("hasRole('SYSTEM') or "
         + "(hasAuthority('chargeOpenAccount.delete') and @authz.isMyCompany(#companyId)) or "
         + "hasRole('SYSTEM')")
     ProductChargeOpenAccountDto execute(Long id, Long companyId);
