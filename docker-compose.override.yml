@@ -1,0 +1,93 @@
+services:
+  backend:
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vetsoftware/backend:local
+    container_name: vetsoftware_backend
+    restart: unless-stopped
+    env_file:
+      - path: .env.local
+        required: true
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_URL: jdbc:mysql://mysql:3306/${LOCAL_DB_NAME:-vetsoftware_db}
+      DB_USERNAME: ${LOCAL_DB_USERNAME:-cronos}
+      DB_PASSWORD: ${LOCAL_DB_PASSWORD:-cronos2026*}
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4318/v1/logs
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174
+      REGISTRATION_VERIFICATION_URL: http://localhost:5174/verify-email
+      PASSWORD_RESET_URL: http://localhost:5174/restablecer-contrasena
+      CODE_RECOVERY_LOGIN_URL: http://localhost:5174/login
+      EMPLOYEE_LOGIN_URL: http://localhost:5174/login
+      AUDIT_FIREHOSE_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_BACKEND_PORT:-8080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "--show-error",
+          "http://localhost:8080/api/v1/actuator/health/readiness",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  private-front:
+    profiles: [application]
+    build:
+      context: ../VetSoftwareFront
+      dockerfile: Dockerfile
+      args:
+        BUILD_MODE: local
+    image: vetsoftware/private-front:local
+    container_name: vetsoftware_private_front
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_PRIVATE_FRONT_PORT:-5173}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  public-front:
+    profiles: [application]
+    build:
+      context: ../VetSoftwarePublicFront
+      dockerfile: Dockerfile
+      args:
+        BUILD_MODE: local
+    image: vetsoftware/public-front:local
+    container_name: vetsoftware_public_front
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCAL_PUBLIC_FRONT_PORT:-5174}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy

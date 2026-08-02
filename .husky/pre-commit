@@ -1,1 +1,1 @@
-# pre-commit hook — agregar validaciones aquí si se necesitan (ej: mvn test)
+sh scripts/security/scan-secrets.sh staged

@@ -1,0 +1,36 @@
+title = "VetSoftware secret scanning policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deterministic 32-byte unit-test input; it is generated in current code."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/test/java/com/vetsoftware/app/auth/infrastructure/security/JwtProviderTest\.java$''']
+regexes = ['''String key32 = "[0-9a-f]{32}";''']
+
+[[allowlists]]
+description = "Synthetic JWT used only to assert log redaction."
+targetRules = ["jwt"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/test/java/com/vetsoftware/app/infrastructure/logging/LogRedactorTest\.java$''']
+regexes = ['''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJzZW51ZWxvIn0\.[A-Za-z0-9_-]+''']
+
+[[allowlists]]
+description = "Synthetic opaque token used only to assert log redaction."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/test/java/com/vetsoftware/app/infrastructure/logging/LogRedactorTest\.java$''']
+regexes = ['''DECOY_OPAQUE_TOKEN\s*=\s*"''']
+
+[[allowlists]]
+description = "Google's documented public reCAPTCHA test keys in the historical dev profile."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/main/resources/application-dev\.yml$''']
+regexes = ['''(?:Site key para el front|RECAPTCHA_SECRET):?\s*\$?\{?6LeIxAcT''']

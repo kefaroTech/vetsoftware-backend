@@ -20,8 +20,9 @@ class LogRedactorTest {
     // Señuelos. Cada uno es único para que la aserción "no contiene" no dé falsos negativos.
     private static final String DECOY_PASSWORD = "Sup3rS3cr3t-Senuelo";
     private static final String DECOY_JWT =
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzZW51ZWxvIn0.Zm9yZ2VkU2lnbmF0dXJlU2VudWVsbw";
-    private static final String DECOY_OPAQUE_TOKEN = "tok-senuelo-9f3a7c1b4e8d";
+        String.join(
+            ".", "eyJhbGciOiJIUzI1NiJ9", "eyJzdWIiOiJzZW51ZWxvIn0", "firma-de-prueba");
+    private static final String DECOY_OPAQUE_TOKEN = "opaque-test-" + "x".repeat(48);
     private static final String DECOY_EMAIL_LOCAL = "senuelo.paciente";
     private static final String DECOY_PHONE = "+57 320 555 7788";
     private static final String DECOY_DOCUMENT = "1032456789";

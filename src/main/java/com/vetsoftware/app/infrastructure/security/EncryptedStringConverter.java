@@ -10,16 +10,12 @@ import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Cifra/descifra columnas de texto con AES-GCM. La clave (32 bytes en base64) se lee de la variable
- * de entorno {@code DIAN_ENC_KEY}. Hay una clave de desarrollo embebida en el repo que SOLO se acepta
- * cuando un perfil dev/test/local está <b>explícitamente</b> activo (property {@code spring.profiles.active}
- * o env {@code SPRING_PROFILES_ACTIVE}). Un perfil ausente/por defecto NO habilita la clave insegura: el
- * arranque falla (fail-fast) para cerrar la trampa de un deploy productivo que olvida definir el perfil o
- * la clave y terminaría cifrando los secretos DIAN con la clave pública del repositorio.
+ * de entorno {@code DIAN_ENC_KEY}. No existe una clave predeterminada en el código: todos los perfiles,
+ * incluidos local y test, deben inyectar una clave propia de 32 bytes en base64. Si falta, el arranque
+ * falla inmediatamente para impedir que datos sensibles se cifren con material público o compartido.
  *
  * <p>Rotación: el formato persistido lleva un prefijo de versión de clave ({@code "<version>:base64(iv||ct)}").
  * El cifrado usa la clave y versión activas; el descifrado selecciona la clave por versión, admitiendo una
@@ -35,15 +31,9 @@ import org.slf4j.LoggerFactory;
 @Converter
 public class EncryptedStringConverter implements AttributeConverter<String, String> {
 
-    private static final Logger log = LoggerFactory.getLogger(EncryptedStringConverter.class);
-
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int IV_LENGTH = 12;
     private static final int TAG_BITS = 128;
-    // Default SOLO para desarrollo (32 bytes base64). En produccion DEBE sobreescribirse con DIAN_ENC_KEY.
-    private static final String DEV_KEY_BASE64 = "REMOVED_SENSITIVE_VALUE";
-    // Etiqueta de version de la clave de desarrollo embebida.
-    private static final String DEV_KEY_VERSION = "dev";
     // Version por defecto de la clave productiva si no se define DIAN_ENC_KEY_VERSION.
     private static final String DEFAULT_KEY_VERSION = "v1";
     // Separa "<version>:<payload base64>" en el formato persistido. El alfabeto base64 no incluye ':'.
@@ -68,28 +58,10 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
     private static KeyMaterial loadKeys() {
         Map<String, SecretKeySpec> keys = new HashMap<>();
         String configured = System.getenv("DIAN_ENC_KEY");
-        boolean missing = (configured == null || configured.isBlank());
-        if (missing) {
-            // Sin DIAN_ENC_KEY solo se admite la clave de desarrollo embebida, y únicamente si un perfil
-            // dev/test/local está EXPLÍCITAMENTE activo. Un perfil ausente/por defecto NO la habilita: así
-            // un arranque productivo que olvida SPRING_PROFILES_ACTIVE falla en vez de cifrar con la clave
-            // pública del repo.
-            if (!isExplicitDevOrTestProfile()) {
-                throw new IllegalStateException(
-                        "DIAN_ENC_KEY no está definida. Defina DIAN_ENC_KEY (32 bytes en base64) para cifrar "
-                        + "los secretos del proveedor DIAN, o active EXPLÍCITAMENTE un perfil dev/test/local "
-                        + "(SPRING_PROFILES_ACTIVE) para usar la clave de desarrollo embebida.");
-            }
-            log.warn("DIAN_ENC_KEY no definida: usando la clave de desarrollo embebida del repo (version '{}'). "
-                    + "Solo aceptable en dev/test/local; NUNCA usar en produccion.", DEV_KEY_VERSION);
-            keys.put(DEV_KEY_VERSION, toKey(DEV_KEY_BASE64));
-            return new KeyMaterial(DEV_KEY_VERSION, keys);
-        }
-        // Impide reutilizar la clave pública del repo como clave productiva.
-        if (DEV_KEY_BASE64.equals(configured.trim()) && !isExplicitDevOrTestProfile()) {
+        if (configured == null || configured.isBlank()) {
             throw new IllegalStateException(
-                    "DIAN_ENC_KEY es la clave de desarrollo pública del repositorio y el perfil activo no es "
-                    + "dev/test/local. Genere una clave AES-256 propia (32 bytes en base64) para producción.");
+                    "DIAN_ENC_KEY no está definida. Genere una clave AES-256 propia (32 bytes en base64) "
+                    + "fuera de Git e inyéctela mediante el entorno en todos los perfiles.");
         }
         String activeVersion = resolveVersion(System.getenv("DIAN_ENC_KEY_VERSION"), DEFAULT_KEY_VERSION);
         keys.put(activeVersion, toKey(configured));
@@ -127,26 +99,6 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
             throw new IllegalStateException("DIAN_ENC_KEY must decode to 32 bytes (AES-256)");
         }
         return new SecretKeySpec(key, "AES");
-    }
-
-    // El converter se inicializa de forma estatica (antes de que Spring resuelva el Environment), por eso el
-    // perfil se lee directo de la system property / env var. A diferencia de application.yml, aquí NO hay
-    // default a "dev": un perfil ausente no cuenta como dev para habilitar la clave insegura (ver loadKeys).
-    private static boolean isExplicitDevOrTestProfile() {
-        String profiles = System.getProperty("spring.profiles.active");
-        if (profiles == null || profiles.isBlank()) {
-            profiles = System.getenv("SPRING_PROFILES_ACTIVE");
-        }
-        if (profiles == null || profiles.isBlank()) {
-            return false;
-        }
-        for (String profile : profiles.split(",")) {
-            String normalized = profile.trim().toLowerCase();
-            if (normalized.equals("dev") || normalized.equals("test") || normalized.equals("local")) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
