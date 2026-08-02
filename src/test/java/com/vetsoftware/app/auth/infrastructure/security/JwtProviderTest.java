@@ -134,7 +134,7 @@ class JwtProviderTest {
 
         @Test
         void una_clave_de_exactamente_32_bytes_si_es_aceptada() {
-            String key32 = "0123456789abcdef0123456789abcdef";
+            String key32 = "k".repeat(32);
 
             assertThat(key32).hasSize(32);
             assertThat(new JwtProvider(key32, 15).generate(1L, "EMPLOYEE", 1L, 1L)).isNotBlank();

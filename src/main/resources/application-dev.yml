@@ -69,8 +69,8 @@ vetsoftware:
   employee:
     login-url: ${EMPLOYEE_LOGIN_URL}
   recaptcha:
-    enabled: ${RECAPTCHA_ENABLED:true}
-    secret: ${RECAPTCHA_SECRET}
+    enabled: ${RECAPTCHA_ENABLED:false}
+    secret: ${RECAPTCHA_SECRET:}
   audit:
     outbox:
       enabled: true

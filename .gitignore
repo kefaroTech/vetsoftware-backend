@@ -17,7 +17,24 @@ logs/
 # Environment / secrets
 .env
 .env.*
+!.env.example
+!*.env.example
 application-local.properties
+application-local.yml
+application-local.yaml
+
+# Private keys, credential stores and secret files
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.kdbx
+credentials
+credentials.*
+secrets/
+secrets.*
 
 # IDE
 .idea/

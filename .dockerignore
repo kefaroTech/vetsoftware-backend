@@ -9,4 +9,10 @@ target
 *.log
 .env
 .env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 docker-compose*.yml

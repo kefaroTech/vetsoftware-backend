@@ -7,6 +7,9 @@ services:
     image: vetsoftware/backend:local
     container_name: vetsoftware_backend
     restart: unless-stopped
+    env_file:
+      - path: .env.local
+        required: true
     environment:
       SPRING_PROFILES_ACTIVE: local
       DB_URL: jdbc:mysql://mysql:3306/${LOCAL_DB_NAME:-vetsoftware_db}
