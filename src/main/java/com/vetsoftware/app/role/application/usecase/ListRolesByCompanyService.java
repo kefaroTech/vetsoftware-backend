@@ -18,7 +18,7 @@ public class ListRolesByCompanyService implements ListRolesByCompanyUseCase {
     private final RolePermissionsForRolesQueryPort permissionsPort;
 
     public ListRolesByCompanyService(RoleRepository repository,
-                                     RolePermissionsForRolesQueryPort permissionsPort) {
+            RolePermissionsForRolesQueryPort permissionsPort) {
         this.repository = repository;
         this.permissionsPort = permissionsPort;
     }
@@ -26,11 +26,11 @@ public class ListRolesByCompanyService implements ListRolesByCompanyUseCase {
     @Override
     public List<RoleDto> listByCompany(Long companyId) {
         List<Role> roles = repository.findAllByCompanyId(companyId);
-        if (roles.isEmpty()) return List.of();
-        Map<Long, List<PermissionSummaryDto>> permsByRole =
-            permissionsPort.findByRoleIds(roles.stream().map(Role::getId).toList());
+        if (roles.isEmpty())
+            return List.of();
+        Map<Long, List<PermissionSummaryDto>> permsByRole = permissionsPort
+                .findByRoleIds(roles.stream().map(Role::getId).toList());
         return roles.stream()
-            .map(r -> RoleDto.from(r, permsByRole.getOrDefault(r.getId(), List.of())))
-            .toList();
+                .map(r -> RoleDto.from(r, permsByRole.getOrDefault(r.getId(), List.of()))).toList();
     }
 }

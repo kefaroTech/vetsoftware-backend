@@ -17,8 +17,8 @@ public class CashTerminalService {
     private final BranchQueryPort branchQueryPort;
     private final CashSessionRepository cashSessionRepository;
 
-    public CashTerminalService(CashTerminalJpaRepository repository, BranchQueryPort branchQueryPort,
-                               CashSessionRepository cashSessionRepository) {
+    public CashTerminalService(CashTerminalJpaRepository repository,
+            BranchQueryPort branchQueryPort, CashSessionRepository cashSessionRepository) {
         this.repository = repository;
         this.branchQueryPort = branchQueryPort;
         this.cashSessionRepository = cashSessionRepository;
@@ -29,8 +29,10 @@ public class CashTerminalService {
     public List<CashTerminalDto> list(Long companyId, Long branchId, boolean activeOnly) {
         validateActiveBranch(companyId, branchId);
         List<CashTerminalJpaEntity> terminals = activeOnly
-            ? repository.findAllByCompanyIdAndBranchIdAndActiveTrueOrderByNameAsc(companyId, branchId)
-            : repository.findAllByCompanyIdAndBranchIdOrderByActiveDescNameAsc(companyId, branchId);
+                ? repository.findAllByCompanyIdAndBranchIdAndActiveTrueOrderByNameAsc(companyId,
+                        branchId)
+                : repository.findAllByCompanyIdAndBranchIdOrderByActiveDescNameAsc(companyId,
+                        branchId);
         return terminals.stream().map(CashTerminalDto::from).toList();
     }
 
@@ -40,7 +42,8 @@ public class CashTerminalService {
         validateActiveBranch(companyId, branchId);
         String normalizedName = normalizeName(name);
         String normalizedCode = normalizeCode(code);
-        if (repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCase(companyId, branchId, normalizedCode)) {
+        if (repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCase(companyId, branchId,
+                normalizedCode)) {
             throw new IllegalArgumentException("Ya existe un terminal con ese código en la sede");
         }
         CashTerminalJpaEntity entity = new CashTerminalJpaEntity();
@@ -59,12 +62,13 @@ public class CashTerminalService {
         CashTerminalJpaEntity entity = get(companyId, id);
         String normalizedName = normalizeName(name);
         String normalizedCode = normalizeCode(code);
-        if (!entity.getCode().equalsIgnoreCase(normalizedCode)
-                && cashSessionRepository.existsOpenByTerminalId(companyId, entity.getBranchId(), entity.getId())) {
-            throw new IllegalStateException("No se puede cambiar el código de un terminal con una caja abierta");
+        if (!entity.getCode().equalsIgnoreCase(normalizedCode) && cashSessionRepository
+                .existsOpenByTerminalId(companyId, entity.getBranchId(), entity.getId())) {
+            throw new IllegalStateException(
+                    "No se puede cambiar el código de un terminal con una caja abierta");
         }
-        if (repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(
-                companyId, entity.getBranchId(), normalizedCode, id)) {
+        if (repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(companyId,
+                entity.getBranchId(), normalizedCode, id)) {
             throw new IllegalArgumentException("Ya existe un terminal con ese código en la sede");
         }
         entity.setName(normalizedName);
@@ -76,17 +80,18 @@ public class CashTerminalService {
     @Transactional
     public CashTerminalDto setActive(Long companyId, Long id, boolean active) {
         CashTerminalJpaEntity entity = get(companyId, id);
-        if (!active && entity.isActive()
-                && cashSessionRepository.existsOpenByTerminalId(companyId, entity.getBranchId(), entity.getId())) {
-            throw new IllegalStateException("No se puede desactivar un terminal con una caja abierta");
+        if (!active && entity.isActive() && cashSessionRepository.existsOpenByTerminalId(companyId,
+                entity.getBranchId(), entity.getId())) {
+            throw new IllegalStateException(
+                    "No se puede desactivar un terminal con una caja abierta");
         }
         entity.setActive(active);
         return CashTerminalDto.from(repository.save(entity));
     }
 
     private CashTerminalJpaEntity get(Long companyId, Long id) {
-        return repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Terminal de caja no encontrado: " + id));
+        return repository.findByIdAndCompanyId(id, companyId).orElseThrow(
+                () -> new IllegalArgumentException("Terminal de caja no encontrado: " + id));
     }
 
     private void validateActiveBranch(Long companyId, Long branchId) {
@@ -96,16 +101,20 @@ public class CashTerminalService {
     }
 
     private static String normalizeName(String value) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException("El nombre es obligatorio");
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("El nombre es obligatorio");
         String normalized = value.trim();
-        if (normalized.length() > 120) throw new IllegalArgumentException("El nombre supera 120 caracteres");
+        if (normalized.length() > 120)
+            throw new IllegalArgumentException("El nombre supera 120 caracteres");
         return normalized;
     }
 
     private static String normalizeCode(String value) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException("El código es obligatorio");
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("El código es obligatorio");
         String normalized = value.trim().toUpperCase();
-        if (normalized.length() > 60) throw new IllegalArgumentException("El código supera 60 caracteres");
+        if (normalized.length() > 60)
+            throw new IllegalArgumentException("El código supera 60 caracteres");
         return normalized;
     }
 }

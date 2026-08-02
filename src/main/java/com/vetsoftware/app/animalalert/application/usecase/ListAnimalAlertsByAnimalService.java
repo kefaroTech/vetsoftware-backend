@@ -19,7 +19,7 @@ public class ListAnimalAlertsByAnimalService implements ListAnimalAlertsByAnimal
 
     @Override
     public List<AnimalAlertDto> execute(ListAnimalAlertsByAnimalQuery query) {
-        return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId())
-            .stream().map(AnimalAlertDto::from).toList();
+        return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId()).stream()
+                .map(AnimalAlertDto::from).toList();
     }
 }

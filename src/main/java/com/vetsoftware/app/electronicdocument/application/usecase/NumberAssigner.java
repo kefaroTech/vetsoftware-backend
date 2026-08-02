@@ -5,9 +5,10 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import org.springframework.stereotype.Component;
 
 /**
- * Asigna la numeración fiscal a un documento PENDIENTE desde la {@code NumberingResolution} activa de la
- * empresa (consecutivo continuo, atómico). Reutilizable por la emisión de facturas/POS y por las notas.
- * Sin control de acceso (lo invocan casos de uso ya autorizados).
+ * Asigna la numeración fiscal a un documento PENDIENTE desde la
+ * {@code NumberingResolution} activa de la empresa (consecutivo continuo,
+ * atómico). Reutilizable por la emisión de facturas/POS y por las notas. Sin
+ * control de acceso (lo invocan casos de uso ya autorizados).
  */
 @Component
 public class NumberAssigner {
@@ -19,7 +20,8 @@ public class NumberAssigner {
 
     public void assign(ElectronicDocument document) {
         NumberingAllocationPort.AllocatedNumber number = numberingPort
-                .allocate(document.getCompanyId(), document.getBranchId(), document.getDocumentType())
+                .allocate(document.getCompanyId(), document.getBranchId(),
+                        document.getDocumentType())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene una resolución de numeración activa para "
                                 + document.getDocumentType() + "."));
@@ -27,12 +29,14 @@ public class NumberAssigner {
     }
 
     /**
-     * Asigna SOLO resolución + prefijo (sin consumir consecutivo) para documentos cuyo número lo asigna el
-     * proveedor DIAN (POS auto-increment). El proveedor exige igual resolución+prefijo en el request.
+     * Asigna SOLO resolución + prefijo (sin consumir consecutivo) para documentos
+     * cuyo número lo asigna el proveedor DIAN (POS auto-increment). El proveedor
+     * exige igual resolución+prefijo en el request.
      */
     public void assignResolutionOnly(ElectronicDocument document) {
         NumberingAllocationPort.AllocatedNumber number = numberingPort
-                .peekActive(document.getCompanyId(), document.getBranchId(), document.getDocumentType())
+                .peekActive(document.getCompanyId(), document.getBranchId(),
+                        document.getDocumentType())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa no tiene una resolución de numeración activa para "
                                 + document.getDocumentType() + "."));
@@ -40,15 +44,18 @@ public class NumberAssigner {
     }
 
     /**
-     * Ante un rechazo, intenta recuperar el consecutivo del documento para evitar un hueco en la secuencia
-     * fiscal. Si la resolución pudo recuperarlo (era el último entregado), limpia la numeración del
-     * documento para que no queden dos filas con el mismo número. Si no era seguro, no toca nada (el hueco
+     * Ante un rechazo, intenta recuperar el consecutivo del documento para evitar
+     * un hueco en la secuencia fiscal. Si la resolución pudo recuperarlo (era el
+     * último entregado), limpia la numeración del documento para que no queden dos
+     * filas con el mismo número. Si no era seguro, no toca nada (el hueco
      * permanece). No-op si el documento nunca llegó a numerarse.
      */
     public void release(ElectronicDocument document) {
-        if (document.getConsecutive() == null) return;
-        boolean reclaimed = numberingPort.release(
-                document.getCompanyId(), document.getBranchId(), document.getDocumentType(), document.getConsecutive());
-        if (reclaimed) document.releaseFiscalNumber();
+        if (document.getConsecutive() == null)
+            return;
+        boolean reclaimed = numberingPort.release(document.getCompanyId(), document.getBranchId(),
+                document.getDocumentType(), document.getConsecutive());
+        if (reclaimed)
+            document.releaseFiscalNumber();
     }
 }

@@ -24,10 +24,11 @@ public class ChangeDiagnosticImagingStatusService implements ChangeDiagnosticIma
     @Transactional
     public DiagnosticImagingDto execute(ChangeDiagnosticImagingStatusCommand command) {
         DiagnosticImaging imaging = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
-            .orElseThrow(() -> new DiagnosticImagingNotFoundException(command.id()));
-        DiagnosticImagingStatus newStatus = DiagnosticImagingStatus.valueOf(command.status().toUpperCase());
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+                .orElseThrow(() -> new DiagnosticImagingNotFoundException(command.id()));
+        DiagnosticImagingStatus newStatus = DiagnosticImagingStatus
+                .valueOf(command.status().toUpperCase());
         imaging.changeStatus(newStatus);
         return DiagnosticImagingDto.from(repository.save(imaging));
     }

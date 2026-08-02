@@ -5,9 +5,11 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 /**
- * Genera una SUGERENCIA de código de empleado a partir del nombre de la empresa y del empleado:
- * {@code PREFIJO(iniciales de la empresa)-SUFIJO(nombre sin espacios, máx 10)}. El admin puede editar la
- * sugerencia; {@link #generateAvailable} garantiza que esté libre en el momento de proponerla (sufijo -2, -3…).
+ * Genera una SUGERENCIA de código de empleado a partir del nombre de la empresa
+ * y del empleado:
+ * {@code PREFIJO(iniciales de la empresa)-SUFIJO(nombre sin espacios, máx 10)}.
+ * El admin puede editar la sugerencia; {@link #generateAvailable} garantiza que
+ * esté libre en el momento de proponerla (sufijo -2, -3…).
  */
 final class EmployeeCodeGenerator {
 
@@ -15,21 +17,25 @@ final class EmployeeCodeGenerator {
     private static final int MAX_EMPLOYEE_CODE_LENGTH = 50;
     private static final int MAX_SUFFIX_ATTEMPTS = 999;
 
-    private EmployeeCodeGenerator() {}
+    private EmployeeCodeGenerator() {
+    }
 
     static String generate(String companyName, String employeeName) {
         return prefix(companyName) + "-" + suffix(employeeName);
     }
 
-    static String generateAvailable(String companyName, String employeeName, Predicate<String> taken) {
+    static String generateAvailable(String companyName, String employeeName,
+            Predicate<String> taken) {
         String base = generate(companyName, employeeName);
-        if (!taken.test(base)) return base;
+        if (!taken.test(base))
+            return base;
         for (int i = 2; i <= MAX_SUFFIX_ATTEMPTS; i++) {
             String candidate = withSuffix(base, i);
-            if (!taken.test(candidate)) return candidate;
+            if (!taken.test(candidate))
+                return candidate;
         }
-        throw new IllegalStateException(
-                "Could not generate unique employee code after " + MAX_SUFFIX_ATTEMPTS + " attempts");
+        throw new IllegalStateException("Could not generate unique employee code after "
+                + MAX_SUFFIX_ATTEMPTS + " attempts");
     }
 
     private static String withSuffix(String base, int n) {
@@ -55,10 +61,9 @@ final class EmployeeCodeGenerator {
     }
 
     private static String normalize(String input) {
-        if (input == null) return "";
-        return Normalizer.normalize(input, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}+", "")
-            .replaceAll("[^A-Za-z\\s]", "")
-            .trim();
+        if (input == null)
+            return "";
+        return Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}+", "")
+                .replaceAll("[^A-Za-z\\s]", "").trim();
     }
 }

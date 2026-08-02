@@ -23,7 +23,7 @@ public class UpdateSystemPermissionService implements UpdateSystemPermissionUseC
     @Transactional
     public SystemPermissionDto execute(UpdateSystemPermissionCommand command) {
         SystemPermission systemPermission = repository.findById(command.id())
-            .orElseThrow(() -> new SystemPermissionNotFoundException(command.id()));
+                .orElseThrow(() -> new SystemPermissionNotFoundException(command.id()));
         systemPermission.update(command.name(), command.code());
         return SystemPermissionDto.from(repository.save(systemPermission));
     }

@@ -1,6 +1,7 @@
 package com.vetsoftware.app.laboratorytest.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.laboratorytest.application.command.ChangeLaboratoryTestStatusCommand;
 import com.vetsoftware.app.laboratorytest.application.command.CreateLaboratoryTestCommand;
 import com.vetsoftware.app.laboratorytest.application.command.SearchLaboratoryTestsCommand;
@@ -32,7 +33,6 @@ import com.vetsoftware.app.laboratorytest.infrastructure.web.response.Consultati
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestResponse;
 import com.vetsoftware.app.laboratorytest.infrastructure.web.response.LaboratoryTestTypeSummary;
-import com.vetsoftware.app.infrastructure.web.PageResponse;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -55,15 +55,12 @@ public class LaboratoryTestController {
     private final Authz authz;
 
     public LaboratoryTestController(CreateLaboratoryTestUseCase createUseCase,
-                                    UpdateLaboratoryTestUseCase updateUseCase,
-                                    ChangeLaboratoryTestStatusUseCase changeStatusUseCase,
-                                    FindLaboratoryTestUseCase findUseCase,
-                                    ListLaboratoryTestsUseCase listUseCase,
-                                    ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase,
-                                    SearchLaboratoryTestsUseCase searchUseCase,
-                                    DeleteLaboratoryTestUseCase deleteUseCase,
-                                    ReactivateLaboratoryTestUseCase reactivateUseCase,
-                                    Authz authz) {
+            UpdateLaboratoryTestUseCase updateUseCase,
+            ChangeLaboratoryTestStatusUseCase changeStatusUseCase,
+            FindLaboratoryTestUseCase findUseCase, ListLaboratoryTestsUseCase listUseCase,
+            ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase,
+            SearchLaboratoryTestsUseCase searchUseCase, DeleteLaboratoryTestUseCase deleteUseCase,
+            ReactivateLaboratoryTestUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -79,11 +76,9 @@ public class LaboratoryTestController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public LaboratoryTestResponse create(@Valid @RequestBody CreateLaboratoryTestRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateLaboratoryTestCommand(
-                request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.status(), request.prioridad(),
-                request.animalId(), request.consultationId(),
+        return toResponse(createUseCase.execute(new CreateLaboratoryTestCommand(request.date(),
+                request.testTypeId(), request.quantity(), request.diagnosis(), request.status(),
+                request.prioridad(), request.animalId(), request.consultationId(),
                 authz.currentCompanyId(), authz.resolveAccessibleBranch(request.branchId()),
                 request.processedById(), request.processedDate())));
     }
@@ -109,16 +104,19 @@ public class LaboratoryTestController {
             @RequestParam(name = "branchId", required = false) Long branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        List<LaboratoryTestStatus> statusList = statuses == null ? List.of()
-            : statuses.stream().map(s -> LaboratoryTestStatus.valueOf(s.toUpperCase())).toList();
+        List<LaboratoryTestStatus> statusList = statuses == null
+                ? List.of()
+                : statuses.stream().map(s -> LaboratoryTestStatus.valueOf(s.toUpperCase()))
+                        .toList();
         LaboratoryTestPriority priority = prioridad == null || prioridad.isBlank()
-            ? null : LaboratoryTestPriority.valueOf(prioridad.toUpperCase());
-        PageResult<LaboratoryTestDto> result = searchUseCase.execute(new SearchLaboratoryTestsCommand(
-            authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), statusList, animalId, testTypeId,
-            priority, dateFrom, dateTo, page, pageSize));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                ? null
+                : LaboratoryTestPriority.valueOf(prioridad.toUpperCase());
+        PageResult<LaboratoryTestDto> result = searchUseCase
+                .execute(new SearchLaboratoryTestsCommand(authz.currentCompanyId(),
+                        authz.resolveAccessibleBranch(branchId), statusList, animalId, testTypeId,
+                        priority, dateFrom, dateTo, page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -128,19 +126,18 @@ public class LaboratoryTestController {
 
     @PutMapping("/{id}")
     public LaboratoryTestResponse update(@PathVariable Long id,
-                                         @Valid @RequestBody UpdateLaboratoryTestRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateLaboratoryTestCommand(
-                id, request.date(), request.testTypeId(), request.quantity(),
-                request.diagnosis(), request.prioridad(), request.animalId(), request.consultationId(),
-                authz.currentCompanyId(), request.processedById(), request.processedDate())));
+            @Valid @RequestBody UpdateLaboratoryTestRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateLaboratoryTestCommand(id, request.date(),
+                request.testTypeId(), request.quantity(), request.diagnosis(), request.prioridad(),
+                request.animalId(), request.consultationId(), authz.currentCompanyId(),
+                request.processedById(), request.processedDate())));
     }
 
     @PatchMapping("/{id}/status")
     public LaboratoryTestResponse changeStatus(@PathVariable Long id,
-                                               @Valid @RequestBody ChangeLaboratoryTestStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(
-            new ChangeLaboratoryTestStatusCommand(id, request.status(), authz.currentEmployeeIdOrNull())));
+            @Valid @RequestBody ChangeLaboratoryTestStatusRequest request) {
+        return toResponse(changeStatusUseCase.execute(new ChangeLaboratoryTestStatusCommand(id,
+                request.status(), authz.currentEmployeeIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -160,15 +157,12 @@ public class LaboratoryTestController {
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         EmployeeSummaryDto pb = dto.processedBy();
-        return new LaboratoryTestResponse(
-            dto.id(), dto.date(),
-            new LaboratoryTestTypeSummary(tt.id(), tt.name()),
-            dto.quantity(), dto.diagnosis(), dto.status(), dto.prioridad(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            pb == null ? null : new EmployeeSummary(pb.id(), pb.employeeCode(), pb.name()),
-            dto.processedDate(),
-            dto.createdDate(), dto.enabled());
+        return new LaboratoryTestResponse(dto.id(), dto.date(),
+                new LaboratoryTestTypeSummary(tt.id(), tt.name()), dto.quantity(), dto.diagnosis(),
+                dto.status(), dto.prioridad(), new AnimalSummary(a.id(), a.name(), a.code()),
+                co == null ? null : new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()),
+                pb == null ? null : new EmployeeSummary(pb.id(), pb.employeeCode(), pb.name()),
+                dto.processedDate(), dto.createdDate(), dto.enabled());
     }
 }

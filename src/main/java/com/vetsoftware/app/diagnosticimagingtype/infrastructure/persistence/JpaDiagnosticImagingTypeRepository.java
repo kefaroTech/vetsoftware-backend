@@ -15,8 +15,7 @@ public class JpaDiagnosticImagingTypeRepository implements DiagnosticImagingType
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaDiagnosticImagingTypeRepository(DiagnosticImagingTypeJpaRepository jpaRepository,
-                                              DiagnosticImagingTypeJpaMapper mapper,
-                                              CompanyJpaRepository companyJpaRepository) {
+            DiagnosticImagingTypeJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaDiagnosticImagingTypeRepository implements DiagnosticImagingType
 
     @Override
     public DiagnosticImagingType save(DiagnosticImagingType type) {
-        CompanyJpaEntity company = type.getCompany() == null ? null
+        CompanyJpaEntity company = type.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(type.getCompany().id());
         DiagnosticImagingTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(type, company));
         return mapper.toDomain(saved, type.getCompany());
@@ -47,8 +47,8 @@ public class JpaDiagnosticImagingTypeRepository implements DiagnosticImagingType
 
     @Override
     public List<DiagnosticImagingType> findAllAvailableForCompany(Long companyId) {
-        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override

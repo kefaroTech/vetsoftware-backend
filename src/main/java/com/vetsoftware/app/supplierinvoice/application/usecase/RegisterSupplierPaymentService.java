@@ -11,7 +11,10 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Registra un abono (total o parcial) sobre la factura y persiste el nuevo estado (PARTIAL/PAID). */
+/**
+ * Registra un abono (total o parcial) sobre la factura y persiste el nuevo
+ * estado (PARTIAL/PAID).
+ */
 @Observed(name = "supplier.invoice.register.payment")
 @Service
 public class RegisterSupplierPaymentService implements RegisterSupplierPaymentUseCase {
@@ -24,11 +27,12 @@ public class RegisterSupplierPaymentService implements RegisterSupplierPaymentUs
     @Override
     @Transactional
     public SupplierInvoiceDto execute(RegisterSupplierPaymentCommand command) {
-        SupplierInvoice invoice = repository.findByIdAndCompanyId(command.invoiceId(), command.companyId())
-            .orElseThrow(() -> new SupplierInvoiceNotFoundException(command.invoiceId()));
-        SupplierInvoicePayment payment = SupplierInvoicePayment.create(
-            command.amount(), command.paymentDate(), command.method(), command.reference(), command.note(),
-            command.actorId());
+        SupplierInvoice invoice = repository
+                .findByIdAndCompanyId(command.invoiceId(), command.companyId())
+                .orElseThrow(() -> new SupplierInvoiceNotFoundException(command.invoiceId()));
+        SupplierInvoicePayment payment = SupplierInvoicePayment.create(command.amount(),
+                command.paymentDate(), command.method(), command.reference(), command.note(),
+                command.actorId());
         invoice.registerPayment(payment, command.actorId(), command.version());
         return SupplierInvoiceDto.from(repository.save(invoice));
     }

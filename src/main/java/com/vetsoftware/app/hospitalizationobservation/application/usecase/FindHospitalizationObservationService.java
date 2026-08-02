@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.observation.find")
 @Service
-public class FindHospitalizationObservationService implements FindHospitalizationObservationUseCase {
+public class FindHospitalizationObservationService
+        implements
+            FindHospitalizationObservationUseCase {
     private final HospitalizationObservationRepository repository;
 
     public FindHospitalizationObservationService(HospitalizationObservationRepository repository) {
@@ -19,6 +21,6 @@ public class FindHospitalizationObservationService implements FindHospitalizatio
     @Override
     public HospitalizationObservationDto findById(Long id, Long companyId) {
         return HospitalizationObservationDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new HospitalizationObservationNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationObservationNotFoundException(id)));
     }
 }

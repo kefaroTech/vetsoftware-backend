@@ -16,7 +16,7 @@ public class JpaTransmissionLogPort implements TransmissionLogPort {
 
     @Override
     public void record(Long electronicDocumentId, String provider, Integer httpStatus,
-                       String providerDocumentKey, TransmissionResult result, String errorMessage) {
+            String providerDocumentKey, TransmissionResult result, String errorMessage) {
         int attempt = jpaRepository.countByElectronicDocumentId(electronicDocumentId) + 1;
         ElectronicDocumentTransmissionJpaEntity entity = new ElectronicDocumentTransmissionJpaEntity();
         entity.setElectronicDocumentId(electronicDocumentId);
@@ -25,7 +25,8 @@ public class JpaTransmissionLogPort implements TransmissionLogPort {
         entity.setHttpStatus(httpStatus);
         entity.setProviderDocumentKey(providerDocumentKey);
         entity.setResult(result);
-        entity.setErrorMessage(errorMessage == null ? null
+        entity.setErrorMessage(errorMessage == null
+                ? null
                 : errorMessage.substring(0, Math.min(errorMessage.length(), 2000)));
         entity.setCreatedDate(LocalDateTime.now());
         jpaRepository.save(entity);
@@ -45,7 +46,8 @@ public class JpaTransmissionLogPort implements TransmissionLogPort {
     @Override
     public Optional<String> findLatestProviderKey(Long electronicDocumentId) {
         return jpaRepository
-                .findFirstByElectronicDocumentIdAndProviderDocumentKeyNotNullOrderByIdDesc(electronicDocumentId)
+                .findFirstByElectronicDocumentIdAndProviderDocumentKeyNotNullOrderByIdDesc(
+                        electronicDocumentId)
                 .map(ElectronicDocumentTransmissionJpaEntity::getProviderDocumentKey);
     }
 }

@@ -15,8 +15,7 @@ public class JpaProductCategoryRepository implements ProductCategoryRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaProductCategoryRepository(ProductCategoryJpaRepository jpaRepository,
-                                        ProductCategoryJpaMapper mapper,
-                                        CompanyJpaRepository companyJpaRepository) {
+            ProductCategoryJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,9 +23,11 @@ public class JpaProductCategoryRepository implements ProductCategoryRepository {
 
     @Override
     public ProductCategory save(ProductCategory productCategory) {
-        CompanyJpaEntity company = productCategory.getCompany() == null ? null
+        CompanyJpaEntity company = productCategory.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(productCategory.getCompany().id());
-        ProductCategoryJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(productCategory, company));
+        ProductCategoryJpaEntity saved = jpaRepository
+                .saveAndFlush(mapper.toJpa(productCategory, company));
         return mapper.toDomain(saved, productCategory.getCompany());
     }
 
@@ -57,8 +58,7 @@ public class JpaProductCategoryRepository implements ProductCategoryRepository {
 
     @Override
     public List<ProductCategory> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override

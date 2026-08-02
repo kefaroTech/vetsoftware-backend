@@ -15,8 +15,7 @@ public class DeleteVaccinationTypeService implements DeleteVaccinationTypeUseCas
     private final VaccinationTypeRepository repository;
     private final VaccinationChildrenQueryPort vaccinationChildrenQueryPort;
 
-    public DeleteVaccinationTypeService(
-            VaccinationTypeRepository repository,
+    public DeleteVaccinationTypeService(VaccinationTypeRepository repository,
             VaccinationChildrenQueryPort vaccinationChildrenQueryPort) {
         this.repository = repository;
         this.vaccinationChildrenQueryPort = vaccinationChildrenQueryPort;

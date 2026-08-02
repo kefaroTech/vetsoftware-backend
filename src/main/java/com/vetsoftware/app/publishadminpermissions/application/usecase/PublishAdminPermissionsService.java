@@ -32,11 +32,11 @@ public class PublishAdminPermissionsService implements PublishAdminPermissionsUs
     private final RolePermissionUpsertPort rolePermissionUpsertPort;
 
     public PublishAdminPermissionsService(AdminBaseRoleQueryPort adminBaseRoleQueryPort,
-                                          AdminBasePermissionsQueryPort adminBasePermissionsQueryPort,
-                                          CompanyCatalogQueryPort companyCatalogQueryPort,
-                                          MembershipSubModuleIdsQueryPort membershipSubModuleIdsQueryPort,
-                                          PermissionUpsertPort permissionUpsertPort,
-                                          RolePermissionUpsertPort rolePermissionUpsertPort) {
+            AdminBasePermissionsQueryPort adminBasePermissionsQueryPort,
+            CompanyCatalogQueryPort companyCatalogQueryPort,
+            MembershipSubModuleIdsQueryPort membershipSubModuleIdsQueryPort,
+            PermissionUpsertPort permissionUpsertPort,
+            RolePermissionUpsertPort rolePermissionUpsertPort) {
         this.adminBaseRoleQueryPort = adminBaseRoleQueryPort;
         this.adminBasePermissionsQueryPort = adminBasePermissionsQueryPort;
         this.companyCatalogQueryPort = companyCatalogQueryPort;
@@ -49,44 +49,46 @@ public class PublishAdminPermissionsService implements PublishAdminPermissionsUs
     @Transactional
     public PublishAdminPermissionsDto execute() {
         Long adminBaseRoleId = adminBaseRoleQueryPort.findAdminBaseRoleId()
-            .orElseThrow(() -> new IllegalStateException("BaseRole 'ADMIN' not configured"));
+                .orElseThrow(() -> new IllegalStateException("BaseRole 'ADMIN' not configured"));
 
-        List<AdminBasePermission> adminBasePermissions =
-            adminBasePermissionsQueryPort.findByAdminBaseRoleId(adminBaseRoleId);
+        List<AdminBasePermission> adminBasePermissions = adminBasePermissionsQueryPort
+                .findByAdminBaseRoleId(adminBaseRoleId);
 
         List<CompanyAdminContext> companies = companyCatalogQueryPort.findAllWithAdminRole();
         if (adminBasePermissions.isEmpty() || companies.isEmpty()) {
-            return PublishAdminPermissionsDto.from(
-                new PublishAdminPermissionsResult(companies.size(), 0, 0, 0));
+            return PublishAdminPermissionsDto
+                    .from(new PublishAdminPermissionsResult(companies.size(), 0, 0, 0));
         }
 
-        Set<Long> membershipIds = companies.stream()
-            .map(CompanyAdminContext::membershipId)
-            .collect(Collectors.toSet());
-        Map<Long, Set<Long>> subModulesByMembership =
-            membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(membershipIds);
+        Set<Long> membershipIds = companies.stream().map(CompanyAdminContext::membershipId)
+                .collect(Collectors.toSet());
+        Map<Long, Set<Long>> subModulesByMembership = membershipSubModuleIdsQueryPort
+                .findSubModuleIdsByMembershipIds(membershipIds);
 
         int companiesUpdated = 0;
         int permissionsCreated = 0;
         int rolePermissionsCreated = 0;
 
         for (CompanyAdminContext ctx : companies) {
-            Set<Long> allowedSubModules =
-                subModulesByMembership.getOrDefault(ctx.membershipId(), Set.of());
+            Set<Long> allowedSubModules = subModulesByMembership.getOrDefault(ctx.membershipId(),
+                    Set.of());
             boolean changedHere = false;
             for (AdminBasePermission tpl : adminBasePermissions) {
-                if (!allowedSubModules.contains(tpl.subModuleId())) continue;
+                if (!allowedSubModules.contains(tpl.subModuleId()))
+                    continue;
                 UpsertedPermission p = permissionUpsertPort.upsert(ctx.companyId(), tpl);
-                if (p.created()) permissionsCreated++;
+                if (p.created())
+                    permissionsCreated++;
                 if (rolePermissionUpsertPort.linkIfAbsent(ctx.adminRoleId(), p.id())) {
                     rolePermissionsCreated++;
                     changedHere = true;
                 }
             }
-            if (changedHere) companiesUpdated++;
+            if (changedHere)
+                companiesUpdated++;
         }
 
-        return PublishAdminPermissionsDto.from(new PublishAdminPermissionsResult(
-            companies.size(), companiesUpdated, permissionsCreated, rolePermissionsCreated));
+        return PublishAdminPermissionsDto.from(new PublishAdminPermissionsResult(companies.size(),
+                companiesUpdated, permissionsCreated, rolePermissionsCreated));
     }
 }

@@ -15,8 +15,7 @@ public class JpaSurgeryTypeRepository implements SurgeryTypeRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaSurgeryTypeRepository(SurgeryTypeJpaRepository jpaRepository,
-                                    SurgeryTypeJpaMapper mapper,
-                                    CompanyJpaRepository companyJpaRepository) {
+            SurgeryTypeJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaSurgeryTypeRepository implements SurgeryTypeRepository {
 
     @Override
     public SurgeryType save(SurgeryType surgeryType) {
-        CompanyJpaEntity company = surgeryType.getCompany() == null ? null
+        CompanyJpaEntity company = surgeryType.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(surgeryType.getCompany().id());
         SurgeryTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(surgeryType, company));
         return mapper.toDomain(saved, surgeryType.getCompany());
@@ -47,8 +47,8 @@ public class JpaSurgeryTypeRepository implements SurgeryTypeRepository {
 
     @Override
     public List<SurgeryType> findAllAvailableForCompany(Long companyId) {
-        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override

@@ -5,9 +5,11 @@ import com.vetsoftware.app.inventory.application.port.out.NegativeStockPolicyPor
 import org.springframework.stereotype.Component;
 
 /**
- * Política de stock negativo respaldada por {@code company_settings} (por empresa). El flag
- * {@code inventory.allow_negative_stock} se togglea por el admin de cada empresa (ver CompanySettingController);
- * ausencia de la fila = {@code false} (bloquear salida sin existencias).
+ * Política de stock negativo respaldada por {@code company_settings} (por
+ * empresa). El flag {@code
+ * inventory.allow_negative_stock} se togglea por el admin de cada empresa (ver
+ * CompanySettingController); ausencia de la fila = {@code false} (bloquear
+ * salida sin existencias).
  */
 @Component
 public class CompanySettingsNegativeStockPolicy implements NegativeStockPolicyPort {
@@ -16,15 +18,16 @@ public class CompanySettingsNegativeStockPolicy implements NegativeStockPolicyPo
 
     private final CompanySettingJpaRepository companySettingJpaRepository;
 
-    public CompanySettingsNegativeStockPolicy(CompanySettingJpaRepository companySettingJpaRepository) {
+    public CompanySettingsNegativeStockPolicy(
+            CompanySettingJpaRepository companySettingJpaRepository) {
         this.companySettingJpaRepository = companySettingJpaRepository;
     }
 
     @Override
     public boolean allowsNegative(Long companyId) {
-        if (companyId == null) return false;
+        if (companyId == null)
+            return false;
         return companySettingJpaRepository.findByCompanyIdAndPropertyName(companyId, KEY)
-            .map(e -> "true".equalsIgnoreCase(e.getValue()))
-            .orElse(false);
+                .map(e -> "true".equalsIgnoreCase(e.getValue())).orElse(false);
     }
 }

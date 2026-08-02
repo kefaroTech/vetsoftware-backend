@@ -16,7 +16,6 @@ public class JpaCityQueryPort implements CityQueryPort {
 
     @Override
     public Optional<CityRef> findById(Long cityId) {
-        return cityJpaRepository.findById(cityId)
-            .map(e -> new CityRef(e.getId(), e.getName()));
+        return cityJpaRepository.findById(cityId).map(e -> new CityRef(e.getId(), e.getName()));
     }
 }

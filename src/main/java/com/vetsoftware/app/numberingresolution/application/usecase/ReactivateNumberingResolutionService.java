@@ -21,7 +21,8 @@ public class ReactivateNumberingResolutionService implements ReactivateNumbering
     @Transactional
     public NumberingResolutionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new NumberingResolutionNotFoundException(id);
+        if (rows == 0)
+            throw new NumberingResolutionNotFoundException(id);
         return NumberingResolutionDto.from(repository.findById(id)
                 .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
     }

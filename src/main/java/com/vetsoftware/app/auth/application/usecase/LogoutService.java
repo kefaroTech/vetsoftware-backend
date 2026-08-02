@@ -6,10 +6,10 @@ import com.vetsoftware.app.auth.application.port.in.LogoutUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +22,8 @@ public class LogoutService implements LogoutUseCase {
     private final AuthSystemUserRepository authSystemUserRepository;
 
     public LogoutService(RefreshTokenRepository refreshTokenRepository,
-                         AuthEmployeeRepository authEmployeeRepository,
-                         AuthSystemUserRepository authSystemUserRepository) {
+            AuthEmployeeRepository authEmployeeRepository,
+            AuthSystemUserRepository authSystemUserRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.authEmployeeRepository = authEmployeeRepository;
         this.authSystemUserRepository = authSystemUserRepository;
@@ -37,7 +37,8 @@ public class LogoutService implements LogoutUseCase {
 
         if (principal instanceof EmployeeContext me) {
             refreshTokenRepository.revokeAllForSubject(me.employeeId(), "EMPLOYEE");
-            // Invalida de inmediato los access tokens vivos (todas las sesiones del empleado).
+            // Invalida de inmediato los access tokens vivos (todas las sesiones del
+            // empleado).
             authEmployeeRepository.bumpAuthVersion(me.employeeId());
         } else if (principal instanceof SystemUserContext me) {
             refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");

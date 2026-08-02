@@ -26,24 +26,30 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * CREATE de sucursal. Valida que se resuelva ciudad+empresa, se aplique unicidad de código (con trim),
- * se persista una sucursal ACTIVA con los datos correctos, y que ningún fallo de precondición deje escribir.
+ * CREATE de sucursal. Valida que se resuelva ciudad+empresa, se aplique
+ * unicidad de código (con trim), se persista una sucursal ACTIVA con los datos
+ * correctos, y que ningún fallo de precondición deje escribir.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @Mock private CityQueryPort cityQueryPort;
-    @Mock private CompanyQueryPort companyQueryPort;
-    @Mock private FullCoverageBranchAssignmentPort fullCoverageAssignmentPort;
-    @InjectMocks private CreateBranchService service;
+    @Mock
+    private BranchRepository repository;
+    @Mock
+    private CityQueryPort cityQueryPort;
+    @Mock
+    private CompanyQueryPort companyQueryPort;
+    @Mock
+    private FullCoverageBranchAssignmentPort fullCoverageAssignmentPort;
+    @InjectMocks
+    private CreateBranchService service;
 
     private final CityRef city = new CityRef(5L, "Bogotá");
     private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
 
     private static Branch withId(Long id, Branch b) {
-        return new Branch(id, b.getName(), b.getCode(), b.getAddress(), b.getPhone(),
-            b.getCity(), b.getCompany(), b.getCreatedDate(), b.isActive());
+        return new Branch(id, b.getName(), b.getCode(), b.getAddress(), b.getPhone(), b.getCity(),
+                b.getCompany(), b.getCreatedDate(), b.isActive());
     }
 
     @Test
@@ -54,7 +60,7 @@ class CreateBranchServiceTest {
         when(repository.save(any())).thenAnswer(inv -> withId(1L, inv.getArgument(0)));
 
         BranchDto dto = service.execute(
-            new CreateBranchCommand("Sede Norte", "NORTE", "Cra 1", "3001112233", 5L, 9L));
+                new CreateBranchCommand("Sede Norte", "NORTE", "Cra 1", "3001112233", 5L, 9L));
 
         ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
         verify(repository).save(captor.capture());
@@ -75,7 +81,8 @@ class CreateBranchServiceTest {
         assertThat(dto.company().identifier()).isEqualTo("900123456");
         assertThat(dto.active()).isTrue();
 
-        // La sede recién creada se auto-asigna a los empleados "con todas las sedes" de la empresa.
+        // La sede recién creada se auto-asigna a los empleados "con todas las sedes" de
+        // la empresa.
         verify(fullCoverageAssignmentPort).assignNewBranchToFullCoverageEmployees(9L, 1L);
     }
 
@@ -99,10 +106,10 @@ class CreateBranchServiceTest {
     void rechaza_codigo_duplicado_y_no_escribe_ni_consulta_dependencias() {
         when(repository.codeExists(9L, "NORTE")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.execute(
-                new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("already in use");
+        assertThatThrownBy(
+                () -> service.execute(new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already in use");
 
         verify(repository, never()).save(any());
         verifyNoInteractions(cityQueryPort, companyQueryPort);
@@ -113,10 +120,10 @@ class CreateBranchServiceTest {
         when(repository.codeExists(9L, "NORTE")).thenReturn(false);
         when(cityQueryPort.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(
-                new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("City not found");
+        assertThatThrownBy(
+                () -> service.execute(new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("City not found");
 
         verify(repository, never()).save(any());
     }
@@ -127,10 +134,10 @@ class CreateBranchServiceTest {
         when(cityQueryPort.findById(5L)).thenReturn(Optional.of(city));
         when(companyQueryPort.findById(9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(
-                new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Company not found");
+        assertThatThrownBy(
+                () -> service.execute(new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Company not found");
 
         verify(repository, never()).save(any());
     }

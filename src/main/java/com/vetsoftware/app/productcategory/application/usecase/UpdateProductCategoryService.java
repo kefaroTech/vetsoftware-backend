@@ -20,7 +20,7 @@ public class UpdateProductCategoryService implements UpdateProductCategoryUseCas
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateProductCategoryService(ProductCategoryRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -28,14 +28,17 @@ public class UpdateProductCategoryService implements UpdateProductCategoryUseCas
     @Override
     @Transactional
     public ProductCategoryDto execute(UpdateProductCategoryCommand command) {
-        ProductCategory productCategory = repository.findByIdAndCompanyId(command.id(), command.companyId())
+        ProductCategory productCategory = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new ProductCategoryNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(),
+                command.id())) {
             throw new ProductCategoryNameAlreadyExistsException(command.name());
         }
-        productCategory.update(command.name(), command.description(), company, command.updatedBy(), command.version());
+        productCategory.update(command.name(), command.description(), company, command.updatedBy(),
+                command.version());
         return ProductCategoryDto.from(repository.save(productCategory));
     }
 }

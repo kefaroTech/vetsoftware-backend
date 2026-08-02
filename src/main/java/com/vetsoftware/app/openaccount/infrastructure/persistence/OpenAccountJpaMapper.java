@@ -14,12 +14,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class OpenAccountJpaMapper {
 
-    public OpenAccountJpaEntity toJpa(OpenAccount openAccount,
-                                      OwnerJpaEntity owner,
-                                      CompanyJpaEntity company,
-                                      BranchJpaEntity branch,
-                                      EmployeeJpaEntity createdBy,
-                                      EmployeeJpaEntity closedBy) {
+    public OpenAccountJpaEntity toJpa(OpenAccount openAccount, OwnerJpaEntity owner,
+            CompanyJpaEntity company, BranchJpaEntity branch, EmployeeJpaEntity createdBy,
+            EmployeeJpaEntity closedBy) {
         OpenAccountJpaEntity entity = new OpenAccountJpaEntity();
         entity.setId(openAccount.getId());
         entity.setOwner(owner);
@@ -48,36 +45,21 @@ public class OpenAccountJpaMapper {
         EmployeeJpaEntity cb = entity.getCreatedBy();
         EmployeeJpaEntity closedBy = entity.getClosedBy();
         EmployeeRef closedByRef = closedBy != null
-            ? new EmployeeRef(closedBy.getId(), closedBy.getName())
-            : null;
-        return toDomain(entity,
-            new OwnerRef(o.getId(), o.getName(), o.getDocument()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            new BranchRef(b.getId(), b.getName(), b.getCode()),
-            new EmployeeRef(cb.getId(), cb.getName()),
-            closedByRef);
+                ? new EmployeeRef(closedBy.getId(), closedBy.getName())
+                : null;
+        return toDomain(entity, new OwnerRef(o.getId(), o.getName(), o.getDocument()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                new BranchRef(b.getId(), b.getName(), b.getCode()),
+                new EmployeeRef(cb.getId(), cb.getName()), closedByRef);
     }
 
     public OpenAccount toDomain(OpenAccountJpaEntity entity, OwnerRef ownerRef,
-                                CompanyRef companyRef, BranchRef branchRef, EmployeeRef createdByRef,
-                                EmployeeRef closedByRef) {
-        return new OpenAccount(
-            entity.getId(),
-            ownerRef,
-            entity.getTotalAmount(),
-            entity.getPaidAmount(),
-            entity.getOutstandingAmount(),
-            companyRef,
-            branchRef,
-            entity.getStatus(),
-            createdByRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            closedByRef,
-            entity.getClosedAt(),
-            entity.getCloseReason(),
-            entity.isReversed(),
-            entity.getReversedAt(),
-            entity.getVersion());
+            CompanyRef companyRef, BranchRef branchRef, EmployeeRef createdByRef,
+            EmployeeRef closedByRef) {
+        return new OpenAccount(entity.getId(), ownerRef, entity.getTotalAmount(),
+                entity.getPaidAmount(), entity.getOutstandingAmount(), companyRef, branchRef,
+                entity.getStatus(), createdByRef, entity.getCreatedDate(), entity.isEnabled(),
+                closedByRef, entity.getClosedAt(), entity.getCloseReason(), entity.isReversed(),
+                entity.getReversedAt(), entity.getVersion());
     }
 }

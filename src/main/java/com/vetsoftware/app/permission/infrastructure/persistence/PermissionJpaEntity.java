@@ -3,14 +3,14 @@ package com.vetsoftware.app.permission.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "permissions", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_permissions_company_code", columnNames = {"company_id", "code"})
-})
+        @UniqueConstraint(name = "uq_permissions_company_code", columnNames = {"company_id",
+                "code"})})
 @SQLDelete(sql = "UPDATE permissions SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class PermissionJpaEntity {
@@ -38,20 +38,62 @@ public class PermissionJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    public PermissionJpaEntity() {}
+    public PermissionJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public SubModuleJpaEntity getSubModule() { return subModule; }
-    public void setSubModule(SubModuleJpaEntity subModule) { this.subModule = subModule; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public SubModuleJpaEntity getSubModule() {
+        return subModule;
+    }
+
+    public void setSubModule(SubModuleJpaEntity subModule) {
+        this.subModule = subModule;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

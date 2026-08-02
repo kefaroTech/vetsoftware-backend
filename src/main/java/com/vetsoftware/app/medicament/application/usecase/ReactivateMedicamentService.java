@@ -21,8 +21,9 @@ public class ReactivateMedicamentService implements ReactivateMedicamentUseCase 
     @Transactional
     public MedicamentDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new MedicamentNotFoundException(id);
-        return MedicamentDto.from(repository.findById(id)
-                .orElseThrow(() -> new MedicamentNotFoundException(id)));
+        if (rows == 0)
+            throw new MedicamentNotFoundException(id);
+        return MedicamentDto.from(
+                repository.findById(id).orElseThrow(() -> new MedicamentNotFoundException(id)));
     }
 }

@@ -48,12 +48,10 @@ class OpenHtmlToPdfEngineTest {
     void rejectsBlankAndOversizedInput() {
         OpenHtmlToPdfEngine engine = engine(DataSize.ofBytes(16), DataSize.ofMegabytes(1));
 
-        assertThatThrownBy(() -> engine.render(" "))
-                .isInstanceOf(PdfRenderException.class)
+        assertThatThrownBy(() -> engine.render(" ")).isInstanceOf(PdfRenderException.class)
                 .hasMessageContaining("vacío");
         assertThatThrownBy(() -> engine.render("<html>documento demasiado grande</html>"))
-                .isInstanceOf(PdfRenderException.class)
-                .hasMessageContaining("excede el límite");
+                .isInstanceOf(PdfRenderException.class).hasMessageContaining("excede el límite");
     }
 
     @Test

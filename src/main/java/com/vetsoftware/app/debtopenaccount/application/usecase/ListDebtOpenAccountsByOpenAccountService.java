@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "debt.open.account.list.by.open.account")
 @Service
-public class ListDebtOpenAccountsByOpenAccountService implements ListDebtOpenAccountsByOpenAccountUseCase {
+public class ListDebtOpenAccountsByOpenAccountService
+        implements
+            ListDebtOpenAccountsByOpenAccountUseCase {
     private final DebtOpenAccountRepository repository;
 
     public ListDebtOpenAccountsByOpenAccountService(DebtOpenAccountRepository repository) {
@@ -19,6 +21,6 @@ public class ListDebtOpenAccountsByOpenAccountService implements ListDebtOpenAcc
     @Override
     public List<DebtOpenAccountDto> listByOpenAccount(Long openAccountId, Long companyId) {
         return repository.findByOpenAccountIdAndCompanyId(openAccountId, companyId).stream()
-            .map(DebtOpenAccountDto::from).toList();
+                .map(DebtOpenAccountDto::from).toList();
     }
 }

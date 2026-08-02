@@ -17,7 +17,10 @@ public class CodeRecoveryController {
         this.recoverUseCase = recoverUseCase;
     }
 
-    /** "Recordar mi código" por correo. Responde 204 SIEMPRE (anti-enumeración: no revela si el correo existe). */
+    /**
+     * "Recordar mi código" por correo. Responde 204 SIEMPRE (anti-enumeración: no
+     * revela si el correo existe).
+     */
     @PostMapping("/recover-code")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void recoverCode(@Valid @RequestBody RecoverCodeRequest request) {

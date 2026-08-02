@@ -15,8 +15,7 @@ public class DeleteSubModuleService implements DeleteSubModuleUseCase {
     private final SubModuleRepository repository;
     private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
 
-    public DeleteSubModuleService(
-            SubModuleRepository repository,
+    public DeleteSubModuleService(SubModuleRepository repository,
             MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
         this.repository = repository;
         this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;

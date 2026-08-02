@@ -7,8 +7,8 @@ import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.BranchAccessResolver;
 import com.vetsoftware.app.auth.application.port.out.PermissionResolver;
-import java.util.Objects;
 import io.micrometer.observation.annotation.Observed;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "auth.resolve.context")
@@ -20,8 +20,7 @@ public class ResolveAuthContextService implements ResolveAuthContextUseCase {
     private final AuthEmployeeRepository employeeRepository;
 
     public ResolveAuthContextService(PermissionResolver permissionResolver,
-                                     BranchAccessResolver branchAccessResolver,
-                                     AuthEmployeeRepository employeeRepository) {
+            BranchAccessResolver branchAccessResolver, AuthEmployeeRepository employeeRepository) {
         this.permissionResolver = permissionResolver;
         this.branchAccessResolver = branchAccessResolver;
         this.employeeRepository = employeeRepository;
@@ -29,15 +28,15 @@ public class ResolveAuthContextService implements ResolveAuthContextUseCase {
 
     @Override
     public AuthContext execute(Long employeeId, Long authVersion) {
-        if (employeeId == null) return null;
+        if (employeeId == null)
+            return null;
         var employee = employeeRepository.findActiveById(employeeId).orElse(null);
-        if (employee == null) return null;
+        if (employee == null)
+            return null;
         if (!Objects.equals(employee.authVersion(), authVersion)) {
             throw new SessionReplacedException();
         }
-        return new EmployeeContext(
-                employee.id(),
-                employee.companyId(),
+        return new EmployeeContext(employee.id(), employee.companyId(),
                 permissionResolver.resolveFor(employee.id()),
                 branchAccessResolver.resolveFor(employee.id()));
     }

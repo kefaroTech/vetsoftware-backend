@@ -10,10 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.observation.reactivate")
 @Service
-public class ReactivateHospitalizationObservationService implements ReactivateHospitalizationObservationUseCase {
+public class ReactivateHospitalizationObservationService
+        implements
+            ReactivateHospitalizationObservationUseCase {
     private final HospitalizationObservationRepository repository;
 
-    public ReactivateHospitalizationObservationService(HospitalizationObservationRepository repository) {
+    public ReactivateHospitalizationObservationService(
+            HospitalizationObservationRepository repository) {
         this.repository = repository;
     }
 
@@ -21,8 +24,9 @@ public class ReactivateHospitalizationObservationService implements ReactivateHo
     @Transactional
     public HospitalizationObservationDto execute(Long id) {
         int updated = repository.reactivate(id);
-        if (updated == 0) throw new HospitalizationObservationNotFoundException(id);
+        if (updated == 0)
+            throw new HospitalizationObservationNotFoundException(id);
         return HospitalizationObservationDto.from(repository.findById(id)
-            .orElseThrow(() -> new HospitalizationObservationNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationObservationNotFoundException(id)));
     }
 }

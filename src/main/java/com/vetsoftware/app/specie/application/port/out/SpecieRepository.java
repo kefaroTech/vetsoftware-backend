@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface SpecieRepository {
     Specie save(Specie specie);
+
     Optional<Specie> findById(Long id);
+
     List<Specie> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

@@ -21,10 +21,9 @@ public class JpaConsultationRepository implements ConsultationRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaConsultationRepository(ConsultationJpaRepository jpaRepository,
-                                     ConsultationJpaMapper mapper,
-                                     ConsultationTypeJpaRepository consultationTypeJpaRepository,
-                                     AnimalJpaRepository animalJpaRepository,
-                                     CompanyJpaRepository companyJpaRepository) {
+            ConsultationJpaMapper mapper,
+            ConsultationTypeJpaRepository consultationTypeJpaRepository,
+            AnimalJpaRepository animalJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.consultationTypeJpaRepository = consultationTypeJpaRepository;
@@ -34,14 +33,16 @@ public class JpaConsultationRepository implements ConsultationRepository {
 
     @Override
     public Consultation save(Consultation consultation) {
-        ConsultationTypeJpaEntity consultationType =
-            consultationTypeJpaRepository.getReferenceById(consultation.getConsultationType().id());
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(consultation.getAnimal().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(consultation.getCompany().id());
-        ConsultationJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(consultation, consultationType, animal, company));
-        return mapper.toDomain(saved, consultation.getConsultationType(),
-                                consultation.getAnimal(), consultation.getCompany());
+        ConsultationTypeJpaEntity consultationType = consultationTypeJpaRepository
+                .getReferenceById(consultation.getConsultationType().id());
+        AnimalJpaEntity animal = animalJpaRepository
+                .getReferenceById(consultation.getAnimal().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(consultation.getCompany().id());
+        ConsultationJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(consultation, consultationType, animal, company));
+        return mapper.toDomain(saved, consultation.getConsultationType(), consultation.getAnimal(),
+                consultation.getCompany());
     }
 
     @Override

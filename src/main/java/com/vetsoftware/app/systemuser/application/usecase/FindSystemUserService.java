@@ -18,8 +18,7 @@ public class FindSystemUserService implements FindSystemUserUseCase {
 
     @Override
     public SystemUserDto findById(Long id) {
-        return repository.findById(id)
-            .map(SystemUserDto::from)
-            .orElseThrow(() -> new SystemUserNotFoundException(id));
+        return repository.findById(id).map(SystemUserDto::from)
+                .orElseThrow(() -> new SystemUserNotFoundException(id));
     }
 }

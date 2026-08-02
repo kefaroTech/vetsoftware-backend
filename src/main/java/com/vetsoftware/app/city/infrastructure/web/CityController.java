@@ -32,10 +32,9 @@ public class CityController {
     private final ReactivateCityUseCase reactivateUseCase;
 
     public CityController(CreateCityUseCase createUseCase, UpdateCityUseCase updateUseCase,
-                          FindCityUseCase findUseCase, ListCitiesUseCase listUseCase,
-                          ListCitiesByStateUseCase listByStateUseCase,
-                          DeleteCityUseCase deleteUseCase,
-                          ReactivateCityUseCase reactivateUseCase) {
+            FindCityUseCase findUseCase, ListCitiesUseCase listUseCase,
+            ListCitiesByStateUseCase listByStateUseCase, DeleteCityUseCase deleteUseCase,
+            ReactivateCityUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,7 +48,7 @@ public class CityController {
     @ResponseStatus(HttpStatus.CREATED)
     public CityResponse create(@Valid @RequestBody CreateCityRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateCityCommand(request.name(), request.stateId(), request.daneCode())));
+                new CreateCityCommand(request.name(), request.stateId(), request.daneCode())));
     }
 
     @GetMapping("/cities")
@@ -59,8 +58,7 @@ public class CityController {
 
     @GetMapping("/states/{stateId}/cities")
     public List<CityResponse> listByState(@PathVariable Long stateId) {
-        return listByStateUseCase.listByState(stateId).stream()
-            .map(this::toResponse).toList();
+        return listByStateUseCase.listByState(stateId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/cities/{id}")
@@ -69,9 +67,10 @@ public class CityController {
     }
 
     @PutMapping("/cities/{id}")
-    public CityResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCityRequest request) {
+    public CityResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateCityRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateCityCommand(id, request.name(), request.stateId(), request.daneCode())));
+                new UpdateCityCommand(id, request.name(), request.stateId(), request.daneCode())));
     }
 
     @DeleteMapping("/cities/{id}")
@@ -87,13 +86,7 @@ public class CityController {
 
     private CityResponse toResponse(CityDto dto) {
         StateSummaryDto s = dto.state();
-        return new CityResponse(
-            dto.id(),
-            dto.name(),
-            new StateSummary(s.id(), s.name()),
-            dto.daneCode(),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new CityResponse(dto.id(), dto.name(), new StateSummary(s.id(), s.name()),
+                dto.daneCode(), dto.createdDate(), dto.enabled());
     }
 }

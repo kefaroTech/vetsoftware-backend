@@ -18,7 +18,7 @@ public class FindBreedService implements FindBreedUseCase {
 
     @Override
     public BreedDto findById(Long id) {
-        return BreedDto.from(repository.findById(id)
-            .orElseThrow(() -> new BreedNotFoundException(id)));
+        return BreedDto
+                .from(repository.findById(id).orElseThrow(() -> new BreedNotFoundException(id)));
     }
 }

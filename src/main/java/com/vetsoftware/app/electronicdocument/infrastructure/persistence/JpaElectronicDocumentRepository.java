@@ -15,8 +15,7 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaElectronicDocumentRepository(ElectronicDocumentJpaRepository jpaRepository,
-                                           ElectronicDocumentJpaMapper mapper,
-                                           CompanyJpaRepository companyJpaRepository) {
+            ElectronicDocumentJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -56,21 +55,25 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     }
 
     @Override
-    public Optional<ElectronicDocument> findByCompanyIdAndClientRequestId(Long companyId, String clientRequestId) {
-        return jpaRepository.findByCompany_IdAndClientRequestId(companyId, clientRequestId).map(mapper::toDomain);
+    public Optional<ElectronicDocument> findByCompanyIdAndClientRequestId(Long companyId,
+            String clientRequestId) {
+        return jpaRepository.findByCompany_IdAndClientRequestId(companyId, clientRequestId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId) {
-        return jpaRepository.findByOpenAccountIdAndCompany_Id(openAccountId, companyId).map(mapper::toDomain);
+        return jpaRepository.findByOpenAccountIdAndCompany_Id(openAccountId, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public ElectronicDocument updateDianResult(ElectronicDocument document) {
-        ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId())
-                .orElseThrow(() -> new com.vetsoftware.app.electronicdocument.domain
-                        .ElectronicDocumentNotFoundException(document.getId()));
-        // Solo columnas del ciclo de vida DIAN + numeración fiscal; líneas y pagos no se tocan.
+        ElectronicDocumentJpaEntity entity = jpaRepository.findById(document.getId()).orElseThrow(
+                () -> new com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException(
+                        document.getId()));
+        // Solo columnas del ciclo de vida DIAN + numeración fiscal; líneas y pagos no
+        // se tocan.
         entity.setPrefix(document.getPrefix());
         entity.setConsecutive(document.getConsecutive());
         entity.setResolutionNumber(document.getResolutionNumber());
@@ -83,7 +86,9 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
         entity.setPdfRepresentation(document.getPdfRepresentation());
         entity.setDianStatus(document.getDianStatus());
         entity.setDianValidationDate(document.getDianValidationDate());
-        // F5: el reverso contable de la factura (marcado al validar su nota credito) tambien se persiste aqui.
+        // F5: el reverso contable de la factura (marcado al validar su nota credito)
+        // tambien se
+        // persiste aqui.
         entity.setReversed(document.isReversed());
         return mapper.toDomain(jpaRepository.save(entity));
     }
@@ -91,17 +96,13 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
     @Override
     public List<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId) {
         return jpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
-                .distinct()
-                .map(mapper::toDomain)
-                .toList();
+                .distinct().map(mapper::toDomain).toList();
     }
 
     @Override
     public List<ElectronicDocument> findByDianStatus(
             com.vetsoftware.app.electronicdocument.domain.DianStatus status) {
-        return jpaRepository.findByDianStatus(status).stream()
-                .distinct()
-                .map(mapper::toDomain)
+        return jpaRepository.findByDianStatus(status).stream().distinct().map(mapper::toDomain)
                 .toList();
     }
 }

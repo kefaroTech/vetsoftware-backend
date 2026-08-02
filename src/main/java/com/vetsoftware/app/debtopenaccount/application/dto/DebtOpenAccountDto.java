@@ -5,33 +5,22 @@ import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record DebtOpenAccountDto(
-        Long id,
-        BigDecimal amount,
-        PaymentMethod paymentMethod,
-        OpenAccountSummaryDto openAccount,
-        EmployeeSummaryDto createdBy,
-        LocalDateTime createdDate,
-        boolean enabled,
-        boolean voided,
-        EmployeeSummaryDto voidedBy,
-        LocalDateTime voidedAt,
-        String voidReason
-) {
+public record DebtOpenAccountDto(Long id, BigDecimal amount, PaymentMethod paymentMethod,
+        OpenAccountSummaryDto openAccount, EmployeeSummaryDto createdBy, LocalDateTime createdDate,
+        boolean enabled, boolean voided, EmployeeSummaryDto voidedBy, LocalDateTime voidedAt,
+        String voidReason) {
     public static DebtOpenAccountDto from(DebtOpenAccount debtOpenAccount) {
-        return new DebtOpenAccountDto(
-                debtOpenAccount.getId(),
-                debtOpenAccount.getAmount(),
+        return new DebtOpenAccountDto(debtOpenAccount.getId(), debtOpenAccount.getAmount(),
                 debtOpenAccount.getPaymentMethod(),
                 OpenAccountSummaryDto.from(debtOpenAccount.getOpenAccount()),
-                debtOpenAccount.getCreatedBy() == null ? null
-                    : EmployeeSummaryDto.from(debtOpenAccount.getCreatedBy()),
-                debtOpenAccount.getCreatedDate(),
-                debtOpenAccount.isEnabled(),
+                debtOpenAccount.getCreatedBy() == null
+                        ? null
+                        : EmployeeSummaryDto.from(debtOpenAccount.getCreatedBy()),
+                debtOpenAccount.getCreatedDate(), debtOpenAccount.isEnabled(),
                 debtOpenAccount.isVoided(),
-                debtOpenAccount.getVoidedBy() == null ? null
-                    : EmployeeSummaryDto.from(debtOpenAccount.getVoidedBy()),
-                debtOpenAccount.getVoidedAt(),
-                debtOpenAccount.getVoidReason());
+                debtOpenAccount.getVoidedBy() == null
+                        ? null
+                        : EmployeeSummaryDto.from(debtOpenAccount.getVoidedBy()),
+                debtOpenAccount.getVoidedAt(), debtOpenAccount.getVoidReason());
     }
 }

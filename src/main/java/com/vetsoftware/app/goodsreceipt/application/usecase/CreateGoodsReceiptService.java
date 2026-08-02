@@ -29,10 +29,8 @@ public class CreateGoodsReceiptService implements CreateGoodsReceiptUseCase {
     private final ProductQueryPort productQueryPort;
 
     public CreateGoodsReceiptService(GoodsReceiptRepository repository,
-                                     CompanyQueryPort companyQueryPort,
-                                     BranchQueryPort branchQueryPort,
-                                     SupplierQueryPort supplierQueryPort,
-                                     ProductQueryPort productQueryPort) {
+            CompanyQueryPort companyQueryPort, BranchQueryPort branchQueryPort,
+            SupplierQueryPort supplierQueryPort, ProductQueryPort productQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.branchQueryPort = branchQueryPort;
@@ -44,30 +42,33 @@ public class CreateGoodsReceiptService implements CreateGoodsReceiptUseCase {
     public GoodsReceiptDto execute(CreateGoodsReceiptCommand command) {
         Long companyId = command.companyId();
         CompanyRef company = companyQueryPort.findById(companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
-        BranchRef branch = branchQueryPort.findById(command.branchId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Branch not found: " + command.branchId()));
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+        BranchRef branch = branchQueryPort.findById(command.branchId(), companyId).orElseThrow(
+                () -> new IllegalArgumentException("Branch not found: " + command.branchId()));
         SupplierRef supplier = supplierQueryPort.findById(command.supplierId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Supplier not found: " + command.supplierId()));
 
-        // Si purchaseOrderId != null NO se lee la orden aquí: la validación real ocurre al confirmar.
+        // Si purchaseOrderId != null NO se lee la orden aquí: la validación real ocurre
+        // al confirmar.
         List<GoodsReceiptLine> lines = buildLines(command.lines(), companyId);
 
-        GoodsReceipt receipt = GoodsReceipt.create(
-            company, branch, supplier, command.purchaseOrderId(), command.receiptDate(),
-            command.supplierInvoiceNumber(), command.notes(), lines, command.createdBy());
+        GoodsReceipt receipt = GoodsReceipt.create(company, branch, supplier,
+                command.purchaseOrderId(), command.receiptDate(), command.supplierInvoiceNumber(),
+                command.notes(), lines, command.createdBy());
         return GoodsReceiptDto.from(repository.save(receipt));
     }
 
-    private List<GoodsReceiptLine> buildLines(List<GoodsReceiptLineCommand> lineCommands, Long companyId) {
+    private List<GoodsReceiptLine> buildLines(List<GoodsReceiptLineCommand> lineCommands,
+            Long companyId) {
         if (lineCommands == null || lineCommands.isEmpty()) {
             throw new IllegalArgumentException("at least one line is required");
         }
         return lineCommands.stream().map(lc -> {
-            ProductRef product = productQueryPort.findById(lc.productId(), companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + lc.productId()));
+            ProductRef product = productQueryPort.findById(lc.productId(), companyId).orElseThrow(
+                    () -> new IllegalArgumentException("Product not found: " + lc.productId()));
             return GoodsReceiptLine.create(product, lc.purchaseOrderLineId(), lc.lotNumber(),
-                lc.expireDate(), lc.quantityReceived(), lc.unitCost());
+                    lc.expireDate(), lc.quantityReceived(), lc.unitCost());
         }).toList();
     }
 }

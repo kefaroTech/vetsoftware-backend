@@ -5,10 +5,10 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaEntity;
 import com.vetsoftware.app.surgerytype.infrastructure.persistence.SurgeryTypeJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "surgeries")
@@ -59,32 +59,110 @@ public class SurgeryJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected SurgeryJpaEntity() {}
+    protected SurgeryJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
-    public SurgeryTypeJpaEntity getSurgeryType() { return surgeryType; }
-    public void setSurgeryType(SurgeryTypeJpaEntity surgeryType) { this.surgeryType = surgeryType; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public String getMedicament() { return medicament; }
-    public void setMedicament(String medicament) { this.medicament = medicament; }
-    public String getObservations() { return observations; }
-    public void setObservations(String observations) { this.observations = observations; }
-    public String getComplications() { return complications; }
-    public void setComplications(String complications) { this.complications = complications; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public AnimalJpaEntity getAnimal() { return animal; }
-    public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
-    public ConsultationJpaEntity getConsultation() { return consultation; }
-    public void setConsultation(ConsultationJpaEntity consultation) { this.consultation = consultation; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public SurgeryTypeJpaEntity getSurgeryType() {
+        return surgeryType;
+    }
+
+    public void setSurgeryType(SurgeryTypeJpaEntity surgeryType) {
+        this.surgeryType = surgeryType;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getMedicament() {
+        return medicament;
+    }
+
+    public void setMedicament(String medicament) {
+        this.medicament = medicament;
+    }
+
+    public String getObservations() {
+        return observations;
+    }
+
+    public void setObservations(String observations) {
+        this.observations = observations;
+    }
+
+    public String getComplications() {
+        return complications;
+    }
+
+    public void setComplications(String complications) {
+        this.complications = complications;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public AnimalJpaEntity getAnimal() {
+        return animal;
+    }
+
+    public void setAnimal(AnimalJpaEntity animal) {
+        this.animal = animal;
+    }
+
+    public ConsultationJpaEntity getConsultation() {
+        return consultation;
+    }
+
+    public void setConsultation(ConsultationJpaEntity consultation) {
+        this.consultation = consultation;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

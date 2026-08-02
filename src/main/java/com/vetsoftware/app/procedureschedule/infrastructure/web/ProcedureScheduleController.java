@@ -30,11 +30,10 @@ public class ProcedureScheduleController {
     private final Authz authz;
 
     public ProcedureScheduleController(GenerateProcedureScheduleUseCase generateUseCase,
-                                       ListProcedureSchedulesByHospitalizationUseCase listByHospitalizationUseCase,
-                                       ApplyProcedureScheduleUseCase applyUseCase,
-                                       RescheduleProcedureScheduleUseCase rescheduleUseCase,
-                                       SuspendPendingProcedureSchedulesUseCase suspendPendingUseCase,
-                                       Authz authz) {
+            ListProcedureSchedulesByHospitalizationUseCase listByHospitalizationUseCase,
+            ApplyProcedureScheduleUseCase applyUseCase,
+            RescheduleProcedureScheduleUseCase rescheduleUseCase,
+            SuspendPendingProcedureSchedulesUseCase suspendPendingUseCase, Authz authz) {
         this.generateUseCase = generateUseCase;
         this.listByHospitalizationUseCase = listByHospitalizationUseCase;
         this.applyUseCase = applyUseCase;
@@ -46,51 +45,59 @@ public class ProcedureScheduleController {
     @PostMapping("/generate/{hospitalizationProcedureId}")
     @ResponseStatus(HttpStatus.CREATED)
     public List<ProcedureScheduleResponse> generate(@PathVariable Long hospitalizationProcedureId) {
-        return generateUseCase.execute(
-                new GenerateProcedureScheduleCommand(hospitalizationProcedureId, authz.currentEmployeeId()))
-            .stream().map(this::toResponse).toList();
+        return generateUseCase
+                .execute(new GenerateProcedureScheduleCommand(hospitalizationProcedureId,
+                        authz.currentEmployeeId()))
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<ProcedureScheduleResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId)
-            .stream().map(this::toResponse).toList();
+    public List<ProcedureScheduleResponse> listByHospitalization(
+            @PathVariable Long hospitalizationId) {
+        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+                .map(this::toResponse).toList();
     }
 
-    /** Marca una ejecución como aplicada (hora real = ahora). Devuelve el plan de ese procedimiento. */
+    /**
+     * Marca una ejecución como aplicada (hora real = ahora). Devuelve el plan de
+     * ese procedimiento.
+     */
     @PatchMapping("/{id}/apply")
     public List<ProcedureScheduleResponse> apply(@PathVariable Long id) {
-        return applyUseCase.execute(new ApplyProcedureScheduleCommand(id))
-            .stream().map(this::toResponse).toList();
+        return applyUseCase.execute(new ApplyProcedureScheduleCommand(id)).stream()
+                .map(this::toResponse).toList();
     }
 
-    /** Reprograma una ejecución (mode=one|cascade). Devuelve el plan de ese procedimiento. */
+    /**
+     * Reprograma una ejecución (mode=one|cascade). Devuelve el plan de ese
+     * procedimiento.
+     */
     @PatchMapping("/{id}/reschedule")
     public List<ProcedureScheduleResponse> reschedule(@PathVariable Long id,
-                                                      @Valid @RequestBody RescheduleProcedureScheduleRequest request) {
+            @Valid @RequestBody RescheduleProcedureScheduleRequest request) {
         return rescheduleUseCase.execute(
                 new RescheduleProcedureScheduleCommand(id, request.newDateTime(), request.mode()))
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
-    /** Soft-delete de las ejecuciones pendientes (al suspender el procedimiento). Devuelve las aplicadas. */
+    /**
+     * Soft-delete de las ejecuciones pendientes (al suspender el procedimiento).
+     * Devuelve las aplicadas.
+     */
     @PatchMapping("/by-procedure/{hospitalizationProcedureId}/suspend-pending")
-    public List<ProcedureScheduleResponse> suspendPending(@PathVariable Long hospitalizationProcedureId) {
-        return suspendPendingUseCase.execute(hospitalizationProcedureId)
-            .stream().map(this::toResponse).toList();
+    public List<ProcedureScheduleResponse> suspendPending(
+            @PathVariable Long hospitalizationProcedureId) {
+        return suspendPendingUseCase.execute(hospitalizationProcedureId).stream()
+                .map(this::toResponse).toList();
     }
 
     private ProcedureScheduleResponse toResponse(ProcedureScheduleDto dto) {
-        return new ProcedureScheduleResponse(
-            dto.id(),
-            new HospitalizationProcedureSummary(dto.hospitalizationProcedureId(), dto.hospitalizationProcedureName()),
-            dto.originalDateTime(),
-            dto.currentDateTime(),
-            dto.realDateTime(),
-            dto.appliedStatus(),
-            dto.rescheduled(),
-            new EmployeeSummary(dto.createdById(), dto.createdByCode(), dto.createdByName()),
-            dto.createdDate(),
-            dto.enabled());
+        return new ProcedureScheduleResponse(dto.id(),
+                new HospitalizationProcedureSummary(dto.hospitalizationProcedureId(),
+                        dto.hospitalizationProcedureName()),
+                dto.originalDateTime(), dto.currentDateTime(), dto.realDateTime(),
+                dto.appliedStatus(), dto.rescheduled(),
+                new EmployeeSummary(dto.createdById(), dto.createdByCode(), dto.createdByName()),
+                dto.createdDate(), dto.enabled());
     }
 }

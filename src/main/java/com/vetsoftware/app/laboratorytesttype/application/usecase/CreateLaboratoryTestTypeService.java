@@ -17,17 +17,19 @@ public class CreateLaboratoryTestTypeService implements CreateLaboratoryTestType
     private final CompanyQueryPort companyQueryPort;
 
     public CreateLaboratoryTestTypeService(LaboratoryTestTypeRepository repository,
-                                 CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
 
     @Override
     public LaboratoryTestTypeDto execute(CreateLaboratoryTestTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return LaboratoryTestTypeDto.from(
-                repository.save(LaboratoryTestType.create(command.name(), command.description(), company, command.general())));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
+        return LaboratoryTestTypeDto.from(repository.save(LaboratoryTestType.create(command.name(),
+                command.description(), company, command.general())));
     }
 }

@@ -48,12 +48,12 @@ public class ActuatorSecurityProperties {
             }
             if (!StringUtils.hasText(username)) {
                 throw new IllegalStateException(
-                    "ACTUATOR_PROMETHEUS_USERNAME is required when Actuator authentication is enabled");
+                        "ACTUATOR_PROMETHEUS_USERNAME is required when Actuator authentication is enabled");
             }
             if (!StringUtils.hasText(password) || password.length() < 16) {
                 throw new IllegalStateException(
-                    "ACTUATOR_PROMETHEUS_PASSWORD must contain at least 16 characters "
-                        + "when Actuator authentication is enabled");
+                        "ACTUATOR_PROMETHEUS_PASSWORD must contain at least 16 characters "
+                                + "when Actuator authentication is enabled");
             }
         }
     }

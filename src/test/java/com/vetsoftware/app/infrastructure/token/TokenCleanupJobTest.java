@@ -35,12 +35,11 @@ class TokenCleanupJobTest {
 
     @Test
     void purgesEachTableInBoundedBatchesAndReportsRemainingRows() {
-        when(repository.purgeRefreshTokens(any(LocalDateTime.class), eq(100)))
-                .thenReturn(100, 20);
+        when(repository.purgeRefreshTokens(any(LocalDateTime.class), eq(100))).thenReturn(100, 20);
         when(repository.purgeEmailVerificationTokens(any(LocalDateTime.class), eq(100)))
                 .thenReturn(0);
-        when(repository.purgePasswordResetTokens(any(LocalDateTime.class), eq(100)))
-                .thenReturn(100, 100, 100);
+        when(repository.purgePasswordResetTokens(any(LocalDateTime.class), eq(100))).thenReturn(100,
+                100, 100);
         TokenCounts remaining = new TokenCounts(5, 6, 7);
         when(repository.countRows()).thenReturn(remaining);
 
@@ -61,7 +60,8 @@ class TokenCleanupJobTest {
         assertThat(job.cleanupTokens()).isEqualTo(ScheduledJobTelemetry.Outcome.NO_WORK);
 
         verify(repository, times(2)).purgeRefreshTokens(any(LocalDateTime.class), eq(100));
-        verify(repository, times(2)).purgeEmailVerificationTokens(any(LocalDateTime.class), eq(100));
+        verify(repository, times(2)).purgeEmailVerificationTokens(any(LocalDateTime.class),
+                eq(100));
         verify(repository, times(2)).purgePasswordResetTokens(any(LocalDateTime.class), eq(100));
     }
 }

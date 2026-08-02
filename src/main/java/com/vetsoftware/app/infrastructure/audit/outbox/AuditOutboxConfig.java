@@ -18,10 +18,7 @@ import software.amazon.awssdk.services.firehose.FirehoseClientBuilder;
 public class AuditOutboxConfig {
 
     @Bean
-    @ConditionalOnProperty(
-            prefix = "vetsoftware.audit.outbox",
-            name = "publisher-enabled",
-            havingValue = "true")
+    @ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "publisher-enabled", havingValue = "true")
     FirehoseClient auditFirehoseClient(AuditOutboxProperties properties) {
         properties.validate();
         FirehoseClientBuilder builder = FirehoseClient.builder()
@@ -31,8 +28,8 @@ public class AuditOutboxConfig {
         }
         if (StringUtils.hasText(properties.getAccessKey())
                 && StringUtils.hasText(properties.getSecretKey())) {
-            builder.credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
+            builder.credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials
+                    .create(properties.getAccessKey(), properties.getSecretKey())));
         } else {
             builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
         }

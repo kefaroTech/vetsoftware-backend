@@ -53,16 +53,18 @@ public class WeightRecordJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected WeightRecordJpaEntity() {}
+    protected WeightRecordJpaEntity() {
+    }
 
     /**
-     * Factory para escrituras cross-feature (consulta/hospitalización) que no pueden importar el dominio
-     * de esta feature: reciben la unidad como String y resuelven el enum aquí, dentro del paquete animal.
-     * Si {@code unit} es null se usa la unidad preferida del animal. Ver [[permissions]]/vertical slicing.
+     * Factory para escrituras cross-feature (consulta/hospitalización) que no
+     * pueden importar el dominio de esta feature: reciben la unidad como String y
+     * resuelven el enum aquí, dentro del paquete animal. Si {@code unit} es null se
+     * usa la unidad preferida del animal. Ver [[permissions]]/vertical slicing.
      */
     public static WeightRecordJpaEntity of(AnimalJpaEntity animal, CompanyJpaEntity company,
-                                           BigDecimal value, String unit, String source,
-                                           Long sourceId, String note, LocalDate measuredAt) {
+            BigDecimal value, String unit, String source, Long sourceId, String note,
+            LocalDate measuredAt) {
         if (value == null || value.signum() <= 0)
             throw new IllegalArgumentException("weight value must be greater than zero");
         WeightRecordJpaEntity e = new WeightRecordJpaEntity();
@@ -79,26 +81,91 @@ public class WeightRecordJpaEntity {
         return e;
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public AnimalJpaEntity getAnimal() { return animal; }
-    public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
-    public BigDecimal getValue() { return value; }
-    public void setValue(BigDecimal value) { this.value = value; }
-    public WeightType getUnit() { return unit; }
-    public void setUnit(WeightType unit) { this.unit = unit; }
-    public LocalDate getMeasuredAt() { return measuredAt; }
-    public void setMeasuredAt(LocalDate measuredAt) { this.measuredAt = measuredAt; }
-    public WeightSource getSource() { return source; }
-    public void setSource(WeightSource source) { this.source = source; }
-    public Long getSourceId() { return sourceId; }
-    public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public AnimalJpaEntity getAnimal() {
+        return animal;
+    }
+
+    public void setAnimal(AnimalJpaEntity animal) {
+        this.animal = animal;
+    }
+
+    public BigDecimal getValue() {
+        return value;
+    }
+
+    public void setValue(BigDecimal value) {
+        this.value = value;
+    }
+
+    public WeightType getUnit() {
+        return unit;
+    }
+
+    public void setUnit(WeightType unit) {
+        this.unit = unit;
+    }
+
+    public LocalDate getMeasuredAt() {
+        return measuredAt;
+    }
+
+    public void setMeasuredAt(LocalDate measuredAt) {
+        this.measuredAt = measuredAt;
+    }
+
+    public WeightSource getSource() {
+        return source;
+    }
+
+    public void setSource(WeightSource source) {
+        this.source = source;
+    }
+
+    public Long getSourceId() {
+        return sourceId;
+    }
+
+    public void setSourceId(Long sourceId) {
+        this.sourceId = sourceId;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

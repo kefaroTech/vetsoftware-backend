@@ -37,13 +37,10 @@ public class SupplierController {
     private final Authz authz;
 
     public SupplierController(CreateSupplierUseCase createUseCase,
-                              UpdateSupplierUseCase updateUseCase,
-                              FindSupplierUseCase findUseCase,
-                              ListSuppliersUseCase listUseCase,
-                              SearchSuppliersUseCase searchUseCase,
-                              DeleteSupplierUseCase deleteUseCase,
-                              ReactivateSupplierUseCase reactivateUseCase,
-                              Authz authz) {
+            UpdateSupplierUseCase updateUseCase, FindSupplierUseCase findUseCase,
+            ListSuppliersUseCase listUseCase, SearchSuppliersUseCase searchUseCase,
+            DeleteSupplierUseCase deleteUseCase, ReactivateSupplierUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -57,36 +54,33 @@ public class SupplierController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SupplierResponse create(@Valid @RequestBody CreateSupplierRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSupplierCommand(
-                request.name(), request.taxId(), request.contactName(), request.phone(),
-                request.email(), request.address(), request.paymentTermsDays(), request.notes(),
-                authz.currentCompanyId())));
+        return toResponse(
+                createUseCase.execute(new CreateSupplierCommand(request.name(), request.taxId(),
+                        request.contactName(), request.phone(), request.email(), request.address(),
+                        request.paymentTermsDays(), request.notes(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<SupplierResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/disabled")
     public List<SupplierResponse> listDisabled() {
-        return listUseCase.listDisabledByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
-    public PageResponse<SupplierResponse> search(
-            @RequestParam(required = false) String name,
+    public PageResponse<SupplierResponse> search(@RequestParam(required = false) String name,
             @RequestParam(required = false) String taxId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<SupplierDto> result = searchUseCase.execute(new SearchSuppliersCommand(
-            authz.currentCompanyId(), name, taxId, page, pageSize));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        PageResult<SupplierDto> result = searchUseCase.execute(
+                new SearchSuppliersCommand(authz.currentCompanyId(), name, taxId, page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -95,11 +89,11 @@ public class SupplierController {
     }
 
     @PutMapping("/{id}")
-    public SupplierResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSupplierRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSupplierCommand(
-                id, request.name(), request.taxId(), request.contactName(), request.phone(),
-                request.email(), request.address(), request.paymentTermsDays(), request.notes(),
+    public SupplierResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateSupplierRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSupplierCommand(id, request.name(),
+                request.taxId(), request.contactName(), request.phone(), request.email(),
+                request.address(), request.paymentTermsDays(), request.notes(),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
     }
 
@@ -116,10 +110,9 @@ public class SupplierController {
 
     private SupplierResponse toResponse(SupplierDto dto) {
         CompanySummaryDto c = dto.company();
-        return new SupplierResponse(
-            dto.id(), dto.name(), dto.taxId(), dto.contactName(), dto.phone(),
-            dto.email(), dto.address(), dto.paymentTermsDays(), dto.notes(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
+        return new SupplierResponse(dto.id(), dto.name(), dto.taxId(), dto.contactName(),
+                dto.phone(), dto.email(), dto.address(), dto.paymentTermsDays(), dto.notes(),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
     }
 }

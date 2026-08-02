@@ -13,10 +13,7 @@ import org.springframework.stereotype.Component;
 public class SystemAuthRunner {
 
     private static final Authentication SYSTEM_AUTH = new UsernamePasswordAuthenticationToken(
-        SystemContext.INSTANCE,
-        null,
-        List.of(new SimpleGrantedAuthority("ROLE_SYSTEM"))
-    );
+            SystemContext.INSTANCE, null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM")));
 
     public <T> T call(Supplier<T> action) {
         Authentication previous = SecurityContextHolder.getContext().getAuthentication();
@@ -29,6 +26,9 @@ public class SystemAuthRunner {
     }
 
     public void run(Runnable action) {
-        call(() -> { action.run(); return null; });
+        call(() -> {
+            action.run();
+            return null;
+        });
     }
 }

@@ -6,9 +6,15 @@ import java.util.Optional;
 
 public interface BaseRolePermissionRepository {
     BaseRolePermission save(BaseRolePermission baseRolePermission);
+
     Optional<BaseRolePermission> findById(Long id);
+
     List<BaseRolePermission> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
-    Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId, Long basePermissionId);
+
+    Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId,
+            Long basePermissionId);
 }

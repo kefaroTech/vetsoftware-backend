@@ -14,9 +14,8 @@ public class JpaSubModuleRepository implements SubModuleRepository {
     private final SubModuleJpaMapper mapper;
     private final ModuleJpaRepository moduleJpaRepository;
 
-    public JpaSubModuleRepository(SubModuleJpaRepository jpaRepository,
-                                   SubModuleJpaMapper mapper,
-                                   ModuleJpaRepository moduleJpaRepository) {
+    public JpaSubModuleRepository(SubModuleJpaRepository jpaRepository, SubModuleJpaMapper mapper,
+            ModuleJpaRepository moduleJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.moduleJpaRepository = moduleJpaRepository;

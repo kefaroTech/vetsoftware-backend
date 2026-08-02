@@ -23,8 +23,8 @@ public class CreateSystemUserPermissionService implements CreateSystemUserPermis
     private final SystemPermissionQueryPort systemPermissionQueryPort;
 
     public CreateSystemUserPermissionService(SystemUserPermissionRepository repository,
-                                             SystemUserQueryPort systemUserQueryPort,
-                                             SystemPermissionQueryPort systemPermissionQueryPort) {
+            SystemUserQueryPort systemUserQueryPort,
+            SystemPermissionQueryPort systemPermissionQueryPort) {
         this.repository = repository;
         this.systemUserQueryPort = systemUserQueryPort;
         this.systemPermissionQueryPort = systemPermissionQueryPort;
@@ -34,21 +34,25 @@ public class CreateSystemUserPermissionService implements CreateSystemUserPermis
     @Transactional
     public SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command) {
         SystemUserRef systemUser = systemUserQueryPort.findById(command.systemUserId())
-            .orElseThrow(() -> new IllegalArgumentException("SystemUser not found: " + command.systemUserId()));
-        SystemPermissionRef systemPermission = systemPermissionQueryPort.findById(command.systemPermissionId())
-            .orElseThrow(() -> new IllegalArgumentException("SystemPermission not found: " + command.systemPermissionId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SystemUser not found: " + command.systemUserId()));
+        SystemPermissionRef systemPermission = systemPermissionQueryPort
+                .findById(command.systemPermissionId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SystemPermission not found: " + command.systemPermissionId()));
 
-        Optional<Long> disabledId = repository
-            .findDisabledIdBySystemUserAndSystemPermission(command.systemUserId(), command.systemPermissionId());
+        Optional<Long> disabledId = repository.findDisabledIdBySystemUserAndSystemPermission(
+                command.systemUserId(), command.systemPermissionId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
             repository.reactivate(id);
             SystemUserPermission refreshed = repository.findById(id)
-                .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
+                    .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
             return SystemUserPermissionDto.from(refreshed);
         }
 
-        SystemUserPermission systemUserPermission = SystemUserPermission.create(systemUser, systemPermission);
+        SystemUserPermission systemUserPermission = SystemUserPermission.create(systemUser,
+                systemPermission);
         return SystemUserPermissionDto.from(repository.save(systemUserPermission));
     }
 }

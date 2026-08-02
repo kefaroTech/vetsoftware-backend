@@ -51,7 +51,9 @@ public class LaboratoryTestJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
-    // Sede de la muestra (multi-sucursal). Se mapea como id plano — solo se filtra por él en la bandeja; la FK la
+    // Sede de la muestra (multi-sucursal). Se mapea como id plano — solo se filtra
+    // por él en la
+    // bandeja; la FK la
     // garantiza la BD (migración 188). No hace falta el agregado Branch aquí.
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
@@ -69,36 +71,126 @@ public class LaboratoryTestJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected LaboratoryTestJpaEntity() {}
+    protected LaboratoryTestJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
-    public LaboratoryTestTypeJpaEntity getTestType() { return testType; }
-    public void setTestType(LaboratoryTestTypeJpaEntity testType) { this.testType = testType; }
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
-    public String getDiagnosis() { return diagnosis; }
-    public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getPrioridad() { return prioridad; }
-    public void setPrioridad(String prioridad) { this.prioridad = prioridad; }
-    public AnimalJpaEntity getAnimal() { return animal; }
-    public void setAnimal(AnimalJpaEntity animal) { this.animal = animal; }
-    public ConsultationJpaEntity getConsultation() { return consultation; }
-    public void setConsultation(ConsultationJpaEntity consultation) { this.consultation = consultation; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public Long getBranchId() { return branchId; }
-    public void setBranchId(Long branchId) { this.branchId = branchId; }
-    public EmployeeJpaEntity getProcessedBy() { return processedBy; }
-    public void setProcessedBy(EmployeeJpaEntity processedBy) { this.processedBy = processedBy; }
-    public LocalDateTime getProcessedDate() { return processedDate; }
-    public void setProcessedDate(LocalDateTime processedDate) { this.processedDate = processedDate; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public LaboratoryTestTypeJpaEntity getTestType() {
+        return testType;
+    }
+
+    public void setTestType(LaboratoryTestTypeJpaEntity testType) {
+        this.testType = testType;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getDiagnosis() {
+        return diagnosis;
+    }
+
+    public void setDiagnosis(String diagnosis) {
+        this.diagnosis = diagnosis;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getPrioridad() {
+        return prioridad;
+    }
+
+    public void setPrioridad(String prioridad) {
+        this.prioridad = prioridad;
+    }
+
+    public AnimalJpaEntity getAnimal() {
+        return animal;
+    }
+
+    public void setAnimal(AnimalJpaEntity animal) {
+        this.animal = animal;
+    }
+
+    public ConsultationJpaEntity getConsultation() {
+        return consultation;
+    }
+
+    public void setConsultation(ConsultationJpaEntity consultation) {
+        this.consultation = consultation;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public Long getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(Long branchId) {
+        this.branchId = branchId;
+    }
+
+    public EmployeeJpaEntity getProcessedBy() {
+        return processedBy;
+    }
+
+    public void setProcessedBy(EmployeeJpaEntity processedBy) {
+        this.processedBy = processedBy;
+    }
+
+    public LocalDateTime getProcessedDate() {
+        return processedDate;
+    }
+
+    public void setProcessedDate(LocalDateTime processedDate) {
+        this.processedDate = processedDate;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

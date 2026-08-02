@@ -9,9 +9,6 @@ import java.time.LocalDate;
 
 public record RegisterSupplierPaymentRequest(
         @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal amount,
-        @NotNull LocalDate paymentDate,
-        @NotNull SupplierInvoicePaymentMethod method,
-        @Size(max = 80) String reference,
-        @Size(max = 300) String note,
-        @NotNull Long version
-) {}
+        @NotNull LocalDate paymentDate, @NotNull SupplierInvoicePaymentMethod method,
+        @Size(max = 80) String reference, @Size(max = 300) String note, @NotNull Long version) {
+}

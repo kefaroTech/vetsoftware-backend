@@ -22,7 +22,7 @@ public class CancelSupplierInvoiceService implements CancelSupplierInvoiceUseCas
     @Transactional
     public SupplierInvoiceDto execute(Long id, Long companyId, Long actorId) {
         SupplierInvoice invoice = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
+                .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
         invoice.cancel(actorId, invoice.getVersion());
         return SupplierInvoiceDto.from(repository.save(invoice));
     }

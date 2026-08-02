@@ -17,6 +17,6 @@ public class JpaProductQueryPort implements ProductQueryPort {
     @Override
     public Optional<ProductRef> findById(Long productId, Long companyId) {
         return productJpaRepository.findByIdAndCompany_Id(productId, companyId)
-            .map(e -> new ProductRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new ProductRef(e.getId(), e.getName(), e.getCode()));
     }
 }

@@ -36,35 +36,33 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions rp JOIN roles r ON r.id = rp.role_id SET rp.enabled = true WHERE rp.id = :id AND r.company_id = :companyId", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions rp JOIN roles r ON r.id = rp.role_id SET rp.enabled = true WHERE"
+            + " rp.id = :id AND r.company_id = :companyId", nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions SET enabled = false WHERE role_id = :roleId AND enabled = true", nativeQuery = true)
     int disableAllByRoleId(@org.springframework.data.repository.query.Param("roleId") Long roleId);
 
-    @org.springframework.data.jpa.repository.Query(
-        value = "SELECT id FROM role_permissions WHERE role_id = :roleId AND permission_id = :permissionId AND enabled = false LIMIT 1",
-        nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = "SELECT id FROM role_permissions WHERE role_id = :roleId AND permission_id ="
+            + " :permissionId AND enabled = false LIMIT 1", nativeQuery = true)
     java.util.Optional<Long> findDisabledIdByRoleAndPermission(
-        @org.springframework.data.repository.query.Param("roleId") Long roleId,
-        @org.springframework.data.repository.query.Param("permissionId") Long permissionId);
+            @org.springframework.data.repository.query.Param("roleId") Long roleId,
+            @org.springframework.data.repository.query.Param("permissionId") Long permissionId);
 
-    @org.springframework.data.jpa.repository.Query(
-        value = "SELECT id AS id, permission_id AS permissionId FROM role_permissions WHERE role_id = :roleId AND permission_id IN (:permissionIds) AND enabled = false",
-        nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = "SELECT id AS id, permission_id AS permissionId FROM role_permissions WHERE role_id ="
+            + " :roleId AND permission_id IN (:permissionIds) AND enabled = false", nativeQuery = true)
     List<DisabledRolePermissionRow> findDisabledByRoleAndPermissions(
-        @org.springframework.data.repository.query.Param("roleId") Long roleId,
-        @org.springframework.data.repository.query.Param("permissionIds") java.util.Collection<Long> permissionIds);
+            @org.springframework.data.repository.query.Param("roleId") Long roleId,
+            @org.springframework.data.repository.query.Param("permissionIds") java.util.Collection<Long> permissionIds);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE role_permissions SET enabled = true WHERE id IN (:ids)",
-        nativeQuery = true)
-    int reactivateAllByIds(@org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
+    @org.springframework.data.jpa.repository.Query(value = "UPDATE role_permissions SET enabled = true WHERE id IN (:ids)", nativeQuery = true)
+    int reactivateAllByIds(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
 
     boolean existsByRole_Id(Long roleId);
 

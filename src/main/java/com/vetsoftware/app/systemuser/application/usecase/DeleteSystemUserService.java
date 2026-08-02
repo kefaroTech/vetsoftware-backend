@@ -14,8 +14,7 @@ public class DeleteSystemUserService implements DeleteSystemUserUseCase {
     private final SystemUserRepository repository;
     private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
 
-    public DeleteSystemUserService(
-            SystemUserRepository repository,
+    public DeleteSystemUserService(SystemUserRepository repository,
             SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
         this.repository = repository;
         this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;

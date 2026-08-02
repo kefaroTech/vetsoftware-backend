@@ -17,6 +17,6 @@ public class JpaAnimalColorQueryPort implements AnimalColorQueryPort {
     @Override
     public Optional<AnimalColorRef> findById(Long colorId) {
         return animalColorJpaRepository.findById(colorId)
-            .map(e -> new AnimalColorRef(e.getId(), e.getName()));
+                .map(e -> new AnimalColorRef(e.getId(), e.getName()));
     }
 }

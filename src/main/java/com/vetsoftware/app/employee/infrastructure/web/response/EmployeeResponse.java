@@ -4,10 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record EmployeeResponse(Long id, String employeeCode, String name, String email,
-                               CompanySummary company,
-                               List<RoleSummary> roles,
-                               List<BranchSummary> branches,
-                               LocalDateTime createdDate,
-                               boolean enabled,
-                               boolean mustChangePassword,
-                               String status) {}
+        CompanySummary company, List<RoleSummary> roles, List<BranchSummary> branches,
+        LocalDateTime createdDate, boolean enabled, boolean mustChangePassword, String status) {
+}

@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.annotations.SQLRestriction;
 
-/** Sesión de conteo físico. {@code total_lines}/{@code adjusted_lines} desnormalizados para el listado sin cargar líneas. */
+/**
+ * Sesión de conteo físico. {@code total_lines}/{@code adjusted_lines}
+ * desnormalizados para el listado sin cargar líneas.
+ */
 @Entity
 @Table(name = "inventory_count")
 @SQLRestriction("enabled = true")
@@ -42,30 +45,87 @@ public class InventoryCountJpaEntity {
     @OneToMany(mappedBy = "count", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InventoryCountLineJpaEntity> lines = new ArrayList<>();
 
-    protected InventoryCountJpaEntity() {}
+    protected InventoryCountJpaEntity() {
+    }
 
     public void addLine(InventoryCountLineJpaEntity line) {
         line.setCount(this);
         lines.add(line);
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getCompanyId() { return companyId; }
-    public void setCompanyId(Long companyId) { this.companyId = companyId; }
-    public Long getBranchId() { return branchId; }
-    public void setBranchId(Long branchId) { this.branchId = branchId; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
-    public Long getCountedBy() { return countedBy; }
-    public void setCountedBy(Long countedBy) { this.countedBy = countedBy; }
-    public int getTotalLines() { return totalLines; }
-    public void setTotalLines(int totalLines) { this.totalLines = totalLines; }
-    public int getAdjustedLines() { return adjustedLines; }
-    public void setAdjustedLines(int adjustedLines) { this.adjustedLines = adjustedLines; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public List<InventoryCountLineJpaEntity> getLines() { return lines; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public Long getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(Long branchId) {
+        this.branchId = branchId;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public Long getCountedBy() {
+        return countedBy;
+    }
+
+    public void setCountedBy(Long countedBy) {
+        this.countedBy = countedBy;
+    }
+
+    public int getTotalLines() {
+        return totalLines;
+    }
+
+    public void setTotalLines(int totalLines) {
+        this.totalLines = totalLines;
+    }
+
+    public int getAdjustedLines() {
+        return adjustedLines;
+    }
+
+    public void setAdjustedLines(int adjustedLines) {
+        this.adjustedLines = adjustedLines;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public List<InventoryCountLineJpaEntity> getLines() {
+        return lines;
+    }
 }

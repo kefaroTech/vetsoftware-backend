@@ -24,7 +24,10 @@ public class ListServicesByCompanyService implements ListServicesByCompanyUseCas
     @Override
     @Transactional(readOnly = true)
     public List<ServiceDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(ServiceDto::from).toList();
+        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus
+        // asociaciones LAZY aquí
+        // dentro.
+        return repository.findAllDisabledByCompanyId(companyId).stream().map(ServiceDto::from)
+                .toList();
     }
 }

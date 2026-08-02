@@ -16,9 +16,9 @@ public class JpaPromotionTargetQueryPort implements PromotionTargetQueryPort {
     private final ServiceCategoryJpaRepository serviceCategoryJpaRepository;
 
     public JpaPromotionTargetQueryPort(ProductJpaRepository productJpaRepository,
-                                       ServiceJpaRepository serviceJpaRepository,
-                                       ProductCategoryJpaRepository productCategoryJpaRepository,
-                                       ServiceCategoryJpaRepository serviceCategoryJpaRepository) {
+            ServiceJpaRepository serviceJpaRepository,
+            ProductCategoryJpaRepository productCategoryJpaRepository,
+            ServiceCategoryJpaRepository serviceCategoryJpaRepository) {
         this.productJpaRepository = productJpaRepository;
         this.serviceJpaRepository = serviceJpaRepository;
         this.productCategoryJpaRepository = productCategoryJpaRepository;
@@ -27,7 +27,8 @@ public class JpaPromotionTargetQueryPort implements PromotionTargetQueryPort {
 
     @Override
     public boolean exists(ApplicationType type, Long itemId, Long companyId) {
-        if (type == null || itemId == null || companyId == null) return false;
+        if (type == null || itemId == null || companyId == null)
+            return false;
         return switch (type) {
             case PRODUCT -> productJpaRepository.existsByIdAndCompany_Id(itemId, companyId);
             case SERVICE -> serviceJpaRepository.existsByIdAndCompany_Id(itemId, companyId);

@@ -23,9 +23,8 @@ public class CreatePrescriptionService implements CreatePrescriptionUseCase {
     private final CompanyQueryPort companyQueryPort;
 
     public CreatePrescriptionService(PrescriptionRepository repository,
-                                     AnimalQueryPort animalQueryPort,
-                                     ConsultationQueryPort consultationQueryPort,
-                                     CompanyQueryPort companyQueryPort) {
+            AnimalQueryPort animalQueryPort, ConsultationQueryPort consultationQueryPort,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.consultationQueryPort = consultationQueryPort;
@@ -34,16 +33,16 @@ public class CreatePrescriptionService implements CreatePrescriptionUseCase {
 
     @Override
     public PrescriptionDto execute(CreatePrescriptionCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
         ConsultationRef consultation = consultationQueryPort.findById(command.consultationId())
-            .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Consultation not found: " + command.consultationId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        Prescription prescription = Prescription.create(
-            command.date(), command.diagnosis(), command.observations(),
-            animal, consultation, company);
+        Prescription prescription = Prescription.create(command.date(), command.diagnosis(),
+                command.observations(), animal, consultation, company);
         return PrescriptionDto.from(repository.save(prescription));
     }
 }

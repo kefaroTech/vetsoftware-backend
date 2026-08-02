@@ -22,8 +22,7 @@ public class UpdatePermissionService implements UpdatePermissionUseCase {
     private final SubModuleQueryPort subModuleQueryPort;
 
     public UpdatePermissionService(PermissionRepository repository,
-                                    CompanyQueryPort companyQueryPort,
-                                    SubModuleQueryPort subModuleQueryPort) {
+            CompanyQueryPort companyQueryPort, SubModuleQueryPort subModuleQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.subModuleQueryPort = subModuleQueryPort;
@@ -33,11 +32,12 @@ public class UpdatePermissionService implements UpdatePermissionUseCase {
     @Transactional
     public PermissionDto execute(UpdatePermissionCommand command) {
         Permission permission = repository.findById(command.id())
-            .orElseThrow(() -> new PermissionNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                .orElseThrow(() -> new PermissionNotFoundException(command.id()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SubModule not found: " + command.subModuleId()));
         permission.update(command.name(), command.code(), company, subModule);
         return PermissionDto.from(repository.save(permission));
     }

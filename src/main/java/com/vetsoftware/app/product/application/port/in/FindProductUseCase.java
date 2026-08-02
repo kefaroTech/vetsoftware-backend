@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindProductUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('product.read') and @authz.isMyCompany(#companyId))")
     ProductDto findById(Long id, Long companyId);
 }

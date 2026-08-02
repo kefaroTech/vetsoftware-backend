@@ -16,9 +16,8 @@ public class JpaWeightRecordRepository implements WeightRecordRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaWeightRecordRepository(WeightRecordJpaRepository jpaRepository,
-                                     WeightRecordJpaMapper mapper,
-                                     AnimalJpaRepository animalJpaRepository,
-                                     CompanyJpaRepository companyJpaRepository) {
+            WeightRecordJpaMapper mapper, AnimalJpaRepository animalJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -35,19 +34,23 @@ public class JpaWeightRecordRepository implements WeightRecordRepository {
 
     @Override
     public List<WeightRecord> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
-            .stream().map(mapper::toDomain).toList();
+        return jpaRepository
+                .findByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public Optional<WeightRecord> findLatestByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findTopByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
-            .map(mapper::toDomain);
+        return jpaRepository
+                .findTopByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
-    public Optional<WeightRecord> findByIdAndAnimalIdAndCompanyId(Long id, Long animalId, Long companyId) {
-        return jpaRepository.findByIdAndAnimal_IdAndCompany_Id(id, animalId, companyId).map(mapper::toDomain);
+    public Optional<WeightRecord> findByIdAndAnimalIdAndCompanyId(Long id, Long animalId,
+            Long companyId) {
+        return jpaRepository.findByIdAndAnimal_IdAndCompany_Id(id, animalId, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override

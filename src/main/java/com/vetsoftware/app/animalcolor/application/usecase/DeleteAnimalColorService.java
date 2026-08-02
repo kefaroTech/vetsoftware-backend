@@ -15,8 +15,7 @@ public class DeleteAnimalColorService implements DeleteAnimalColorUseCase {
     private final AnimalColorRepository repository;
     private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteAnimalColorService(
-            AnimalColorRepository repository,
+    public DeleteAnimalColorService(AnimalColorRepository repository,
             AnimalChildrenQueryPort animalChildrenQueryPort) {
         this.repository = repository;
         this.animalChildrenQueryPort = animalChildrenQueryPort;

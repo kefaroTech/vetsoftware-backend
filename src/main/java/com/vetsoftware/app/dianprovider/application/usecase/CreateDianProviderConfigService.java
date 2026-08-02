@@ -17,7 +17,7 @@ public class CreateDianProviderConfigService implements CreateDianProviderConfig
     private final CompanyQueryPort companyQueryPort;
 
     public CreateDianProviderConfigService(DianProviderConfigRepository repository,
-                                           CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -25,13 +25,15 @@ public class CreateDianProviderConfigService implements CreateDianProviderConfig
     @Override
     public DianProviderConfigDto execute(CreateDianProviderConfigCommand command) {
         if (repository.findByCompanyId(command.companyId()).isPresent()) {
-            throw new IllegalStateException("La empresa ya tiene una configuracion de proveedor DIAN.");
+            throw new IllegalStateException(
+                    "La empresa ya tiene una configuracion de proveedor DIAN.");
         }
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         DianProviderConfig config = DianProviderConfig.create(company, command.provider(),
                 command.baseUrl(), command.clientId(), command.clientSecret(), command.username(),
-                command.password(), command.apiToken(), command.webhookSecret(), command.numberingProviderRef());
+                command.password(), command.apiToken(), command.webhookSecret(),
+                command.numberingProviderRef());
         return DianProviderConfigDto.from(repository.save(config));
     }
 }

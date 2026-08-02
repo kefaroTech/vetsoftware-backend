@@ -8,8 +8,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Evita publicar éxitos de negocio antes de confirmar la transacción. Las métricas son
- * best-effort: un fallo del registro nunca debe cambiar el resultado del caso de uso.
+ * Evita publicar éxitos de negocio antes de confirmar la transacción. Las
+ * métricas son best-effort: un fallo del registro nunca debe cambiar el
+ * resultado del caso de uso.
  */
 @Component
 public class AfterCommitMetricRecorder {
@@ -20,12 +21,13 @@ public class AfterCommitMetricRecorder {
         Objects.requireNonNull(action, "action es obligatoria");
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 && TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    safelyRun(action);
-                }
-            });
+            TransactionSynchronizationManager
+                    .registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            safelyRun(action);
+                        }
+                    });
             return;
         }
         safelyRun(action);

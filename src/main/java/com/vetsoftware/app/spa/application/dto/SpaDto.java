@@ -4,32 +4,13 @@ import com.vetsoftware.app.spa.domain.Spa;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record SpaDto(
-        Long id,
-        LocalDate date,
-        SpaTypeSummaryDto spaType,
-        String reason,
-        String details,
-        String observations,
-        String status,
-        AnimalSummaryDto animal,
-        CompanySummaryDto company,
-        LocalDateTime createdDate,
-        boolean enabled
-) {
+public record SpaDto(Long id, LocalDate date, SpaTypeSummaryDto spaType, String reason,
+        String details, String observations, String status, AnimalSummaryDto animal,
+        CompanySummaryDto company, LocalDateTime createdDate, boolean enabled) {
     public static SpaDto from(Spa spa) {
-        return new SpaDto(
-            spa.getId(),
-            spa.getDate(),
-            SpaTypeSummaryDto.from(spa.getSpaType()),
-            spa.getReason(),
-            spa.getDetails(),
-            spa.getObservations(),
-            spa.getStatus().name(),
-            AnimalSummaryDto.from(spa.getAnimal()),
-            CompanySummaryDto.from(spa.getCompany()),
-            spa.getCreatedDate(),
-            spa.isEnabled()
-        );
+        return new SpaDto(spa.getId(), spa.getDate(), SpaTypeSummaryDto.from(spa.getSpaType()),
+                spa.getReason(), spa.getDetails(), spa.getObservations(), spa.getStatus().name(),
+                AnimalSummaryDto.from(spa.getAnimal()), CompanySummaryDto.from(spa.getCompany()),
+                spa.getCreatedDate(), spa.isEnabled());
     }
 }

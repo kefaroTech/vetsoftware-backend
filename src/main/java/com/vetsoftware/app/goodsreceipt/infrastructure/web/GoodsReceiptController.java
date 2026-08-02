@@ -51,14 +51,10 @@ public class GoodsReceiptController {
     private final Authz authz;
 
     public GoodsReceiptController(CreateGoodsReceiptUseCase createUseCase,
-                                  UpdateGoodsReceiptUseCase updateUseCase,
-                                  FindGoodsReceiptUseCase findUseCase,
-                                  ListGoodsReceiptsUseCase listUseCase,
-                                  SearchGoodsReceiptsUseCase searchUseCase,
-                                  DeleteGoodsReceiptUseCase deleteUseCase,
-                                  ConfirmGoodsReceiptUseCase confirmUseCase,
-                                  CancelGoodsReceiptUseCase cancelUseCase,
-                                  Authz authz) {
+            UpdateGoodsReceiptUseCase updateUseCase, FindGoodsReceiptUseCase findUseCase,
+            ListGoodsReceiptsUseCase listUseCase, SearchGoodsReceiptsUseCase searchUseCase,
+            DeleteGoodsReceiptUseCase deleteUseCase, ConfirmGoodsReceiptUseCase confirmUseCase,
+            CancelGoodsReceiptUseCase cancelUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -73,16 +69,16 @@ public class GoodsReceiptController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public GoodsReceiptResponse create(@Valid @RequestBody CreateGoodsReceiptRequest request) {
-        return toResponse(createUseCase.execute(new CreateGoodsReceiptCommand(
-            request.branchId(), request.supplierId(), request.purchaseOrderId(), request.receiptDate(),
-            request.supplierInvoiceNumber(), request.notes(), toLineCommands(request.lines()),
-            authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
+        return toResponse(createUseCase.execute(new CreateGoodsReceiptCommand(request.branchId(),
+                request.supplierId(), request.purchaseOrderId(), request.receiptDate(),
+                request.supplierInvoiceNumber(), request.notes(), toLineCommands(request.lines()),
+                authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
     }
 
     @GetMapping
     public List<GoodsReceiptResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/search")
@@ -95,10 +91,9 @@ public class GoodsReceiptController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<GoodsReceiptDto> result = searchUseCase.execute(new SearchGoodsReceiptsCommand(
-            authz.currentCompanyId(), supplierId, branchId, status, from, to, page, pageSize));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                authz.currentCompanyId(), supplierId, branchId, status, from, to, page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -107,11 +102,13 @@ public class GoodsReceiptController {
     }
 
     @PutMapping("/{id}")
-    public GoodsReceiptResponse update(@PathVariable Long id, @Valid @RequestBody UpdateGoodsReceiptRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateGoodsReceiptCommand(
-            id, request.branchId(), request.supplierId(), request.purchaseOrderId(), request.receiptDate(),
-            request.supplierInvoiceNumber(), request.notes(), toLineCommands(request.lines()),
-            authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
+    public GoodsReceiptResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateGoodsReceiptRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateGoodsReceiptCommand(id,
+                request.branchId(), request.supplierId(), request.purchaseOrderId(),
+                request.receiptDate(), request.supplierInvoiceNumber(), request.notes(),
+                toLineCommands(request.lines()), authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -122,40 +119,41 @@ public class GoodsReceiptController {
 
     @PostMapping("/{id}/confirm")
     public GoodsReceiptResponse confirm(@PathVariable Long id) {
-        return toResponse(confirmUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull()));
+        return toResponse(confirmUseCase.execute(id, authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull()));
     }
 
     @PostMapping("/{id}/cancel")
     public GoodsReceiptResponse cancel(@PathVariable Long id) {
-        return toResponse(cancelUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull()));
+        return toResponse(cancelUseCase.execute(id, authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull()));
     }
 
     private List<GoodsReceiptLineCommand> toLineCommands(List<GoodsReceiptLineRequest> lines) {
         return lines.stream()
-            .map(l -> new GoodsReceiptLineCommand(l.productId(), l.purchaseOrderLineId(), l.lotNumber(),
-                l.expireDate(), l.quantityReceived(), l.unitCost()))
-            .toList();
+                .map(l -> new GoodsReceiptLineCommand(l.productId(), l.purchaseOrderLineId(),
+                        l.lotNumber(), l.expireDate(), l.quantityReceived(), l.unitCost()))
+                .toList();
     }
 
     private GoodsReceiptResponse toResponse(GoodsReceiptDto dto) {
         CompanySummaryDto c = dto.company();
         BranchSummaryDto b = dto.branch();
         SupplierSummaryDto s = dto.supplier();
-        List<GoodsReceiptLineResponse> lines = dto.lines().stream().map(this::toLineResponse).toList();
-        return new GoodsReceiptResponse(
-            dto.id(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            new BranchSummary(b.id(), b.name()),
-            new SupplierSummary(s.id(), s.name()),
-            dto.purchaseOrderId(), dto.receiptDate(), dto.supplierInvoiceNumber(), dto.notes(),
-            dto.status(), lines, dto.createdDate(), dto.createdBy(), dto.updatedDate(), dto.updatedBy(),
-            dto.version(), dto.enabled());
+        List<GoodsReceiptLineResponse> lines = dto.lines().stream().map(this::toLineResponse)
+                .toList();
+        return new GoodsReceiptResponse(dto.id(),
+                new CompanySummary(c.id(), c.name(), c.identifier()),
+                new BranchSummary(b.id(), b.name()), new SupplierSummary(s.id(), s.name()),
+                dto.purchaseOrderId(), dto.receiptDate(), dto.supplierInvoiceNumber(), dto.notes(),
+                dto.status(), lines, dto.createdDate(), dto.createdBy(), dto.updatedDate(),
+                dto.updatedBy(), dto.version(), dto.enabled());
     }
 
     private GoodsReceiptLineResponse toLineResponse(GoodsReceiptLineDto l) {
-        return new GoodsReceiptLineResponse(
-            l.id(),
-            new ProductSummary(l.product().id(), l.product().name(), l.product().code()),
-            l.purchaseOrderLineId(), l.lotNumber(), l.expireDate(), l.quantityReceived(), l.unitCost());
+        return new GoodsReceiptLineResponse(l.id(),
+                new ProductSummary(l.product().id(), l.product().name(), l.product().code()),
+                l.purchaseOrderLineId(), l.lotNumber(), l.expireDate(), l.quantityReceived(),
+                l.unitCost());
     }
 }

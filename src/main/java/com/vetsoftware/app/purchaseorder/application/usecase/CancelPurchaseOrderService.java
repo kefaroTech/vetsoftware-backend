@@ -22,7 +22,7 @@ public class CancelPurchaseOrderService implements CancelPurchaseOrderUseCase {
     @Transactional
     public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
         PurchaseOrder order = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
+                .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
         order.cancel(actorId);
         return PurchaseOrderDto.from(repository.save(order));
     }

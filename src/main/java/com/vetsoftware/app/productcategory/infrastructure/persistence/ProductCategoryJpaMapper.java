@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ProductCategoryJpaMapper {
-    public ProductCategoryJpaEntity toJpa(ProductCategory productCategory, CompanyJpaEntity company) {
+    public ProductCategoryJpaEntity toJpa(ProductCategory productCategory,
+            CompanyJpaEntity company) {
         ProductCategoryJpaEntity entity = new ProductCategoryJpaEntity();
         entity.setId(productCategory.getId());
         entity.setName(productCategory.getName());
@@ -28,15 +29,8 @@ public class ProductCategoryJpaMapper {
     }
 
     public ProductCategory toDomain(ProductCategoryJpaEntity entity, CompanyRef companyRef) {
-        return new ProductCategory(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                entity.getCreatedDate(),
-                entity.getUpdatedDate(),
-                entity.getUpdatedBy(),
-                entity.getVersion(),
-                entity.isEnabled());
+        return new ProductCategory(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, entity.getCreatedDate(), entity.getUpdatedDate(), entity.getUpdatedBy(),
+                entity.getVersion(), entity.isEnabled());
     }
 }

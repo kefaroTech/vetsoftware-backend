@@ -11,29 +11,27 @@ import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionExcept
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
+import com.vetsoftware.app.auth.infrastructure.security.BranchAccessDeniedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
 import com.vetsoftware.app.baserole.domain.BaseRoleHasActiveChildrenException;
 import com.vetsoftware.app.baserole.domain.BaseRoleNotFoundException;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermissionNotFoundException;
+import com.vetsoftware.app.branch.domain.BranchNotFoundException;
 import com.vetsoftware.app.breed.domain.BreedHasActiveChildrenException;
 import com.vetsoftware.app.breed.domain.BreedNotFoundException;
-import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
-import com.vetsoftware.app.city.domain.CityNotFoundException;
-import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
-import com.vetsoftware.app.branch.domain.BranchNotFoundException;
-import com.vetsoftware.app.company.domain.CompanyNotFoundException;
-import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
-import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
-import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
-import com.vetsoftware.app.inventory.domain.InsufficientStockException;
-import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
-import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
-import com.vetsoftware.app.cashregister.domain.CashSessionClosedException;
 import com.vetsoftware.app.cashregister.domain.CashSessionAlreadyOpenException;
+import com.vetsoftware.app.cashregister.domain.CashSessionClosedException;
+import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionAlreadyOpenException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionRequiredException;
 import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
+import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
+import com.vetsoftware.app.city.domain.CityNotFoundException;
+import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
+import com.vetsoftware.app.company.domain.CompanyNotFoundException;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
+import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -41,14 +39,25 @@ import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundExcep
 import com.vetsoftware.app.country.domain.CountryHasActiveChildrenException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
 import com.vetsoftware.app.daycare.domain.DayCareNotFoundException;
+import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeHasActiveChildrenException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
+import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
+import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
+import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
+import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
 import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptNotFoundException;
+import com.vetsoftware.app.goodsreceipt.domain.InvalidGoodsReceiptStatusTransitionException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedicationNotFoundException;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservationNotFoundException;
@@ -57,8 +66,8 @@ import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationPro
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.Tracer;
+import com.vetsoftware.app.inventory.domain.InsufficientStockException;
+import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
@@ -71,107 +80,98 @@ import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
+import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionNotFoundException;
-import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
-import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
-import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
-import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
-import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
-import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
-import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
-import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
-import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundException;
-import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
-import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
-import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransitionException;
+import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
-import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
-import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
-import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
-import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
+import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
 import com.vetsoftware.app.problem.domain.ProblemNotFoundException;
+import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
+import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
+import com.vetsoftware.app.product.domain.ProductNotFoundException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
+import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
+import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
+import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
+import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
+import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
+import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
+import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
 import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
+import com.vetsoftware.app.service.domain.ServiceNotFoundException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
+import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
+import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountAlreadyVoidedException;
+import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.spa.domain.SpaNotFoundException;
 import com.vetsoftware.app.spatype.domain.SpaTypeHasActiveChildrenException;
 import com.vetsoftware.app.spatype.domain.SpaTypeNotFoundException;
 import com.vetsoftware.app.specie.domain.SpecieHasActiveChildrenException;
 import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
-import com.vetsoftware.app.surgery.domain.SurgeryNotFoundException;
-import com.vetsoftware.app.surgerytype.domain.SurgeryTypeHasActiveChildrenException;
-import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
 import com.vetsoftware.app.state.domain.StateHasActiveChildrenException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleHasActiveChildrenException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
+import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
+import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
+import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
+import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundException;
+import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
+import com.vetsoftware.app.surgery.domain.SurgeryNotFoundException;
+import com.vetsoftware.app.surgerytype.domain.SurgeryTypeHasActiveChildrenException;
+import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionHasActiveChildrenException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
 import com.vetsoftware.app.systemuser.domain.SystemUserHasActiveChildrenException;
 import com.vetsoftware.app.systemuser.domain.SystemUserNotFoundException;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermissionNotFoundException;
-import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
-import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
-import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
-import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
-import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
-import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
-import com.vetsoftware.app.product.domain.ProductNotFoundException;
-import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
-import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
-import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
-import com.vetsoftware.app.productcategory.domain.ProductCategoryNotFoundException;
-import com.vetsoftware.app.service.domain.ServiceNotFoundException;
-import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
-import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
-import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
-import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
-import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
-import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
-import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
-import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptNotFoundException;
-import com.vetsoftware.app.goodsreceipt.domain.InvalidGoodsReceiptStatusTransitionException;
-import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundException;
-import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
-import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
 import com.vetsoftware.app.tax.domain.TaxHasActiveChildrenException;
 import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
+import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
+import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import com.vetsoftware.app.auth.infrastructure.security.BranchAccessDeniedException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
@@ -195,22 +195,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleExceptionInternal(
-            Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
-        if (statusCode.is5xxServerError() && request instanceof ServletWebRequest servletWebRequest) {
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
+            HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        if (statusCode.is5xxServerError()
+                && request instanceof ServletWebRequest servletWebRequest) {
             markObservationError(servletWebRequest.getRequest(), ex);
         }
         if (statusCode.is5xxServerError()) {
-            log.error("Server error {} on {}", statusCode.value(), request.getDescription(false), ex);
+            log.error("Server error {} on {}", statusCode.value(), request.getDescription(false),
+                    ex);
         } else if (statusCode.is4xxClientError()) {
-            log.warn("Client error {} on {}: {}",
-                    statusCode.value(), request.getDescription(false), ex.getMessage());
+            log.warn("Client error {} on {}: {}", statusCode.value(), request.getDescription(false),
+                    ex.getMessage());
         }
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
-    @ExceptionHandler({
-            CompanyNotFoundException.class, EmployeeNotFoundException.class,
+    @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class,
             MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class,
             ModuleNotFoundException.class, PermissionNotFoundException.class,
             SubModuleNotFoundException.class, BasePermissionNotFoundException.class,
@@ -219,13 +220,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             CityNotFoundException.class, RoleNotFoundException.class,
             RolePermissionNotFoundException.class, EmployeeRoleNotFoundException.class,
             SystemUserNotFoundException.class, SystemPermissionNotFoundException.class,
-            SystemUserPermissionNotFoundException.class,
-            SpecieNotFoundException.class, BreedNotFoundException.class,
-            OwnerNotFoundException.class, AnimalNotFoundException.class,
-            WeightRecordNotFoundException.class,
-            AnimalColorNotFoundException.class,
-            ProblemNotFoundException.class, AnimalAlertNotFoundException.class,
-            AppointmentNotFoundException.class,
+            SystemUserPermissionNotFoundException.class, SpecieNotFoundException.class,
+            BreedNotFoundException.class, OwnerNotFoundException.class,
+            AnimalNotFoundException.class, WeightRecordNotFoundException.class,
+            AnimalColorNotFoundException.class, ProblemNotFoundException.class,
+            AnimalAlertNotFoundException.class, AppointmentNotFoundException.class,
             ConsultationTypeNotFoundException.class, ConsultationNotFoundException.class,
             VaccinationTypeNotFoundException.class, VaccinationNotFoundException.class,
             HospitalizationNotFoundException.class,
@@ -234,9 +233,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HospitalizationMedicationNotFoundException.class,
             HospitalizationProcedureNotFoundException.class,
             LaboratoryTestTypeNotFoundException.class, LaboratoryTestNotFoundException.class,
-            LaboratoryTestFileNotFoundException.class,
-            PrescriptionNotFoundException.class, DewormingNotFoundException.class,
-            DayCareNotFoundException.class,
+            LaboratoryTestFileNotFoundException.class, PrescriptionNotFoundException.class,
+            DewormingNotFoundException.class, DayCareNotFoundException.class,
             SpaTypeNotFoundException.class, SpaNotFoundException.class,
             MedicamentPrescriptionNotFoundException.class, MedicamentNotFoundException.class,
             SurgeryTypeNotFoundException.class, SurgeryNotFoundException.class,
@@ -245,7 +243,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             ServiceCategoryNotFoundException.class, ProductNotFoundException.class,
             ServiceNotFoundException.class, PromotionNotFoundException.class,
             OpenAccountNotFoundException.class, DebtOpenAccountNotFoundException.class,
-            ProductChargeOpenAccountNotFoundException.class, ServiceChargeOpenAccountNotFoundException.class,
+            ProductChargeOpenAccountNotFoundException.class,
+            ServiceChargeOpenAccountNotFoundException.class,
             GeneralChargeOpenAccountNotFoundException.class,
             EconomicActivityNotFoundException.class, CompanyTaxProfileNotFoundException.class,
             NumberingResolutionNotFoundException.class, ElectronicDocumentNotFoundException.class,
@@ -253,86 +252,83 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             BranchNotFoundException.class, InventoryCountNotFoundException.class,
             CashSessionNotFoundException.class, SupplierNotFoundException.class,
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
-            SupplierInvoiceNotFoundException.class,
-            PetshopCatalogNotFoundException.class
-    })
+            SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
     }
 
-    @ExceptionHandler({
-            ConsultationTypeHasActiveChildrenException.class,
+    @ExceptionHandler({ConsultationTypeHasActiveChildrenException.class,
             VaccinationTypeHasActiveChildrenException.class,
             SurgeryTypeHasActiveChildrenException.class,
             LaboratoryTestTypeHasActiveChildrenException.class,
             MedicamentHasActiveChildrenException.class,
             DiagnosticImagingTypeHasActiveChildrenException.class,
-            SpaTypeHasActiveChildrenException.class,
-            AnimalColorHasActiveChildrenException.class,
-            SpecieHasActiveChildrenException.class,
-            BreedHasActiveChildrenException.class,
-            OwnerHasActiveChildrenException.class,
-            AnimalHasActiveChildrenException.class,
+            SpaTypeHasActiveChildrenException.class, AnimalColorHasActiveChildrenException.class,
+            SpecieHasActiveChildrenException.class, BreedHasActiveChildrenException.class,
+            OwnerHasActiveChildrenException.class, AnimalHasActiveChildrenException.class,
             ConsultationHasActiveChildrenException.class,
-            PrescriptionHasActiveChildrenException.class,
-            CountryHasActiveChildrenException.class,
-            StateHasActiveChildrenException.class,
-            CityHasActiveChildrenException.class,
-            ModuleHasActiveChildrenException.class,
-            SubModuleHasActiveChildrenException.class,
+            PrescriptionHasActiveChildrenException.class, CountryHasActiveChildrenException.class,
+            StateHasActiveChildrenException.class, CityHasActiveChildrenException.class,
+            ModuleHasActiveChildrenException.class, SubModuleHasActiveChildrenException.class,
             MembershipHasActiveChildrenException.class,
             BasePermissionHasActiveChildrenException.class,
-            BaseRoleHasActiveChildrenException.class,
-            RoleHasActiveChildrenException.class,
-            PermissionHasActiveChildrenException.class,
-            SystemUserHasActiveChildrenException.class,
+            BaseRoleHasActiveChildrenException.class, RoleHasActiveChildrenException.class,
+            PermissionHasActiveChildrenException.class, SystemUserHasActiveChildrenException.class,
             SystemPermissionHasActiveChildrenException.class,
-            CompanyHasActiveChildrenException.class,
-            EmployeeHasActiveChildrenException.class,
-            TaxHasActiveChildrenException.class,
-            ProductCategoryHasActiveChildrenException.class,
-            ServiceCategoryHasActiveChildrenException.class
-    })
+            CompanyHasActiveChildrenException.class, EmployeeHasActiveChildrenException.class,
+            TaxHasActiveChildrenException.class, ProductCategoryHasActiveChildrenException.class,
+            ServiceCategoryHasActiveChildrenException.class})
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.warn("Cannot delete entity with active children: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
     }
 
     @ExceptionHandler(AdminEmployeeCannotBeDisabledException.class)
-    public ProblemDetail handleAdminEmployeeCannotBeDisabled(AdminEmployeeCannotBeDisabledException ex) {
+    public ProblemDetail handleAdminEmployeeCannotBeDisabled(
+            AdminEmployeeCannotBeDisabledException ex) {
         log.warn("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidAppointmentTransitionException.class)
-    public ProblemDetail handleInvalidAppointmentTransition(InvalidAppointmentTransitionException ex) {
+    public ProblemDetail handleInvalidAppointmentTransition(
+            InvalidAppointmentTransitionException ex) {
         log.warn("Invalid appointment status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_APPOINTMENT_TRANSITION", ex.getMessage());
     }
 
-    // Compras: transición de estado inválida en orden de compra o recepción (p. ej. editar una PO ya recibida,
-    // confirmar una recepción no-borrador, cancelar una recepción no-confirmada). Código propio derivado por clase
-    // (INVALID_PURCHASE_ORDER_STATUS_TRANSITION / INVALID_GOODS_RECEIPT_STATUS_TRANSITION) para el front.
-    @ExceptionHandler({
-        InvalidPurchaseOrderStatusTransitionException.class,
-        InvalidGoodsReceiptStatusTransitionException.class
-    })
+    // Compras: transición de estado inválida en orden de compra o recepción (p. ej.
+    // editar una PO ya
+    // recibida,
+    // confirmar una recepción no-borrador, cancelar una recepción no-confirmada).
+    // Código propio
+    // derivado por clase
+    // (INVALID_PURCHASE_ORDER_STATUS_TRANSITION /
+    // INVALID_GOODS_RECEIPT_STATUS_TRANSITION) para el
+    // front.
+    @ExceptionHandler({InvalidPurchaseOrderStatusTransitionException.class,
+            InvalidGoodsReceiptStatusTransitionException.class})
     public ProblemDetail handlePurchaseStatusTransition(RuntimeException ex) {
         log.warn("Invalid purchase status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
-    // CxP (F3): operación no válida para el estado de la factura de proveedor (editar/anular con abonos, abonar una
-    // anulada/pagada, sobrepago). 409 con código propio INVALID_SUPPLIER_INVOICE_STATE para el front.
+    // CxP (F3): operación no válida para el estado de la factura de proveedor
+    // (editar/anular con
+    // abonos, abonar una
+    // anulada/pagada, sobrepago). 409 con código propio
+    // INVALID_SUPPLIER_INVOICE_STATE para el front.
     @ExceptionHandler(InvalidSupplierInvoiceStateException.class)
-    public ProblemDetail handleInvalidSupplierInvoiceState(InvalidSupplierInvoiceStateException ex) {
+    public ProblemDetail handleInvalidSupplierInvoiceState(
+            InvalidSupplierInvoiceStateException ex) {
         log.warn("Invalid supplier invoice state: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_SUPPLIER_INVOICE_STATE", ex.getMessage());
     }
 
     @ExceptionHandler(CompanyTaxProfileAlreadyExistsException.class)
-    public ProblemDetail handleCompanyTaxProfileAlreadyExists(CompanyTaxProfileAlreadyExistsException ex) {
+    public ProblemDetail handleCompanyTaxProfileAlreadyExists(
+            CompanyTaxProfileAlreadyExistsException ex) {
         log.warn("Company tax profile already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "COMPANY_TAX_PROFILE_ALREADY_EXISTS", ex.getMessage());
     }
@@ -343,16 +339,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS", ex.getMessage());
     }
 
-    // Unicidad de NOMBRE por empresa (migraciones 151-154). errorCode(ex) deriva el código correcto por
-    // clase: PRODUCT_NAME_ALREADY_EXISTS / PRODUCT_CATEGORY_NAME_ALREADY_EXISTS / etc.
-    @ExceptionHandler({
-        ProductNameAlreadyExistsException.class,
-        ProductCategoryNameAlreadyExistsException.class,
-        ServiceCategoryNameAlreadyExistsException.class,
-        TaxNameAlreadyExistsException.class,
-        SupplierNameAlreadyExistsException.class,
-        SupplierInvoiceNumberAlreadyExistsException.class
-    })
+    // Unicidad de NOMBRE por empresa (migraciones 151-154). errorCode(ex) deriva el
+    // código correcto
+    // por
+    // clase: PRODUCT_NAME_ALREADY_EXISTS / PRODUCT_CATEGORY_NAME_ALREADY_EXISTS /
+    // etc.
+    @ExceptionHandler({ProductNameAlreadyExistsException.class,
+            ProductCategoryNameAlreadyExistsException.class,
+            ServiceCategoryNameAlreadyExistsException.class, TaxNameAlreadyExistsException.class,
+            SupplierNameAlreadyExistsException.class,
+            SupplierInvoiceNumberAlreadyExistsException.class})
     public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
         log.warn("Name already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
@@ -365,34 +361,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(NumberingResolutionAlreadyActiveException.class)
-    public ProblemDetail handleNumberingResolutionAlreadyActive(NumberingResolutionAlreadyActiveException ex) {
+    public ProblemDetail handleNumberingResolutionAlreadyActive(
+            NumberingResolutionAlreadyActiveException ex) {
         log.warn("Numbering resolution already active: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidOpenAccountStatusTransitionException.class)
-    public ProblemDetail handleInvalidOpenAccountStatusTransition(InvalidOpenAccountStatusTransitionException ex) {
+    public ProblemDetail handleInvalidOpenAccountStatusTransition(
+            InvalidOpenAccountStatusTransitionException ex) {
         log.warn("Invalid open account status transition: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "INVALID_OPEN_ACCOUNT_STATUS_TRANSITION", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_OPEN_ACCOUNT_STATUS_TRANSITION",
+                ex.getMessage());
     }
 
     @ExceptionHandler(DebtOpenAccountAlreadyVoidedException.class)
-    public ProblemDetail handleDebtOpenAccountAlreadyVoided(DebtOpenAccountAlreadyVoidedException ex) {
+    public ProblemDetail handleDebtOpenAccountAlreadyVoided(
+            DebtOpenAccountAlreadyVoidedException ex) {
         log.warn("Debt open account payment already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DEBT_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
     }
 
-    @ExceptionHandler({
-        ProductChargeOpenAccountAlreadyVoidedException.class,
-        ServiceChargeOpenAccountAlreadyVoidedException.class,
-        GeneralChargeOpenAccountAlreadyVoidedException.class
-    })
+    @ExceptionHandler({ProductChargeOpenAccountAlreadyVoidedException.class,
+            ServiceChargeOpenAccountAlreadyVoidedException.class,
+            GeneralChargeOpenAccountAlreadyVoidedException.class})
     public ProblemDetail handleChargeOpenAccountAlreadyVoided(RuntimeException ex) {
         log.warn("Charge open account already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CHARGE_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
     }
 
-    // F5: correccion por nota credito/debito sobre un documento en estado invalido (no VALIDADO o ya reversado).
+    // F5: correccion por nota credito/debito sobre un documento en estado invalido
+    // (no VALIDADO o ya
+    // reversado).
     @ExceptionHandler(DocumentNotValidatedException.class)
     public ProblemDetail handleDocumentNotValidated(DocumentNotValidatedException ex) {
         log.warn("Document not validated for correction: {}", ex.getMessage());
@@ -405,41 +405,46 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_REVERSED", ex.getMessage());
     }
 
-    // Inventario: la venta/consumo no alcanza y la empresa no permite stock negativo. 409 con código propio
-    // para que el front distinga "sin existencias" de otros conflictos y lo muestre al usuario.
+    // Inventario: la venta/consumo no alcanza y la empresa no permite stock
+    // negativo. 409 con código
+    // propio
+    // para que el front distinga "sin existencias" de otros conflictos y lo muestre
+    // al usuario.
     @ExceptionHandler(InsufficientStockException.class)
     public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
         log.warn("Insufficient stock: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", ex.getMessage());
     }
 
-    // Caja: conflictos de estado de la sesión. Códigos propios (derivados por clase) para que el front distinga
-    // "ya hay caja abierta" / "la caja está cerrada" / "no hay caja abierta para cobrar".
-    @ExceptionHandler({
-        CashSessionAlreadyOpenException.class,
-        EmployeeCashSessionAlreadyOpenException.class,
-        EmployeeCashSessionRequiredException.class,
-        CashSessionClosedException.class,
-        NoOpenCashSessionException.class
-    })
+    // Caja: conflictos de estado de la sesión. Códigos propios (derivados por
+    // clase) para que el
+    // front distinga
+    // "ya hay caja abierta" / "la caja está cerrada" / "no hay caja abierta para
+    // cobrar".
+    @ExceptionHandler({CashSessionAlreadyOpenException.class,
+            EmployeeCashSessionAlreadyOpenException.class,
+            EmployeeCashSessionRequiredException.class, CashSessionClosedException.class,
+            NoOpenCashSessionException.class})
     public ProblemDetail handleCashSessionConflict(RuntimeException ex) {
         log.warn("Cash session conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
-    // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN (IllegalStateException).
+    // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN
+    // (IllegalStateException).
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleConflictState(IllegalStateException ex) {
         log.warn("Illegal state: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_STATE", ex.getMessage());
     }
 
-    // Concurrencia: dos transacciones tocaron la misma entidad versionada (optimistic lock).
+    // Concurrencia: dos transacciones tocaron la misma entidad versionada
+    // (optimistic lock).
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
-            "El registro fue modificado por otra operación. Reintenta.");
+                "El registro fue modificado por otra operación. Reintenta.");
     }
 
     @ExceptionHandler(PetshopCatalogConflictException.class)
@@ -448,17 +453,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, ex.getCode(), ex.getMessage());
     }
 
-    // Detección temprana del mismo conflicto: la versión que envió el front (expectedVersion) ya no es
-    // la actual de la cuenta. Mismo código que el optimistic lock para que el front lo trate igual.
+    // Detección temprana del mismo conflicto: la versión que envió el front
+    // (expectedVersion) ya no
+    // es
+    // la actual de la cuenta. Mismo código que el optimistic lock para que el front
+    // lo trate igual.
     @ExceptionHandler(OpenAccountVersionConflictException.class)
     public ProblemDetail handleOpenAccountVersionConflict(OpenAccountVersionConflictException ex) {
         log.warn("Open account version conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
-            "La cuenta fue modificada por otra operación. Reintenta.");
+                "La cuenta fue modificada por otra operación. Reintenta.");
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ProblemDetail handleUnauthorized(InvalidCredentialsException ex, HttpServletRequest request) {
+    public ProblemDetail handleUnauthorized(InvalidCredentialsException ex,
+            HttpServletRequest request) {
         log.warn("Unauthorized: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
@@ -470,14 +479,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.UNAUTHORIZED, "SESSION_REPLACED", ex.getMessage());
     }
 
-    // Auto-registro Opción B: login rechazado por correo sin verificar. 403 con código propio para
-    // que el front distinga de credenciales inválidas y ofrezca reenviar la verificación.
+    // Auto-registro Opción B: login rechazado por correo sin verificar. 403 con
+    // código propio para
+    // que el front distinga de credenciales inválidas y ofrezca reenviar la
+    // verificación.
     @ExceptionHandler(EmailNotVerifiedException.class)
     public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
         log.warn("Login blocked, email not verified: {}", ex.getIdentifier());
         auditLogger.loginBlockedEmailNotVerified(ex.getIdentifier());
         return problem(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED",
-            "Debes verificar tu correo antes de iniciar sesión.");
+                "Debes verificar tu correo antes de iniciar sesión.");
     }
 
     // Captcha del registro no superado (o mal configurado).
@@ -485,7 +496,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleCaptchaFailed(CaptchaVerificationException ex) {
         log.warn("Captcha verification failed: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "CAPTCHA_FAILED",
-            "No pudimos verificar el captcha. Inténtalo de nuevo.");
+                "No pudimos verificar el captcha. Inténtalo de nuevo.");
     }
 
     // Token de verificación de correo inválido, expirado o ya usado.
@@ -493,7 +504,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
         log.warn("Invalid email verification token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_VERIFICATION_TOKEN",
-            "El enlace de verificación no es válido o expiró.");
+                "El enlace de verificación no es válido o expiró.");
     }
 
     // Token de restablecimiento de contraseña inválido, expirado o ya usado.
@@ -501,21 +512,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
         log.warn("Invalid password reset token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_RESET_TOKEN",
-            "El enlace de restablecimiento no es válido o expiró.");
+                "El enlace de restablecimiento no es válido o expiró.");
     }
 
-    // El usuario de acceso es el correo (un email = una veterinaria): correo ya registrado.
+    // El usuario de acceso es el correo (un email = una veterinaria): correo ya
+    // registrado.
     @ExceptionHandler(EmployeeCodeAlreadyExistsException.class)
     public ProblemDetail handleEmailAlreadyRegistered(EmployeeCodeAlreadyExistsException ex) {
         log.warn("Email already registered: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
-            "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
+                "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
     }
 
-    // Más específico que el handler de AccessDeniedException de abajo: Spring elige este para la subclase.
-    // Devuelve el motivo concreto (la sede) y un código propio para que el front lo distinga del 403 genérico.
+    // Más específico que el handler de AccessDeniedException de abajo: Spring elige
+    // este para la
+    // subclase.
+    // Devuelve el motivo concreto (la sede) y un código propio para que el front lo
+    // distinga del 403
+    // genérico.
     @ExceptionHandler(BranchAccessDeniedException.class)
-    public ProblemDetail handleBranchAccessDenied(BranchAccessDeniedException ex, HttpServletRequest request) {
+    public ProblemDetail handleBranchAccessDenied(BranchAccessDeniedException ex,
+            HttpServletRequest request) {
         log.warn("Branch access denied: {}", ex.getMessage());
         auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
         return problem(HttpStatus.FORBIDDEN, "BRANCH_NOT_ALLOWED", ex.getMessage());
@@ -529,7 +546,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex, HttpServletRequest request) {
+    public ProblemDetail handleAuthenticationFailure(AuthenticationException ex,
+            HttpServletRequest request) {
         log.warn("Authentication failed: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "authentication_failed");
         return problem(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication required");
@@ -543,116 +561,152 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status,
+            WebRequest request) {
         List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> Map.of("field", fe.getField(),
-                        "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"))
+                .map(fe -> Map.of("field", fe.getField(), "message",
+                        fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"))
                 .toList();
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "Request validation failed");
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED",
+                "Request validation failed");
         pd.setProperty("errors", errors);
         return handleExceptionInternal(ex, pd, headers, status, request);
     }
 
     // Body ilegible / no deserializable (JSON malformado, enum inválido, campo
-    // requerido ausente que rompe el binding). El logueo lo hace handleExceptionInternal.
+    // requerido ausente que rompe el binding). El logueo lo hace
+    // handleExceptionInternal.
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Invalid request content.");
+            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status,
+            WebRequest request) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
+                "Invalid request content.");
         return handleExceptionInternal(ex, pd, headers, status, request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
-        // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no ERROR.
+        // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no
+        // ERROR.
         log.warn("Data integrity violation: {}", ex.getMessage());
         String cause = ex.getMostSpecificCause().getMessage();
-        // Carrera en "1 cuenta abierta por propietario y sede": la constraint única atrapa
-        // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo código que
+        // Carrera en "1 cuenta abierta por propietario y sede": la constraint única
+        // atrapa
+        // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo
+        // código que
         // el guard de negocio para que el front lo trate igual.
         if (cause != null && (cause.contains("uq_open_accounts_active_owner_branch")
                 || cause.contains("uq_open_accounts_active_owner"))) {
             return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT",
-                "El propietario ya tiene una cuenta abierta en esta sede.");
+                    "El propietario ya tiene una cuenta abierta en esta sede.");
         }
-        // Carrera en la unicidad de SKU por empresa (constraint de la migración 133): la 2ª inserción
-        // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo código de negocio.
+        // Carrera en la unicidad de SKU por empresa (constraint de la migración 133):
+        // la 2ª inserción
+        // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo
+        // código de
+        // negocio.
         if (cause != null && cause.contains("uq_products_company_active_code")) {
             return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS",
-                "Ya existe un producto activo con ese código en esta empresa.");
+                    "Ya existe un producto activo con ese código en esta empresa.");
         }
-        // Carrera en la unicidad de NOMBRE por empresa (constraints de las migraciones 151-154).
+        // Carrera en la unicidad de NOMBRE por empresa (constraints de las migraciones
+        // 151-154).
         if (cause != null && cause.contains("uq_products_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "PRODUCT_NAME_ALREADY_EXISTS",
-                "Ya existe un producto activo con ese nombre en esta empresa.");
+                    "Ya existe un producto activo con ese nombre en esta empresa.");
         }
         if (cause != null && cause.contains("uq_product_categories_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "PRODUCT_CATEGORY_NAME_ALREADY_EXISTS",
-                "Ya existe una categoría de producto activa con ese nombre en esta empresa.");
+                    "Ya existe una categoría de producto activa con ese nombre en esta empresa.");
         }
         if (cause != null && cause.contains("uq_service_categories_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "SERVICE_CATEGORY_NAME_ALREADY_EXISTS",
-                "Ya existe una categoría de servicio activa con ese nombre en esta empresa.");
+                    "Ya existe una categoría de servicio activa con ese nombre en esta empresa.");
         }
         if (cause != null && cause.contains("uq_taxes_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "TAX_NAME_ALREADY_EXISTS",
-                "Ya existe un impuesto activo con ese nombre en esta empresa.");
+                    "Ya existe un impuesto activo con ese nombre en esta empresa.");
         }
         if (cause != null && cause.contains("uq_suppliers_company_active_name")) {
             return problem(HttpStatus.CONFLICT, "SUPPLIER_NAME_ALREADY_EXISTS",
-                "Ya existe un proveedor activo con ese nombre en esta empresa.");
+                    "Ya existe un proveedor activo con ese nombre en esta empresa.");
         }
-        // Carrera en la unicidad del número de factura de proveedor por (empresa, proveedor) (migración 203).
+        // Carrera en la unicidad del número de factura de proveedor por (empresa,
+        // proveedor) (migración
+        // 203).
         if (cause != null && cause.contains("uq_supplier_invoices_active_number")) {
             return problem(HttpStatus.CONFLICT, "SUPPLIER_INVOICE_NUMBER_ALREADY_EXISTS",
-                "Ya existe una factura activa con ese número para ese proveedor.");
+                    "Ya existe una factura activa con ese número para ese proveedor.");
         }
-        // Carrera en "un documento por cuenta cerrada" (constraint de la migración 134): dos cierres
-        // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª emisión fiscal.
+        // Carrera en "un documento por cuenta cerrada" (constraint de la migración
+        // 134): dos cierres
+        // concurrentes que pasaron el check `existsByOpenAccountId`; la BD impide la 2ª
+        // emisión fiscal.
         if (cause != null && cause.contains("uq_electronic_documents_open_account")) {
             return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_EMITTED",
-                "La venta ya tiene un documento electrónico emitido.");
+                    "La venta ya tiene un documento electrónico emitido.");
         }
-        // Carrera en la idempotencia de abonos (constraint de la migración 135): doble-submit concurrente con
-        // la misma clave; la BD rechaza el 2º. El cliente reintenta y el check de idempotencia devuelve el abono.
+        // Carrera en la idempotencia de abonos (constraint de la migración 135):
+        // doble-submit
+        // concurrente con
+        // la misma clave; la BD rechaza el 2º. El cliente reintenta y el check de
+        // idempotencia devuelve
+        // el abono.
         if (cause != null && cause.contains("uq_debt_open_accounts_request")) {
             return problem(HttpStatus.CONFLICT, "DUPLICATE_PAYMENT_REQUEST",
-                "El abono ya fue registrado (solicitud duplicada).");
+                    "El abono ya fue registrado (solicitud duplicada).");
         }
-        // Carrera en la idempotencia de cargos (constraints de las migraciones 139/140/141): doble-submit
-        // concurrente con la misma clave; la BD rechaza el 2º. El cliente reintenta y el check de idempotencia
+        // Carrera en la idempotencia de cargos (constraints de las migraciones
+        // 139/140/141):
+        // doble-submit
+        // concurrente con la misma clave; la BD rechaza el 2º. El cliente reintenta y
+        // el check de
+        // idempotencia
         // devuelve el cargo ya creado.
         if (cause != null && (cause.contains("uq_product_charge_open_accounts_request")
                 || cause.contains("uq_service_charge_open_accounts_request")
                 || cause.contains("uq_general_charge_open_accounts_request"))) {
             return problem(HttpStatus.CONFLICT, "DUPLICATE_CHARGE_REQUEST",
-                "El cargo ya fue registrado (solicitud duplicada).");
+                    "El cargo ya fue registrado (solicitud duplicada).");
         }
-        // Carrera/reactivación en la unicidad de "una sola resolución activa por (company, tipo)" (migración
-        // 144). La 2ª inserción/reactivación concurrente que pasó el check del service la atrapa la BD.
+        // Carrera/reactivación en la unicidad de "una sola resolución activa por
+        // (company, tipo)"
+        // (migración
+        // 144). La 2ª inserción/reactivación concurrente que pasó el check del service
+        // la atrapa la BD.
         if (cause != null && cause.contains("uq_numbering_resolutions_active")) {
             return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
-                "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
+                    "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
         }
-        // Carrera en la unicidad de employee_code (código de empleado / correo del dueño en el registro):
-        // el 2º INSERT concurrente lo rechaza la BD. Código neutral (el mensaje específico "correo ya
+        // Carrera en la unicidad de employee_code (código de empleado / correo del
+        // dueño en el
+        // registro):
+        // el 2º INSERT concurrente lo rechaza la BD. Código neutral (el mensaje
+        // específico "correo ya
         // registrado" lo emite el pre-check del registro vía EMAIL_ALREADY_REGISTERED).
         if (cause != null && cause.contains("employee_code")) {
             return problem(HttpStatus.CONFLICT, "EMPLOYEE_CODE_TAKEN",
-                "Ese usuario ya está en uso. Elige otro.");
+                    "Ese usuario ya está en uso. Elige otro.");
         }
-        // Carrera en "una sola caja OPEN por empleado". Mismo código que la validación del servicio.
+        // Carrera en "una sola caja OPEN por empleado". Mismo código que la validación
+        // del servicio.
         if (cause != null && cause.contains("uq_cash_session_employee_open")) {
             return problem(HttpStatus.CONFLICT, "EMPLOYEE_CASH_SESSION_ALREADY_OPEN",
-                "Ya tienes una caja abierta. Debes cerrarla antes de abrir otra.");
+                    "Ya tienes una caja abierta. Debes cerrarla antes de abrir otra.");
         }
-        // Carrera en "una sola caja OPEN por (empresa, sede, terminal)" (índice único condicional de la migración
-        // 195): la 2ª apertura concurrente que pasó el check del service la atrapa la BD. Mismo código de negocio.
+        // Carrera en "una sola caja OPEN por (empresa, sede, terminal)" (índice único
+        // condicional de la
+        // migración
+        // 195): la 2ª apertura concurrente que pasó el check del service la atrapa la
+        // BD. Mismo código
+        // de negocio.
         if (cause != null && cause.contains("uq_cash_session_open")) {
             return problem(HttpStatus.CONFLICT, "CASH_SESSION_ALREADY_OPEN",
-                "La terminal seleccionada ya tiene una caja abierta.");
+                    "La terminal seleccionada ya tiene una caja abierta.");
         }
-        return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "Database constraint violation");
+        return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
+                "Database constraint violation");
     }
 
     @ExceptionHandler(PdfRenderException.class)
@@ -703,7 +757,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if (Character.isUpperCase(c) && i > 0) out.append('_');
+            if (Character.isUpperCase(c) && i > 0)
+                out.append('_');
             out.append(Character.toUpperCase(c));
         }
         return out.toString();

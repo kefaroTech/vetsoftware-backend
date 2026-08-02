@@ -19,8 +19,6 @@ public class GetClinicalHistoryService implements GetClinicalHistoryUseCase {
 
     @Override
     public List<ClinicalEventDto> execute(GetClinicalHistoryQuery query) {
-        return repository.findHistory(query).stream()
-                .map(ClinicalEventDto::from)
-                .toList();
+        return repository.findHistory(query).stream().map(ClinicalEventDto::from).toList();
     }
 }

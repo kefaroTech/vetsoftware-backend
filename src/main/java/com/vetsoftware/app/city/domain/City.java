@@ -10,10 +10,14 @@ public class City {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public City(Long id, String name, StateRef state, String daneCode, LocalDateTime createdDate, boolean enabled) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
-        if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (state == null) throw new IllegalArgumentException("state is required");
+    public City(Long id, String name, StateRef state, String daneCode, LocalDateTime createdDate,
+            boolean enabled) {
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("name is required");
+        if (name.length() > 100)
+            throw new IllegalArgumentException("name must be 100 chars or less");
+        if (state == null)
+            throw new IllegalArgumentException("state is required");
         this.id = id;
         this.name = name;
         this.state = state;
@@ -27,21 +31,46 @@ public class City {
     }
 
     public void update(String name, StateRef state, String daneCode) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
-        if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (state == null) throw new IllegalArgumentException("state is required");
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("name is required");
+        if (name.length() > 100)
+            throw new IllegalArgumentException("name must be 100 chars or less");
+        if (state == null)
+            throw new IllegalArgumentException("state is required");
         this.name = name;
         this.state = state;
         this.daneCode = daneCode;
     }
 
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public StateRef getState() { return state; }
-    public String getDaneCode() { return daneCode; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public StateRef getState() {
+        return state;
+    }
+
+    public String getDaneCode() {
+        return daneCode;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
 }

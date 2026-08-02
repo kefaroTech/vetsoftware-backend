@@ -15,5 +15,6 @@ public interface AnimalAlertJpaRepository extends JpaRepository<AnimalAlertJpaEn
     Optional<AnimalAlertJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "company"})
-    List<AnimalAlertJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId, Long companyId);
+    List<AnimalAlertJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId,
+            Long companyId);
 }

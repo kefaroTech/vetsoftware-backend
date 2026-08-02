@@ -12,10 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class HospitalizationJpaMapper {
 
-    public HospitalizationJpaEntity toJpa(Hospitalization hospitalization,
-                                          AnimalJpaEntity animal,
-                                          ConsultationJpaEntity consultation,
-                                          CompanyJpaEntity company) {
+    public HospitalizationJpaEntity toJpa(Hospitalization hospitalization, AnimalJpaEntity animal,
+            ConsultationJpaEntity consultation, CompanyJpaEntity company) {
         HospitalizationJpaEntity entity = new HospitalizationJpaEntity();
         entity.setId(hospitalization.getId());
         entity.setDate(hospitalization.getDate());
@@ -37,19 +35,16 @@ public class HospitalizationJpaMapper {
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public Hospitalization toDomain(HospitalizationJpaEntity entity, AnimalRef animalRef,
-                                    ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Hospitalization(
-            entity.getId(), entity.getDate(), entity.getStartDate(), entity.getEndDate(),
-            entity.getType(), entity.getReasonLeaving(),
-            entity.getReason(), entity.getObservations(),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(),
-            entity.isEnabled());
+            ConsultationRef consultationRef, CompanyRef companyRef) {
+        return new Hospitalization(entity.getId(), entity.getDate(), entity.getStartDate(),
+                entity.getEndDate(), entity.getType(), entity.getReasonLeaving(),
+                entity.getReason(), entity.getObservations(), animalRef, consultationRef,
+                companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -26,13 +26,8 @@ public class SurgeryTypeJpaMapper {
     }
 
     public SurgeryType toDomain(SurgeryTypeJpaEntity entity, CompanyRef companyRef) {
-        return new SurgeryType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
+        return new SurgeryType(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

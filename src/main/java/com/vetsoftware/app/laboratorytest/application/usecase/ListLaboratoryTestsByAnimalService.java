@@ -18,6 +18,7 @@ public class ListLaboratoryTestsByAnimalService implements ListLaboratoryTestsBy
 
     @Override
     public List<LaboratoryTestDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(LaboratoryTestDto::from).toList();
+        return repository.findAllByAnimalId(animalId).stream().map(LaboratoryTestDto::from)
+                .toList();
     }
 }

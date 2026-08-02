@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medication.schedule.suspend.pending")
 @Service
 public class SuspendPendingMedicationSchedulesService
-        implements SuspendPendingMedicationSchedulesUseCase {
+        implements
+            SuspendPendingMedicationSchedulesUseCase {
     private final MedicationScheduleRepository repository;
 
     public SuspendPendingMedicationSchedulesService(MedicationScheduleRepository repository) {
@@ -24,7 +25,6 @@ public class SuspendPendingMedicationSchedulesService
         repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId);
         // Quedan solo las aplicadas (enabled=true).
         return repository.findByHospitalizationMedicationId(hospitalizationMedicationId).stream()
-            .map(MedicationScheduleDto::from)
-            .toList();
+                .map(MedicationScheduleDto::from).toList();
     }
 }

@@ -23,15 +23,17 @@ public class JpaStockMovementRepository implements StockMovementRepository {
 
     @Override
     public boolean existsByReference(StockReferenceType referenceType, Long referenceId) {
-        if (referenceId == null) return false;
+        if (referenceId == null)
+            return false;
         return jpaRepository.existsByReferenceTypeAndReferenceId(referenceType.name(), referenceId);
     }
 
     @Override
     public List<StockMovement> findByReference(StockReferenceType referenceType, Long referenceId) {
-        if (referenceId == null) return List.of();
-        return jpaRepository.findByReferenceTypeAndReferenceId(referenceType.name(), referenceId).stream()
-            .map(JpaStockMovementRepository::toDomain).toList();
+        if (referenceId == null)
+            return List.of();
+        return jpaRepository.findByReferenceTypeAndReferenceId(referenceType.name(), referenceId)
+                .stream().map(JpaStockMovementRepository::toDomain).toList();
     }
 
     private static StockMovementJpaEntity toJpa(StockMovement m) {
@@ -53,9 +55,9 @@ public class JpaStockMovementRepository implements StockMovementRepository {
     }
 
     private static StockMovement toDomain(StockMovementJpaEntity e) {
-        return new StockMovement(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(), e.getLotId(),
-            StockMovementType.valueOf(e.getType()), e.getQuantity(), e.getUnitCost(),
-            StockReferenceType.valueOf(e.getReferenceType()), e.getReferenceId(), e.getReason(),
-            e.getCreatedBy(), e.getCreatedDate());
+        return new StockMovement(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(),
+                e.getLotId(), StockMovementType.valueOf(e.getType()), e.getQuantity(),
+                e.getUnitCost(), StockReferenceType.valueOf(e.getReferenceType()),
+                e.getReferenceId(), e.getReason(), e.getCreatedBy(), e.getCreatedDate());
     }
 }

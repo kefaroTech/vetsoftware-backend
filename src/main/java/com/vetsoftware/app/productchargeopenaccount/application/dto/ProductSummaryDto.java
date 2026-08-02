@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 public record ProductSummaryDto(Long id, String name, String code, BigDecimal salePrice) {
     public static ProductSummaryDto from(ProductRef product) {
-        return new ProductSummaryDto(product.id(), product.name(), product.code(), product.salePrice());
+        return new ProductSummaryDto(product.id(), product.name(), product.code(),
+                product.salePrice());
     }
 }

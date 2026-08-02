@@ -20,9 +20,10 @@ public class CreateEconomicActivityService implements CreateEconomicActivityUseC
     @Override
     public EconomicActivityDto execute(CreateEconomicActivityCommand command) {
         if (repository.existsByCode(command.code())) {
-            throw new IllegalArgumentException("EconomicActivity code already exists: " + command.code());
+            throw new IllegalArgumentException(
+                    "EconomicActivity code already exists: " + command.code());
         }
-        return EconomicActivityDto.from(
-            repository.save(EconomicActivity.create(command.code(), command.name())));
+        return EconomicActivityDto
+                .from(repository.save(EconomicActivity.create(command.code(), command.name())));
     }
 }

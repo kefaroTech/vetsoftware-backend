@@ -18,9 +18,8 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     private final EmployeeJpaRepository employeeJpaRepository;
 
     public JpaDebtOpenAccountRepository(DebtOpenAccountJpaRepository jpaRepository,
-                                        DebtOpenAccountJpaMapper mapper,
-                                        OpenAccountJpaRepository openAccountJpaRepository,
-                                        EmployeeJpaRepository employeeJpaRepository) {
+            DebtOpenAccountJpaMapper mapper, OpenAccountJpaRepository openAccountJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.openAccountJpaRepository = openAccountJpaRepository;
@@ -29,16 +28,17 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
 
     @Override
     public DebtOpenAccount save(DebtOpenAccount debtOpenAccount) {
-        OpenAccountJpaEntity openAccount =
-            openAccountJpaRepository.getReferenceById(debtOpenAccount.getOpenAccount().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(debtOpenAccount.getCreatedBy().id());
-        EmployeeJpaEntity voidedBy = debtOpenAccount.getVoidedBy() == null ? null
-            : employeeJpaRepository.getReferenceById(debtOpenAccount.getVoidedBy().id());
-        DebtOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(debtOpenAccount, openAccount, createdBy, voidedBy));
+        OpenAccountJpaEntity openAccount = openAccountJpaRepository
+                .getReferenceById(debtOpenAccount.getOpenAccount().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(debtOpenAccount.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = debtOpenAccount.getVoidedBy() == null
+                ? null
+                : employeeJpaRepository.getReferenceById(debtOpenAccount.getVoidedBy().id());
+        DebtOpenAccountJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(debtOpenAccount, openAccount, createdBy, voidedBy));
         return mapper.toDomain(saved, debtOpenAccount.getOpenAccount(),
-            debtOpenAccount.getCreatedBy(), debtOpenAccount.getVoidedBy());
+                debtOpenAccount.getCreatedBy(), debtOpenAccount.getVoidedBy());
     }
 
     @Override
@@ -52,9 +52,10 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     }
 
     @Override
-    public Optional<DebtOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId) {
+    public Optional<DebtOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId,
+            String clientRequestId) {
         return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId)
-            .map(mapper::toDomain);
+                .map(mapper::toDomain);
     }
 
     @Override
@@ -64,18 +65,21 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
 
     @Override
     public List<DebtOpenAccount> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override
-    public List<DebtOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId) {
-        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId).stream()
-            .map(mapper::toDomain).toList();
+    public List<DebtOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId,
+            Long companyId) {
+        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public void delete(Long id, Long companyId) {
-        jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).ifPresent(jpaRepository::delete);
+        jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId)
+                .ifPresent(jpaRepository::delete);
     }
 
     @Override

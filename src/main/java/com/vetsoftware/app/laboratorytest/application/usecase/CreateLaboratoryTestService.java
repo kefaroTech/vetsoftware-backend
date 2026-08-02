@@ -33,12 +33,9 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
     private final BranchQueryPort branchQueryPort;
 
     public CreateLaboratoryTestService(LaboratoryTestRepository repository,
-                                       LaboratoryTestTypeQueryPort testTypeQueryPort,
-                                       AnimalQueryPort animalQueryPort,
-                                       ConsultationQueryPort consultationQueryPort,
-                                       CompanyQueryPort companyQueryPort,
-                                       EmployeeQueryPort employeeQueryPort,
-                                       BranchQueryPort branchQueryPort) {
+            LaboratoryTestTypeQueryPort testTypeQueryPort, AnimalQueryPort animalQueryPort,
+            ConsultationQueryPort consultationQueryPort, CompanyQueryPort companyQueryPort,
+            EmployeeQueryPort employeeQueryPort, BranchQueryPort branchQueryPort) {
         this.repository = repository;
         this.testTypeQueryPort = testTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
@@ -51,38 +48,48 @@ public class CreateLaboratoryTestService implements CreateLaboratoryTestUseCase 
     @Override
     public LaboratoryTestDto execute(CreateLaboratoryTestCommand command) {
         LaboratoryTestTypeRef testType = testTypeQueryPort.findById(command.testTypeId())
-            .orElseThrow(() -> new IllegalArgumentException("LaboratoryTestType not found: " + command.testTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        EmployeeRef processedBy = command.processedById() == null ? null
-            : employeeQueryPort.findById(command.processedById())
-                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.processedById()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "LaboratoryTestType not found: " + command.testTypeId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ConsultationRef consultation = command.consultationId() == null
+                ? null
+                : consultationQueryPort.findById(command.consultationId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Consultation not found: " + command.consultationId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        EmployeeRef processedBy = command.processedById() == null
+                ? null
+                : employeeQueryPort.findById(command.processedById())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Employee not found: " + command.processedById()));
 
         LaboratoryTestStatus initialStatus = command.status() == null || command.status().isBlank()
-            ? LaboratoryTestStatus.PENDING_COLLECTION
-            : LaboratoryTestStatus.valueOf(command.status().toUpperCase());
+                ? LaboratoryTestStatus.PENDING_COLLECTION
+                : LaboratoryTestStatus.valueOf(command.status().toUpperCase());
 
-        LaboratoryTestPriority prioridad = command.prioridad() == null || command.prioridad().isBlank()
-            ? LaboratoryTestPriority.NORMAL
-            : LaboratoryTestPriority.valueOf(command.prioridad().toUpperCase());
+        LaboratoryTestPriority prioridad = command.prioridad() == null
+                || command.prioridad().isBlank()
+                        ? LaboratoryTestPriority.NORMAL
+                        : LaboratoryTestPriority.valueOf(command.prioridad().toUpperCase());
 
-        // Sede de la muestra: si el request trae branchId debe pertenecer a la empresa y estar ACTIVA; si no, la
+        // Sede de la muestra: si el request trae branchId debe pertenecer a la empresa
+        // y estar ACTIVA;
+        // si no, la
         // sede activa por defecto. La bandeja de muestras se scopea por esta sede.
         Long branchId = command.branchId() != null
-            ? branchQueryPort.findActiveIdByIdAndCompanyId(command.branchId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Branch is not active or not found: " + command.branchId()))
-            : branchQueryPort.findDefaultActiveIdByCompanyId(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company has no active branch: " + command.companyId()));
+                ? branchQueryPort
+                        .findActiveIdByIdAndCompanyId(command.branchId(), command.companyId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Branch is not active or not found: " + command.branchId()))
+                : branchQueryPort.findDefaultActiveIdByCompanyId(command.companyId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company has no active branch: " + command.companyId()));
 
-        LaboratoryTest laboratoryTest = LaboratoryTest.create(
-            command.date(), testType, command.quantity(), command.diagnosis(),
-            initialStatus, prioridad, animal, consultation, company, branchId,
-            processedBy, command.processedDate());
+        LaboratoryTest laboratoryTest = LaboratoryTest.create(command.date(), testType,
+                command.quantity(), command.diagnosis(), initialStatus, prioridad, animal,
+                consultation, company, branchId, processedBy, command.processedDate());
         return LaboratoryTestDto.from(repository.save(laboratoryTest));
     }
 }

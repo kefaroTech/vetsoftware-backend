@@ -23,7 +23,7 @@ public class UpdateBaseRoleService implements UpdateBaseRoleUseCase {
     @Transactional
     public BaseRoleDto execute(UpdateBaseRoleCommand command) {
         BaseRole baseRole = repository.findById(command.id())
-            .orElseThrow(() -> new BaseRoleNotFoundException(command.id()));
+                .orElseThrow(() -> new BaseRoleNotFoundException(command.id()));
         baseRole.update(command.name(), command.code(), command.mandatory());
         return BaseRoleDto.from(repository.save(baseRole));
     }

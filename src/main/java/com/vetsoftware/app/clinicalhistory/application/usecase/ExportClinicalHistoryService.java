@@ -30,11 +30,9 @@ public class ExportClinicalHistoryService implements ExportClinicalHistoryUseCas
     private final ClinicalHistoryPdfPort pdfPort;
 
     public ExportClinicalHistoryService(ClinicalEventRepository eventRepository,
-                                        AnimalReportQueryPort animalQueryPort,
-                                        ClinicalEventDetailQueryPort detailQueryPort,
-                                        AnimalAlertsQueryPort alertsQueryPort,
-                                        AnimalProblemsQueryPort problemsQueryPort,
-                                        ClinicalHistoryPdfPort pdfPort) {
+            AnimalReportQueryPort animalQueryPort, ClinicalEventDetailQueryPort detailQueryPort,
+            AnimalAlertsQueryPort alertsQueryPort, AnimalProblemsQueryPort problemsQueryPort,
+            ClinicalHistoryPdfPort pdfPort) {
         this.eventRepository = eventRepository;
         this.animalQueryPort = animalQueryPort;
         this.detailQueryPort = detailQueryPort;
@@ -51,19 +49,13 @@ public class ExportClinicalHistoryService implements ExportClinicalHistoryUseCas
                         "Animal " + query.animalId() + " not found for current company"));
 
         List<ReportClinicalEvent> events = eventRepository.findHistory(query).stream()
-                .map(event -> enrich(event, query.companyId()))
-                .toList();
+                .map(event -> enrich(event, query.companyId())).toList();
 
-        ClinicalHistoryReportModel model = new ClinicalHistoryReportModel(
-                animal,
-                query.from(),
-                query.to(),
-                query.types(),
+        ClinicalHistoryReportModel model = new ClinicalHistoryReportModel(animal, query.from(),
+                query.to(), query.types(),
                 alertsQueryPort.findByAnimal(query.animalId(), query.companyId()),
-                problemsQueryPort.findByAnimal(query.animalId(), query.companyId()),
-                events,
-                LocalDateTime.now()
-        );
+                problemsQueryPort.findByAnimal(query.animalId(), query.companyId()), events,
+                LocalDateTime.now());
 
         return pdfPort.render(model);
     }
@@ -72,16 +64,9 @@ public class ExportClinicalHistoryService implements ExportClinicalHistoryUseCas
         ClinicalEventDetail detail = detailQueryPort
                 .load(event.eventType(), event.sourceId(), companyId)
                 .orElseGet(() -> ClinicalEventDetail.of(fallbackTitle(event), List.of()));
-        return new ReportClinicalEvent(
-                event.sourceId(),
-                event.eventType(),
-                event.eventDate(),
-                event.endDate(),
-                event.consultationId(),
-                detail.title(),
-                detail.fields(),
-                detail.tables()
-        );
+        return new ReportClinicalEvent(event.sourceId(), event.eventType(), event.eventDate(),
+                event.endDate(), event.consultationId(), detail.title(), detail.fields(),
+                detail.tables());
     }
 
     private static String fallbackTitle(ClinicalEvent event) {

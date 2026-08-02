@@ -11,7 +11,8 @@ public class JpaMembershipRepository implements MembershipRepository {
     private final MembershipJpaRepository jpaRepository;
     private final MembershipJpaMapper mapper;
 
-    public JpaMembershipRepository(MembershipJpaRepository jpaRepository, MembershipJpaMapper mapper) {
+    public JpaMembershipRepository(MembershipJpaRepository jpaRepository,
+            MembershipJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

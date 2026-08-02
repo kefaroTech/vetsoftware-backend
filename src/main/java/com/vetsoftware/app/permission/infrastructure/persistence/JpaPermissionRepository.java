@@ -18,9 +18,8 @@ public class JpaPermissionRepository implements PermissionRepository {
     private final SubModuleJpaRepository subModuleJpaRepository;
 
     public JpaPermissionRepository(PermissionJpaRepository jpaRepository,
-                                    PermissionJpaMapper mapper,
-                                    CompanyJpaRepository companyJpaRepository,
-                                    SubModuleJpaRepository subModuleJpaRepository) {
+            PermissionJpaMapper mapper, CompanyJpaRepository companyJpaRepository,
+            SubModuleJpaRepository subModuleJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -29,9 +28,12 @@ public class JpaPermissionRepository implements PermissionRepository {
 
     @Override
     public Permission save(Permission permission) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(permission.getCompany().id());
-        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(permission.getSubModule().id());
-        PermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(permission, company, subModule));
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(permission.getCompany().id());
+        SubModuleJpaEntity subModule = subModuleJpaRepository
+                .getReferenceById(permission.getSubModule().id());
+        PermissionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(permission, company, subModule));
         return mapper.toDomain(saved, permission.getCompany(), permission.getSubModule());
     }
 

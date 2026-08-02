@@ -34,13 +34,11 @@ public class SurgeryTypeController {
     private final Authz authz;
 
     public SurgeryTypeController(CreateSurgeryTypeUseCase createUseCase,
-                                 UpdateSurgeryTypeUseCase updateUseCase,
-                                 FindSurgeryTypeUseCase findUseCase,
-                                 ListSurgeryTypesUseCase listUseCase,
-                                 ListAvailableSurgeryTypesUseCase listAvailableUseCase,
-                                 DeleteSurgeryTypeUseCase deleteUseCase,
-                                 ReactivateSurgeryTypeUseCase reactivateUseCase,
-                                 Authz authz) {
+            UpdateSurgeryTypeUseCase updateUseCase, FindSurgeryTypeUseCase findUseCase,
+            ListSurgeryTypesUseCase listUseCase,
+            ListAvailableSurgeryTypesUseCase listAvailableUseCase,
+            DeleteSurgeryTypeUseCase deleteUseCase, ReactivateSurgeryTypeUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -54,9 +52,8 @@ public class SurgeryTypeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SurgeryTypeResponse create(@Valid @RequestBody CreateSurgeryTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateSurgeryTypeCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+        return toResponse(createUseCase.execute(new CreateSurgeryTypeCommand(request.name(),
+                request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -66,8 +63,8 @@ public class SurgeryTypeController {
 
     @GetMapping("/available")
     public List<SurgeryTypeResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -77,10 +74,9 @@ public class SurgeryTypeController {
 
     @PutMapping("/{id}")
     public SurgeryTypeResponse update(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateSurgeryTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateSurgeryTypeCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+            @Valid @RequestBody UpdateSurgeryTypeRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSurgeryTypeCommand(id, request.name(),
+                request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -96,11 +92,8 @@ public class SurgeryTypeController {
 
     private SurgeryTypeResponse toResponse(SurgeryTypeDto dto) {
         CompanySummaryDto c = dto.company();
-        return new SurgeryTypeResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new SurgeryTypeResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(),
-                dto.enabled());
+                dto.general(), dto.createdDate(), dto.enabled());
     }
 }

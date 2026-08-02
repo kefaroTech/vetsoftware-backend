@@ -5,7 +5,9 @@ import com.vetsoftware.app.prescription.application.port.out.PrescriberQueryPort
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
-/** Resuelve el nombre del profesional firmante desde el empleado autenticado. */
+/**
+ * Resuelve el nombre del profesional firmante desde el empleado autenticado.
+ */
 @Component
 public class JpaPrescriberQueryPort implements PrescriberQueryPort {
 

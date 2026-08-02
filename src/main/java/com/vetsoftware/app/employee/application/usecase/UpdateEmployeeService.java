@@ -23,7 +23,7 @@ public class UpdateEmployeeService implements UpdateEmployeeUseCase {
     @Transactional
     public EmployeeDto execute(UpdateEmployeeCommand command) {
         Employee employee = repository.findById(command.id())
-            .orElseThrow(() -> new EmployeeNotFoundException(command.id()));
+                .orElseThrow(() -> new EmployeeNotFoundException(command.id()));
         employee.update(command.employeeCode(), command.name(), command.email());
         return EmployeeDto.from(repository.save(employee));
     }

@@ -15,11 +15,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 /**
- * Correo "recordar código" con la lista de cuentas del usuario. A diferencia de los demás correos, este NO
- * usa una plantilla de Resend: como el nº de cuentas es variable y Resend limita cada variable a 2.000
- * caracteres, el listado se rompería. En su lugar renderizamos el HTML completo aquí (plantilla en
- * {@code resources/email-templates/recover-code.html}) y lo enviamos como cuerpo HTML — sin ese límite.
- * Async/best-effort (nunca lanza; si algo falla, se registra un warning y el flujo continúa).
+ * Correo "recordar código" con la lista de cuentas del usuario. A diferencia de
+ * los demás correos, este NO usa una plantilla de Resend: como el nº de cuentas
+ * es variable y Resend limita cada variable a 2.000 caracteres, el listado se
+ * rompería. En su lugar renderizamos el HTML completo aquí (plantilla en
+ * {@code resources/email-templates/recover-code.html}) y lo enviamos como
+ * cuerpo HTML — sin ese límite. Async/best-effort (nunca lanza; si algo falla,
+ * se registra un warning y el flujo continúa).
  */
 @Component
 public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
@@ -28,19 +30,19 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
     private static final String SUBJECT = "Tu código de usuario de Vetrina";
     private static final String TEMPLATE_PATH = "email-templates/recover-code.html";
 
-    // Fila del listado (usa las clases .acct-* del <style> de la plantilla). {DIV} = divisor salvo en la primera.
-    private static final String ROW_TEMPLATE =
-        "<tr><td class=\"acct-cell stack{DIV}\" valign=\"middle\">"
-        + "<div class=\"acct-lbl\">Veterinaria</div><div class=\"acct-co\">{COMPANY}</div></td>"
-        + "<td class=\"acct-cell stack{DIV}\" align=\"right\" valign=\"middle\">"
-        + "<span class=\"acct-code\">{CODE}</span></td></tr>";
+    // Fila del listado (usa las clases .acct-* del <style> de la plantilla). {DIV}
+    // = divisor salvo en
+    // la primera.
+    private static final String ROW_TEMPLATE = "<tr><td class=\"acct-cell stack{DIV}\" valign=\"middle\">"
+            + "<div class=\"acct-lbl\">Veterinaria</div><div class=\"acct-co\">{COMPANY}</div></td>"
+            + "<td class=\"acct-cell stack{DIV}\" align=\"right\" valign=\"middle\">"
+            + "<span class=\"acct-code\">{CODE}</span></td></tr>";
 
     private final ResendEmailClient email;
     private final String loginUrl;
     private volatile String templateCache;
 
-    public ResendCodeRecoveryEmailSender(
-            ResendEmailClient email,
+    public ResendCodeRecoveryEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.code-recovery.login-url:}") String loginUrl) {
         this.email = email;
         this.loginUrl = loginUrl;
@@ -49,29 +51,30 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
     @Override
     public void send(String toEmail, String employeeName, List<EmployeeAccount> accounts) {
         if (!email.isEnabled()) {
-            String preview = accounts.stream()
-                .map(a -> a.companyName() + "=" + a.code())
-                .collect(Collectors.joining(", "));
+            String preview = accounts.stream().map(a -> a.companyName() + "=" + a.code())
+                    .collect(Collectors.joining(", "));
             DevEmailPreview.show(toEmail, "Códigos de usuario", preview);
             return;
         }
         String template = loadTemplate();
-        if (template == null) return; // best-effort: sin plantilla no enviamos, pero no rompemos el flujo
+        if (template == null)
+            return; // best-effort: sin plantilla no enviamos, pero no rompemos el flujo
 
-        String html = template
-            .replace("{{{EMPLOYEE_NAME}}}", htmlEscape(nz(employeeName)))
-            .replace("{{{ACCOUNTS_HTML}}}", buildAccountsHtml(accounts))
-            .replace("{{{LOGIN_URL}}}", htmlEscape(nz(loginUrl)))
-            .replace("{{{EMPLOYEE_EMAIL}}}", htmlEscape(nz(toEmail)));
+        String html = template.replace("{{{EMPLOYEE_NAME}}}", htmlEscape(nz(employeeName)))
+                .replace("{{{ACCOUNTS_HTML}}}", buildAccountsHtml(accounts))
+                .replace("{{{LOGIN_URL}}}", htmlEscape(nz(loginUrl)))
+                .replace("{{{EMPLOYEE_EMAIL}}}", htmlEscape(nz(toEmail)));
 
         email.send(toEmail, null, SUBJECT, html, null);
     }
 
     private String loadTemplate() {
         String cached = templateCache;
-        if (cached != null) return cached;
+        if (cached != null)
+            return cached;
         try {
-            cached = new ClassPathResource(TEMPLATE_PATH).getContentAsString(StandardCharsets.UTF_8);
+            cached = new ClassPathResource(TEMPLATE_PATH)
+                    .getContentAsString(StandardCharsets.UTF_8);
             templateCache = cached;
             return cached;
         } catch (IOException e) {
@@ -84,23 +87,23 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (EmployeeAccount a : accounts) {
-            sb.append(ROW_TEMPLATE
-                .replace("{DIV}", first ? "" : " acct-div")
-                .replace("{COMPANY}", htmlEscape(a.companyName()))
-                .replace("{CODE}", htmlEscape(a.code())));
+            sb.append(ROW_TEMPLATE.replace("{DIV}", first ? "" : " acct-div")
+                    .replace("{COMPANY}", htmlEscape(a.companyName()))
+                    .replace("{CODE}", htmlEscape(a.code())));
             first = false;
         }
         return sb.toString();
     }
 
-    /** Escapa el texto que se inyecta como HTML (nombres de veterinaria/códigos/nombre) para no romper el markup. */
+    /**
+     * Escapa el texto que se inyecta como HTML (nombres de
+     * veterinaria/códigos/nombre) para no romper el markup.
+     */
     private static String htmlEscape(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        if (s == null)
+            return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
     private static String nz(String s) {

@@ -13,8 +13,8 @@ class AuditChainVerifierTest {
     void una_cadena_bien_formada_se_considera_intacta() {
         List<Link> chain = buildChain("uno", "dos", "tres");
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(chain, 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(chain, 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isTrue();
         assertThat(result.checkedCount()).isEqualTo(3);
@@ -31,8 +31,8 @@ class AuditChainVerifierTest {
         chain.set(1, new Link(original.sequence(), "payload manipulado", original.payloadHash(),
                 original.previousHash(), original.chainHash()));
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(chain, 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(chain, 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isFalse();
         assertThat(result.failureSequence()).isEqualTo(2);
@@ -45,8 +45,8 @@ class AuditChainVerifierTest {
         List<Link> chain = new ArrayList<>(buildChain("uno", "dos", "tres"));
         chain.remove(1);
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(chain, 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(chain, 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isFalse();
         assertThat(result.failureSequence()).isEqualTo(3);
@@ -56,19 +56,21 @@ class AuditChainVerifierTest {
     @Test
     void recalcular_el_eslabon_tras_manipular_el_payload_rompe_la_continuidad() {
         List<Link> chain = new ArrayList<>(buildChain("uno", "dos", "tres"));
-        // Atacante más cuidadoso: reescribe el payload Y su hash, y recalcula su propio eslabón.
-        // No puede recalcular los posteriores sin que se note, porque el siguiente sigue apuntando
+        // Atacante más cuidadoso: reescribe el payload Y su hash, y recalcula su propio
+        // eslabón.
+        // No puede recalcular los posteriores sin que se note, porque el siguiente
+        // sigue apuntando
         // al eslabón viejo.
         Link target = chain.get(1);
         String forgedPayload = "payload manipulado";
         String forgedPayloadHash = AuditChainHash.payloadHash(forgedPayload);
-        String forgedChainHash = AuditChainHash.chainHash(
-                target.previousHash(), target.sequence(), forgedPayloadHash);
+        String forgedChainHash = AuditChainHash.chainHash(target.previousHash(), target.sequence(),
+                forgedPayloadHash);
         chain.set(1, new Link(target.sequence(), forgedPayload, forgedPayloadHash,
                 target.previousHash(), forgedChainHash));
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(chain, 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(chain, 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isFalse();
         assertThat(result.failureSequence()).isEqualTo(3);
@@ -82,8 +84,8 @@ class AuditChainVerifierTest {
         chain.set(1, new Link(target.sequence(), target.payload(), target.payloadHash(),
                 target.previousHash(), AuditChainHash.payloadHash("eslabon inventado")));
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(chain, 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(chain, 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isFalse();
         assertThat(result.failureSequence()).isEqualTo(2);
@@ -96,8 +98,8 @@ class AuditChainVerifierTest {
         // La depuración eliminó los dos primeros; solo quedan las posiciones 3 y 4.
         List<Link> retained = full.subList(2, 4);
 
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(retained, 3, retained.getFirst().previousHash());
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(retained, 3,
+                retained.getFirst().previousHash());
 
         assertThat(result.intact()).isTrue();
         assertThat(result.checkedCount()).isEqualTo(2);
@@ -106,8 +108,8 @@ class AuditChainVerifierTest {
 
     @Test
     void una_lista_vacia_no_reporta_rotura() {
-        AuditChainVerifier.Result result =
-                AuditChainVerifier.verify(List.of(), 1, AuditChainHash.GENESIS_HASH);
+        AuditChainVerifier.Result result = AuditChainVerifier.verify(List.of(), 1,
+                AuditChainHash.GENESIS_HASH);
 
         assertThat(result.intact()).isTrue();
         assertThat(result.checkedCount()).isZero();

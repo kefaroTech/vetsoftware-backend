@@ -19,21 +19,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Operaciones administrativas de inventario (entrada, ajuste, transferencia, mínimo). El gate por permiso vive en
- * los @PreAuthorize de los puertos de entrada; aquí se valida que la sede pertenezca a la empresa y esté activa, y
- * se delega el movimiento al {@link StockLedgerUseCase} (único punto que afecta el kardex).
+ * Operaciones administrativas de inventario (entrada, ajuste, transferencia,
+ * mínimo). El gate por permiso vive en los @PreAuthorize de los puertos de
+ * entrada; aquí se valida que la sede pertenezca a la empresa y esté activa, y
+ * se delega el movimiento al {@link StockLedgerUseCase} (único punto que afecta
+ * el kardex).
  */
 @Service
-public class InventoryAdminService implements AdjustStockUseCase, ReceiveStockUseCase,
-        TransferStockUseCase, SetMinStockUseCase, ConsumeStockUseCase {
+public class InventoryAdminService
+        implements
+            AdjustStockUseCase,
+            ReceiveStockUseCase,
+            TransferStockUseCase,
+            SetMinStockUseCase,
+            ConsumeStockUseCase {
 
     private final StockLedgerUseCase stockLedger;
     private final StockBalanceRepository balanceRepository;
     private final BranchQueryPort branchQueryPort;
 
     public InventoryAdminService(StockLedgerUseCase stockLedger,
-                                 StockBalanceRepository balanceRepository,
-                                 BranchQueryPort branchQueryPort) {
+            StockBalanceRepository balanceRepository, BranchQueryPort branchQueryPort) {
         this.stockLedger = stockLedger;
         this.balanceRepository = balanceRepository;
         this.branchQueryPort = branchQueryPort;
@@ -72,11 +78,13 @@ public class InventoryAdminService implements AdjustStockUseCase, ReceiveStockUs
     @Observed(name = "inventory.set.min.stock")
     @Transactional
     public void setMinStock(SetMinStockCommand command) {
-        if (command.minStock() < 0) throw new IllegalArgumentException("minStock cannot be negative");
+        if (command.minStock() < 0)
+            throw new IllegalArgumentException("minStock cannot be negative");
         requireBranch(command.companyId(), command.branchId());
-        StockBalance balance = balanceRepository.findForUpdate(command.productId(), command.branchId())
-            .orElseGet(() -> StockBalance.create(command.companyId(), command.branchId(), command.productId(),
-                command.minStock()));
+        StockBalance balance = balanceRepository
+                .findForUpdate(command.productId(), command.branchId())
+                .orElseGet(() -> StockBalance.create(command.companyId(), command.branchId(),
+                        command.productId(), command.minStock()));
         balance.setMinStock(command.minStock());
         balanceRepository.save(balance);
     }

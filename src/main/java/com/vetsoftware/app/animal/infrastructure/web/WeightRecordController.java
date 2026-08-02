@@ -14,7 +14,10 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** Serie temporal del peso del animal. El peso "actual" del animal se deriva del último registro. */
+/**
+ * Serie temporal del peso del animal. El peso "actual" del animal se deriva del
+ * último registro.
+ */
 @RestController
 @RequestMapping("/animals/{animalId}/weight-records")
 public class WeightRecordController {
@@ -25,10 +28,9 @@ public class WeightRecordController {
     private final Authz authz;
 
     public WeightRecordController(CreateWeightRecordUseCase createUseCase,
-                                  ListWeightRecordsByAnimalUseCase listUseCase,
-                                  FindLatestWeightRecordUseCase findLatestUseCase,
-                                  DeleteWeightRecordUseCase deleteUseCase,
-                                  Authz authz) {
+            ListWeightRecordsByAnimalUseCase listUseCase,
+            FindLatestWeightRecordUseCase findLatestUseCase,
+            DeleteWeightRecordUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.listUseCase = listUseCase;
         this.findLatestUseCase = findLatestUseCase;
@@ -39,16 +41,16 @@ public class WeightRecordController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public WeightRecordResponse create(@PathVariable Long animalId,
-                                       @Valid @RequestBody CreateWeightRecordRequest request) {
-        return toResponse(createUseCase.execute(new CreateWeightRecordCommand(
-            animalId, request.value(), request.unit(), request.measuredAt(), request.note(),
-            authz.currentCompanyId())));
+            @Valid @RequestBody CreateWeightRecordRequest request) {
+        return toResponse(createUseCase
+                .execute(new CreateWeightRecordCommand(animalId, request.value(), request.unit(),
+                        request.measuredAt(), request.note(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<WeightRecordResponse> listByAnimal(@PathVariable Long animalId) {
-        return listUseCase.listByAnimal(animalId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listByAnimal(animalId, authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/latest")
@@ -63,9 +65,8 @@ public class WeightRecordController {
     }
 
     private WeightRecordResponse toResponse(WeightRecordDto dto) {
-        return new WeightRecordResponse(
-            dto.id(), dto.animalId(), dto.animalName(), dto.animalCode(),
-            dto.value(), dto.unit(), dto.measuredAt(), dto.source(), dto.sourceId(),
-            dto.note(), dto.createdDate());
+        return new WeightRecordResponse(dto.id(), dto.animalId(), dto.animalName(),
+                dto.animalCode(), dto.value(), dto.unit(), dto.measuredAt(), dto.source(),
+                dto.sourceId(), dto.note(), dto.createdDate());
     }
 }

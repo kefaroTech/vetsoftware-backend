@@ -16,7 +16,6 @@ public class JpaStateQueryPort implements StateQueryPort {
 
     @Override
     public Optional<StateRef> findById(Long stateId) {
-        return stateJpaRepository.findById(stateId)
-            .map(e -> new StateRef(e.getId(), e.getName()));
+        return stateJpaRepository.findById(stateId).map(e -> new StateRef(e.getId(), e.getName()));
     }
 }

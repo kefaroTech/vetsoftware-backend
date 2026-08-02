@@ -17,6 +17,6 @@ public class JpaSpaTypeQueryPort implements SpaTypeQueryPort {
     @Override
     public Optional<SpaTypeRef> findById(Long spaTypeId) {
         return spaTypeJpaRepository.findById(spaTypeId)
-            .map(e -> new SpaTypeRef(e.getId(), e.getName()));
+                .map(e -> new SpaTypeRef(e.getId(), e.getName()));
     }
 }

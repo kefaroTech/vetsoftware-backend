@@ -99,16 +99,16 @@ class AnimalConsultationTenantGuardTest {
 
     @Test
     void updateAnimalDoesNotLoadReferencesWhenAnimalIsOutsideCurrentCompany() {
-        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
-        UpdateAnimalCommand command = new UpdateAnimalCommand(
-            RESOURCE_ID, null, null, 1L, 2L, 3L, null, null, null, null, 4L,
-            null, null, null, false, null, COMPANY_ID);
+        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
+        UpdateAnimalCommand command = new UpdateAnimalCommand(RESOURCE_ID, null, null, 1L, 2L, 3L,
+                null, null, null, null, 4L, null, null, null, false, null, COMPANY_ID);
 
-        UpdateAnimalService service = new UpdateAnimalService(
-            animalRepository, specieQueryPort, breedQueryPort, ownerQueryPort,
-            companyQueryPort, animalColorQueryPort);
+        UpdateAnimalService service = new UpdateAnimalService(animalRepository, specieQueryPort,
+                breedQueryPort, ownerQueryPort, companyQueryPort, animalColorQueryPort);
 
-        assertThatThrownBy(() -> service.execute(command)).isInstanceOf(AnimalNotFoundException.class);
+        assertThatThrownBy(() -> service.execute(command))
+                .isInstanceOf(AnimalNotFoundException.class);
         verify(specieQueryPort, never()).findById(1L);
         verify(ownerQueryPort, never()).findByIdAndCompanyId(3L, COMPANY_ID);
         verify(animalRepository, never()).save(any());
@@ -116,33 +116,35 @@ class AnimalConsultationTenantGuardTest {
 
     @Test
     void deleteAnimalDoesNotCheckChildrenWhenAnimalIsOutsideCurrentCompany() {
-        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
+        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
 
-        DeleteAnimalService service = new DeleteAnimalService(
-            animalRepository, vaccinationChildrenQueryPort, dewormingChildrenQueryPort,
-            surgeryChildrenQueryPort, hospitalizationChildrenQueryPort, diagnosticImagingChildrenQueryPort,
-            laboratoryTestChildrenQueryPort, spaChildrenQueryPort, dayCareChildrenQueryPort,
-            consultationChildrenQueryPort);
+        DeleteAnimalService service = new DeleteAnimalService(animalRepository,
+                vaccinationChildrenQueryPort, dewormingChildrenQueryPort, surgeryChildrenQueryPort,
+                hospitalizationChildrenQueryPort, diagnosticImagingChildrenQueryPort,
+                laboratoryTestChildrenQueryPort, spaChildrenQueryPort, dayCareChildrenQueryPort,
+                consultationChildrenQueryPort);
 
         assertThatThrownBy(() -> service.execute(RESOURCE_ID, COMPANY_ID))
-            .isInstanceOf(AnimalNotFoundException.class);
+                .isInstanceOf(AnimalNotFoundException.class);
         verify(vaccinationChildrenQueryPort, never()).existsActiveByAnimalId(RESOURCE_ID);
         verify(animalRepository, never()).delete(RESOURCE_ID, COMPANY_ID);
     }
 
     @Test
     void updateConsultationDoesNotLoadReferencesWhenConsultationIsOutsideCurrentCompany() {
-        when(consultationRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
-        UpdateConsultationCommand command = new UpdateConsultationCommand(
-            RESOURCE_ID, LocalDate.now(), 1L, null, null, null, null, 2L, COMPANY_ID,
-            null, null, null, null, null, null, null, null, null, null);
+        when(consultationRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
+        UpdateConsultationCommand command = new UpdateConsultationCommand(RESOURCE_ID,
+                LocalDate.now(), 1L, null, null, null, null, 2L, COMPANY_ID, null, null, null, null,
+                null, null, null, null, null, null);
 
-        com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService service =
-            new com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService(
+        com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService service = new com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService(
                 consultationRepository, consultationTypeQueryPort, consultationAnimalQueryPort,
                 consultationCompanyQueryPort);
 
-        assertThatThrownBy(() -> service.execute(command)).isInstanceOf(ConsultationNotFoundException.class);
+        assertThatThrownBy(() -> service.execute(command))
+                .isInstanceOf(ConsultationNotFoundException.class);
         verify(consultationTypeQueryPort, never()).findById(1L);
         verify(consultationAnimalQueryPort, never()).findByIdAndCompanyId(2L, COMPANY_ID);
         verify(consultationRepository, never()).save(any());

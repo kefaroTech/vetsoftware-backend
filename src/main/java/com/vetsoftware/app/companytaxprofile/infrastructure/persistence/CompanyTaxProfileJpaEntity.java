@@ -5,11 +5,11 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyDocumentType;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
 import com.vetsoftware.app.economicactivity.infrastructure.persistence.EconomicActivityJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "company_tax_profiles")
@@ -51,8 +51,7 @@ public class CompanyTaxProfileJpaEntity {
     @JoinColumn(name = "economic_activity_id")
     private EconomicActivityJpaEntity economicActivity;
 
-    @OneToMany(mappedBy = "companyTaxProfile", cascade = CascadeType.ALL,
-            orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "companyTaxProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities = new ArrayList<>();
 
     @Column(name = "created_date", nullable = false)
@@ -61,32 +60,111 @@ public class CompanyTaxProfileJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected CompanyTaxProfileJpaEntity() {}
+    protected CompanyTaxProfileJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public CompanyDocumentType getCompanyDocumentType() { return companyDocumentType; }
-    public void setCompanyDocumentType(CompanyDocumentType companyDocumentType) { this.companyDocumentType = companyDocumentType; }
-    public String getCompanyDocumentId() { return companyDocumentId; }
-    public void setCompanyDocumentId(String companyDocumentId) { this.companyDocumentId = companyDocumentId; }
-    public String getCompanyDocumentVerificationDigit() { return companyDocumentVerificationDigit; }
-    public void setCompanyDocumentVerificationDigit(String companyDocumentVerificationDigit) { this.companyDocumentVerificationDigit = companyDocumentVerificationDigit; }
-    public String getLegalName() { return legalName; }
-    public void setLegalName(String legalName) { this.legalName = legalName; }
-    public TaxRegime getTaxRegime() { return taxRegime; }
-    public void setTaxRegime(TaxRegime taxRegime) { this.taxRegime = taxRegime; }
-    public String getFiscalEmail() { return fiscalEmail; }
-    public void setFiscalEmail(String fiscalEmail) { this.fiscalEmail = fiscalEmail; }
-    public String getCommercialName() { return commercialName; }
-    public void setCommercialName(String commercialName) { this.commercialName = commercialName; }
-    public EconomicActivityJpaEntity getEconomicActivity() { return economicActivity; }
-    public void setEconomicActivity(EconomicActivityJpaEntity economicActivity) { this.economicActivity = economicActivity; }
-    public List<CompanyTaxProfileResponsibilityJpaEntity> getResponsibilities() { return responsibilities; }
-    public void setResponsibilities(List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities) { this.responsibilities = responsibilities; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public CompanyDocumentType getCompanyDocumentType() {
+        return companyDocumentType;
+    }
+
+    public void setCompanyDocumentType(CompanyDocumentType companyDocumentType) {
+        this.companyDocumentType = companyDocumentType;
+    }
+
+    public String getCompanyDocumentId() {
+        return companyDocumentId;
+    }
+
+    public void setCompanyDocumentId(String companyDocumentId) {
+        this.companyDocumentId = companyDocumentId;
+    }
+
+    public String getCompanyDocumentVerificationDigit() {
+        return companyDocumentVerificationDigit;
+    }
+
+    public void setCompanyDocumentVerificationDigit(String companyDocumentVerificationDigit) {
+        this.companyDocumentVerificationDigit = companyDocumentVerificationDigit;
+    }
+
+    public String getLegalName() {
+        return legalName;
+    }
+
+    public void setLegalName(String legalName) {
+        this.legalName = legalName;
+    }
+
+    public TaxRegime getTaxRegime() {
+        return taxRegime;
+    }
+
+    public void setTaxRegime(TaxRegime taxRegime) {
+        this.taxRegime = taxRegime;
+    }
+
+    public String getFiscalEmail() {
+        return fiscalEmail;
+    }
+
+    public void setFiscalEmail(String fiscalEmail) {
+        this.fiscalEmail = fiscalEmail;
+    }
+
+    public String getCommercialName() {
+        return commercialName;
+    }
+
+    public void setCommercialName(String commercialName) {
+        this.commercialName = commercialName;
+    }
+
+    public EconomicActivityJpaEntity getEconomicActivity() {
+        return economicActivity;
+    }
+
+    public void setEconomicActivity(EconomicActivityJpaEntity economicActivity) {
+        this.economicActivity = economicActivity;
+    }
+
+    public List<CompanyTaxProfileResponsibilityJpaEntity> getResponsibilities() {
+        return responsibilities;
+    }
+
+    public void setResponsibilities(
+            List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities) {
+        this.responsibilities = responsibilities;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

@@ -19,7 +19,7 @@ public class UpdateSurgeryTypeService implements UpdateSurgeryTypeUseCase {
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateSurgeryTypeService(SurgeryTypeRepository repository,
-                                    CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -29,9 +29,11 @@ public class UpdateSurgeryTypeService implements UpdateSurgeryTypeUseCase {
     public SurgeryTypeDto execute(UpdateSurgeryTypeCommand command) {
         SurgeryType surgeryType = repository.findById(command.id())
                 .orElseThrow(() -> new SurgeryTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
         surgeryType.update(command.name(), command.description(), company, command.general());
         return SurgeryTypeDto.from(repository.save(surgeryType));
     }

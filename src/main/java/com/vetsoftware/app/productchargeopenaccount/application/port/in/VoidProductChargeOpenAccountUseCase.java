@@ -5,8 +5,7 @@ import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface VoidProductChargeOpenAccountUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('chargeOpenAccount.delete') and @authz.isMyCompany(#command.companyId)) or "
-        + "hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('chargeOpenAccount.delete') and"
+            + " @authz.isMyCompany(#command.companyId)) or hasRole('SYSTEM')")
     ProductChargeOpenAccountDto execute(VoidProductChargeOpenAccountCommand command);
 }

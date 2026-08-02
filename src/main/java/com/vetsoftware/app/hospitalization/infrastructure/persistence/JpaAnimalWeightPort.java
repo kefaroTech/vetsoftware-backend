@@ -18,19 +18,18 @@ public class JpaAnimalWeightPort implements AnimalWeightPort {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaAnimalWeightPort(WeightRecordJpaRepository weightRecordJpaRepository,
-                               AnimalJpaRepository animalJpaRepository,
-                               CompanyJpaRepository companyJpaRepository) {
+            AnimalJpaRepository animalJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.weightRecordJpaRepository = weightRecordJpaRepository;
         this.animalJpaRepository = animalJpaRepository;
         this.companyJpaRepository = companyJpaRepository;
     }
 
     @Override
-    public void recordHospitalizationWeight(Long animalId, Long companyId, BigDecimal value, String unit,
-                                            LocalDate measuredAt, Long hospitalizationId) {
+    public void recordHospitalizationWeight(Long animalId, Long companyId, BigDecimal value,
+            String unit, LocalDate measuredAt, Long hospitalizationId) {
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(animalId);
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(companyId);
-        weightRecordJpaRepository.save(WeightRecordJpaEntity.of(
-            animal, company, value, unit, "HOSPITALIZATION", hospitalizationId, null, measuredAt));
+        weightRecordJpaRepository.save(WeightRecordJpaEntity.of(animal, company, value, unit,
+                "HOSPITALIZATION", hospitalizationId, null, measuredAt));
     }
 }

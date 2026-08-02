@@ -23,13 +23,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class LoginSystemUserServiceTest {
 
-    @Mock private SystemUserCredentialsRepository credentialsRepository;
-    @Mock private TokenGenerator tokenGenerator;
-    @Mock private RefreshTokenIssuer refreshTokenIssuer;
-    @Mock private PasswordHasher passwordHasher;
-    @Mock private AuthSystemUserRepository authSystemUserRepository;
-    @Mock private RefreshTokenRepository refreshTokenRepository;
-    @InjectMocks private LoginSystemUserService service;
+    @Mock
+    private SystemUserCredentialsRepository credentialsRepository;
+    @Mock
+    private TokenGenerator tokenGenerator;
+    @Mock
+    private RefreshTokenIssuer refreshTokenIssuer;
+    @Mock
+    private PasswordHasher passwordHasher;
+    @Mock
+    private AuthSystemUserRepository authSystemUserRepository;
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+    @InjectMocks
+    private LoginSystemUserService service;
 
     @Test
     void login_rota_la_version_y_revoca_la_sesion_anterior() {
@@ -44,8 +51,8 @@ class LoginSystemUserServiceTest {
         TokenDto result = service.execute(new LoginSystemUserCommand("ADMIN", "secret"));
 
         assertThat(result.token()).isEqualTo("access");
-        InOrder order = inOrder(authSystemUserRepository, refreshTokenRepository,
-                tokenGenerator, refreshTokenIssuer);
+        InOrder order = inOrder(authSystemUserRepository, refreshTokenRepository, tokenGenerator,
+                refreshTokenIssuer);
         order.verify(authSystemUserRepository).rotateAuthVersion(2L);
         order.verify(refreshTokenRepository).revokeAllForSubject(2L, "SYSTEM_USER");
         order.verify(tokenGenerator).generate(2L, "SYSTEM_USER", null, 9L);
@@ -56,9 +63,11 @@ class LoginSystemUserServiceTest {
     void un_codigo_inexistente_no_hashea_ni_emite_nada() {
         when(credentialsRepository.findByCode("NO-EXISTE")).thenReturn(Optional.empty());
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> service.execute(new LoginSystemUserCommand("NO-EXISTE", "x")))
-            .isInstanceOf(com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(
+                        () -> service.execute(new LoginSystemUserCommand("NO-EXISTE", "x")))
+                .isInstanceOf(
+                        com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
 
         org.mockito.Mockito.verify(authSystemUserRepository, org.mockito.Mockito.never())
                 .rotateAuthVersion(org.mockito.ArgumentMatchers.anyLong());
@@ -70,9 +79,11 @@ class LoginSystemUserServiceTest {
         when(credentialsRepository.findByCode("ADMIN")).thenReturn(Optional.of(credentials));
         when(passwordHasher.matches("wrong", "hash")).thenReturn(false);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> service.execute(new LoginSystemUserCommand("ADMIN", "wrong")))
-            .isInstanceOf(com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(
+                        () -> service.execute(new LoginSystemUserCommand("ADMIN", "wrong")))
+                .isInstanceOf(
+                        com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
 
         org.mockito.Mockito.verify(authSystemUserRepository, org.mockito.Mockito.never())
                 .rotateAuthVersion(2L);
@@ -87,9 +98,11 @@ class LoginSystemUserServiceTest {
         when(passwordHasher.matches("secret", "hash")).thenReturn(true);
         when(authSystemUserRepository.rotateAuthVersion(2L)).thenReturn(Optional.empty());
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> service.execute(new LoginSystemUserCommand("ADMIN", "secret")))
-            .isInstanceOf(com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(
+                        () -> service.execute(new LoginSystemUserCommand("ADMIN", "secret")))
+                .isInstanceOf(
+                        com.vetsoftware.app.auth.application.exception.InvalidCredentialsException.class);
     }
 
     @Test
@@ -97,8 +110,8 @@ class LoginSystemUserServiceTest {
         var credentials = new SystemUserCredentialsRepository.SystemUserCredentials(2L, "hash");
         when(credentialsRepository.findByCode("ADMIN")).thenReturn(Optional.of(credentials));
         when(passwordHasher.matches("secret", "hash")).thenReturn(true);
-        when(authSystemUserRepository.rotateAuthVersion(2L)).thenReturn(Optional.of(
-                new AuthSystemUserRepository.AuthSystemUser(2L, 9L)));
+        when(authSystemUserRepository.rotateAuthVersion(2L))
+                .thenReturn(Optional.of(new AuthSystemUserRepository.AuthSystemUser(2L, 9L)));
 
         service.execute(new LoginSystemUserCommand("ADMIN", "secret"));
 

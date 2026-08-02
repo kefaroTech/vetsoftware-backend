@@ -8,15 +8,17 @@ import java.util.Base64;
 import java.util.HexFormat;
 
 /**
- * Generación y hashing de tokens de restablecimiento. El valor plano (raw) viaja en el enlace del correo;
- * en BD solo se guarda su hash SHA-256. Al validar/usar se re-hashea el valor recibido y se busca por hash,
- * de modo que una filtración de la tabla no revela tokens usables.
+ * Generación y hashing de tokens de restablecimiento. El valor plano (raw)
+ * viaja en el enlace del correo; en BD solo se guarda su hash SHA-256. Al
+ * validar/usar se re-hashea el valor recibido y se busca por hash, de modo que
+ * una filtración de la tabla no revela tokens usables.
  */
 final class PasswordResetTokens {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private PasswordResetTokens() {}
+    private PasswordResetTokens() {
+    }
 
     /** 32 bytes aleatorios en Base64 URL-safe sin padding (~43 chars). */
     static String generateRawToken() {
@@ -25,7 +27,10 @@ final class PasswordResetTokens {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    /** SHA-256 del token plano, en hex (64 chars) — coincide con la columna token_hash VARCHAR(64). */
+    /**
+     * SHA-256 del token plano, en hex (64 chars) — coincide con la columna
+     * token_hash VARCHAR(64).
+     */
     static String hash(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

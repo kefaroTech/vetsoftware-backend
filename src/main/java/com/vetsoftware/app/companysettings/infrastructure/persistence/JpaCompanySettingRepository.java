@@ -22,12 +22,14 @@ public class JpaCompanySettingRepository implements CompanySettingRepository {
 
     @Override
     public Optional<CompanySetting> find(Long companyId, String propertyName) {
-        return jpaRepository.findByCompanyIdAndPropertyName(companyId, propertyName).map(JpaCompanySettingRepository::toDomain);
+        return jpaRepository.findByCompanyIdAndPropertyName(companyId, propertyName)
+                .map(JpaCompanySettingRepository::toDomain);
     }
 
     @Override
     public List<CompanySetting> findByCompany(Long companyId) {
-        return jpaRepository.findByCompanyId(companyId).stream().map(JpaCompanySettingRepository::toDomain).toList();
+        return jpaRepository.findByCompanyId(companyId).stream()
+                .map(JpaCompanySettingRepository::toDomain).toList();
     }
 
     private static CompanySettingJpaEntity toJpa(CompanySetting s) {
@@ -43,6 +45,6 @@ public class JpaCompanySettingRepository implements CompanySettingRepository {
 
     private static CompanySetting toDomain(CompanySettingJpaEntity e) {
         return new CompanySetting(e.getId(), e.getCompanyId(), e.getPropertyName(), e.getValue(),
-            e.getCreatedDate(), e.isEnabled());
+                e.getCreatedDate(), e.isEnabled());
     }
 }

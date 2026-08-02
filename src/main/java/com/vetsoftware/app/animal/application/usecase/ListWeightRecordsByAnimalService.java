@@ -18,7 +18,7 @@ public class ListWeightRecordsByAnimalService implements ListWeightRecordsByAnim
 
     @Override
     public List<WeightRecordDto> listByAnimal(Long animalId, Long companyId) {
-        return repository.findByAnimalIdAndCompanyId(animalId, companyId)
-            .stream().map(WeightRecordDto::from).toList();
+        return repository.findByAnimalIdAndCompanyId(animalId, companyId).stream()
+                .map(WeightRecordDto::from).toList();
     }
 }

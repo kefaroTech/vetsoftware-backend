@@ -7,37 +7,46 @@ import java.util.List;
 
 /**
  * Servicio de dominio puro: genera las tomas (MedicationSchedule) de una orden
- * de medicación a partir de su frecuencia, duración y hora de inicio.
- * Sin dependencias de Spring ni de infraestructura.
+ * de medicación a partir de su frecuencia, duración y hora de inicio. Sin
+ * dependencias de Spring ni de infraestructura.
  */
 public final class MedicationScheduleGenerator {
 
     /** Horizonte por defecto cuando la duración es indefinida o no especificada. */
     private static final int INDEFINITE_HORIZON_DAYS = 14;
+
     /** Tope de seguridad de tomas generadas. */
     private static final int MAX_SLOTS = 90;
+
     private static final LocalTime DEFAULT_START_TIME = LocalTime.of(8, 0);
 
-    private MedicationScheduleGenerator() {}
+    private MedicationScheduleGenerator() {
+    }
 
-    public static List<MedicationSchedule> generate(MedicationOrderParams params, EmployeeRef createdBy) {
+    public static List<MedicationSchedule> generate(MedicationOrderParams params,
+            EmployeeRef createdBy) {
         List<MedicationSchedule> slots = new ArrayList<>();
-        if (params.startDate() == null) return slots;
+        if (params.startDate() == null)
+            return slots;
 
         LocalTime time = params.startTime() != null ? params.startTime() : DEFAULT_START_TIME;
         LocalDateTime start = LocalDateTime.of(params.startDate(), time);
-        HospitalizationMedicationRef ref =
-            new HospitalizationMedicationRef(params.id(), params.name());
+        HospitalizationMedicationRef ref = new HospitalizationMedicationRef(params.id(),
+                params.name());
 
-        String frequency = params.frequency() == null ? "" : params.frequency().trim().toUpperCase();
-        if ("CONTINUOUS".equals(frequency)) return slots;
+        String frequency = params.frequency() == null
+                ? ""
+                : params.frequency().trim().toUpperCase();
+        if ("CONTINUOUS".equals(frequency))
+            return slots;
         if ("SINGLE".equals(frequency)) {
             slots.add(slotAt(ref, start, createdBy));
             return slots;
         }
 
         Integer intervalHours = intervalFromFrequency(frequency);
-        if (intervalHours == null) return slots; // frecuencia no discreta / desconocida
+        if (intervalHours == null)
+            return slots; // frecuencia no discreta / desconocida
 
         int count = doseCount(params.durationMeasure(), params.durationQuantity(), intervalHours);
         for (int i = 0; i < count; i++) {
@@ -47,39 +56,44 @@ public final class MedicationScheduleGenerator {
     }
 
     /**
-     * Regla de integridad: regenera SOLO las tomas pendientes conservando las ya aplicadas.
-     * - Pauta INTERVALO con aplicadas: re-cronometra desde la hora real de la última aplicada
-     *   (`lastAppliedRealDateTime`) + intervalo.
-     * - Pauta FIJA (o INTERVALO sin aplicadas): usa las horas de reloj saltando las primeras
-     *   `appliedCount` posiciones (ya cubiertas por aplicadas).
-     * - DOSES: el total objetivo manda; pendientes = total - appliedCount (nunca negativo).
+     * Regla de integridad: regenera SOLO las tomas pendientes conservando las ya
+     * aplicadas. - Pauta INTERVALO con aplicadas: re-cronometra desde la hora real
+     * de la última aplicada (`lastAppliedRealDateTime`) + intervalo. - Pauta FIJA
+     * (o INTERVALO sin aplicadas): usa las horas de reloj saltando las primeras
+     * `appliedCount` posiciones (ya cubiertas por aplicadas). - DOSES: el total
+     * objetivo manda; pendientes = total - appliedCount (nunca negativo).
      */
     public static List<MedicationSchedule> generatePending(MedicationOrderParams params,
-                                                           int appliedCount,
-                                                           LocalDateTime lastAppliedRealDateTime,
-                                                           EmployeeRef createdBy) {
+            int appliedCount, LocalDateTime lastAppliedRealDateTime, EmployeeRef createdBy) {
         List<MedicationSchedule> slots = new ArrayList<>();
-        if (params.startDate() == null) return slots;
+        if (params.startDate() == null)
+            return slots;
 
         LocalTime time = params.startTime() != null ? params.startTime() : DEFAULT_START_TIME;
         LocalDateTime start = LocalDateTime.of(params.startDate(), time);
-        HospitalizationMedicationRef ref =
-            new HospitalizationMedicationRef(params.id(), params.name());
+        HospitalizationMedicationRef ref = new HospitalizationMedicationRef(params.id(),
+                params.name());
 
-        String frequency = params.frequency() == null ? "" : params.frequency().trim().toUpperCase();
-        if ("CONTINUOUS".equals(frequency)) return slots;
+        String frequency = params.frequency() == null
+                ? ""
+                : params.frequency().trim().toUpperCase();
+        if ("CONTINUOUS".equals(frequency))
+            return slots;
         if ("SINGLE".equals(frequency)) {
-            if (appliedCount >= 1) return slots;
+            if (appliedCount >= 1)
+                return slots;
             slots.add(slotAt(ref, start, createdBy));
             return slots;
         }
 
         Integer intervalHours = intervalFromFrequency(frequency);
-        if (intervalHours == null) return slots;
+        if (intervalHours == null)
+            return slots;
 
         int total = doseCount(params.durationMeasure(), params.durationQuantity(), intervalHours);
         int pendingCount = Math.max(0, total - appliedCount);
-        if (pendingCount == 0) return slots;
+        if (pendingCount == 0)
+            return slots;
 
         boolean intervalMode = "INTERVAL".equalsIgnoreCase(params.guidelineType());
         if (intervalMode && lastAppliedRealDateTime != null) {
@@ -97,7 +111,7 @@ public final class MedicationScheduleGenerator {
     }
 
     private static MedicationSchedule slotAt(HospitalizationMedicationRef ref, LocalDateTime dt,
-                                             EmployeeRef createdBy) {
+            EmployeeRef createdBy) {
         return MedicationSchedule.create(ref, dt, dt, AppliedStatus.PENDING, false, createdBy);
     }
 
@@ -118,7 +132,8 @@ public final class MedicationScheduleGenerator {
         };
     }
 
-    private static int doseCount(String durationMeasure, Integer durationQuantity, int intervalHours) {
+    private static int doseCount(String durationMeasure, Integer durationQuantity,
+            int intervalHours) {
         String measure = durationMeasure == null ? "" : durationMeasure.trim().toUpperCase();
         int count;
         if ("DOSES".equals(measure) && durationQuantity != null && durationQuantity > 0) {

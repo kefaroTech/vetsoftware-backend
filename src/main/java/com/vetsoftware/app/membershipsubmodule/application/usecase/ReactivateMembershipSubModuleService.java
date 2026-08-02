@@ -21,8 +21,9 @@ public class ReactivateMembershipSubModuleService implements ReactivateMembershi
     @Transactional
     public MembershipSubModuleDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new MembershipSubModuleNotFoundException(id);
+        if (rows == 0)
+            throw new MembershipSubModuleNotFoundException(id);
         return MembershipSubModuleDto.from(repository.findById(id)
-            .orElseThrow(() -> new MembershipSubModuleNotFoundException(id)));
+                .orElseThrow(() -> new MembershipSubModuleNotFoundException(id)));
     }
 }

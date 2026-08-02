@@ -32,12 +32,10 @@ public class NumberingResolutionController {
     private final Authz authz;
 
     public NumberingResolutionController(CreateNumberingResolutionUseCase createUseCase,
-                                         UpdateNumberingResolutionUseCase updateUseCase,
-                                         FindNumberingResolutionUseCase findUseCase,
-                                         ListNumberingResolutionsUseCase listUseCase,
-                                         DeleteNumberingResolutionUseCase deleteUseCase,
-                                         ReactivateNumberingResolutionUseCase reactivateUseCase,
-                                         Authz authz) {
+            UpdateNumberingResolutionUseCase updateUseCase,
+            FindNumberingResolutionUseCase findUseCase, ListNumberingResolutionsUseCase listUseCase,
+            DeleteNumberingResolutionUseCase deleteUseCase,
+            ReactivateNumberingResolutionUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,17 +47,19 @@ public class NumberingResolutionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NumberingResolutionResponse create(@Valid @RequestBody CreateNumberingResolutionRequest request) {
+    public NumberingResolutionResponse create(
+            @Valid @RequestBody CreateNumberingResolutionRequest request) {
         return toResponse(createUseCase.execute(new CreateNumberingResolutionCommand(
-                request.documentType(), request.resolutionNumber(), request.resolutionDate(), request.prefix(),
-                request.rangeFrom(), request.rangeTo(), request.validFrom(), request.validTo(),
-                request.technicalKey(), request.branchId(), authz.currentCompanyId())));
+                request.documentType(), request.resolutionNumber(), request.resolutionDate(),
+                request.prefix(), request.rangeFrom(), request.rangeTo(), request.validFrom(),
+                request.validTo(), request.technicalKey(), request.branchId(),
+                authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<NumberingResolutionResponse> listAll() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -69,11 +69,12 @@ public class NumberingResolutionController {
 
     @PutMapping("/{id}")
     public NumberingResolutionResponse update(@PathVariable Long id,
-                                              @Valid @RequestBody UpdateNumberingResolutionRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateNumberingResolutionCommand(
-                id, request.documentType(), request.resolutionNumber(), request.resolutionDate(), request.prefix(),
-                request.rangeFrom(), request.rangeTo(), request.validFrom(), request.validTo(),
-                request.technicalKey(), request.branchId(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateNumberingResolutionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateNumberingResolutionCommand(id,
+                request.documentType(), request.resolutionNumber(), request.resolutionDate(),
+                request.prefix(), request.rangeFrom(), request.rangeTo(), request.validFrom(),
+                request.validTo(), request.technicalKey(), request.branchId(),
+                authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -89,21 +90,10 @@ public class NumberingResolutionController {
 
     private NumberingResolutionResponse toResponse(NumberingResolutionDto dto) {
         CompanySummaryDto c = dto.company();
-        return new NumberingResolutionResponse(
-                dto.id(),
+        return new NumberingResolutionResponse(dto.id(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.branchId(),
-                dto.documentType(),
-                dto.resolutionNumber(),
-                dto.resolutionDate(),
-                dto.prefix(),
-                dto.rangeFrom(),
-                dto.rangeTo(),
-                dto.validFrom(),
-                dto.validTo(),
-                dto.technicalKey(),
-                dto.currentNumber(),
-                dto.createdDate(),
-                dto.enabled());
+                dto.branchId(), dto.documentType(), dto.resolutionNumber(), dto.resolutionDate(),
+                dto.prefix(), dto.rangeFrom(), dto.rangeTo(), dto.validFrom(), dto.validTo(),
+                dto.technicalKey(), dto.currentNumber(), dto.createdDate(), dto.enabled());
     }
 }

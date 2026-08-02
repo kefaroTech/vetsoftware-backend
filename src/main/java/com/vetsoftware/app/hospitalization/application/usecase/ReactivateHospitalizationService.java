@@ -21,8 +21,9 @@ public class ReactivateHospitalizationService implements ReactivateHospitalizati
     @Transactional
     public HospitalizationDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new HospitalizationNotFoundException(id);
+        if (rows == 0)
+            throw new HospitalizationNotFoundException(id);
         return HospitalizationDto.from(repository.findById(id)
-            .orElseThrow(() -> new HospitalizationNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationNotFoundException(id)));
     }
 }

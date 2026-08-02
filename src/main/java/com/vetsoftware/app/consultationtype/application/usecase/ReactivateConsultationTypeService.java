@@ -21,8 +21,9 @@ public class ReactivateConsultationTypeService implements ReactivateConsultation
     @Transactional
     public ConsultationTypeDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new ConsultationTypeNotFoundException(id);
+        if (rows == 0)
+            throw new ConsultationTypeNotFoundException(id);
         return ConsultationTypeDto.from(repository.findById(id)
-            .orElseThrow(() -> new ConsultationTypeNotFoundException(id)));
+                .orElseThrow(() -> new ConsultationTypeNotFoundException(id)));
     }
 }

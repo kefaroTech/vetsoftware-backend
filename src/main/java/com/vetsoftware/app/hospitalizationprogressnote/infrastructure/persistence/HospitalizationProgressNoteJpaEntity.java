@@ -33,18 +33,54 @@ public class HospitalizationProgressNoteJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected HospitalizationProgressNoteJpaEntity() {}
+    protected HospitalizationProgressNoteJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public HospitalizationJpaEntity getHospitalization() { return hospitalization; }
-    public void setHospitalization(HospitalizationJpaEntity hospitalization) { this.hospitalization = hospitalization; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public HospitalizationJpaEntity getHospitalization() {
+        return hospitalization;
+    }
+
+    public void setHospitalization(HospitalizationJpaEntity hospitalization) {
+        this.hospitalization = hospitalization;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

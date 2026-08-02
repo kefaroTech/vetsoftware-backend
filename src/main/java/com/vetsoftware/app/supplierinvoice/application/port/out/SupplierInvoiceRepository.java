@@ -13,10 +13,17 @@ public interface SupplierInvoiceRepository {
 
     PageResult<SupplierInvoice> search(SearchSupplierInvoicesCommand command);
 
-    /** Facturas con saldo pendiente (PENDING/PARTIAL) para el aging; filtra por sede si {@code branchId} != null. */
+    /**
+     * Facturas con saldo pendiente (PENDING/PARTIAL) para el aging; filtra por sede
+     * si {@code
+     * branchId} != null.
+     */
     List<SupplierInvoice> findOutstandingByCompany(Long companyId, Long branchId);
 
-    /** ¿Ya existe una factura activa con ese número para ese proveedor en la empresa? (evita doble registro). */
+    /**
+     * ¿Ya existe una factura activa con ese número para ese proveedor en la
+     * empresa? (evita doble registro).
+     */
     boolean existsByCompanySupplierAndNumber(Long companyId, Long supplierId, String invoiceNumber);
 
     void delete(Long id);

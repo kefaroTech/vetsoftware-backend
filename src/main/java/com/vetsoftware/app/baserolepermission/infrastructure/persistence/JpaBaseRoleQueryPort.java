@@ -17,6 +17,6 @@ public class JpaBaseRoleQueryPort implements BaseRoleQueryPort {
     @Override
     public Optional<BaseRoleRef> findById(Long baseRoleId) {
         return baseRoleJpaRepository.findById(baseRoleId)
-            .map(e -> new BaseRoleRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new BaseRoleRef(e.getId(), e.getName(), e.getCode()));
     }
 }

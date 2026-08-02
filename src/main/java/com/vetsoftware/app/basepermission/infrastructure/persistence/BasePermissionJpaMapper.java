@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class BasePermissionJpaMapper {
 
-    public BasePermissionJpaEntity toJpa(BasePermission basePermission, SubModuleJpaEntity subModule) {
+    public BasePermissionJpaEntity toJpa(BasePermission basePermission,
+            SubModuleJpaEntity subModule) {
         BasePermissionJpaEntity entity = new BasePermissionJpaEntity();
         entity.setId(basePermission.getId());
         entity.setName(basePermission.getName());
@@ -25,13 +26,7 @@ public class BasePermissionJpaMapper {
     }
 
     public BasePermission toDomain(BasePermissionJpaEntity entity, SubModuleRef subModuleRef) {
-        return new BasePermission(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            subModuleRef,
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+        return new BasePermission(entity.getId(), entity.getName(), entity.getCode(), subModuleRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

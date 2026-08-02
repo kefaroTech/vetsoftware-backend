@@ -17,6 +17,6 @@ public class JpaVaccinationTypeQueryPort implements VaccinationTypeQueryPort {
     @Override
     public Optional<VaccinationTypeRef> findById(Long vaccinationTypeId) {
         return vaccinationTypeJpaRepository.findById(vaccinationTypeId)
-            .map(e -> new VaccinationTypeRef(e.getId(), e.getName()));
+                .map(e -> new VaccinationTypeRef(e.getId(), e.getName()));
     }
 }

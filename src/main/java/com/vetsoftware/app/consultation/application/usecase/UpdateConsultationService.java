@@ -26,9 +26,8 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateConsultationService(ConsultationRepository repository,
-                                     ConsultationTypeQueryPort consultationTypeQueryPort,
-                                     AnimalQueryPort animalQueryPort,
-                                     CompanyQueryPort companyQueryPort) {
+            ConsultationTypeQueryPort consultationTypeQueryPort, AnimalQueryPort animalQueryPort,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.consultationTypeQueryPort = consultationTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
@@ -39,26 +38,29 @@ public class UpdateConsultationService implements UpdateConsultationUseCase {
     @Transactional
     public ConsultationDto execute(UpdateConsultationCommand command) {
         Consultation consultation = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
-            .orElseThrow(() -> new ConsultationNotFoundException(command.id()));
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+                .orElseThrow(() -> new ConsultationNotFoundException(command.id()));
         Long companyId = command.companyId() == null
-            ? consultation.getCompany().id()
-            : command.companyId();
-        ConsultationTypeRef consultationType = consultationTypeQueryPort.findById(command.consultationTypeId())
-            .orElseThrow(() -> new IllegalArgumentException("ConsultationType not found: " + command.consultationTypeId()));
+                ? consultation.getCompany().id()
+                : command.companyId();
+        ConsultationTypeRef consultationType = consultationTypeQueryPort
+                .findById(command.consultationTypeId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "ConsultationType not found: " + command.consultationTypeId()));
         AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         CompanyRef company = companyQueryPort.findById(companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
-        PhysicalExam physicalExam = new PhysicalExam(
-            command.temperature(), command.heartRate(), command.respiratoryRate(),
-            command.mucousMembranes(), command.capillaryRefill(), command.hydration(),
-            command.bodyConditionScore(), command.painScore(), command.attitude(),
-            command.examFindings());
-        consultation.update(command.date(), consultationType, command.anamnesis(), command.diagnosis(),
-            command.prognosis(), physicalExam, command.nextControl(), animal, company);
+        PhysicalExam physicalExam = new PhysicalExam(command.temperature(), command.heartRate(),
+                command.respiratoryRate(), command.mucousMembranes(), command.capillaryRefill(),
+                command.hydration(), command.bodyConditionScore(), command.painScore(),
+                command.attitude(), command.examFindings());
+        consultation.update(command.date(), consultationType, command.anamnesis(),
+                command.diagnosis(), command.prognosis(), physicalExam, command.nextControl(),
+                animal, company);
         return ConsultationDto.from(repository.save(consultation));
     }
 }

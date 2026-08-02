@@ -3,10 +3,10 @@ package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.DocumentReference;
-import com.vetsoftware.app.electronicdocument.domain.FiscalResponsibility;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
+import com.vetsoftware.app.electronicdocument.domain.FiscalResponsibility;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import java.util.Arrays;
@@ -46,7 +46,8 @@ public class ElectronicDocumentJpaMapper {
         entity.setIssuerLegalName(i.legalName());
         entity.setIssuerTaxRegime(i.taxRegime());
         entity.setIssuerEmail(i.email());
-        entity.setIssuerResponsibilities(i.responsibilities().isEmpty() ? null : String.join(";", i.responsibilities()));
+        entity.setIssuerResponsibilities(
+                i.responsibilities().isEmpty() ? null : String.join(";", i.responsibilities()));
 
         CustomerSnapshot c = doc.getCustomer();
         entity.setCustomerDocumentType(c.documentType());
@@ -114,50 +115,55 @@ public class ElectronicDocumentJpaMapper {
     public ElectronicDocument toDomain(ElectronicDocumentJpaEntity entity) {
         List<ElectronicDocumentLine> lines = entity.getLines().stream()
                 .sorted(Comparator.comparingInt(ElectronicDocumentLineJpaEntity::getLineNumber))
-                .map(le -> new ElectronicDocumentLine(le.getId(), le.getLineNumber(), le.getDescription(),
-                        le.getQuantity(), le.getUnitMeasureCode(), le.getUnitPrice(), le.getLineExtensionAmount(),
-                        le.getTaxCategory(), le.getTaxScheme(), le.getTaxRate(), le.getTaxAmount(),
-                        le.getTotalAmount()))
+                .map(le -> new ElectronicDocumentLine(le.getId(), le.getLineNumber(),
+                        le.getDescription(), le.getQuantity(), le.getUnitMeasureCode(),
+                        le.getUnitPrice(), le.getLineExtensionAmount(), le.getTaxCategory(),
+                        le.getTaxScheme(), le.getTaxRate(), le.getTaxAmount(), le.getTotalAmount()))
                 .toList();
         List<ElectronicDocumentPayment> payments = entity.getPayments().stream()
-                .map(pe -> new ElectronicDocumentPayment(pe.getId(), pe.getPaymentMeans(), pe.getAmount()))
+                .map(pe -> new ElectronicDocumentPayment(pe.getId(), pe.getPaymentMeans(),
+                        pe.getAmount()))
                 .toList();
 
         Long companyId = entity.getCompany() == null ? null : entity.getCompany().getId();
-        IssuerSnapshot issuer = new IssuerSnapshot(entity.getIssuerDocumentType(), entity.getIssuerDocumentId(),
-                entity.getIssuerVerificationDigit(), entity.getIssuerLegalName(), entity.getIssuerTaxRegime(),
-                entity.getIssuerEmail(), splitCodes(entity.getIssuerResponsibilities()));
+        IssuerSnapshot issuer = new IssuerSnapshot(entity.getIssuerDocumentType(),
+                entity.getIssuerDocumentId(), entity.getIssuerVerificationDigit(),
+                entity.getIssuerLegalName(), entity.getIssuerTaxRegime(), entity.getIssuerEmail(),
+                splitCodes(entity.getIssuerResponsibilities()));
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
-                entity.getCustomerPersonType(), entity.getCustomerLegalName(), entity.getCustomerName(),
-                entity.getCustomerEmail(), entity.getCustomerCityDane(),
+                entity.getCustomerPersonType(), entity.getCustomerLegalName(),
+                entity.getCustomerName(), entity.getCustomerEmail(), entity.getCustomerCityDane(),
                 TaxRegime.fromName(entity.getCustomerTaxRegime()),
                 FiscalResponsibility.fromName(entity.getCustomerFiscalResponsibility()));
 
-        DocumentReference reference = entity.getReferencedCufe() == null ? null
+        DocumentReference reference = entity.getReferencedCufe() == null
+                ? null
                 : new DocumentReference(entity.getReferencedCufe(), entity.getReferencedPrefix(),
                         entity.getReferencedNumber(), entity.getReferencedIssueDate());
 
         return new ElectronicDocument(entity.getId(), companyId, entity.getOpenAccountId(),
                 entity.getDocumentType(), entity.getPrefix(), entity.getConsecutive(),
-                entity.getResolutionNumber(), entity.getIssueDate(),
-                entity.getIssueTime(), entity.getCufe(), entity.getCude(), entity.getUuid(), entity.getQrData(),
-                entity.getQrUrl(), entity.getXmlSigned(), entity.getPdfRepresentation(), entity.getDianStatus(),
-                entity.getDianValidationDate(), issuer, customer, entity.getLineExtensionAmount(),
-                entity.getTaxExclusiveAmount(), entity.getTaxInclusiveAmount(), entity.getPayableAmount(),
-                entity.getPaymentForm(), lines, payments, entity.getCreatedDate(),
-                entity.isEnabled(), reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
-                entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
-                entity.getReteIcaAmount(), entity.getClientRequestId(), entity.getIssuedByEmployeeId(),
-                entity.getBranchId());
+                entity.getResolutionNumber(), entity.getIssueDate(), entity.getIssueTime(),
+                entity.getCufe(), entity.getCude(), entity.getUuid(), entity.getQrData(),
+                entity.getQrUrl(), entity.getXmlSigned(), entity.getPdfRepresentation(),
+                entity.getDianStatus(), entity.getDianValidationDate(), issuer, customer,
+                entity.getLineExtensionAmount(), entity.getTaxExclusiveAmount(),
+                entity.getTaxInclusiveAmount(), entity.getPayableAmount(), entity.getPaymentForm(),
+                lines, payments, entity.getCreatedDate(), entity.isEnabled(), reference,
+                entity.getNoteReasonCode(), entity.getNoteReasonText(), entity.isReversed(),
+                entity.getReteFuenteAmount(), entity.getReteIvaAmount(), entity.getReteIcaAmount(),
+                entity.getClientRequestId(), entity.getIssuedByEmployeeId(), entity.getBranchId());
     }
 
-    /** Reconstruye la lista de códigos de responsabilidad fiscal desde la columna unida por ';'. */
+    /**
+     * Reconstruye la lista de códigos de responsabilidad fiscal desde la columna
+     * unida por ';'.
+     */
     private static List<String> splitCodes(String joined) {
-        if (joined == null || joined.isBlank()) return List.of();
-        return Arrays.stream(joined.split(";"))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
+        if (joined == null || joined.isBlank())
+            return List.of();
+        return Arrays.stream(joined.split(";")).map(String::trim).filter(s -> !s.isEmpty())
                 .toList();
     }
 }

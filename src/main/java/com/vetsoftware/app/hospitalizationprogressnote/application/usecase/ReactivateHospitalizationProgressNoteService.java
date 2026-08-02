@@ -10,10 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.progress.note.reactivate")
 @Service
-public class ReactivateHospitalizationProgressNoteService implements ReactivateHospitalizationProgressNoteUseCase {
+public class ReactivateHospitalizationProgressNoteService
+        implements
+            ReactivateHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;
 
-    public ReactivateHospitalizationProgressNoteService(HospitalizationProgressNoteRepository repository) {
+    public ReactivateHospitalizationProgressNoteService(
+            HospitalizationProgressNoteRepository repository) {
         this.repository = repository;
     }
 
@@ -21,8 +24,9 @@ public class ReactivateHospitalizationProgressNoteService implements ReactivateH
     @Transactional
     public HospitalizationProgressNoteDto execute(Long id) {
         int updated = repository.reactivate(id);
-        if (updated == 0) throw new HospitalizationProgressNoteNotFoundException(id);
+        if (updated == 0)
+            throw new HospitalizationProgressNoteNotFoundException(id);
         return HospitalizationProgressNoteDto.from(repository.findById(id)
-            .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id)));
     }
 }

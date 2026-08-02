@@ -14,9 +14,8 @@ public class JpaStateRepository implements StateRepository {
     private final StateJpaMapper mapper;
     private final CountryJpaRepository countryJpaRepository;
 
-    public JpaStateRepository(StateJpaRepository jpaRepository,
-                               StateJpaMapper mapper,
-                               CountryJpaRepository countryJpaRepository) {
+    public JpaStateRepository(StateJpaRepository jpaRepository, StateJpaMapper mapper,
+            CountryJpaRepository countryJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.countryJpaRepository = countryJpaRepository;

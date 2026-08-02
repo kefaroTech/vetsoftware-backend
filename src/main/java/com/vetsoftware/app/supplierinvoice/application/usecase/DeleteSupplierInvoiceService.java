@@ -20,7 +20,7 @@ public class DeleteSupplierInvoiceService implements DeleteSupplierInvoiceUseCas
     @Transactional
     public void execute(Long id, Long companyId) {
         repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
+                .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
         repository.delete(id);
     }
 }

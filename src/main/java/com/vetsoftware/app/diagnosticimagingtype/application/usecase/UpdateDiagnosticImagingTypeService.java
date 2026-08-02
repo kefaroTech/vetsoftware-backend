@@ -19,7 +19,7 @@ public class UpdateDiagnosticImagingTypeService implements UpdateDiagnosticImagi
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository,
-                                              CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -29,9 +29,11 @@ public class UpdateDiagnosticImagingTypeService implements UpdateDiagnosticImagi
     public DiagnosticImagingTypeDto execute(UpdateDiagnosticImagingTypeCommand command) {
         DiagnosticImagingType type = repository.findById(command.id())
                 .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
         type.update(command.name(), command.description(), company, command.general());
         return DiagnosticImagingTypeDto.from(repository.save(type));
     }

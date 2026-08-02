@@ -12,8 +12,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * Representación gráfica con Thymeleaf y el motor PDF embebido.
- * Arma un modelo de tipos planos (Map/String/BigDecimal) para que Thymeleaf navegue sin getters de records.
+ * Representación gráfica con Thymeleaf y el motor PDF embebido. Arma un modelo
+ * de tipos planos (Map/String/BigDecimal) para que Thymeleaf navegue sin
+ * getters de records.
  */
 @Component
 public class HtmlInvoicePdf implements InvoicePdfPort {
@@ -63,7 +64,8 @@ public class HtmlInvoicePdf implements InvoicePdfPort {
             lines.add(row);
             if (l.getTaxScheme() != null) {
                 String key = l.getTaxScheme().name() + " " + l.getTaxRate() + "%";
-                BigDecimal[] acc = byRate.computeIfAbsent(key, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+                BigDecimal[] acc = byRate.computeIfAbsent(key,
+                        k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                 acc[0] = acc[0].add(l.getLineExtensionAmount());
                 acc[1] = acc[1].add(l.getTaxAmount());
             }

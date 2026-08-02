@@ -21,8 +21,9 @@ public class ReactivateBaseRoleService implements ReactivateBaseRoleUseCase {
     @Transactional
     public BaseRoleDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new BaseRoleNotFoundException(id);
-        return BaseRoleDto.from(repository.findById(id)
-            .orElseThrow(() -> new BaseRoleNotFoundException(id)));
+        if (rows == 0)
+            throw new BaseRoleNotFoundException(id);
+        return BaseRoleDto
+                .from(repository.findById(id).orElseThrow(() -> new BaseRoleNotFoundException(id)));
     }
 }

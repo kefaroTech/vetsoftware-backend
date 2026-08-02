@@ -21,6 +21,6 @@ public class FindGoodsReceiptService implements FindGoodsReceiptUseCase {
     @Transactional(readOnly = true)
     public GoodsReceiptDto findById(Long id, Long companyId) {
         return GoodsReceiptDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new GoodsReceiptNotFoundException(id)));
+                .orElseThrow(() -> new GoodsReceiptNotFoundException(id)));
     }
 }

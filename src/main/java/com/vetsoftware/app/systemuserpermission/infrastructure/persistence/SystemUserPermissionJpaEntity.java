@@ -9,9 +9,8 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "system_user_permissions", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_system_user_permissions",
-        columnNames = {"system_user_id", "system_permission_id"})
-})
+        @UniqueConstraint(name = "uq_system_user_permissions", columnNames = {"system_user_id",
+                "system_permission_id"})})
 @SQLDelete(sql = "UPDATE system_user_permissions SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class SystemUserPermissionJpaEntity {
@@ -33,16 +32,46 @@ public class SystemUserPermissionJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    public SystemUserPermissionJpaEntity() {}
+    public SystemUserPermissionJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public SystemUserJpaEntity getSystemUser() { return systemUser; }
-    public void setSystemUser(SystemUserJpaEntity systemUser) { this.systemUser = systemUser; }
-    public SystemPermissionJpaEntity getSystemPermission() { return systemPermission; }
-    public void setSystemPermission(SystemPermissionJpaEntity systemPermission) { this.systemPermission = systemPermission; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public SystemUserJpaEntity getSystemUser() {
+        return systemUser;
+    }
+
+    public void setSystemUser(SystemUserJpaEntity systemUser) {
+        this.systemUser = systemUser;
+    }
+
+    public SystemPermissionJpaEntity getSystemPermission() {
+        return systemPermission;
+    }
+
+    public void setSystemPermission(SystemPermissionJpaEntity systemPermission) {
+        this.systemPermission = systemPermission;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

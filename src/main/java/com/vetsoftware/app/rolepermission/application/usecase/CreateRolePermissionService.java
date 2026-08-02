@@ -25,9 +25,8 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
     private final PermissionCachePort permissionCachePort;
 
     public CreateRolePermissionService(RolePermissionRepository repository,
-                                       RoleQueryPort roleQueryPort,
-                                       PermissionQueryPort permissionQueryPort,
-                                       PermissionCachePort permissionCachePort) {
+            RoleQueryPort roleQueryPort, PermissionQueryPort permissionQueryPort,
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.roleQueryPort = roleQueryPort;
         this.permissionQueryPort = permissionQueryPort;
@@ -38,21 +37,24 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
     @Transactional
     public RolePermissionDto execute(CreateRolePermissionCommand command) {
         RoleRef role = (command.companyId() == null
-            ? roleQueryPort.findById(command.roleId())
-            : roleQueryPort.findByIdAndCompanyId(command.roleId(), command.companyId()))
-            .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
+                ? roleQueryPort.findById(command.roleId())
+                : roleQueryPort.findByIdAndCompanyId(command.roleId(), command.companyId()))
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Role not found: " + command.roleId()));
         PermissionRef permission = (command.companyId() == null
-            ? permissionQueryPort.findById(command.permissionId())
-            : permissionQueryPort.findByIdAndCompanyId(command.permissionId(), command.companyId()))
-            .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + command.permissionId()));
+                ? permissionQueryPort.findById(command.permissionId())
+                : permissionQueryPort.findByIdAndCompanyId(command.permissionId(),
+                        command.companyId()))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Permission not found: " + command.permissionId()));
 
-        Optional<Long> disabledId = repository
-            .findDisabledIdByRoleAndPermission(command.roleId(), command.permissionId());
+        Optional<Long> disabledId = repository.findDisabledIdByRoleAndPermission(command.roleId(),
+                command.permissionId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
             repository.reactivate(id);
             RolePermission refreshed = repository.findById(id)
-                .orElseThrow(() -> new RolePermissionNotFoundException(id));
+                    .orElseThrow(() -> new RolePermissionNotFoundException(id));
             RolePermissionDto dto = RolePermissionDto.from(refreshed);
             permissionCachePort.evictByRoleId(command.roleId());
             return dto;

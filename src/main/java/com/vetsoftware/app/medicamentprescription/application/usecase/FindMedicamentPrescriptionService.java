@@ -19,6 +19,6 @@ public class FindMedicamentPrescriptionService implements FindMedicamentPrescrip
     @Override
     public MedicamentPrescriptionDto findById(Long id, Long companyId) {
         return MedicamentPrescriptionDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id)));
+                .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id)));
     }
 }

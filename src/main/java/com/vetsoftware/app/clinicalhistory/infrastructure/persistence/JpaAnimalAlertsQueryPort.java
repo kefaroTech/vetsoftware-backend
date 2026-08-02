@@ -8,8 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lee las alertas / alergias del animal para el banner de seguridad del reporte PDF. Cruce
- * cross-feature permitido: solo importa el {@code AnimalAlertJpaRepository} (persistencia).
+ * Lee las alertas / alergias del animal para el banner de seguridad del reporte
+ * PDF. Cruce cross-feature permitido: solo importa el
+ * {@code AnimalAlertJpaRepository} (persistencia).
  */
 @Component
 public class JpaAnimalAlertsQueryPort implements AnimalAlertsQueryPort {
@@ -24,8 +25,7 @@ public class JpaAnimalAlertsQueryPort implements AnimalAlertsQueryPort {
     @Transactional(readOnly = true)
     public List<ReportAlert> findByAnimal(Long animalId, Long companyId) {
         return animalAlertJpaRepository
-                .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-                .stream()
+                .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId).stream()
                 .map(e -> new ReportAlert(
                         typeLabel(e.getType() == null ? null : e.getType().name()),
                         e.getDescription(),
@@ -34,7 +34,8 @@ public class JpaAnimalAlertsQueryPort implements AnimalAlertsQueryPort {
     }
 
     private static String typeLabel(String type) {
-        if (type == null) return "";
+        if (type == null)
+            return "";
         return switch (type) {
             case "ALLERGY" -> "Alergia";
             case "DRUG_REACTION" -> "Reacción a fármaco";
@@ -46,7 +47,8 @@ public class JpaAnimalAlertsQueryPort implements AnimalAlertsQueryPort {
     }
 
     private static String severityLabel(String severity) {
-        if (severity == null) return null;
+        if (severity == null)
+            return null;
         return switch (severity) {
             case "LOW" -> "Baja";
             case "MEDIUM" -> "Media";

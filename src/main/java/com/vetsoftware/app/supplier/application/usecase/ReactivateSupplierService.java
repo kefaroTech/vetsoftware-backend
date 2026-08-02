@@ -21,8 +21,9 @@ public class ReactivateSupplierService implements ReactivateSupplierUseCase {
     @Transactional
     public SupplierDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new SupplierNotFoundException(id);
+        if (rows == 0)
+            throw new SupplierNotFoundException(id);
         return SupplierDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new SupplierNotFoundException(id)));
+                .orElseThrow(() -> new SupplierNotFoundException(id)));
     }
 }

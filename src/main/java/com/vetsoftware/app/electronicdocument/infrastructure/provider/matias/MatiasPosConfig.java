@@ -4,9 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * B6 — Datos operativos del documento equivalente POS y del fabricante del software (Res. 000165/2023),
- * parametrizables por despliegue vía propiedades {@code vetsoftware.dian.pos.*} / {@code .software.*} en vez
- * de literales en el código. Los defaults conservan los valores previos para no romper entornos existentes.
+ * B6 — Datos operativos del documento equivalente POS y del fabricante del
+ * software (Res. 000165/2023), parametrizables por despliegue vía propiedades
+ * {@code vetsoftware.dian.pos.*} / {@code .software.*} en vez de literales en
+ * el código. Los defaults conservan los valores previos para no romper entornos
+ * existentes.
  */
 @Component
 public class MatiasPosConfig {
@@ -38,12 +40,35 @@ public class MatiasPosConfig {
         this.softwareName = softwareName;
     }
 
-    public String terminalNumber() { return terminalNumber; }
-    public String cashierType() { return cashierType; }
-    public String salesCode() { return salesCode; }
-    public String address() { return address; }
-    public String defaultCashier() { return defaultCashier; }
-    public String softwareOwnerName() { return softwareOwnerName; }
-    public String softwareCompanyName() { return softwareCompanyName; }
-    public String softwareName() { return softwareName; }
+    public String terminalNumber() {
+        return terminalNumber;
+    }
+
+    public String cashierType() {
+        return cashierType;
+    }
+
+    public String salesCode() {
+        return salesCode;
+    }
+
+    public String address() {
+        return address;
+    }
+
+    public String defaultCashier() {
+        return defaultCashier;
+    }
+
+    public String softwareOwnerName() {
+        return softwareOwnerName;
+    }
+
+    public String softwareCompanyName() {
+        return softwareCompanyName;
+    }
+
+    public String softwareName() {
+        return softwareName;
+    }
 }

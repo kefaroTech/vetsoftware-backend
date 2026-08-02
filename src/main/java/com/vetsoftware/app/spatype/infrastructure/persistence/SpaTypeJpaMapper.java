@@ -16,11 +16,7 @@ public class SpaTypeJpaMapper {
     }
 
     public SpaType toDomain(SpaTypeJpaEntity entity) {
-        return new SpaType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                entity.getCreatedDate(),
-                entity.isEnabled());
+        return new SpaType(entity.getId(), entity.getName(), entity.getDescription(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -21,8 +21,9 @@ public class ReactivatePromotionService implements ReactivatePromotionUseCase {
     @Transactional
     public PromotionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new PromotionNotFoundException(id);
-        return PromotionDto.from(repository.findById(id)
-                .orElseThrow(() -> new PromotionNotFoundException(id)));
+        if (rows == 0)
+            throw new PromotionNotFoundException(id);
+        return PromotionDto.from(
+                repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id)));
     }
 }

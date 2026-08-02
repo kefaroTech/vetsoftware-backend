@@ -21,7 +21,7 @@ public class DeleteOpenAccountService implements DeleteOpenAccountUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         OpenAccount openAccount = repository.findById(id)
-            .orElseThrow(() -> new OpenAccountNotFoundException(id));
+                .orElseThrow(() -> new OpenAccountNotFoundException(id));
         if (!openAccount.getCompany().id().equals(companyId)) {
             throw new IllegalArgumentException("open account does not belong to company");
         }

@@ -22,13 +22,19 @@ public class DeactivateBranchService implements DeactivateBranchUseCase {
     @Transactional
     public BranchDto execute(Long id, Long companyId) {
         Branch branch = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new BranchNotFoundException(id));
-        // No se puede desactivar la ÚLTIMA sede activa: dejaría a la empresa sin sede operativa y bloquearía
-        // las escrituras scopeadas (citas/cuentas/POS resuelven "sede activa por defecto"). Solo aplica si la
-        // sede está activa: desactivar una ya inactiva es idempotente y no reduce el número de sedes activas.
+                .orElseThrow(() -> new BranchNotFoundException(id));
+        // No se puede desactivar la ÚLTIMA sede activa: dejaría a la empresa sin sede
+        // operativa y
+        // bloquearía
+        // las escrituras scopeadas (citas/cuentas/POS resuelven "sede activa por
+        // defecto"). Solo aplica
+        // si la
+        // sede está activa: desactivar una ya inactiva es idempotente y no reduce el
+        // número de sedes
+        // activas.
         if (branch.isActive() && !repository.existsOtherActiveByCompanyId(companyId, id)) {
             throw new IllegalStateException(
-                "No se puede desactivar la última sucursal activa de la empresa");
+                    "No se puede desactivar la última sucursal activa de la empresa");
         }
         branch.deactivate();
         return BranchDto.from(repository.save(branch));

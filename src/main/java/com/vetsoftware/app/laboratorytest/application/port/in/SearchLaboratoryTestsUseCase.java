@@ -7,7 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchLaboratoryTestsUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('laboratoryTest.read') and @authz.isMyCompany(#command.companyId)) or "
-        + "hasRole('SYSTEM')")
+            + "(hasAuthority('laboratoryTest.read') and @authz.isMyCompany(#command.companyId)) or "
+            + "hasRole('SYSTEM')")
     PageResult<LaboratoryTestDto> execute(SearchLaboratoryTestsCommand command);
 }

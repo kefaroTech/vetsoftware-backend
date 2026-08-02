@@ -21,8 +21,9 @@ public class ReactivateSystemUserService implements ReactivateSystemUserUseCase 
     @Transactional
     public SystemUserDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SystemUserNotFoundException(id);
-        return SystemUserDto.from(repository.findById(id)
-            .orElseThrow(() -> new SystemUserNotFoundException(id)));
+        if (rows == 0)
+            throw new SystemUserNotFoundException(id);
+        return SystemUserDto.from(
+                repository.findById(id).orElseThrow(() -> new SystemUserNotFoundException(id)));
     }
 }

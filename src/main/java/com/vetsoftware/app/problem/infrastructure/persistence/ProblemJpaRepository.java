@@ -15,5 +15,6 @@ public interface ProblemJpaRepository extends JpaRepository<ProblemJpaEntity, Lo
     Optional<ProblemJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "company"})
-    List<ProblemJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId, Long companyId);
+    List<ProblemJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId,
+            Long companyId);
 }

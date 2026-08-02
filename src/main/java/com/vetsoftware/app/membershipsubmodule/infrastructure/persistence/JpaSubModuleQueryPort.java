@@ -17,6 +17,6 @@ public class JpaSubModuleQueryPort implements SubModuleQueryPort {
     @Override
     public Optional<SubModuleRef> findById(Long subModuleId) {
         return subModuleJpaRepository.findById(subModuleId)
-            .map(e -> new SubModuleRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new SubModuleRef(e.getId(), e.getName(), e.getCode()));
     }
 }

@@ -18,6 +18,7 @@ public class ListDisabledMedicamentsService implements ListDisabledMedicamentsUs
 
     @Override
     public List<MedicamentDto> listDisabled(Long companyId) {
-        return repository.findAllDisabledForCompany(companyId).stream().map(MedicamentDto::from).toList();
+        return repository.findAllDisabledForCompany(companyId).stream().map(MedicamentDto::from)
+                .toList();
     }
 }

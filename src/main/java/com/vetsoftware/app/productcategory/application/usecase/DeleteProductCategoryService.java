@@ -15,8 +15,7 @@ public class DeleteProductCategoryService implements DeleteProductCategoryUseCas
     private final ProductCategoryRepository repository;
     private final ProductChildrenQueryPort productChildrenQueryPort;
 
-    public DeleteProductCategoryService(
-            ProductCategoryRepository repository,
+    public DeleteProductCategoryService(ProductCategoryRepository repository,
             ProductChildrenQueryPort productChildrenQueryPort) {
         this.repository = repository;
         this.productChildrenQueryPort = productChildrenQueryPort;

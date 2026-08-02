@@ -8,7 +8,10 @@ public interface ListServicesByCompanyUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('service.read') and @authz.isMyCompany(#companyId))")
     List<ServiceDto> listByCompany(Long companyId);
 
-    /** Lista los servicios PAUSADOS (enabled=false) de la empresa, para el flujo de reactivación. */
+    /**
+     * Lista los servicios PAUSADOS (enabled=false) de la empresa, para el flujo de
+     * reactivación.
+     */
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('service.read') and @authz.isMyCompany(#companyId))")
     List<ServiceDto> listDisabledByCompany(Long companyId);
 }

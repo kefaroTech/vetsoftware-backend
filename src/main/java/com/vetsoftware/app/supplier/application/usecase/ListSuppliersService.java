@@ -25,7 +25,10 @@ public class ListSuppliersService implements ListSuppliersUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<SupplierDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(SupplierDto::from).toList();
+        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus
+        // asociaciones LAZY aquí
+        // dentro.
+        return repository.findAllDisabledByCompanyId(companyId).stream().map(SupplierDto::from)
+                .toList();
     }
 }

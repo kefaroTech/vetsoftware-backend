@@ -31,10 +31,8 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
     private final SupplierJpaRepository supplierJpaRepository;
 
     public JpaSupplierInvoiceRepository(SupplierInvoiceJpaRepository jpaRepository,
-                                        SupplierInvoiceJpaMapper mapper,
-                                        CompanyJpaRepository companyJpaRepository,
-                                        BranchJpaRepository branchJpaRepository,
-                                        SupplierJpaRepository supplierJpaRepository) {
+            SupplierInvoiceJpaMapper mapper, CompanyJpaRepository companyJpaRepository,
+            BranchJpaRepository branchJpaRepository, SupplierJpaRepository supplierJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -46,9 +44,10 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
     public SupplierInvoice save(SupplierInvoice invoice) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(invoice.getCompany().id());
         BranchJpaEntity branch = branchJpaRepository.getReferenceById(invoice.getBranch().id());
-        SupplierJpaEntity supplier = supplierJpaRepository.getReferenceById(invoice.getSupplier().id());
-        SupplierInvoiceJpaEntity saved = jpaRepository.saveAndFlush(
-            mapper.toJpa(invoice, company, branch, supplier));
+        SupplierJpaEntity supplier = supplierJpaRepository
+                .getReferenceById(invoice.getSupplier().id());
+        SupplierInvoiceJpaEntity saved = jpaRepository
+                .saveAndFlush(mapper.toJpa(invoice, company, branch, supplier));
         return mapper.toDomainReusingRefs(saved, invoice);
     }
 
@@ -60,20 +59,24 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
     @Override
     public PageResult<SupplierInvoice> search(SearchSupplierInvoicesCommand command) {
         Specification<SupplierInvoiceJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "issueDate").and(Sort.by(Sort.Direction.DESC, "id")));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "issueDate").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<SupplierInvoiceJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<SupplierInvoice> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
-    private Specification<SupplierInvoiceJpaEntity> buildSpec(SearchSupplierInvoicesCommand command) {
+    private Specification<SupplierInvoiceJpaEntity> buildSpec(
+            SearchSupplierInvoicesCommand command) {
         return (root, query, cb) -> {
-            // fetch-join solo de los @ManyToOne (no la colección de abonos, para no romper la paginación) y solo en
-            // la query de datos (no en la de count). Los abonos se cargan LAZY al mapear dentro de la tx readOnly.
+            // fetch-join solo de los @ManyToOne (no la colección de abonos, para no romper
+            // la paginación)
+            // y solo en
+            // la query de datos (no en la de count). Los abonos se cargan LAZY al mapear
+            // dentro de la tx
+            // readOnly.
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("company", JoinType.LEFT);
                 root.fetch("branch", JoinType.LEFT);
@@ -103,17 +106,21 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
 
     @Override
     public List<SupplierInvoice> findOutstandingByCompany(Long companyId, Long branchId) {
-        List<SupplierInvoiceStatus> outstanding =
-            List.of(SupplierInvoiceStatus.PENDING, SupplierInvoiceStatus.PARTIAL);
+        List<SupplierInvoiceStatus> outstanding = List.of(SupplierInvoiceStatus.PENDING,
+                SupplierInvoiceStatus.PARTIAL);
         List<SupplierInvoiceJpaEntity> entities = branchId == null
-            ? jpaRepository.findAllByCompany_IdAndStatusInOrderByDueDateAsc(companyId, outstanding)
-            : jpaRepository.findAllByCompany_IdAndBranch_IdAndStatusInOrderByDueDateAsc(companyId, branchId, outstanding);
+                ? jpaRepository.findAllByCompany_IdAndStatusInOrderByDueDateAsc(companyId,
+                        outstanding)
+                : jpaRepository.findAllByCompany_IdAndBranch_IdAndStatusInOrderByDueDateAsc(
+                        companyId, branchId, outstanding);
         return entities.stream().map(mapper::toDomain).toList();
     }
 
     @Override
-    public boolean existsByCompanySupplierAndNumber(Long companyId, Long supplierId, String invoiceNumber) {
-        return jpaRepository.existsByCompany_IdAndSupplier_IdAndInvoiceNumber(companyId, supplierId, invoiceNumber);
+    public boolean existsByCompanySupplierAndNumber(Long companyId, Long supplierId,
+            String invoiceNumber) {
+        return jpaRepository.existsByCompany_IdAndSupplier_IdAndInvoiceNumber(companyId, supplierId,
+                invoiceNumber);
     }
 
     @Override

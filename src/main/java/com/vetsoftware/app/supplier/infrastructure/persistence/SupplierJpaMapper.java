@@ -34,21 +34,10 @@ public class SupplierJpaMapper {
     }
 
     public Supplier toDomain(SupplierJpaEntity entity, CompanyRef companyRef) {
-        return new Supplier(
-            entity.getId(),
-            entity.getName(),
-            entity.getTaxId(),
-            entity.getContactName(),
-            entity.getPhone(),
-            entity.getEmail(),
-            entity.getAddress(),
-            entity.getPaymentTermsDays(),
-            entity.getNotes(),
-            companyRef,
-            entity.getCreatedDate(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
+        return new Supplier(entity.getId(), entity.getName(), entity.getTaxId(),
+                entity.getContactName(), entity.getPhone(), entity.getEmail(), entity.getAddress(),
+                entity.getPaymentTermsDays(), entity.getNotes(), companyRef,
+                entity.getCreatedDate(), entity.getUpdatedDate(), entity.getUpdatedBy(),
+                entity.getVersion(), entity.isEnabled());
     }
 }

@@ -17,32 +17,28 @@ public interface AppointmentJpaRepository extends JpaRepository<AppointmentJpaEn
 
     @EntityGraph(attributePaths = {"animal", "owner", "employee", "company", "branch"})
     @Query("SELECT a FROM AppointmentJpaEntity a WHERE a.company.id = :companyId "
-        + "AND (:from IS NULL OR a.startAt >= :from) "
-        + "AND (:to IS NULL OR a.startAt <= :to) "
-        + "AND (:employeeId IS NULL OR a.employee.id = :employeeId) "
-        + "AND (:status IS NULL OR a.status = :status) "
-        + "AND (:branchId IS NULL OR a.branch.id = :branchId) "
-        + "ORDER BY a.startAt ASC")
+            + "AND (:from IS NULL OR a.startAt >= :from) "
+            + "AND (:to IS NULL OR a.startAt <= :to) "
+            + "AND (:employeeId IS NULL OR a.employee.id = :employeeId) "
+            + "AND (:status IS NULL OR a.status = :status) "
+            + "AND (:branchId IS NULL OR a.branch.id = :branchId) " + "ORDER BY a.startAt ASC")
     List<AppointmentJpaEntity> findByFilters(@Param("companyId") Long companyId,
-                                             @Param("from") LocalDateTime from,
-                                             @Param("to") LocalDateTime to,
-                                             @Param("employeeId") Long employeeId,
-                                             @Param("status") String status,
-                                             @Param("branchId") Long branchId);
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+            @Param("employeeId") Long employeeId, @Param("status") String status,
+            @Param("branchId") Long branchId);
 
     @Query("SELECT a.id FROM AppointmentJpaEntity a WHERE a.company.id = :companyId "
-        + "AND a.employee.id = :employeeId AND a.startAt = :startAt "
-        + "AND a.status NOT IN ('CANCELLED', 'NO_SHOW') "
-        + "AND (:excludeId IS NULL OR a.id <> :excludeId)")
+            + "AND a.employee.id = :employeeId AND a.startAt = :startAt "
+            + "AND a.status NOT IN ('CANCELLED', 'NO_SHOW') "
+            + "AND (:excludeId IS NULL OR a.id <> :excludeId)")
     List<Long> findClashingIds(@Param("companyId") Long companyId,
-                               @Param("employeeId") Long employeeId,
-                               @Param("startAt") LocalDateTime startAt,
-                               @Param("excludeId") Long excludeId);
+            @Param("employeeId") Long employeeId, @Param("startAt") LocalDateTime startAt,
+            @Param("excludeId") Long excludeId);
 
-    // Soft-delete por query nativa (evita el conflicto @SQLDelete + @Version en em.remove).
+    // Soft-delete por query nativa (evita el conflicto @SQLDelete + @Version en
+    // em.remove).
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE appointments SET enabled = false WHERE id = :id AND company_id = :companyId",
-        nativeQuery = true)
+    @Query(value = "UPDATE appointments SET enabled = false WHERE id = :id AND company_id = :companyId", nativeQuery = true)
     int softDelete(@Param("id") Long id, @Param("companyId") Long companyId);
 }

@@ -14,8 +14,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Carga clínica + paciente + propietario para la fórmula. Cruce cross-feature permitido:
- * solo importa {@code AnimalJpaRepository}/{@code WeightRecordJpaRepository} (persistencia).
+ * Carga clínica + paciente + propietario para la fórmula. Cruce cross-feature
+ * permitido: solo importa
+ * {@code AnimalJpaRepository}/{@code WeightRecordJpaRepository} (persistencia).
  */
 @Component
 public class JpaPrescriptionReportQueryPort implements PrescriptionReportQueryPort {
@@ -24,7 +25,7 @@ public class JpaPrescriptionReportQueryPort implements PrescriptionReportQueryPo
     private final WeightRecordJpaRepository weightRecordJpaRepository;
 
     public JpaPrescriptionReportQueryPort(AnimalJpaRepository animalJpaRepository,
-                                          WeightRecordJpaRepository weightRecordJpaRepository) {
+            WeightRecordJpaRepository weightRecordJpaRepository) {
         this.animalJpaRepository = animalJpaRepository;
         this.weightRecordJpaRepository = weightRecordJpaRepository;
     }
@@ -38,34 +39,23 @@ public class JpaPrescriptionReportQueryPort implements PrescriptionReportQueryPo
 
     private PrescriptionSignalment toSignalment(AnimalJpaEntity a, Long companyId) {
         LatestWeightProjection weight = weightRecordJpaRepository
-                .findLatestByAnimalId(a.getId(), companyId)
-                .orElse(null);
+                .findLatestByAnimalId(a.getId(), companyId).orElse(null);
         var owner = a.getOwner();
         var company = a.getCompany();
-        return new PrescriptionSignalment(
-                company.getName(),
-                company.getIdentifier(),
-                company.getAddress(),
-                company.getContactNumber(),
-                company.getCity() != null ? company.getCity().getName() : null,
-                a.getName(),
-                a.getCode(),
-                a.getSpecie().getName(),
-                a.getBreed().getName(),
+        return new PrescriptionSignalment(company.getName(), company.getIdentifier(),
+                company.getAddress(), company.getContactNumber(),
+                company.getCity() != null ? company.getCity().getName() : null, a.getName(),
+                a.getCode(), a.getSpecie().getName(), a.getBreed().getName(),
                 genderLabel(a.getGender() == null ? null : a.getGender().name()),
-                a.getColor() != null ? a.getColor().getName() : null,
-                ageLabel(a.getBod()),
+                a.getColor() != null ? a.getColor().getName() : null, ageLabel(a.getBod()),
                 weight != null ? formatWeight(weight.getValue(), weight.getUnit()) : null,
-                owner.getName(),
-                owner.getDocument(),
-                owner.getPhone(),
-                owner.getEmail(),
-                owner.getAddress()
-        );
+                owner.getName(), owner.getDocument(), owner.getPhone(), owner.getEmail(),
+                owner.getAddress());
     }
 
     private static String genderLabel(String gender) {
-        if (gender == null) return null;
+        if (gender == null)
+            return null;
         return switch (gender) {
             case "MALE" -> "Macho";
             case "FEMALE" -> "Hembra";
@@ -74,7 +64,8 @@ public class JpaPrescriptionReportQueryPort implements PrescriptionReportQueryPo
     }
 
     private static String formatWeight(BigDecimal value, String unit) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         String number = value.stripTrailingZeros().toPlainString();
         String suffix = switch (unit == null ? "" : unit) {
             case "GRAMS" -> "g";
@@ -86,18 +77,22 @@ public class JpaPrescriptionReportQueryPort implements PrescriptionReportQueryPo
     }
 
     private static String ageLabel(LocalDate birthDate) {
-        if (birthDate == null) return null;
+        if (birthDate == null)
+            return null;
         LocalDate today = LocalDate.now();
-        if (birthDate.isAfter(today)) return null;
+        if (birthDate.isAfter(today))
+            return null;
         Period p = Period.between(birthDate, today);
         int years = p.getYears();
         int months = p.getMonths();
         if (years >= 1) {
             return months > 0
-                    ? years + " año" + (years == 1 ? "" : "s") + " y " + months + " mes" + (months == 1 ? "" : "es")
+                    ? years + " año" + (years == 1 ? "" : "s") + " y " + months + " mes"
+                            + (months == 1 ? "" : "es")
                     : years + " año" + (years == 1 ? "" : "s");
         }
-        if (months >= 1) return months + " mes" + (months == 1 ? "" : "es");
+        if (months >= 1)
+            return months + " mes" + (months == 1 ? "" : "es");
         int days = p.getDays();
         return days + " día" + (days == 1 ? "" : "s");
     }

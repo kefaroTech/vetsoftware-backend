@@ -32,12 +32,10 @@ public class JpaProductRepository implements ProductRepository {
     private final CompanyJpaRepository companyJpaRepository;
     private final SupplierJpaRepository supplierJpaRepository;
 
-    public JpaProductRepository(ProductJpaRepository jpaRepository,
-                                ProductJpaMapper mapper,
-                                ProductCategoryJpaRepository productCategoryJpaRepository,
-                                TaxJpaRepository taxJpaRepository,
-                                CompanyJpaRepository companyJpaRepository,
-                                SupplierJpaRepository supplierJpaRepository) {
+    public JpaProductRepository(ProductJpaRepository jpaRepository, ProductJpaMapper mapper,
+            ProductCategoryJpaRepository productCategoryJpaRepository,
+            TaxJpaRepository taxJpaRepository, CompanyJpaRepository companyJpaRepository,
+            SupplierJpaRepository supplierJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.productCategoryJpaRepository = productCategoryJpaRepository;
@@ -48,17 +46,19 @@ public class JpaProductRepository implements ProductRepository {
 
     @Override
     public Product save(Product product) {
-        ProductCategoryJpaEntity productCategory =
-            productCategoryJpaRepository.getReferenceById(product.getProductCategory().id());
-        TaxJpaEntity tax = product.getTax() == null ? null
-            : taxJpaRepository.getReferenceById(product.getTax().id());
+        ProductCategoryJpaEntity productCategory = productCategoryJpaRepository
+                .getReferenceById(product.getProductCategory().id());
+        TaxJpaEntity tax = product.getTax() == null
+                ? null
+                : taxJpaRepository.getReferenceById(product.getTax().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(product.getCompany().id());
-        SupplierJpaEntity supplier = product.getSupplier() == null ? null
-            : supplierJpaRepository.getReferenceById(product.getSupplier().id());
-        ProductJpaEntity saved =
-            jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company, supplier));
-        return mapper.toDomain(saved, product.getProductCategory(), product.getTax(), product.getCompany(),
-            product.getSupplier());
+        SupplierJpaEntity supplier = product.getSupplier() == null
+                ? null
+                : supplierJpaRepository.getReferenceById(product.getSupplier().id());
+        ProductJpaEntity saved = jpaRepository
+                .saveAndFlush(mapper.toJpa(product, productCategory, tax, company, supplier));
+        return mapper.toDomain(saved, product.getProductCategory(), product.getTax(),
+                product.getCompany(), product.getSupplier());
     }
 
     @Override
@@ -103,25 +103,26 @@ public class JpaProductRepository implements ProductRepository {
 
     @Override
     public List<Product> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
     public PageResult<Product> search(SearchProductsCommand command) {
         Specification<ProductJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "createdDate"));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<ProductJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<Product> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<ProductJpaEntity> buildSpec(SearchProductsCommand command) {
         return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count)
+            // para evitar N+1
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("productCategory", JoinType.LEFT);
                 root.fetch("tax", JoinType.LEFT);
@@ -138,7 +139,8 @@ public class JpaProductRepository implements ProductRepository {
                 predicates.add(cb.like(root.get("code"), "%" + command.code() + "%"));
             }
             if (command.productCategoryId() != null) {
-                predicates.add(cb.equal(root.get("productCategory").get("id"), command.productCategoryId()));
+                predicates.add(cb.equal(root.get("productCategory").get("id"),
+                        command.productCategoryId()));
             }
             if (command.taxId() != null) {
                 predicates.add(cb.equal(root.get("tax").get("id"), command.taxId()));

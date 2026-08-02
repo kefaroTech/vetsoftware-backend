@@ -18,15 +18,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Adapter de resolución de sede para citas. Aquí vive el filtro {@code isActive()} del camino explícito y la
- * cascada Principal-activa→primera-activa del camino por defecto (los service tests mockean el puerto, así que
- * NO ejercen este filtro). Verifica que una sede inactiva no se mapee y que la cascada respete el orden.
+ * Adapter de resolución de sede para citas. Aquí vive el filtro
+ * {@code isActive()} del camino explícito y la cascada
+ * Principal-activa→primera-activa del camino por defecto (los service tests
+ * mockean el puerto, así que NO ejercen este filtro). Verifica que una sede
+ * inactiva no se mapee y que la cascada respete el orden.
  */
 @ExtendWith(MockitoExtension.class)
 class JpaBranchQueryPortTest {
 
-    @Mock private BranchJpaRepository branchJpaRepository;
-    @InjectMocks private JpaBranchQueryPort port;
+    @Mock
+    private BranchJpaRepository branchJpaRepository;
+    @InjectMocks
+    private JpaBranchQueryPort port;
 
     private static final long COMPANY = 9L;
 
@@ -56,7 +60,8 @@ class JpaBranchQueryPortTest {
     @Test
     void findActive_mapea_la_sede_cuando_esta_activa() {
         BranchJpaEntity activa = activeFound(11L, "Sede Norte", "NORTE");
-        when(branchJpaRepository.findByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(activa));
+        when(branchJpaRepository.findByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(activa));
 
         Optional<BranchRef> ref = port.findActiveByIdAndCompanyId(11L, COMPANY);
 
@@ -66,7 +71,8 @@ class JpaBranchQueryPortTest {
     @Test
     void findActive_descarta_la_sede_inactiva() {
         BranchJpaEntity inactiva = inactive();
-        when(branchJpaRepository.findByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(inactiva));
+        when(branchJpaRepository.findByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(inactiva));
 
         assertThat(port.findActiveByIdAndCompanyId(11L, COMPANY)).isEmpty();
     }
@@ -88,32 +94,32 @@ class JpaBranchQueryPortTest {
     @Test
     void findDefault_usa_la_principal_activa_sin_consultar_el_fallback() {
         BranchJpaEntity principal = mapped(1L, "Principal", "PRINCIPAL");
-        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY, "PRINCIPAL"))
-            .thenReturn(Optional.of(principal));
+        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY,
+                "PRINCIPAL")).thenReturn(Optional.of(principal));
 
         assertThat(port.findDefaultActiveByCompanyId(COMPANY))
-            .contains(new BranchRef(1L, "Principal", "PRINCIPAL"));
+                .contains(new BranchRef(1L, "Principal", "PRINCIPAL"));
         verify(branchJpaRepository, never()).findFirstByCompany_IdAndActiveTrueOrderByIdAsc(any());
     }
 
     @Test
     void findDefault_cae_a_la_primera_activa_si_no_hay_principal_activa() {
-        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY, "PRINCIPAL"))
-            .thenReturn(Optional.empty());
+        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY,
+                "PRINCIPAL")).thenReturn(Optional.empty());
         BranchJpaEntity otra = mapped(5L, "Sede Sur", "SUR");
         when(branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(COMPANY))
-            .thenReturn(Optional.of(otra));
+                .thenReturn(Optional.of(otra));
 
         assertThat(port.findDefaultActiveByCompanyId(COMPANY))
-            .contains(new BranchRef(5L, "Sede Sur", "SUR"));
+                .contains(new BranchRef(5L, "Sede Sur", "SUR"));
     }
 
     @Test
     void findDefault_vacio_si_no_hay_ninguna_sede_activa() {
-        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY, "PRINCIPAL"))
-            .thenReturn(Optional.empty());
+        when(branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(COMPANY,
+                "PRINCIPAL")).thenReturn(Optional.empty());
         when(branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(COMPANY))
-            .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty());
 
         assertThat(port.findDefaultActiveByCompanyId(COMPANY)).isEmpty();
     }

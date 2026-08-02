@@ -17,6 +17,6 @@ public class JpaSupplierQueryPort implements SupplierQueryPort {
     @Override
     public Optional<SupplierRef> findById(Long supplierId, Long companyId) {
         return supplierJpaRepository.findByIdAndCompany_Id(supplierId, companyId)
-            .map(e -> new SupplierRef(e.getId(), e.getName()));
+                .map(e -> new SupplierRef(e.getId(), e.getName()));
     }
 }

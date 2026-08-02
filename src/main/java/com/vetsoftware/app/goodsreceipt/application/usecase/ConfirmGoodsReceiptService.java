@@ -17,9 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Confirma una recepción DRAFT: registra la ENTRADA de inventario por cada línea y, si viene de una orden de
- * compra, aplica lo recibido en ella; luego marca CONFIRMED. La transición DRAFT→CONFIRMED es la guarda de
- * idempotencia porque {@code recordReceipt} NO es idempotente.
+ * Confirma una recepción DRAFT: registra la ENTRADA de inventario por cada
+ * línea y, si viene de una orden de compra, aplica lo recibido en ella; luego
+ * marca CONFIRMED. La transición DRAFT→CONFIRMED es la guarda de idempotencia
+ * porque {@code recordReceipt} NO es idempotente.
  */
 @Observed(name = "goods.receipt.confirm")
 @Service
@@ -29,8 +30,8 @@ public class ConfirmGoodsReceiptService implements ConfirmGoodsReceiptUseCase {
     private final PurchaseOrderReceivingPort purchaseOrderReceiving;
 
     public ConfirmGoodsReceiptService(GoodsReceiptRepository repository,
-                                      InventoryLedgerPort inventoryLedger,
-                                      PurchaseOrderReceivingPort purchaseOrderReceiving) {
+            InventoryLedgerPort inventoryLedger,
+            PurchaseOrderReceivingPort purchaseOrderReceiving) {
         this.repository = repository;
         this.inventoryLedger = inventoryLedger;
         this.purchaseOrderReceiving = purchaseOrderReceiving;
@@ -40,23 +41,26 @@ public class ConfirmGoodsReceiptService implements ConfirmGoodsReceiptUseCase {
     @Transactional
     public GoodsReceiptDto execute(Long id, Long companyId, Long actorId) {
         GoodsReceipt receipt = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
+                .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
         if (receipt.getStatus() != GoodsReceiptStatus.DRAFT) {
-            throw new InvalidGoodsReceiptStatusTransitionException(receipt.getStatus(), GoodsReceiptStatus.CONFIRMED);
+            throw new InvalidGoodsReceiptStatusTransitionException(receipt.getStatus(),
+                    GoodsReceiptStatus.CONFIRMED);
         }
 
         for (GoodsReceiptLine line : receipt.getLines()) {
-            inventoryLedger.recordReceipt(companyId, receipt.getBranch().id(), line.getProduct().id(),
-                line.getLotNumber(), line.getExpireDate(), line.getQuantityReceived(), line.getUnitCost(),
-                receipt.getId(), actorId);
+            inventoryLedger.recordReceipt(companyId, receipt.getBranch().id(),
+                    line.getProduct().id(), line.getLotNumber(), line.getExpireDate(),
+                    line.getQuantityReceived(), line.getUnitCost(), receipt.getId(), actorId);
         }
 
         if (receipt.getPurchaseOrderId() != null) {
             List<ReceivedLine> receivedLines = receipt.getLines().stream()
-                .filter(line -> line.getPurchaseOrderLineId() != null)
-                .map(line -> new ReceivedLine(line.getPurchaseOrderLineId(), line.getQuantityReceived()))
-                .toList();
-            purchaseOrderReceiving.applyReceipt(receipt.getPurchaseOrderId(), companyId, receivedLines, actorId);
+                    .filter(line -> line.getPurchaseOrderLineId() != null)
+                    .map(line -> new ReceivedLine(line.getPurchaseOrderLineId(),
+                            line.getQuantityReceived()))
+                    .toList();
+            purchaseOrderReceiving.applyReceipt(receipt.getPurchaseOrderId(), companyId,
+                    receivedLines, actorId);
         }
 
         receipt.confirm(actorId);

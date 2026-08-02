@@ -18,6 +18,7 @@ public class ListHospitalizationsByAnimalService implements ListHospitalizations
 
     @Override
     public List<HospitalizationDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(HospitalizationDto::from).toList();
+        return repository.findAllByAnimalId(animalId).stream().map(HospitalizationDto::from)
+                .toList();
     }
 }

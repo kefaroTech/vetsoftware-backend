@@ -42,13 +42,12 @@ public class ServiceChargeOpenAccountController {
     private final Authz authz;
 
     public ServiceChargeOpenAccountController(CreateServiceChargeOpenAccountUseCase createUseCase,
-                                              UpdateServiceChargeOpenAccountUseCase updateUseCase,
-                                              FindServiceChargeOpenAccountUseCase findUseCase,
-                                              ListServiceChargeOpenAccountsUseCase listUseCase,
-                                              ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              ReactivateServiceChargeOpenAccountUseCase reactivateUseCase,
-                                              VoidServiceChargeOpenAccountUseCase voidUseCase,
-                                              Authz authz) {
+            UpdateServiceChargeOpenAccountUseCase updateUseCase,
+            FindServiceChargeOpenAccountUseCase findUseCase,
+            ListServiceChargeOpenAccountsUseCase listUseCase,
+            ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+            ReactivateServiceChargeOpenAccountUseCase reactivateUseCase,
+            VoidServiceChargeOpenAccountUseCase voidUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -63,8 +62,7 @@ public class ServiceChargeOpenAccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public ServiceChargeOpenAccountResponse create(
             @Valid @RequestBody CreateServiceChargeOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateServiceChargeOpenAccountCommand(
+        return toResponse(createUseCase.execute(new CreateServiceChargeOpenAccountCommand(
                 request.animalId(), request.serviceId(), request.openAccountId(),
                 authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
                 request.expectedVersion())));
@@ -72,13 +70,15 @@ public class ServiceChargeOpenAccountController {
 
     @GetMapping
     public List<ServiceChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/by-open-account/{openAccountId}")
-    public List<ServiceChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+    public List<ServiceChargeOpenAccountResponse> listByOpenAccount(
+            @PathVariable Long openAccountId) {
         return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -89,9 +89,8 @@ public class ServiceChargeOpenAccountController {
     @PutMapping("/{id}")
     public ServiceChargeOpenAccountResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateServiceChargeOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateServiceChargeOpenAccountCommand(
-                id, request.animalId(), request.serviceId(), request.openAccountId(),
+        return toResponse(updateUseCase.execute(new UpdateServiceChargeOpenAccountCommand(id,
+                request.animalId(), request.serviceId(), request.openAccountId(),
                 authz.currentCompanyId(), request.expectedVersion())));
     }
 
@@ -101,12 +100,11 @@ public class ServiceChargeOpenAccountController {
     }
 
     @PatchMapping("/{id}/void")
-    public ServiceChargeOpenAccountResponse voidCharge(
-            @PathVariable Long id, @Valid @RequestBody VoidServiceChargeOpenAccountRequest request) {
-        return toResponse(voidUseCase.execute(
-            new VoidServiceChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
-                request.expectedVersion())));
+    public ServiceChargeOpenAccountResponse voidCharge(@PathVariable Long id,
+            @Valid @RequestBody VoidServiceChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase
+                .execute(new VoidServiceChargeOpenAccountCommand(id, authz.currentCompanyId(),
+                        authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
     }
 
     private ServiceChargeOpenAccountResponse toResponse(ServiceChargeOpenAccountDto dto) {
@@ -115,24 +113,14 @@ public class ServiceChargeOpenAccountController {
         OpenAccountSummaryDto o = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
         EmployeeSummaryDto v = dto.voidedBy();
-        return new ServiceChargeOpenAccountResponse(
-            dto.id(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new ServiceSummary(s.id(), s.name(), s.price()),
-            dto.unitPrice(),
-            dto.hasTax(),
-            dto.taxPercentage(),
-            dto.taxName(),
-            dto.baseAmount(),
-            dto.taxAmount(),
-            dto.totalAmount(),
-            new OpenAccountSummary(o.id(), o.companyId()),
-            e == null ? null : new EmployeeSummary(e.id(), e.name()),
-            dto.createdDate(),
-            dto.enabled(),
-            dto.voided(),
-            v == null ? null : new EmployeeSummary(v.id(), v.name()),
-            dto.voidedAt(),
-            dto.voidReason());
+        return new ServiceChargeOpenAccountResponse(dto.id(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                new ServiceSummary(s.id(), s.name(), s.price()), dto.unitPrice(), dto.hasTax(),
+                dto.taxPercentage(), dto.taxName(), dto.baseAmount(), dto.taxAmount(),
+                dto.totalAmount(), new OpenAccountSummary(o.id(), o.companyId()),
+                e == null ? null : new EmployeeSummary(e.id(), e.name()), dto.createdDate(),
+                dto.enabled(), dto.voided(),
+                v == null ? null : new EmployeeSummary(v.id(), v.name()), dto.voidedAt(),
+                dto.voidReason());
     }
 }

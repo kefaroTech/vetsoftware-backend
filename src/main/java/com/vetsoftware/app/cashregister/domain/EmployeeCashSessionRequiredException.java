@@ -1,6 +1,9 @@
 package com.vetsoftware.app.cashregister.domain;
 
-/** El POS exige que el empleado autenticado tenga su propia caja OPEN en la sede de la venta. */
+/**
+ * El POS exige que el empleado autenticado tenga su propia caja OPEN en la sede
+ * de la venta.
+ */
 public class EmployeeCashSessionRequiredException extends RuntimeException {
 
     public EmployeeCashSessionRequiredException(Long branchId) {

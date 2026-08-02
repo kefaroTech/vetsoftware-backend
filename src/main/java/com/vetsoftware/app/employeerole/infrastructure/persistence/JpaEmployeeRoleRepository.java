@@ -18,9 +18,8 @@ public class JpaEmployeeRoleRepository implements EmployeeRoleRepository {
     private final RoleJpaRepository roleJpaRepository;
 
     public JpaEmployeeRoleRepository(EmployeeRoleJpaRepository jpaRepository,
-                                     EmployeeRoleJpaMapper mapper,
-                                     EmployeeJpaRepository employeeJpaRepository,
-                                     RoleJpaRepository roleJpaRepository) {
+            EmployeeRoleJpaMapper mapper, EmployeeJpaRepository employeeJpaRepository,
+            RoleJpaRepository roleJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.employeeJpaRepository = employeeJpaRepository;
@@ -29,9 +28,11 @@ public class JpaEmployeeRoleRepository implements EmployeeRoleRepository {
 
     @Override
     public EmployeeRole save(EmployeeRole employeeRole) {
-        EmployeeJpaEntity employee = employeeJpaRepository.getReferenceById(employeeRole.getEmployee().id());
+        EmployeeJpaEntity employee = employeeJpaRepository
+                .getReferenceById(employeeRole.getEmployee().id());
         RoleJpaEntity role = roleJpaRepository.getReferenceById(employeeRole.getRole().id());
-        EmployeeRoleJpaEntity saved = jpaRepository.save(mapper.toJpa(employeeRole, employee, role));
+        EmployeeRoleJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(employeeRole, employee, role));
         return mapper.toDomain(saved, employeeRole.getEmployee(), employeeRole.getRole());
     }
 

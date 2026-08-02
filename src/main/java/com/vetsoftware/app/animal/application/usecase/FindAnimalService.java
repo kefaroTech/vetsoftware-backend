@@ -19,6 +19,6 @@ public class FindAnimalService implements FindAnimalUseCase {
     @Override
     public AnimalDto findById(Long id, Long companyId) {
         return AnimalDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AnimalNotFoundException(id)));
+                .orElseThrow(() -> new AnimalNotFoundException(id)));
     }
 }

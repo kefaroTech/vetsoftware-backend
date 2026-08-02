@@ -18,13 +18,7 @@ public class PasswordResetTokenJpaMapper {
     }
 
     public PasswordResetToken toDomain(PasswordResetTokenJpaEntity entity) {
-        return new PasswordResetToken(
-            entity.getId(),
-            entity.getEmployeeId(),
-            entity.getCompanyId(),
-            entity.getTokenHash(),
-            entity.getExpiresAt(),
-            entity.getConsumedAt()
-        );
+        return new PasswordResetToken(entity.getId(), entity.getEmployeeId(), entity.getCompanyId(),
+                entity.getTokenHash(), entity.getExpiresAt(), entity.getConsumedAt());
     }
 }

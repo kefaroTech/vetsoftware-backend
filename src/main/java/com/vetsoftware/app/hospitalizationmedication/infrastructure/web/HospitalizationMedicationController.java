@@ -37,13 +37,12 @@ public class HospitalizationMedicationController {
     private final Authz authz;
 
     public HospitalizationMedicationController(CreateHospitalizationMedicationUseCase createUseCase,
-                                               UpdateHospitalizationMedicationUseCase updateUseCase,
-                                               FindHospitalizationMedicationUseCase findUseCase,
-                                               ListHospitalizationMedicationsByHospitalizationUseCase listByHospitalizationUseCase,
-                                               DeleteHospitalizationMedicationUseCase deleteUseCase,
-                                               ReactivateHospitalizationMedicationUseCase reactivateUseCase,
-                                               SuspendHospitalizationMedicationUseCase suspendUseCase,
-                                               Authz authz) {
+            UpdateHospitalizationMedicationUseCase updateUseCase,
+            FindHospitalizationMedicationUseCase findUseCase,
+            ListHospitalizationMedicationsByHospitalizationUseCase listByHospitalizationUseCase,
+            DeleteHospitalizationMedicationUseCase deleteUseCase,
+            ReactivateHospitalizationMedicationUseCase reactivateUseCase,
+            SuspendHospitalizationMedicationUseCase suspendUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -56,17 +55,20 @@ public class HospitalizationMedicationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationMedicationResponse create(@Valid @RequestBody CreateHospitalizationMedicationRequest request) {
-        return toResponse(createUseCase.execute(new CreateHospitalizationMedicationCommand(
-            request.name(), request.dose(), request.frequency(), request.guidelineType(),
-            request.durationMeasure(), request.durationQuantity(), request.startDate(), request.startTime(),
-            request.notes(), request.hospitalizationId(), authz.currentEmployeeId())));
+    public HospitalizationMedicationResponse create(
+            @Valid @RequestBody CreateHospitalizationMedicationRequest request) {
+        return toResponse(createUseCase
+                .execute(new CreateHospitalizationMedicationCommand(request.name(), request.dose(),
+                        request.frequency(), request.guidelineType(), request.durationMeasure(),
+                        request.durationQuantity(), request.startDate(), request.startTime(),
+                        request.notes(), request.hospitalizationId(), authz.currentEmployeeId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationMedicationResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
+    public List<HospitalizationMedicationResponse> listByHospitalization(
+            @PathVariable Long hospitalizationId) {
         return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -76,11 +78,11 @@ public class HospitalizationMedicationController {
 
     @PutMapping("/{id}")
     public HospitalizationMedicationResponse update(@PathVariable Long id,
-                                                    @Valid @RequestBody UpdateHospitalizationMedicationRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateHospitalizationMedicationCommand(
-            id, request.name(), request.dose(), request.frequency(), request.guidelineType(),
-            request.durationMeasure(), request.durationQuantity(), request.startDate(), request.startTime(),
-            request.notes())));
+            @Valid @RequestBody UpdateHospitalizationMedicationRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateHospitalizationMedicationCommand(id,
+                request.name(), request.dose(), request.frequency(), request.guidelineType(),
+                request.durationMeasure(), request.durationQuantity(), request.startDate(),
+                request.startTime(), request.notes())));
     }
 
     @DeleteMapping("/{id}")
@@ -94,24 +96,26 @@ public class HospitalizationMedicationController {
         return toResponse(reactivateUseCase.execute(id));
     }
 
-    /** Suspende la orden (registra quién/cuándo). El plan de tomas pendientes se limpia aparte. */
+    /**
+     * Suspende la orden (registra quién/cuándo). El plan de tomas pendientes se
+     * limpia aparte.
+     */
     @PatchMapping("/{id}/suspend")
     public HospitalizationMedicationResponse suspend(@PathVariable Long id) {
         return toResponse(suspendUseCase.execute(
-            new SuspendHospitalizationMedicationCommand(id, authz.currentEmployeeId())));
+                new SuspendHospitalizationMedicationCommand(id, authz.currentEmployeeId())));
     }
 
     private HospitalizationMedicationResponse toResponse(HospitalizationMedicationDto dto) {
         HospitalizationSummaryDto h = dto.hospitalization();
         EmployeeSummaryDto c = dto.createdBy();
         EmployeeSummaryDto s = dto.suspensionBy();
-        return new HospitalizationMedicationResponse(
-            dto.id(), dto.name(), dto.dose(), dto.frequency(), dto.guidelineType(),
-            dto.durationMeasure(), dto.durationQuantity(), dto.startDate(), dto.startTime(), dto.notes(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled(),
-            dto.suspensionDate(),
-            s == null ? null : new EmployeeSummary(s.id(), s.employeeCode(), s.name()));
+        return new HospitalizationMedicationResponse(dto.id(), dto.name(), dto.dose(),
+                dto.frequency(), dto.guidelineType(), dto.durationMeasure(), dto.durationQuantity(),
+                dto.startDate(), dto.startTime(), dto.notes(),
+                new HospitalizationSummary(h.id(), h.date()),
+                new EmployeeSummary(c.id(), c.employeeCode(), c.name()), dto.createdDate(),
+                dto.enabled(), dto.suspensionDate(),
+                s == null ? null : new EmployeeSummary(s.id(), s.employeeCode(), s.name()));
     }
 }

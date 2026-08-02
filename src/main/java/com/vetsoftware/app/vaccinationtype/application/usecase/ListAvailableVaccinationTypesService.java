@@ -18,6 +18,7 @@ public class ListAvailableVaccinationTypesService implements ListAvailableVaccin
 
     @Override
     public List<VaccinationTypeDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(VaccinationTypeDto::from).toList();
+        return repository.findAllAvailableForCompany(companyId).stream()
+                .map(VaccinationTypeDto::from).toList();
     }
 }

@@ -17,13 +17,14 @@ public class JpaOwnerQueryPort implements OwnerQueryPort {
     @Override
     public Optional<OwnerRef> findByIdAndCompanyId(Long ownerId, Long companyId) {
         return ownerJpaRepository.findByIdAndCompanyId(ownerId, companyId)
-            .map(e -> new OwnerRef(e.getId(), e.getName()));
+                .map(e -> new OwnerRef(e.getId(), e.getName()));
     }
 
     @Override
     public Optional<String> findEmailByIdAndCompanyId(Long ownerId, Long companyId) {
-        // Optional.map colapsa a empty() si el correo es null → no se envía correo a quien no tiene email.
-        return ownerJpaRepository.findByIdAndCompanyId(ownerId, companyId)
-            .map(e -> e.getEmail());
+        // Optional.map colapsa a empty() si el correo es null → no se envía correo a
+        // quien no tiene
+        // email.
+        return ownerJpaRepository.findByIdAndCompanyId(ownerId, companyId).map(e -> e.getEmail());
     }
 }

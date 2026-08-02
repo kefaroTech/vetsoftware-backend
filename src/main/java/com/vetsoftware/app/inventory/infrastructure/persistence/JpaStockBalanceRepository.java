@@ -21,12 +21,14 @@ public class JpaStockBalanceRepository implements StockBalanceRepository {
 
     @Override
     public Optional<StockBalance> find(Long productId, Long branchId) {
-        return jpaRepository.findByProductIdAndBranchId(productId, branchId).map(JpaStockBalanceRepository::toDomain);
+        return jpaRepository.findByProductIdAndBranchId(productId, branchId)
+                .map(JpaStockBalanceRepository::toDomain);
     }
 
     @Override
     public Optional<StockBalance> findForUpdate(Long productId, Long branchId) {
-        return jpaRepository.findForUpdate(productId, branchId).map(JpaStockBalanceRepository::toDomain);
+        return jpaRepository.findForUpdate(productId, branchId)
+                .map(JpaStockBalanceRepository::toDomain);
     }
 
     private static StockBalanceJpaEntity toJpa(StockBalance b) {
@@ -43,6 +45,6 @@ public class JpaStockBalanceRepository implements StockBalanceRepository {
 
     private static StockBalance toDomain(StockBalanceJpaEntity e) {
         return new StockBalance(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(),
-            e.getQuantity(), e.getMinStock(), e.getVersion());
+                e.getQuantity(), e.getMinStock(), e.getVersion());
     }
 }

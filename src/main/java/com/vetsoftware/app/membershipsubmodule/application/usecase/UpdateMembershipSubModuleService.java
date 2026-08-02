@@ -22,8 +22,7 @@ public class UpdateMembershipSubModuleService implements UpdateMembershipSubModu
     private final SubModuleQueryPort subModuleQueryPort;
 
     public UpdateMembershipSubModuleService(MembershipSubModuleRepository repository,
-                                             MembershipQueryPort membershipQueryPort,
-                                             SubModuleQueryPort subModuleQueryPort) {
+            MembershipQueryPort membershipQueryPort, SubModuleQueryPort subModuleQueryPort) {
         this.repository = repository;
         this.membershipQueryPort = membershipQueryPort;
         this.subModuleQueryPort = subModuleQueryPort;
@@ -33,11 +32,13 @@ public class UpdateMembershipSubModuleService implements UpdateMembershipSubModu
     @Transactional
     public MembershipSubModuleDto execute(UpdateMembershipSubModuleCommand command) {
         MembershipSubModule membershipSubModule = repository.findById(command.id())
-            .orElseThrow(() -> new MembershipSubModuleNotFoundException(command.id()));
+                .orElseThrow(() -> new MembershipSubModuleNotFoundException(command.id()));
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Membership not found: " + command.membershipId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SubModule not found: " + command.subModuleId()));
         membershipSubModule.update(membership, subModule);
         return MembershipSubModuleDto.from(repository.save(membershipSubModule));
     }

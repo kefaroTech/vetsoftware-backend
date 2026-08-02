@@ -26,10 +26,8 @@ public class CreateHospitalizationService implements CreateHospitalizationUseCas
     private final AnimalWeightPort animalWeightPort;
 
     public CreateHospitalizationService(HospitalizationRepository repository,
-                                        AnimalQueryPort animalQueryPort,
-                                        ConsultationQueryPort consultationQueryPort,
-                                        CompanyQueryPort companyQueryPort,
-                                        AnimalWeightPort animalWeightPort) {
+            AnimalQueryPort animalQueryPort, ConsultationQueryPort consultationQueryPort,
+            CompanyQueryPort companyQueryPort, AnimalWeightPort animalWeightPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.consultationQueryPort = consultationQueryPort;
@@ -40,25 +38,26 @@ public class CreateHospitalizationService implements CreateHospitalizationUseCas
     @Override
     @Transactional
     public HospitalizationDto execute(CreateHospitalizationCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ConsultationRef consultation = command.consultationId() == null
+                ? null
+                : consultationQueryPort.findById(command.consultationId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Consultation not found: " + command.consultationId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        Hospitalization hospitalization = Hospitalization.create(
-            command.date(), command.startDate(), command.endDate(),
-            command.type(), command.reasonLeaving(),
-            command.reason(), command.observations(),
-            animal, consultation, company);
+        Hospitalization hospitalization = Hospitalization.create(command.date(),
+                command.startDate(), command.endDate(), command.type(), command.reasonLeaving(),
+                command.reason(), command.observations(), animal, consultation, company);
         Hospitalization saved = repository.save(hospitalization);
 
-        // Peso opcional al ingreso → punto de la serie temporal del animal (misma transacción).
+        // Peso opcional al ingreso → punto de la serie temporal del animal (misma
+        // transacción).
         if (command.weight() != null) {
             animalWeightPort.recordHospitalizationWeight(command.animalId(), command.companyId(),
-                command.weight(), command.weightUnit(), command.date(), saved.getId());
+                    command.weight(), command.weightUnit(), command.date(), saved.getId());
         }
         return HospitalizationDto.from(saved);
     }

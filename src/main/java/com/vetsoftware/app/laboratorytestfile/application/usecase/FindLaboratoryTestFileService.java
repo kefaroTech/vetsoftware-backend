@@ -19,6 +19,6 @@ public class FindLaboratoryTestFileService implements FindLaboratoryTestFileUseC
     @Override
     public LaboratoryTestFileDto findById(Long id, Long companyId) {
         return LaboratoryTestFileDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id)));
+                .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id)));
     }
 }

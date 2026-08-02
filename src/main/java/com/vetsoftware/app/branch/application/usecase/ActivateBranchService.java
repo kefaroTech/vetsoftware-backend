@@ -22,7 +22,7 @@ public class ActivateBranchService implements ActivateBranchUseCase {
     @Transactional
     public BranchDto execute(Long id, Long companyId) {
         Branch branch = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new BranchNotFoundException(id));
+                .orElseThrow(() -> new BranchNotFoundException(id));
         branch.activate();
         return BranchDto.from(repository.save(branch));
     }

@@ -21,11 +21,12 @@ public class JpaBranchResolver implements BranchResolverPort {
     public Optional<Long> resolve(Long companyId, Long requestedBranchId) {
         if (requestedBranchId != null) {
             return branchJpaRepository.findByIdAndCompanyId(requestedBranchId, companyId)
-                .filter(BranchJpaEntity::isActive)
-                .map(BranchJpaEntity::getId);
+                    .filter(BranchJpaEntity::isActive).map(BranchJpaEntity::getId);
         }
-        return branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
-            .or(() -> branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
-            .map(BranchJpaEntity::getId);
+        return branchJpaRepository
+                .findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
+                .or(() -> branchJpaRepository
+                        .findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
+                .map(BranchJpaEntity::getId);
     }
 }

@@ -17,10 +17,8 @@ public class JpaDayCareRepository implements DayCareRepository {
     private final AnimalJpaRepository animalJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaDayCareRepository(DayCareJpaRepository jpaRepository,
-                                DayCareJpaMapper mapper,
-                                AnimalJpaRepository animalJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
+    public JpaDayCareRepository(DayCareJpaRepository jpaRepository, DayCareJpaMapper mapper,
+            AnimalJpaRepository animalJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;

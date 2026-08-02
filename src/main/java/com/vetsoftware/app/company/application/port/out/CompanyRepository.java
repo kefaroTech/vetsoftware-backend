@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface CompanyRepository {
     Company save(Company company);
+
     Optional<Company> findById(Long id);
+
     List<Company> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

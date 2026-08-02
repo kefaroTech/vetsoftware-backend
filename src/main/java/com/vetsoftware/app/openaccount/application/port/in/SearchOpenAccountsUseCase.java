@@ -7,6 +7,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchOpenAccountsUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('openAccount.read') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('openAccount.read') and @authz.isMyCompany(#command.companyId))")
     PageResult<OpenAccountDto> execute(SearchOpenAccountsCommand command);
 }

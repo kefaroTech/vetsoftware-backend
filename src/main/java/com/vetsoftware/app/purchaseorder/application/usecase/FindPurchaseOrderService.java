@@ -21,6 +21,6 @@ public class FindPurchaseOrderService implements FindPurchaseOrderUseCase {
     @Transactional(readOnly = true)
     public PurchaseOrderDto findById(Long id, Long companyId) {
         return PurchaseOrderDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
+                .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
     }
 }

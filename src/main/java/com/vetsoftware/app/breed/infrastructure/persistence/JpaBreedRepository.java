@@ -14,9 +14,8 @@ public class JpaBreedRepository implements BreedRepository {
     private final BreedJpaMapper mapper;
     private final SpecieJpaRepository specieJpaRepository;
 
-    public JpaBreedRepository(BreedJpaRepository jpaRepository,
-                              BreedJpaMapper mapper,
-                              SpecieJpaRepository specieJpaRepository) {
+    public JpaBreedRepository(BreedJpaRepository jpaRepository, BreedJpaMapper mapper,
+            SpecieJpaRepository specieJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.specieJpaRepository = specieJpaRepository;

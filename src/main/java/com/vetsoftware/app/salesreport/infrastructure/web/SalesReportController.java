@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** F6 - reportes contables de solo lectura: libro/registro de ventas y conciliación DIAN. */
+/**
+ * F6 - reportes contables de solo lectura: libro/registro de ventas y
+ * conciliación DIAN.
+ */
 @RestController
 @RequestMapping("/sales-reports")
 public class SalesReportController {
@@ -21,8 +24,7 @@ public class SalesReportController {
     private final Authz authz;
 
     public SalesReportController(GetSalesBookUseCase salesBookUseCase,
-                                 GetReconciliationUseCase reconciliationUseCase,
-                                 Authz authz) {
+            GetReconciliationUseCase reconciliationUseCase, Authz authz) {
         this.salesBookUseCase = salesBookUseCase;
         this.reconciliationUseCase = reconciliationUseCase;
         this.authz = authz;
@@ -33,7 +35,8 @@ public class SalesReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return salesBookUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+        return salesBookUseCase.get(authz.currentCompanyId(), from, to,
+                authz.resolveAccessibleBranch(branchId));
     }
 
     @GetMapping("/reconciliation")
@@ -41,6 +44,7 @@ public class SalesReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return reconciliationUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+        return reconciliationUseCase.get(authz.currentCompanyId(), from, to,
+                authz.resolveAccessibleBranch(branchId));
     }
 }

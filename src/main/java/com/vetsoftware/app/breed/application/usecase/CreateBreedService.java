@@ -23,8 +23,8 @@ public class CreateBreedService implements CreateBreedUseCase {
 
     @Override
     public BreedDto execute(CreateBreedCommand command) {
-        SpecieRef specie = specieQueryPort.findById(command.specieId())
-            .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
+        SpecieRef specie = specieQueryPort.findById(command.specieId()).orElseThrow(
+                () -> new IllegalArgumentException("Specie not found: " + command.specieId()));
         Breed breed = Breed.create(command.name(), specie);
         return BreedDto.from(repository.save(breed));
     }

@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateSupplierUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('supplier.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('supplier.delete') and @authz.isMyCompany(#companyId))")
     SupplierDto execute(Long id, Long companyId);
 }

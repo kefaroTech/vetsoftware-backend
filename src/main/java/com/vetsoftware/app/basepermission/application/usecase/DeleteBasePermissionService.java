@@ -15,8 +15,7 @@ public class DeleteBasePermissionService implements DeleteBasePermissionUseCase 
     private final BasePermissionRepository repository;
     private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
 
-    public DeleteBasePermissionService(
-            BasePermissionRepository repository,
+    public DeleteBasePermissionService(BasePermissionRepository repository,
             BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
         this.repository = repository;
         this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;

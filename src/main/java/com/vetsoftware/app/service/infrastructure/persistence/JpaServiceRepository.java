@@ -29,11 +29,9 @@ public class JpaServiceRepository implements ServiceRepository {
     private final TaxJpaRepository taxJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaServiceRepository(ServiceJpaRepository jpaRepository,
-                                ServiceJpaMapper mapper,
-                                ServiceCategoryJpaRepository serviceCategoryJpaRepository,
-                                TaxJpaRepository taxJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
+    public JpaServiceRepository(ServiceJpaRepository jpaRepository, ServiceJpaMapper mapper,
+            ServiceCategoryJpaRepository serviceCategoryJpaRepository,
+            TaxJpaRepository taxJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.serviceCategoryJpaRepository = serviceCategoryJpaRepository;
@@ -43,13 +41,16 @@ public class JpaServiceRepository implements ServiceRepository {
 
     @Override
     public Service save(Service service) {
-        ServiceCategoryJpaEntity serviceCategory =
-            serviceCategoryJpaRepository.getReferenceById(service.getServiceCategory().id());
+        ServiceCategoryJpaEntity serviceCategory = serviceCategoryJpaRepository
+                .getReferenceById(service.getServiceCategory().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(service.getCompany().id());
-        TaxJpaEntity tax = service.getTax() == null ? null
-            : taxJpaRepository.getReferenceById(service.getTax().id());
-        ServiceJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(service, serviceCategory, tax, company));
-        return mapper.toDomain(saved, service.getServiceCategory(), service.getTax(), service.getCompany());
+        TaxJpaEntity tax = service.getTax() == null
+                ? null
+                : taxJpaRepository.getReferenceById(service.getTax().id());
+        ServiceJpaEntity saved = jpaRepository
+                .saveAndFlush(mapper.toJpa(service, serviceCategory, tax, company));
+        return mapper.toDomain(saved, service.getServiceCategory(), service.getTax(),
+                service.getCompany());
     }
 
     @Override
@@ -74,25 +75,26 @@ public class JpaServiceRepository implements ServiceRepository {
 
     @Override
     public List<Service> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
     public PageResult<Service> search(SearchServicesCommand command) {
         Specification<ServiceJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "createdDate"));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<ServiceJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<Service> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<ServiceJpaEntity> buildSpec(SearchServicesCommand command) {
         return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count)
+            // para evitar N+1
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("serviceCategory", JoinType.LEFT);
                 root.fetch("tax", JoinType.LEFT);
@@ -103,10 +105,11 @@ public class JpaServiceRepository implements ServiceRepository {
             predicates.add(cb.equal(root.get("company").get("id"), command.companyId()));
             if (command.name() != null && !command.name().isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("name")),
-                    "%" + command.name().toLowerCase() + "%"));
+                        "%" + command.name().toLowerCase() + "%"));
             }
             if (command.serviceCategoryId() != null) {
-                predicates.add(cb.equal(root.get("serviceCategory").get("id"), command.serviceCategoryId()));
+                predicates.add(cb.equal(root.get("serviceCategory").get("id"),
+                        command.serviceCategoryId()));
             }
             if (command.taxId() != null) {
                 predicates.add(cb.equal(root.get("tax").get("id"), command.taxId()));

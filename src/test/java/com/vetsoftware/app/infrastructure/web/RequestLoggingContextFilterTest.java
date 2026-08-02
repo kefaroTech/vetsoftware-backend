@@ -34,8 +34,7 @@ class RequestLoggingContextFilterTest {
         filter.doFilter(request, new MockHttpServletResponse(),
                 (ignoredRequest, ignoredResponse) -> inside.set(MDC.getCopyOfContextMap()));
 
-        assertThat(inside.get())
-                .containsEntry(MdcKeys.HTTP_METHOD, "POST")
+        assertThat(inside.get()).containsEntry(MdcKeys.HTTP_METHOD, "POST")
                 .containsEntry(MdcKeys.HTTP_PATH, "/api/v1/owners")
                 .containsEntry(MdcKeys.CLIENT_IP, "192.0.2.10")
                 .containsEntry(MdcKeys.USER_AGENT, "telemetry-test")

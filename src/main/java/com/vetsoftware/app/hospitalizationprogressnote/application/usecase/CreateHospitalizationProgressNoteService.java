@@ -14,28 +14,34 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.progress.note.create")
 @Service
-public class CreateHospitalizationProgressNoteService implements CreateHospitalizationProgressNoteUseCase {
+public class CreateHospitalizationProgressNoteService
+        implements
+            CreateHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;
     private final HospitalizationQueryPort hospitalizationQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
 
-    public CreateHospitalizationProgressNoteService(HospitalizationProgressNoteRepository repository,
-                                                   HospitalizationQueryPort hospitalizationQueryPort,
-                                                   EmployeeQueryPort employeeQueryPort) {
+    public CreateHospitalizationProgressNoteService(
+            HospitalizationProgressNoteRepository repository,
+            HospitalizationQueryPort hospitalizationQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.hospitalizationQueryPort = hospitalizationQueryPort;
         this.employeeQueryPort = employeeQueryPort;
     }
 
     @Override
-    public HospitalizationProgressNoteDto execute(CreateHospitalizationProgressNoteCommand command) {
-        HospitalizationRef hospitalization = hospitalizationQueryPort.findById(command.hospitalizationId())
-            .orElseThrow(() -> new IllegalArgumentException("Hospitalization not found: " + command.hospitalizationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+    public HospitalizationProgressNoteDto execute(
+            CreateHospitalizationProgressNoteCommand command) {
+        HospitalizationRef hospitalization = hospitalizationQueryPort
+                .findById(command.hospitalizationId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Hospitalization not found: " + command.hospitalizationId()));
+        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        HospitalizationProgressNote progressNote = HospitalizationProgressNote.create(
-            command.description(), hospitalization, createdBy);
+        HospitalizationProgressNote progressNote = HospitalizationProgressNote
+                .create(command.description(), hospitalization, createdBy);
         return HospitalizationProgressNoteDto.from(repository.save(progressNote));
     }
 }

@@ -3,14 +3,13 @@ package com.vetsoftware.app.employeerole.infrastructure.persistence;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "employee_roles", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_employee_roles", columnNames = {"employee_id", "role_id"})
-})
+        @UniqueConstraint(name = "uq_employee_roles", columnNames = {"employee_id", "role_id"})})
 @SQLDelete(sql = "UPDATE employee_roles SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class EmployeeRoleJpaEntity {
@@ -32,16 +31,46 @@ public class EmployeeRoleJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    public EmployeeRoleJpaEntity() {}
+    public EmployeeRoleJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public EmployeeJpaEntity getEmployee() { return employee; }
-    public void setEmployee(EmployeeJpaEntity employee) { this.employee = employee; }
-    public RoleJpaEntity getRole() { return role; }
-    public void setRole(RoleJpaEntity role) { this.role = role; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public EmployeeJpaEntity getEmployee() {
+        return employee;
+    }
+
+    public void setEmployee(EmployeeJpaEntity employee) {
+        this.employee = employee;
+    }
+
+    public RoleJpaEntity getRole() {
+        return role;
+    }
+
+    public void setRole(RoleJpaEntity role) {
+        this.role = role;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

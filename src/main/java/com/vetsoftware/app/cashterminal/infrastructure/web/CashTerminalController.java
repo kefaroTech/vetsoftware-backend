@@ -24,9 +24,10 @@ public class CashTerminalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('cashregister.read') or hasAuthority('cashregister.operate')")
+    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('cashregister.read') or"
+            + " hasAuthority('cashregister.operate')")
     public List<CashTerminalDto> list(@RequestParam Long branchId,
-                                      @RequestParam(defaultValue = "false") boolean activeOnly) {
+            @RequestParam(defaultValue = "false") boolean activeOnly) {
         Long resolvedBranchId = authz.resolveAccessibleBranch(branchId);
         return service.list(authz.currentCompanyId(), resolvedBranchId, activeOnly);
     }
@@ -41,7 +42,8 @@ public class CashTerminalController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
-    public CashTerminalDto update(@PathVariable Long id, @Valid @RequestBody UpdateTerminalRequest request) {
+    public CashTerminalDto update(@PathVariable Long id,
+            @Valid @RequestBody UpdateTerminalRequest request) {
         return service.update(authz.currentCompanyId(), id, request.name(), request.code());
     }
 
@@ -57,8 +59,11 @@ public class CashTerminalController {
         return service.setActive(authz.currentCompanyId(), id, true);
     }
 
-    public record SaveTerminalRequest(@NotNull Long branchId, @NotBlank @Size(max = 120) String name,
-                                      @NotBlank @Size(max = 60) String code) {}
+    public record SaveTerminalRequest(@NotNull Long branchId,
+            @NotBlank @Size(max = 120) String name, @NotBlank @Size(max = 60) String code) {
+    }
+
     public record UpdateTerminalRequest(@NotBlank @Size(max = 120) String name,
-                                        @NotBlank @Size(max = 60) String code) {}
+            @NotBlank @Size(max = 60) String code) {
+    }
 }

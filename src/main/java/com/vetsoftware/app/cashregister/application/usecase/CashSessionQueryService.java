@@ -15,11 +15,17 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Lecturas de caja: sesión actual (OPEN) de una sede, detalle por id e historial paginado. */
+/**
+ * Lecturas de caja: sesión actual (OPEN) de una sede, detalle por id e
+ * historial paginado.
+ */
 @Service
 public class CashSessionQueryService
-        implements GetCurrentCashSessionUseCase, GetCashSessionUseCase, ListCashSessionsUseCase,
-        ListOpenCashSessionsUseCase {
+        implements
+            GetCurrentCashSessionUseCase,
+            GetCashSessionUseCase,
+            ListCashSessionsUseCase,
+            ListOpenCashSessionsUseCase {
 
     private final CashSessionRepository repository;
 
@@ -31,7 +37,8 @@ public class CashSessionQueryService
     @Observed(name = "cash.register.current.session")
     @Transactional(readOnly = true)
     public CashSessionView current(Long companyId, Long employeeId) {
-        return repository.findOpenByEmployee(companyId, employeeId).map(CashSessionView::from).orElse(null);
+        return repository.findOpenByEmployee(companyId, employeeId).map(CashSessionView::from)
+                .orElse(null);
     }
 
     @Override
@@ -39,7 +46,7 @@ public class CashSessionQueryService
     @Transactional(readOnly = true)
     public CashSessionView get(Long companyId, Long id) {
         return repository.findByIdAndCompany(id, companyId).map(CashSessionView::from)
-            .orElseThrow(() -> new CashSessionNotFoundException(id));
+                .orElseThrow(() -> new CashSessionNotFoundException(id));
     }
 
     @Override

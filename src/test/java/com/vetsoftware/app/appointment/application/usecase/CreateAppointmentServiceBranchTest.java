@@ -33,22 +33,33 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Resolución de sede al crear una cita (multi-sucursal, Fase B). Reglas: si el request trae branchId, la sede
- * debe pertenecer a la empresa y estar ACTIVA; si no, se usa la sede ACTIVA por defecto. Una sede desactivada
- * se rechaza con un error DISTINTO al de una sede inexistente. Ningún camino de error debe escribir.
+ * Resolución de sede al crear una cita (multi-sucursal, Fase B). Reglas: si el
+ * request trae branchId, la sede debe pertenecer a la empresa y estar ACTIVA;
+ * si no, se usa la sede ACTIVA por defecto. Una sede desactivada se rechaza con
+ * un error DISTINTO al de una sede inexistente. Ningún camino de error debe
+ * escribir.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateAppointmentServiceBranchTest {
 
-    @Mock private AppointmentRepository repository;
-    @Mock private AnimalQueryPort animalQueryPort;
-    @Mock private OwnerQueryPort ownerQueryPort;
-    @Mock private EmployeeQueryPort employeeQueryPort;
-    @Mock private BranchQueryPort branchQueryPort;
-    @Mock private CompanyQueryPort companyQueryPort;
-    @Mock private AppointmentConfirmationEmailSender confirmationEmailSender;
-    @Mock private AppointmentMetrics appointmentMetrics;
-    @InjectMocks private CreateAppointmentService service;
+    @Mock
+    private AppointmentRepository repository;
+    @Mock
+    private AnimalQueryPort animalQueryPort;
+    @Mock
+    private OwnerQueryPort ownerQueryPort;
+    @Mock
+    private EmployeeQueryPort employeeQueryPort;
+    @Mock
+    private BranchQueryPort branchQueryPort;
+    @Mock
+    private CompanyQueryPort companyQueryPort;
+    @Mock
+    private AppointmentConfirmationEmailSender confirmationEmailSender;
+    @Mock
+    private AppointmentMetrics appointmentMetrics;
+    @InjectMocks
+    private CreateAppointmentService service;
 
     private static final long COMPANY = 9L;
     private final EmployeeRef employee = new EmployeeRef(4L, "Dra. Vet");
@@ -57,8 +68,8 @@ class CreateAppointmentServiceBranchTest {
     private final LocalDateTime startAt = LocalDateTime.of(2026, 8, 1, 9, 0);
 
     private CreateAppointmentCommand command(Long branchId) {
-        return new CreateAppointmentCommand(startAt, AppointmentType.CONSULTATION, 4L,
-            null, null, "Walk-in", null, null, null, branchId, COMPANY);
+        return new CreateAppointmentCommand(startAt, AppointmentType.CONSULTATION, 4L, null, null,
+                "Walk-in", null, null, null, branchId, COMPANY);
     }
 
     private ArgumentCaptor<Appointment> stubSaveAndClashes() {
@@ -70,7 +81,8 @@ class CreateAppointmentServiceBranchTest {
     @Test
     void usa_la_sede_solicitada_cuando_es_valida_y_activa() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
-        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(requested));
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(requested));
         ArgumentCaptor<Appointment> captor = stubSaveAndClashes();
 
         AppointmentDto dto = service.execute(command(11L));
@@ -85,12 +97,12 @@ class CreateAppointmentServiceBranchTest {
     void rechaza_una_sede_solicitada_INACTIVA_con_error_distinto_y_no_escribe() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
-        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true); // existe pero inactiva
+        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true); // existe pero
+                                                                                     // inactiva
 
         assertThatThrownBy(() -> service.execute(command(11L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Branch is not active")
-            .hasMessageContaining("11");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Branch is not active").hasMessageContaining("11");
 
         verify(repository, never()).save(any());
     }
@@ -99,11 +111,13 @@ class CreateAppointmentServiceBranchTest {
     void rechaza_una_sede_inexistente_o_ajena_con_error_de_not_found_y_no_escribe() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
-        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false); // no existe en la empresa
+        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false); // no existe
+                                                                                      // en la
+                                                                                      // empresa
 
         assertThatThrownBy(() -> service.execute(command(11L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Branch not found");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Branch not found");
 
         verify(repository, never()).save(any());
     }
@@ -111,7 +125,8 @@ class CreateAppointmentServiceBranchTest {
     @Test
     void cae_a_la_sede_activa_por_defecto_cuando_no_viene_branchId() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
-        when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY)).thenReturn(Optional.of(principal));
+        when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY))
+                .thenReturn(Optional.of(principal));
         ArgumentCaptor<Appointment> captor = stubSaveAndClashes();
 
         AppointmentDto dto = service.execute(command(null));
@@ -128,8 +143,8 @@ class CreateAppointmentServiceBranchTest {
         when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.execute(command(null)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Company has no active branch");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Company has no active branch");
 
         verify(repository, never()).save(any());
     }

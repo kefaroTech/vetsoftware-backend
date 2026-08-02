@@ -8,11 +8,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Correo de invitación de empleado enviado con una <b>plantilla de Resend</b> ({@code template: { id, variables }}).
- * Async y no bloqueante (si Resend falla, se registra un warning y el alta continúa).
+ * Correo de invitación de empleado enviado con una <b>plantilla de Resend</b>
+ * ({@code template: {
+ * id, variables }}). Async y no bloqueante (si Resend falla, se registra un
+ * warning y el alta continúa).
  *
- * <p>Variables de la plantilla (coinciden con los {@code {{{VARIABLE}}}} del HTML en Resend):
- * EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL.
+ * <p>
+ * Variables de la plantilla (coinciden con los {@code {{{VARIABLE}}}} del HTML
+ * en Resend): EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, TEMP_PASSWORD,
+ * ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL.
  */
 @Component
 public class ResendEmployeeInvitationEmailSender implements EmployeeInvitationEmailSender {
@@ -23,8 +27,7 @@ public class ResendEmployeeInvitationEmailSender implements EmployeeInvitationEm
     private final String templateId;
     private final String loginUrl;
 
-    public ResendEmployeeInvitationEmailSender(
-            ResendEmailClient email,
+    public ResendEmployeeInvitationEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.employee.invitation-template-id:}") String templateId,
             @Value("${vetsoftware.employee.login-url:}") String loginUrl) {
         this.email = email;
@@ -34,7 +37,7 @@ public class ResendEmployeeInvitationEmailSender implements EmployeeInvitationEm
 
     @Override
     public void send(String toEmail, String employeeName, String companyName, String employeeCode,
-                     String tempPassword, String roleName) {
+            String tempPassword, String roleName) {
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("EMPLOYEE_NAME", nz(employeeName));
         variables.put("COMPANY_NAME", nz(companyName));

@@ -18,9 +18,9 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
     private final MedicamentJpaRepository medicamentJpaRepository;
 
     public JpaMedicamentPrescriptionRepository(MedicamentPrescriptionJpaRepository jpaRepository,
-                                               MedicamentPrescriptionJpaMapper mapper,
-                                               PrescriptionJpaRepository prescriptionJpaRepository,
-                                               MedicamentJpaRepository medicamentJpaRepository) {
+            MedicamentPrescriptionJpaMapper mapper,
+            PrescriptionJpaRepository prescriptionJpaRepository,
+            MedicamentJpaRepository medicamentJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.prescriptionJpaRepository = prescriptionJpaRepository;
@@ -29,12 +29,12 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
 
     @Override
     public MedicamentPrescription save(MedicamentPrescription medicament) {
-        PrescriptionJpaEntity prescription =
-            prescriptionJpaRepository.getReferenceById(medicament.getPrescription().id());
-        MedicamentJpaEntity medicamentCatalog =
-            medicamentJpaRepository.getReferenceById(medicament.getMedicamentId());
-        MedicamentPrescriptionJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(medicament, prescription, medicamentCatalog));
+        PrescriptionJpaEntity prescription = prescriptionJpaRepository
+                .getReferenceById(medicament.getPrescription().id());
+        MedicamentJpaEntity medicamentCatalog = medicamentJpaRepository
+                .getReferenceById(medicament.getMedicamentId());
+        MedicamentPrescriptionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(medicament, prescription, medicamentCatalog));
         return mapper.toDomain(saved, medicament.getPrescription(), medicament.getMedicament());
     }
 
@@ -45,7 +45,8 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
 
     @Override
     public Optional<MedicamentPrescription> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndPrescription_Company_Id(id, companyId).map(mapper::toDomain);
+        return jpaRepository.findByIdAndPrescription_Company_Id(id, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override

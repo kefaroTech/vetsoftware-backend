@@ -40,24 +40,78 @@ public class SupplierInvoicePaymentJpaEntity {
     @Column(name = "created_by")
     private Long createdBy;
 
-    protected SupplierInvoicePaymentJpaEntity() {}
+    protected SupplierInvoicePaymentJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public SupplierInvoiceJpaEntity getInvoice() { return invoice; }
-    public void setInvoice(SupplierInvoiceJpaEntity invoice) { this.invoice = invoice; }
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public LocalDate getPaymentDate() { return paymentDate; }
-    public void setPaymentDate(LocalDate paymentDate) { this.paymentDate = paymentDate; }
-    public SupplierInvoicePaymentMethod getMethod() { return method; }
-    public void setMethod(SupplierInvoicePaymentMethod method) { this.method = method; }
-    public String getReference() { return reference; }
-    public void setReference(String reference) { this.reference = reference; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public Long getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public SupplierInvoiceJpaEntity getInvoice() {
+        return invoice;
+    }
+
+    public void setInvoice(SupplierInvoiceJpaEntity invoice) {
+        this.invoice = invoice;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public LocalDate getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(LocalDate paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
+    public SupplierInvoicePaymentMethod getMethod() {
+        return method;
+    }
+
+    public void setMethod(SupplierInvoicePaymentMethod method) {
+        this.method = method;
+    }
+
+    public String getReference() {
+        return reference;
+    }
+
+    public void setReference(String reference) {
+        this.reference = reference;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
+    }
 }

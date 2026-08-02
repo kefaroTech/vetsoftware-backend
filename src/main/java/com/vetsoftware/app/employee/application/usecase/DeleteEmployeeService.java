@@ -20,8 +20,7 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
     private final EmployeeRepository repository;
     private final EmployeeRolesQueryPort employeeRolesQueryPort;
 
-    public DeleteEmployeeService(
-            EmployeeRepository repository,
+    public DeleteEmployeeService(EmployeeRepository repository,
             EmployeeRolesQueryPort employeeRolesQueryPort) {
         this.repository = repository;
         this.employeeRolesQueryPort = employeeRolesQueryPort;
@@ -31,19 +30,23 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
     @Transactional
     public void execute(Long id) {
         Employee employee = repository.findByIdIncludingDisabled(id)
-            .orElseThrow(() -> new EmployeeNotFoundException(id));
-        // Idempotente: si ya está desactivado, no hacemos nada (evita 404 en reintentos / estado viejo del front).
+                .orElseThrow(() -> new EmployeeNotFoundException(id));
+        // Idempotente: si ya está desactivado, no hacemos nada (evita 404 en reintentos
+        // / estado viejo
+        // del front).
         if (!employee.isEnabled()) {
             return;
         }
-        List<RoleSnapshot> roles = employeeRolesQueryPort
-            .findRolesByEmployeeIds(List.of(id))
-            .getOrDefault(id, List.of());
+        List<RoleSnapshot> roles = employeeRolesQueryPort.findRolesByEmployeeIds(List.of(id))
+                .getOrDefault(id, List.of());
         if (roles.stream().anyMatch(r -> ADMIN_ROLE_CODE.equals(r.code()))) {
             throw new AdminEmployeeCannotBeDisabledException(id);
         }
-        // Soft-delete del empleado. Conservamos sus asignaciones de rol: al reactivarlo vuelven con él.
-        // Un empleado desactivado queda inerte (no puede iniciar sesión), así que dejar sus employee_roles
+        // Soft-delete del empleado. Conservamos sus asignaciones de rol: al reactivarlo
+        // vuelven con él.
+        // Un empleado desactivado queda inerte (no puede iniciar sesión), así que dejar
+        // sus
+        // employee_roles
         // activos no tiene efecto de seguridad.
         repository.delete(id);
     }

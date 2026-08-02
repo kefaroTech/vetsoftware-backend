@@ -15,8 +15,7 @@ public class JpaVaccinationTypeRepository implements VaccinationTypeRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaVaccinationTypeRepository(VaccinationTypeJpaRepository jpaRepository,
-                                        VaccinationTypeJpaMapper mapper,
-                                        CompanyJpaRepository companyJpaRepository) {
+            VaccinationTypeJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaVaccinationTypeRepository implements VaccinationTypeRepository {
 
     @Override
     public VaccinationType save(VaccinationType vaccinationType) {
-        CompanyJpaEntity company = vaccinationType.getCompany() == null ? null
+        CompanyJpaEntity company = vaccinationType.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(vaccinationType.getCompany().id());
         VaccinationTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(vaccinationType, company));
         return mapper.toDomain(saved, vaccinationType.getCompany());
@@ -47,8 +47,8 @@ public class JpaVaccinationTypeRepository implements VaccinationTypeRepository {
 
     @Override
     public List<VaccinationType> findAllAvailableForCompany(Long companyId) {
-        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override

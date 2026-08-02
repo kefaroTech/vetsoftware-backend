@@ -22,10 +22,10 @@ public class JpaSystemPermissionResolver implements SystemPermissionResolver {
     @Override
     public Set<String> resolveFor(Long systemUserId) {
         return systemUserPermissionJpaRepository.findBySystemUserId(systemUserId).stream()
-                .map(e -> e.getSystemPermission().getCode())
-                .collect(Collectors.toSet());
+                .map(e -> e.getSystemPermission().getCode()).collect(Collectors.toSet());
     }
 
     @CacheEvict(value = "system-user-permissions", key = "#systemUserId")
-    public void evict(Long systemUserId) {}
+    public void evict(Long systemUserId) {
+    }
 }

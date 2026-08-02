@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "diagnostic.imaging.type.list.available")
 @Service
-public class ListAvailableDiagnosticImagingTypesService implements ListAvailableDiagnosticImagingTypesUseCase {
+public class ListAvailableDiagnosticImagingTypesService
+        implements
+            ListAvailableDiagnosticImagingTypesUseCase {
     private final DiagnosticImagingTypeRepository repository;
 
     public ListAvailableDiagnosticImagingTypesService(DiagnosticImagingTypeRepository repository) {
@@ -18,6 +20,7 @@ public class ListAvailableDiagnosticImagingTypesService implements ListAvailable
 
     @Override
     public List<DiagnosticImagingTypeDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(DiagnosticImagingTypeDto::from).toList();
+        return repository.findAllAvailableForCompany(companyId).stream()
+                .map(DiagnosticImagingTypeDto::from).toList();
     }
 }

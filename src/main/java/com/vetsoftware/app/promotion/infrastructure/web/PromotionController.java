@@ -36,12 +36,9 @@ public class PromotionController {
     private final Authz authz;
 
     public PromotionController(CreatePromotionUseCase createUseCase,
-                              UpdatePromotionUseCase updateUseCase,
-                              FindPromotionUseCase findUseCase,
-                              ListPromotionsUseCase listUseCase,
-                              DeletePromotionUseCase deleteUseCase,
-                              ReactivatePromotionUseCase reactivateUseCase,
-                              Authz authz) {
+            UpdatePromotionUseCase updateUseCase, FindPromotionUseCase findUseCase,
+            ListPromotionsUseCase listUseCase, DeletePromotionUseCase deleteUseCase,
+            ReactivatePromotionUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -54,23 +51,19 @@ public class PromotionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PromotionResponse create(@Valid @RequestBody CreatePromotionRequest request) {
-        return toResponse(createUseCase.execute(new CreatePromotionCommand(
-                request.name(),
+        return toResponse(createUseCase.execute(new CreatePromotionCommand(request.name(),
                 parse(PromotionType.class, request.promotionType(), "promotionType"),
                 parse(ApplicationType.class, request.applicationType(), "applicationType"),
-                request.applicationItem(),
-                parse(ValueType.class, request.valueType(), "valueType"),
-                request.value(),
-                request.startDate(),
-                request.endDate(),
+                request.applicationItem(), parse(ValueType.class, request.valueType(), "valueType"),
+                request.value(), request.startDate(), request.endDate(),
                 parse(PromotionStatus.class, request.promotionStatus(), "promotionStatus"),
                 authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<PromotionResponse> listAll() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -80,17 +73,12 @@ public class PromotionController {
 
     @PutMapping("/{id}")
     public PromotionResponse update(@PathVariable Long id,
-                                    @Valid @RequestBody UpdatePromotionRequest request) {
-        return toResponse(updateUseCase.execute(new UpdatePromotionCommand(
-                id,
-                request.name(),
+            @Valid @RequestBody UpdatePromotionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdatePromotionCommand(id, request.name(),
                 parse(PromotionType.class, request.promotionType(), "promotionType"),
                 parse(ApplicationType.class, request.applicationType(), "applicationType"),
-                request.applicationItem(),
-                parse(ValueType.class, request.valueType(), "valueType"),
-                request.value(),
-                request.startDate(),
-                request.endDate(),
+                request.applicationItem(), parse(ValueType.class, request.valueType(), "valueType"),
+                request.value(), request.startDate(), request.endDate(),
                 parse(PromotionStatus.class, request.promotionStatus(), "promotionStatus"),
                 authz.currentCompanyId())));
     }
@@ -116,19 +104,13 @@ public class PromotionController {
 
     private PromotionResponse toResponse(PromotionDto dto) {
         CompanySummaryDto c = dto.company();
-        return new PromotionResponse(
-                dto.id(),
-                dto.name(),
+        return new PromotionResponse(dto.id(), dto.name(),
                 dto.promotionType() == null ? null : dto.promotionType().name(),
                 dto.applicationType() == null ? null : dto.applicationType().name(),
-                dto.applicationItem(),
-                dto.valueType() == null ? null : dto.valueType().name(),
-                dto.value(),
-                dto.startDate(),
-                dto.endDate(),
+                dto.applicationItem(), dto.valueType() == null ? null : dto.valueType().name(),
+                dto.value(), dto.startDate(), dto.endDate(),
                 dto.promotionStatus() == null ? null : dto.promotionStatus().name(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate(),
-                dto.enabled());
+                dto.createdDate(), dto.enabled());
     }
 }

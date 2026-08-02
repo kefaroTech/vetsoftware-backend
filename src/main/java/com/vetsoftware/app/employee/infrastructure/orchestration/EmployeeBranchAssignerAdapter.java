@@ -7,8 +7,9 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter de orquestación: asigna las sedes del alta vía la feature employeebranch (set atómico). Reusa su
- * validación (sedes ∈ empresa, rechazo de set vacío) e invalidación de cache.
+ * Adapter de orquestación: asigna las sedes del alta vía la feature
+ * employeebranch (set atómico). Reusa su validación (sedes ∈ empresa, rechazo
+ * de set vacío) e invalidación de cache.
  */
 @Component
 public class EmployeeBranchAssignerAdapter implements EmployeeBranchAssigner {

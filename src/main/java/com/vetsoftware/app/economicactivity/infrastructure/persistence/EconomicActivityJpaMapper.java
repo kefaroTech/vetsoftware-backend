@@ -16,11 +16,7 @@ public class EconomicActivityJpaMapper {
     }
 
     public EconomicActivity toDomain(EconomicActivityJpaEntity entity) {
-        return new EconomicActivity(
-            entity.getId(),
-            entity.getCode(),
-            entity.getName(),
-            entity.getCreatedDate(),
-            entity.isEnabled());
+        return new EconomicActivity(entity.getId(), entity.getCode(), entity.getName(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -25,7 +25,9 @@ public class ListTaxesService implements ListTaxesUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<TaxDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata la asociación company LAZY aquí.
+        // readOnly tx: la query nativa trae los pausados y el mapper hidrata la
+        // asociación company LAZY
+        // aquí.
         return repository.findAllDisabledByCompanyId(companyId).stream().map(TaxDto::from).toList();
     }
 }

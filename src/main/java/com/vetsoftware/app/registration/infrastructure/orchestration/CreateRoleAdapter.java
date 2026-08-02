@@ -13,16 +13,15 @@ public class CreateRoleAdapter implements RoleCreator {
     private final SystemAuthRunner systemAuthRunner;
 
     public CreateRoleAdapter(CreateRoleUseCase createRoleUseCase,
-                             SystemAuthRunner systemAuthRunner) {
+            SystemAuthRunner systemAuthRunner) {
         this.createRoleUseCase = createRoleUseCase;
         this.systemAuthRunner = systemAuthRunner;
     }
 
     @Override
     public RoleResult create(String name, String code, Long companyId) {
-        var dto = systemAuthRunner.call(() -> createRoleUseCase.execute(
-            new CreateRoleCommand(name, code, companyId)
-        ));
+        var dto = systemAuthRunner.call(
+                () -> createRoleUseCase.execute(new CreateRoleCommand(name, code, companyId)));
         return new RoleResult(dto.id());
     }
 }

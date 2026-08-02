@@ -11,16 +11,19 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JpaHospitalizationProgressNoteRepository implements HospitalizationProgressNoteRepository {
+public class JpaHospitalizationProgressNoteRepository
+        implements
+            HospitalizationProgressNoteRepository {
     private final HospitalizationProgressNoteJpaRepository jpaRepository;
     private final HospitalizationProgressNoteJpaMapper mapper;
     private final HospitalizationJpaRepository hospitalizationJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaHospitalizationProgressNoteRepository(HospitalizationProgressNoteJpaRepository jpaRepository,
-                                                   HospitalizationProgressNoteJpaMapper mapper,
-                                                   HospitalizationJpaRepository hospitalizationJpaRepository,
-                                                   EmployeeJpaRepository employeeJpaRepository) {
+    public JpaHospitalizationProgressNoteRepository(
+            HospitalizationProgressNoteJpaRepository jpaRepository,
+            HospitalizationProgressNoteJpaMapper mapper,
+            HospitalizationJpaRepository hospitalizationJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.hospitalizationJpaRepository = hospitalizationJpaRepository;
@@ -29,13 +32,14 @@ public class JpaHospitalizationProgressNoteRepository implements Hospitalization
 
     @Override
     public HospitalizationProgressNote save(HospitalizationProgressNote progressNote) {
-        HospitalizationJpaEntity hospitalization =
-            hospitalizationJpaRepository.getReferenceById(progressNote.getHospitalization().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(progressNote.getCreatedBy().id());
-        HospitalizationProgressNoteJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(progressNote, hospitalization, createdBy));
-        return mapper.toDomain(saved, progressNote.getHospitalization(), progressNote.getCreatedBy());
+        HospitalizationJpaEntity hospitalization = hospitalizationJpaRepository
+                .getReferenceById(progressNote.getHospitalization().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(progressNote.getCreatedBy().id());
+        HospitalizationProgressNoteJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(progressNote, hospitalization, createdBy));
+        return mapper.toDomain(saved, progressNote.getHospitalization(),
+                progressNote.getCreatedBy());
     }
 
     @Override
@@ -45,13 +49,14 @@ public class JpaHospitalizationProgressNoteRepository implements Hospitalization
 
     @Override
     public Optional<HospitalizationProgressNote> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId).map(mapper::toDomain);
+        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public List<HospitalizationProgressNote> findAllByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationId(hospitalizationId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override

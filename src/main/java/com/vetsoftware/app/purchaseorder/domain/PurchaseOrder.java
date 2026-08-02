@@ -8,10 +8,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Orden de compra = pedido de productos a un proveedor para una sede. Agregado company-scoped con soft-delete
- * y bloqueo optimista (@Version). Su ciclo de vida lo gobierna {@link PurchaseOrderStatus}: se crea en DRAFT
- * (editable), se emite con {@link #place}, se recibe línea a línea (mueve a PARTIALLY_RECEIVED/RECEIVED) y
- * puede cancelarse mientras no se haya recibido nada.
+ * Orden de compra = pedido de productos a un proveedor para una sede. Agregado
+ * company-scoped con soft-delete y bloqueo optimista (@Version). Su ciclo de
+ * vida lo gobierna {@link PurchaseOrderStatus}: se crea en DRAFT (editable), se
+ * emite con {@link #place}, se recibe línea a línea (mueve a
+ * PARTIALLY_RECEIVED/RECEIVED) y puede cancelarse mientras no se haya recibido
+ * nada.
  */
 public class PurchaseOrder {
     private Long id;
@@ -31,9 +33,9 @@ public class PurchaseOrder {
     private boolean enabled;
 
     public PurchaseOrder(Long id, CompanyRef company, BranchRef branch, SupplierRef supplier,
-                         PurchaseOrderStatus status, LocalDate orderDate, LocalDate expectedDate, String notes,
-                         List<PurchaseOrderLine> lines, LocalDateTime createdDate, Long createdBy,
-                         LocalDateTime updatedDate, Long updatedBy, Long version, boolean enabled) {
+            PurchaseOrderStatus status, LocalDate orderDate, LocalDate expectedDate, String notes,
+            List<PurchaseOrderLine> lines, LocalDateTime createdDate, Long createdBy,
+            LocalDateTime updatedDate, Long updatedBy, Long version, boolean enabled) {
         validate(company, branch, supplier, status, orderDate, notes, lines);
         this.id = id;
         this.company = company;
@@ -53,18 +55,20 @@ public class PurchaseOrder {
     }
 
     public static PurchaseOrder create(CompanyRef company, BranchRef branch, SupplierRef supplier,
-                                       LocalDate orderDate, LocalDate expectedDate, String notes,
-                                       List<PurchaseOrderLine> lines, Long createdBy) {
+            LocalDate orderDate, LocalDate expectedDate, String notes,
+            List<PurchaseOrderLine> lines, Long createdBy) {
         return new PurchaseOrder(null, company, branch, supplier, PurchaseOrderStatus.DRAFT,
-            orderDate, expectedDate, notes, lines, LocalDateTime.now(), createdBy, null, null, null, true);
+                orderDate, expectedDate, notes, lines, LocalDateTime.now(), createdBy, null, null,
+                null, true);
     }
 
     /** Edita cabecera y líneas. Solo permitido en DRAFT. */
-    public void update(BranchRef branch, SupplierRef supplier, LocalDate orderDate, LocalDate expectedDate,
-                       String notes, List<PurchaseOrderLine> lines, Long updatedBy, Long expectedVersion) {
+    public void update(BranchRef branch, SupplierRef supplier, LocalDate orderDate,
+            LocalDate expectedDate, String notes, List<PurchaseOrderLine> lines, Long updatedBy,
+            Long expectedVersion) {
         if (status != PurchaseOrderStatus.DRAFT) {
             throw new InvalidPurchaseOrderStatusTransitionException(
-                "Purchase order can only be edited while in DRAFT (current: " + status + ")");
+                    "Purchase order can only be edited while in DRAFT (current: " + status + ")");
         }
         validate(company, branch, supplier, status, orderDate, notes, lines);
         this.branch = branch;
@@ -81,7 +85,8 @@ public class PurchaseOrder {
     /** DRAFT → PLACED (emite la orden al proveedor). */
     public void place(Long updatedBy) {
         if (status != PurchaseOrderStatus.DRAFT) {
-            throw new InvalidPurchaseOrderStatusTransitionException(status, PurchaseOrderStatus.PLACED);
+            throw new InvalidPurchaseOrderStatusTransitionException(status,
+                    PurchaseOrderStatus.PLACED);
         }
         this.status = PurchaseOrderStatus.PLACED;
         touch(updatedBy);
@@ -90,17 +95,21 @@ public class PurchaseOrder {
     /** DRAFT/PLACED → CANCELLED. No se puede cancelar si ya hay algo recibido. */
     public void cancel(Long updatedBy) {
         if (status != PurchaseOrderStatus.DRAFT && status != PurchaseOrderStatus.PLACED) {
-            throw new InvalidPurchaseOrderStatusTransitionException(status, PurchaseOrderStatus.CANCELLED);
+            throw new InvalidPurchaseOrderStatusTransitionException(status,
+                    PurchaseOrderStatus.CANCELLED);
         }
         if (lines.stream().anyMatch(l -> l.getQuantityReceived() > 0)) {
             throw new InvalidPurchaseOrderStatusTransitionException(
-                "Cannot cancel a purchase order that already has received items");
+                    "Cannot cancel a purchase order that already has received items");
         }
         this.status = PurchaseOrderStatus.CANCELLED;
         touch(updatedBy);
     }
 
-    /** Aplica lo recibido a una línea concreta (usado por la recepción de mercancía). */
+    /**
+     * Aplica lo recibido a una línea concreta (usado por la recepción de
+     * mercancía).
+     */
     public void receiveLine(Long purchaseOrderLineId, int quantity) {
         lineById(purchaseOrderLineId).receive(quantity);
     }
@@ -110,7 +119,10 @@ public class PurchaseOrder {
         lineById(purchaseOrderLineId).revertReceive(quantity);
     }
 
-    /** Recalcula el estado tras aplicar recepciones: todo recibido → RECEIVED; algo recibido → PARTIALLY_RECEIVED. */
+    /**
+     * Recalcula el estado tras aplicar recepciones: todo recibido → RECEIVED; algo
+     * recibido → PARTIALLY_RECEIVED.
+     */
     public void recalculateStatusAfterReceipt(Long updatedBy) {
         if (lines.stream().allMatch(PurchaseOrderLine::isFullyReceived)) {
             this.status = PurchaseOrderStatus.RECEIVED;
@@ -120,7 +132,10 @@ public class PurchaseOrder {
         touch(updatedBy);
     }
 
-    /** Recalcula el estado tras revertir recepciones: algo recibido → PARTIALLY_RECEIVED; nada → PLACED. */
+    /**
+     * Recalcula el estado tras revertir recepciones: algo recibido →
+     * PARTIALLY_RECEIVED; nada → PLACED.
+     */
     public void recalculateStatusAfterRevert(Long updatedBy) {
         if (lines.stream().anyMatch(l -> l.getQuantityReceived() > 0)) {
             this.status = PurchaseOrderStatus.PARTIALLY_RECEIVED;
@@ -131,12 +146,11 @@ public class PurchaseOrder {
     }
 
     private PurchaseOrderLine lineById(Long purchaseOrderLineId) {
-        if (purchaseOrderLineId == null) throw new IllegalArgumentException("purchase order line id is required");
-        return lines.stream()
-            .filter(l -> purchaseOrderLineId.equals(l.getId()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Purchase order line " + purchaseOrderLineId + " not found in order " + id));
+        if (purchaseOrderLineId == null)
+            throw new IllegalArgumentException("purchase order line id is required");
+        return lines.stream().filter(l -> purchaseOrderLineId.equals(l.getId())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Purchase order line "
+                        + purchaseOrderLineId + " not found in order " + id));
     }
 
     private void touch(Long updatedBy) {
@@ -145,39 +159,98 @@ public class PurchaseOrder {
     }
 
     private static void validate(CompanyRef company, BranchRef branch, SupplierRef supplier,
-                                 PurchaseOrderStatus status, LocalDate orderDate, String notes,
-                                 List<PurchaseOrderLine> lines) {
-        if (company == null) throw new IllegalArgumentException("company is required");
-        if (branch == null) throw new IllegalArgumentException("branch is required");
-        if (supplier == null) throw new IllegalArgumentException("supplier is required");
-        if (status == null) throw new IllegalArgumentException("status is required");
-        if (orderDate == null) throw new IllegalArgumentException("orderDate is required");
-        if (notes != null && notes.length() > 500) throw new IllegalArgumentException("notes must be 500 chars or less");
-        if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("purchase order must have at least one line");
+            PurchaseOrderStatus status, LocalDate orderDate, String notes,
+            List<PurchaseOrderLine> lines) {
+        if (company == null)
+            throw new IllegalArgumentException("company is required");
+        if (branch == null)
+            throw new IllegalArgumentException("branch is required");
+        if (supplier == null)
+            throw new IllegalArgumentException("supplier is required");
+        if (status == null)
+            throw new IllegalArgumentException("status is required");
+        if (orderDate == null)
+            throw new IllegalArgumentException("orderDate is required");
+        if (notes != null && notes.length() > 500)
+            throw new IllegalArgumentException("notes must be 500 chars or less");
+        if (lines == null || lines.isEmpty())
+            throw new IllegalArgumentException("purchase order must have at least one line");
         Set<Long> productIds = new HashSet<>();
         for (PurchaseOrderLine line : lines) {
-            if (line == null) throw new IllegalArgumentException("purchase order line is required");
+            if (line == null)
+                throw new IllegalArgumentException("purchase order line is required");
             if (!productIds.add(line.getProduct().id())) {
-                throw new IllegalArgumentException("duplicate product in purchase order lines: " + line.getProduct().id());
+                throw new IllegalArgumentException(
+                        "duplicate product in purchase order lines: " + line.getProduct().id());
             }
         }
     }
 
-    public Long getId() { return id; }
-    public CompanyRef getCompany() { return company; }
-    public BranchRef getBranch() { return branch; }
-    public SupplierRef getSupplier() { return supplier; }
-    public PurchaseOrderStatus getStatus() { return status; }
-    public LocalDate getOrderDate() { return orderDate; }
-    public LocalDate getExpectedDate() { return expectedDate; }
-    public String getNotes() { return notes; }
-    public List<PurchaseOrderLine> getLines() { return List.copyOf(lines); }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public Long getCreatedBy() { return createdBy; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public Long getVersion() { return version; }
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public Long getId() {
+        return id;
+    }
+
+    public CompanyRef getCompany() {
+        return company;
+    }
+
+    public BranchRef getBranch() {
+        return branch;
+    }
+
+    public SupplierRef getSupplier() {
+        return supplier;
+    }
+
+    public PurchaseOrderStatus getStatus() {
+        return status;
+    }
+
+    public LocalDate getOrderDate() {
+        return orderDate;
+    }
+
+    public LocalDate getExpectedDate() {
+        return expectedDate;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public List<PurchaseOrderLine> getLines() {
+        return List.copyOf(lines);
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
 }

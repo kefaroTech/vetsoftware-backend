@@ -6,9 +6,14 @@ import java.util.Optional;
 
 public interface EmployeeRoleRepository {
     EmployeeRole save(EmployeeRole employeeRole);
+
     Optional<EmployeeRole> findById(Long id);
+
     List<EmployeeRole> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
+
     Optional<Long> findDisabledIdByEmployeeAndRole(Long employeeId, Long roleId);
 }

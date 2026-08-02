@@ -18,7 +18,7 @@ public class DeleteWeightRecordService implements DeleteWeightRecordUseCase {
     @Override
     public void execute(Long id, Long animalId, Long companyId) {
         repository.findByIdAndAnimalIdAndCompanyId(id, animalId, companyId)
-            .orElseThrow(() -> new WeightRecordNotFoundException(id));
+                .orElseThrow(() -> new WeightRecordNotFoundException(id));
         repository.delete(id, companyId);
     }
 }

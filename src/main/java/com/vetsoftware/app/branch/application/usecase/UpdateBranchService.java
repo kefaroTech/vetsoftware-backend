@@ -27,13 +27,14 @@ public class UpdateBranchService implements UpdateBranchUseCase {
     @Transactional
     public BranchDto execute(UpdateBranchCommand command) {
         Branch branch = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new BranchNotFoundException(command.id()));
+                .orElseThrow(() -> new BranchNotFoundException(command.id()));
         String code = command.code() == null ? null : command.code().trim();
-        if (code != null && repository.codeExistsForOther(command.companyId(), code, command.id())) {
+        if (code != null
+                && repository.codeExistsForOther(command.companyId(), code, command.id())) {
             throw new IllegalArgumentException("Branch code already in use: " + code);
         }
-        CityRef city = cityQueryPort.findById(command.cityId())
-            .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
+        CityRef city = cityQueryPort.findById(command.cityId()).orElseThrow(
+                () -> new IllegalArgumentException("City not found: " + command.cityId()));
         branch.update(command.name(), code, command.address(), command.phone(), city);
         return BranchDto.from(repository.save(branch));
     }

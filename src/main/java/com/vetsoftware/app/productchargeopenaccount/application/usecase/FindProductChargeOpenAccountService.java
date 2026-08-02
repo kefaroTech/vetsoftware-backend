@@ -19,6 +19,6 @@ public class FindProductChargeOpenAccountService implements FindProductChargeOpe
     @Override
     public ProductChargeOpenAccountDto findById(Long id, Long companyId) {
         return ProductChargeOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(id)));
+                .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(id)));
     }
 }

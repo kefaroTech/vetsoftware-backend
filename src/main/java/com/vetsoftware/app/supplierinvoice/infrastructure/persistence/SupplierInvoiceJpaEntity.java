@@ -14,9 +14,11 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Factura de proveedor / cuenta por pagar (cabecera). {@code purchase_order_id} y {@code goods_receipt_id} son
- * columnas Long peladas (enlace por id, sin @ManyToOne a esas features, para no acoplar el modelo JPA). Los abonos
- * cuelgan por cascade + orphanRemoval.
+ * Factura de proveedor / cuenta por pagar (cabecera). {@code purchase_order_id}
+ * y {@code
+ * goods_receipt_id} son columnas Long peladas (enlace por id, sin @ManyToOne a
+ * esas features, para no acoplar el modelo JPA). Los abonos cuelgan por cascade
+ * + orphanRemoval.
  */
 @Entity
 @Table(name = "supplier_invoices")
@@ -95,52 +97,184 @@ public class SupplierInvoiceJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected SupplierInvoiceJpaEntity() {}
+    protected SupplierInvoiceJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public BranchJpaEntity getBranch() { return branch; }
-    public void setBranch(BranchJpaEntity branch) { this.branch = branch; }
-    public SupplierJpaEntity getSupplier() { return supplier; }
-    public void setSupplier(SupplierJpaEntity supplier) { this.supplier = supplier; }
-    public Long getPurchaseOrderId() { return purchaseOrderId; }
-    public void setPurchaseOrderId(Long purchaseOrderId) { this.purchaseOrderId = purchaseOrderId; }
-    public Long getGoodsReceiptId() { return goodsReceiptId; }
-    public void setGoodsReceiptId(Long goodsReceiptId) { this.goodsReceiptId = goodsReceiptId; }
-    public String getInvoiceNumber() { return invoiceNumber; }
-    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
-    public LocalDate getIssueDate() { return issueDate; }
-    public void setIssueDate(LocalDate issueDate) { this.issueDate = issueDate; }
-    public LocalDate getDueDate() { return dueDate; }
-    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
-    public BigDecimal getSubtotal() { return subtotal; }
-    public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
-    public BigDecimal getTaxAmount() { return taxAmount; }
-    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
-    public BigDecimal getWithholdingAmount() { return withholdingAmount; }
-    public void setWithholdingAmount(BigDecimal withholdingAmount) { this.withholdingAmount = withholdingAmount; }
-    public BigDecimal getTotal() { return total; }
-    public void setTotal(BigDecimal total) { this.total = total; }
-    public SupplierInvoiceStatus getStatus() { return status; }
-    public void setStatus(SupplierInvoiceStatus status) { this.status = status; }
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-    public List<SupplierInvoicePaymentJpaEntity> getPayments() { return payments; }
-    public void setPayments(List<SupplierInvoicePaymentJpaEntity> payments) { this.payments = payments; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public Long getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public BranchJpaEntity getBranch() {
+        return branch;
+    }
+
+    public void setBranch(BranchJpaEntity branch) {
+        this.branch = branch;
+    }
+
+    public SupplierJpaEntity getSupplier() {
+        return supplier;
+    }
+
+    public void setSupplier(SupplierJpaEntity supplier) {
+        this.supplier = supplier;
+    }
+
+    public Long getPurchaseOrderId() {
+        return purchaseOrderId;
+    }
+
+    public void setPurchaseOrderId(Long purchaseOrderId) {
+        this.purchaseOrderId = purchaseOrderId;
+    }
+
+    public Long getGoodsReceiptId() {
+        return goodsReceiptId;
+    }
+
+    public void setGoodsReceiptId(Long goodsReceiptId) {
+        this.goodsReceiptId = goodsReceiptId;
+    }
+
+    public String getInvoiceNumber() {
+        return invoiceNumber;
+    }
+
+    public void setInvoiceNumber(String invoiceNumber) {
+        this.invoiceNumber = invoiceNumber;
+    }
+
+    public LocalDate getIssueDate() {
+        return issueDate;
+    }
+
+    public void setIssueDate(LocalDate issueDate) {
+        this.issueDate = issueDate;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount;
+    }
+
+    public BigDecimal getWithholdingAmount() {
+        return withholdingAmount;
+    }
+
+    public void setWithholdingAmount(BigDecimal withholdingAmount) {
+        this.withholdingAmount = withholdingAmount;
+    }
+
+    public BigDecimal getTotal() {
+        return total;
+    }
+
+    public void setTotal(BigDecimal total) {
+        this.total = total;
+    }
+
+    public SupplierInvoiceStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(SupplierInvoiceStatus status) {
+        this.status = status;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public List<SupplierInvoicePaymentJpaEntity> getPayments() {
+        return payments;
+    }
+
+    public void setPayments(List<SupplierInvoicePaymentJpaEntity> payments) {
+        this.payments = payments;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(LocalDateTime updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     /** Añade un abono manteniendo el back-reference para el cascade persist. */
     public void addPayment(SupplierInvoicePaymentJpaEntity payment) {

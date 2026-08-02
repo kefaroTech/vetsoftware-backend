@@ -15,6 +15,7 @@ public class SpecieJpaMapper {
     }
 
     public Specie toDomain(SpecieJpaEntity entity) {
-        return new Specie(entity.getId(), entity.getName(), entity.getCreatedDate(), entity.isEnabled());
+        return new Specie(entity.getId(), entity.getName(), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

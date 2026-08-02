@@ -14,8 +14,10 @@ public class JpaCashTerminalQueryPort implements CashTerminalQueryPort {
 
     @Override
     public Optional<TerminalRef> findActive(Long terminalId, Long companyId, Long branchId) {
-        if (terminalId == null) return Optional.empty();
-        return repository.findByIdAndCompanyIdAndBranchIdAndActiveTrue(terminalId, companyId, branchId)
-            .map(t -> new TerminalRef(t.getId(), t.getName(), t.getCode()));
+        if (terminalId == null)
+            return Optional.empty();
+        return repository
+                .findByIdAndCompanyIdAndBranchIdAndActiveTrue(terminalId, companyId, branchId)
+                .map(t -> new TerminalRef(t.getId(), t.getName(), t.getCode()));
     }
 }

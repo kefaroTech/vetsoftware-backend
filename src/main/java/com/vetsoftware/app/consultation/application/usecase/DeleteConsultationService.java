@@ -27,8 +27,7 @@ public class DeleteConsultationService implements DeleteConsultationUseCase {
     private final LaboratoryTestChildrenQueryPort laboratoryTestChildrenQueryPort;
     private final PrescriptionChildrenQueryPort prescriptionChildrenQueryPort;
 
-    public DeleteConsultationService(
-            ConsultationRepository repository,
+    public DeleteConsultationService(ConsultationRepository repository,
             VaccinationChildrenQueryPort vaccinationChildrenQueryPort,
             SurgeryChildrenQueryPort surgeryChildrenQueryPort,
             HospitalizationChildrenQueryPort hospitalizationChildrenQueryPort,
@@ -50,9 +49,9 @@ public class DeleteConsultationService implements DeleteConsultationUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         var consultation = (companyId == null
-            ? repository.findById(id)
-            : repository.findByIdAndCompanyId(id, companyId))
-            .orElseThrow(() -> new ConsultationNotFoundException(id));
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new ConsultationNotFoundException(id));
         Long effectiveCompanyId = companyId == null ? consultation.getCompany().id() : companyId;
         if (vaccinationChildrenQueryPort.existsActiveByConsultationId(id)) {
             throw new ConsultationHasActiveChildrenException(id, "vaccination");

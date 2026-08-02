@@ -18,9 +18,8 @@ public class JpaSystemUserPermissionRepository implements SystemUserPermissionRe
     private final SystemPermissionJpaRepository systemPermissionJpaRepository;
 
     public JpaSystemUserPermissionRepository(SystemUserPermissionJpaRepository jpaRepository,
-                                             SystemUserPermissionJpaMapper mapper,
-                                             SystemUserJpaRepository systemUserJpaRepository,
-                                             SystemPermissionJpaRepository systemPermissionJpaRepository) {
+            SystemUserPermissionJpaMapper mapper, SystemUserJpaRepository systemUserJpaRepository,
+            SystemPermissionJpaRepository systemPermissionJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.systemUserJpaRepository = systemUserJpaRepository;
@@ -29,10 +28,14 @@ public class JpaSystemUserPermissionRepository implements SystemUserPermissionRe
 
     @Override
     public SystemUserPermission save(SystemUserPermission systemUserPermission) {
-        SystemUserJpaEntity systemUser = systemUserJpaRepository.getReferenceById(systemUserPermission.getSystemUser().id());
-        SystemPermissionJpaEntity systemPermission = systemPermissionJpaRepository.getReferenceById(systemUserPermission.getSystemPermission().id());
-        SystemUserPermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(systemUserPermission, systemUser, systemPermission));
-        return mapper.toDomain(saved, systemUserPermission.getSystemUser(), systemUserPermission.getSystemPermission());
+        SystemUserJpaEntity systemUser = systemUserJpaRepository
+                .getReferenceById(systemUserPermission.getSystemUser().id());
+        SystemPermissionJpaEntity systemPermission = systemPermissionJpaRepository
+                .getReferenceById(systemUserPermission.getSystemPermission().id());
+        SystemUserPermissionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(systemUserPermission, systemUser, systemPermission));
+        return mapper.toDomain(saved, systemUserPermission.getSystemUser(),
+                systemUserPermission.getSystemPermission());
     }
 
     @Override
@@ -56,7 +59,9 @@ public class JpaSystemUserPermissionRepository implements SystemUserPermissionRe
     }
 
     @Override
-    public Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId, Long systemPermissionId) {
-        return jpaRepository.findDisabledIdBySystemUserAndSystemPermission(systemUserId, systemPermissionId);
+    public Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId,
+            Long systemPermissionId) {
+        return jpaRepository.findDisabledIdBySystemUserAndSystemPermission(systemUserId,
+                systemPermissionId);
     }
 }

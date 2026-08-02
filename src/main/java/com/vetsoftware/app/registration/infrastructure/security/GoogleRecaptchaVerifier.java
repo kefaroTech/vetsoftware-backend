@@ -15,13 +15,18 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 /**
- * Adapter de reCAPTCHA (Google). Verifica el token server-side contra {@code siteverify}. Soporta v2
- * (solo {@code success}) y v3 (ademas {@code score}, comparado contra {@code min-score}).
+ * Adapter de reCAPTCHA (Google). Verifica el token server-side contra
+ * {@code siteverify}. Soporta v2 (solo {@code success}) y v3 (ademas
+ * {@code score}, comparado contra {@code min-score}).
  *
- * <p>Se controla por configuracion:
+ * <p>
+ * Se controla por configuracion:
+ *
  * <ul>
- *   <li>{@code vetsoftware.recaptcha.enabled=false} (por defecto) → no-op, util en dev/local y tests.</li>
- *   <li>{@code vetsoftware.recaptcha.secret} → llave secreta del proveedor (por env, sin versionar).</li>
+ * <li>{@code vetsoftware.recaptcha.enabled=false} (por defecto) → no-op, util
+ * en dev/local y tests.
+ * <li>{@code vetsoftware.recaptcha.secret} → llave secreta del proveedor (por
+ * env, sin versionar).
  * </ul>
  */
 @Component
@@ -35,8 +40,7 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
     private final double minScore;
     private final RestClient restClient;
 
-    public GoogleRecaptchaVerifier(
-            @Value("${vetsoftware.recaptcha.enabled:false}") boolean enabled,
+    public GoogleRecaptchaVerifier(@Value("${vetsoftware.recaptcha.enabled:false}") boolean enabled,
             @Value("${vetsoftware.recaptcha.secret:}") String secret,
             @Value("${vetsoftware.recaptcha.verify-url:https://www.google.com/recaptcha/api/siteverify}") String verifyUrl,
             @Value("${vetsoftware.recaptcha.min-score:0.5}") double minScore,
@@ -53,10 +57,12 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
 
     @Override
     public void verify(String captchaToken, String remoteIp) {
-        if (!enabled) return;
+        if (!enabled)
+            return;
 
         if (secret == null || secret.isBlank()) {
-            // Config invalida: captcha activo pero sin secreto. Fallar cerrado (no permitir registro).
+            // Config invalida: captcha activo pero sin secreto. Fallar cerrado (no permitir
+            // registro).
             log.error("reCAPTCHA enabled but 'vetsoftware.recaptcha.secret' is not set");
             throw new CaptchaVerificationException("Captcha is not configured");
         }
@@ -69,12 +75,10 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
             MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
             form.add("secret", secret);
             form.add("response", captchaToken);
-            if (remoteIp != null && !remoteIp.isBlank()) form.add("remoteip", remoteIp);
-            result = restClient.post()
-                    .uri(verifyUrl)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
-                    .retrieve()
+            if (remoteIp != null && !remoteIp.isBlank())
+                form.add("remoteip", remoteIp);
+            result = restClient.post().uri(verifyUrl)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED).body(form).retrieve()
                     .body(SiteVerifyResponse.class);
         } catch (Exception e) {
             log.error("reCAPTCHA verification call failed: {}", e.getMessage());
@@ -91,7 +95,7 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SiteVerifyResponse(
-            @JsonProperty("success") boolean success,
-            @JsonProperty("score") Double score) {}
+    private record SiteVerifyResponse(@JsonProperty("success") boolean success,
+            @JsonProperty("score") Double score) {
+    }
 }

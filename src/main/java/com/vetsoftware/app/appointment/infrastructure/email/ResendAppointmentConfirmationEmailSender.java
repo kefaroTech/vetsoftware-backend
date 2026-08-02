@@ -12,26 +12,31 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Correo de confirmación de cita enviado con una <b>plantilla de Resend</b> ({@code template: { id, variables }}).
- * Async y no bloqueante (lo garantiza {@link ResendEmailClient}): si Resend falla, el agendamiento continúa.
+ * Correo de confirmación de cita enviado con una <b>plantilla de Resend</b>
+ * ({@code template: { id,
+ * variables }}). Async y no bloqueante (lo garantiza
+ * {@link ResendEmailClient}): si Resend falla, el agendamiento continúa.
  *
- * <p>Variables de la plantilla (placeholders {@code {{{VARIABLE}}}} del HTML en Resend):
- * RECIPIENT_NAME, RECIPIENT_EMAIL, COMPANY_NAME, APPOINTMENT_DATE, APPOINTMENT_TIME, APPOINTMENT_TYPE,
- * VET_NAME, PET_NAME, BRANCH_NAME, BRANCH_ADDRESS, NOTES.
+ * <p>
+ * Variables de la plantilla (placeholders {@code {{{VARIABLE}}}} del HTML en
+ * Resend): RECIPIENT_NAME, RECIPIENT_EMAIL, COMPANY_NAME, APPOINTMENT_DATE,
+ * APPOINTMENT_TIME, APPOINTMENT_TYPE, VET_NAME, PET_NAME, BRANCH_NAME,
+ * BRANCH_ADDRESS, NOTES.
  */
 @Component
-public class ResendAppointmentConfirmationEmailSender implements AppointmentConfirmationEmailSender {
+public class ResendAppointmentConfirmationEmailSender
+        implements
+            AppointmentConfirmationEmailSender {
 
     private static final Locale ES_CO = Locale.forLanguageTag("es-CO");
-    private static final DateTimeFormatter DATE_FMT =
-        DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", ES_CO);
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter
+            .ofPattern("EEEE, d 'de' MMMM 'de' yyyy", ES_CO);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", ES_CO);
 
     private final ResendEmailClient email;
     private final String templateId;
 
-    public ResendAppointmentConfirmationEmailSender(
-            ResendEmailClient email,
+    public ResendAppointmentConfirmationEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.appointment.confirmation-template-id:}") String templateId) {
         this.email = email;
         this.templateId = templateId;
@@ -59,7 +64,8 @@ public class ResendAppointmentConfirmationEmailSender implements AppointmentConf
     }
 
     private static String typeLabel(AppointmentType type) {
-        if (type == null) return "Cita";
+        if (type == null)
+            return "Cita";
         return switch (type) {
             case CONSULTATION -> "Consulta";
             case CONTROL -> "Control";
@@ -74,7 +80,8 @@ public class ResendAppointmentConfirmationEmailSender implements AppointmentConf
     }
 
     private static String capitalize(String s) {
-        if (s == null || s.isEmpty()) return s;
+        if (s == null || s.isEmpty())
+            return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 

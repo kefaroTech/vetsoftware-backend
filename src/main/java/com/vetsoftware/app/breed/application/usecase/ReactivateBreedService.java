@@ -21,8 +21,9 @@ public class ReactivateBreedService implements ReactivateBreedUseCase {
     @Transactional
     public BreedDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new BreedNotFoundException(id);
-        return BreedDto.from(repository.findById(id)
-            .orElseThrow(() -> new BreedNotFoundException(id)));
+        if (rows == 0)
+            throw new BreedNotFoundException(id);
+        return BreedDto
+                .from(repository.findById(id).orElseThrow(() -> new BreedNotFoundException(id)));
     }
 }

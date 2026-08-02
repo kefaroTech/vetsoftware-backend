@@ -11,8 +11,7 @@ class AuditOutboxPropertiesTest {
         AuditOutboxProperties properties = new AuditOutboxProperties();
         properties.setBatchSize(501);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(properties::validate).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("entre 1 y 500");
     }
 
@@ -21,8 +20,7 @@ class AuditOutboxPropertiesTest {
         AuditOutboxProperties properties = new AuditOutboxProperties();
         properties.setPublisherEnabled(true);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(properties::validate).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("delivery-stream-name");
     }
 
@@ -31,8 +29,7 @@ class AuditOutboxPropertiesTest {
         AuditOutboxProperties properties = new AuditOutboxProperties();
         properties.setAccessKey("test");
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(properties::validate).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("deben configurarse juntos");
     }
 }

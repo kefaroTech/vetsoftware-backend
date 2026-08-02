@@ -18,9 +18,9 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     private final EmployeeJpaRepository employeeJpaRepository;
 
     public JpaProcedureScheduleRepository(ProcedureScheduleJpaRepository jpaRepository,
-                                          ProcedureScheduleJpaMapper mapper,
-                                          HospitalizationProcedureJpaRepository hospitalizationProcedureJpaRepository,
-                                          EmployeeJpaRepository employeeJpaRepository) {
+            ProcedureScheduleJpaMapper mapper,
+            HospitalizationProcedureJpaRepository hospitalizationProcedureJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.hospitalizationProcedureJpaRepository = hospitalizationProcedureJpaRepository;
@@ -29,13 +29,14 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
 
     @Override
     public ProcedureSchedule save(ProcedureSchedule procedureSchedule) {
-        HospitalizationProcedureJpaEntity hospitalizationProcedure =
-            hospitalizationProcedureJpaRepository.getReferenceById(procedureSchedule.getHospitalizationProcedure().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(procedureSchedule.getCreatedBy().id());
-        ProcedureScheduleJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(procedureSchedule, hospitalizationProcedure, createdBy));
-        return mapper.toDomain(saved, procedureSchedule.getHospitalizationProcedure(), procedureSchedule.getCreatedBy());
+        HospitalizationProcedureJpaEntity hospitalizationProcedure = hospitalizationProcedureJpaRepository
+                .getReferenceById(procedureSchedule.getHospitalizationProcedure().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(procedureSchedule.getCreatedBy().id());
+        ProcedureScheduleJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(procedureSchedule, hospitalizationProcedure, createdBy));
+        return mapper.toDomain(saved, procedureSchedule.getHospitalizationProcedure(),
+                procedureSchedule.getCreatedBy());
     }
 
     @Override
@@ -44,15 +45,16 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     }
 
     @Override
-    public List<ProcedureSchedule> findByHospitalizationProcedureId(Long hospitalizationProcedureId) {
+    public List<ProcedureSchedule> findByHospitalizationProcedureId(
+            Long hospitalizationProcedureId) {
         return jpaRepository.findByHospitalizationProcedureId(hospitalizationProcedureId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override
     public List<ProcedureSchedule> findByHospitalizationId(Long hospitalizationId) {
-        return jpaRepository.findByHospitalizationProcedureHospitalizationId(hospitalizationId).stream()
-            .map(mapper::toDomain).toList();
+        return jpaRepository.findByHospitalizationProcedureHospitalizationId(hospitalizationId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

@@ -27,9 +27,9 @@ public class UpdateCityService implements UpdateCityUseCase {
     @Transactional
     public CityDto execute(UpdateCityCommand command) {
         City city = repository.findById(command.id())
-            .orElseThrow(() -> new CityNotFoundException(command.id()));
-        StateRef state = stateQueryPort.findById(command.stateId())
-            .orElseThrow(() -> new IllegalArgumentException("State not found: " + command.stateId()));
+                .orElseThrow(() -> new CityNotFoundException(command.id()));
+        StateRef state = stateQueryPort.findById(command.stateId()).orElseThrow(
+                () -> new IllegalArgumentException("State not found: " + command.stateId()));
         city.update(command.name(), state, command.daneCode());
         return CityDto.from(repository.save(city));
     }

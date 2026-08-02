@@ -44,15 +44,42 @@ public class ClinicalEventViewJpaEntity {
     @Column(name = "summary", length = 255)
     private String summary;
 
-    protected ClinicalEventViewJpaEntity() {}
+    protected ClinicalEventViewJpaEntity() {
+    }
 
-    public String getCompositeKey() { return compositeKey; }
-    public Long getSourceId() { return sourceId; }
-    public Long getAnimalId() { return animalId; }
-    public Long getCompanyId() { return companyId; }
-    public Long getConsultationId() { return consultationId; }
-    public LocalDate getEventDate() { return eventDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public ClinicalEventType getEventType() { return eventType; }
-    public String getSummary() { return summary; }
+    public String getCompositeKey() {
+        return compositeKey;
+    }
+
+    public Long getSourceId() {
+        return sourceId;
+    }
+
+    public Long getAnimalId() {
+        return animalId;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public Long getConsultationId() {
+        return consultationId;
+    }
+
+    public LocalDate getEventDate() {
+        return eventDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public ClinicalEventType getEventType() {
+        return eventType;
+    }
+
+    public String getSummary() {
+        return summary;
+    }
 }

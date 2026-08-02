@@ -4,8 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record UpdateCityRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotNull Long stateId,
-        @Size(max = 5) String daneCode
-) {}
+public record UpdateCityRequest(@NotBlank @Size(max = 100) String name, @NotNull Long stateId,
+        @Size(max = 5) String daneCode) {
+}

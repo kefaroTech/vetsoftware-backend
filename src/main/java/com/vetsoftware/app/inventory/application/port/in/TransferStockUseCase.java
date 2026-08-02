@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface TransferStockUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.transfer') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('inventory.transfer') and @authz.isMyCompany(#command.companyId))")
     void transfer(TransferStockCommand command);
 }

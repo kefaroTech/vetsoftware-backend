@@ -27,9 +27,9 @@ public class UpdateRoleService implements UpdateRoleUseCase {
     @Transactional
     public RoleDto execute(UpdateRoleCommand command) {
         Role role = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new RoleNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                .orElseThrow(() -> new RoleNotFoundException(command.id()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         role.update(command.name(), command.code(), company);
         return RoleDto.from(repository.save(role));
     }

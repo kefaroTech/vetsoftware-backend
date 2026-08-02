@@ -21,13 +21,17 @@ import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
 
 /**
- * Contra-prueba de la allowlist: una allowlist demasiado estrecha no rompe nada visiblemente, solo
- * <b>ciega la auditoría en silencio</b> — los eventos siguen llegando a Loki, pero con {@code ***} en
- * los campos con los que se investiga un incidente.
+ * Contra-prueba de la allowlist: una allowlist demasiado estrecha no rompe nada
+ * visiblemente, solo <b>ciega la auditoría en silencio</b> — los eventos siguen
+ * llegando a Loki, pero con {@code ***} en los campos con los que se investiga
+ * un incidente.
  *
- * <p>Ejercita cada evento de {@link AuditLogger} y el contexto de request que lo acompaña, y afirma
- * que ningún campo que la auditoría emite a propósito sale enmascarado. Añadir un
- * {@code addKeyValue(...)} nuevo sin declararlo en {@link LogFieldPolicy} rompe esta prueba.
+ * <p>
+ * Ejercita cada evento de {@link AuditLogger} y el contexto de request que lo
+ * acompaña, y afirma que ningún campo que la auditoría emite a propósito sale
+ * enmascarado. Añadir un {@code
+ * addKeyValue(...)} nuevo sin declararlo en {@link LogFieldPolicy} rompe esta
+ * prueba.
  *
  * @see LogRedactionPipelineTest
  */
@@ -59,7 +63,8 @@ class AuditFieldsSurviveRedactionTest {
         auditChannel.setLevel(Level.INFO);
         auditChannel.addAppender(redacting);
 
-        // Contexto de request que RequestLoggingContextFilter y AuthFilter ponen en el MDC.
+        // Contexto de request que RequestLoggingContextFilter y AuthFilter ponen en el
+        // MDC.
         MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
         MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, "77");
         MDC.put(MdcKeys.ACTOR_COMPANY_ID, "3");
@@ -87,11 +92,10 @@ class AuditFieldsSurviveRedactionTest {
 
         List<KeyValuePair> pairs = emitted.getKeyValuePairs();
         if (pairs != null) {
-            assertThat(pairs).allSatisfy(pair ->
-                    assertThat(pair.value)
-                            .as("el campo de auditoría '%s' del evento '%s' quedó enmascarado; "
-                                    + "declararlo en LogFieldPolicy", pair.key, event)
-                            .isNotEqualTo(LogRedactor.MASK));
+            assertThat(pairs).allSatisfy(pair -> assertThat(pair.value)
+                    .as("el campo de auditoría '%s' del evento '%s' quedó enmascarado; "
+                            + "declararlo en LogFieldPolicy", pair.key, event)
+                    .isNotEqualTo(LogRedactor.MASK));
         }
         assertThat(emitted.getMDCPropertyMap())
                 .as("un campo del MDC del evento '%s' quedó enmascarado; declararlo en "
@@ -105,16 +109,13 @@ class AuditFieldsSurviveRedactionTest {
     void everyAuditFieldIsAllowlisted() {
         assertNothingMasked("http_mutation",
                 audit -> audit.mutation("PATCH", "/api/v1/animals/9", 200, "SUCCESS", 37));
-        assertNothingMasked("company_registered",
-                audit -> audit.companyRegistered(3L, "Clinica Vetrina", "900123456", 77L, "OWNER01"));
-        assertNothingMasked("employee_invited",
-                audit -> audit.employeeInvited(88L, "EMP0042", 3L));
+        assertNothingMasked("company_registered", audit -> audit.companyRegistered(3L,
+                "Clinica Vetrina", "900123456", 77L, "OWNER01"));
+        assertNothingMasked("employee_invited", audit -> audit.employeeInvited(88L, "EMP0042", 3L));
         assertNothingMasked("employee_invitation_resent",
                 audit -> audit.employeeInvitationResent(88L, "EMP0042", 3L));
-        assertNothingMasked("invitation_accepted",
-                audit -> audit.invitationAccepted(88L, 3L));
-        assertNothingMasked("login_success",
-                audit -> audit.loginSuccess("EMPLOYEE", "EMP0042"));
+        assertNothingMasked("invitation_accepted", audit -> audit.invitationAccepted(88L, 3L));
+        assertNothingMasked("login_success", audit -> audit.loginSuccess("EMPLOYEE", "EMP0042"));
         assertNothingMasked("login_failure",
                 audit -> audit.loginFailure("/auth/login/employee", "bad_credentials"));
         assertNothingMasked("login_blocked_email_not_verified",
@@ -123,8 +124,7 @@ class AuditFieldsSurviveRedactionTest {
                 audit -> audit.accessDenied("DELETE", "/api/v1/owners/5"));
         assertNothingMasked("unauthenticated",
                 audit -> audit.unauthenticated("GET", "/api/v1/owners", "invalid_token"));
-        assertNothingMasked("rate_limited",
-                audit -> audit.loginRateLimited());
+        assertNothingMasked("rate_limited", audit -> audit.loginRateLimited());
     }
 
     @Test
@@ -134,8 +134,7 @@ class AuditFieldsSurviveRedactionTest {
         auditLogger.companyRegistered(3L, "Clinica Vetrina", "900123456", 77L, "OWNER01");
 
         ILoggingEvent emitted = sink.list.get(0);
-        assertThat(emitted.getKeyValuePairs())
-                .extracting(pair -> pair.key + "=" + pair.value)
+        assertThat(emitted.getKeyValuePairs()).extracting(pair -> pair.key + "=" + pair.value)
                 .contains("company.identifier=900123456", "actor.identifier=OWNER01");
     }
 

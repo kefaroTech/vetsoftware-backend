@@ -19,11 +19,11 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import tools.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.firehose.FirehoseClient;
 import software.amazon.awssdk.services.firehose.model.PutRecordBatchRequest;
 import software.amazon.awssdk.services.firehose.model.PutRecordBatchResponse;
 import software.amazon.awssdk.services.firehose.model.PutRecordBatchResponseEntry;
+import tools.jackson.databind.ObjectMapper;
 
 class AuditOutboxPublisherJobTest {
 
@@ -40,8 +40,8 @@ class AuditOutboxPublisherJobTest {
         properties.setPublisherEnabled(true);
         properties.setDeliveryStreamName("audit-stream");
         properties.setBatchSize(100);
-        job = new AuditOutboxPublisherJob(
-                repository, chainRepository, properties, firehose, metrics, telemetry);
+        job = new AuditOutboxPublisherJob(repository, chainRepository, properties, firehose,
+                metrics, telemetry);
     }
 
     @Test
@@ -52,14 +52,12 @@ class AuditOutboxPublisherJobTest {
         when(repository.claim(eq(100), any(Instant.class), eq(Duration.ofMinutes(2))))
                 .thenReturn(records);
         when(firehose.putRecordBatch(any(PutRecordBatchRequest.class)))
-                .thenReturn(PutRecordBatchResponse.builder()
-                        .failedPutCount(1)
+                .thenReturn(PutRecordBatchResponse.builder().failedPutCount(1)
                         .requestResponses(
                                 PutRecordBatchResponseEntry.builder().recordId("ok").build(),
                                 PutRecordBatchResponseEntry.builder()
                                         .errorCode("ServiceUnavailableException")
-                                        .errorMessage("retry")
-                                        .build())
+                                        .errorMessage("retry").build())
                         .build());
 
         ScheduledJobTelemetry.Outcome outcome = job.publishBatch();
@@ -74,8 +72,7 @@ class AuditOutboxPublisherJobTest {
 
     @Test
     void networkFailureReturnsEveryClaimedRecordToFailed() {
-        List<AuditOutboxRecord> records = List.of(
-                record(7L, "event-7", "{}", 7),
+        List<AuditOutboxRecord> records = List.of(record(7L, "event-7", "{}", 7),
                 record(8L, "event-8", "{}", 8));
         when(repository.claim(eq(100), any(Instant.class), any(Duration.class)))
                 .thenReturn(records);
@@ -96,19 +93,20 @@ class AuditOutboxPublisherJobTest {
         when(repository.claim(eq(100), any(Instant.class), any(Duration.class)))
                 .thenReturn(List.of(record(1L, "event-1", "{\"event\":\"http_mutation\"}", 42)));
         when(firehose.putRecordBatch(any(PutRecordBatchRequest.class)))
-                .thenReturn(PutRecordBatchResponse.builder()
-                        .failedPutCount(0)
-                        .requestResponses(PutRecordBatchResponseEntry.builder().recordId("ok").build())
+                .thenReturn(PutRecordBatchResponse.builder().failedPutCount(0)
+                        .requestResponses(
+                                PutRecordBatchResponseEntry.builder().recordId("ok").build())
                         .build());
 
         job.publishBatch();
 
-        ArgumentCaptor<PutRecordBatchRequest> captor =
-                ArgumentCaptor.forClass(PutRecordBatchRequest.class);
+        ArgumentCaptor<PutRecordBatchRequest> captor = ArgumentCaptor
+                .forClass(PutRecordBatchRequest.class);
         verify(firehose).putRecordBatch(captor.capture());
         String line = captor.getValue().records().getFirst().data().asUtf8String();
 
-        // Debe seguir siendo NDJSON válido y conservar los campos originales del evento.
+        // Debe seguir siendo NDJSON válido y conservar los campos originales del
+        // evento.
         assertThat(line).endsWith("\n");
         assertThat(line).contains("\"event\":\"http_mutation\"");
         assertThat(line).contains("\"sequence\":42");
@@ -121,15 +119,15 @@ class AuditOutboxPublisherJobTest {
         when(repository.claim(eq(100), any(Instant.class), any(Duration.class)))
                 .thenReturn(List.of(record(1L, "event-1", "{}", 1)));
         when(firehose.putRecordBatch(any(PutRecordBatchRequest.class)))
-                .thenReturn(PutRecordBatchResponse.builder()
-                        .failedPutCount(0)
-                        .requestResponses(PutRecordBatchResponseEntry.builder().recordId("ok").build())
+                .thenReturn(PutRecordBatchResponse.builder().failedPutCount(0)
+                        .requestResponses(
+                                PutRecordBatchResponseEntry.builder().recordId("ok").build())
                         .build());
 
         job.publishBatch();
 
-        ArgumentCaptor<PutRecordBatchRequest> captor =
-                ArgumentCaptor.forClass(PutRecordBatchRequest.class);
+        ArgumentCaptor<PutRecordBatchRequest> captor = ArgumentCaptor
+                .forClass(PutRecordBatchRequest.class);
         verify(firehose).putRecordBatch(captor.capture());
         String line = captor.getValue().records().getFirst().data().asUtf8String();
 
@@ -145,7 +143,8 @@ class AuditOutboxPublisherJobTest {
         job.publishBatch();
 
         // Sin secuenciar primero, un evento recién insertado nunca llegaría al archivo.
-        verify(chainRepository).sequencePending(eq(properties.getSequenceBatchSize()), any(Instant.class));
+        verify(chainRepository).sequencePending(eq(properties.getSequenceBatchSize()),
+                any(Instant.class));
     }
 
     @Test
@@ -158,12 +157,15 @@ class AuditOutboxPublisherJobTest {
         assertThat(delay).isPositive().isLessThanOrEqualTo(Duration.ofMinutes(1));
     }
 
-    private static AuditOutboxRecord record(long id, String eventId, String payload, long sequence) {
-        return new AuditOutboxRecord(id, eventId, payload, 1, sequence,
-                hash("prev-" + sequence), hash("payload-" + sequence), hash("chain-" + sequence));
+    private static AuditOutboxRecord record(long id, String eventId, String payload,
+            long sequence) {
+        return new AuditOutboxRecord(id, eventId, payload, 1, sequence, hash("prev-" + sequence),
+                hash("payload-" + sequence), hash("chain-" + sequence));
     }
 
-    /** Hexadecimal de 64 caracteres con la forma que exige el bloque de integridad. */
+    /**
+     * Hexadecimal de 64 caracteres con la forma que exige el bloque de integridad.
+     */
     private static String hash(String seed) {
         return AuditChainHash.payloadHash(seed);
     }

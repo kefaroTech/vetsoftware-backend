@@ -26,10 +26,8 @@ public class CreateSurgeryService implements CreateSurgeryUseCase {
     private final CompanyQueryPort companyQueryPort;
 
     public CreateSurgeryService(SurgeryRepository repository,
-                                SurgeryTypeQueryPort surgeryTypeQueryPort,
-                                AnimalQueryPort animalQueryPort,
-                                ConsultationQueryPort consultationQueryPort,
-                                CompanyQueryPort companyQueryPort) {
+            SurgeryTypeQueryPort surgeryTypeQueryPort, AnimalQueryPort animalQueryPort,
+            ConsultationQueryPort consultationQueryPort, CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.surgeryTypeQueryPort = surgeryTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
@@ -40,19 +38,21 @@ public class CreateSurgeryService implements CreateSurgeryUseCase {
     @Override
     public SurgeryDto execute(CreateSurgeryCommand command) {
         SurgeryTypeRef surgeryType = surgeryTypeQueryPort.findById(command.surgeryTypeId())
-            .orElseThrow(() -> new IllegalArgumentException("SurgeryType not found: " + command.surgeryTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SurgeryType not found: " + command.surgeryTypeId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ConsultationRef consultation = command.consultationId() == null
+                ? null
+                : consultationQueryPort.findById(command.consultationId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Consultation not found: " + command.consultationId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        Surgery surgery = Surgery.create(
-            command.date(), surgeryType, command.description(), command.medicament(),
-            command.observations(), command.complications(),
-            animal, consultation, company);
+        Surgery surgery = Surgery.create(command.date(), surgeryType, command.description(),
+                command.medicament(), command.observations(), command.complications(), animal,
+                consultation, company);
         return SurgeryDto.from(repository.save(surgery));
     }
 }

@@ -14,9 +14,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class SupplierInvoiceJpaMapper {
 
-    /** Write path: arma la entidad reusando los proxies JPA (getReferenceById) que le pasa el repositorio. */
+    /**
+     * Write path: arma la entidad reusando los proxies JPA (getReferenceById) que
+     * le pasa el repositorio.
+     */
     public SupplierInvoiceJpaEntity toJpa(SupplierInvoice invoice, CompanyJpaEntity company,
-                                          BranchJpaEntity branch, SupplierJpaEntity supplier) {
+            BranchJpaEntity branch, SupplierJpaEntity supplier) {
         SupplierInvoiceJpaEntity entity = new SupplierInvoiceJpaEntity();
         entity.setId(invoice.getId());
         entity.setCompany(company);
@@ -60,71 +63,44 @@ public class SupplierInvoiceJpaMapper {
         BranchJpaEntity b = e.getBranch();
         SupplierJpaEntity s = e.getSupplier();
         List<SupplierInvoicePayment> payments = e.getPayments().stream()
-            .sorted(java.util.Comparator.comparing(SupplierInvoicePaymentJpaEntity::getId,
-                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
-            .map(pe -> new SupplierInvoicePayment(pe.getId(), pe.getAmount(), pe.getPaymentDate(), pe.getMethod(),
-                pe.getReference(), pe.getNote(), pe.getCreatedDate(), pe.getCreatedBy()))
-            .toList();
-        return new SupplierInvoice(
-            e.getId(),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            new BranchRef(b.getId(), b.getName()),
-            new SupplierRef(s.getId(), s.getName(), s.getTaxId()),
-            e.getPurchaseOrderId(),
-            e.getGoodsReceiptId(),
-            e.getInvoiceNumber(),
-            e.getIssueDate(),
-            e.getDueDate(),
-            e.getSubtotal(),
-            e.getTaxAmount(),
-            e.getWithholdingAmount(),
-            e.getStatus(),
-            e.getNotes(),
-            payments,
-            e.getCreatedDate(),
-            e.getCreatedBy(),
-            e.getUpdatedDate(),
-            e.getUpdatedBy(),
-            e.getVersion(),
-            e.isEnabled());
+                .sorted(java.util.Comparator.comparing(SupplierInvoicePaymentJpaEntity::getId,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .map(pe -> new SupplierInvoicePayment(pe.getId(), pe.getAmount(),
+                        pe.getPaymentDate(), pe.getMethod(), pe.getReference(), pe.getNote(),
+                        pe.getCreatedDate(), pe.getCreatedBy()))
+                .toList();
+        return new SupplierInvoice(e.getId(),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                new BranchRef(b.getId(), b.getName()),
+                new SupplierRef(s.getId(), s.getName(), s.getTaxId()), e.getPurchaseOrderId(),
+                e.getGoodsReceiptId(), e.getInvoiceNumber(), e.getIssueDate(), e.getDueDate(),
+                e.getSubtotal(), e.getTaxAmount(), e.getWithholdingAmount(), e.getStatus(),
+                e.getNotes(), payments, e.getCreatedDate(), e.getCreatedBy(), e.getUpdatedDate(),
+                e.getUpdatedBy(), e.getVersion(), e.isEnabled());
     }
 
     /**
-     * Write-return path: rebuild del dominio reusando los Ref precargados del agregado original (evita hidratar los
-     * proxies getReferenceById), tomando del entity persistido los ids generados (factura + abonos, en orden).
+     * Write-return path: rebuild del dominio reusando los Ref precargados del
+     * agregado original (evita hidratar los proxies getReferenceById), tomando del
+     * entity persistido los ids generados (factura + abonos, en orden).
      */
-    public SupplierInvoice toDomainReusingRefs(SupplierInvoiceJpaEntity saved, SupplierInvoice original) {
+    public SupplierInvoice toDomainReusingRefs(SupplierInvoiceJpaEntity saved,
+            SupplierInvoice original) {
         List<SupplierInvoicePaymentJpaEntity> savedPayments = saved.getPayments();
         List<SupplierInvoicePayment> originalPayments = original.getPayments();
         List<SupplierInvoicePayment> payments = new java.util.ArrayList<>(savedPayments.size());
         for (int i = 0; i < savedPayments.size(); i++) {
             SupplierInvoicePayment op = originalPayments.get(i);
-            payments.add(new SupplierInvoicePayment(
-                savedPayments.get(i).getId(),
-                op.getAmount(), op.getPaymentDate(), op.getMethod(), op.getReference(), op.getNote(),
-                op.getCreatedDate(), op.getCreatedBy()));
+            payments.add(new SupplierInvoicePayment(savedPayments.get(i).getId(), op.getAmount(),
+                    op.getPaymentDate(), op.getMethod(), op.getReference(), op.getNote(),
+                    op.getCreatedDate(), op.getCreatedBy()));
         }
-        return new SupplierInvoice(
-            saved.getId(),
-            original.getCompany(),
-            original.getBranch(),
-            original.getSupplier(),
-            original.getPurchaseOrderId(),
-            original.getGoodsReceiptId(),
-            original.getInvoiceNumber(),
-            original.getIssueDate(),
-            original.getDueDate(),
-            original.getSubtotal(),
-            original.getTaxAmount(),
-            original.getWithholdingAmount(),
-            original.getStatus(),
-            original.getNotes(),
-            payments,
-            saved.getCreatedDate(),
-            original.getCreatedBy(),
-            saved.getUpdatedDate(),
-            original.getUpdatedBy(),
-            saved.getVersion(),
-            saved.isEnabled());
+        return new SupplierInvoice(saved.getId(), original.getCompany(), original.getBranch(),
+                original.getSupplier(), original.getPurchaseOrderId(), original.getGoodsReceiptId(),
+                original.getInvoiceNumber(), original.getIssueDate(), original.getDueDate(),
+                original.getSubtotal(), original.getTaxAmount(), original.getWithholdingAmount(),
+                original.getStatus(), original.getNotes(), payments, saved.getCreatedDate(),
+                original.getCreatedBy(), saved.getUpdatedDate(), original.getUpdatedBy(),
+                saved.getVersion(), saved.isEnabled());
     }
 }

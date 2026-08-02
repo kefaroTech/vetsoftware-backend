@@ -10,5 +10,6 @@ import java.util.List;
 public interface BaseRoleProvider {
     List<BaseRoleData> findAll();
 
-    record BaseRoleData(Long id, String name, String code, boolean mandatory) {}
+    record BaseRoleData(Long id, String name, String code, boolean mandatory) {
+    }
 }

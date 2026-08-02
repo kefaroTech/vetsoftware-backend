@@ -16,7 +16,7 @@ public class DownloadLaboratoryTestFileService implements DownloadLaboratoryTest
     private final FileStoragePort fileStoragePort;
 
     public DownloadLaboratoryTestFileService(LaboratoryTestFileRepository repository,
-                                             FileStoragePort fileStoragePort) {
+            FileStoragePort fileStoragePort) {
         this.repository = repository;
         this.fileStoragePort = fileStoragePort;
     }
@@ -24,8 +24,9 @@ public class DownloadLaboratoryTestFileService implements DownloadLaboratoryTest
     @Override
     public LaboratoryTestFileDownloadDto download(Long id) {
         LaboratoryTestFile file = repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
+                .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
         byte[] content = fileStoragePort.retrieve(file.getStorageKey());
-        return new LaboratoryTestFileDownloadDto(file.getOriginalFileName(), file.getContentType(), content);
+        return new LaboratoryTestFileDownloadDto(file.getOriginalFileName(), file.getContentType(),
+                content);
     }
 }

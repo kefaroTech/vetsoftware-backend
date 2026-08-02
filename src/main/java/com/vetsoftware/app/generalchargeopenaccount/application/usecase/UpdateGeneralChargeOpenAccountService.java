@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "general.charge.open.account.update")
 @Service
-public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralChargeOpenAccountUseCase {
+public class UpdateGeneralChargeOpenAccountService
+        implements
+            UpdateGeneralChargeOpenAccountUseCase {
     private final GeneralChargeOpenAccountRepository repository;
     private final OpenAccountQueryPort openAccountQueryPort;
     private final TaxQueryPort taxQueryPort;
@@ -26,10 +28,8 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
     private final OpenAccountVersionGuard versionGuard;
 
     public UpdateGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
-                                                 OpenAccountQueryPort openAccountQueryPort,
-                                                 TaxQueryPort taxQueryPort,
-                                                 OpenAccountRefresher refresher,
-                                                 OpenAccountVersionGuard versionGuard) {
+            OpenAccountQueryPort openAccountQueryPort, TaxQueryPort taxQueryPort,
+            OpenAccountRefresher refresher, OpenAccountVersionGuard versionGuard) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.taxQueryPort = taxQueryPort;
@@ -40,23 +40,26 @@ public class UpdateGeneralChargeOpenAccountService implements UpdateGeneralCharg
     @Override
     @Transactional
     public GeneralChargeOpenAccountDto execute(UpdateGeneralChargeOpenAccountCommand command) {
-        GeneralChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(command.id()));
+        GeneralChargeOpenAccount charge = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
+                .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = charge.getOpenAccount().id();
 
         OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
-            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + command.openAccountId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "OpenAccount not found: " + command.openAccountId()));
         if (!openAccount.companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto sobre la cuenta destino del cargo.
-        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
-        TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
+        versionGuard.assertVersion(command.companyId(), command.openAccountId(),
+                command.expectedVersion());
+        TaxRef tax = command.taxId() == null
+                ? null
+                : taxQueryPort.findById(command.taxId(), command.companyId()).orElseThrow(
+                        () -> new IllegalArgumentException("Tax not found: " + command.taxId()));
 
-        charge.update(command.name(), command.unitAmount(), command.quantity(), tax,
-            openAccount);
+        charge.update(command.name(), command.unitAmount(), command.quantity(), tax, openAccount);
         GeneralChargeOpenAccountDto dto = GeneralChargeOpenAccountDto.from(repository.save(charge));
         refresher.refresh(command.companyId(), openAccount.id());
         if (!openAccount.id().equals(previousOpenAccountId)) {

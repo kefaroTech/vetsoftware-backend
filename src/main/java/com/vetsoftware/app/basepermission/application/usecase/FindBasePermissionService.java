@@ -18,8 +18,7 @@ public class FindBasePermissionService implements FindBasePermissionUseCase {
 
     @Override
     public BasePermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(BasePermissionDto::from)
-            .orElseThrow(() -> new BasePermissionNotFoundException(id));
+        return repository.findById(id).map(BasePermissionDto::from)
+                .orElseThrow(() -> new BasePermissionNotFoundException(id));
     }
 }

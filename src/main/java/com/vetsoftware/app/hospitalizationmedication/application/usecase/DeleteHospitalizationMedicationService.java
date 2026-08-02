@@ -9,7 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.medication.delete")
 @Service
-public class DeleteHospitalizationMedicationService implements DeleteHospitalizationMedicationUseCase {
+public class DeleteHospitalizationMedicationService
+        implements
+            DeleteHospitalizationMedicationUseCase {
     private final HospitalizationMedicationRepository repository;
 
     public DeleteHospitalizationMedicationService(HospitalizationMedicationRepository repository) {
@@ -19,7 +21,8 @@ public class DeleteHospitalizationMedicationService implements DeleteHospitaliza
     @Override
     @Transactional
     public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new HospitalizationMedicationNotFoundException(id));
+        repository.findById(id)
+                .orElseThrow(() -> new HospitalizationMedicationNotFoundException(id));
         repository.delete(id);
     }
 }

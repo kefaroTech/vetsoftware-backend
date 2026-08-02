@@ -17,10 +17,8 @@ public class JpaOwnerRepository implements OwnerRepository {
     private final CityJpaRepository cityJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaOwnerRepository(OwnerJpaRepository jpaRepository,
-                              OwnerJpaMapper mapper,
-                              CityJpaRepository cityJpaRepository,
-                              CompanyJpaRepository companyJpaRepository) {
+    public JpaOwnerRepository(OwnerJpaRepository jpaRepository, OwnerJpaMapper mapper,
+            CityJpaRepository cityJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.cityJpaRepository = cityJpaRepository;
@@ -47,8 +45,8 @@ public class JpaOwnerRepository implements OwnerRepository {
 
     @Override
     public List<Owner> searchByCompanyAndTerm(Long companyId, String query) {
-        return jpaRepository.searchByCompanyAndTerm(companyId, query)
-            .stream().map(mapper::toDomain).toList();
+        return jpaRepository.searchByCompanyAndTerm(companyId, query).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override

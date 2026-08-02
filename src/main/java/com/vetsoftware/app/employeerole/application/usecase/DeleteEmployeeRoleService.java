@@ -16,7 +16,7 @@ public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
     private final PermissionCachePort permissionCachePort;
 
     public DeleteEmployeeRoleService(EmployeeRoleRepository repository,
-                                     PermissionCachePort permissionCachePort) {
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.permissionCachePort = permissionCachePort;
     }
@@ -25,7 +25,7 @@ public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
     @Transactional
     public void execute(Long id) {
         EmployeeRole employeeRole = repository.findById(id)
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+                .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
         repository.delete(id);
         permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
     }

@@ -18,8 +18,7 @@ public class FindPermissionService implements FindPermissionUseCase {
 
     @Override
     public PermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(PermissionDto::from)
-            .orElseThrow(() -> new PermissionNotFoundException(id));
+        return repository.findById(id).map(PermissionDto::from)
+                .orElseThrow(() -> new PermissionNotFoundException(id));
     }
 }

@@ -17,7 +17,8 @@ public class SetWithholdingConfigService implements SetWithholdingConfigUseCase 
     private final WithholdingConfigRepository repository;
     private final CompanyQueryPort companyQueryPort;
 
-    public SetWithholdingConfigService(WithholdingConfigRepository repository, CompanyQueryPort companyQueryPort) {
+    public SetWithholdingConfigService(WithholdingConfigRepository repository,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -25,18 +26,16 @@ public class SetWithholdingConfigService implements SetWithholdingConfigUseCase 
     @Override
     @Transactional
     public WithholdingConfigDto execute(SetWithholdingConfigCommand command) {
-        WithholdingConfig config = repository.findByCompanyId(command.companyId())
-                .map(existing -> {
-                    existing.update(command.reteFuenteRate(), command.reteIvaRate(), command.reteIcaRate());
-                    return existing;
-                })
-                .orElseGet(() -> {
-                    CompanyRef company = companyQueryPort.findById(command.companyId())
-                            .orElseThrow(() -> new IllegalArgumentException(
-                                    "Company not found: " + command.companyId()));
-                    return WithholdingConfig.create(company, command.reteFuenteRate(),
-                            command.reteIvaRate(), command.reteIcaRate());
-                });
+        WithholdingConfig config = repository.findByCompanyId(command.companyId()).map(existing -> {
+            existing.update(command.reteFuenteRate(), command.reteIvaRate(), command.reteIcaRate());
+            return existing;
+        }).orElseGet(() -> {
+            CompanyRef company = companyQueryPort.findById(command.companyId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Company not found: " + command.companyId()));
+            return WithholdingConfig.create(company, command.reteFuenteRate(),
+                    command.reteIvaRate(), command.reteIcaRate());
+        });
         return WithholdingConfigDto.from(repository.save(config));
     }
 }

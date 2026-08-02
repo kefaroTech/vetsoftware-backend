@@ -29,7 +29,10 @@ public class ProductJpaEntity {
     @Column(name = "sale_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal salePrice;
 
-    /** Unidad mínima en la que se controla el inventario. 94 conserva la semántica histórica. */
+    /**
+     * Unidad mínima en la que se controla el inventario. 94 conserva la semántica
+     * histórica.
+     */
     @Column(name = "base_unit_measure_code", nullable = false, length = 10)
     private String baseUnitMeasureCode = "94";
 
@@ -75,40 +78,142 @@ public class ProductJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected ProductJpaEntity() {}
+    protected ProductJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public BigDecimal getSalePrice() { return salePrice; }
-    public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
-    public String getBaseUnitMeasureCode() { return baseUnitMeasureCode; }
-    public void setBaseUnitMeasureCode(String baseUnitMeasureCode) { this.baseUnitMeasureCode = baseUnitMeasureCode; }
-    public String getProvider() { return provider; }
-    public void setProvider(String provider) { this.provider = provider; }
-    public SupplierJpaEntity getSupplier() { return supplier; }
-    public void setSupplier(SupplierJpaEntity supplier) { this.supplier = supplier; }
-    public TaxTreatment getTaxTreatment() { return taxTreatment; }
-    public void setTaxTreatment(TaxTreatment taxTreatment) { this.taxTreatment = taxTreatment; }
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-    public ProductCategoryJpaEntity getProductCategory() { return productCategory; }
-    public void setProductCategory(ProductCategoryJpaEntity productCategory) { this.productCategory = productCategory; }
-    public TaxJpaEntity getTax() { return tax; }
-    public void setTax(TaxJpaEntity tax) { this.tax = tax; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public BigDecimal getSalePrice() {
+        return salePrice;
+    }
+
+    public void setSalePrice(BigDecimal salePrice) {
+        this.salePrice = salePrice;
+    }
+
+    public String getBaseUnitMeasureCode() {
+        return baseUnitMeasureCode;
+    }
+
+    public void setBaseUnitMeasureCode(String baseUnitMeasureCode) {
+        this.baseUnitMeasureCode = baseUnitMeasureCode;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public SupplierJpaEntity getSupplier() {
+        return supplier;
+    }
+
+    public void setSupplier(SupplierJpaEntity supplier) {
+        this.supplier = supplier;
+    }
+
+    public TaxTreatment getTaxTreatment() {
+        return taxTreatment;
+    }
+
+    public void setTaxTreatment(TaxTreatment taxTreatment) {
+        this.taxTreatment = taxTreatment;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public ProductCategoryJpaEntity getProductCategory() {
+        return productCategory;
+    }
+
+    public void setProductCategory(ProductCategoryJpaEntity productCategory) {
+        this.productCategory = productCategory;
+    }
+
+    public TaxJpaEntity getTax() {
+        return tax;
+    }
+
+    public void setTax(TaxJpaEntity tax) {
+        this.tax = tax;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(LocalDateTime updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

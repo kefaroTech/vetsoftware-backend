@@ -32,12 +32,9 @@ public class ProductCategoryController {
     private final Authz authz;
 
     public ProductCategoryController(CreateProductCategoryUseCase createUseCase,
-                                     UpdateProductCategoryUseCase updateUseCase,
-                                     FindProductCategoryUseCase findUseCase,
-                                     ListProductCategoriesUseCase listUseCase,
-                                     DeleteProductCategoryUseCase deleteUseCase,
-                                     ReactivateProductCategoryUseCase reactivateUseCase,
-                                     Authz authz) {
+            UpdateProductCategoryUseCase updateUseCase, FindProductCategoryUseCase findUseCase,
+            ListProductCategoriesUseCase listUseCase, DeleteProductCategoryUseCase deleteUseCase,
+            ReactivateProductCategoryUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,16 +46,16 @@ public class ProductCategoryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductCategoryResponse create(@Valid @RequestBody CreateProductCategoryRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateProductCategoryCommand(request.name(), request.description(),
-                        authz.currentCompanyId())));
+    public ProductCategoryResponse create(
+            @Valid @RequestBody CreateProductCategoryRequest request) {
+        return toResponse(createUseCase.execute(new CreateProductCategoryCommand(request.name(),
+                request.description(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<ProductCategoryResponse> list() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -68,10 +65,10 @@ public class ProductCategoryController {
 
     @PutMapping("/{id}")
     public ProductCategoryResponse update(@PathVariable Long id,
-                                          @Valid @RequestBody UpdateProductCategoryRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateProductCategoryCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
+            @Valid @RequestBody UpdateProductCategoryRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateProductCategoryCommand(id, request.name(),
+                request.description(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull(),
+                request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -87,13 +84,9 @@ public class ProductCategoryController {
 
     private ProductCategoryResponse toResponse(ProductCategoryDto dto) {
         CompanySummaryDto c = dto.company();
-        return new ProductCategoryResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new ProductCategoryResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate(),
-                dto.updatedDate(),
-                dto.updatedBy(),
-                dto.version(),
+                dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(),
                 dto.enabled());
     }
 }

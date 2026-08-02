@@ -18,7 +18,7 @@ public class FindSpaTypeService implements FindSpaTypeUseCase {
 
     @Override
     public SpaTypeDto findById(Long id) {
-        return SpaTypeDto.from(repository.findById(id)
-                .orElseThrow(() -> new SpaTypeNotFoundException(id)));
+        return SpaTypeDto
+                .from(repository.findById(id).orElseThrow(() -> new SpaTypeNotFoundException(id)));
     }
 }

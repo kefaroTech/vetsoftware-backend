@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateServiceUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('service.create') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('service.create') and @authz.isMyCompany(#command.companyId))")
     ServiceDto execute(CreateServiceCommand command);
 }

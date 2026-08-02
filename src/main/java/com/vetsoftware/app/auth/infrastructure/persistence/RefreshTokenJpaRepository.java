@@ -25,5 +25,6 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenJpa
     @Transactional
     @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
             + "WHERE r.subjectId = :subjectId AND r.subjectType = :subjectType AND r.revoked = false")
-    int revokeAllForSubject(@Param("subjectId") Long subjectId, @Param("subjectType") String subjectType);
+    int revokeAllForSubject(@Param("subjectId") Long subjectId,
+            @Param("subjectType") String subjectType);
 }

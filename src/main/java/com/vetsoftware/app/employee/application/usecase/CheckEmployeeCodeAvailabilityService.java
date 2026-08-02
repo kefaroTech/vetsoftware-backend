@@ -17,9 +17,11 @@ public class CheckEmployeeCodeAvailabilityService implements CheckEmployeeCodeAv
 
     @Override
     public boolean isAvailable(String employeeCode) {
-        if (employeeCode == null) return false;
+        if (employeeCode == null)
+            return false;
         String code = employeeCode.trim();
-        if (code.isEmpty()) return false;
+        if (code.isEmpty())
+            return false;
         return !repository.codeExists(code);
     }
 }

@@ -6,8 +6,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link BranchInfoQueryPort}: cruce permitido de vertical slicing (persistence → persistence de
- * branch) para leer nombre/código/dirección de la sede emisora del POS.
+ * Adapter del {@link BranchInfoQueryPort}: cruce permitido de vertical slicing
+ * (persistence → persistence de branch) para leer nombre/código/dirección de la
+ * sede emisora del POS.
  */
 @Component
 public class JpaBranchInfoQueryPort implements BranchInfoQueryPort {
@@ -19,7 +20,8 @@ public class JpaBranchInfoQueryPort implements BranchInfoQueryPort {
 
     @Override
     public Optional<BranchInfo> findById(Long branchId) {
-        if (branchId == null) return Optional.empty();
+        if (branchId == null)
+            return Optional.empty();
         return branchJpaRepository.findById(branchId)
                 .map(b -> new BranchInfo(b.getName(), b.getCode(), b.getAddress()));
     }

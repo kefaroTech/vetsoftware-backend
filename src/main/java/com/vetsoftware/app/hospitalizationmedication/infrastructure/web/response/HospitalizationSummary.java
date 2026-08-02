@@ -2,4 +2,5 @@ package com.vetsoftware.app.hospitalizationmedication.infrastructure.web.respons
 
 import java.time.LocalDate;
 
-public record HospitalizationSummary(Long id, LocalDate date) {}
+public record HospitalizationSummary(Long id, LocalDate date) {
+}

@@ -7,10 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 final class AuditOutboxMetrics {
 
     private final Counter published;
@@ -18,20 +15,16 @@ final class AuditOutboxMetrics {
 
     AuditOutboxMetrics(MeterRegistry meterRegistry, AuditOutboxRepository repository) {
         published = Counter.builder("audit.outbox.published")
-                .description("Eventos de auditoría aceptados por Firehose")
-                .register(meterRegistry);
+                .description("Eventos de auditoría aceptados por Firehose").register(meterRegistry);
         failed = Counter.builder("audit.outbox.publish.failures")
                 .description("Intentos de publicación de auditoría fallidos")
                 .register(meterRegistry);
         Gauge.builder("audit.outbox.pending", repository, AuditOutboxMetrics::pending)
-                .description("Eventos pendientes, en proceso o fallidos")
-                .register(meterRegistry);
+                .description("Eventos pendientes, en proceso o fallidos").register(meterRegistry);
         Gauge.builder("audit.outbox.failed", repository, AuditOutboxMetrics::failed)
-                .description("Eventos en estado FAILED")
-                .register(meterRegistry);
+                .description("Eventos en estado FAILED").register(meterRegistry);
         Gauge.builder("audit.outbox.oldest.age", repository, AuditOutboxMetrics::oldestAge)
-                .baseUnit("seconds")
-                .description("Edad del evento no publicado más antiguo")
+                .baseUnit("seconds").description("Edad del evento no publicado más antiguo")
                 .register(meterRegistry);
     }
 

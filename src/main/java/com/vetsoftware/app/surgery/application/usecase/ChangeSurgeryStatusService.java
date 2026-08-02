@@ -24,9 +24,9 @@ public class ChangeSurgeryStatusService implements ChangeSurgeryStatusUseCase {
     @Transactional
     public SurgeryDto execute(ChangeSurgeryStatusCommand command) {
         Surgery surgery = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
-            .orElseThrow(() -> new SurgeryNotFoundException(command.id()));
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+                .orElseThrow(() -> new SurgeryNotFoundException(command.id()));
         SurgeryStatus newStatus = SurgeryStatus.valueOf(command.status().toUpperCase());
         surgery.changeStatus(newStatus);
         return SurgeryDto.from(repository.save(surgery));

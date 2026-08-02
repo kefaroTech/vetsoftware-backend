@@ -21,8 +21,9 @@ public class ReactivateSpecieService implements ReactivateSpecieUseCase {
     @Transactional
     public SpecieDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SpecieNotFoundException(id);
-        return SpecieDto.from(repository.findById(id)
-            .orElseThrow(() -> new SpecieNotFoundException(id)));
+        if (rows == 0)
+            throw new SpecieNotFoundException(id);
+        return SpecieDto
+                .from(repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id)));
     }
 }

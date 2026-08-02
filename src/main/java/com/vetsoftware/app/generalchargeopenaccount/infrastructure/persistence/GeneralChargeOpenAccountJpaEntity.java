@@ -82,48 +82,174 @@ public class GeneralChargeOpenAccountJpaEntity {
     @Column(name = "client_request_id", length = 36)
     private String clientRequestId;
 
-    protected GeneralChargeOpenAccountJpaEntity() {}
+    protected GeneralChargeOpenAccountJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public BigDecimal getUnitAmount() { return unitAmount; }
-    public void setUnitAmount(BigDecimal unitAmount) { this.unitAmount = unitAmount; }
-    public BigDecimal getQuantity() { return quantity; }
-    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
-    public TaxJpaEntity getTax() { return tax; }
-    public void setTax(TaxJpaEntity tax) { this.tax = tax; }
-    public boolean isHasTax() { return hasTax; }
-    public void setHasTax(boolean hasTax) { this.hasTax = hasTax; }
-    public BigDecimal getTaxPercentage() { return taxPercentage; }
-    public void setTaxPercentage(BigDecimal taxPercentage) { this.taxPercentage = taxPercentage; }
-    public String getTaxName() { return taxName; }
-    public void setTaxName(String taxName) { this.taxName = taxName; }
-    public String getTaxScheme() { return taxScheme; }
-    public void setTaxScheme(String taxScheme) { this.taxScheme = taxScheme; }
-    public BigDecimal getBaseAmount() { return baseAmount; }
-    public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
-    public BigDecimal getTaxAmount() { return taxAmount; }
-    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public OpenAccountJpaEntity getOpenAccount() { return openAccount; }
-    public void setOpenAccount(OpenAccountJpaEntity openAccount) { this.openAccount = openAccount; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public boolean isVoided() { return voided; }
-    public void setVoided(boolean voided) { this.voided = voided; }
-    public EmployeeJpaEntity getVoidedBy() { return voidedBy; }
-    public void setVoidedBy(EmployeeJpaEntity voidedBy) { this.voidedBy = voidedBy; }
-    public LocalDateTime getVoidedAt() { return voidedAt; }
-    public void setVoidedAt(LocalDateTime voidedAt) { this.voidedAt = voidedAt; }
-    public String getVoidReason() { return voidReason; }
-    public void setVoidReason(String voidReason) { this.voidReason = voidReason; }
-    public String getClientRequestId() { return clientRequestId; }
-    public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public BigDecimal getUnitAmount() {
+        return unitAmount;
+    }
+
+    public void setUnitAmount(BigDecimal unitAmount) {
+        this.unitAmount = unitAmount;
+    }
+
+    public BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
+    }
+
+    public TaxJpaEntity getTax() {
+        return tax;
+    }
+
+    public void setTax(TaxJpaEntity tax) {
+        this.tax = tax;
+    }
+
+    public boolean isHasTax() {
+        return hasTax;
+    }
+
+    public void setHasTax(boolean hasTax) {
+        this.hasTax = hasTax;
+    }
+
+    public BigDecimal getTaxPercentage() {
+        return taxPercentage;
+    }
+
+    public void setTaxPercentage(BigDecimal taxPercentage) {
+        this.taxPercentage = taxPercentage;
+    }
+
+    public String getTaxName() {
+        return taxName;
+    }
+
+    public void setTaxName(String taxName) {
+        this.taxName = taxName;
+    }
+
+    public String getTaxScheme() {
+        return taxScheme;
+    }
+
+    public void setTaxScheme(String taxScheme) {
+        this.taxScheme = taxScheme;
+    }
+
+    public BigDecimal getBaseAmount() {
+        return baseAmount;
+    }
+
+    public void setBaseAmount(BigDecimal baseAmount) {
+        this.baseAmount = baseAmount;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public OpenAccountJpaEntity getOpenAccount() {
+        return openAccount;
+    }
+
+    public void setOpenAccount(OpenAccountJpaEntity openAccount) {
+        this.openAccount = openAccount;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isVoided() {
+        return voided;
+    }
+
+    public void setVoided(boolean voided) {
+        this.voided = voided;
+    }
+
+    public EmployeeJpaEntity getVoidedBy() {
+        return voidedBy;
+    }
+
+    public void setVoidedBy(EmployeeJpaEntity voidedBy) {
+        this.voidedBy = voidedBy;
+    }
+
+    public LocalDateTime getVoidedAt() {
+        return voidedAt;
+    }
+
+    public void setVoidedAt(LocalDateTime voidedAt) {
+        this.voidedAt = voidedAt;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
+    }
+
+    public String getClientRequestId() {
+        return clientRequestId;
+    }
+
+    public void setClientRequestId(String clientRequestId) {
+        this.clientRequestId = clientRequestId;
+    }
 }

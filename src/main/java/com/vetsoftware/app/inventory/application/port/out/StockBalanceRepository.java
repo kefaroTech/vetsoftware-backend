@@ -9,8 +9,9 @@ public interface StockBalanceRepository {
     Optional<StockBalance> find(Long productId, Long branchId);
 
     /**
-     * Igual que {@link #find} pero con lock pesimista ({@code SELECT ... FOR UPDATE}): serializa las salidas
-     * concurrentes del mismo producto en la misma sede para no sobrevender.
+     * Igual que {@link #find} pero con lock pesimista
+     * ({@code SELECT ... FOR UPDATE}): serializa las salidas concurrentes del mismo
+     * producto en la misma sede para no sobrevender.
      */
     Optional<StockBalance> findForUpdate(Long productId, Long branchId);
 }

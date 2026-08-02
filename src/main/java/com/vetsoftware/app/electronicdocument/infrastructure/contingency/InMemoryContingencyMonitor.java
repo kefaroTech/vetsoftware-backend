@@ -9,14 +9,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Monitor de contingencia EN MEMORIA por empresa (esqueleto). Detecta la caída sostenida del proveedor/DIAN
- * contando fallos de infraestructura (5xx/timeout) consecutivos: al llegar al umbral activa el modo; al
- * primer resultado sano lo desactiva. La recuperación se detecta sola porque el job de contingencia reintenta
- * los documentos CONTINGENCIA → vuelve a llamar a transmit → registra el resultado aquí.
+ * Monitor de contingencia EN MEMORIA por empresa (esqueleto). Detecta la caída
+ * sostenida del proveedor/DIAN contando fallos de infraestructura (5xx/timeout)
+ * consecutivos: al llegar al umbral activa el modo; al primer resultado sano lo
+ * desactiva. La recuperación se detecta sola porque el job de contingencia
+ * reintenta los documentos CONTINGENCIA → vuelve a llamar a transmit → registra
+ * el resultado aquí.
  *
- * <p>En memoria a propósito (skeleton): el estado se reconstruye solo a partir de los intentos en vivo. Si en
- * el futuro se requiere visibilidad multi-instancia / persistente, este adapter se reemplaza por uno con tabla
- * sin tocar el puerto ni los llamadores.
+ * <p>
+ * En memoria a propósito (skeleton): el estado se reconstruye solo a partir de
+ * los intentos en vivo. Si en el futuro se requiere visibilidad multi-instancia
+ * / persistente, este adapter se reemplaza por uno con tabla sin tocar el
+ * puerto ni los llamadores.
  */
 @Component
 public class InMemoryContingencyMonitor implements ContingencyMonitorPort {
@@ -25,6 +29,7 @@ public class InMemoryContingencyMonitor implements ContingencyMonitorPort {
 
     /** Fallos de infraestructura consecutivos para entrar en modo contingencia. */
     private final int failureThreshold;
+
     private final ConcurrentHashMap<Long, State> byCompany = new ConcurrentHashMap<>();
 
     public InMemoryContingencyMonitor(
@@ -34,13 +39,16 @@ public class InMemoryContingencyMonitor implements ContingencyMonitorPort {
 
     @Override
     public void recordOutcome(Long companyId, boolean providerResponded) {
-        if (companyId == null) return;
+        if (companyId == null)
+            return;
         byCompany.compute(companyId, (id, prev) -> {
             State s = prev == null ? new State() : prev;
             if (providerResponded) {
                 if (s.active) {
-                    log.info("Empresa {}: proveedor DIAN recuperado → modo contingencia DESACTIVADO "
-                            + "(activo desde {}).", id, s.since);
+                    log.info(
+                            "Empresa {}: proveedor DIAN recuperado → modo contingencia DESACTIVADO "
+                                    + "(activo desde {}).",
+                            id, s.since);
                 }
                 s.consecutiveFailures = 0;
                 s.active = false;
@@ -50,8 +58,10 @@ public class InMemoryContingencyMonitor implements ContingencyMonitorPort {
                 if (!s.active && s.consecutiveFailures >= failureThreshold) {
                     s.active = true;
                     s.since = LocalDateTime.now();
-                    log.warn("Empresa {}: {} fallos de transmisión consecutivos → modo contingencia ACTIVADO. "
-                            + "Emitir en contingencia (tipo 04) / comprobante provisional y regularizar al volver.",
+                    log.warn(
+                            "Empresa {}: {} fallos de transmisión consecutivos → modo contingencia ACTIVADO."
+                                    + " Emitir en contingencia (tipo 04) / comprobante provisional y regularizar"
+                                    + " al volver.",
                             id, s.consecutiveFailures);
                 }
             }
@@ -61,7 +71,8 @@ public class InMemoryContingencyMonitor implements ContingencyMonitorPort {
 
     @Override
     public boolean isActive(Long companyId) {
-        if (companyId == null) return false;
+        if (companyId == null)
+            return false;
         State s = byCompany.get(companyId);
         return s != null && s.active;
     }

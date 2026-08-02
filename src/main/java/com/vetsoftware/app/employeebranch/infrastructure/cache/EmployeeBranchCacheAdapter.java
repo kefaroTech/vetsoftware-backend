@@ -8,9 +8,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Invalida el cache Redis {@code employee-branch-ids} (poblado por {@code JpaBranchAccessResolver}) tras reasignar
- * las sedes de un empleado. Mismo patrón que {@code EmployeeRoleCacheAdapter}: se evicta DESPUÉS del commit para no
- * borrar el cache si la transacción termina haciendo rollback.
+ * Invalida el cache Redis {@code employee-branch-ids} (poblado por
+ * {@code JpaBranchAccessResolver}) tras reasignar las sedes de un empleado.
+ * Mismo patrón que {@code EmployeeRoleCacheAdapter}: se evicta DESPUÉS del
+ * commit para no borrar el cache si la transacción termina haciendo rollback.
  */
 @Component
 public class EmployeeBranchCacheAdapter implements BranchAccessCachePort {
@@ -25,21 +26,24 @@ public class EmployeeBranchCacheAdapter implements BranchAccessCachePort {
 
     @Override
     public void evictByEmployeeId(Long employeeId) {
-        if (employeeId == null) return;
+        if (employeeId == null)
+            return;
         runAfterCommit(() -> {
             Cache cache = cacheManager.getCache(CACHE_NAME);
-            if (cache != null) cache.evict(employeeId);
+            if (cache != null)
+                cache.evict(employeeId);
         });
     }
 
     private void runAfterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
+            TransactionSynchronizationManager
+                    .registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            action.run();
+                        }
+                    });
         } else {
             action.run();
         }

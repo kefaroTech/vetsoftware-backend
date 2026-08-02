@@ -20,7 +20,7 @@ public class DeleteAppointmentService implements DeleteAppointmentUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AppointmentNotFoundException(id));
+                .orElseThrow(() -> new AppointmentNotFoundException(id));
         repository.delete(id, companyId);
     }
 }

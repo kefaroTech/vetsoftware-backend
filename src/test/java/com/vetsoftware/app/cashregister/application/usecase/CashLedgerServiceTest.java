@@ -1,8 +1,8 @@
 package com.vetsoftware.app.cashregister.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.cashregister.application.command.CashPaymentLine;
 import com.vetsoftware.app.cashregister.application.command.RegisterCashInflowCommand;
@@ -20,8 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests del {@link CashLedgerService} (orquestación POS / cuenta abierta): registro idempotente de ingresos, reversa
- * idempotente, no-op sin caja abierta y el guard "caja requerida".
+ * Tests del {@link CashLedgerService} (orquestación POS / cuenta abierta):
+ * registro idempotente de ingresos, reversa idempotente, no-op sin caja abierta
+ * y el guard "caja requerida".
  */
 class CashLedgerServiceTest {
 
@@ -48,7 +49,8 @@ class CashLedgerServiceTest {
     }
 
     private CashSession seedOpen(long branch) {
-        return repo.save(CashSession.open(CO, branch, TERMINAL, "principal", USER, bd("100"), null));
+        return repo
+                .save(CashSession.open(CO, branch, TERMINAL, "principal", USER, bd("100"), null));
     }
 
     private long cashMovements(CashSession s, CashMovementType type) {
@@ -59,7 +61,8 @@ class CashLedgerServiceTest {
     void register_inflow_adds_sale_in_and_is_idempotent() {
         CashSession s = seedOpen(BR);
         RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, null,
-            CashReferenceType.POS_DOCUMENT, 5L, List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
 
         service.registerInflow(cmd);
         service.registerInflow(cmd); // reintento: no debe duplicar
@@ -71,7 +74,8 @@ class CashLedgerServiceTest {
     @Test
     void register_inflow_is_noop_when_no_open_session() {
         RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, null,
-            CashReferenceType.POS_DOCUMENT, 5L, List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
 
         assertThatCode(() -> service.registerInflow(cmd)).doesNotThrowAnyException();
         assertThat(repo.findOpen(CO, BR, "principal")).isEmpty();
@@ -79,37 +83,43 @@ class CashLedgerServiceTest {
 
     @Test
     void pos_inflow_uses_the_employees_open_session_even_with_a_custom_terminal() {
-        CashSession session = repo.save(CashSession.open(CO, BR, 200L, "caja-2", USER, bd("100"), null));
+        CashSession session = repo
+                .save(CashSession.open(CO, BR, 200L, "caja-2", USER, bd("100"), null));
         RegisterCashInflowCommand command = new RegisterCashInflowCommand(CO, BR, null,
-            CashReferenceType.POS_DOCUMENT, 6L,
-            List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("25"))), USER);
+                CashReferenceType.POS_DOCUMENT, 6L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("25"))), USER);
 
         service.registerInflow(command);
 
         assertThat(cashMovements(session, CashMovementType.SALE_IN)).isEqualTo(1);
-        assertThat(session.expectedByMethod().get(CashPaymentMethod.CASH)).isEqualByComparingTo("125");
+        assertThat(session.expectedByMethod().get(CashPaymentMethod.CASH))
+                .isEqualByComparingTo("125");
     }
 
     @Test
     void open_account_inflow_uses_the_employees_custom_terminal() {
-        CashSession session = repo.save(CashSession.open(CO, BR, 200L, "CAJA-2", USER, bd("100"), null));
+        CashSession session = repo
+                .save(CashSession.open(CO, BR, 200L, "CAJA-2", USER, bd("100"), null));
         RegisterCashInflowCommand command = new RegisterCashInflowCommand(CO, BR, null,
-            CashReferenceType.OPEN_ACCOUNT_PAYMENT, 77L,
-            List.of(new CashPaymentLine(CashPaymentMethod.CARD, bd("40"))), USER);
+                CashReferenceType.OPEN_ACCOUNT_PAYMENT, 77L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CARD, bd("40"))), USER);
 
         service.registerInflow(command);
 
         assertThat(cashMovements(session, CashMovementType.OPEN_ACCOUNT_IN)).isEqualTo(1);
-        assertThat(session.expectedByMethod().get(CashPaymentMethod.CARD)).isEqualByComparingTo("40");
+        assertThat(session.expectedByMethod().get(CashPaymentMethod.CARD))
+                .isEqualByComparingTo("40");
     }
 
     @Test
     void open_account_reversal_uses_the_actors_own_session() {
-        CashSession collector = repo.save(CashSession.open(CO, BR, 200L, "CAJA-2", USER, bd("100"), null));
-        CashSession actor = repo.save(CashSession.open(CO, BR, 300L, "CAJA-3", OTHER_USER, bd("50"), null));
+        CashSession collector = repo
+                .save(CashSession.open(CO, BR, 200L, "CAJA-2", USER, bd("100"), null));
+        CashSession actor = repo
+                .save(CashSession.open(CO, BR, 300L, "CAJA-3", OTHER_USER, bd("50"), null));
         ReverseCashMovementsCommand command = new ReverseCashMovementsCommand(CO, BR, null,
-            CashReferenceType.OPEN_ACCOUNT_PAYMENT, 77L,
-            List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("25"))), OTHER_USER);
+                CashReferenceType.OPEN_ACCOUNT_PAYMENT, 77L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("25"))), OTHER_USER);
 
         service.reverse(command);
 
@@ -121,11 +131,13 @@ class CashLedgerServiceTest {
     @Test
     void reverse_adds_void_out_and_is_idempotent() {
         CashSession s = seedOpen(BR);
-        service.registerInflow(new RegisterCashInflowCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 5L,
-            List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER));
+        service.registerInflow(
+                new RegisterCashInflowCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 5L,
+                        List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER));
 
         ReverseCashMovementsCommand rev = new ReverseCashMovementsCommand(CO, BR, null,
-            CashReferenceType.POS_DOCUMENT, 5L, List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
         service.reverse(rev);
         service.reverse(rev); // reintento: no debe duplicar
 
@@ -137,7 +149,7 @@ class CashLedgerServiceTest {
     @Test
     void ensure_cash_available_throws_when_required_and_no_open_session() {
         assertThatThrownBy(() -> service.ensureCashAvailable(CO, OTHER_BR, null))
-            .isInstanceOf(NoOpenCashSessionException.class);
+                .isInstanceOf(NoOpenCashSessionException.class);
     }
 
     @Test
@@ -149,7 +161,8 @@ class CashLedgerServiceTest {
     @Test
     void ensure_cash_available_is_noop_when_company_does_not_require_cash() {
         policy.required = false;
-        assertThatCode(() -> service.ensureCashAvailable(CO, OTHER_BR, null)).doesNotThrowAnyException();
+        assertThatCode(() -> service.ensureCashAvailable(CO, OTHER_BR, null))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -157,7 +170,7 @@ class CashLedgerServiceTest {
         repo.save(CashSession.open(CO, BR, TERMINAL, "principal", OTHER_USER, bd("100"), null));
 
         assertThatThrownBy(() -> service.ensureEmployeeCashAvailable(CO, BR, USER))
-            .isInstanceOf(EmployeeCashSessionRequiredException.class);
+                .isInstanceOf(EmployeeCashSessionRequiredException.class);
     }
 
     @Test
@@ -165,8 +178,9 @@ class CashLedgerServiceTest {
         seedOpen(BR);
 
         assertThatThrownBy(() -> service.ensureEmployeeCashAvailable(CO, OTHER_BR, USER))
-            .isInstanceOf(EmployeeCashSessionRequiredException.class);
-        assertThatCode(() -> service.ensureEmployeeCashAvailable(CO, BR, USER)).doesNotThrowAnyException();
+                .isInstanceOf(EmployeeCashSessionRequiredException.class);
+        assertThatCode(() -> service.ensureEmployeeCashAvailable(CO, BR, USER))
+                .doesNotThrowAnyException();
     }
 
     /** Fake del flag por empresa. */

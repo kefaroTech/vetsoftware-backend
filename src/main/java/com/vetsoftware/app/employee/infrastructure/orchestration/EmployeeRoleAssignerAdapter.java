@@ -6,7 +6,10 @@ import com.vetsoftware.app.employeerole.application.dto.EmployeeRoleDto;
 import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUseCase;
 import org.springframework.stereotype.Component;
 
-/** Adapter de orquestación: asigna el rol vía la feature employeerole y devuelve el nombre del rol. */
+/**
+ * Adapter de orquestación: asigna el rol vía la feature employeerole y devuelve
+ * el nombre del rol.
+ */
 @Component
 public class EmployeeRoleAssignerAdapter implements EmployeeRoleAssigner {
 
@@ -18,8 +21,8 @@ public class EmployeeRoleAssignerAdapter implements EmployeeRoleAssigner {
 
     @Override
     public String assign(Long employeeId, Long roleId) {
-        EmployeeRoleDto dto = createEmployeeRoleUseCase.execute(
-            new CreateEmployeeRoleCommand(employeeId, roleId));
+        EmployeeRoleDto dto = createEmployeeRoleUseCase
+                .execute(new CreateEmployeeRoleCommand(employeeId, roleId));
         return dto.role().name();
     }
 }

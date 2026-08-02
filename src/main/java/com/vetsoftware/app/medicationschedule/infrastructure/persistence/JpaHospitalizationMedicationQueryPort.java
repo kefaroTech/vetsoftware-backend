@@ -18,15 +18,9 @@ public class JpaHospitalizationMedicationQueryPort implements HospitalizationMed
     @Override
     public Optional<MedicationOrderParams> findById(Long hospitalizationMedicationId) {
         return medicationJpaRepository.findById(hospitalizationMedicationId)
-            .map(m -> new MedicationOrderParams(
-                m.getId(),
-                m.getName(),
-                m.getHospitalization().getId(),
-                m.getFrequency(),
-                m.getGuidelineType(),
-                m.getDurationMeasure(),
-                m.getDurationQuantity(),
-                m.getStartDate(),
-                m.getStartTime()));
+                .map(m -> new MedicationOrderParams(m.getId(), m.getName(),
+                        m.getHospitalization().getId(), m.getFrequency(), m.getGuidelineType(),
+                        m.getDurationMeasure(), m.getDurationQuantity(), m.getStartDate(),
+                        m.getStartTime()));
     }
 }

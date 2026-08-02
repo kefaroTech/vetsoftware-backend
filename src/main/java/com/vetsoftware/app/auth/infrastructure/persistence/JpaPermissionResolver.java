@@ -17,7 +17,7 @@ public class JpaPermissionResolver implements PermissionResolver {
     private final RolePermissionJpaRepository rolePermissionJpaRepository;
 
     public JpaPermissionResolver(EmployeeRoleJpaRepository employeeRoleJpaRepository,
-                                 RolePermissionJpaRepository rolePermissionJpaRepository) {
+            RolePermissionJpaRepository rolePermissionJpaRepository) {
         this.employeeRoleJpaRepository = employeeRoleJpaRepository;
         this.rolePermissionJpaRepository = rolePermissionJpaRepository;
     }
@@ -26,14 +26,14 @@ public class JpaPermissionResolver implements PermissionResolver {
     @Override
     public Set<String> resolveFor(Long employeeId) {
         List<Long> roleIds = employeeRoleJpaRepository.findByEmployeeId(employeeId).stream()
-                .map(e -> e.getRole().getId())
-                .toList();
-        if (roleIds.isEmpty()) return Set.of();
+                .map(e -> e.getRole().getId()).toList();
+        if (roleIds.isEmpty())
+            return Set.of();
         return rolePermissionJpaRepository.findByRoleIdIn(roleIds).stream()
-                .map(rp -> rp.getPermission().getCode())
-                .collect(Collectors.toSet());
+                .map(rp -> rp.getPermission().getCode()).collect(Collectors.toSet());
     }
 
     @CacheEvict(value = "employee-permissions", key = "#employeeId")
-    public void evict(Long employeeId) {}
+    public void evict(Long employeeId) {
+    }
 }

@@ -6,14 +6,15 @@ import com.vetsoftware.app.registration.application.port.out.EmailVerificationTo
 import com.vetsoftware.app.registration.application.port.out.EmployeeEmailVerifier;
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
-import java.time.LocalDateTime;
 import io.micrometer.observation.annotation.Observed;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Verificacion de correo (Opcion B). Recibe el token plano, lo re-hashea, lo consume de forma irreversible
- * y marca al empleado como verificado, habilitando su login. La posesion del token es la autorizacion.
+ * Verificacion de correo (Opcion B). Recibe el token plano, lo re-hashea, lo
+ * consume de forma irreversible y marca al empleado como verificado,
+ * habilitando su login. La posesion del token es la autorizacion.
  */
 @Observed(name = "registration.verify.email")
 @Service
@@ -23,7 +24,7 @@ public class VerifyEmailService implements VerifyEmailUseCase {
     private final EmployeeEmailVerifier employeeEmailVerifier;
 
     public VerifyEmailService(EmailVerificationTokenRepository tokenRepository,
-                              EmployeeEmailVerifier employeeEmailVerifier) {
+            EmployeeEmailVerifier employeeEmailVerifier) {
         this.tokenRepository = tokenRepository;
         this.employeeEmailVerifier = employeeEmailVerifier;
     }
@@ -35,8 +36,8 @@ public class VerifyEmailService implements VerifyEmailUseCase {
             throw new InvalidVerificationTokenException("Verification token is required");
         }
         String hash = VerificationTokens.hash(command.token());
-        EmailVerificationToken token = tokenRepository.findByTokenHash(hash)
-            .orElseThrow(() -> new InvalidVerificationTokenException("Invalid verification token"));
+        EmailVerificationToken token = tokenRepository.findByTokenHash(hash).orElseThrow(
+                () -> new InvalidVerificationTokenException("Invalid verification token"));
 
         token.consume(LocalDateTime.now());
         tokenRepository.save(token);

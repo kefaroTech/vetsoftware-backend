@@ -31,8 +31,7 @@ public class DeleteAnimalService implements DeleteAnimalUseCase {
     private final DayCareChildrenQueryPort dayCareChildrenQueryPort;
     private final ConsultationChildrenQueryPort consultationChildrenQueryPort;
 
-    public DeleteAnimalService(
-            AnimalRepository repository,
+    public DeleteAnimalService(AnimalRepository repository,
             VaccinationChildrenQueryPort vaccinationChildrenQueryPort,
             DewormingChildrenQueryPort dewormingChildrenQueryPort,
             SurgeryChildrenQueryPort surgeryChildrenQueryPort,
@@ -57,7 +56,8 @@ public class DeleteAnimalService implements DeleteAnimalUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new AnimalNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new AnimalNotFoundException(id));
         if (vaccinationChildrenQueryPort.existsActiveByAnimalId(id)) {
             throw new AnimalHasActiveChildrenException(id, "vaccination");
         }

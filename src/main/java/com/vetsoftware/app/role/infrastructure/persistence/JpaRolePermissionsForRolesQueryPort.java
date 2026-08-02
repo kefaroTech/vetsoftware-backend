@@ -18,19 +18,12 @@ public class JpaRolePermissionsForRolesQueryPort implements RolePermissionsForRo
 
     @Override
     public Map<Long, List<PermissionSummaryDto>> findByRoleIds(List<Long> roleIds) {
-        if (roleIds.isEmpty()) return Map.of();
+        if (roleIds.isEmpty())
+            return Map.of();
         return repository.findByRoleIdIn(roleIds).stream()
-            .collect(Collectors.groupingBy(
-                rp -> rp.getRole().getId(),
-                Collectors.mapping(
-                    rp -> new PermissionSummaryDto(
-                        rp.getId(),
-                        rp.getPermission().getId(),
-                        rp.getPermission().getName(),
-                        rp.getPermission().getCode()
-                    ),
-                    Collectors.toList()
-                )
-            ));
+                .collect(Collectors.groupingBy(rp -> rp.getRole().getId(), Collectors.mapping(
+                        rp -> new PermissionSummaryDto(rp.getId(), rp.getPermission().getId(),
+                                rp.getPermission().getName(), rp.getPermission().getCode()),
+                        Collectors.toList())));
     }
 }

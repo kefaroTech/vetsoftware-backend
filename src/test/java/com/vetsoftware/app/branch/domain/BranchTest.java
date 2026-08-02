@@ -7,9 +7,10 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
 /**
- * Reglas de negocio del agregado {@link Branch} (multi-sucursal). Verifica creación, actualización,
- * ciclo de estado (active) y las invariantes de validación. Cubre CREATE/READ/UPDATE del dominio y la
- * "eliminación" lógica (deactivate), que NO es soft-delete sino un estado de negocio.
+ * Reglas de negocio del agregado {@link Branch} (multi-sucursal). Verifica
+ * creación, actualización, ciclo de estado (active) y las invariantes de
+ * validación. Cubre CREATE/READ/UPDATE del dominio y la "eliminación" lógica
+ * (deactivate), que NO es soft-delete sino un estado de negocio.
  */
 class BranchTest {
 
@@ -55,7 +56,8 @@ class BranchTest {
         assertThat(b.getAddress()).isEqualTo("addr2");
         assertThat(b.getPhone()).isEqualTo("phone2");
         assertThat(b.getCity()).isEqualTo(nuevaCiudad);
-        // invariantes: update NO toca identidad, empresa, fecha de creación ni el flag operativo.
+        // invariantes: update NO toca identidad, empresa, fecha de creación ni el flag
+        // operativo.
         assertThat(b.getId()).isEqualTo(3L);
         assertThat(b.getCompany()).isEqualTo(COMPANY);
         assertThat(b.getCreatedDate()).isEqualTo(CREATED);
@@ -67,9 +69,10 @@ class BranchTest {
         Branch b = new Branch(3L, "Old", "OLD", "addr", "phone", CITY, COMPANY, CREATED, true);
 
         assertThatThrownBy(() -> b.update("  ", "NEW", "addr2", "phone2", CITY))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
 
-        // La validación corre ANTES de asignar: el agregado no debe quedar a medio actualizar.
+        // La validación corre ANTES de asignar: el agregado no debe quedar a medio
+        // actualizar.
         assertThat(b.getName()).isEqualTo("Old");
         assertThat(b.getCode()).isEqualTo("OLD");
         assertThat(b.getAddress()).isEqualTo("addr");
@@ -97,54 +100,62 @@ class BranchTest {
     @Test
     void name_es_obligatorio() {
         assertThatThrownBy(() -> Branch.create(null, "C", null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("name is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name is required");
         assertThatThrownBy(() -> Branch.create("   ", "C", null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("name is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name is required");
     }
 
     @Test
     void name_maximo_120() {
-        assertThat(Branch.create("a".repeat(120), "C", null, null, CITY, COMPANY).getName()).hasSize(120);
+        assertThat(Branch.create("a".repeat(120), "C", null, null, CITY, COMPANY).getName())
+                .hasSize(120);
         assertThatThrownBy(() -> Branch.create("a".repeat(121), "C", null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("120");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("120");
     }
 
     @Test
     void code_es_obligatorio() {
         assertThatThrownBy(() -> Branch.create("N", null, null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("code is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("code is required");
         assertThatThrownBy(() -> Branch.create("N", "  ", null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("code is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("code is required");
     }
 
     @Test
     void code_maximo_30() {
-        assertThat(Branch.create("N", "a".repeat(30), null, null, CITY, COMPANY).getCode()).hasSize(30);
+        assertThat(Branch.create("N", "a".repeat(30), null, null, CITY, COMPANY).getCode())
+                .hasSize(30);
         assertThatThrownBy(() -> Branch.create("N", "a".repeat(31), null, null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30");
     }
 
     @Test
     void address_maximo_255() {
         assertThatThrownBy(() -> Branch.create("N", "C", "a".repeat(256), null, CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("255");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("255");
     }
 
     @Test
     void phone_maximo_30() {
         assertThatThrownBy(() -> Branch.create("N", "C", null, "a".repeat(31), CITY, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30");
     }
 
     @Test
     void city_es_obligatoria() {
         assertThatThrownBy(() -> Branch.create("N", "C", null, null, null, COMPANY))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("city is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("city is required");
     }
 
     @Test
     void company_es_obligatoria() {
         assertThatThrownBy(() -> Branch.create("N", "C", null, null, CITY, null))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("company is required");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("company is required");
     }
 }

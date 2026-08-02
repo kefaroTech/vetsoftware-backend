@@ -36,24 +36,78 @@ public class ElectronicDocumentTransmissionJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    protected ElectronicDocumentTransmissionJpaEntity() {}
+    protected ElectronicDocumentTransmissionJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getElectronicDocumentId() { return electronicDocumentId; }
-    public void setElectronicDocumentId(Long electronicDocumentId) { this.electronicDocumentId = electronicDocumentId; }
-    public String getProvider() { return provider; }
-    public void setProvider(String provider) { this.provider = provider; }
-    public int getAttempt() { return attempt; }
-    public void setAttempt(int attempt) { this.attempt = attempt; }
-    public Integer getHttpStatus() { return httpStatus; }
-    public void setHttpStatus(Integer httpStatus) { this.httpStatus = httpStatus; }
-    public String getProviderDocumentKey() { return providerDocumentKey; }
-    public void setProviderDocumentKey(String providerDocumentKey) { this.providerDocumentKey = providerDocumentKey; }
-    public TransmissionResult getResult() { return result; }
-    public void setResult(TransmissionResult result) { this.result = result; }
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getElectronicDocumentId() {
+        return electronicDocumentId;
+    }
+
+    public void setElectronicDocumentId(Long electronicDocumentId) {
+        this.electronicDocumentId = electronicDocumentId;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public int getAttempt() {
+        return attempt;
+    }
+
+    public void setAttempt(int attempt) {
+        this.attempt = attempt;
+    }
+
+    public Integer getHttpStatus() {
+        return httpStatus;
+    }
+
+    public void setHttpStatus(Integer httpStatus) {
+        this.httpStatus = httpStatus;
+    }
+
+    public String getProviderDocumentKey() {
+        return providerDocumentKey;
+    }
+
+    public void setProviderDocumentKey(String providerDocumentKey) {
+        this.providerDocumentKey = providerDocumentKey;
+    }
+
+    public TransmissionResult getResult() {
+        return result;
+    }
+
+    public void setResult(TransmissionResult result) {
+        this.result = result;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
 }

@@ -17,8 +17,7 @@ public class DeleteSpecieService implements DeleteSpecieUseCase {
     private final BreedChildrenQueryPort breedChildrenQueryPort;
     private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteSpecieService(
-            SpecieRepository repository,
+    public DeleteSpecieService(SpecieRepository repository,
             BreedChildrenQueryPort breedChildrenQueryPort,
             AnimalChildrenQueryPort animalChildrenQueryPort) {
         this.repository = repository;

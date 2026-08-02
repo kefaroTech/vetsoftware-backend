@@ -4,7 +4,10 @@ import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceFileSt
 import com.vetsoftware.app.infrastructure.storage.S3StorageClient;
 import org.springframework.stereotype.Component;
 
-/** Guarda el PDF/XML de la factura en S3 y devuelve la clave como referencia persistida en el documento. */
+/**
+ * Guarda el PDF/XML de la factura en S3 y devuelve la clave como referencia
+ * persistida en el documento.
+ */
 @Component
 public class S3InvoiceFileStorage implements InvoiceFileStoragePort {
 

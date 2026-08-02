@@ -18,9 +18,8 @@ public class JpaAnimalAlertRepository implements AnimalAlertRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaAnimalAlertRepository(AnimalAlertJpaRepository jpaRepository,
-                                    AnimalAlertJpaMapper mapper,
-                                    AnimalJpaRepository animalJpaRepository,
-                                    CompanyJpaRepository companyJpaRepository) {
+            AnimalAlertJpaMapper mapper, AnimalJpaRepository animalJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -43,7 +42,7 @@ public class JpaAnimalAlertRepository implements AnimalAlertRepository {
     @Override
     public List<AnimalAlert> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
         return jpaRepository.findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-            .stream().map(mapper::toDomain).toList();
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

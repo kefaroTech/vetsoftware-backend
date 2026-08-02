@@ -14,9 +14,8 @@ class ActuatorSecurityPropertiesTest {
         authentication.setUsername("prometheus");
         authentication.setPassword("short");
 
-        assertThatIllegalStateException()
-            .isThrownBy(authentication::validate)
-            .withMessageContaining("at least 16 characters");
+        assertThatIllegalStateException().isThrownBy(authentication::validate)
+                .withMessageContaining("at least 16 characters");
     }
 
     @Test

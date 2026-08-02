@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/** Consultas MySQL acotadas para no mantener bloqueos largos durante la purga. */
+/**
+ * Consultas MySQL acotadas para no mantener bloqueos largos durante la purga.
+ */
 @Repository
 class TokenCleanupRepository {
 
@@ -46,9 +48,7 @@ class TokenCleanupRepository {
     }
 
     TokenCounts countRows() {
-        return new TokenCounts(
-                count("refresh_tokens"),
-                count("email_verification_tokens"),
+        return new TokenCounts(count("refresh_tokens"), count("email_verification_tokens"),
                 count("password_reset_tokens"));
     }
 
@@ -63,7 +63,8 @@ class TokenCleanupRepository {
         }
 
         boolean anyAbove(long threshold) {
-            return refresh > threshold || emailVerification > threshold || passwordReset > threshold;
+            return refresh > threshold || emailVerification > threshold
+                    || passwordReset > threshold;
         }
     }
 }

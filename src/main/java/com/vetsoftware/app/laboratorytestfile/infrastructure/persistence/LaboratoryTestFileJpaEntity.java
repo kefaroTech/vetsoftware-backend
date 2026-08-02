@@ -41,26 +41,86 @@ public class LaboratoryTestFileJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    protected LaboratoryTestFileJpaEntity() {}
+    protected LaboratoryTestFileJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getStorageKey() { return storageKey; }
-    public void setStorageKey(String storageKey) { this.storageKey = storageKey; }
-    public String getBucket() { return bucket; }
-    public void setBucket(String bucket) { this.bucket = bucket; }
-    public String getOriginalFileName() { return originalFileName; }
-    public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
-    public String getContentType() { return contentType; }
-    public void setContentType(String contentType) { this.contentType = contentType; }
-    public Long getSizeBytes() { return sizeBytes; }
-    public void setSizeBytes(Long sizeBytes) { this.sizeBytes = sizeBytes; }
-    public String getETag() { return eTag; }
-    public void setETag(String eTag) { this.eTag = eTag; }
-    public EmployeeJpaEntity getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(EmployeeJpaEntity uploadedBy) { this.uploadedBy = uploadedBy; }
-    public LaboratoryTestJpaEntity getLaboratoryTest() { return laboratoryTest; }
-    public void setLaboratoryTest(LaboratoryTestJpaEntity laboratoryTest) { this.laboratoryTest = laboratoryTest; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getStorageKey() {
+        return storageKey;
+    }
+
+    public void setStorageKey(String storageKey) {
+        this.storageKey = storageKey;
+    }
+
+    public String getBucket() {
+        return bucket;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
+    }
+
+    public String getOriginalFileName() {
+        return originalFileName;
+    }
+
+    public void setOriginalFileName(String originalFileName) {
+        this.originalFileName = originalFileName;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    public Long getSizeBytes() {
+        return sizeBytes;
+    }
+
+    public void setSizeBytes(Long sizeBytes) {
+        this.sizeBytes = sizeBytes;
+    }
+
+    public String getETag() {
+        return eTag;
+    }
+
+    public void setETag(String eTag) {
+        this.eTag = eTag;
+    }
+
+    public EmployeeJpaEntity getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(EmployeeJpaEntity uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public LaboratoryTestJpaEntity getLaboratoryTest() {
+        return laboratoryTest;
+    }
+
+    public void setLaboratoryTest(LaboratoryTestJpaEntity laboratoryTest) {
+        this.laboratoryTest = laboratoryTest;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
 }

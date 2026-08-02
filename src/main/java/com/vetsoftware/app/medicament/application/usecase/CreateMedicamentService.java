@@ -16,17 +16,20 @@ public class CreateMedicamentService implements CreateMedicamentUseCase {
     private final MedicamentRepository repository;
     private final CompanyQueryPort companyQueryPort;
 
-    public CreateMedicamentService(MedicamentRepository repository, CompanyQueryPort companyQueryPort) {
+    public CreateMedicamentService(MedicamentRepository repository,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
 
     @Override
     public MedicamentDto execute(CreateMedicamentCommand command) {
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return MedicamentDto.from(
-                repository.save(Medicament.create(command.name(), command.description(), company, command.general())));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
+        return MedicamentDto.from(repository.save(Medicament.create(command.name(),
+                command.description(), company, command.general())));
     }
 }

@@ -7,14 +7,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Retenciones que practica el adquiriente agente retenedor. Tres reglas que no pueden desviarse:
- * reteFuente/reteICA van sobre la base gravable, reteIVA solo sobre el IVA generado, y la cuantía
- * mínima (4 UVT) apaga reteFuente/reteIVA pero NO reteICA (los mínimos de ICA son municipales).
+ * Retenciones que practica el adquiriente agente retenedor. Tres reglas que no
+ * pueden desviarse: reteFuente/reteICA van sobre la base gravable, reteIVA solo
+ * sobre el IVA generado, y la cuantía mínima (4 UVT) apaga reteFuente/reteIVA
+ * pero NO reteICA (los mínimos de ICA son municipales).
  */
 class WithholdingCalculatorTest {
 
-    /** UVT 2026 usado como referencia en los escenarios; el cálculo no depende del año, solo del valor. */
+    /**
+     * UVT 2026 usado como referencia en los escenarios; el cálculo no depende del
+     * año, solo del valor.
+     */
     private static final BigDecimal UVT = new BigDecimal("49799");
+
     private static final BigDecimal RETE_FUENTE_4 = new BigDecimal("4");
     private static final BigDecimal RETE_IVA_15 = new BigDecimal("15");
     private static final BigDecimal RETE_ICA_9_66 = new BigDecimal("9.66");
@@ -28,8 +33,8 @@ class WithholdingCalculatorTest {
 
         @Test
         void no_practica_ninguna_retencion() {
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    false, bd("10000000"), bd("1900000"), RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(false, bd("10000000"),
+                    bd("1900000"), RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
 
             assertThat(result).isSameAs(WithholdingAmounts.NONE);
             assertThat(result.total()).isEqualByComparingTo("0");
@@ -44,12 +49,13 @@ class WithholdingCalculatorTest {
             BigDecimal base = bd("1000000");
             BigDecimal iva = bd("190000");
 
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, base, iva, RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, base, iva,
+                    RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
 
-            assertThat(result.reteFuente()).isEqualByComparingTo("40000.00");   // 4% de la base
-            assertThat(result.reteIva()).isEqualByComparingTo("28500.00");      // 15% del IVA, no de la base
-            assertThat(result.reteIca()).isEqualByComparingTo("9660.00");       // 9,66 ‰ de la base
+            assertThat(result.reteFuente()).isEqualByComparingTo("40000.00"); // 4% de la base
+            assertThat(result.reteIva()).isEqualByComparingTo("28500.00"); // 15% del IVA, no de la
+                                                                           // base
+            assertThat(result.reteIca()).isEqualByComparingTo("9660.00"); // 9,66 ‰ de la base
             assertThat(result.total()).isEqualByComparingTo("78160.00");
         }
 
@@ -58,8 +64,8 @@ class WithholdingCalculatorTest {
             BigDecimal base = bd("1000000");
             BigDecimal iva = bd("190000");
 
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, base, iva, BigDecimal.ZERO, RETE_IVA_15, BigDecimal.ZERO, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, base, iva,
+                    BigDecimal.ZERO, RETE_IVA_15, BigDecimal.ZERO, UVT);
 
             assertThat(result.reteIva()).isEqualByComparingTo("28500.00");
             assertThat(result.reteIva()).isNotEqualByComparingTo("150000.00");
@@ -67,10 +73,10 @@ class WithholdingCalculatorTest {
 
         @Test
         void justo_en_el_umbral_de_4_uvt_si_retiene() {
-            BigDecimal base = UVT.multiply(bd("4"));   // exactamente 4 UVT
+            BigDecimal base = UVT.multiply(bd("4")); // exactamente 4 UVT
 
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, base, bd("1000"), RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, base, bd("1000"),
+                    RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, UVT);
 
             assertThat(result.reteFuente()).isGreaterThan(BigDecimal.ZERO);
             assertThat(result.reteIva()).isGreaterThan(BigDecimal.ZERO);
@@ -82,10 +88,10 @@ class WithholdingCalculatorTest {
 
         @Test
         void no_practica_retefuente_ni_reteiva_pero_si_reteica() {
-            BigDecimal base = UVT.multiply(bd("4")).subtract(BigDecimal.ONE);   // un peso por debajo
+            BigDecimal base = UVT.multiply(bd("4")).subtract(BigDecimal.ONE); // un peso por debajo
 
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, base, bd("50000"), RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, base, bd("50000"),
+                    RETE_FUENTE_4, RETE_IVA_15, RETE_ICA_9_66, UVT);
 
             assertThat(result.reteFuente()).isEqualByComparingTo("0");
             assertThat(result.reteIva()).isEqualByComparingTo("0");
@@ -94,8 +100,8 @@ class WithholdingCalculatorTest {
 
         @Test
         void una_venta_pequena_de_mostrador_no_genera_retenciones_de_renta() {
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, bd("50000"), bd("9500"), RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, bd("50000"), bd("9500"),
+                    RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, UVT);
 
             assertThat(result.total()).isEqualByComparingTo("0");
         }
@@ -106,9 +112,11 @@ class WithholdingCalculatorTest {
 
         @Test
         void sin_uvt_no_se_bloquea_la_retencion() {
-            // Política documentada: si no hay UVT configurado no se puede evaluar el mínimo → no se bloquea.
-            WithholdingAmounts sinUvt = WithholdingCalculator.compute(
-                    true, bd("50000"), bd("9500"), RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, null);
+            // Política documentada: si no hay UVT configurado no se puede evaluar el mínimo
+            // → no se
+            // bloquea.
+            WithholdingAmounts sinUvt = WithholdingCalculator.compute(true, bd("50000"), bd("9500"),
+                    RETE_FUENTE_4, RETE_IVA_15, BigDecimal.ZERO, null);
 
             assertThat(sinUvt.reteFuente()).isEqualByComparingTo("2000.00");
             assertThat(sinUvt.reteIva()).isEqualByComparingTo("1425.00");
@@ -116,11 +124,11 @@ class WithholdingCalculatorTest {
 
         @Test
         void uvt_cero_o_negativo_se_trata_igual_que_ausente() {
-            assertThat(WithholdingCalculator.compute(true, bd("50000"), bd("9500"),
-                    RETE_FUENTE_4, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO).reteFuente())
+            assertThat(WithholdingCalculator.compute(true, bd("50000"), bd("9500"), RETE_FUENTE_4,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO).reteFuente())
                     .isEqualByComparingTo("2000.00");
-            assertThat(WithholdingCalculator.compute(true, bd("50000"), bd("9500"),
-                    RETE_FUENTE_4, BigDecimal.ZERO, BigDecimal.ZERO, bd("-1")).reteFuente())
+            assertThat(WithholdingCalculator.compute(true, bd("50000"), bd("9500"), RETE_FUENTE_4,
+                    BigDecimal.ZERO, BigDecimal.ZERO, bd("-1")).reteFuente())
                     .isEqualByComparingTo("2000.00");
         }
     }
@@ -130,8 +138,8 @@ class WithholdingCalculatorTest {
 
         @Test
         void tarifas_nulas_o_cero_producen_cero_sin_fallar() {
-            WithholdingAmounts result = WithholdingCalculator.compute(
-                    true, bd("10000000"), bd("1900000"), null, BigDecimal.ZERO, null, UVT);
+            WithholdingAmounts result = WithholdingCalculator.compute(true, bd("10000000"),
+                    bd("1900000"), null, BigDecimal.ZERO, null, UVT);
 
             assertThat(result.total()).isEqualByComparingTo("0");
         }
@@ -142,7 +150,8 @@ class WithholdingCalculatorTest {
 
         @Test
         void total_suma_las_tres_retenciones() {
-            WithholdingAmounts amounts = new WithholdingAmounts(bd("100.50"), bd("20.25"), bd("5.25"));
+            WithholdingAmounts amounts = new WithholdingAmounts(bd("100.50"), bd("20.25"),
+                    bd("5.25"));
             assertThat(amounts.total()).isEqualByComparingTo("126.00");
         }
 

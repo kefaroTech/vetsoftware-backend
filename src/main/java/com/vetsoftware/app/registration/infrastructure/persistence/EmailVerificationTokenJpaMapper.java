@@ -18,13 +18,8 @@ public class EmailVerificationTokenJpaMapper {
     }
 
     public EmailVerificationToken toDomain(EmailVerificationTokenJpaEntity entity) {
-        return new EmailVerificationToken(
-            entity.getId(),
-            entity.getEmployeeId(),
-            entity.getCompanyId(),
-            entity.getTokenHash(),
-            entity.getExpiresAt(),
-            entity.getConsumedAt()
-        );
+        return new EmailVerificationToken(entity.getId(), entity.getEmployeeId(),
+                entity.getCompanyId(), entity.getTokenHash(), entity.getExpiresAt(),
+                entity.getConsumedAt());
     }
 }

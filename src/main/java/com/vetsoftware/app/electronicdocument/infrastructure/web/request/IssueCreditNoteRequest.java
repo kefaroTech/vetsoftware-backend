@@ -5,5 +5,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
-/** {@code partialAmount} opcional: null ⇒ nota crédito TOTAL (anulación); un monto (≤ total) ⇒ nota PARCIAL. */
-public record IssueCreditNoteRequest(@NotNull CreditNoteReason reason, @Positive BigDecimal partialAmount) {}
+/**
+ * {@code partialAmount} opcional: null ⇒ nota crédito TOTAL (anulación); un
+ * monto (≤ total) ⇒ nota PARCIAL.
+ */
+public record IssueCreditNoteRequest(@NotNull CreditNoteReason reason,
+        @Positive BigDecimal partialAmount) {
+}

@@ -12,7 +12,7 @@ public class JpaEconomicActivityRepository implements EconomicActivityRepository
     private final EconomicActivityJpaMapper mapper;
 
     public JpaEconomicActivityRepository(EconomicActivityJpaRepository jpaRepository,
-                                         EconomicActivityJpaMapper mapper) {
+            EconomicActivityJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

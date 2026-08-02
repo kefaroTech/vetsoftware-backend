@@ -7,6 +7,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 /** Abrir la caja de una sede con la base inicial. Gate: operar caja. */
 public interface OpenCashSessionUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('cashregister.operate') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('cashregister.operate') and @authz.isMyCompany(#command.companyId))")
     CashSessionView open(OpenCashSessionCommand command);
 }

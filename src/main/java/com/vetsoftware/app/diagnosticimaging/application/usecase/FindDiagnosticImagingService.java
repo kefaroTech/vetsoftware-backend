@@ -19,6 +19,6 @@ public class FindDiagnosticImagingService implements FindDiagnosticImagingUseCas
     @Override
     public DiagnosticImagingDto findById(Long id, Long companyId) {
         return DiagnosticImagingDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
+                .orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
     }
 }

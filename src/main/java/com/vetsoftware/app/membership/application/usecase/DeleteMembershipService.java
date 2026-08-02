@@ -15,8 +15,7 @@ public class DeleteMembershipService implements DeleteMembershipUseCase {
     private final MembershipRepository repository;
     private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
 
-    public DeleteMembershipService(
-            MembershipRepository repository,
+    public DeleteMembershipService(MembershipRepository repository,
             MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
         this.repository = repository;
         this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;

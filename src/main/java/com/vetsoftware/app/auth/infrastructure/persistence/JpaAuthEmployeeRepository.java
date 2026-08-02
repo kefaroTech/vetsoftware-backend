@@ -17,18 +17,19 @@ public class JpaAuthEmployeeRepository implements AuthEmployeeRepository {
     @Override
     public Optional<AuthEmployee> findActiveById(Long employeeId) {
         return employeeJpaRepository.findActiveWithCompanyById(employeeId)
-            .map(e -> new AuthEmployee(e.getId(), e.getCompany().getId(), e.getAuthVersion()));
+                .map(e -> new AuthEmployee(e.getId(), e.getCompany().getId(), e.getAuthVersion()));
     }
 
     @Override
     public Optional<AuthEmployee> rotateAuthVersion(Long employeeId) {
         return employeeJpaRepository.findActiveWithCompanyByIdForUpdate(employeeId)
-            .map(employee -> {
-                long nextVersion = employee.getAuthVersion() + 1L;
-                employee.setAuthVersion(nextVersion);
-                employeeJpaRepository.saveAndFlush(employee);
-                return new AuthEmployee(employee.getId(), employee.getCompany().getId(), nextVersion);
-            });
+                .map(employee -> {
+                    long nextVersion = employee.getAuthVersion() + 1L;
+                    employee.setAuthVersion(nextVersion);
+                    employeeJpaRepository.saveAndFlush(employee);
+                    return new AuthEmployee(employee.getId(), employee.getCompany().getId(),
+                            nextVersion);
+                });
     }
 
     @Override

@@ -18,8 +18,7 @@ public class FindCountryService implements FindCountryUseCase {
 
     @Override
     public CountryDto findById(Long id) {
-        return repository.findById(id)
-                .map(CountryDto::from)
+        return repository.findById(id).map(CountryDto::from)
                 .orElseThrow(() -> new CountryNotFoundException(id));
     }
 }

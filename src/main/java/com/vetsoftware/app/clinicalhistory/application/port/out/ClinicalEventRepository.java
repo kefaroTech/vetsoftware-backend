@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface ClinicalEventRepository {
     List<ClinicalEvent> findHistory(GetClinicalHistoryQuery query);
+
     List<ClinicalEvent> findByCompany(ListCompanyClinicalEventsQuery query);
 }

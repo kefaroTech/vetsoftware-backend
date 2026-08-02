@@ -21,8 +21,6 @@ public class ListCompanyClinicalEventsService implements ListCompanyClinicalEven
     @Override
     @Transactional(readOnly = true)
     public List<ClinicalEventDto> execute(ListCompanyClinicalEventsQuery query) {
-        return repository.findByCompany(query).stream()
-                .map(ClinicalEventDto::from)
-                .toList();
+        return repository.findByCompany(query).stream().map(ClinicalEventDto::from).toList();
     }
 }

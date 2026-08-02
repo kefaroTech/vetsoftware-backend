@@ -4,6 +4,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteSupplierUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('supplier.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('supplier.delete') and @authz.isMyCompany(#companyId))")
     void execute(Long id, Long companyId);
 }

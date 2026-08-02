@@ -17,9 +17,11 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Construye los modelos de reporte de inventario. El kardex se recorre en orden ascendente arrastrando el saldo
- * corrido (partiendo del saldo previo a {@code from} si hay filtro de fecha); las compras se suman en totales.
- * Las etiquetas de tipo/referencia se traducen a ES aquí para que CSV y PDF compartan la misma nomenclatura.
+ * Construye los modelos de reporte de inventario. El kardex se recorre en orden
+ * ascendente arrastrando el saldo corrido (partiendo del saldo previo a
+ * {@code from} si hay filtro de fecha); las compras se suman en totales. Las
+ * etiquetas de tipo/referencia se traducen a ES aquí para que CSV y PDF
+ * compartan la misma nomenclatura.
  */
 @Service
 public class InventoryReportService implements ExportInventoryUseCase {
@@ -34,22 +36,25 @@ public class InventoryReportService implements ExportInventoryUseCase {
     @Observed(name = "inventory.export.kardex")
     public KardexReport kardexReport(SearchKardexCommand command) {
         List<KardexExportRow> rows = stockQueryPort.kardexForExport(command);
-        int opening = command.from() == null ? 0
-            : stockQueryPort.openingBalance(command.companyId(), command.productId(), command.branchId(),
-                command.from());
+        int opening = command.from() == null
+                ? 0
+                : stockQueryPort.openingBalance(command.companyId(), command.productId(),
+                        command.branchId(), command.from());
         int running = opening;
         List<KardexReportLine> lines = new ArrayList<>(rows.size());
         for (KardexExportRow r : rows) {
             running += r.quantity();
             lines.add(new KardexReportLine(r.createdDate(), typeLabel(r.type()),
-                referenceLabel(r.referenceType(), r.referenceId()), r.lotId(), r.quantity(), r.unitCost(), running));
+                    referenceLabel(r.referenceType(), r.referenceId()), r.lotId(), r.quantity(),
+                    r.unitCost(), running));
         }
         String productName = rows.isEmpty() ? null : rows.get(0).productName();
         String productCode = rows.isEmpty() ? null : rows.get(0).productCode();
-        String branchName = command.branchId() == null ? "Todas las sedes"
-            : (rows.isEmpty() ? null : rows.get(0).branchName());
+        String branchName = command.branchId() == null
+                ? "Todas las sedes"
+                : (rows.isEmpty() ? null : rows.get(0).branchName());
         return new KardexReport(productName, productCode, branchName, command.from(), command.to(),
-            LocalDateTime.now(), opening, running, lines);
+                LocalDateTime.now(), opening, running, lines);
     }
 
     @Override
@@ -57,15 +62,18 @@ public class InventoryReportService implements ExportInventoryUseCase {
     public PurchasesReport purchasesReport(SearchPurchasesQuery query) {
         List<PurchaseView> lines = stockQueryPort.purchasesForExport(query);
         int totalQuantity = lines.stream().mapToInt(l -> Math.abs(l.quantity())).sum();
-        BigDecimal totalValue = lines.stream().map(PurchaseView::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        String branchName = query.branchId() == null ? "Todas las sedes"
-            : (lines.isEmpty() ? null : lines.get(0).branchName());
+        BigDecimal totalValue = lines.stream().map(PurchaseView::total).reduce(BigDecimal.ZERO,
+                BigDecimal::add);
+        String branchName = query.branchId() == null
+                ? "Todas las sedes"
+                : (lines.isEmpty() ? null : lines.get(0).branchName());
         return new PurchasesReport(branchName, query.from(), query.to(), LocalDateTime.now(), lines,
-            totalQuantity, totalValue);
+                totalQuantity, totalValue);
     }
 
     private static String typeLabel(String type) {
-        if (type == null) return "";
+        if (type == null)
+            return "";
         return switch (type) {
             case "PURCHASE" -> "Compra";
             case "SALE" -> "Venta";

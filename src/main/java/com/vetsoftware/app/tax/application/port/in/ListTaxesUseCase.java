@@ -8,7 +8,10 @@ public interface ListTaxesUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
     List<TaxDto> listByCompany(Long companyId);
 
-    /** Lista los impuestos PAUSADOS (enabled=false) de la empresa, para el flujo de reactivación. */
+    /**
+     * Lista los impuestos PAUSADOS (enabled=false) de la empresa, para el flujo de
+     * reactivación.
+     */
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
     List<TaxDto> listDisabledByCompany(Long companyId);
 }

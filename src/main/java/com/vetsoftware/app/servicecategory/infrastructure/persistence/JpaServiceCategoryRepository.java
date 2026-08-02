@@ -15,8 +15,7 @@ public class JpaServiceCategoryRepository implements ServiceCategoryRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaServiceCategoryRepository(ServiceCategoryJpaRepository jpaRepository,
-                                        ServiceCategoryJpaMapper mapper,
-                                        CompanyJpaRepository companyJpaRepository) {
+            ServiceCategoryJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,8 +23,10 @@ public class JpaServiceCategoryRepository implements ServiceCategoryRepository {
 
     @Override
     public ServiceCategory save(ServiceCategory serviceCategory) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(serviceCategory.getCompany().id());
-        ServiceCategoryJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(serviceCategory, company));
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(serviceCategory.getCompany().id());
+        ServiceCategoryJpaEntity saved = jpaRepository
+                .saveAndFlush(mapper.toJpa(serviceCategory, company));
         return mapper.toDomain(saved, serviceCategory.getCompany());
     }
 

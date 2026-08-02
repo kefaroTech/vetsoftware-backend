@@ -36,11 +36,9 @@ public class ConsultationController {
     private final Authz authz;
 
     public ConsultationController(CreateConsultationUseCase createUseCase,
-                                  UpdateConsultationUseCase updateUseCase,
-                                  FindConsultationUseCase findUseCase,
-                                  ListConsultationsUseCase listUseCase,
-                                  DeleteConsultationUseCase deleteUseCase,
-                                  ReactivateConsultationUseCase reactivateUseCase, Authz authz) {
+            UpdateConsultationUseCase updateUseCase, FindConsultationUseCase findUseCase,
+            ListConsultationsUseCase listUseCase, DeleteConsultationUseCase deleteUseCase,
+            ReactivateConsultationUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -53,10 +51,9 @@ public class ConsultationController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ConsultationResponse create(@Valid @RequestBody CreateConsultationRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateConsultationCommand(
-                request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
+        return toResponse(createUseCase.execute(new CreateConsultationCommand(request.date(),
+                request.consultationTypeId(), request.anamnesis(), request.diagnosis(),
+                request.prognosis(), request.nextControl(), request.animalId(),
                 authz.currentCompanyId(), request.weight(), request.weightUnit(),
                 request.temperature(), request.heartRate(), request.respiratoryRate(),
                 request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
@@ -66,7 +63,8 @@ public class ConsultationController {
 
     @GetMapping
     public List<ConsultationResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -76,16 +74,14 @@ public class ConsultationController {
 
     @PutMapping("/{id}")
     public ConsultationResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdateConsultationRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateConsultationCommand(
-                id, request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
-                authz.currentCompanyId(),
-                request.temperature(), request.heartRate(), request.respiratoryRate(),
-                request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
-                request.bodyConditionScore(), request.painScore(), request.attitude(),
-                request.examFindings())));
+            @Valid @RequestBody UpdateConsultationRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateConsultationCommand(id, request.date(),
+                request.consultationTypeId(), request.anamnesis(), request.diagnosis(),
+                request.prognosis(), request.nextControl(), request.animalId(),
+                authz.currentCompanyId(), request.temperature(), request.heartRate(),
+                request.respiratoryRate(), request.mucousMembranes(), request.capillaryRefill(),
+                request.hydration(), request.bodyConditionScore(), request.painScore(),
+                request.attitude(), request.examFindings())));
     }
 
     @DeleteMapping("/{id}")
@@ -103,17 +99,12 @@ public class ConsultationController {
         ConsultationTypeSummaryDto ct = dto.consultationType();
         AnimalSummaryDto a = dto.animal();
         CompanySummaryDto c = dto.company();
-        return new ConsultationResponse(
-            dto.id(), dto.date(),
-            new ConsultationTypeSummary(ct.id(), ct.name()),
-            dto.anamnesis(), dto.diagnosis(), dto.prognosis(), dto.nextControl(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled(),
-            dto.temperature(), dto.heartRate(), dto.respiratoryRate(),
-            dto.mucousMembranes(), dto.capillaryRefill(), dto.hydration(),
-            dto.bodyConditionScore(), dto.painScore(), dto.attitude(),
-            dto.examFindings());
+        return new ConsultationResponse(dto.id(), dto.date(),
+                new ConsultationTypeSummary(ct.id(), ct.name()), dto.anamnesis(), dto.diagnosis(),
+                dto.prognosis(), dto.nextControl(), new AnimalSummary(a.id(), a.name(), a.code()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled(), dto.temperature(), dto.heartRate(), dto.respiratoryRate(),
+                dto.mucousMembranes(), dto.capillaryRefill(), dto.hydration(),
+                dto.bodyConditionScore(), dto.painScore(), dto.attitude(), dto.examFindings());
     }
 }

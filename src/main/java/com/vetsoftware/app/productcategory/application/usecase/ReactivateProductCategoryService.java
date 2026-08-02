@@ -21,8 +21,9 @@ public class ReactivateProductCategoryService implements ReactivateProductCatego
     @Transactional
     public ProductCategoryDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ProductCategoryNotFoundException(id);
+        if (rows == 0)
+            throw new ProductCategoryNotFoundException(id);
         return ProductCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ProductCategoryNotFoundException(id)));
+                .orElseThrow(() -> new ProductCategoryNotFoundException(id)));
     }
 }

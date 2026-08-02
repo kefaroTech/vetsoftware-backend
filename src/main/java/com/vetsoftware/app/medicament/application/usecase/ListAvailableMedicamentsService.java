@@ -18,6 +18,7 @@ public class ListAvailableMedicamentsService implements ListAvailableMedicaments
 
     @Override
     public List<MedicamentDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(MedicamentDto::from).toList();
+        return repository.findAllAvailableForCompany(companyId).stream().map(MedicamentDto::from)
+                .toList();
     }
 }

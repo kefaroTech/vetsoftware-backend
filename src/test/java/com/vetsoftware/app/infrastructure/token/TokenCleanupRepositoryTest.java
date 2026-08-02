@@ -19,8 +19,8 @@ class TokenCleanupRepositoryTest {
         LocalDateTime cutoff = LocalDateTime.of(2026, 7, 25, 12, 0);
         when(jdbcTemplate.update(TokenCleanupRepository.PURGE_REFRESH, cutoff, cutoff, 500))
                 .thenReturn(4);
-        when(jdbcTemplate.update(TokenCleanupRepository.PURGE_EMAIL_VERIFICATION, cutoff, cutoff, 500))
-                .thenReturn(3);
+        when(jdbcTemplate.update(TokenCleanupRepository.PURGE_EMAIL_VERIFICATION, cutoff, cutoff,
+                500)).thenReturn(3);
         when(jdbcTemplate.update(TokenCleanupRepository.PURGE_PASSWORD_RESET, cutoff, cutoff, 500))
                 .thenReturn(2);
 
@@ -33,8 +33,8 @@ class TokenCleanupRepositoryTest {
     void countsAllThreeTablesForGrowthMonitoring() {
         when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_tokens", Long.class))
                 .thenReturn(10L);
-        when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM email_verification_tokens", Long.class))
-                .thenReturn(20L);
+        when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM email_verification_tokens",
+                Long.class)).thenReturn(20L);
         when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM password_reset_tokens", Long.class))
                 .thenReturn(30L);
 
@@ -42,7 +42,9 @@ class TokenCleanupRepositoryTest {
 
         assertThat(counts.total()).isEqualTo(60);
         verify(jdbcTemplate).queryForObject("SELECT COUNT(*) FROM refresh_tokens", Long.class);
-        verify(jdbcTemplate).queryForObject("SELECT COUNT(*) FROM email_verification_tokens", Long.class);
-        verify(jdbcTemplate).queryForObject("SELECT COUNT(*) FROM password_reset_tokens", Long.class);
+        verify(jdbcTemplate).queryForObject("SELECT COUNT(*) FROM email_verification_tokens",
+                Long.class);
+        verify(jdbcTemplate).queryForObject("SELECT COUNT(*) FROM password_reset_tokens",
+                Long.class);
     }
 }

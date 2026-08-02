@@ -17,6 +17,6 @@ public class JpaBasePermissionQueryPort implements BasePermissionQueryPort {
     @Override
     public Optional<BasePermissionRef> findById(Long basePermissionId) {
         return basePermissionJpaRepository.findById(basePermissionId)
-            .map(e -> new BasePermissionRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new BasePermissionRef(e.getId(), e.getName(), e.getCode()));
     }
 }

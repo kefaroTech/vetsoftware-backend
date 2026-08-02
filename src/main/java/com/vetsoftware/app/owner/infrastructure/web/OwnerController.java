@@ -36,9 +36,9 @@ public class OwnerController {
     private final Authz authz;
 
     public OwnerController(CreateOwnerUseCase createUseCase, UpdateOwnerUseCase updateUseCase,
-                           FindOwnerUseCase findUseCase, ListOwnersUseCase listUseCase,
-                           SearchOwnersUseCase searchUseCase, DeleteOwnerUseCase deleteUseCase,
-                           ReactivateOwnerUseCase reactivateUseCase, Authz authz) {
+            FindOwnerUseCase findUseCase, ListOwnersUseCase listUseCase,
+            SearchOwnersUseCase searchUseCase, DeleteOwnerUseCase deleteUseCase,
+            ReactivateOwnerUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -52,23 +52,23 @@ public class OwnerController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OwnerResponse create(@Valid @RequestBody CreateOwnerRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateOwnerCommand(request.name(), request.email(), request.document(),
-                request.documentType(), request.personType(), request.verificationDigit(),
-                request.legalName(), request.address(), request.phone(), request.cityId(),
-                authz.currentCompanyId(), request.withholdingAgent(), request.taxRegime(),
-                request.fiscalResponsibility())));
+        return toResponse(createUseCase.execute(new CreateOwnerCommand(request.name(),
+                request.email(), request.document(), request.documentType(), request.personType(),
+                request.verificationDigit(), request.legalName(), request.address(),
+                request.phone(), request.cityId(), authz.currentCompanyId(),
+                request.withholdingAgent(), request.taxRegime(), request.fiscalResponsibility())));
     }
 
     @GetMapping
     public List<OwnerResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/search")
     public List<OwnerResponse> search(@RequestParam("q") String query) {
-        return searchUseCase.search(authz.currentCompanyId(), query)
-            .stream().map(this::toResponse).toList();
+        return searchUseCase.search(authz.currentCompanyId(), query).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -77,13 +77,13 @@ public class OwnerController {
     }
 
     @PutMapping("/{id}")
-    public OwnerResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOwnerRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateOwnerCommand(id, request.name(), request.email(), request.document(),
-                request.documentType(), request.personType(), request.verificationDigit(),
-                request.legalName(), request.address(), request.phone(), request.cityId(),
-                authz.currentCompanyId(), request.withholdingAgent(), request.taxRegime(),
-                request.fiscalResponsibility())));
+    public OwnerResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateOwnerRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateOwnerCommand(id, request.name(),
+                request.email(), request.document(), request.documentType(), request.personType(),
+                request.verificationDigit(), request.legalName(), request.address(),
+                request.phone(), request.cityId(), authz.currentCompanyId(),
+                request.withholdingAgent(), request.taxRegime(), request.fiscalResponsibility())));
     }
 
     @DeleteMapping("/{id}")
@@ -100,13 +100,10 @@ public class OwnerController {
     private OwnerResponse toResponse(OwnerDto dto) {
         CitySummaryDto c = dto.city();
         CompanySummaryDto co = dto.company();
-        return new OwnerResponse(
-            dto.id(), dto.name(), dto.email(), dto.document(), dto.documentType(),
-            dto.personType(), dto.verificationDigit(), dto.legalName(), dto.address(), dto.phone(),
-            new CitySummary(c.id(), c.name()),
-            new CompanySummary(co.id(), co.name(), co.identifier()),
-            dto.withholdingAgent(), dto.taxRegime(), dto.fiscalResponsibility(),
-            dto.createdDate(), dto.enabled()
-        );
+        return new OwnerResponse(dto.id(), dto.name(), dto.email(), dto.document(),
+                dto.documentType(), dto.personType(), dto.verificationDigit(), dto.legalName(),
+                dto.address(), dto.phone(), new CitySummary(c.id(), c.name()),
+                new CompanySummary(co.id(), co.name(), co.identifier()), dto.withholdingAgent(),
+                dto.taxRegime(), dto.fiscalResponsibility(), dto.createdDate(), dto.enabled());
     }
 }

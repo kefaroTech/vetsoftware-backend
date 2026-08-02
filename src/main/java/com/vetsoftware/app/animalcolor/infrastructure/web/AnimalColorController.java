@@ -28,11 +28,9 @@ public class AnimalColorController {
     private final ReactivateAnimalColorUseCase reactivateUseCase;
 
     public AnimalColorController(CreateAnimalColorUseCase createUseCase,
-                                 UpdateAnimalColorUseCase updateUseCase,
-                                 FindAnimalColorUseCase findUseCase,
-                                 ListAnimalColorsUseCase listUseCase,
-                                 DeleteAnimalColorUseCase deleteUseCase,
-                                 ReactivateAnimalColorUseCase reactivateUseCase) {
+            UpdateAnimalColorUseCase updateUseCase, FindAnimalColorUseCase findUseCase,
+            ListAnimalColorsUseCase listUseCase, DeleteAnimalColorUseCase deleteUseCase,
+            ReactivateAnimalColorUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -58,7 +56,8 @@ public class AnimalColorController {
     }
 
     @PutMapping("/{id}")
-    public AnimalColorResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAnimalColorRequest request) {
+    public AnimalColorResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateAnimalColorRequest request) {
         return toResponse(updateUseCase.execute(new UpdateAnimalColorCommand(id, request.name())));
     }
 

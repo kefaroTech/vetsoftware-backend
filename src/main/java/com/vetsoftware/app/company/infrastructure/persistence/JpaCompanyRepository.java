@@ -17,10 +17,8 @@ public class JpaCompanyRepository implements CompanyRepository {
     private final CityJpaRepository cityJpaRepository;
     private final MembershipJpaRepository membershipJpaRepository;
 
-    public JpaCompanyRepository(CompanyJpaRepository jpaRepository,
-                                CompanyJpaMapper mapper,
-                                CityJpaRepository cityJpaRepository,
-                                MembershipJpaRepository membershipJpaRepository) {
+    public JpaCompanyRepository(CompanyJpaRepository jpaRepository, CompanyJpaMapper mapper,
+            CityJpaRepository cityJpaRepository, MembershipJpaRepository membershipJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.cityJpaRepository = cityJpaRepository;
@@ -30,8 +28,8 @@ public class JpaCompanyRepository implements CompanyRepository {
     @Override
     public Company save(Company company) {
         CityJpaEntity city = cityJpaRepository.getReferenceById(company.getCity().id());
-        MembershipJpaEntity membership =
-            membershipJpaRepository.getReferenceById(company.getMembership().id());
+        MembershipJpaEntity membership = membershipJpaRepository
+                .getReferenceById(company.getMembership().id());
         CompanyJpaEntity saved = jpaRepository.save(mapper.toJpa(company, city, membership));
         return mapper.toDomain(saved, company.getCity(), company.getMembership());
     }

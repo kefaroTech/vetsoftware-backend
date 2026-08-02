@@ -18,9 +18,8 @@ public class JpaLaboratoryTestFileRepository implements LaboratoryTestFileReposi
     private final LaboratoryTestJpaRepository laboratoryTestJpaRepository;
 
     public JpaLaboratoryTestFileRepository(LaboratoryTestFileJpaRepository jpaRepository,
-                                           LaboratoryTestFileJpaMapper mapper,
-                                           EmployeeJpaRepository employeeJpaRepository,
-                                           LaboratoryTestJpaRepository laboratoryTestJpaRepository) {
+            LaboratoryTestFileJpaMapper mapper, EmployeeJpaRepository employeeJpaRepository,
+            LaboratoryTestJpaRepository laboratoryTestJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.employeeJpaRepository = employeeJpaRepository;
@@ -29,11 +28,12 @@ public class JpaLaboratoryTestFileRepository implements LaboratoryTestFileReposi
 
     @Override
     public LaboratoryTestFile save(LaboratoryTestFile file) {
-        EmployeeJpaEntity uploadedBy = employeeJpaRepository.getReferenceById(file.getUploadedBy().id());
-        LaboratoryTestJpaEntity laboratoryTest =
-            laboratoryTestJpaRepository.getReferenceById(file.getLaboratoryTest().id());
-        LaboratoryTestFileJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(file, uploadedBy, laboratoryTest));
+        EmployeeJpaEntity uploadedBy = employeeJpaRepository
+                .getReferenceById(file.getUploadedBy().id());
+        LaboratoryTestJpaEntity laboratoryTest = laboratoryTestJpaRepository
+                .getReferenceById(file.getLaboratoryTest().id());
+        LaboratoryTestFileJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(file, uploadedBy, laboratoryTest));
         return mapper.toDomain(saved, file.getUploadedBy(), file.getLaboratoryTest());
     }
 
@@ -44,13 +44,14 @@ public class JpaLaboratoryTestFileRepository implements LaboratoryTestFileReposi
 
     @Override
     public Optional<LaboratoryTestFile> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndLaboratoryTest_Company_Id(id, companyId).map(mapper::toDomain);
+        return jpaRepository.findByIdAndLaboratoryTest_Company_Id(id, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public List<LaboratoryTestFile> findAllByLaboratoryTestId(Long laboratoryTestId) {
         return jpaRepository.findAllByLaboratoryTest_Id(laboratoryTestId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override

@@ -7,17 +7,11 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record UpdateSupplierInvoiceRequest(
-        Long branchId,
-        @NotNull Long supplierId,
-        Long purchaseOrderId,
-        Long goodsReceiptId,
-        @NotBlank @Size(max = 60) String invoiceNumber,
-        @NotNull LocalDate issueDate,
-        @NotNull LocalDate dueDate,
+public record UpdateSupplierInvoiceRequest(Long branchId, @NotNull Long supplierId,
+        Long purchaseOrderId, Long goodsReceiptId, @NotBlank @Size(max = 60) String invoiceNumber,
+        @NotNull LocalDate issueDate, @NotNull LocalDate dueDate,
         @NotNull @DecimalMin("0.0") BigDecimal subtotal,
         @NotNull @DecimalMin("0.0") BigDecimal taxAmount,
-        @DecimalMin("0.0") BigDecimal withholdingAmount,
-        @Size(max = 500) String notes,
-        @NotNull Long version
-) {}
+        @DecimalMin("0.0") BigDecimal withholdingAmount, @Size(max = 500) String notes,
+        @NotNull Long version) {
+}

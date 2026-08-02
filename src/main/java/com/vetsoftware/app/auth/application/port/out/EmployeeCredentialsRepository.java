@@ -6,5 +6,6 @@ public interface EmployeeCredentialsRepository {
     Optional<EmployeeCredentials> findByCode(String employeeCode);
 
     record EmployeeCredentials(Long id, Long companyId, Long authVersion, String hashPassword,
-                               boolean emailVerified) {}
+            boolean emailVerified) {
+    }
 }

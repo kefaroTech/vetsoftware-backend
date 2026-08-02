@@ -24,9 +24,10 @@ public class UpdateMedicamentService implements UpdateMedicamentUseCase {
     public MedicamentDto execute(UpdateMedicamentCommand command) {
         Medicament medicament = repository.findById(command.id())
                 .orElseThrow(() -> new MedicamentNotFoundException(command.id()));
-        // Solo nombre/descripción; se conserva el scope (general/empresa) del medicamento.
-        medicament.update(command.name(), command.description(),
-                medicament.getCompany(), medicament.isGeneral());
+        // Solo nombre/descripción; se conserva el scope (general/empresa) del
+        // medicamento.
+        medicament.update(command.name(), command.description(), medicament.getCompany(),
+                medicament.isGeneral());
         return MedicamentDto.from(repository.save(medicament));
     }
 }

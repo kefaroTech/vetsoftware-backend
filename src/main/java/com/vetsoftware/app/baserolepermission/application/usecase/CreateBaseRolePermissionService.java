@@ -23,8 +23,7 @@ public class CreateBaseRolePermissionService implements CreateBaseRolePermission
     private final BasePermissionQueryPort basePermissionQueryPort;
 
     public CreateBaseRolePermissionService(BaseRolePermissionRepository repository,
-                                            BaseRoleQueryPort baseRoleQueryPort,
-                                            BasePermissionQueryPort basePermissionQueryPort) {
+            BaseRoleQueryPort baseRoleQueryPort, BasePermissionQueryPort basePermissionQueryPort) {
         this.repository = repository;
         this.baseRoleQueryPort = baseRoleQueryPort;
         this.basePermissionQueryPort = basePermissionQueryPort;
@@ -33,18 +32,20 @@ public class CreateBaseRolePermissionService implements CreateBaseRolePermission
     @Override
     @Transactional
     public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command) {
-        BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())
-            .orElseThrow(() -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
-        BasePermissionRef basePermission = basePermissionQueryPort.findById(command.basePermissionId())
-            .orElseThrow(() -> new IllegalArgumentException("BasePermission not found: " + command.basePermissionId()));
+        BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId()).orElseThrow(
+                () -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
+        BasePermissionRef basePermission = basePermissionQueryPort
+                .findById(command.basePermissionId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "BasePermission not found: " + command.basePermissionId()));
 
-        Optional<Long> disabledId = repository
-            .findDisabledIdByBaseRoleAndBasePermission(command.baseRoleId(), command.basePermissionId());
+        Optional<Long> disabledId = repository.findDisabledIdByBaseRoleAndBasePermission(
+                command.baseRoleId(), command.basePermissionId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
             repository.reactivate(id);
             BaseRolePermission refreshed = repository.findById(id)
-                .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+                    .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
             return BaseRolePermissionDto.from(refreshed);
         }
 

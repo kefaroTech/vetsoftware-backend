@@ -38,13 +38,11 @@ public class HospitalizationController {
     private final Authz authz;
 
     public HospitalizationController(CreateHospitalizationUseCase createUseCase,
-                                     UpdateHospitalizationUseCase updateUseCase,
-                                     FindHospitalizationUseCase findUseCase,
-                                     ListHospitalizationsUseCase listUseCase,
-                                     ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
-                                     DeleteHospitalizationUseCase deleteUseCase,
-                                     ReactivateHospitalizationUseCase reactivateUseCase,
-                                     Authz authz) {
+            UpdateHospitalizationUseCase updateUseCase, FindHospitalizationUseCase findUseCase,
+            ListHospitalizationsUseCase listUseCase,
+            ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
+            DeleteHospitalizationUseCase deleteUseCase,
+            ReactivateHospitalizationUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -57,14 +55,13 @@ public class HospitalizationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationResponse create(@Valid @RequestBody CreateHospitalizationRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateHospitalizationCommand(
-                request.date(), request.startDate(), request.endDate(),
-                request.type(), request.reasonLeaving(),
-                request.reason(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId(),
-                request.weight(), request.weightUnit())));
+    public HospitalizationResponse create(
+            @Valid @RequestBody CreateHospitalizationRequest request) {
+        return toResponse(createUseCase.execute(new CreateHospitalizationCommand(request.date(),
+                request.startDate(), request.endDate(), request.type(), request.reasonLeaving(),
+                request.reason(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId(), request.weight(),
+                request.weightUnit())));
     }
 
     @GetMapping
@@ -84,13 +81,11 @@ public class HospitalizationController {
 
     @PutMapping("/{id}")
     public HospitalizationResponse update(@PathVariable Long id,
-                                          @Valid @RequestBody UpdateHospitalizationRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateHospitalizationCommand(
-                id, request.date(), request.startDate(), request.endDate(),
-                request.type(), request.reasonLeaving(),
-                request.reason(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateHospitalizationRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateHospitalizationCommand(id, request.date(),
+                request.startDate(), request.endDate(), request.type(), request.reasonLeaving(),
+                request.reason(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -108,13 +103,11 @@ public class HospitalizationController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
-        return new HospitalizationResponse(
-            dto.id(), dto.date(), dto.startDate(), dto.endDate(),
-            dto.type(), dto.reasonLeaving(),
-            dto.reason(), dto.observations(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.enabled());
+        return new HospitalizationResponse(dto.id(), dto.date(), dto.startDate(), dto.endDate(),
+                dto.type(), dto.reasonLeaving(), dto.reason(), dto.observations(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                co == null ? null : new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ServiceCategoryJpaMapper {
-    public ServiceCategoryJpaEntity toJpa(ServiceCategory serviceCategory, CompanyJpaEntity company) {
+    public ServiceCategoryJpaEntity toJpa(ServiceCategory serviceCategory,
+            CompanyJpaEntity company) {
         ServiceCategoryJpaEntity entity = new ServiceCategoryJpaEntity();
         entity.setId(serviceCategory.getId());
         entity.setName(serviceCategory.getName());
@@ -27,15 +28,8 @@ public class ServiceCategoryJpaMapper {
     }
 
     public ServiceCategory toDomain(ServiceCategoryJpaEntity entity, CompanyRef companyRef) {
-        return new ServiceCategory(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                entity.getCreatedDate(),
-                entity.getUpdatedDate(),
-                entity.getUpdatedBy(),
-                entity.getVersion(),
-                entity.isEnabled());
+        return new ServiceCategory(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, entity.getCreatedDate(), entity.getUpdatedDate(), entity.getUpdatedBy(),
+                entity.getVersion(), entity.isEnabled());
     }
 }

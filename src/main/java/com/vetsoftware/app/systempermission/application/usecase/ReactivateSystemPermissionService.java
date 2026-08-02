@@ -21,8 +21,9 @@ public class ReactivateSystemPermissionService implements ReactivateSystemPermis
     @Transactional
     public SystemPermissionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SystemPermissionNotFoundException(id);
+        if (rows == 0)
+            throw new SystemPermissionNotFoundException(id);
         return SystemPermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new SystemPermissionNotFoundException(id)));
+                .orElseThrow(() -> new SystemPermissionNotFoundException(id)));
     }
 }

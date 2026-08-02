@@ -26,11 +26,9 @@ public class ProblemController {
     private final ListProblemsByAnimalUseCase listByAnimalUseCase;
     private final Authz authz;
 
-    public ProblemController(CreateProblemUseCase createUseCase,
-                             UpdateProblemUseCase updateUseCase,
-                             DeleteProblemUseCase deleteUseCase,
-                             ListProblemsByAnimalUseCase listByAnimalUseCase,
-                             Authz authz) {
+    public ProblemController(CreateProblemUseCase createUseCase, UpdateProblemUseCase updateUseCase,
+            DeleteProblemUseCase deleteUseCase, ListProblemsByAnimalUseCase listByAnimalUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.deleteUseCase = deleteUseCase;
@@ -41,27 +39,24 @@ public class ProblemController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProblemResponse create(@Valid @RequestBody CreateProblemRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateProblemCommand(
-                request.animalId(), request.description(), request.status(),
-                request.onsetDate(), request.resolvedDate(), request.notes(),
-                authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreateProblemCommand(request.animalId(),
+                request.description(), request.status(), request.onsetDate(),
+                request.resolvedDate(), request.notes(), authz.currentCompanyId())));
     }
 
     @GetMapping("/by-animal/{animalId}")
     public List<ProblemResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.execute(
-                new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId()))
-            .stream().map(this::toResponse).toList();
+        return listByAnimalUseCase
+                .execute(new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId())).stream()
+                .map(this::toResponse).toList();
     }
 
     @PutMapping("/{id}")
     public ProblemResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateProblemRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateProblemCommand(
-                id, request.description(), request.status(), request.onsetDate(),
-                request.resolvedDate(), request.notes(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateProblemRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateProblemCommand(id, request.description(),
+                request.status(), request.onsetDate(), request.resolvedDate(), request.notes(),
+                authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -71,9 +66,8 @@ public class ProblemController {
     }
 
     private ProblemResponse toResponse(ProblemDto dto) {
-        return new ProblemResponse(
-            dto.id(), dto.animalId(), dto.animalName(), dto.description(),
-            dto.status(), dto.onsetDate(), dto.resolvedDate(), dto.notes(),
-            dto.createdDate(), dto.enabled());
+        return new ProblemResponse(dto.id(), dto.animalId(), dto.animalName(), dto.description(),
+                dto.status(), dto.onsetDate(), dto.resolvedDate(), dto.notes(), dto.createdDate(),
+                dto.enabled());
     }
 }

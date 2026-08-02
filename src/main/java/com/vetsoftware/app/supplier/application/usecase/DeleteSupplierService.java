@@ -19,7 +19,8 @@ public class DeleteSupplierService implements DeleteSupplierUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new SupplierNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new SupplierNotFoundException(id));
         repository.delete(id);
     }
 }

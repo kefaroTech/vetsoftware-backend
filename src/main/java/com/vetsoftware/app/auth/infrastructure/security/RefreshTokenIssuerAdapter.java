@@ -16,8 +16,8 @@ public class RefreshTokenIssuerAdapter implements RefreshTokenIssuer {
     private final long refreshExpirationDays;
 
     public RefreshTokenIssuerAdapter(RefreshTokenSecret refreshTokenSecret,
-                                     RefreshTokenRepository refreshTokenRepository,
-                                     @Value("${jwt.refresh-expiration-days}") long refreshExpirationDays) {
+            RefreshTokenRepository refreshTokenRepository,
+            @Value("${jwt.refresh-expiration-days}") long refreshExpirationDays) {
         this.refreshTokenSecret = refreshTokenSecret;
         this.refreshTokenRepository = refreshTokenRepository;
         this.refreshExpirationDays = refreshExpirationDays;
@@ -28,8 +28,8 @@ public class RefreshTokenIssuerAdapter implements RefreshTokenIssuer {
         String raw = refreshTokenSecret.generateRaw();
         String hash = refreshTokenSecret.hash(raw);
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(refreshExpirationDays);
-        refreshTokenRepository.save(new NewRefreshToken(
-                hash, subjectId, subjectType, authVersion, expiresAt));
+        refreshTokenRepository
+                .save(new NewRefreshToken(hash, subjectId, subjectType, authVersion, expiresAt));
         return raw;
     }
 }

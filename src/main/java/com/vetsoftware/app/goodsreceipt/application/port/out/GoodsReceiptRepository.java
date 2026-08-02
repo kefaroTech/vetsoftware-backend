@@ -8,8 +8,12 @@ import java.util.Optional;
 
 public interface GoodsReceiptRepository {
     GoodsReceipt save(GoodsReceipt goodsReceipt);
+
     Optional<GoodsReceipt> findByIdAndCompanyId(Long id, Long companyId);
+
     List<GoodsReceipt> findAllByCompanyId(Long companyId);
+
     PageResult<GoodsReceipt> search(SearchGoodsReceiptsCommand command);
+
     void delete(Long id);
 }

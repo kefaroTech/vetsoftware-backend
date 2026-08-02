@@ -17,6 +17,7 @@ public class JpaBranchQueryPort implements BranchQueryPort {
 
     @Override
     public List<Long> findBranchIdsByCompanyId(Long companyId) {
-        return branchJpaRepository.findAllByCompanyId(companyId).stream().map(BranchJpaEntity::getId).toList();
+        return branchJpaRepository.findAllByCompanyId(companyId).stream()
+                .map(BranchJpaEntity::getId).toList();
     }
 }

@@ -23,7 +23,7 @@ public class UpdateSystemUserService implements UpdateSystemUserUseCase {
     @Transactional
     public SystemUserDto execute(UpdateSystemUserCommand command) {
         SystemUser systemUser = repository.findById(command.id())
-            .orElseThrow(() -> new SystemUserNotFoundException(command.id()));
+                .orElseThrow(() -> new SystemUserNotFoundException(command.id()));
         systemUser.update(command.code());
         return SystemUserDto.from(repository.save(systemUser));
     }

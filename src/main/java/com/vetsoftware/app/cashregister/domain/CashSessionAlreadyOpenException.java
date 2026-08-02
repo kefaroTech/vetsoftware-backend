@@ -1,9 +1,13 @@
 package com.vetsoftware.app.cashregister.domain;
 
-/** Ya existe una sesión de caja OPEN para ese (empresa, sede, terminal): no se puede abrir otra. */
+/**
+ * Ya existe una sesión de caja OPEN para ese (empresa, sede, terminal): no se
+ * puede abrir otra.
+ */
 public class CashSessionAlreadyOpenException extends RuntimeException {
 
-    public CashSessionAlreadyOpenException(String branchName, String terminal, String employeeName) {
+    public CashSessionAlreadyOpenException(String branchName, String terminal,
+            String employeeName) {
         super(message(branchName, terminal, employeeName));
     }
 
@@ -12,7 +16,7 @@ public class CashSessionAlreadyOpenException extends RuntimeException {
         String terminalCode = textOr(terminal, "sin nombre");
         String employee = textOr(employeeName, "Empleado no identificado");
         return "La terminal '" + terminalCode + "' de la sede '" + branch
-            + "' ya tiene una caja abierta. Responsable: " + employee + ".";
+                + "' ya tiene una caja abierta. Responsable: " + employee + ".";
     }
 
     private static String textOr(String value, String fallback) {

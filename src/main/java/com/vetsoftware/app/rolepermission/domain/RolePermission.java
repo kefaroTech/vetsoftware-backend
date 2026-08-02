@@ -9,9 +9,12 @@ public class RolePermission {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public RolePermission(Long id, RoleRef role, PermissionRef permission, LocalDateTime createdDate, boolean enabled) {
-        if (role == null) throw new IllegalArgumentException("role is required");
-        if (permission == null) throw new IllegalArgumentException("permission is required");
+    public RolePermission(Long id, RoleRef role, PermissionRef permission,
+            LocalDateTime createdDate, boolean enabled) {
+        if (role == null)
+            throw new IllegalArgumentException("role is required");
+        if (permission == null)
+            throw new IllegalArgumentException("permission is required");
         this.id = id;
         this.role = role;
         this.permission = permission;
@@ -24,17 +27,39 @@ public class RolePermission {
     }
 
     public void update(RoleRef role, PermissionRef permission) {
-        if (role == null) throw new IllegalArgumentException("role is required");
-        if (permission == null) throw new IllegalArgumentException("permission is required");
+        if (role == null)
+            throw new IllegalArgumentException("role is required");
+        if (permission == null)
+            throw new IllegalArgumentException("permission is required");
         this.role = role;
         this.permission = permission;
     }
 
-    public Long getId() { return id; }
-    public RoleRef getRole() { return role; }
-    public PermissionRef getPermission() { return permission; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public Long getId() {
+        return id;
+    }
+
+    public RoleRef getRole() {
+        return role;
+    }
+
+    public PermissionRef getPermission() {
+        return permission;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
 }

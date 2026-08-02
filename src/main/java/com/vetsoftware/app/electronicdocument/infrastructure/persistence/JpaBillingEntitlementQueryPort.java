@@ -6,8 +6,9 @@ import com.vetsoftware.app.membershipsubmodule.infrastructure.persistence.Member
 import org.springframework.stereotype.Component;
 
 /**
- * Resuelve el derecho a facturación electrónica: empresa → membresía → ¿incluye el submódulo BILLING
- * (habilitado)? Único cruce permitido a la persistencia de otras features (company, membershipsubmodule).
+ * Resuelve el derecho a facturación electrónica: empresa → membresía → ¿incluye
+ * el submódulo BILLING (habilitado)? Único cruce permitido a la persistencia de
+ * otras features (company, membershipsubmodule).
  */
 @Component
 public class JpaBillingEntitlementQueryPort implements BillingEntitlementQueryPort {
@@ -17,16 +18,16 @@ public class JpaBillingEntitlementQueryPort implements BillingEntitlementQueryPo
     private final MembershipSubModuleJpaRepository membershipSubModuleJpaRepository;
 
     public JpaBillingEntitlementQueryPort(CompanyJpaRepository companyJpaRepository,
-                                          MembershipSubModuleJpaRepository membershipSubModuleJpaRepository) {
+            MembershipSubModuleJpaRepository membershipSubModuleJpaRepository) {
         this.companyJpaRepository = companyJpaRepository;
         this.membershipSubModuleJpaRepository = membershipSubModuleJpaRepository;
     }
 
     @Override
     public boolean isElectronicInvoicingEnabled(Long companyId) {
-        if (companyId == null) return false;
-        return companyJpaRepository.findById(companyId)
-                .map(c -> c.getMembership().getId())
+        if (companyId == null)
+            return false;
+        return companyJpaRepository.findById(companyId).map(c -> c.getMembership().getId())
                 .map(membershipId -> membershipSubModuleJpaRepository
                         .hasEnabledSubModuleCode(membershipId, BILLING_CODE))
                 .orElse(false);

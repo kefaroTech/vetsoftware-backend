@@ -32,11 +32,10 @@ public class BaseRolePermissionController {
     private final ReactivateBaseRolePermissionUseCase reactivateUseCase;
 
     public BaseRolePermissionController(CreateBaseRolePermissionUseCase createUseCase,
-                                         UpdateBaseRolePermissionUseCase updateUseCase,
-                                         FindBaseRolePermissionUseCase findUseCase,
-                                         ListBaseRolePermissionsUseCase listUseCase,
-                                         DeleteBaseRolePermissionUseCase deleteUseCase,
-                                         ReactivateBaseRolePermissionUseCase reactivateUseCase) {
+            UpdateBaseRolePermissionUseCase updateUseCase,
+            FindBaseRolePermissionUseCase findUseCase, ListBaseRolePermissionsUseCase listUseCase,
+            DeleteBaseRolePermissionUseCase deleteUseCase,
+            ReactivateBaseRolePermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,9 +46,10 @@ public class BaseRolePermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BaseRolePermissionResponse create(@Valid @RequestBody CreateBaseRolePermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateBaseRolePermissionCommand(request.baseRoleId(), request.basePermissionId())));
+    public BaseRolePermissionResponse create(
+            @Valid @RequestBody CreateBaseRolePermissionRequest request) {
+        return toResponse(createUseCase.execute(new CreateBaseRolePermissionCommand(
+                request.baseRoleId(), request.basePermissionId())));
     }
 
     @GetMapping
@@ -64,9 +64,9 @@ public class BaseRolePermissionController {
 
     @PutMapping("/{id}")
     public BaseRolePermissionResponse update(@PathVariable Long id,
-                                              @Valid @RequestBody UpdateBaseRolePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateBaseRolePermissionCommand(id, request.baseRoleId(), request.basePermissionId())));
+            @Valid @RequestBody UpdateBaseRolePermissionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateBaseRolePermissionCommand(id,
+                request.baseRoleId(), request.basePermissionId())));
     }
 
     @DeleteMapping("/{id}")
@@ -83,12 +83,9 @@ public class BaseRolePermissionController {
     private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {
         BaseRoleSummaryDto br = dto.baseRole();
         BasePermissionSummaryDto bp = dto.basePermission();
-        return new BaseRolePermissionResponse(
-            dto.id(),
-            new BaseRoleSummary(br.id(), br.name(), br.code()),
-            new BasePermissionSummary(bp.id(), bp.name(), bp.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new BaseRolePermissionResponse(dto.id(),
+                new BaseRoleSummary(br.id(), br.name(), br.code()),
+                new BasePermissionSummary(bp.id(), bp.name(), bp.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

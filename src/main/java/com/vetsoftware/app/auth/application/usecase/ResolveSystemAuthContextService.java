@@ -6,8 +6,8 @@ import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthSystemUserRepository;
 import com.vetsoftware.app.auth.application.port.out.SystemPermissionResolver;
-import java.util.Objects;
 import io.micrometer.observation.annotation.Observed;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "auth.resolve.system.context")
@@ -18,16 +18,18 @@ public class ResolveSystemAuthContextService implements ResolveSystemAuthContext
     private final AuthSystemUserRepository systemUserRepository;
 
     public ResolveSystemAuthContextService(SystemPermissionResolver permissionResolver,
-                                           AuthSystemUserRepository systemUserRepository) {
+            AuthSystemUserRepository systemUserRepository) {
         this.permissionResolver = permissionResolver;
         this.systemUserRepository = systemUserRepository;
     }
 
     @Override
     public AuthContext execute(Long systemUserId, Long authVersion) {
-        if (systemUserId == null) return null;
+        if (systemUserId == null)
+            return null;
         var systemUser = systemUserRepository.findActiveById(systemUserId).orElse(null);
-        if (systemUser == null) return null;
+        if (systemUser == null)
+            return null;
         if (!Objects.equals(systemUser.authVersion(), authVersion)) {
             throw new SessionReplacedException();
         }

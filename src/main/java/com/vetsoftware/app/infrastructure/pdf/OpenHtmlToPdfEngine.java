@@ -10,8 +10,9 @@ import org.springframework.stereotype.Component;
 /**
  * Renderizador PDF puro Java basado en OpenHTMLToPDF y Apache PDFBox.
  *
- * <p>La concurrencia y el tamaño de salida están acotados para proteger la memoria del
- * proceso del backend frente a reportes anormalmente grandes.
+ * <p>
+ * La concurrencia y el tamaño de salida están acotados para proteger la memoria
+ * del proceso del backend frente a reportes anormalmente grandes.
  */
 @Component
 public class OpenHtmlToPdfEngine implements HtmlToPdfEngine {
@@ -46,7 +47,8 @@ public class OpenHtmlToPdfEngine implements HtmlToPdfEngine {
         } catch (PdfRenderException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new PdfRenderException("No fue posible generar el PDF con OpenHTMLToPDF", exception);
+            throw new PdfRenderException("No fue posible generar el PDF con OpenHTMLToPDF",
+                    exception);
         } finally {
             renderSlots.release();
         }
@@ -65,16 +67,14 @@ public class OpenHtmlToPdfEngine implements HtmlToPdfEngine {
 
     private void acquireRenderSlot() {
         try {
-            boolean acquired = renderSlots.tryAcquire(
-                    properties.acquireTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            boolean acquired = renderSlots.tryAcquire(properties.acquireTimeout().toMillis(),
+                    TimeUnit.MILLISECONDS);
             if (!acquired) {
-                throw new PdfRenderException(
-                        "Tiempo de espera agotado para generar el PDF");
+                throw new PdfRenderException("Tiempo de espera agotado para generar el PDF");
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new PdfRenderException(
-                    "La generación del PDF fue interrumpida", exception);
+            throw new PdfRenderException("La generación del PDF fue interrumpida", exception);
         }
     }
 
@@ -101,9 +101,7 @@ public class OpenHtmlToPdfEngine implements HtmlToPdfEngine {
         private void ensureCapacityFor(int additionalBytes) {
             if (additionalBytes < 0 || count > maximumBytes - additionalBytes) {
                 throw new PdfRenderException(
-                        "El PDF excede el límite configurado de "
-                                + maximumBytes
-                                + " bytes");
+                        "El PDF excede el límite configurado de " + maximumBytes + " bytes");
             }
         }
     }

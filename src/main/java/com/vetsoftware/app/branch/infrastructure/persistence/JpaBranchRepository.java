@@ -17,10 +17,8 @@ public class JpaBranchRepository implements BranchRepository {
     private final CityJpaRepository cityJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaBranchRepository(BranchJpaRepository jpaRepository,
-                               BranchJpaMapper mapper,
-                               CityJpaRepository cityJpaRepository,
-                               CompanyJpaRepository companyJpaRepository) {
+    public JpaBranchRepository(BranchJpaRepository jpaRepository, BranchJpaMapper mapper,
+            CityJpaRepository cityJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.cityJpaRepository = cityJpaRepository;

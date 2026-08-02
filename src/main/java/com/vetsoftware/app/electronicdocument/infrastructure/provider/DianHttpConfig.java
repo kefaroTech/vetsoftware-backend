@@ -6,9 +6,10 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
- * Cliente HTTP compartido para los proveedores DIAN. SIN base URL fija: cada llamada usa la URL base
- * de la config de la empresa (ProviderConfigSnapshot.baseUrl). Timeouts holgados porque la transmisión
- * al proveedor puede tardar.
+ * Cliente HTTP compartido para los proveedores DIAN. SIN base URL fija: cada
+ * llamada usa la URL base de la config de la empresa
+ * (ProviderConfigSnapshot.baseUrl). Timeouts holgados porque la transmisión al
+ * proveedor puede tardar.
  */
 @Configuration
 public class DianHttpConfig {

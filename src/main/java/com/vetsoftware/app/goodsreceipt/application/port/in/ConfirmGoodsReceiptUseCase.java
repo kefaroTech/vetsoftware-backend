@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ConfirmGoodsReceiptUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('goodsReceipt.create') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('goodsReceipt.create') and @authz.isMyCompany(#companyId))")
     GoodsReceiptDto execute(Long id, Long companyId, Long actorId);
 }

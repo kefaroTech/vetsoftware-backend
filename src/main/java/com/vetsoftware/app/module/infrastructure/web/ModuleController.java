@@ -28,9 +28,8 @@ public class ModuleController {
     private final ReactivateModuleUseCase reactivateUseCase;
 
     public ModuleController(CreateModuleUseCase createUseCase, UpdateModuleUseCase updateUseCase,
-                            FindModuleUseCase findUseCase, ListModulesUseCase listUseCase,
-                            DeleteModuleUseCase deleteUseCase,
-                            ReactivateModuleUseCase reactivateUseCase) {
+            FindModuleUseCase findUseCase, ListModulesUseCase listUseCase,
+            DeleteModuleUseCase deleteUseCase, ReactivateModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -42,7 +41,8 @@ public class ModuleController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ModuleResponse create(@Valid @RequestBody CreateModuleRequest request) {
-        return toResponse(createUseCase.execute(new CreateModuleCommand(request.name(), request.code())));
+        return toResponse(
+                createUseCase.execute(new CreateModuleCommand(request.name(), request.code())));
     }
 
     @GetMapping
@@ -56,8 +56,10 @@ public class ModuleController {
     }
 
     @PutMapping("/{id}")
-    public ModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateModuleRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code())));
+    public ModuleResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateModuleRequest request) {
+        return toResponse(
+                updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code())));
     }
 
     @DeleteMapping("/{id}")
@@ -72,6 +74,7 @@ public class ModuleController {
     }
 
     private ModuleResponse toResponse(ModuleDto dto) {
-        return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
+        return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(),
+                dto.enabled());
     }
 }

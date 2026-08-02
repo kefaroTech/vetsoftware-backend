@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface GetInventoryValuationUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
+            + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
     InventoryValuationView valuation(InventoryValuationQuery query);
 }

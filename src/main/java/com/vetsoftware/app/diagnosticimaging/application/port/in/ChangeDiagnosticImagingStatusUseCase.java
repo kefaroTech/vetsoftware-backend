@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ChangeDiagnosticImagingStatusUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('diagnosticimaging.update') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('diagnosticimaging.update') and @authz.isMyCompany(#command.companyId))")
     DiagnosticImagingDto execute(ChangeDiagnosticImagingStatusCommand command);
 }

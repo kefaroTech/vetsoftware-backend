@@ -11,13 +11,14 @@ public class JpaTaxChildrenQueryPort implements TaxChildrenQueryPort {
     private final ServiceJpaRepository serviceJpaRepository;
 
     public JpaTaxChildrenQueryPort(ProductJpaRepository productJpaRepository,
-                                   ServiceJpaRepository serviceJpaRepository) {
+            ServiceJpaRepository serviceJpaRepository) {
         this.productJpaRepository = productJpaRepository;
         this.serviceJpaRepository = serviceJpaRepository;
     }
 
     @Override
     public boolean existsActiveByTaxId(Long taxId) {
-        return productJpaRepository.existsByTax_Id(taxId) || serviceJpaRepository.existsByTax_Id(taxId);
+        return productJpaRepository.existsByTax_Id(taxId)
+                || serviceJpaRepository.existsByTax_Id(taxId);
     }
 }

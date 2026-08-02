@@ -15,12 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.medication.suspend")
 @Service
-public class SuspendHospitalizationMedicationService implements SuspendHospitalizationMedicationUseCase {
+public class SuspendHospitalizationMedicationService
+        implements
+            SuspendHospitalizationMedicationUseCase {
     private final HospitalizationMedicationRepository repository;
     private final EmployeeQueryPort employeeQueryPort;
 
     public SuspendHospitalizationMedicationService(HospitalizationMedicationRepository repository,
-                                                   EmployeeQueryPort employeeQueryPort) {
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
     }
@@ -29,9 +31,10 @@ public class SuspendHospitalizationMedicationService implements SuspendHospitali
     @Transactional
     public HospitalizationMedicationDto execute(SuspendHospitalizationMedicationCommand command) {
         HospitalizationMedication medication = repository.findById(command.id())
-            .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
+                .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
         EmployeeRef by = employeeQueryPort.findById(command.suspendedById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.suspendedById()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Employee not found: " + command.suspendedById()));
         medication.suspend(by, LocalDateTime.now());
         return HospitalizationMedicationDto.from(repository.save(medication));
     }

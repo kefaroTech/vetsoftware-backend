@@ -4,6 +4,7 @@ import com.vetsoftware.app.laboratorytesttype.application.dto.LaboratoryTestType
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindLaboratoryTestTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('laboratoryTest.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('laboratoryTest.read') and"
+            + " @authz.isMyCompany(#companyId))")
     LaboratoryTestTypeDto findById(Long id, Long companyId);
 }

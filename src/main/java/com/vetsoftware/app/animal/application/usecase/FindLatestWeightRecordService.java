@@ -19,7 +19,7 @@ public class FindLatestWeightRecordService implements FindLatestWeightRecordUseC
     @Override
     public WeightRecordDto findLatest(Long animalId, Long companyId) {
         return repository.findLatestByAnimalIdAndCompanyId(animalId, companyId)
-            .map(WeightRecordDto::from)
-            .orElseThrow(() -> new WeightRecordNotFoundException(animalId));
+                .map(WeightRecordDto::from)
+                .orElseThrow(() -> new WeightRecordNotFoundException(animalId));
     }
 }

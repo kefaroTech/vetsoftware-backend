@@ -24,14 +24,16 @@ public class ApplyMedicationScheduleService implements ApplyMedicationScheduleUs
     @Transactional
     public List<MedicationScheduleDto> execute(ApplyMedicationScheduleCommand command) {
         MedicationSchedule target = repository.findById(command.scheduleId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Medication schedule not found: " + command.scheduleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Medication schedule not found: " + command.scheduleId()));
         target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
         repository.save(target);
 
-        // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre al
+        // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre
+        // al
         // reprogramar una toma (drag&drop → reschedule mode=cascade).
-        return repository.findByHospitalizationMedicationId(target.getHospitalizationMedication().id())
-            .stream().map(MedicationScheduleDto::from).toList();
+        return repository
+                .findByHospitalizationMedicationId(target.getHospitalizationMedication().id())
+                .stream().map(MedicationScheduleDto::from).toList();
     }
 }

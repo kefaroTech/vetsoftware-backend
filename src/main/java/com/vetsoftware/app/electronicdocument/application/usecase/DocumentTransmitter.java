@@ -26,9 +26,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Núcleo de transmisión a la DIAN, reutilizable y SIN control de acceso (lo invocan tanto el caso de
- * uso con `@PreAuthorize` como el job de contingencia, que corre sin contexto de seguridad). Elige el
- * adaptador por nombre de proveedor, aplica el resultado a la máquina de estados del documento y deja
+ * Núcleo de transmisión a la DIAN, reutilizable y SIN control de acceso (lo
+ * invocan tanto el caso de uso con `@PreAuthorize` como el job de contingencia,
+ * que corre sin contexto de seguridad). Elige el adaptador por nombre de
+ * proveedor, aplica el resultado a la máquina de estados del documento y deja
  * la bitácora. Cada llamada es su propia transacción.
  */
 @Component
@@ -47,15 +48,12 @@ public class DocumentTransmitter {
     private final Map<String, ElectronicInvoiceProviderPort> providers;
 
     public DocumentTransmitter(ElectronicDocumentRepository repository,
-                               ProviderConfigQueryPort configQueryPort,
-                               TransmissionLogPort transmissionLog,
-                               CreditNoteReversalApplier reversalApplier,
-                               DeliverElectronicDocumentService deliverService,
-                               BillingEntitlementQueryPort billingEntitlement,
-                               NumberAssigner numberAssigner,
-                               ContingencyMonitorPort contingencyMonitor,
-                               BillingMetrics billingMetrics,
-                               List<ElectronicInvoiceProviderPort> providerAdapters) {
+            ProviderConfigQueryPort configQueryPort, TransmissionLogPort transmissionLog,
+            CreditNoteReversalApplier reversalApplier,
+            DeliverElectronicDocumentService deliverService,
+            BillingEntitlementQueryPort billingEntitlement, NumberAssigner numberAssigner,
+            ContingencyMonitorPort contingencyMonitor, BillingMetrics billingMetrics,
+            List<ElectronicInvoiceProviderPort> providerAdapters) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
@@ -65,8 +63,8 @@ public class DocumentTransmitter {
         this.numberAssigner = numberAssigner;
         this.contingencyMonitor = contingencyMonitor;
         this.billingMetrics = billingMetrics;
-        this.providers = providerAdapters.stream()
-                .collect(Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
+        this.providers = providerAdapters.stream().collect(
+                Collectors.toMap(ElectronicInvoiceProviderPort::providerName, Function.identity()));
     }
 
     @Transactional
@@ -82,37 +80,54 @@ public class DocumentTransmitter {
     private ElectronicDocument transmitInternal(ElectronicDocument document, Origin origin) {
         long startedAt = System.nanoTime();
         try {
-        // Gate de facturación electrónica: sin submódulo BILLING nunca se contacta al proveedor (MATIAS).
-        // El documento se deja como está (PENDIENTE si nunca se transmitió): datos guardados, emisión diferida
-        // y re-emitible al habilitar el módulo. No se degrada a NO_ELECTRONICO.
-        if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) {
-            return document;
-        }
+            // Gate de facturación electrónica: sin submódulo BILLING nunca se contacta al
+            // proveedor
+            // (MATIAS).
+            // El documento se deja como está (PENDIENTE si nunca se transmitió): datos
+            // guardados, emisión
+            // diferida
+            // y re-emitible al habilitar el módulo. No se degrada a NO_ELECTRONICO.
+            if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) {
+                return document;
+            }
 
-        ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "La empresa no tiene un proveedor DIAN configurado."));
-        ElectronicInvoiceProviderPort provider = providers.get(config.provider());
-        if (provider == null) {
-            throw new IllegalStateException("No hay adaptador para el proveedor: " + config.provider());
-        }
+            ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "La empresa no tiene un proveedor DIAN configurado."));
+            ElectronicInvoiceProviderPort provider = providers.get(config.provider());
+            if (provider == null) {
+                throw new IllegalStateException(
+                        "No hay adaptador para el proveedor: " + config.provider());
+            }
 
-        ProviderResult result = provider.transmit(document, config);
-        // Detección automática del modo contingencia: CONTINGENCIA = fallo de infraestructura (5xx/timeout);
-        // cualquier otro estado = el proveedor respondió (sano). Reintentar un CONTINGENCIA que ahora valida
-        // registra "sano" y desactiva el modo solo. No cambia el resultado de la emisión.
-        contingencyMonitor.recordOutcome(document.getCompanyId(), result.status() != DianStatus.CONTINGENCIA);
-        applyResult(document, result);
-        ElectronicDocument saved = repository.updateDianResult(document);
+            ProviderResult result = provider.transmit(document, config);
+            // Detección automática del modo contingencia: CONTINGENCIA = fallo de
+            // infraestructura
+            // (5xx/timeout);
+            // cualquier otro estado = el proveedor respondió (sano). Reintentar un
+            // CONTINGENCIA que ahora
+            // valida
+            // registra "sano" y desactiva el modo solo. No cambia el resultado de la
+            // emisión.
+            contingencyMonitor.recordOutcome(document.getCompanyId(),
+                    result.status() != DianStatus.CONTINGENCIA);
+            applyResult(document, result);
+            ElectronicDocument saved = repository.updateDianResult(document);
 
-        transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
-                result.providerDocumentKey(), toTransmissionResult(result.status()), result.rejectionReason());
+            transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
+                    result.providerDocumentKey(), toTransmissionResult(result.status()),
+                    result.rejectionReason());
 
-        // Subordinacion del void: si esta transmision dejo VALIDADA una nota credito (proveedor sincrono),
-        // reversa la factura referenciada y la cartera en el acto. Para async no pasa nada aqui (PENDIENTE).
-        reversalApplier.applyIfCreditNoteValidated(saved);
-        billingMetrics.finished(result.status(), origin, saved.getDocumentType(), elapsedSince(startedAt));
-        return saved;
+            // Subordinacion del void: si esta transmision dejo VALIDADA una nota credito
+            // (proveedor
+            // sincrono),
+            // reversa la factura referenciada y la cartera en el acto. Para async no pasa
+            // nada aqui
+            // (PENDIENTE).
+            reversalApplier.applyIfCreditNoteValidated(saved);
+            billingMetrics.finished(result.status(), origin, saved.getDocumentType(),
+                    elapsedSince(startedAt));
+            return saved;
         } catch (RuntimeException | Error exception) {
             billingMetrics.failed(origin, document.getDocumentType(), elapsedSince(startedAt));
             throw exception;
@@ -120,10 +135,12 @@ public class DocumentTransmitter {
     }
 
     /**
-     * Reconcilia un documento PENDIENTE consultando al proveedor su estado actual (respaldo ante webhooks
-     * perdidos en proveedores asíncronos como MATIAS). Si el proveedor no soporta polling (síncronos) o el
-     * documento sigue en cola, no hace nada. Si el proveedor reporta un terminal, aplica la transición,
-     * deja bitácora, ejecuta el reverso de cartera y entrega la representación — igual que el webhook.
+     * Reconcilia un documento PENDIENTE consultando al proveedor su estado actual
+     * (respaldo ante webhooks perdidos en proveedores asíncronos como MATIAS). Si
+     * el proveedor no soporta polling (síncronos) o el documento sigue en cola, no
+     * hace nada. Si el proveedor reporta un terminal, aplica la transición, deja
+     * bitácora, ejecuta el reverso de cartera y entrega la representación — igual
+     * que el webhook.
      */
     @Transactional
     public ElectronicDocument reconcile(ElectronicDocument document) {
@@ -138,38 +155,48 @@ public class DocumentTransmitter {
     private ElectronicDocument reconcileInternal(ElectronicDocument document, Origin origin) {
         long startedAt = System.nanoTime();
         try {
-        if (document.getDianStatus() != DianStatus.PENDIENTE) return document;
-        // Sin BILLING: nunca se consulta al proveedor (los NO_ELECTRONICO ya quedan fuera por el filtro de estado).
-        if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId())) return document;
+            if (document.getDianStatus() != DianStatus.PENDIENTE)
+                return document;
+            // Sin BILLING: nunca se consulta al proveedor (los NO_ELECTRONICO ya quedan
+            // fuera por el
+            // filtro de estado).
+            if (!billingEntitlement.isElectronicInvoicingEnabled(document.getCompanyId()))
+                return document;
 
-        ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "La empresa no tiene un proveedor DIAN configurado."));
-        ElectronicInvoiceProviderPort provider = providers.get(config.provider());
-        if (provider == null) {
-            throw new IllegalStateException("No hay adaptador para el proveedor: " + config.provider());
-        }
+            ProviderConfigSnapshot config = configQueryPort.findByCompanyId(document.getCompanyId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "La empresa no tiene un proveedor DIAN configurado."));
+            ElectronicInvoiceProviderPort provider = providers.get(config.provider());
+            if (provider == null) {
+                throw new IllegalStateException(
+                        "No hay adaptador para el proveedor: " + config.provider());
+            }
 
-        String providerKey = transmissionLog.findLatestProviderKey(document.getId()).orElse(null);
-        if (providerKey == null) return document; // nunca se transmitió: nada que reconciliar
+            String providerKey = transmissionLog.findLatestProviderKey(document.getId())
+                    .orElse(null);
+            if (providerKey == null)
+                return document; // nunca se transmitió: nada que reconciliar
 
-        Optional<ProviderResult> maybeResult = provider.fetchStatus(providerKey, config);
-        if (maybeResult.isEmpty()) return document; // proveedor síncrono / sin polling
-        ProviderResult result = maybeResult.get();
-        if (result.status() == DianStatus.PENDIENTE) {
-            billingMetrics.finished(result.status(), origin, document.getDocumentType(), elapsedSince(startedAt));
-            return document; // sigue en cola
-        }
+            Optional<ProviderResult> maybeResult = provider.fetchStatus(providerKey, config);
+            if (maybeResult.isEmpty())
+                return document; // proveedor síncrono / sin polling
+            ProviderResult result = maybeResult.get();
+            if (result.status() == DianStatus.PENDIENTE) {
+                billingMetrics.finished(result.status(), origin, document.getDocumentType(),
+                        elapsedSince(startedAt));
+                return document; // sigue en cola
+            }
 
-        applyResult(document, result);
-        ElectronicDocument saved = repository.updateDianResult(document);
-        transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
-                providerKey, toTransmissionResult(result.status()), result.rejectionReason());
+            applyResult(document, result);
+            ElectronicDocument saved = repository.updateDianResult(document);
+            transmissionLog.record(document.getId(), config.provider(), result.httpStatus(),
+                    providerKey, toTransmissionResult(result.status()), result.rejectionReason());
 
-        reversalApplier.applyIfCreditNoteValidated(saved);
-        deliverService.deliverIfValidated(saved);
-        billingMetrics.finished(result.status(), origin, saved.getDocumentType(), elapsedSince(startedAt));
-        return saved;
+            reversalApplier.applyIfCreditNoteValidated(saved);
+            deliverService.deliverIfValidated(saved);
+            billingMetrics.finished(result.status(), origin, saved.getDocumentType(),
+                    elapsedSince(startedAt));
+            return saved;
         } catch (RuntimeException | Error exception) {
             billingMetrics.failed(origin, document.getDocumentType(), elapsedSince(startedAt));
             throw exception;
@@ -179,12 +206,16 @@ public class DocumentTransmitter {
     private void applyResult(ElectronicDocument document, ProviderResult r) {
         switch (r.status()) {
             case VALIDADO -> {
-                // Alerta de seguridad: un documento NUNCA debería quedar VALIDADO sin sello fiscal
-                // (CUFE en factura / CUDE en POS y notas). El proveedor ya degrada a PENDIENTE el "00 sin
-                // sello"; esto es la red por si otra ruta/proveedor lo marcara validado sin CUFE/CUDE.
+                // Alerta de seguridad: un documento NUNCA debería quedar VALIDADO sin sello
+                // fiscal
+                // (CUFE en factura / CUDE en POS y notas). El proveedor ya degrada a PENDIENTE
+                // el "00 sin
+                // sello"; esto es la red por si otra ruta/proveedor lo marcara validado sin
+                // CUFE/CUDE.
                 if (isBlank(r.cufe()) && isBlank(r.cude())) {
                     log.error("Documento {} marcado VALIDADO SIN SELLO (CUFE/CUDE vacíos). "
-                            + "Revisar la respuesta del proveedor; requiere atención manual.", document.getId());
+                            + "Revisar la respuesta del proveedor; requiere atención manual.",
+                            document.getId());
                 }
                 document.markValidated(r.prefix(), r.consecutive(), r.cufe(), r.cude(), r.uuid(),
                         r.xmlSigned(), r.qrData(), r.qrUrl(), r.pdfRepresentation(),
@@ -192,12 +223,15 @@ public class DocumentTransmitter {
             }
             case RECHAZADO -> {
                 document.markRejected();
-                // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia fiscal.
+                // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia
+                // fiscal.
                 // El persist posterior (updateDianResult) guarda la numeración limpia.
                 numberAssigner.release(document);
             }
             case CONTINGENCIA -> document.markContingency();
-            case PENDIENTE -> { /* async: el webhook completará el estado */ }
+            case PENDIENTE -> {
+                /* async: el webhook completará el estado */
+            }
         }
     }
 
@@ -211,8 +245,8 @@ public class DocumentTransmitter {
             case RECHAZADO -> TransmissionResult.REJECTED;
             case CONTINGENCIA -> TransmissionResult.ERROR;
             case PENDIENTE -> TransmissionResult.PENDING;
-            case NO_ELECTRONICO -> throw new IllegalStateException(
-                    "NO_ELECTRONICO no es un resultado de transmisión");
+            case NO_ELECTRONICO ->
+                throw new IllegalStateException("NO_ELECTRONICO no es un resultado de transmisión");
         };
     }
 

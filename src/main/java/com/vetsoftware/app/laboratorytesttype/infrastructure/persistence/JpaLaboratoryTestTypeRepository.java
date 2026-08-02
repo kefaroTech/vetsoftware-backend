@@ -15,8 +15,7 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaLaboratoryTestTypeRepository(LaboratoryTestTypeJpaRepository jpaRepository,
-                                 LaboratoryTestTypeJpaMapper mapper,
-                                 CompanyJpaRepository companyJpaRepository) {
+            LaboratoryTestTypeJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,9 +23,11 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
 
     @Override
     public LaboratoryTestType save(LaboratoryTestType laboratoryTestType) {
-        CompanyJpaEntity company = laboratoryTestType.getCompany() == null ? null
+        CompanyJpaEntity company = laboratoryTestType.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(laboratoryTestType.getCompany().id());
-        LaboratoryTestTypeJpaEntity saved = jpaRepository.save(mapper.toJpa(laboratoryTestType, company));
+        LaboratoryTestTypeJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(laboratoryTestType, company));
         return mapper.toDomain(saved, laboratoryTestType.getCompany());
     }
 
@@ -47,8 +48,8 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
 
     @Override
     public List<LaboratoryTestType> findAllAvailableForCompany(Long companyId) {
-        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override

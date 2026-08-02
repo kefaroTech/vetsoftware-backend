@@ -1,6 +1,5 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
-import tools.jackson.databind.ObjectMapper;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
@@ -11,9 +10,9 @@ import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseC
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
-import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class AuthFilter extends OncePerRequestFilter {
@@ -46,11 +46,9 @@ public class AuthFilter extends OncePerRequestFilter {
     private final Tracer tracer;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
-                      ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
-                      JwtProvider jwtProvider,
-                      ObjectMapper objectMapper,
-                      AuditLogger auditLogger,
-                      Tracer tracer) {
+            ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
+            JwtProvider jwtProvider, ObjectMapper objectMapper, AuditLogger auditLogger,
+            Tracer tracer) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
         this.jwtProvider = jwtProvider;
@@ -59,7 +57,8 @@ public class AuthFilter extends OncePerRequestFilter {
         this.tracer = tracer;
     }
 
-    private record JwtExcludedRoute(String method, String pattern) {}
+    private record JwtExcludedRoute(String method, String pattern) {
+    }
 
     private static final List<JwtExcludedRoute> JWT_EXCLUDED_PATHS = List.of(
             new JwtExcludedRoute("POST", "/auth/login/**"),
@@ -67,47 +66,47 @@ public class AuthFilter extends OncePerRequestFilter {
             new JwtExcludedRoute("POST", "/register"),
             new JwtExcludedRoute("POST", "/register/verify"),
             new JwtExcludedRoute("POST", "/auth/forgot-password"),
-            new JwtExcludedRoute("GET",  "/auth/reset-password/validate"),
+            new JwtExcludedRoute("GET", "/auth/reset-password/validate"),
             new JwtExcludedRoute("POST", "/auth/reset-password"),
             new JwtExcludedRoute("POST", "/auth/recover-code"),
             new JwtExcludedRoute("POST", "/dian/webhooks/**"),
-            new JwtExcludedRoute("GET",  "/countries"),
-            new JwtExcludedRoute("GET",  "/countries/{countryId}/states"),
-            new JwtExcludedRoute("GET",  "/states/{stateId}/cities"),
-            new JwtExcludedRoute("GET",  "/species/{specieId}/breeds"),
-            new JwtExcludedRoute("GET",  "/species"),
-            new JwtExcludedRoute("GET",  "/animal-colors"),
-            new JwtExcludedRoute("GET",  "/consultation-types"),
-            new JwtExcludedRoute("GET",  "/modules"),
-            new JwtExcludedRoute("GET",  "/sub-modules"),
-            new JwtExcludedRoute("GET",  "/spa-types"),
-            new JwtExcludedRoute(null,   "/swagger-ui/**"),
-            new JwtExcludedRoute(null,   "/v3/api-docs/**"),
-            new JwtExcludedRoute(null,   "/swagger-resources/**"),
-            new JwtExcludedRoute(null,   "/webjars/**"),
-            // Actuator pertenece a su propia SecurityFilterChain; este filtro solo procesa JWT de negocio.
-            new JwtExcludedRoute(null,   "/actuator/**")
-    );
+            new JwtExcludedRoute("GET", "/countries"),
+            new JwtExcludedRoute("GET", "/countries/{countryId}/states"),
+            new JwtExcludedRoute("GET", "/states/{stateId}/cities"),
+            new JwtExcludedRoute("GET", "/species/{specieId}/breeds"),
+            new JwtExcludedRoute("GET", "/species"), new JwtExcludedRoute("GET", "/animal-colors"),
+            new JwtExcludedRoute("GET", "/consultation-types"),
+            new JwtExcludedRoute("GET", "/modules"), new JwtExcludedRoute("GET", "/sub-modules"),
+            new JwtExcludedRoute("GET", "/spa-types"), new JwtExcludedRoute(null, "/swagger-ui/**"),
+            new JwtExcludedRoute(null, "/v3/api-docs/**"),
+            new JwtExcludedRoute(null, "/swagger-resources/**"),
+            new JwtExcludedRoute(null, "/webjars/**"),
+            // Actuator pertenece a su propia SecurityFilterChain; este filtro solo procesa
+            // JWT de
+            // negocio.
+            new JwtExcludedRoute(null, "/actuator/**"));
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod()))
+            return true;
         String method = request.getMethod();
         String path = request.getServletPath();
-        return JWT_EXCLUDED_PATHS.stream().anyMatch(r ->
-                (r.method() == null || r.method().equalsIgnoreCase(method))
+        return JWT_EXCLUDED_PATHS.stream()
+                .anyMatch(r -> (r.method() == null || r.method().equalsIgnoreCase(method))
                         && PATH_MATCHER.match(r.pattern(), path));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
 
         if (header == null || !header.startsWith("Bearer ")) {
-            writeUnauthorized(request, response, "TOKEN_MISSING", "Missing or invalid Authorization header");
+            writeUnauthorized(request, response, "TOKEN_MISSING",
+                    "Missing or invalid Authorization header");
             return;
         }
 
@@ -135,9 +134,9 @@ public class AuthFilter extends OncePerRequestFilter {
         AuthContext authContext;
         try {
             authContext = switch (type) {
-                case "EMPLOYEE"    -> resolveAuthContextUseCase.execute(id, authVersion);
+                case "EMPLOYEE" -> resolveAuthContextUseCase.execute(id, authVersion);
                 case "SYSTEM_USER" -> resolveSystemAuthContextUseCase.execute(id, authVersion);
-                default            -> null;
+                default -> null;
             };
         } catch (SessionReplacedException e) {
             writeUnauthorized(request, response, "SESSION_REPLACED", e.getMessage());
@@ -159,7 +158,10 @@ public class AuthFilter extends OncePerRequestFilter {
         }
     }
 
-    /** Pone la identidad del actor en el MDC para que aparezca como campos en cada log de la request. */
+    /**
+     * Pone la identidad del actor en el MDC para que aparezca como campos en cada
+     * log de la request.
+     */
     private static void putActorToMdc(AuthContext authContext) {
         if (authContext instanceof EmployeeContext employee) {
             MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
@@ -181,11 +183,8 @@ public class AuthFilter extends OncePerRequestFilter {
     }
 
     private static UsernamePasswordAuthenticationToken toAuthentication(AuthContext authContext) {
-        List<GrantedAuthority> authorities = new ArrayList<>(
-            authContext.permissions().stream()
-                .<GrantedAuthority>map(SimpleGrantedAuthority::new)
-                .toList()
-        );
+        List<GrantedAuthority> authorities = new ArrayList<>(authContext.permissions().stream()
+                .<GrantedAuthority>map(SimpleGrantedAuthority::new).toList());
         if (authContext instanceof SystemContext || authContext instanceof SystemUserContext) {
             authorities.add(new SimpleGrantedAuthority(SYSTEM_ROLE));
         }
@@ -194,12 +193,15 @@ public class AuthFilter extends OncePerRequestFilter {
 
     /**
      * Rechazo de autenticación en formato ProblemDetail (RFC 7807), consistente con
-     * {@code GlobalExceptionHandler}. El {@code code} discrimina el motivo para que el
-     * front decida: {@code TOKEN_EXPIRED} → intentar refrescar; {@code SESSION_REPLACED},
-     * {@code TOKEN_INVALID} o {@code TOKEN_MISSING} → desloguear.
+     * {@code
+     * GlobalExceptionHandler}. El {@code code} discrimina el motivo para que el
+     * front decida: {@code
+     * TOKEN_EXPIRED} → intentar refrescar; {@code SESSION_REPLACED},
+     * {@code TOKEN_INVALID} o {@code
+     * TOKEN_MISSING} → desloguear.
      */
     private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response,
-                                   String code, String detail) throws IOException {
+            String code, String detail) throws IOException {
         auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), detail);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
         problem.setTitle(HttpStatus.UNAUTHORIZED.getReasonPhrase());

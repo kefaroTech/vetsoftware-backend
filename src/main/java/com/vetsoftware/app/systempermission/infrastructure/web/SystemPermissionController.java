@@ -28,11 +28,9 @@ public class SystemPermissionController {
     private final ReactivateSystemPermissionUseCase reactivateUseCase;
 
     public SystemPermissionController(CreateSystemPermissionUseCase createUseCase,
-                                      UpdateSystemPermissionUseCase updateUseCase,
-                                      FindSystemPermissionUseCase findUseCase,
-                                      ListSystemPermissionsUseCase listUseCase,
-                                      DeleteSystemPermissionUseCase deleteUseCase,
-                                      ReactivateSystemPermissionUseCase reactivateUseCase) {
+            UpdateSystemPermissionUseCase updateUseCase, FindSystemPermissionUseCase findUseCase,
+            ListSystemPermissionsUseCase listUseCase, DeleteSystemPermissionUseCase deleteUseCase,
+            ReactivateSystemPermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -43,9 +41,10 @@ public class SystemPermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SystemPermissionResponse create(@Valid @RequestBody CreateSystemPermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSystemPermissionCommand(request.name(), request.code())));
+    public SystemPermissionResponse create(
+            @Valid @RequestBody CreateSystemPermissionRequest request) {
+        return toResponse(createUseCase
+                .execute(new CreateSystemPermissionCommand(request.name(), request.code())));
     }
 
     @GetMapping
@@ -60,9 +59,9 @@ public class SystemPermissionController {
 
     @PutMapping("/{id}")
     public SystemPermissionResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateSystemPermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSystemPermissionCommand(id, request.name(), request.code())));
+            @Valid @RequestBody UpdateSystemPermissionRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateSystemPermissionCommand(id, request.name(), request.code())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,6 +76,7 @@ public class SystemPermissionController {
     }
 
     private SystemPermissionResponse toResponse(SystemPermissionDto dto) {
-        return new SystemPermissionResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
+        return new SystemPermissionResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(),
+                dto.enabled());
     }
 }

@@ -12,16 +12,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.event.KeyValuePair;
 
 /**
- * Verifica el motor de redacción (OBS-019) con <b>valores señuelo</b>: cadenas únicas e
- * improbables que, si aparecen en la salida, prueban una fuga.
+ * Verifica el motor de redacción (OBS-019) con <b>valores señuelo</b>: cadenas
+ * únicas e improbables que, si aparecen en la salida, prueban una fuga.
  */
 class LogRedactorTest {
 
-    // Señuelos. Cada uno es único para que la aserción "no contiene" no dé falsos negativos.
+    // Señuelos. Cada uno es único para que la aserción "no contiene" no dé falsos
+    // negativos.
     private static final String DECOY_PASSWORD = "Sup3rS3cr3t-Senuelo";
-    private static final String DECOY_JWT =
-        String.join(
-            ".", "eyJhbGciOiJIUzI1NiJ9", "eyJzdWIiOiJzZW51ZWxvIn0", "firma-de-prueba");
+    private static final String DECOY_JWT = String.join(".", "eyJhbGciOiJIUzI1NiJ9",
+            "eyJzdWIiOiJzZW51ZWxvIn0", "firma-de-prueba");
     private static final String DECOY_OPAQUE_TOKEN = "opaque-test-" + "x".repeat(48);
     private static final String DECOY_EMAIL_LOCAL = "senuelo.paciente";
     private static final String DECOY_PHONE = "+57 320 555 7788";
@@ -34,7 +34,8 @@ class LogRedactorTest {
 
     @Test
     void masksPasswordGivenAsKeyValue() {
-        String redacted = LogRedactor.redact("login fallido password=" + DECOY_PASSWORD + " user=42");
+        String redacted = LogRedactor
+                .redact("login fallido password=" + DECOY_PASSWORD + " user=42");
 
         assertThat(redacted).doesNotContain(DECOY_PASSWORD);
         assertThat(redacted).isEqualTo("login fallido password=*** user=42");
@@ -49,8 +50,8 @@ class LogRedactorTest {
 
     @Test
     void masksSecretKeysWithPrefixesAndSuffixes() {
-        String redacted = LogRedactor.redact(
-                "refresh_token=" + DECOY_OPAQUE_TOKEN + " passwordHash=$2a$10$abcdef");
+        String redacted = LogRedactor
+                .redact("refresh_token=" + DECOY_OPAQUE_TOKEN + " passwordHash=$2a$10$abcdef");
 
         assertThat(redacted).doesNotContain(DECOY_OPAQUE_TOKEN).doesNotContain("$2a$10$abcdef");
     }
@@ -64,7 +65,8 @@ class LogRedactorTest {
     @Test
     @DisplayName("una cabecera Authorization no deja escapar el token tras la palabra Bearer")
     void masksAuthorizationHeaderWholeValue() {
-        // Regresión: si la regla clave-valor corriera antes que la de esquema HTTP, cortaría en el
+        // Regresión: si la regla clave-valor corriera antes que la de esquema HTTP,
+        // cortaría en el
         // espacio y solo enmascararía "Bearer", dejando el token visible.
         String redacted = LogRedactor.redact("Authorization: Bearer " + DECOY_JWT);
 
@@ -73,7 +75,8 @@ class LogRedactorTest {
 
     @Test
     void masksOpaqueBearerAndBasicCredentials() {
-        assertThat(LogRedactor.redact("Bearer " + DECOY_OPAQUE_TOKEN)).doesNotContain(DECOY_OPAQUE_TOKEN);
+        assertThat(LogRedactor.redact("Bearer " + DECOY_OPAQUE_TOKEN))
+                .doesNotContain(DECOY_OPAQUE_TOKEN);
         assertThat(LogRedactor.redact("Basic c2VudWVsbzpzZWNyZXRv")).isEqualTo("Basic ***");
     }
 
@@ -122,13 +125,14 @@ class LogRedactorTest {
 
     @Test
     void masksCardNumberWrittenWithSeparators() {
-        assertThat(LogRedactor.redact("pago con 4111 1111 1111 1111")).isEqualTo("pago con ***1111");
+        assertThat(LogRedactor.redact("pago con 4111 1111 1111 1111"))
+                .isEqualTo("pago con ***1111");
     }
 
     @Test
     void masksNamedTaxAndClinicalFields() {
-        String redacted = LogRedactor.redact(
-                "nit=900123456-7 diagnostico=Insuficiencia renal cronica felina");
+        String redacted = LogRedactor
+                .redact("nit=900123456-7 diagnostico=Insuficiencia renal cronica felina");
 
         assertThat(redacted).doesNotContain("900123456").doesNotContain("Insuficiencia");
     }
@@ -138,14 +142,11 @@ class LogRedactorTest {
     // -------------------------------------------------------------------------------------------
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "mutation POST /api/v1/owners -> 201 (SUCCESS)",
+    @ValueSource(strings = {"mutation POST /api/v1/owners -> 201 (SUCCESS)",
             "Reconciliación DIAN finalizada: intentado(s)=3, fallido(s)=0, resultado=OK",
             "Documento 4821 marcado VALIDADO SIN SELLO",
             "Outbox de auditoría depurada; publicados eliminados=1204",
-            "rate limited code=LOGIN_RATE_LIMITED",
-            "Empresa 17: proveedor DIAN recuperado",
-    })
+            "rate limited code=LOGIN_RATE_LIMITED", "Empresa 17: proveedor DIAN recuperado",})
     void leavesOperationalMessagesUntouched(String message) {
         assertThat(LogRedactor.redact(message)).isEqualTo(message);
     }
@@ -153,8 +154,10 @@ class LogRedactorTest {
     @Test
     @DisplayName("un hash hex no se mutila: los lookarounds excluyen letras, no solo dígitos")
     void leavesHexHashesUntouched() {
-        // Regresión: con lookarounds que solo excluyeran dígitos, un hash de 64 hex tiene ~50 % de
-        // probabilidad de contener 10 dígitos seguidos por azar y los checkpoints de la cadena de
+        // Regresión: con lookarounds que solo excluyeran dígitos, un hash de 64 hex
+        // tiene ~50 % de
+        // probabilidad de contener 10 dígitos seguidos por azar y los checkpoints de la
+        // cadena de
         // auditoría saldrían mutilados.
         String hash = "9f1204738295610384abcdef0123456789012345678901234567890123456789";
         String message = "Checkpoint de la cadena de auditoría emitido; posición=512 hash=" + hash;
@@ -218,7 +221,8 @@ class LogRedactorTest {
 
     @Test
     void keepsVerbatimMdcValuesExactlyAsProduced() {
-        // El NIT del tenant es dato mercantil auditado a propósito: no debe caer en la regla de
+        // El NIT del tenant es dato mercantil auditado a propósito: no debe caer en la
+        // regla de
         // documentos personales.
         Map<String, String> mdc = Map.of(MdcKeys.CLIENT_IP, "192.0.2.10");
 
@@ -227,13 +231,13 @@ class LogRedactorTest {
 
     @Test
     void masksKeyValuePairsOutsideTheAllowlist() {
-        List<KeyValuePair> redacted = LogRedactor.redactKeyValuePairs(List.of(
-                new KeyValuePair("event", "login_success"),
-                new KeyValuePair("http.durationMs", 37L),
-                new KeyValuePair("owner.document", DECOY_DOCUMENT)));
+        List<KeyValuePair> redacted = LogRedactor
+                .redactKeyValuePairs(List.of(new KeyValuePair("event", "login_success"),
+                        new KeyValuePair("http.durationMs", 37L),
+                        new KeyValuePair("owner.document", DECOY_DOCUMENT)));
 
-        assertThat(redacted).extracting(pair -> pair.value)
-                .containsExactly("login_success", 37L, LogRedactor.MASK);
+        assertThat(redacted).extracting(pair -> pair.value).containsExactly("login_success", 37L,
+                LogRedactor.MASK);
     }
 
     @Test

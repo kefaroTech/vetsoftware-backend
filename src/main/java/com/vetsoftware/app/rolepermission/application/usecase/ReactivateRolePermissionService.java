@@ -16,7 +16,7 @@ public class ReactivateRolePermissionService implements ReactivateRolePermission
     private final PermissionCachePort permissionCachePort;
 
     public ReactivateRolePermissionService(RolePermissionRepository repository,
-                                           PermissionCachePort permissionCachePort) {
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.permissionCachePort = permissionCachePort;
     }
@@ -24,12 +24,15 @@ public class ReactivateRolePermissionService implements ReactivateRolePermission
     @Override
     @Transactional
     public RolePermissionDto execute(Long id, Long companyId) {
-        int rows = companyId == null ? repository.reactivate(id) : repository.reactivate(id, companyId);
-        if (rows == 0) throw new RolePermissionNotFoundException(id);
+        int rows = companyId == null
+                ? repository.reactivate(id)
+                : repository.reactivate(id, companyId);
+        if (rows == 0)
+            throw new RolePermissionNotFoundException(id);
         var rolePermission = (companyId == null
-            ? repository.findById(id)
-            : repository.findByIdAndCompanyId(id, companyId))
-            .orElseThrow(() -> new RolePermissionNotFoundException(id));
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new RolePermissionNotFoundException(id));
         permissionCachePort.evictByRoleId(rolePermission.getRole().id());
         return RolePermissionDto.from(rolePermission);
     }

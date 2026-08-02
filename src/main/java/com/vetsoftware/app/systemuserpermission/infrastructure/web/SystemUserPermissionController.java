@@ -32,11 +32,11 @@ public class SystemUserPermissionController {
     private final ReactivateSystemUserPermissionUseCase reactivateUseCase;
 
     public SystemUserPermissionController(CreateSystemUserPermissionUseCase createUseCase,
-                                          UpdateSystemUserPermissionUseCase updateUseCase,
-                                          FindSystemUserPermissionUseCase findUseCase,
-                                          ListSystemUserPermissionsUseCase listUseCase,
-                                          DeleteSystemUserPermissionUseCase deleteUseCase,
-                                          ReactivateSystemUserPermissionUseCase reactivateUseCase) {
+            UpdateSystemUserPermissionUseCase updateUseCase,
+            FindSystemUserPermissionUseCase findUseCase,
+            ListSystemUserPermissionsUseCase listUseCase,
+            DeleteSystemUserPermissionUseCase deleteUseCase,
+            ReactivateSystemUserPermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,9 +47,10 @@ public class SystemUserPermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SystemUserPermissionResponse create(@Valid @RequestBody CreateSystemUserPermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSystemUserPermissionCommand(request.systemUserId(), request.systemPermissionId())));
+    public SystemUserPermissionResponse create(
+            @Valid @RequestBody CreateSystemUserPermissionRequest request) {
+        return toResponse(createUseCase.execute(new CreateSystemUserPermissionCommand(
+                request.systemUserId(), request.systemPermissionId())));
     }
 
     @GetMapping
@@ -64,9 +65,9 @@ public class SystemUserPermissionController {
 
     @PutMapping("/{id}")
     public SystemUserPermissionResponse update(@PathVariable Long id,
-                                               @Valid @RequestBody UpdateSystemUserPermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSystemUserPermissionCommand(id, request.systemUserId(), request.systemPermissionId())));
+            @Valid @RequestBody UpdateSystemUserPermissionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSystemUserPermissionCommand(id,
+                request.systemUserId(), request.systemPermissionId())));
     }
 
     @DeleteMapping("/{id}")
@@ -83,12 +84,8 @@ public class SystemUserPermissionController {
     private SystemUserPermissionResponse toResponse(SystemUserPermissionDto dto) {
         SystemUserSummaryDto u = dto.systemUser();
         SystemPermissionSummaryDto p = dto.systemPermission();
-        return new SystemUserPermissionResponse(
-            dto.id(),
-            new SystemUserSummary(u.id(), u.code()),
-            new SystemPermissionSummary(p.id(), p.name(), p.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new SystemUserPermissionResponse(dto.id(), new SystemUserSummary(u.id(), u.code()),
+                new SystemPermissionSummary(p.id(), p.name(), p.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

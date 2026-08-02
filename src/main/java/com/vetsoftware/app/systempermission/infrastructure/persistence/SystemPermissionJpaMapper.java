@@ -17,12 +17,7 @@ public class SystemPermissionJpaMapper {
     }
 
     public SystemPermission toDomain(SystemPermissionJpaEntity entity) {
-        return new SystemPermission(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+        return new SystemPermission(entity.getId(), entity.getName(), entity.getCode(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

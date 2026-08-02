@@ -12,22 +12,18 @@ public class JpaAdminBasePermissionsQueryPort implements AdminBasePermissionsQue
 
     private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
 
-    public JpaAdminBasePermissionsQueryPort(BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
+    public JpaAdminBasePermissionsQueryPort(
+            BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
         this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
     }
 
     @Override
     public List<AdminBasePermission> findByAdminBaseRoleId(Long adminBaseRoleId) {
         return baseRolePermissionJpaRepository.findByBaseRoleId(adminBaseRoleId).stream()
-            .map(brp -> {
-                BasePermissionJpaEntity bp = brp.getBasePermission();
-                return new AdminBasePermission(
-                    bp.getId(),
-                    bp.getCode(),
-                    bp.getName(),
-                    bp.getSubModule().getId()
-                );
-            })
-            .toList();
+                .map(brp -> {
+                    BasePermissionJpaEntity bp = brp.getBasePermission();
+                    return new AdminBasePermission(bp.getId(), bp.getCode(), bp.getName(),
+                            bp.getSubModule().getId());
+                }).toList();
     }
 }

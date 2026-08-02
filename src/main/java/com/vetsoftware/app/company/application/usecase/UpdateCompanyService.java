@@ -21,9 +21,8 @@ public class UpdateCompanyService implements UpdateCompanyUseCase {
     private final CityQueryPort cityQueryPort;
     private final MembershipQueryPort membershipQueryPort;
 
-    public UpdateCompanyService(CompanyRepository repository,
-                                CityQueryPort cityQueryPort,
-                                MembershipQueryPort membershipQueryPort) {
+    public UpdateCompanyService(CompanyRepository repository, CityQueryPort cityQueryPort,
+            MembershipQueryPort membershipQueryPort) {
         this.repository = repository;
         this.cityQueryPort = cityQueryPort;
         this.membershipQueryPort = membershipQueryPort;
@@ -33,13 +32,14 @@ public class UpdateCompanyService implements UpdateCompanyUseCase {
     @Transactional
     public CompanyDto execute(UpdateCompanyCommand command) {
         Company company = repository.findById(command.id())
-            .orElseThrow(() -> new CompanyNotFoundException(command.id()));
-        CityRef city = cityQueryPort.findById(command.cityId())
-            .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
+                .orElseThrow(() -> new CompanyNotFoundException(command.id()));
+        CityRef city = cityQueryPort.findById(command.cityId()).orElseThrow(
+                () -> new IllegalArgumentException("City not found: " + command.cityId()));
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Membership not found: " + command.membershipId()));
         company.update(command.name(), command.identifier(), command.address(),
-            command.contactNumber(), city, membership);
+                command.contactNumber(), city, membership);
         return CompanyDto.from(repository.save(company));
     }
 }

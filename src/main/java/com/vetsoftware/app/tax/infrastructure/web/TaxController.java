@@ -31,13 +31,9 @@ public class TaxController {
     private final ReactivateTaxUseCase reactivateUseCase;
     private final Authz authz;
 
-    public TaxController(CreateTaxUseCase createUseCase,
-                         UpdateTaxUseCase updateUseCase,
-                         FindTaxUseCase findUseCase,
-                         ListTaxesUseCase listUseCase,
-                         DeleteTaxUseCase deleteUseCase,
-                         ReactivateTaxUseCase reactivateUseCase,
-                         Authz authz) {
+    public TaxController(CreateTaxUseCase createUseCase, UpdateTaxUseCase updateUseCase,
+            FindTaxUseCase findUseCase, ListTaxesUseCase listUseCase,
+            DeleteTaxUseCase deleteUseCase, ReactivateTaxUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -50,20 +46,20 @@ public class TaxController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TaxResponse create(@Valid @RequestBody CreateTaxRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateTaxCommand(request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreateTaxCommand(request.name(),
+                request.percentage(), request.taxScheme(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<TaxResponse> listAll() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/disabled")
     public List<TaxResponse> listDisabled() {
-        return listUseCase.listDisabledByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -72,10 +68,10 @@ public class TaxController {
     }
 
     @PutMapping("/{id}")
-    public TaxResponse update(@PathVariable Long id,
-                              @Valid @RequestBody UpdateTaxRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateTaxCommand(id, request.name(), request.percentage(), request.taxScheme(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
+    public TaxResponse update(@PathVariable Long id, @Valid @RequestBody UpdateTaxRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateTaxCommand(id, request.name(),
+                request.percentage(), request.taxScheme(), authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -91,13 +87,9 @@ public class TaxController {
 
     private TaxResponse toResponse(TaxDto dto) {
         CompanySummaryDto c = dto.company();
-        return new TaxResponse(
-                dto.id(), dto.name(), dto.percentage(), dto.taxScheme(),
+        return new TaxResponse(dto.id(), dto.name(), dto.percentage(), dto.taxScheme(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate(),
-                dto.updatedDate(),
-                dto.updatedBy(),
-                dto.version(),
+                dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(),
                 dto.enabled());
     }
 }

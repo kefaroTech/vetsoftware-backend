@@ -10,9 +10,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Aritmética de las notas crédito/débito: la única corrección fiscal válida sobre una factura validada.
- * Una nota mal escalada devuelve dinero de más o reversa cartera equivocada, así que se fijan el clon
- * total, el prorrateo parcial (líneas, IVA, pagos y retenciones) y los topes que impiden abusarla.
+ * Aritmética de las notas crédito/débito: la única corrección fiscal válida
+ * sobre una factura validada. Una nota mal escalada devuelve dinero de más o
+ * reversa cartera equivocada, así que se fijan el clon total, el prorrateo
+ * parcial (líneas, IVA, pagos y retenciones) y los topes que impiden abusarla.
  */
 class ElectronicDocumentNoteMathTest {
 
@@ -23,8 +24,8 @@ class ElectronicDocumentNoteMathTest {
     }
 
     private static IssuerSnapshot issuer() {
-        return new IssuerSnapshot("NIT", "900123456", "7", "Vet SAS", "RESPONSABLE",
-                "vet@x.co", List.of("O-13"));
+        return new IssuerSnapshot("NIT", "900123456", "7", "Vet SAS", "RESPONSABLE", "vet@x.co",
+                List.of("O-13"));
     }
 
     private static ElectronicDocumentLine ivaLine(int number, String base, String tax) {
@@ -33,15 +34,18 @@ class ElectronicDocumentNoteMathTest {
                 bd(base).add(bd(tax)));
     }
 
-    /** Factura VALIDADA de 1.190.000 (base 1.000.000 + IVA 190.000) con retenciones practicadas. */
+    /**
+     * Factura VALIDADA de 1.190.000 (base 1.000.000 + IVA 190.000) con retenciones
+     * practicadas.
+     */
     private static ElectronicDocument validatedInvoice() {
         ElectronicDocument doc = ElectronicDocument.createPending(9L, 100L,
                 ElectronicDocumentType.FE_VENTA, issuer(), CustomerSnapshot.finalConsumer(),
                 List.of(ivaLine(1, "1000000", "190000")),
                 List.of(new ElectronicDocumentPayment(null, PaymentMeans.EFECTIVO, bd("1190000"))),
                 PaymentForm.CONTADO, true, bd("4"), bd("15"), bd("9.66"), UVT, "req-1", 4L, 7L);
-        doc.markValidated("SETP", 990L, "CUFE-ABC123", "cude", "uuid", "<xml/>", "qr",
-                "https://qr", "pdf", LocalDateTime.of(2026, 8, 1, 10, 0));
+        doc.markValidated("SETP", 990L, "CUFE-ABC123", "cude", "uuid", "<xml/>", "qr", "https://qr",
+                "pdf", LocalDateTime.of(2026, 8, 1, 10, 0));
         return doc;
     }
 
@@ -52,11 +56,13 @@ class ElectronicDocumentNoteMathTest {
         void clona_exactamente_los_totales_del_original() {
             ElectronicDocument original = validatedInvoice();
 
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    original, "2", "Anulación", 4L, null);
+            ElectronicDocument note = ElectronicDocument.createCreditNote(original, "2",
+                    "Anulación", 4L, null);
 
-            assertThat(note.getLineExtensionAmount()).isEqualByComparingTo(original.getLineExtensionAmount());
-            assertThat(note.getTaxInclusiveAmount()).isEqualByComparingTo(original.getTaxInclusiveAmount());
+            assertThat(note.getLineExtensionAmount())
+                    .isEqualByComparingTo(original.getLineExtensionAmount());
+            assertThat(note.getTaxInclusiveAmount())
+                    .isEqualByComparingTo(original.getTaxInclusiveAmount());
             assertThat(note.getPayableAmount()).isEqualByComparingTo(original.getPayableAmount());
         }
 
@@ -64,10 +70,11 @@ class ElectronicDocumentNoteMathTest {
         void clona_las_retenciones_para_reversarlas_completas() {
             ElectronicDocument original = validatedInvoice();
 
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    original, "2", "Anulación", 4L, null);
+            ElectronicDocument note = ElectronicDocument.createCreditNote(original, "2",
+                    "Anulación", 4L, null);
 
-            assertThat(note.getReteFuenteAmount()).isEqualByComparingTo(original.getReteFuenteAmount());
+            assertThat(note.getReteFuenteAmount())
+                    .isEqualByComparingTo(original.getReteFuenteAmount());
             assertThat(note.getReteIvaAmount()).isEqualByComparingTo(original.getReteIvaAmount());
             assertThat(note.getReteIcaAmount()).isEqualByComparingTo(original.getReteIcaAmount());
         }
@@ -76,8 +83,8 @@ class ElectronicDocumentNoteMathTest {
         void referencia_el_cufe_prefijo_y_consecutivo_del_original() {
             ElectronicDocument original = validatedInvoice();
 
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    original, "2", "Anulación", 4L, null);
+            ElectronicDocument note = ElectronicDocument.createCreditNote(original, "2",
+                    "Anulación", 4L, null);
 
             assertThat(note.getReference().cufe()).isEqualTo("CUFE-ABC123");
             assertThat(note.getReference().prefix()).isEqualTo("SETP");
@@ -86,8 +93,8 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void la_nota_nace_pendiente_y_sin_numeracion_propia() {
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Anulación", 4L, null);
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Anulación", 4L, null);
 
             assertThat(note.getDianStatus()).isEqualTo(DianStatus.PENDIENTE);
             assertThat(note.getConsecutive()).isNull();
@@ -104,8 +111,8 @@ class ElectronicDocumentNoteMathTest {
             ElectronicDocument original = validatedInvoice();
 
             // 25 % de 1.190.000
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    original, "2", "Devolución parcial", 4L, bd("297500"));
+            ElectronicDocument note = ElectronicDocument.createCreditNote(original, "2",
+                    "Devolución parcial", 4L, bd("297500"));
 
             assertThat(note.getPayableAmount()).isEqualByComparingTo("297500.00");
             assertThat(note.getLineExtensionAmount()).isEqualByComparingTo("250000.00");
@@ -113,8 +120,8 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void escala_tambien_las_lineas_y_su_iva() {
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Devolución parcial", 4L, bd("297500"));
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Devolución parcial", 4L, bd("297500"));
 
             ElectronicDocumentLine line = note.getLines().getFirst();
             assertThat(line.getLineExtensionAmount()).isEqualByComparingTo("250000.00");
@@ -125,8 +132,8 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void escala_las_retenciones_proporcionalmente() {
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Devolución parcial", 4L, bd("297500"));
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Devolución parcial", 4L, bd("297500"));
 
             assertThat(note.getReteFuenteAmount()).isEqualByComparingTo("10000.00");
             assertThat(note.getReteIvaAmount()).isEqualByComparingTo("7125.00");
@@ -135,8 +142,8 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void escala_los_pagos_del_original() {
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Devolución parcial", 4L, bd("297500"));
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Devolución parcial", 4L, bd("297500"));
 
             assertThat(note.getPayments()).hasSize(1);
             assertThat(note.getPayments().getFirst().getAmount()).isEqualByComparingTo("297500.00");
@@ -144,30 +151,27 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void una_nota_credito_no_puede_exceder_el_total_de_la_factura() {
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Exceso", 4L, bd("1190001")))
-                    .isInstanceOf(IllegalArgumentException.class)
+            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Exceso", 4L, bd("1190001"))).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no puede exceder el total");
         }
 
         @Test
         void una_nota_credito_por_el_total_exacto_si_es_valida() {
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Anulación exacta", 4L, bd("1190000"));
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Anulación exacta", 4L, bd("1190000"));
 
             assertThat(note.getPayableAmount()).isEqualByComparingTo("1190000.00");
         }
 
         @Test
         void el_monto_de_la_nota_debe_ser_mayor_que_cero() {
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Cero", 4L, BigDecimal.ZERO))
-                    .isInstanceOf(IllegalArgumentException.class)
+            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Cero", 4L, BigDecimal.ZERO)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("mayor que cero");
 
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Negativo", 4L, bd("-1")))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Negativo", 4L, bd("-1"))).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -176,9 +180,10 @@ class ElectronicDocumentNoteMathTest {
 
         @Test
         void admite_un_incremento_superior_al_total_de_la_factura() {
-            // La ND representa un aumento: a diferencia de la NC no tiene tope en el total original.
-            ElectronicDocument note = ElectronicDocument.createDebitNote(
-                    validatedInvoice(), "1", "Ajuste al alza", 4L, bd("2380000"));
+            // La ND representa un aumento: a diferencia de la NC no tiene tope en el total
+            // original.
+            ElectronicDocument note = ElectronicDocument.createDebitNote(validatedInvoice(), "1",
+                    "Ajuste al alza", 4L, bd("2380000"));
 
             assertThat(note.getDocumentType()).isEqualTo(ElectronicDocumentType.NOTA_DEBITO);
             assertThat(note.getPayableAmount()).isEqualByComparingTo("2380000.00");
@@ -188,8 +193,8 @@ class ElectronicDocumentNoteMathTest {
         void sin_monto_hereda_el_total_del_original() {
             ElectronicDocument original = validatedInvoice();
 
-            ElectronicDocument note = ElectronicDocument.createDebitNote(
-                    original, "1", "Ajuste heredado", 4L, null);
+            ElectronicDocument note = ElectronicDocument.createDebitNote(original, "1",
+                    "Ajuste heredado", 4L, null);
 
             assertThat(note.getPayableAmount()).isEqualByComparingTo(original.getPayableAmount());
         }
@@ -202,36 +207,36 @@ class ElectronicDocumentNoteMathTest {
         void no_se_puede_emitir_una_nota_sobre_un_documento_sin_cufe() {
             ElectronicDocument sinValidar = ElectronicDocument.createPending(9L, 100L,
                     ElectronicDocumentType.FE_VENTA, issuer(), CustomerSnapshot.finalConsumer(),
-                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO,
-                    false, null, null, null, UVT, null, 4L, 7L);
+                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO, false, null,
+                    null, null, UVT, null, 4L, 7L);
 
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    sinValidar, "2", "Anulación", 4L, null))
-                    .isInstanceOf(IllegalArgumentException.class)
+            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(sinValidar, "2",
+                    "Anulación", 4L, null)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no CUFE");
         }
 
         @Test
         void no_se_puede_emitir_una_nota_sin_documento_original() {
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    null, "2", "Anulación", 4L, null))
+            assertThatThrownBy(
+                    () -> ElectronicDocument.createCreditNote(null, "2", "Anulación", 4L, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("original document is required");
         }
 
         @Test
         void una_nota_exige_concepto_dian() {
-            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(
-                    validatedInvoice(), " ", "Sin código", 4L, null))
-                    .isInstanceOf(IllegalArgumentException.class)
+            assertThatThrownBy(() -> ElectronicDocument.createCreditNote(validatedInvoice(), " ",
+                    "Sin código", 4L, null)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("reason code");
         }
 
         @Test
         void la_nota_no_arrastra_el_clientRequestId_del_original() {
-            // Idempotencia del POS: reutilizar la clave del original haría colisionar la nota con la venta.
-            ElectronicDocument note = ElectronicDocument.createCreditNote(
-                    validatedInvoice(), "2", "Anulación", 4L, null);
+            // Idempotencia del POS: reutilizar la clave del original haría colisionar la
+            // nota con la
+            // venta.
+            ElectronicDocument note = ElectronicDocument.createCreditNote(validatedInvoice(), "2",
+                    "Anulación", 4L, null);
 
             assertThat(note.getClientRequestId()).isNull();
         }
@@ -244,11 +249,9 @@ class ElectronicDocumentNoteMathTest {
         void un_documento_validado_no_puede_volver_a_transicionar() {
             ElectronicDocument doc = validatedInvoice();
 
-            assertThatThrownBy(doc::markRejected)
-                    .isInstanceOf(IllegalStateException.class)
+            assertThatThrownBy(doc::markRejected).isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("estado terminal");
-            assertThatThrownBy(doc::markContingency)
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(doc::markContingency).isInstanceOf(IllegalStateException.class);
         }
 
         @Test
@@ -263,8 +266,8 @@ class ElectronicDocumentNoteMathTest {
         void solo_se_libera_la_numeracion_de_un_documento_rechazado() {
             ElectronicDocument doc = ElectronicDocument.createPending(9L, 100L,
                     ElectronicDocumentType.FE_VENTA, issuer(), CustomerSnapshot.finalConsumer(),
-                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO,
-                    false, null, null, null, UVT, null, 4L, 7L);
+                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO, false, null,
+                    null, null, UVT, null, 4L, 7L);
             doc.assignNumber("RES-1", "SETP", 5L);
 
             assertThatThrownBy(doc::releaseFiscalNumber).isInstanceOf(IllegalStateException.class);
@@ -281,8 +284,8 @@ class ElectronicDocumentNoteMathTest {
         void el_consecutivo_no_se_reasigna() {
             ElectronicDocument doc = ElectronicDocument.createPending(9L, 100L,
                     ElectronicDocumentType.FE_VENTA, issuer(), CustomerSnapshot.finalConsumer(),
-                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO,
-                    false, null, null, null, UVT, null, 4L, 7L);
+                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO, false, null,
+                    null, null, UVT, null, 4L, 7L);
             doc.assignNumber("RES-1", "SETP", 5L);
 
             assertThatThrownBy(() -> doc.assignNumber("RES-1", "SETP", 6L))
@@ -293,9 +296,9 @@ class ElectronicDocumentNoteMathTest {
         @Test
         void el_tiquete_pos_usa_consecutivo_del_proveedor() {
             ElectronicDocument pos = ElectronicDocument.createPending(9L, null,
-                    ElectronicDocumentType.DOC_EQUIV_POS, issuer(), CustomerSnapshot.finalConsumer(),
-                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO,
-                    false, null, null, null, UVT, null, 4L, 7L);
+                    ElectronicDocumentType.DOC_EQUIV_POS, issuer(),
+                    CustomerSnapshot.finalConsumer(), List.of(ivaLine(1, "1000", "190")), List.of(),
+                    PaymentForm.CONTADO, false, null, null, null, UVT, null, 4L, 7L);
 
             assertThat(pos.usesProviderAssignedConsecutive()).isTrue();
 
@@ -308,8 +311,8 @@ class ElectronicDocumentNoteMathTest {
         void un_documento_en_contingencia_sin_sellos_es_provisional() {
             ElectronicDocument doc = ElectronicDocument.createPending(9L, 100L,
                     ElectronicDocumentType.FE_VENTA, issuer(), CustomerSnapshot.finalConsumer(),
-                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO,
-                    false, null, null, null, UVT, null, 4L, 7L);
+                    List.of(ivaLine(1, "1000", "190")), List.of(), PaymentForm.CONTADO, false, null,
+                    null, null, UVT, null, 4L, 7L);
 
             doc.markContingency();
 

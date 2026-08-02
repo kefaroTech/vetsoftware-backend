@@ -15,8 +15,7 @@ public class DeleteSpaTypeService implements DeleteSpaTypeUseCase {
     private final SpaTypeRepository repository;
     private final SpaChildrenQueryPort spaChildrenQueryPort;
 
-    public DeleteSpaTypeService(
-            SpaTypeRepository repository,
+    public DeleteSpaTypeService(SpaTypeRepository repository,
             SpaChildrenQueryPort spaChildrenQueryPort) {
         this.repository = repository;
         this.spaChildrenQueryPort = spaChildrenQueryPort;

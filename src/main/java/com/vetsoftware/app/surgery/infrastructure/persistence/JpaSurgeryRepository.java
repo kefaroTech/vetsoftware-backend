@@ -23,12 +23,11 @@ public class JpaSurgeryRepository implements SurgeryRepository {
     private final ConsultationJpaRepository consultationJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaSurgeryRepository(SurgeryJpaRepository jpaRepository,
-                                SurgeryJpaMapper mapper,
-                                SurgeryTypeJpaRepository surgeryTypeJpaRepository,
-                                AnimalJpaRepository animalJpaRepository,
-                                ConsultationJpaRepository consultationJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
+    public JpaSurgeryRepository(SurgeryJpaRepository jpaRepository, SurgeryJpaMapper mapper,
+            SurgeryTypeJpaRepository surgeryTypeJpaRepository,
+            AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.surgeryTypeJpaRepository = surgeryTypeJpaRepository;
@@ -39,15 +38,17 @@ public class JpaSurgeryRepository implements SurgeryRepository {
 
     @Override
     public Surgery save(Surgery surgery) {
-        SurgeryTypeJpaEntity surgeryType = surgeryTypeJpaRepository.getReferenceById(surgery.getSurgeryType().id());
+        SurgeryTypeJpaEntity surgeryType = surgeryTypeJpaRepository
+                .getReferenceById(surgery.getSurgeryType().id());
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(surgery.getAnimal().id());
-        ConsultationJpaEntity consultation = surgery.getConsultation() == null ? null
-            : consultationJpaRepository.getReferenceById(surgery.getConsultation().id());
+        ConsultationJpaEntity consultation = surgery.getConsultation() == null
+                ? null
+                : consultationJpaRepository.getReferenceById(surgery.getConsultation().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(surgery.getCompany().id());
-        SurgeryJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(surgery, surgeryType, animal, consultation, company));
+        SurgeryJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(surgery, surgeryType, animal, consultation, company));
         return mapper.toDomain(saved, surgery.getSurgeryType(), surgery.getAnimal(),
-            surgery.getConsultation(), surgery.getCompany());
+                surgery.getConsultation(), surgery.getCompany());
     }
 
     @Override

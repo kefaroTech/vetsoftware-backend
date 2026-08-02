@@ -21,7 +21,9 @@ public class ReactivateModuleService implements ReactivateModuleUseCase {
     @Transactional
     public ModuleDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new ModuleNotFoundException(id);
-        return ModuleDto.from(repository.findById(id).orElseThrow(() -> new ModuleNotFoundException(id)));
+        if (rows == 0)
+            throw new ModuleNotFoundException(id);
+        return ModuleDto
+                .from(repository.findById(id).orElseThrow(() -> new ModuleNotFoundException(id)));
     }
 }

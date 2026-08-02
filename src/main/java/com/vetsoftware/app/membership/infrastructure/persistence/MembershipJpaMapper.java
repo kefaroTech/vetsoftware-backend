@@ -19,13 +19,9 @@ public class MembershipJpaMapper {
     }
 
     public Membership toDomain(MembershipJpaEntity entity) {
-        return new Membership(
-            entity.getId(),
-            entity.getName(),
-            MembershipStatus.valueOf(entity.getStatus()),
-            Boolean.TRUE.equals(entity.getMandatory()),
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+        return new Membership(entity.getId(), entity.getName(),
+                MembershipStatus.valueOf(entity.getStatus()),
+                Boolean.TRUE.equals(entity.getMandatory()), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

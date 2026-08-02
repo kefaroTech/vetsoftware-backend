@@ -6,10 +6,10 @@ import com.vetsoftware.app.medicationschedule.application.port.in.GenerateMedica
 import com.vetsoftware.app.medicationschedule.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.medicationschedule.application.port.out.HospitalizationMedicationQueryPort;
 import com.vetsoftware.app.medicationschedule.application.port.out.MedicationScheduleRepository;
+import com.vetsoftware.app.medicationschedule.domain.AppliedStatus;
 import com.vetsoftware.app.medicationschedule.domain.EmployeeRef;
 import com.vetsoftware.app.medicationschedule.domain.MedicationOrderParams;
 import com.vetsoftware.app.medicationschedule.domain.MedicationSchedule;
-import com.vetsoftware.app.medicationschedule.domain.AppliedStatus;
 import com.vetsoftware.app.medicationschedule.domain.MedicationScheduleGenerator;
 import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
@@ -28,8 +28,8 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
     private final EmployeeQueryPort employeeQueryPort;
 
     public GenerateMedicationScheduleService(MedicationScheduleRepository repository,
-                                             HospitalizationMedicationQueryPort medicationQueryPort,
-                                             EmployeeQueryPort employeeQueryPort) {
+            HospitalizationMedicationQueryPort medicationQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.medicationQueryPort = medicationQueryPort;
         this.employeeQueryPort = employeeQueryPort;
@@ -38,18 +38,17 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
     @Override
     @Transactional
     public List<MedicationScheduleDto> execute(GenerateMedicationScheduleCommand command) {
-        MedicationOrderParams params = medicationQueryPort.findById(command.hospitalizationMedicationId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Hospitalization medication not found: " + command.hospitalizationMedicationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Employee not found: " + command.createdById()));
+        MedicationOrderParams params = medicationQueryPort
+                .findById(command.hospitalizationMedicationId()).orElseThrow(
+                        () -> new IllegalArgumentException("Hospitalization medication not found: "
+                                + command.hospitalizationMedicationId()));
+        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
         // Regla de integridad: las tomas APLICADAS son histórico inmutable; solo se
         // recalculan las pendientes.
-        List<MedicationSchedule> applied = repository.findByHospitalizationMedicationId(params.id()).stream()
-            .filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED)
-            .toList();
+        List<MedicationSchedule> applied = repository.findByHospitalizationMedicationId(params.id())
+                .stream().filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED).toList();
 
         List<MedicationSchedule> result = new ArrayList<>();
         if (applied.isEmpty()) {
@@ -61,13 +60,10 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
         } else {
             // Conserva las aplicadas; reconstruye solo las pendientes.
             repository.disablePendingByHospitalizationMedicationId(params.id());
-            LocalDateTime lastApplied = applied.stream()
-                .map(MedicationSchedule::getRealDateTime)
-                .filter(Objects::nonNull)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
-            List<MedicationSchedule> pending = MedicationScheduleGenerator.generatePending(
-                params, applied.size(), lastApplied, createdBy);
+            LocalDateTime lastApplied = applied.stream().map(MedicationSchedule::getRealDateTime)
+                    .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+            List<MedicationSchedule> pending = MedicationScheduleGenerator.generatePending(params,
+                    applied.size(), lastApplied, createdBy);
             result.addAll(applied);
             for (MedicationSchedule s : pending) {
                 result.add(repository.save(s));

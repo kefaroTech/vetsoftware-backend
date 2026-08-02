@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** F4 - libro de compras (reporte contable de solo lectura). Complementa el libro de ventas (punto 16). */
+/**
+ * F4 - libro de compras (reporte contable de solo lectura). Complementa el
+ * libro de ventas (punto 16).
+ */
 @RestController
 @RequestMapping("/purchase-reports")
 public class PurchaseReportController {
@@ -27,8 +30,7 @@ public class PurchaseReportController {
     private final Authz authz;
 
     public PurchaseReportController(GetPurchaseBookUseCase purchaseBookUseCase,
-                                    PurchaseBookPdfPort purchaseBookPdf,
-                                    Authz authz) {
+            PurchaseBookPdfPort purchaseBookPdf, Authz authz) {
         this.purchaseBookUseCase = purchaseBookUseCase;
         this.purchaseBookPdf = purchaseBookPdf;
         this.authz = authz;
@@ -39,7 +41,8 @@ public class PurchaseReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return purchaseBookUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+        return purchaseBookUseCase.get(authz.currentCompanyId(), from, to,
+                authz.resolveAccessibleBranch(branchId));
     }
 
     @GetMapping("/purchase-book/export")
@@ -48,20 +51,20 @@ public class PurchaseReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "branchId", required = false) Long branchId,
             @RequestParam(defaultValue = "csv") String format) {
-        PurchaseBookDto book = purchaseBookUseCase.get(
-            authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+        PurchaseBookDto book = purchaseBookUseCase.get(authz.currentCompanyId(), from, to,
+                authz.resolveAccessibleBranch(branchId));
         String base = "libro_compras_" + from + "_" + to;
         return "pdf".equalsIgnoreCase(format)
-            ? file(purchaseBookPdf.renderPurchaseBook(book), base + ".pdf", MediaType.APPLICATION_PDF)
-            : file(PurchaseBookCsv.purchaseBook(book), base + ".csv", CSV);
+                ? file(purchaseBookPdf.renderPurchaseBook(book), base + ".pdf",
+                        MediaType.APPLICATION_PDF)
+                : file(PurchaseBookCsv.purchaseBook(book), base + ".csv", CSV);
     }
 
     private static ResponseEntity<byte[]> file(byte[] body, String filename, MediaType type) {
         String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-        return ResponseEntity.ok()
-            .contentType(type)
-            .header(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + filename + "\"; filename*=UTF-8''" + encoded)
-            .body(body);
+        return ResponseEntity.ok().contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename + "\"; filename*=UTF-8''" + encoded)
+                .body(body);
     }
 }

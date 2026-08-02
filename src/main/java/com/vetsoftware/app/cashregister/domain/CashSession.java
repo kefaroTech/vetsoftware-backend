@@ -8,14 +8,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Sesión de caja (aggregate root): control del dinero físico de una sede desde su apertura con base hasta el cierre
- * con conteo. Agrupa los {@link CashMovement} (append-only: ventas, abonos, ingresos/retiros/gastos manuales,
- * reversas) y, al cerrar, los {@link CashSessionCount} (esperado vs contado por método). Una sola sesión
- * {@link CashSessionStatus#OPEN} por {@code (empresa, sede, terminal)}.
+ * Sesión de caja (aggregate root): control del dinero físico de una sede desde
+ * su apertura con base hasta el cierre con conteo. Agrupa los
+ * {@link CashMovement} (append-only: ventas, abonos, ingresos/retiros/gastos
+ * manuales, reversas) y, al cerrar, los {@link CashSessionCount} (esperado vs
+ * contado por método). Una sola sesión {@link CashSessionStatus#OPEN} por
+ * {@code (empresa, sede,
+ * terminal)}.
  */
 public class CashSession {
 
-    /** Terminal por defecto cuando el caller no especifica una (caja única por sede). */
+    /**
+     * Terminal por defecto cuando el caller no especifica una (caja única por
+     * sede).
+     */
     public static final String DEFAULT_TERMINAL = "principal";
 
     private Long id;
@@ -35,16 +41,19 @@ public class CashSession {
     private final List<CashSessionCount> counts;
 
     public CashSession(Long id, Long companyId, Long branchId, Long terminalId, String terminal,
-                       Long openedByEmployeeId,
-                       LocalDateTime openedAt, BigDecimal openingFloat, CashSessionStatus status,
-                       Long closedByEmployeeId, LocalDateTime closedAt, String note, Long version,
-                       List<CashMovement> movements, List<CashSessionCount> counts) {
-        if (companyId == null) throw new IllegalArgumentException("companyId is required");
-        if (branchId == null) throw new IllegalArgumentException("branchId is required");
-        if (terminalId == null) throw new IllegalArgumentException("terminalId is required");
+            Long openedByEmployeeId, LocalDateTime openedAt, BigDecimal openingFloat,
+            CashSessionStatus status, Long closedByEmployeeId, LocalDateTime closedAt, String note,
+            Long version, List<CashMovement> movements, List<CashSessionCount> counts) {
+        if (companyId == null)
+            throw new IllegalArgumentException("companyId is required");
+        if (branchId == null)
+            throw new IllegalArgumentException("branchId is required");
+        if (terminalId == null)
+            throw new IllegalArgumentException("terminalId is required");
         if (openingFloat == null || openingFloat.signum() < 0)
             throw new IllegalArgumentException("openingFloat must be >= 0");
-        if (status == null) throw new IllegalArgumentException("status is required");
+        if (status == null)
+            throw new IllegalArgumentException("status is required");
         this.id = id;
         this.companyId = companyId;
         this.branchId = branchId;
@@ -64,36 +73,48 @@ public class CashSession {
 
     /** Abre una nueva sesión OPEN con la base inicial. */
     public static CashSession open(Long companyId, Long branchId, Long terminalId, String terminal,
-                                   Long openedByEmployeeId, BigDecimal openingFloat, String note) {
+            Long openedByEmployeeId, BigDecimal openingFloat, String note) {
         return new CashSession(null, companyId, branchId, terminalId, terminal, openedByEmployeeId,
-            LocalDateTime.now(),
-            openingFloat, CashSessionStatus.OPEN, null, null, note, null, new ArrayList<>(), new ArrayList<>());
+                LocalDateTime.now(), openingFloat, CashSessionStatus.OPEN, null, null, note, null,
+                new ArrayList<>(), new ArrayList<>());
     }
 
     private static String normalizeTerminal(String terminal) {
         return (terminal == null || terminal.isBlank()) ? DEFAULT_TERMINAL : terminal.trim();
     }
 
-    /** Agrega un movimiento (solo con la sesión abierta). Las correcciones son movimientos nuevos, nunca updates. */
+    /**
+     * Agrega un movimiento (solo con la sesión abierta). Las correcciones son
+     * movimientos nuevos, nunca updates.
+     */
     public void addMovement(CashMovement movement) {
-        if (status != CashSessionStatus.OPEN) throw new CashSessionClosedException(id);
+        if (status != CashSessionStatus.OPEN)
+            throw new CashSessionClosedException(id);
         movements.add(movement);
     }
 
     /**
-     * Cierra la sesión: fija estado/fecha/responsable y materializa el conteo por método (esperado del dominio vs
-     * contado declarado → diferencia). Para los métodos con total esperado que no se declararon, se asume que cuadran
+     * Cierra la sesión: fija estado/fecha/responsable y materializa el conteo por
+     * método (esperado del dominio vs contado declarado → diferencia). Para los
+     * métodos con total esperado que no se declararon, se asume que cuadran
      * (contado = esperado, diferencia 0).
      */
-    public void close(Long closedByEmployeeId, Map<CashPaymentMethod, BigDecimal> countedByMethod, String closeNote) {
-        if (status != CashSessionStatus.OPEN) throw new CashSessionClosedException(id);
+    public void close(Long closedByEmployeeId, Map<CashPaymentMethod, BigDecimal> countedByMethod,
+            String closeNote) {
+        if (status != CashSessionStatus.OPEN)
+            throw new CashSessionClosedException(id);
         Map<CashPaymentMethod, BigDecimal> expected = expectedByMethod();
-        Map<CashPaymentMethod, BigDecimal> counted = countedByMethod == null ? Map.of() : countedByMethod;
+        Map<CashPaymentMethod, BigDecimal> counted = countedByMethod == null
+                ? Map.of()
+                : countedByMethod;
 
-        // Union de métodos: los que tienen total esperado + los declarados en el conteo (p.ej. efectivo contado
+        // Union de métodos: los que tienen total esperado + los declarados en el conteo
+        // (p.ej. efectivo
+        // contado
         // sin movimientos previos). Orden estable para un arqueo reproducible.
         Map<CashPaymentMethod, BigDecimal> union = new LinkedHashMap<>(expected);
-        for (CashPaymentMethod m : counted.keySet()) union.putIfAbsent(m, BigDecimal.ZERO);
+        for (CashPaymentMethod m : counted.keySet())
+            union.putIfAbsent(m, BigDecimal.ZERO);
 
         counts.clear();
         for (CashPaymentMethod method : union.keySet()) {
@@ -104,21 +125,27 @@ public class CashSession {
         this.status = CashSessionStatus.CLOSED;
         this.closedByEmployeeId = closedByEmployeeId;
         this.closedAt = LocalDateTime.now();
-        if (closeNote != null && !closeNote.isBlank()) this.note = closeNote;
+        if (closeNote != null && !closeNote.isBlank())
+            this.note = closeNote;
     }
 
     /**
-     * ¿Ya existe en la sesión un movimiento para (referencia, método, tipo)? Base de la idempotencia de la
-     * orquestación: no registrar dos veces la misma venta/abono ni su reversa (el índice único de la BD es la red).
+     * ¿Ya existe en la sesión un movimiento para (referencia, método, tipo)? Base
+     * de la idempotencia de la orquestación: no registrar dos veces la misma
+     * venta/abono ni su reversa (el índice único de la BD es la red).
      */
-    public boolean hasReferencedMovement(CashReferenceType referenceType, Long referenceId, CashPaymentMethod method,
-                                         CashMovementType type) {
-        return movements.stream().anyMatch(m -> m.getReferenceType() == referenceType
-            && java.util.Objects.equals(m.getReferenceId(), referenceId)
-            && m.getMethod() == method && m.getType() == type);
+    public boolean hasReferencedMovement(CashReferenceType referenceType, Long referenceId,
+            CashPaymentMethod method, CashMovementType type) {
+        return movements.stream()
+                .anyMatch(m -> m.getReferenceType() == referenceType
+                        && java.util.Objects.equals(m.getReferenceId(), referenceId)
+                        && m.getMethod() == method && m.getType() == type);
     }
 
-    /** Total esperado por método = Σ movimientos con signo, más la base inicial para el EFECTIVO. */
+    /**
+     * Total esperado por método = Σ movimientos con signo, más la base inicial para
+     * el EFECTIVO.
+     */
     public Map<CashPaymentMethod, BigDecimal> expectedByMethod() {
         Map<CashPaymentMethod, BigDecimal> totals = new LinkedHashMap<>();
         totals.put(CashPaymentMethod.CASH, openingFloat);
@@ -132,20 +159,67 @@ public class CashSession {
         return status == CashSessionStatus.OPEN;
     }
 
-    public Long getId() { return id; }
-    public void assignId(Long id) { this.id = id; }
-    public Long getCompanyId() { return companyId; }
-    public Long getBranchId() { return branchId; }
-    public Long getTerminalId() { return terminalId; }
-    public String getTerminal() { return terminal; }
-    public Long getOpenedByEmployeeId() { return openedByEmployeeId; }
-    public LocalDateTime getOpenedAt() { return openedAt; }
-    public BigDecimal getOpeningFloat() { return openingFloat; }
-    public CashSessionStatus getStatus() { return status; }
-    public Long getClosedByEmployeeId() { return closedByEmployeeId; }
-    public LocalDateTime getClosedAt() { return closedAt; }
-    public String getNote() { return note; }
-    public Long getVersion() { return version; }
-    public List<CashMovement> getMovements() { return List.copyOf(movements); }
-    public List<CashSessionCount> getCounts() { return List.copyOf(counts); }
+    public Long getId() {
+        return id;
+    }
+
+    public void assignId(Long id) {
+        this.id = id;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public Long getBranchId() {
+        return branchId;
+    }
+
+    public Long getTerminalId() {
+        return terminalId;
+    }
+
+    public String getTerminal() {
+        return terminal;
+    }
+
+    public Long getOpenedByEmployeeId() {
+        return openedByEmployeeId;
+    }
+
+    public LocalDateTime getOpenedAt() {
+        return openedAt;
+    }
+
+    public BigDecimal getOpeningFloat() {
+        return openingFloat;
+    }
+
+    public CashSessionStatus getStatus() {
+        return status;
+    }
+
+    public Long getClosedByEmployeeId() {
+        return closedByEmployeeId;
+    }
+
+    public LocalDateTime getClosedAt() {
+        return closedAt;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public List<CashMovement> getMovements() {
+        return List.copyOf(movements);
+    }
+
+    public List<CashSessionCount> getCounts() {
+        return List.copyOf(counts);
+    }
 }

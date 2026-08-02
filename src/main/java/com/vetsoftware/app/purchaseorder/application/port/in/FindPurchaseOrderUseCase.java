@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindPurchaseOrderUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('purchaseOrder.read') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('purchaseOrder.read') and @authz.isMyCompany(#companyId))")
     PurchaseOrderDto findById(Long id, Long companyId);
 }

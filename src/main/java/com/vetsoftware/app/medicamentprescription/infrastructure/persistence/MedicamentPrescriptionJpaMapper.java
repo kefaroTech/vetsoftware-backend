@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 public class MedicamentPrescriptionJpaMapper {
 
     public MedicamentPrescriptionJpaEntity toJpa(MedicamentPrescription medicament,
-                                                 PrescriptionJpaEntity prescription,
-                                                 MedicamentJpaEntity medicamentCatalog) {
+            PrescriptionJpaEntity prescription, MedicamentJpaEntity medicamentCatalog) {
         MedicamentPrescriptionJpaEntity entity = new MedicamentPrescriptionJpaEntity();
         entity.setId(medicament.getId());
         entity.setName(medicament.getName());
@@ -29,17 +28,17 @@ public class MedicamentPrescriptionJpaMapper {
 
     public MedicamentPrescription toDomain(MedicamentPrescriptionJpaEntity entity) {
         PrescriptionJpaEntity p = entity.getPrescription();
-        // El id del proxy LAZY se lee sin inicializar; el nombre viene del snapshot de la fila.
-        MedicamentRef medicamentRef = new MedicamentRef(entity.getMedicament().getId(), entity.getName());
+        // El id del proxy LAZY se lee sin inicializar; el nombre viene del snapshot de
+        // la fila.
+        MedicamentRef medicamentRef = new MedicamentRef(entity.getMedicament().getId(),
+                entity.getName());
         return toDomain(entity, new PrescriptionRef(p.getId(), p.getDate()), medicamentRef);
     }
 
     public MedicamentPrescription toDomain(MedicamentPrescriptionJpaEntity entity,
-                                           PrescriptionRef prescriptionRef,
-                                           MedicamentRef medicamentRef) {
-        return new MedicamentPrescription(
-            entity.getId(), medicamentRef, entity.getPresentation(),
-            entity.getQuantity(), entity.getPosology(), entity.getObservation(),
-            prescriptionRef, entity.getCreatedDate(), entity.isEnabled());
+            PrescriptionRef prescriptionRef, MedicamentRef medicamentRef) {
+        return new MedicamentPrescription(entity.getId(), medicamentRef, entity.getPresentation(),
+                entity.getQuantity(), entity.getPosology(), entity.getObservation(),
+                prescriptionRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

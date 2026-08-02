@@ -32,10 +32,9 @@ public class StateController {
     private final ReactivateStateUseCase reactivateUseCase;
 
     public StateController(CreateStateUseCase createUseCase, UpdateStateUseCase updateUseCase,
-                           FindStateUseCase findUseCase, ListStatesUseCase listUseCase,
-                           ListStatesByCountryUseCase listByCountryUseCase,
-                           DeleteStateUseCase deleteUseCase,
-                           ReactivateStateUseCase reactivateUseCase) {
+            FindStateUseCase findUseCase, ListStatesUseCase listUseCase,
+            ListStatesByCountryUseCase listByCountryUseCase, DeleteStateUseCase deleteUseCase,
+            ReactivateStateUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,7 +48,7 @@ public class StateController {
     @ResponseStatus(HttpStatus.CREATED)
     public StateResponse create(@Valid @RequestBody CreateStateRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateStateCommand(request.name(), request.countryId(), request.daneCode())));
+                new CreateStateCommand(request.name(), request.countryId(), request.daneCode())));
     }
 
     @GetMapping("/states")
@@ -59,8 +58,8 @@ public class StateController {
 
     @GetMapping("/countries/{countryId}/states")
     public List<StateResponse> listByCountry(@PathVariable Long countryId) {
-        return listByCountryUseCase.listByCountry(countryId).stream()
-            .map(this::toResponse).toList();
+        return listByCountryUseCase.listByCountry(countryId).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/states/{id}")
@@ -69,9 +68,10 @@ public class StateController {
     }
 
     @PutMapping("/states/{id}")
-    public StateResponse update(@PathVariable Long id, @Valid @RequestBody UpdateStateRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateStateCommand(id, request.name(), request.countryId(), request.daneCode())));
+    public StateResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateStateRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateStateCommand(id, request.name(),
+                request.countryId(), request.daneCode())));
     }
 
     @DeleteMapping("/states/{id}")
@@ -87,13 +87,7 @@ public class StateController {
 
     private StateResponse toResponse(StateDto dto) {
         CountrySummaryDto c = dto.country();
-        return new StateResponse(
-            dto.id(),
-            dto.name(),
-            new CountrySummary(c.id(), c.name()),
-            dto.daneCode(),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new StateResponse(dto.id(), dto.name(), new CountrySummary(c.id(), c.name()),
+                dto.daneCode(), dto.createdDate(), dto.enabled());
     }
 }

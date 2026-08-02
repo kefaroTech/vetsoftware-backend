@@ -18,7 +18,8 @@ public class DeleteServiceService implements DeleteServiceUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new ServiceNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new ServiceNotFoundException(id));
         repository.delete(id);
     }
 }

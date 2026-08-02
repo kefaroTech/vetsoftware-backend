@@ -9,10 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 final class AuditOutboxCleanupJob {
 
     private static final Logger log = LoggerFactory.getLogger(AuditOutboxCleanupJob.class);
@@ -21,18 +18,14 @@ final class AuditOutboxCleanupJob {
     private final AuditOutboxProperties properties;
     private final ScheduledJobTelemetry telemetry;
 
-    AuditOutboxCleanupJob(
-            AuditOutboxRepository repository,
-            AuditOutboxProperties properties,
+    AuditOutboxCleanupJob(AuditOutboxRepository repository, AuditOutboxProperties properties,
             ScheduledJobTelemetry telemetry) {
         this.repository = repository;
         this.properties = properties;
         this.telemetry = telemetry;
     }
 
-    @Scheduled(
-            fixedDelayString = "${vetsoftware.audit.outbox.cleanup-interval:PT24H}",
-            initialDelayString = "${vetsoftware.audit.outbox.cleanup-initial-delay:PT1H}")
+    @Scheduled(fixedDelayString = "${vetsoftware.audit.outbox.cleanup-interval:PT24H}", initialDelayString = "${vetsoftware.audit.outbox.cleanup-initial-delay:PT1H}")
     void cleanup() {
         telemetry.observe("audit.outbox.cleanup", () -> {
             int deleted = repository.deletePublishedBefore(

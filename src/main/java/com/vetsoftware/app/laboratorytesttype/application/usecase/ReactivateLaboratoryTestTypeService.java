@@ -21,8 +21,9 @@ public class ReactivateLaboratoryTestTypeService implements ReactivateLaboratory
     @Transactional
     public LaboratoryTestTypeDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new LaboratoryTestTypeNotFoundException(id);
+        if (rows == 0)
+            throw new LaboratoryTestTypeNotFoundException(id);
         return LaboratoryTestTypeDto.from(repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id)));
+                .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id)));
     }
 }

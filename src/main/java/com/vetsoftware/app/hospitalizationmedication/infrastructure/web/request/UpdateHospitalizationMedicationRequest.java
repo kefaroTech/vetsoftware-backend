@@ -5,14 +5,8 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-public record UpdateHospitalizationMedicationRequest(
-        @NotBlank @Size(max = 200) String name,
-        @Size(max = 200) String dose,
-        String frequency,
-        String guidelineType,
-        String durationMeasure,
-        Integer durationQuantity,
-        LocalDate startDate,
-        LocalTime startTime,
-        @Size(max = 2000) String notes
-) {}
+public record UpdateHospitalizationMedicationRequest(@NotBlank @Size(max = 200) String name,
+        @Size(max = 200) String dose, String frequency, String guidelineType,
+        String durationMeasure, Integer durationQuantity, LocalDate startDate, LocalTime startTime,
+        @Size(max = 2000) String notes) {
+}

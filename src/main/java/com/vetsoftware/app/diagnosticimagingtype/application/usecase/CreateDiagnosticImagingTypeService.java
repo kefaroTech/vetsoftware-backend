@@ -17,17 +17,19 @@ public class CreateDiagnosticImagingTypeService implements CreateDiagnosticImagi
     private final CompanyQueryPort companyQueryPort;
 
     public CreateDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository,
-                                              CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
 
     @Override
     public DiagnosticImagingTypeDto execute(CreateDiagnosticImagingTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return DiagnosticImagingTypeDto.from(
-                repository.save(DiagnosticImagingType.create(command.name(), command.description(), company, command.general())));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
+        return DiagnosticImagingTypeDto.from(repository.save(DiagnosticImagingType
+                .create(command.name(), command.description(), company, command.general())));
     }
 }

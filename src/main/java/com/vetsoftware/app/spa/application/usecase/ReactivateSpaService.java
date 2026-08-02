@@ -21,8 +21,8 @@ public class ReactivateSpaService implements ReactivateSpaUseCase {
     @Transactional
     public SpaDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SpaNotFoundException(id);
-        return SpaDto.from(repository.findById(id)
-            .orElseThrow(() -> new SpaNotFoundException(id)));
+        if (rows == 0)
+            throw new SpaNotFoundException(id);
+        return SpaDto.from(repository.findById(id).orElseThrow(() -> new SpaNotFoundException(id)));
     }
 }

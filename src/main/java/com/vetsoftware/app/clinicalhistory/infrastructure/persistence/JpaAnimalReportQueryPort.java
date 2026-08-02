@@ -19,7 +19,7 @@ public class JpaAnimalReportQueryPort implements AnimalReportQueryPort {
     private final WeightRecordJpaRepository weightRecordJpaRepository;
 
     public JpaAnimalReportQueryPort(AnimalJpaRepository animalJpaRepository,
-                                    WeightRecordJpaRepository weightRecordJpaRepository) {
+            WeightRecordJpaRepository weightRecordJpaRepository) {
         this.animalJpaRepository = animalJpaRepository;
         this.weightRecordJpaRepository = weightRecordJpaRepository;
     }
@@ -28,44 +28,30 @@ public class JpaAnimalReportQueryPort implements AnimalReportQueryPort {
     @Transactional(readOnly = true)
     public Optional<AnimalReportInfo> findByIdAndCompanyId(Long animalId, Long companyId) {
         return animalJpaRepository.findById(animalId)
-                .filter(a -> a.getCompany() != null
-                        && companyId.equals(a.getCompany().getId()))
+                .filter(a -> a.getCompany() != null && companyId.equals(a.getCompany().getId()))
                 .map(a -> toReportInfo(a, companyId));
     }
 
     private AnimalReportInfo toReportInfo(AnimalJpaEntity a, Long companyId) {
         LatestWeightProjection weight = weightRecordJpaRepository
-                .findLatestByAnimalId(a.getId(), companyId)
-                .orElse(null);
-        return new AnimalReportInfo(
-                a.getId(),
-                a.getName(),
-                a.getCode(),
-                a.getSpecie().getName(),
-                a.getBreed().getName(),
-                a.getColor() != null ? a.getColor().getName() : null,
+                .findLatestByAnimalId(a.getId(), companyId).orElse(null);
+        return new AnimalReportInfo(a.getId(), a.getName(), a.getCode(), a.getSpecie().getName(),
+                a.getBreed().getName(), a.getColor() != null ? a.getColor().getName() : null,
                 genderLabel(a.getGender() == null ? null : a.getGender().name()),
-                reproductiveStateLabel(a.getReproductiveState() == null ? null : a.getReproductiveState().name()),
-                a.getBod(),
-                ageLabel(a.getBod()),
+                reproductiveStateLabel(
+                        a.getReproductiveState() == null ? null : a.getReproductiveState().name()),
+                a.getBod(), ageLabel(a.getBod()),
                 weight != null ? formatWeight(weight.getValue(), weight.getUnit()) : null,
-                weight != null ? weight.getMeasuredAt() : null,
-                a.isDeceased(),
-                a.getDeceasedDate(),
-                a.getOwner().getName(),
-                a.getOwner().getDocument(),
-                a.getOwner().getPhone(),
-                a.getOwner().getEmail(),
-                a.getOwner().getAddress(),
-                a.getCompany().getName(),
-                a.getCompany().getIdentifier(),
-                a.getCompany().getAddress(),
-                a.getCompany().getContactNumber()
-        );
+                weight != null ? weight.getMeasuredAt() : null, a.isDeceased(), a.getDeceasedDate(),
+                a.getOwner().getName(), a.getOwner().getDocument(), a.getOwner().getPhone(),
+                a.getOwner().getEmail(), a.getOwner().getAddress(), a.getCompany().getName(),
+                a.getCompany().getIdentifier(), a.getCompany().getAddress(),
+                a.getCompany().getContactNumber());
     }
 
     private static String genderLabel(String gender) {
-        if (gender == null) return null;
+        if (gender == null)
+            return null;
         return switch (gender) {
             case "MALE" -> "Macho";
             case "FEMALE" -> "Hembra";
@@ -74,7 +60,8 @@ public class JpaAnimalReportQueryPort implements AnimalReportQueryPort {
     }
 
     private static String reproductiveStateLabel(String state) {
-        if (state == null) return null;
+        if (state == null)
+            return null;
         return switch (state) {
             case "STERILIZED" -> "Esterilizado";
             case "NO_STERILIZED" -> "Entero (sin esterilizar)";
@@ -84,7 +71,8 @@ public class JpaAnimalReportQueryPort implements AnimalReportQueryPort {
     }
 
     private static String formatWeight(java.math.BigDecimal value, String unit) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         String number = value.stripTrailingZeros().toPlainString();
         String suffix = switch (unit == null ? "" : unit) {
             case "GRAMS" -> "g";
@@ -96,15 +84,18 @@ public class JpaAnimalReportQueryPort implements AnimalReportQueryPort {
     }
 
     private static String ageLabel(LocalDate birthDate) {
-        if (birthDate == null) return null;
+        if (birthDate == null)
+            return null;
         LocalDate today = LocalDate.now();
-        if (birthDate.isAfter(today)) return null;
+        if (birthDate.isAfter(today))
+            return null;
         Period p = Period.between(birthDate, today);
         int years = p.getYears();
         int months = p.getMonths();
         if (years >= 1) {
             return months > 0
-                    ? years + " año" + (years == 1 ? "" : "s") + " y " + months + " mes" + (months == 1 ? "" : "es")
+                    ? years + " año" + (years == 1 ? "" : "s") + " y " + months + " mes"
+                            + (months == 1 ? "" : "es")
                     : years + " año" + (years == 1 ? "" : "s");
         }
         if (months >= 1) {

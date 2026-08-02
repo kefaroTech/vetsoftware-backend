@@ -15,8 +15,7 @@ public class DeleteServiceCategoryService implements DeleteServiceCategoryUseCas
     private final ServiceCategoryRepository repository;
     private final ServiceChildrenQueryPort serviceChildrenQueryPort;
 
-    public DeleteServiceCategoryService(
-            ServiceCategoryRepository repository,
+    public DeleteServiceCategoryService(ServiceCategoryRepository repository,
             ServiceChildrenQueryPort serviceChildrenQueryPort) {
         this.repository = repository;
         this.serviceChildrenQueryPort = serviceChildrenQueryPort;

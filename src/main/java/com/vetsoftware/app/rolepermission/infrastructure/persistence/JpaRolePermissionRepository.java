@@ -21,9 +21,8 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     private final PermissionJpaRepository permissionJpaRepository;
 
     public JpaRolePermissionRepository(RolePermissionJpaRepository jpaRepository,
-                                       RolePermissionJpaMapper mapper,
-                                       RoleJpaRepository roleJpaRepository,
-                                       PermissionJpaRepository permissionJpaRepository) {
+            RolePermissionJpaMapper mapper, RoleJpaRepository roleJpaRepository,
+            PermissionJpaRepository permissionJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.roleJpaRepository = roleJpaRepository;
@@ -33,26 +32,26 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     @Override
     public RolePermission save(RolePermission rolePermission) {
         RoleJpaEntity role = roleJpaRepository.getReferenceById(rolePermission.getRole().id());
-        PermissionJpaEntity permission = permissionJpaRepository.getReferenceById(rolePermission.getPermission().id());
-        RolePermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(rolePermission, role, permission));
+        PermissionJpaEntity permission = permissionJpaRepository
+                .getReferenceById(rolePermission.getPermission().id());
+        RolePermissionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(rolePermission, role, permission));
         return mapper.toDomain(saved, rolePermission.getRole(), rolePermission.getPermission());
     }
 
     @Override
     public List<RolePermission> saveAll(List<RolePermission> rolePermissions) {
-        List<RolePermissionJpaEntity> entities = rolePermissions.stream()
-            .map(rp -> {
-                RoleJpaEntity role = roleJpaRepository.getReferenceById(rp.getRole().id());
-                PermissionJpaEntity permission = permissionJpaRepository.getReferenceById(rp.getPermission().id());
-                return mapper.toJpa(rp, role, permission);
-            })
-            .toList();
+        List<RolePermissionJpaEntity> entities = rolePermissions.stream().map(rp -> {
+            RoleJpaEntity role = roleJpaRepository.getReferenceById(rp.getRole().id());
+            PermissionJpaEntity permission = permissionJpaRepository
+                    .getReferenceById(rp.getPermission().id());
+            return mapper.toJpa(rp, role, permission);
+        }).toList();
         List<RolePermissionJpaEntity> saved = jpaRepository.saveAll(entities);
         List<RolePermission> result = new ArrayList<>(saved.size());
         for (int i = 0; i < saved.size(); i++) {
-            result.add(mapper.toDomain(saved.get(i),
-                rolePermissions.get(i).getRole(),
-                rolePermissions.get(i).getPermission()));
+            result.add(mapper.toDomain(saved.get(i), rolePermissions.get(i).getRole(),
+                    rolePermissions.get(i).getPermission()));
         }
         return result;
     }
@@ -79,7 +78,8 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
 
     @Override
     public List<RolePermission> findAllByRoleCompanyId(Long companyId) {
-        return jpaRepository.findAllByRoleCompanyId(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByRoleCompanyId(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
@@ -89,7 +89,8 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
 
     @Override
     public void deleteAllByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) return;
+        if (ids == null || ids.isEmpty())
+            return;
         jpaRepository.deleteAllByIdInBatch(ids);
     }
 
@@ -105,7 +106,8 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
 
     @Override
     public int reactivateAllByIds(Collection<Long> ids) {
-        if (ids == null || ids.isEmpty()) return 0;
+        if (ids == null || ids.isEmpty())
+            return 0;
         return jpaRepository.reactivateAllByIds(ids);
     }
 
@@ -115,11 +117,12 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
     }
 
     @Override
-    public List<DisabledRolePermissionLookup> findDisabledByRoleAndPermissions(
-            Long roleId, Collection<Long> permissionIds) {
-        if (permissionIds == null || permissionIds.isEmpty()) return List.of();
+    public List<DisabledRolePermissionLookup> findDisabledByRoleAndPermissions(Long roleId,
+            Collection<Long> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty())
+            return List.of();
         return jpaRepository.findDisabledByRoleAndPermissions(roleId, permissionIds).stream()
-            .map(row -> new DisabledRolePermissionLookup(row.getId(), row.getPermissionId()))
-            .toList();
+                .map(row -> new DisabledRolePermissionLookup(row.getId(), row.getPermissionId()))
+                .toList();
     }
 }

@@ -26,8 +26,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Snapshot cacheado de estados de negocio. Prometheus lee memoria; las consultas agregadas se
- * ejecutan una vez por intervalo para que aumentar la frecuencia de scrape no aumente la carga SQL.
+ * Snapshot cacheado de estados de negocio. Prometheus lee memoria; las
+ * consultas agregadas se ejecutan una vez por intervalo para que aumentar la
+ * frecuencia de scrape no aumente la carga SQL.
  */
 @Component
 public class BusinessGaugeMetrics implements MeterBinder {
@@ -48,15 +49,12 @@ public class BusinessGaugeMetrics implements MeterBinder {
 
     @Autowired
     public BusinessGaugeMetrics(ElectronicDocumentJpaRepository electronicDocuments,
-                                StockBalanceJpaRepository stockBalances,
-                                StockLotJpaRepository stockLots) {
+            StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots) {
         this(electronicDocuments, stockBalances, stockLots, Clock.systemUTC());
     }
 
     BusinessGaugeMetrics(ElectronicDocumentJpaRepository electronicDocuments,
-                         StockBalanceJpaRepository stockBalances,
-                         StockLotJpaRepository stockLots,
-                         Clock clock) {
+            StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots, Clock clock) {
         this.electronicDocuments = electronicDocuments;
         this.stockBalances = stockBalances;
         this.stockLots = stockLots;
@@ -76,15 +74,13 @@ public class BusinessGaugeMetrics implements MeterBinder {
         bindLotGauge(registry, expiredLots, "expired");
         bindLotGauge(registry, expiringSevenDays, "from_0_to_7d");
         bindLotGauge(registry, expiringThirtyDays, "from_8_to_30d");
-        Gauge.builder(BusinessMetricNames.SNAPSHOT_AGE, this, BusinessGaugeMetrics::snapshotAgeSeconds)
-                .baseUnit("seconds")
+        Gauge.builder(BusinessMetricNames.SNAPSHOT_AGE, this,
+                BusinessGaugeMetrics::snapshotAgeSeconds).baseUnit("seconds")
                 .description("Edad del último snapshot exitoso de métricas de estado de negocio")
                 .register(registry);
     }
 
-    @Scheduled(
-            initialDelayString = "${vetsoftware.observability.business-metrics.initial-delay-ms:10000}",
-            fixedDelayString = "${vetsoftware.observability.business-metrics.snapshot-refresh-ms:60000}")
+    @Scheduled(initialDelayString = "${vetsoftware.observability.business-metrics.initial-delay-ms:10000}", fixedDelayString = "${vetsoftware.observability.business-metrics.snapshot-refresh-ms:60000}")
     @Transactional(readOnly = true)
     public void refresh() {
         try {
@@ -92,14 +88,18 @@ public class BusinessGaugeMetrics implements MeterBinder {
             LocalDateTime current = LocalDateTime.ofInstant(now, BUSINESS_ZONE);
             LocalDateTime fifteenMinutesAgo = current.minusMinutes(15);
             LocalDateTime oneHourAgo = current.minusHours(1);
-            BacklogSnapshot pending = loadBacklog(DianStatus.PENDIENTE, fifteenMinutesAgo, oneHourAgo);
-            BacklogSnapshot contingency = loadBacklog(DianStatus.CONTINGENCIA, fifteenMinutesAgo, oneHourAgo);
+            BacklogSnapshot pending = loadBacklog(DianStatus.PENDIENTE, fifteenMinutesAgo,
+                    oneHourAgo);
+            BacklogSnapshot contingency = loadBacklog(DianStatus.CONTINGENCIA, fifteenMinutesAgo,
+                    oneHourAgo);
 
             LocalDate today = LocalDate.ofInstant(now, BUSINESS_ZONE);
             long newLowStock = stockBalances.countLowStock();
             long newExpiredLots = stockLots.countExpiredBefore(today);
-            long newExpiringSevenDays = stockLots.countExpiringBetweenInclusive(today, today.plusDays(7));
-            long newExpiringThirtyDays = stockLots.countExpiringAfterUntil(today.plusDays(7), today.plusDays(30));
+            long newExpiringSevenDays = stockLots.countExpiringBetweenInclusive(today,
+                    today.plusDays(7));
+            long newExpiringThirtyDays = stockLots.countExpiringAfterUntil(today.plusDays(7),
+                    today.plusDays(30));
 
             backlog.get(DianStatus.PENDIENTE).set(pending);
             backlog.get(DianStatus.CONTINGENCIA).set(contingency);
@@ -109,7 +109,9 @@ public class BusinessGaugeMetrics implements MeterBinder {
             expiringThirtyDays.set(newExpiringThirtyDays);
             lastSuccessfulRefreshEpochSecond.set(now.getEpochSecond());
         } catch (RuntimeException exception) {
-            log.warn("No se pudo actualizar el snapshot de métricas de negocio; se conserva el último valor: {}",
+            log.warn(
+                    "No se pudo actualizar el snapshot de métricas de negocio; se conserva el último valor:"
+                            + " {}",
                     exception.getMessage());
         }
     }
@@ -119,11 +121,9 @@ public class BusinessGaugeMetrics implements MeterBinder {
         refresh();
     }
 
-    private BacklogSnapshot loadBacklog(DianStatus status,
-                                        LocalDateTime fifteenMinutesAgo,
-                                        LocalDateTime oneHourAgo) {
-        return new BacklogSnapshot(
-                electronicDocuments.countBacklogSince(status, fifteenMinutesAgo),
+    private BacklogSnapshot loadBacklog(DianStatus status, LocalDateTime fifteenMinutesAgo,
+            LocalDateTime oneHourAgo) {
+        return new BacklogSnapshot(electronicDocuments.countBacklogSince(status, fifteenMinutesAgo),
                 electronicDocuments.countBacklogBetween(status, oneHourAgo, fifteenMinutesAgo),
                 electronicDocuments.countBacklogBefore(status, oneHourAgo));
     }
@@ -135,21 +135,18 @@ public class BusinessGaugeMetrics implements MeterBinder {
         bindBacklogAge(registry, values.moreThanOneHour, statusValue, "gt_1h");
     }
 
-    private static void bindBacklogAge(
-            MeterRegistry registry, AtomicLong value, String status, String age) {
+    private static void bindBacklogAge(MeterRegistry registry, AtomicLong value, String status,
+            String age) {
         Gauge.builder(BusinessMetricNames.DIAN_BACKLOG, value, AtomicLong::doubleValue)
                 .baseUnit("documents")
                 .description("Documentos pendientes de resolución DIAN por estado y antigüedad")
-                .tags("status", status, "age", age)
-                .register(registry);
+                .tags("status", status, "age", age).register(registry);
     }
 
     private static void bindLotGauge(MeterRegistry registry, AtomicLong value, String age) {
         Gauge.builder(BusinessMetricNames.INVENTORY_EXPIRING_LOTS, value, AtomicLong::doubleValue)
-                .baseUnit("lots")
-                .description("Lotes con existencia vencidos o próximos a vencer")
-                .tag("age", age)
-                .register(registry);
+                .baseUnit("lots").description("Lotes con existencia vencidos o próximos a vencer")
+                .tag("age", age).register(registry);
     }
 
     private double snapshotAgeSeconds() {
@@ -160,9 +157,8 @@ public class BusinessGaugeMetrics implements MeterBinder {
         return ChronoUnit.SECONDS.between(Instant.ofEpochSecond(refreshedAt), clock.instant());
     }
 
-    private record BacklogSnapshot(long lessThanFifteenMinutes,
-                                   long fromFifteenMinutesToOneHour,
-                                   long moreThanOneHour) {
+    private record BacklogSnapshot(long lessThanFifteenMinutes, long fromFifteenMinutesToOneHour,
+            long moreThanOneHour) {
     }
 
     private static final class BacklogValues {

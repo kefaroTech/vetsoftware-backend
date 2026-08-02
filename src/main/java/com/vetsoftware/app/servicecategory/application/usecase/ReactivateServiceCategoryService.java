@@ -21,8 +21,9 @@ public class ReactivateServiceCategoryService implements ReactivateServiceCatego
     @Transactional
     public ServiceCategoryDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ServiceCategoryNotFoundException(id);
+        if (rows == 0)
+            throw new ServiceCategoryNotFoundException(id);
         return ServiceCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ServiceCategoryNotFoundException(id)));
+                .orElseThrow(() -> new ServiceCategoryNotFoundException(id)));
     }
 }

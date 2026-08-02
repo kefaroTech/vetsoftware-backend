@@ -9,10 +9,11 @@ import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 /**
- * Computes the derived totals of an OpenAccount by aggregating its child charge/payment
- * tables. This is the single place that crosses into the four child slices' persistence
- * (allowed cross-feature reference: persistence -> persistence). Each child repository
- * filters {@code enabled = true} explicitly in its aggregate query.
+ * Computes the derived totals of an OpenAccount by aggregating its child
+ * charge/payment tables. This is the single place that crosses into the four
+ * child slices' persistence (allowed cross-feature reference: persistence ->
+ * persistence). Each child repository filters {@code
+ * enabled = true} explicitly in its aggregate query.
  */
 @Component
 public class JpaOpenAccountTotalsAdapter implements OpenAccountTotalsPort {
@@ -22,10 +23,11 @@ public class JpaOpenAccountTotalsAdapter implements OpenAccountTotalsPort {
     private final GeneralChargeOpenAccountJpaRepository generalChargeRepository;
     private final DebtOpenAccountJpaRepository debtRepository;
 
-    public JpaOpenAccountTotalsAdapter(ProductChargeOpenAccountJpaRepository productChargeRepository,
-                                       ServiceChargeOpenAccountJpaRepository serviceChargeRepository,
-                                       GeneralChargeOpenAccountJpaRepository generalChargeRepository,
-                                       DebtOpenAccountJpaRepository debtRepository) {
+    public JpaOpenAccountTotalsAdapter(
+            ProductChargeOpenAccountJpaRepository productChargeRepository,
+            ServiceChargeOpenAccountJpaRepository serviceChargeRepository,
+            GeneralChargeOpenAccountJpaRepository generalChargeRepository,
+            DebtOpenAccountJpaRepository debtRepository) {
         this.productChargeRepository = productChargeRepository;
         this.serviceChargeRepository = serviceChargeRepository;
         this.generalChargeRepository = generalChargeRepository;
@@ -34,9 +36,12 @@ public class JpaOpenAccountTotalsAdapter implements OpenAccountTotalsPort {
 
     @Override
     public BigDecimal totalCharges(Long openAccountId) {
-        BigDecimal products = nullToZero(productChargeRepository.sumChargesByOpenAccountId(openAccountId));
-        BigDecimal services = nullToZero(serviceChargeRepository.sumChargesByOpenAccountId(openAccountId));
-        BigDecimal general = nullToZero(generalChargeRepository.sumChargesByOpenAccountId(openAccountId));
+        BigDecimal products = nullToZero(
+                productChargeRepository.sumChargesByOpenAccountId(openAccountId));
+        BigDecimal services = nullToZero(
+                serviceChargeRepository.sumChargesByOpenAccountId(openAccountId));
+        BigDecimal general = nullToZero(
+                generalChargeRepository.sumChargesByOpenAccountId(openAccountId));
         return products.add(services).add(general);
     }
 

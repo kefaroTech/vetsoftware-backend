@@ -28,11 +28,9 @@ public class EconomicActivityController {
     private final ReactivateEconomicActivityUseCase reactivateUseCase;
 
     public EconomicActivityController(CreateEconomicActivityUseCase createUseCase,
-                                      UpdateEconomicActivityUseCase updateUseCase,
-                                      FindEconomicActivityUseCase findUseCase,
-                                      ListEconomicActivitiesUseCase listUseCase,
-                                      DeleteEconomicActivityUseCase deleteUseCase,
-                                      ReactivateEconomicActivityUseCase reactivateUseCase) {
+            UpdateEconomicActivityUseCase updateUseCase, FindEconomicActivityUseCase findUseCase,
+            ListEconomicActivitiesUseCase listUseCase, DeleteEconomicActivityUseCase deleteUseCase,
+            ReactivateEconomicActivityUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -43,9 +41,10 @@ public class EconomicActivityController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EconomicActivityResponse create(@Valid @RequestBody CreateEconomicActivityRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateEconomicActivityCommand(request.code(), request.name())));
+    public EconomicActivityResponse create(
+            @Valid @RequestBody CreateEconomicActivityRequest request) {
+        return toResponse(createUseCase
+                .execute(new CreateEconomicActivityCommand(request.code(), request.name())));
     }
 
     @GetMapping
@@ -60,9 +59,9 @@ public class EconomicActivityController {
 
     @PutMapping("/{id}")
     public EconomicActivityResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateEconomicActivityRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateEconomicActivityCommand(id, request.code(), request.name())));
+            @Valid @RequestBody UpdateEconomicActivityRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateEconomicActivityCommand(id, request.code(), request.name())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,6 +76,7 @@ public class EconomicActivityController {
     }
 
     private EconomicActivityResponse toResponse(EconomicActivityDto dto) {
-        return new EconomicActivityResponse(dto.id(), dto.code(), dto.name(), dto.createdDate(), dto.enabled());
+        return new EconomicActivityResponse(dto.id(), dto.code(), dto.name(), dto.createdDate(),
+                dto.enabled());
     }
 }

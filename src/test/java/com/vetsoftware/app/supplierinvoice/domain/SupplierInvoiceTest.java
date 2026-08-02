@@ -8,8 +8,10 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests del agregado {@link SupplierInvoice}: matemática de dinero (total/neto/saldo con retención), transición de
- * estado por abonos (PENDING → PARTIAL → PAID), rechazo de sobrepago / pago sobre anulada, y anulación solo sin abonos.
+ * Tests del agregado {@link SupplierInvoice}: matemática de dinero
+ * (total/neto/saldo con retención), transición de estado por abonos (PENDING →
+ * PARTIAL → PAID), rechazo de sobrepago / pago sobre anulada, y anulación solo
+ * sin abonos.
  */
 class SupplierInvoiceTest {
 
@@ -22,21 +24,20 @@ class SupplierInvoiceTest {
     }
 
     private SupplierInvoice invoice(String subtotal, String tax, String withholding) {
-        return SupplierInvoice.create(CO, BR, SUP, null, null, "FV-1",
-            LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31),
-            bd(subtotal), bd(tax), bd(withholding), null, 7L);
+        return SupplierInvoice.create(CO, BR, SUP, null, null, "FV-1", LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 31), bd(subtotal), bd(tax), bd(withholding), null, 7L);
     }
 
     private SupplierInvoicePayment payment(String amount) {
         return SupplierInvoicePayment.create(bd(amount), LocalDate.of(2026, 7, 10),
-            SupplierInvoicePaymentMethod.CASH, null, null, 7L);
+                SupplierInvoicePaymentMethod.CASH, null, null, 7L);
     }
 
     @Test
     void nace_pending_con_totales_derivados_y_saldo_neto() {
         SupplierInvoice inv = invoice("1000", "190", "10");
         assertThat(inv.getStatus()).isEqualTo(SupplierInvoiceStatus.PENDING);
-        assertThat(inv.getTotal()).isEqualByComparingTo("1190");     // base + impuesto
+        assertThat(inv.getTotal()).isEqualByComparingTo("1190"); // base + impuesto
         assertThat(inv.payableAmount()).isEqualByComparingTo("1180"); // total - retención
         assertThat(inv.paidAmount()).isEqualByComparingTo("0");
         assertThat(inv.balance()).isEqualByComparingTo("1180");
@@ -63,7 +64,7 @@ class SupplierInvoiceTest {
     void sobrepago_es_rechazado() {
         SupplierInvoice inv = invoice("1000", "190", "10");
         assertThatThrownBy(() -> inv.registerPayment(payment("1181"), 7L, null))
-            .isInstanceOf(InvalidSupplierInvoiceStateException.class);
+                .isInstanceOf(InvalidSupplierInvoiceStateException.class);
     }
 
     @Test
@@ -71,7 +72,7 @@ class SupplierInvoiceTest {
         SupplierInvoice inv = invoice("1000", "0", "0");
         inv.cancel(7L, null);
         assertThatThrownBy(() -> inv.registerPayment(payment("10"), 7L, null))
-            .isInstanceOf(InvalidSupplierInvoiceStateException.class);
+                .isInstanceOf(InvalidSupplierInvoiceStateException.class);
     }
 
     @Test
@@ -79,7 +80,7 @@ class SupplierInvoiceTest {
         SupplierInvoice inv = invoice("1000", "0", "0");
         inv.registerPayment(payment("100"), 7L, null);
         assertThatThrownBy(() -> inv.cancel(7L, null))
-            .isInstanceOf(InvalidSupplierInvoiceStateException.class);
+                .isInstanceOf(InvalidSupplierInvoiceStateException.class);
     }
 
     @Test
@@ -93,14 +94,13 @@ class SupplierInvoiceTest {
     @Test
     void vencimiento_anterior_a_emision_es_invalido() {
         assertThatThrownBy(() -> SupplierInvoice.create(CO, BR, SUP, null, null, "FV-2",
-            LocalDate.of(2026, 7, 31), LocalDate.of(2026, 7, 1),
-            bd("100"), bd("0"), bd("0"), null, 7L))
-            .isInstanceOf(IllegalArgumentException.class);
+                LocalDate.of(2026, 7, 31), LocalDate.of(2026, 7, 1), bd("100"), bd("0"), bd("0"),
+                null, 7L)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void retencion_mayor_al_total_es_invalida() {
         assertThatThrownBy(() -> invoice("100", "19", "200"))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

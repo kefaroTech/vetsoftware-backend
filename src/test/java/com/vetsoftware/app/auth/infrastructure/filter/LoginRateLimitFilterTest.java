@@ -13,22 +13,18 @@ import tools.jackson.databind.ObjectMapper;
 class LoginRateLimitFilterTest {
 
     @SuppressWarnings("unchecked")
-    private final LettuceBasedProxyManager<String> proxyManager = mock(LettuceBasedProxyManager.class);
-    private final LoginRateLimitFilter filter = new LoginRateLimitFilter(
-            proxyManager, new ObjectMapper(), mock(AuditLogger.class));
+    private final LettuceBasedProxyManager<String> proxyManager = mock(
+            LettuceBasedProxyManager.class);
+
+    private final LoginRateLimitFilter filter = new LoginRateLimitFilter(proxyManager,
+            new ObjectMapper(), mock(AuditLogger.class));
 
     @Test
     void filtersEverySensitivePublicPostRoute() {
-        for (String path : List.of(
-                "/auth/login/employee",
-                "/auth/login/system",
-                "/auth/refresh",
-                "/register",
-                "/auth/forgot-password",
-                "/dian/webhooks/matias")) {
+        for (String path : List.of("/auth/login/employee", "/auth/login/system", "/auth/refresh",
+                "/register", "/auth/forgot-password", "/dian/webhooks/matias")) {
             assertThat(filter.shouldNotFilter(request("POST", path)))
-                    .as("POST %s must be rate limited", path)
-                    .isFalse();
+                    .as("POST %s must be rate limited", path).isFalse();
         }
     }
 

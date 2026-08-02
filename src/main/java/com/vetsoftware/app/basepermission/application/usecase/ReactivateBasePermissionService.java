@@ -21,8 +21,9 @@ public class ReactivateBasePermissionService implements ReactivateBasePermission
     @Transactional
     public BasePermissionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new BasePermissionNotFoundException(id);
-        return BasePermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new BasePermissionNotFoundException(id)));
+        if (rows == 0)
+            throw new BasePermissionNotFoundException(id);
+        return BasePermissionDto.from(
+                repository.findById(id).orElseThrow(() -> new BasePermissionNotFoundException(id)));
     }
 }

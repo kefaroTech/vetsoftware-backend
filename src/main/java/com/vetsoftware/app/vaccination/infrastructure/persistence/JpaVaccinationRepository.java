@@ -24,11 +24,10 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaVaccinationRepository(VaccinationJpaRepository jpaRepository,
-                                    VaccinationJpaMapper mapper,
-                                    VaccinationTypeJpaRepository vaccinationTypeJpaRepository,
-                                    AnimalJpaRepository animalJpaRepository,
-                                    ConsultationJpaRepository consultationJpaRepository,
-                                    CompanyJpaRepository companyJpaRepository) {
+            VaccinationJpaMapper mapper, VaccinationTypeJpaRepository vaccinationTypeJpaRepository,
+            AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
@@ -39,17 +38,18 @@ public class JpaVaccinationRepository implements VaccinationRepository {
 
     @Override
     public Vaccination save(Vaccination vaccination) {
-        VaccinationTypeJpaEntity vaccinationType =
-            vaccinationTypeJpaRepository.getReferenceById(vaccination.getVaccinationType().id());
+        VaccinationTypeJpaEntity vaccinationType = vaccinationTypeJpaRepository
+                .getReferenceById(vaccination.getVaccinationType().id());
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(vaccination.getAnimal().id());
-        ConsultationJpaEntity consultation = vaccination.getConsultation() == null ? null
-            : consultationJpaRepository.getReferenceById(vaccination.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(vaccination.getCompany().id());
-        VaccinationJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(vaccination, vaccinationType, animal, consultation, company));
-        return mapper.toDomain(saved, vaccination.getVaccinationType(),
-                                vaccination.getAnimal(), vaccination.getConsultation(),
-                                vaccination.getCompany());
+        ConsultationJpaEntity consultation = vaccination.getConsultation() == null
+                ? null
+                : consultationJpaRepository.getReferenceById(vaccination.getConsultation().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(vaccination.getCompany().id());
+        VaccinationJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(vaccination, vaccinationType, animal, consultation, company));
+        return mapper.toDomain(saved, vaccination.getVaccinationType(), vaccination.getAnimal(),
+                vaccination.getConsultation(), vaccination.getCompany());
     }
 
     @Override

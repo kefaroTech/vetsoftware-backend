@@ -14,23 +14,24 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * Impide que los perfiles compartidos arranquen accidentalmente contra una dependencia local.
- * Se ejecuta antes de crear DataSource, Redis y clientes HTTP/AWS.
+ * Impide que los perfiles compartidos arranquen accidentalmente contra una
+ * dependencia local. Se ejecuta antes de crear DataSource, Redis y clientes
+ * HTTP/AWS.
  */
 @Component
 @Profile({"dev", "prod"})
 final class RemoteConnectionValidator
-        implements BeanFactoryPostProcessor, EnvironmentAware, Ordered {
+        implements
+            BeanFactoryPostProcessor,
+            EnvironmentAware,
+            Ordered {
 
-    private static final List<String> REQUIRED_REMOTE_URLS = List.of(
-            "spring.datasource.url",
-            "spring.data.redis.url",
-            "management.otlp.metrics.export.url",
+    private static final List<String> REQUIRED_REMOTE_URLS = List.of("spring.datasource.url",
+            "spring.data.redis.url", "management.otlp.metrics.export.url",
             "management.opentelemetry.tracing.export.otlp.endpoint",
             "management.opentelemetry.logging.export.otlp.endpoint",
             "vetsoftware.registration.verification-base-url",
-            "vetsoftware.password-reset.reset-base-url",
-            "vetsoftware.code-recovery.login-url",
+            "vetsoftware.password-reset.reset-base-url", "vetsoftware.code-recovery.login-url",
             "vetsoftware.employee.login-url");
 
     private Environment environment;
@@ -54,11 +55,9 @@ final class RemoteConnectionValidator
         for (String origin : required("cors.allowed-origins").split(",")) {
             validateRemoteUrl("cors.allowed-origins", origin.trim());
         }
-        validateOptionalRemoteUrl(
-                "vetsoftware.storage.s3.endpoint",
+        validateOptionalRemoteUrl("vetsoftware.storage.s3.endpoint",
                 environment.getProperty("vetsoftware.storage.s3.endpoint"));
-        validateOptionalRemoteUrl(
-                "vetsoftware.audit.outbox.endpoint",
+        validateOptionalRemoteUrl("vetsoftware.audit.outbox.endpoint",
                 environment.getProperty("vetsoftware.audit.outbox.endpoint"));
         required("OTEL_EXPORTER_OTLP_HEADERS");
     }
@@ -91,12 +90,9 @@ final class RemoteConnectionValidator
             throw new IllegalStateException("La propiedad " + property + " no contiene un host");
         }
         String lowerHost = host.toLowerCase(Locale.ROOT);
-        if (lowerHost.equals("localhost")
-                || lowerHost.equals("127.0.0.1")
-                || lowerHost.equals("0.0.0.0")
-                || lowerHost.equals("::1")
-                || lowerHost.equals("host.docker.internal")
-                || lowerHost.endsWith(".localhost")) {
+        if (lowerHost.equals("localhost") || lowerHost.equals("127.0.0.1")
+                || lowerHost.equals("0.0.0.0") || lowerHost.equals("::1")
+                || lowerHost.equals("host.docker.internal") || lowerHost.endsWith(".localhost")) {
             throw new IllegalStateException(
                     "El perfil dev/prod no permite conexiones locales: " + property);
         }

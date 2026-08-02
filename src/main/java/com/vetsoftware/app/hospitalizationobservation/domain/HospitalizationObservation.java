@@ -10,8 +10,9 @@ public class HospitalizationObservation {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public HospitalizationObservation(Long id, String description, HospitalizationRef hospitalization,
-                                      EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
+    public HospitalizationObservation(Long id, String description,
+            HospitalizationRef hospitalization, EmployeeRef createdBy, LocalDateTime createdDate,
+            boolean enabled) {
         validate(description, hospitalization, createdBy);
         this.id = id;
         this.description = description;
@@ -21,10 +22,10 @@ public class HospitalizationObservation {
         this.enabled = enabled;
     }
 
-    public static HospitalizationObservation create(String description, HospitalizationRef hospitalization,
-                                                    EmployeeRef createdBy) {
+    public static HospitalizationObservation create(String description,
+            HospitalizationRef hospitalization, EmployeeRef createdBy) {
         return new HospitalizationObservation(null, description, hospitalization, createdBy,
-            LocalDateTime.now(), true);
+                LocalDateTime.now(), true);
     }
 
     public void update(String description) {
@@ -32,21 +33,47 @@ public class HospitalizationObservation {
         this.description = description;
     }
 
-    public void enable() { this.enabled = true; }
-
-    public void disable() { this.enabled = false; }
-
-    private static void validate(String description, HospitalizationRef hospitalization, EmployeeRef createdBy) {
-        if (description == null || description.isBlank()) throw new IllegalArgumentException("description is required");
-        if (description.length() > 2000) throw new IllegalArgumentException("description must be 2000 chars or less");
-        if (hospitalization == null) throw new IllegalArgumentException("hospitalization is required");
-        if (createdBy == null) throw new IllegalArgumentException("createdBy is required");
+    public void enable() {
+        this.enabled = true;
     }
 
-    public Long getId() { return id; }
-    public String getDescription() { return description; }
-    public HospitalizationRef getHospitalization() { return hospitalization; }
-    public EmployeeRef getCreatedBy() { return createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
+    public void disable() {
+        this.enabled = false;
+    }
+
+    private static void validate(String description, HospitalizationRef hospitalization,
+            EmployeeRef createdBy) {
+        if (description == null || description.isBlank())
+            throw new IllegalArgumentException("description is required");
+        if (description.length() > 2000)
+            throw new IllegalArgumentException("description must be 2000 chars or less");
+        if (hospitalization == null)
+            throw new IllegalArgumentException("hospitalization is required");
+        if (createdBy == null)
+            throw new IllegalArgumentException("createdBy is required");
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public HospitalizationRef getHospitalization() {
+        return hospitalization;
+    }
+
+    public EmployeeRef getCreatedBy() {
+        return createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 }

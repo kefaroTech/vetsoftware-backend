@@ -29,10 +29,10 @@ public class SubModuleController {
     private final DeleteSubModuleUseCase deleteUseCase;
     private final ReactivateSubModuleUseCase reactivateUseCase;
 
-    public SubModuleController(CreateSubModuleUseCase createUseCase, UpdateSubModuleUseCase updateUseCase,
-                               FindSubModuleUseCase findUseCase, ListSubModulesUseCase listUseCase,
-                               DeleteSubModuleUseCase deleteUseCase,
-                               ReactivateSubModuleUseCase reactivateUseCase) {
+    public SubModuleController(CreateSubModuleUseCase createUseCase,
+            UpdateSubModuleUseCase updateUseCase, FindSubModuleUseCase findUseCase,
+            ListSubModulesUseCase listUseCase, DeleteSubModuleUseCase deleteUseCase,
+            ReactivateSubModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -45,7 +45,7 @@ public class SubModuleController {
     @ResponseStatus(HttpStatus.CREATED)
     public SubModuleResponse create(@Valid @RequestBody CreateSubModuleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateSubModuleCommand(request.name(), request.code(), request.moduleId())));
+                new CreateSubModuleCommand(request.name(), request.code(), request.moduleId())));
     }
 
     @GetMapping
@@ -59,9 +59,10 @@ public class SubModuleController {
     }
 
     @PutMapping("/{id}")
-    public SubModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSubModuleRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSubModuleCommand(id, request.name(), request.code(), request.moduleId())));
+    public SubModuleResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateSubModuleRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSubModuleCommand(id, request.name(),
+                request.code(), request.moduleId())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,11 +78,7 @@ public class SubModuleController {
 
     private SubModuleResponse toResponse(SubModuleDto dto) {
         ModuleSummaryDto m = dto.module();
-        return new SubModuleResponse(
-            dto.id(), dto.name(), dto.code(),
-            new ModuleSummary(m.id(), m.name(), m.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new SubModuleResponse(dto.id(), dto.name(), dto.code(),
+                new ModuleSummary(m.id(), m.name(), m.code()), dto.createdDate(), dto.enabled());
     }
 }

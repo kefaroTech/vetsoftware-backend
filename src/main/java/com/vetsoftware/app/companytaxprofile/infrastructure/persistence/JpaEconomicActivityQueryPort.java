@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 public class JpaEconomicActivityQueryPort implements EconomicActivityQueryPort {
     private final EconomicActivityJpaRepository economicActivityJpaRepository;
 
-    public JpaEconomicActivityQueryPort(EconomicActivityJpaRepository economicActivityJpaRepository) {
+    public JpaEconomicActivityQueryPort(
+            EconomicActivityJpaRepository economicActivityJpaRepository) {
         this.economicActivityJpaRepository = economicActivityJpaRepository;
     }
 

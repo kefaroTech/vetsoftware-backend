@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateGoodsReceiptUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('goodsReceipt.create') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('goodsReceipt.create') and @authz.isMyCompany(#command.companyId))")
     GoodsReceiptDto execute(CreateGoodsReceiptCommand command);
 }

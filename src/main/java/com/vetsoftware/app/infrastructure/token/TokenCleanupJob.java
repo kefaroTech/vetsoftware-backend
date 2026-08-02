@@ -11,11 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.token-cleanup",
-        name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true)
+@ConditionalOnProperty(prefix = "vetsoftware.token-cleanup", name = "enabled", havingValue = "true", matchIfMissing = true)
 final class TokenCleanupJob {
 
     private static final Logger log = LoggerFactory.getLogger(TokenCleanupJob.class);
@@ -25,11 +21,8 @@ final class TokenCleanupJob {
     private final TokenCleanupMetrics metrics;
     private final ScheduledJobTelemetry telemetry;
 
-    TokenCleanupJob(
-            TokenCleanupRepository repository,
-            TokenCleanupProperties properties,
-            TokenCleanupMetrics metrics,
-            ScheduledJobTelemetry telemetry) {
+    TokenCleanupJob(TokenCleanupRepository repository, TokenCleanupProperties properties,
+            TokenCleanupMetrics metrics, ScheduledJobTelemetry telemetry) {
         properties.validate();
         this.repository = repository;
         this.properties = properties;
@@ -37,9 +30,7 @@ final class TokenCleanupJob {
         this.telemetry = telemetry;
     }
 
-    @Scheduled(
-            fixedDelayString = "${vetsoftware.token-cleanup.interval:PT1H}",
-            initialDelayString = "${vetsoftware.token-cleanup.initial-delay:PT5M}")
+    @Scheduled(fixedDelayString = "${vetsoftware.token-cleanup.interval:PT1H}", initialDelayString = "${vetsoftware.token-cleanup.initial-delay:PT5M}")
     void cleanup() {
         telemetry.observe("security.tokens.cleanup", this::cleanupTokens);
     }
@@ -58,11 +49,13 @@ final class TokenCleanupJob {
         if (purged.total() > 0) {
             log.info(
                     "Tokens depurados; refresh={}, verificación={}, restablecimiento={}, restantes={}",
-                    purged.refresh(), purged.emailVerification(), purged.passwordReset(), rows.total());
+                    purged.refresh(), purged.emailVerification(), purged.passwordReset(),
+                    rows.total());
         }
         if (rows.anyAbove(properties.getGrowthWarningThreshold())) {
             log.warn(
-                    "Crecimiento anormal de tokens; refresh={}, verificación={}, restablecimiento={}, umbral={}",
+                    "Crecimiento anormal de tokens; refresh={}, verificación={}, restablecimiento={},"
+                            + " umbral={}",
                     rows.refresh(), rows.emailVerification(), rows.passwordReset(),
                     properties.getGrowthWarningThreshold());
         }

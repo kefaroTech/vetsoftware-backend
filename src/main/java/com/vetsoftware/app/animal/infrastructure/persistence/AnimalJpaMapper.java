@@ -16,12 +16,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AnimalJpaMapper {
 
-    public AnimalJpaEntity toJpa(Animal animal,
-                                  SpecieJpaEntity specie,
-                                  BreedJpaEntity breed,
-                                  OwnerJpaEntity owner,
-                                  CompanyJpaEntity company,
-                                  AnimalColorJpaEntity color) {
+    public AnimalJpaEntity toJpa(Animal animal, SpecieJpaEntity specie, BreedJpaEntity breed,
+            OwnerJpaEntity owner, CompanyJpaEntity company, AnimalColorJpaEntity color) {
         AnimalJpaEntity entity = new AnimalJpaEntity();
         entity.setId(animal.getId());
         entity.setName(animal.getName());
@@ -50,23 +46,19 @@ public class AnimalJpaMapper {
         OwnerJpaEntity o = entity.getOwner();
         CompanyJpaEntity c = entity.getCompany();
         AnimalColorJpaEntity co = entity.getColor();
-        return toDomain(entity,
-            new SpecieRef(s.getId(), s.getName()),
-            new BreedRef(b.getId(), b.getName()),
-            new OwnerRef(o.getId(), o.getName(), o.getDocument()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            new AnimalColorRef(co.getId(), co.getName()));
+        return toDomain(entity, new SpecieRef(s.getId(), s.getName()),
+                new BreedRef(b.getId(), b.getName()),
+                new OwnerRef(o.getId(), o.getName(), o.getDocument()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                new AnimalColorRef(co.getId(), co.getName()));
     }
 
     public Animal toDomain(AnimalJpaEntity entity, SpecieRef specieRef, BreedRef breedRef,
-                           OwnerRef ownerRef, CompanyRef companyRef, AnimalColorRef colorRef) {
-        return new Animal(
-            entity.getId(), entity.getName(), entity.getCode(),
-            specieRef, breedRef, ownerRef,
-            entity.getGender(), entity.getWeightType(), entity.getAnimalType(),
-            entity.getReproductiveState(), colorRef, entity.getBod(),
-            entity.getSize(), entity.isDeceased(), entity.getDeceasedDate(),
-            companyRef, entity.getCreatedDate(), entity.isEnabled()
-        );
+            OwnerRef ownerRef, CompanyRef companyRef, AnimalColorRef colorRef) {
+        return new Animal(entity.getId(), entity.getName(), entity.getCode(), specieRef, breedRef,
+                ownerRef, entity.getGender(), entity.getWeightType(), entity.getAnimalType(),
+                entity.getReproductiveState(), colorRef, entity.getBod(), entity.getSize(),
+                entity.isDeceased(), entity.getDeceasedDate(), companyRef, entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

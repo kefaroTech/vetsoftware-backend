@@ -28,11 +28,9 @@ public class ConsultationTypeController {
     private final ReactivateConsultationTypeUseCase reactivateUseCase;
 
     public ConsultationTypeController(CreateConsultationTypeUseCase createUseCase,
-                                      UpdateConsultationTypeUseCase updateUseCase,
-                                      FindConsultationTypeUseCase findUseCase,
-                                      ListConsultationTypesUseCase listUseCase,
-                                      DeleteConsultationTypeUseCase deleteUseCase,
-                                      ReactivateConsultationTypeUseCase reactivateUseCase) {
+            UpdateConsultationTypeUseCase updateUseCase, FindConsultationTypeUseCase findUseCase,
+            ListConsultationTypesUseCase listUseCase, DeleteConsultationTypeUseCase deleteUseCase,
+            ReactivateConsultationTypeUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -43,9 +41,10 @@ public class ConsultationTypeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ConsultationTypeResponse create(@Valid @RequestBody CreateConsultationTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateConsultationTypeCommand(request.name(), request.description())));
+    public ConsultationTypeResponse create(
+            @Valid @RequestBody CreateConsultationTypeRequest request) {
+        return toResponse(createUseCase
+                .execute(new CreateConsultationTypeCommand(request.name(), request.description())));
     }
 
     @GetMapping
@@ -60,7 +59,7 @@ public class ConsultationTypeController {
 
     @PutMapping("/{id}")
     public ConsultationTypeResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateConsultationTypeRequest request) {
+            @Valid @RequestBody UpdateConsultationTypeRequest request) {
         return toResponse(updateUseCase.execute(
                 new UpdateConsultationTypeCommand(id, request.name(), request.description())));
     }
@@ -77,6 +76,7 @@ public class ConsultationTypeController {
     }
 
     private ConsultationTypeResponse toResponse(ConsultationTypeDto dto) {
-        return new ConsultationTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
+        return new ConsultationTypeResponse(dto.id(), dto.name(), dto.description(),
+                dto.createdDate(), dto.enabled());
     }
 }

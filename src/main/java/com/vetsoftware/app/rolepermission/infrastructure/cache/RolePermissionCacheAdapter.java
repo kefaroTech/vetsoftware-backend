@@ -18,33 +18,38 @@ public class RolePermissionCacheAdapter implements PermissionCachePort {
     private final CacheManager cacheManager;
 
     public RolePermissionCacheAdapter(EmployeeRoleJpaRepository employeeRoleJpaRepository,
-                                      CacheManager cacheManager) {
+            CacheManager cacheManager) {
         this.employeeRoleJpaRepository = employeeRoleJpaRepository;
         this.cacheManager = cacheManager;
     }
 
     @Override
     public void evictByRoleId(Long roleId) {
-        if (roleId == null) return;
+        if (roleId == null)
+            return;
         List<Long> employeeIds = employeeRoleJpaRepository.findEmployeeIdsByRoleId(roleId);
-        if (employeeIds.isEmpty()) return;
+        if (employeeIds.isEmpty())
+            return;
         runAfterCommit(() -> evictAll(employeeIds));
     }
 
     private void evictAll(List<Long> employeeIds) {
         Cache cache = cacheManager.getCache(CACHE_NAME);
-        if (cache == null) return;
-        for (Long id : employeeIds) cache.evict(id);
+        if (cache == null)
+            return;
+        for (Long id : employeeIds)
+            cache.evict(id);
     }
 
     private void runAfterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
+            TransactionSynchronizationManager
+                    .registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            action.run();
+                        }
+                    });
         } else {
             action.run();
         }

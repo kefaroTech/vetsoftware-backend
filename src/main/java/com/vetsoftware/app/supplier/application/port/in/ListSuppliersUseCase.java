@@ -8,7 +8,10 @@ public interface ListSuppliersUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('supplier.read') and @authz.isMyCompany(#companyId))")
     List<SupplierDto> listByCompany(Long companyId);
 
-    /** Lista los proveedores PAUSADOS (enabled=false) de la empresa, para el flujo de reactivación. */
+    /**
+     * Lista los proveedores PAUSADOS (enabled=false) de la empresa, para el flujo
+     * de reactivación.
+     */
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('supplier.read') and @authz.isMyCompany(#companyId))")
     List<SupplierDto> listDisabledByCompany(Long companyId);
 }

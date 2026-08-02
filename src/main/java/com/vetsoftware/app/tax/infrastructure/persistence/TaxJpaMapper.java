@@ -29,16 +29,8 @@ public class TaxJpaMapper {
     }
 
     public Tax toDomain(TaxJpaEntity entity, CompanyRef companyRef) {
-        return new Tax(
-                entity.getId(),
-                entity.getName(),
-                entity.getPercentage(),
-                entity.getTaxScheme(),
-                companyRef,
-                entity.getCreatedDate(),
-                entity.getUpdatedDate(),
-                entity.getUpdatedBy(),
-                entity.getVersion(),
-                entity.isEnabled());
+        return new Tax(entity.getId(), entity.getName(), entity.getPercentage(),
+                entity.getTaxScheme(), companyRef, entity.getCreatedDate(), entity.getUpdatedDate(),
+                entity.getUpdatedBy(), entity.getVersion(), entity.isEnabled());
     }
 }

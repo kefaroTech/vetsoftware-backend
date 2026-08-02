@@ -40,13 +40,11 @@ public class VaccinationController {
     private final Authz authz;
 
     public VaccinationController(CreateVaccinationUseCase createUseCase,
-                                 UpdateVaccinationUseCase updateUseCase,
-                                 FindVaccinationUseCase findUseCase,
-                                 ListVaccinationsUseCase listUseCase,
-                                 ListVaccinationsByAnimalUseCase listByAnimalUseCase,
-                                 DeleteVaccinationUseCase deleteUseCase,
-                                 ReactivateVaccinationUseCase reactivateUseCase,
-                                 Authz authz) {
+            UpdateVaccinationUseCase updateUseCase, FindVaccinationUseCase findUseCase,
+            ListVaccinationsUseCase listUseCase,
+            ListVaccinationsByAnimalUseCase listByAnimalUseCase,
+            DeleteVaccinationUseCase deleteUseCase, ReactivateVaccinationUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -60,11 +58,10 @@ public class VaccinationController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public VaccinationResponse create(@Valid @RequestBody CreateVaccinationRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateVaccinationCommand(
-                request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreateVaccinationCommand(request.date(),
+                request.vaccinationTypeId(), request.lot(), request.notes(), request.route(),
+                request.applicationSite(), request.nextVaccination(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -84,12 +81,11 @@ public class VaccinationController {
 
     @PutMapping("/{id}")
     public VaccinationResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdateVaccinationRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateVaccinationCommand(
-                id, request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateVaccinationRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateVaccinationCommand(id, request.date(),
+                request.vaccinationTypeId(), request.lot(), request.notes(), request.route(),
+                request.applicationSite(), request.nextVaccination(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -108,14 +104,12 @@ public class VaccinationController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
-        return new VaccinationResponse(
-            dto.id(), dto.date(),
-            new VaccinationTypeSummary(vt.id(), vt.name()),
-            dto.lot(), dto.notes(), dto.route(), dto.applicationSite(), dto.nextVaccination(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled());
+        return new VaccinationResponse(dto.id(), dto.date(),
+                new VaccinationTypeSummary(vt.id(), vt.name()), dto.lot(), dto.notes(), dto.route(),
+                dto.applicationSite(), dto.nextVaccination(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                co == null ? null : new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

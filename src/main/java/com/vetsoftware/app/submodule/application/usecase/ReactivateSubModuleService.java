@@ -21,7 +21,9 @@ public class ReactivateSubModuleService implements ReactivateSubModuleUseCase {
     @Transactional
     public SubModuleDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SubModuleNotFoundException(id);
-        return SubModuleDto.from(repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
+        if (rows == 0)
+            throw new SubModuleNotFoundException(id);
+        return SubModuleDto.from(
+                repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
     }
 }

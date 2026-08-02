@@ -15,8 +15,7 @@ public class DeleteBreedService implements DeleteBreedUseCase {
     private final BreedRepository repository;
     private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteBreedService(
-            BreedRepository repository,
+    public DeleteBreedService(BreedRepository repository,
             AnimalChildrenQueryPort animalChildrenQueryPort) {
         this.repository = repository;
         this.animalChildrenQueryPort = animalChildrenQueryPort;

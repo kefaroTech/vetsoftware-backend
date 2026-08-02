@@ -21,27 +21,34 @@ public class PasswordResetController {
     private final ResetPasswordUseCase resetUseCase;
 
     public PasswordResetController(RequestPasswordResetUseCase requestUseCase,
-                                   ValidatePasswordResetTokenUseCase validateUseCase,
-                                   ResetPasswordUseCase resetUseCase) {
+            ValidatePasswordResetTokenUseCase validateUseCase, ResetPasswordUseCase resetUseCase) {
         this.requestUseCase = requestUseCase;
         this.validateUseCase = validateUseCase;
         this.resetUseCase = resetUseCase;
     }
 
-    /** Solicita el restablecimiento por código. Responde 204 SIEMPRE (anti-enumeración: no revela si existe). */
+    /**
+     * Solicita el restablecimiento por código. Responde 204 SIEMPRE
+     * (anti-enumeración: no revela si existe).
+     */
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void forgot(@Valid @RequestBody ForgotPasswordRequest request) {
         requestUseCase.execute(new RequestPasswordResetCommand(request.employeeCode()));
     }
 
-    /** ¿El token del enlace sigue siendo usable? (la pantalla de reset lo consulta al montar). */
+    /**
+     * ¿El token del enlace sigue siendo usable? (la pantalla de reset lo consulta
+     * al montar).
+     */
     @GetMapping("/reset-password/validate")
     public ValidateResetTokenResponse validate(@RequestParam String token) {
         return new ValidateResetTokenResponse(validateUseCase.isValid(token));
     }
 
-    /** Confirma el restablecimiento: consume el token y aplica la nueva contraseña. */
+    /**
+     * Confirma el restablecimiento: consume el token y aplica la nueva contraseña.
+     */
     @PostMapping("/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reset(@Valid @RequestBody ResetPasswordRequest request) {

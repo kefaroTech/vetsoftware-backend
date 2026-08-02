@@ -30,19 +30,9 @@ public class EmployeeJpaMapper {
     }
 
     public Employee toDomain(EmployeeJpaEntity entity, CompanyRef companyRef) {
-        return new Employee(
-            entity.getId(),
-            entity.getEmployeeCode(),
-            entity.getHashPassword(),
-            entity.getName(),
-            entity.getEmail(),
-            companyRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.isEmailVerified(),
-            entity.isMustChangePassword(),
-            entity.getStatus(),
-            entity.getAuthVersion()
-        );
+        return new Employee(entity.getId(), entity.getEmployeeCode(), entity.getHashPassword(),
+                entity.getName(), entity.getEmail(), companyRef, entity.getCreatedDate(),
+                entity.isEnabled(), entity.isEmailVerified(), entity.isMustChangePassword(),
+                entity.getStatus(), entity.getAuthVersion());
     }
 }

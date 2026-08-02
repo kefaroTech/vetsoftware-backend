@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Set;
 
 public final class PetshopCatalogRules {
-    private PetshopCatalogRules() {}
+    private PetshopCatalogRules() {
+    }
 
     public static String text(String value, String field, int maxLength) {
         if (value == null || value.isBlank()) {
@@ -41,14 +42,15 @@ public final class PetshopCatalogRules {
     }
 
     public static List<String> barcodes(List<String> values) {
-        if (values == null) return List.of();
+        if (values == null)
+            return List.of();
         Set<String> normalized = new LinkedHashSet<>();
         for (String value : values) {
             String barcode = text(value, "barcode", 64);
-            if (barcode.chars().anyMatch(
-                    character -> Character.isISOControl(character)
-                        || Character.isWhitespace(character))) {
-                throw new IllegalArgumentException("barcode contains whitespace or control characters");
+            if (barcode.chars().anyMatch(character -> Character.isISOControl(character)
+                    || Character.isWhitespace(character))) {
+                throw new IllegalArgumentException(
+                        "barcode contains whitespace or control characters");
             }
             if (!normalized.add(barcode)) {
                 throw new IllegalArgumentException("barcode is repeated: " + barcode);
@@ -60,7 +62,7 @@ public final class PetshopCatalogRules {
     public static void defaultFactor(boolean defaultPresentation, int conversionFactor) {
         if (defaultPresentation && conversionFactor != 1) {
             throw new IllegalArgumentException(
-                "The default presentation must have conversionFactor 1");
+                    "The default presentation must have conversionFactor 1");
         }
     }
 
@@ -69,9 +71,8 @@ public final class PetshopCatalogRules {
             throw new IllegalArgumentException("expectedVersion is required");
         }
         if (!expected.equals(actual)) {
-            throw new PetshopCatalogConflictException(
-                "CONCURRENT_MODIFICATION",
-                "El registro fue modificado por otra operación. Recarga e intenta de nuevo.");
+            throw new PetshopCatalogConflictException("CONCURRENT_MODIFICATION",
+                    "El registro fue modificado por otra operación. Recarga e intenta de nuevo.");
         }
     }
 }

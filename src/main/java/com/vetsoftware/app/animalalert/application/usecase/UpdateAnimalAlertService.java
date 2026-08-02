@@ -23,7 +23,7 @@ public class UpdateAnimalAlertService implements UpdateAnimalAlertUseCase {
     @Transactional
     public AnimalAlertDto execute(UpdateAnimalAlertCommand command) {
         AnimalAlert alert = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new AnimalAlertNotFoundException(command.id()));
+                .orElseThrow(() -> new AnimalAlertNotFoundException(command.id()));
         alert.update(command.type(), command.description(), command.severity());
         return AnimalAlertDto.from(repository.save(alert));
     }

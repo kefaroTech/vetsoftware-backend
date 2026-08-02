@@ -4,6 +4,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteMedicamentPrescriptionUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('medicamentPrescription.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('medicamentPrescription.delete') and @authz.isMyCompany(#companyId))")
     void execute(Long id, Long companyId);
 }

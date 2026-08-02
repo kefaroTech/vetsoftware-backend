@@ -43,8 +43,7 @@ public class DeleteCompanyService implements DeleteCompanyUseCase {
     private final PermissionChildrenQueryPort permissionChildrenQueryPort;
     private final RoleChildrenQueryPort roleChildrenQueryPort;
 
-    public DeleteCompanyService(
-            CompanyRepository repository,
+    public DeleteCompanyService(CompanyRepository repository,
             AnimalChildrenQueryPort animalChildrenQueryPort,
             OwnerChildrenQueryPort ownerChildrenQueryPort,
             EmployeeChildrenQueryPort employeeChildrenQueryPort,

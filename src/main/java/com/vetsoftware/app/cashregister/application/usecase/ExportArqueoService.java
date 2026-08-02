@@ -8,7 +8,10 @@ import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Construye el reporte de arqueo desde el agregado de la sesión (movimientos + counts). */
+/**
+ * Construye el reporte de arqueo desde el agregado de la sesión (movimientos +
+ * counts).
+ */
 @Observed(name = "cash.register.export.arqueo")
 @Service
 public class ExportArqueoService implements ExportArqueoUseCase {
@@ -22,8 +25,7 @@ public class ExportArqueoService implements ExportArqueoUseCase {
     @Override
     @Transactional(readOnly = true)
     public CashArqueoReport arqueo(Long companyId, Long sessionId) {
-        return repository.findByIdAndCompany(sessionId, companyId)
-            .map(CashArqueoReport::from)
-            .orElseThrow(() -> new CashSessionNotFoundException(sessionId));
+        return repository.findByIdAndCompany(sessionId, companyId).map(CashArqueoReport::from)
+                .orElseThrow(() -> new CashSessionNotFoundException(sessionId));
     }
 }

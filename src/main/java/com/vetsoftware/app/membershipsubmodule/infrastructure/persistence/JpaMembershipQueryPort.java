@@ -17,6 +17,6 @@ public class JpaMembershipQueryPort implements MembershipQueryPort {
     @Override
     public Optional<MembershipRef> findById(Long membershipId) {
         return membershipJpaRepository.findById(membershipId)
-            .map(e -> new MembershipRef(e.getId(), e.getName()));
+                .map(e -> new MembershipRef(e.getId(), e.getName()));
     }
 }

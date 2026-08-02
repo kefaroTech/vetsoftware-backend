@@ -12,7 +12,7 @@ public class JpaSystemPermissionRepository implements SystemPermissionRepository
     private final SystemPermissionJpaMapper mapper;
 
     public JpaSystemPermissionRepository(SystemPermissionJpaRepository jpaRepository,
-                                         SystemPermissionJpaMapper mapper) {
+            SystemPermissionJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

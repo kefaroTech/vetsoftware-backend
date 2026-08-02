@@ -10,7 +10,10 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
-/** Ajustes por empresa (clave-valor), protegidos por permisos granulares y alcance tenant. */
+/**
+ * Ajustes por empresa (clave-valor), protegidos por permisos granulares y
+ * alcance tenant.
+ */
 @RestController
 @RequestMapping("/company-settings")
 public class CompanySettingController {
@@ -19,8 +22,8 @@ public class CompanySettingController {
     private final SetCompanySettingUseCase setUseCase;
     private final Authz authz;
 
-    public CompanySettingController(ListCompanySettingsUseCase listUseCase, SetCompanySettingUseCase setUseCase,
-                                    Authz authz) {
+    public CompanySettingController(ListCompanySettingsUseCase listUseCase,
+            SetCompanySettingUseCase setUseCase, Authz authz) {
         this.listUseCase = listUseCase;
         this.setUseCase = setUseCase;
         this.authz = authz;
@@ -33,7 +36,7 @@ public class CompanySettingController {
 
     @PutMapping
     public CompanySettingDto set(@Valid @RequestBody SetCompanySettingRequest request) {
-        return setUseCase.set(new SetCompanySettingCommand(
-            authz.currentCompanyId(), request.propertyName(), request.value()));
+        return setUseCase.set(new SetCompanySettingCommand(authz.currentCompanyId(),
+                request.propertyName(), request.value()));
     }
 }

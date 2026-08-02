@@ -1,3 +1,4 @@
 package com.vetsoftware.app.employee.infrastructure.web.response;
 
-public record EmployeeCodeAvailabilityResponse(boolean available) {}
+public record EmployeeCodeAvailabilityResponse(boolean available) {
+}

@@ -16,11 +16,7 @@ public class ConsultationTypeJpaMapper {
     }
 
     public ConsultationType toDomain(ConsultationTypeJpaEntity entity) {
-        return new ConsultationType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                entity.getCreatedDate(),
-                entity.isEnabled());
+        return new ConsultationType(entity.getId(), entity.getName(), entity.getDescription(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -17,9 +17,8 @@ public class JpaCompanyTaxProfileRepository implements CompanyTaxProfileReposito
     private final EconomicActivityJpaRepository economicActivityJpaRepository;
 
     public JpaCompanyTaxProfileRepository(CompanyTaxProfileJpaRepository jpaRepository,
-                                          CompanyTaxProfileJpaMapper mapper,
-                                          CompanyJpaRepository companyJpaRepository,
-                                          EconomicActivityJpaRepository economicActivityJpaRepository) {
+            CompanyTaxProfileJpaMapper mapper, CompanyJpaRepository companyJpaRepository,
+            EconomicActivityJpaRepository economicActivityJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -29,9 +28,12 @@ public class JpaCompanyTaxProfileRepository implements CompanyTaxProfileReposito
     @Override
     public CompanyTaxProfile save(CompanyTaxProfile profile) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(profile.getCompany().id());
-        EconomicActivityJpaEntity economicActivity = profile.getEconomicActivity() == null ? null
-                : economicActivityJpaRepository.getReferenceById(profile.getEconomicActivity().id());
-        CompanyTaxProfileJpaEntity saved = jpaRepository.save(mapper.toJpa(profile, company, economicActivity));
+        EconomicActivityJpaEntity economicActivity = profile.getEconomicActivity() == null
+                ? null
+                : economicActivityJpaRepository
+                        .getReferenceById(profile.getEconomicActivity().id());
+        CompanyTaxProfileJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(profile, company, economicActivity));
         return mapper.toDomain(saved, profile.getCompany(), profile.getEconomicActivity());
     }
 

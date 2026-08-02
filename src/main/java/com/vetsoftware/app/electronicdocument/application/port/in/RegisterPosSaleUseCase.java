@@ -5,11 +5,13 @@ import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocument
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Registra una venta de POS como documento electronico. Requiere {@code electronicDocument.create} (emitir
- * documentos), no solo lectura del catalogo: emitir un documento fiscal es una operacion de facturacion. El
- * gate del modulo BILLING (transmision a la DIAN) es independiente: sin el modulo el documento igual se
- * persiste PENDIENTE. Las lineas GENERAL (precio libre, sin validar contra catalogo) solo las puede emitir
- * el superadmin {@code SYSTEM}; el resto valida el precio contra el catalogo en el builder.
+ * Registra una venta de POS como documento electronico. Requiere
+ * {@code electronicDocument.create} (emitir documentos), no solo lectura del
+ * catalogo: emitir un documento fiscal es una operacion de facturacion. El gate
+ * del modulo BILLING (transmision a la DIAN) es independiente: sin el modulo el
+ * documento igual se persiste PENDIENTE. Las lineas GENERAL (precio libre, sin
+ * validar contra catalogo) solo las puede emitir el superadmin {@code SYSTEM};
+ * el resto valida el precio contra el catalogo en el builder.
  */
 public interface RegisterPosSaleUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.create') "

@@ -11,7 +11,8 @@ public class JpaSystemUserRepository implements SystemUserRepository {
     private final SystemUserJpaRepository jpaRepository;
     private final SystemUserJpaMapper mapper;
 
-    public JpaSystemUserRepository(SystemUserJpaRepository jpaRepository, SystemUserJpaMapper mapper) {
+    public JpaSystemUserRepository(SystemUserJpaRepository jpaRepository,
+            SystemUserJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

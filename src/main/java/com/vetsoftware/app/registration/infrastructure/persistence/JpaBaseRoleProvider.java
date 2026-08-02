@@ -17,12 +17,7 @@ public class JpaBaseRoleProvider implements BaseRoleProvider {
     @Override
     public List<BaseRoleData> findAll() {
         // @SQLRestriction("enabled = true") en la entidad ya filtra los deshabilitados.
-        return baseRoleJpaRepository.findAll().stream()
-                .map(e -> new BaseRoleData(
-                        e.getId(),
-                        e.getName(),
-                        e.getCode(),
-                        Boolean.TRUE.equals(e.getMandatory())))
-                .toList();
+        return baseRoleJpaRepository.findAll().stream().map(e -> new BaseRoleData(e.getId(),
+                e.getName(), e.getCode(), Boolean.TRUE.equals(e.getMandatory()))).toList();
     }
 }

@@ -25,8 +25,8 @@ public class SetSystemConfigurationService implements SetSystemConfigurationUseC
                 .map(existing -> {
                     existing.update(command.value());
                     return existing;
-                })
-                .orElseGet(() -> SystemConfiguration.create(command.propertyName(), command.value()));
+                }).orElseGet(
+                        () -> SystemConfiguration.create(command.propertyName(), command.value()));
         return SystemConfigurationDto.from(repository.save(config));
     }
 }

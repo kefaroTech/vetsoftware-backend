@@ -15,8 +15,7 @@ public class DeleteSurgeryTypeService implements DeleteSurgeryTypeUseCase {
     private final SurgeryTypeRepository repository;
     private final SurgeryChildrenQueryPort surgeryChildrenQueryPort;
 
-    public DeleteSurgeryTypeService(
-            SurgeryTypeRepository repository,
+    public DeleteSurgeryTypeService(SurgeryTypeRepository repository,
             SurgeryChildrenQueryPort surgeryChildrenQueryPort) {
         this.repository = repository;
         this.surgeryChildrenQueryPort = surgeryChildrenQueryPort;

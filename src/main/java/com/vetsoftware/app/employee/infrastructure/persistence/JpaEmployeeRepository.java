@@ -18,9 +18,8 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     private final EmployeeJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaEmployeeRepository(EmployeeJpaRepository jpaRepository,
-                                  EmployeeJpaMapper mapper,
-                                  CompanyJpaRepository companyJpaRepository) {
+    public JpaEmployeeRepository(EmployeeJpaRepository jpaRepository, EmployeeJpaMapper mapper,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -28,7 +27,8 @@ public class JpaEmployeeRepository implements EmployeeRepository {
 
     @Override
     public Employee save(Employee employee) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(employee.getCompany().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(employee.getCompany().id());
         EmployeeJpaEntity saved = jpaRepository.save(mapper.toJpa(employee, company));
         return mapper.toDomain(saved, employee.getCompany());
     }
@@ -61,26 +61,32 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     @Override
     public List<Employee> findAllByCompanyIdIncludingDisabled(Long companyId) {
         return jpaRepository.findAllByCompanyIdIncludingDisabled(companyId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override
     public PageResult<Employee> search(SearchEmployeesCommand command) {
         String q = command.query() == null || command.query().isBlank()
-            ? null : "%" + command.query().trim() + "%";
-        // El ORDER BY va embebido en la query nativa (evita el manejo de Sort en queries nativas).
+                ? null
+                : "%" + command.query().trim() + "%";
+        // El ORDER BY va embebido en la query nativa (evita el manejo de Sort en
+        // queries nativas).
         PageRequest pageRequest = PageRequest.of(command.page(), command.pageSize());
-        Page<EmployeeJpaEntity> page = jpaRepository.searchByCompanyIncludingDisabled(
-            command.companyId(), q, pageRequest);
+        Page<EmployeeJpaEntity> page = jpaRepository
+                .searchByCompanyIncludingDisabled(command.companyId(), q, pageRequest);
         List<Employee> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     @Override
     public void delete(Long id) {
-        // Soft-delete vía UPDATE nativo (equivalente al @SQLDelete). No usamos deleteById para no disparar
-        // el flush de entidades: si hay employee_roles gestionados del empleado en la sesión, provocaría un
+        // Soft-delete vía UPDATE nativo (equivalente al @SQLDelete). No usamos
+        // deleteById para no
+        // disparar
+        // el flush de entidades: si hay employee_roles gestionados del empleado en la
+        // sesión,
+        // provocaría un
         // TransientObjectException. El UPDATE nativo + clearAutomatically lo evita.
         jpaRepository.deactivate(id);
     }

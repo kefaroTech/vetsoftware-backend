@@ -15,9 +15,7 @@ public class DeleteTaxService implements DeleteTaxUseCase {
     private final TaxRepository repository;
     private final TaxChildrenQueryPort taxChildrenQueryPort;
 
-    public DeleteTaxService(
-            TaxRepository repository,
-            TaxChildrenQueryPort taxChildrenQueryPort) {
+    public DeleteTaxService(TaxRepository repository, TaxChildrenQueryPort taxChildrenQueryPort) {
         this.repository = repository;
         this.taxChildrenQueryPort = taxChildrenQueryPort;
     }
@@ -25,7 +23,8 @@ public class DeleteTaxService implements DeleteTaxUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new TaxNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new TaxNotFoundException(id));
         if (taxChildrenQueryPort.existsActiveByTaxId(id)) {
             throw new TaxHasActiveChildrenException(id, "product/service");
         }

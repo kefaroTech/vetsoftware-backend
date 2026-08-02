@@ -18,8 +18,7 @@ public class FindCityService implements FindCityUseCase {
 
     @Override
     public CityDto findById(Long id) {
-        return repository.findById(id)
-                .map(CityDto::from)
+        return repository.findById(id).map(CityDto::from)
                 .orElseThrow(() -> new CityNotFoundException(id));
     }
 }

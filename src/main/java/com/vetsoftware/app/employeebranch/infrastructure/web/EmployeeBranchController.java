@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Gestión del alcance por sede de un empleado (multi-sucursal). El {@code companyId} lo deriva el backend del
- * contexto (nunca lo elige el cliente); el ownership se valida en el {@code @PreAuthorize} de cada use case.
+ * Gestión del alcance por sede de un empleado (multi-sucursal). El
+ * {@code companyId} lo deriva el backend del contexto (nunca lo elige el
+ * cliente); el ownership se valida en el {@code @PreAuthorize} de cada use
+ * case.
  */
 @RestController
 @RequestMapping("/employees/{employeeId}/branches")
@@ -30,8 +32,7 @@ public class EmployeeBranchController {
     private final Authz authz;
 
     public EmployeeBranchController(GetEmployeeBranchesUseCase getUseCase,
-                                    SetEmployeeBranchesUseCase setUseCase,
-                                    Authz authz) {
+            SetEmployeeBranchesUseCase setUseCase, Authz authz) {
         this.getUseCase = getUseCase;
         this.setUseCase = setUseCase;
         this.authz = authz;
@@ -45,18 +46,20 @@ public class EmployeeBranchController {
 
     @PutMapping
     public EmployeeBranchesResponse set(@PathVariable Long employeeId,
-                                        @Valid @RequestBody SetEmployeeBranchesRequest request) {
+            @Valid @RequestBody SetEmployeeBranchesRequest request) {
         boolean allBranches = request.allBranches();
         List<Long> branchIds = request.branchIds();
-        // "Todas" significa todas las sedes del alcance explícito del actor; nunca toda la empresa por comodín.
+        // "Todas" significa todas las sedes del alcance explícito del actor; nunca toda
+        // la empresa por
+        // comodín.
         if (allBranches) {
             allBranches = false;
             branchIds = new ArrayList<>(authz.currentBranchIds());
         } else {
             authz.requireAssignableBranches(branchIds);
         }
-        EmployeeBranchesDto dto = setUseCase.execute(new SetEmployeeBranchesCommand(
-            employeeId, authz.currentCompanyId(), allBranches, branchIds));
+        EmployeeBranchesDto dto = setUseCase.execute(new SetEmployeeBranchesCommand(employeeId,
+                authz.currentCompanyId(), allBranches, branchIds));
         return new EmployeeBranchesResponse(dto.employeeId(), dto.branchIds());
     }
 }

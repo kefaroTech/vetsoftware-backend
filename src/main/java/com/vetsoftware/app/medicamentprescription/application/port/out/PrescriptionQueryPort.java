@@ -5,5 +5,6 @@ import java.util.Optional;
 
 public interface PrescriptionQueryPort {
     Optional<PrescriptionRef> findById(Long prescriptionId);
+
     Optional<PrescriptionRef> findByIdAndCompanyId(Long prescriptionId, Long companyId);
 }

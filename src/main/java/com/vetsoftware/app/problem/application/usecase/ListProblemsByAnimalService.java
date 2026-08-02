@@ -19,7 +19,7 @@ public class ListProblemsByAnimalService implements ListProblemsByAnimalUseCase 
 
     @Override
     public List<ProblemDto> execute(ListProblemsByAnimalQuery query) {
-        return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId())
-            .stream().map(ProblemDto::from).toList();
+        return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId()).stream()
+                .map(ProblemDto::from).toList();
     }
 }

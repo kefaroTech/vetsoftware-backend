@@ -23,9 +23,8 @@ public class JpaSupplierRepository implements SupplierRepository {
     private final SupplierJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaSupplierRepository(SupplierJpaRepository jpaRepository,
-                                 SupplierJpaMapper mapper,
-                                 CompanyJpaRepository companyJpaRepository) {
+    public JpaSupplierRepository(SupplierJpaRepository jpaRepository, SupplierJpaMapper mapper,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -33,7 +32,8 @@ public class JpaSupplierRepository implements SupplierRepository {
 
     @Override
     public Supplier save(Supplier supplier) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(supplier.getCompany().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(supplier.getCompany().id());
         SupplierJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(supplier, company));
         return mapper.toDomain(saved, supplier.getCompany());
     }
@@ -70,25 +70,26 @@ public class JpaSupplierRepository implements SupplierRepository {
 
     @Override
     public List<Supplier> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
     public PageResult<Supplier> search(SearchSuppliersCommand command) {
         Specification<SupplierJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "createdDate"));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<SupplierJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<Supplier> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<SupplierJpaEntity> buildSpec(SearchSuppliersCommand command) {
         return (root, query, cb) -> {
-            // fetch-join del @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            // fetch-join del @ManyToOne solo en la query de datos (no en la de count) para
+            // evitar N+1
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("company", JoinType.LEFT);
                 query.distinct(true);

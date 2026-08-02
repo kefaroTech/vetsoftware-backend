@@ -19,6 +19,6 @@ public class FindOpenAccountService implements FindOpenAccountUseCase {
     @Override
     public OpenAccountDto findById(Long id, Long companyId) {
         return OpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new OpenAccountNotFoundException(id)));
+                .orElseThrow(() -> new OpenAccountNotFoundException(id)));
     }
 }

@@ -34,11 +34,9 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     private final BranchJpaRepository branchJpaRepository;
 
     public JpaOpenAccountRepository(OpenAccountJpaRepository jpaRepository,
-                                    OpenAccountJpaMapper mapper,
-                                    OwnerJpaRepository ownerJpaRepository,
-                                    CompanyJpaRepository companyJpaRepository,
-                                    EmployeeJpaRepository employeeJpaRepository,
-                                    BranchJpaRepository branchJpaRepository) {
+            OpenAccountJpaMapper mapper, OwnerJpaRepository ownerJpaRepository,
+            CompanyJpaRepository companyJpaRepository, EmployeeJpaRepository employeeJpaRepository,
+            BranchJpaRepository branchJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.ownerJpaRepository = ownerJpaRepository;
@@ -50,16 +48,18 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     @Override
     public OpenAccount save(OpenAccount openAccount) {
         OwnerJpaEntity owner = ownerJpaRepository.getReferenceById(openAccount.getOwner().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(openAccount.getCompany().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(openAccount.getCompany().id());
         BranchJpaEntity branch = branchJpaRepository.getReferenceById(openAccount.getBranch().id());
-        EmployeeJpaEntity createdBy = employeeJpaRepository.getReferenceById(openAccount.getCreatedBy().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(openAccount.getCreatedBy().id());
         EmployeeJpaEntity closedBy = openAccount.getClosedBy() != null
-            ? employeeJpaRepository.getReferenceById(openAccount.getClosedBy().id())
-            : null;
-        OpenAccountJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(openAccount, owner, company, branch, createdBy, closedBy));
+                ? employeeJpaRepository.getReferenceById(openAccount.getClosedBy().id())
+                : null;
+        OpenAccountJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(openAccount, owner, company, branch, createdBy, closedBy));
         return mapper.toDomain(saved, openAccount.getOwner(), openAccount.getCompany(),
-            openAccount.getBranch(), openAccount.getCreatedBy(), openAccount.getClosedBy());
+                openAccount.getBranch(), openAccount.getCreatedBy(), openAccount.getClosedBy());
     }
 
     @Override
@@ -90,31 +90,31 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     @Override
     public List<OpenAccount> findAllByCompanyId(Long companyId, Long branchId) {
         return jpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override
     public boolean existsActiveByOwnerIdAndBranchId(Long ownerId, Long branchId) {
-        return jpaRepository.existsByOwnerIdAndBranchIdAndStatusAndEnabledTrue(
-            ownerId, branchId, OpenAccountStatus.OPEN);
+        return jpaRepository.existsByOwnerIdAndBranchIdAndStatusAndEnabledTrue(ownerId, branchId,
+                OpenAccountStatus.OPEN);
     }
 
     @Override
     public PageResult<OpenAccount> search(SearchOpenAccountsCommand command) {
         Specification<OpenAccountJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "createdDate"));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<OpenAccountJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<OpenAccount> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<OpenAccountJpaEntity> buildSpec(SearchOpenAccountsCommand command) {
         return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count)
+            // para evitar N+1
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("owner", JoinType.LEFT);
                 root.fetch("company", JoinType.LEFT);

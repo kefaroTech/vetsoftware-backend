@@ -6,9 +6,15 @@ import java.util.Optional;
 
 public interface SystemUserPermissionRepository {
     SystemUserPermission save(SystemUserPermission systemUserPermission);
+
     Optional<SystemUserPermission> findById(Long id);
+
     List<SystemUserPermission> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
-    Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId, Long systemPermissionId);
+
+    Optional<Long> findDisabledIdBySystemUserAndSystemPermission(Long systemUserId,
+            Long systemPermissionId);
 }

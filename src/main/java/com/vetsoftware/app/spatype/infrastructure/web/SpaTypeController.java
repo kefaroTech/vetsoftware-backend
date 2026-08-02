@@ -27,12 +27,9 @@ public class SpaTypeController {
     private final DeleteSpaTypeUseCase deleteUseCase;
     private final ReactivateSpaTypeUseCase reactivateUseCase;
 
-    public SpaTypeController(CreateSpaTypeUseCase createUseCase,
-                             UpdateSpaTypeUseCase updateUseCase,
-                             FindSpaTypeUseCase findUseCase,
-                             ListSpaTypesUseCase listUseCase,
-                             DeleteSpaTypeUseCase deleteUseCase,
-                             ReactivateSpaTypeUseCase reactivateUseCase) {
+    public SpaTypeController(CreateSpaTypeUseCase createUseCase, UpdateSpaTypeUseCase updateUseCase,
+            FindSpaTypeUseCase findUseCase, ListSpaTypesUseCase listUseCase,
+            DeleteSpaTypeUseCase deleteUseCase, ReactivateSpaTypeUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -44,8 +41,8 @@ public class SpaTypeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SpaTypeResponse create(@Valid @RequestBody CreateSpaTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateSpaTypeCommand(request.name(), request.description())));
+        return toResponse(createUseCase
+                .execute(new CreateSpaTypeCommand(request.name(), request.description())));
     }
 
     @GetMapping
@@ -60,9 +57,9 @@ public class SpaTypeController {
 
     @PutMapping("/{id}")
     public SpaTypeResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateSpaTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateSpaTypeCommand(id, request.name(), request.description())));
+            @Valid @RequestBody UpdateSpaTypeRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateSpaTypeCommand(id, request.name(), request.description())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,6 +74,7 @@ public class SpaTypeController {
     }
 
     private SpaTypeResponse toResponse(SpaTypeDto dto) {
-        return new SpaTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
+        return new SpaTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(),
+                dto.enabled());
     }
 }

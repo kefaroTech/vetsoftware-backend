@@ -24,16 +24,46 @@ public class PurchaseOrderLineJpaEntity {
     @Column(name = "quantity_received", nullable = false)
     private int quantityReceived;
 
-    protected PurchaseOrderLineJpaEntity() {}
+    protected PurchaseOrderLineJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public ProductJpaEntity getProduct() { return product; }
-    public void setProduct(ProductJpaEntity product) { this.product = product; }
-    public int getQuantityOrdered() { return quantityOrdered; }
-    public void setQuantityOrdered(int quantityOrdered) { this.quantityOrdered = quantityOrdered; }
-    public BigDecimal getUnitCost() { return unitCost; }
-    public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }
-    public int getQuantityReceived() { return quantityReceived; }
-    public void setQuantityReceived(int quantityReceived) { this.quantityReceived = quantityReceived; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public ProductJpaEntity getProduct() {
+        return product;
+    }
+
+    public void setProduct(ProductJpaEntity product) {
+        this.product = product;
+    }
+
+    public int getQuantityOrdered() {
+        return quantityOrdered;
+    }
+
+    public void setQuantityOrdered(int quantityOrdered) {
+        this.quantityOrdered = quantityOrdered;
+    }
+
+    public BigDecimal getUnitCost() {
+        return unitCost;
+    }
+
+    public void setUnitCost(BigDecimal unitCost) {
+        this.unitCost = unitCost;
+    }
+
+    public int getQuantityReceived() {
+        return quantityReceived;
+    }
+
+    public void setQuantityReceived(int quantityReceived) {
+        this.quantityReceived = quantityReceived;
+    }
 }

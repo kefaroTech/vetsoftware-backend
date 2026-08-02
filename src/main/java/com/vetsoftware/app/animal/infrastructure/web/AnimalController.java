@@ -9,10 +9,9 @@ import com.vetsoftware.app.animal.infrastructure.web.request.UpdateAnimalRequest
 import com.vetsoftware.app.animal.infrastructure.web.response.*;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/animals")
@@ -27,10 +26,9 @@ public class AnimalController {
     private final Authz authz;
 
     public AnimalController(CreateAnimalUseCase createUseCase, UpdateAnimalUseCase updateUseCase,
-                            FindAnimalUseCase findUseCase, ListAnimalsUseCase listUseCase,
-                            ListAnimalsByOwnerUseCase listByOwnerUseCase,
-                            DeleteAnimalUseCase deleteUseCase,
-                            ReactivateAnimalUseCase reactivateUseCase, Authz authz) {
+            FindAnimalUseCase findUseCase, ListAnimalsUseCase listUseCase,
+            ListAnimalsByOwnerUseCase listByOwnerUseCase, DeleteAnimalUseCase deleteUseCase,
+            ReactivateAnimalUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -44,24 +42,24 @@ public class AnimalController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AnimalResponse create(@Valid @RequestBody CreateAnimalRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateAnimalCommand(
-                        request.name(), request.code(), request.specieId(), request.breedId(),
-                        request.ownerId(), request.gender(), request.weightType(), request.animalType(),
-                        request.reproductiveState(), request.colorId(), request.bod(),
-                        request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                        authz.currentCompanyId())));
+        return toResponse(
+                createUseCase.execute(new CreateAnimalCommand(request.name(), request.code(),
+                        request.specieId(), request.breedId(), request.ownerId(), request.gender(),
+                        request.weightType(), request.animalType(), request.reproductiveState(),
+                        request.colorId(), request.bod(), request.weight(), request.size(),
+                        request.deceased(), request.deceasedDate(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<AnimalResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/by-owner/{ownerId}")
     public List<AnimalResponse> listByOwner(@PathVariable Long ownerId) {
-        return listByOwnerUseCase.listByOwner(ownerId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listByOwnerUseCase.listByOwner(ownerId, authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -70,14 +68,14 @@ public class AnimalController {
     }
 
     @PutMapping("/{id}")
-    public AnimalResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAnimalRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateAnimalCommand(
-                        id, request.name(), request.code(), request.specieId(), request.breedId(),
-                        request.ownerId(), request.gender(), request.weightType(), request.animalType(),
-                        request.reproductiveState(), request.colorId(), request.bod(),
-                        request.weight(), request.size(), request.deceased(), request.deceasedDate(),
-                        authz.currentCompanyId())));
+    public AnimalResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateAnimalRequest request) {
+        return toResponse(
+                updateUseCase.execute(new UpdateAnimalCommand(id, request.name(), request.code(),
+                        request.specieId(), request.breedId(), request.ownerId(), request.gender(),
+                        request.weightType(), request.animalType(), request.reproductiveState(),
+                        request.colorId(), request.bod(), request.weight(), request.size(),
+                        request.deceased(), request.deceasedDate(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -97,18 +95,13 @@ public class AnimalController {
         OwnerSummaryDto o = dto.owner();
         CompanySummaryDto c = dto.company();
         AnimalColorSummaryDto co = dto.color();
-        return new AnimalResponse(
-                dto.id(), dto.name(), dto.code(),
-                new SpecieSummary(s.id(), s.name()),
-                new BreedSummary(b.id(), b.name()),
-                new OwnerSummary(o.id(), o.name(), o.document()),
-                dto.gender(), dto.weightType(), dto.animalType(),
-                dto.reproductiveState(),
-                new AnimalColorSummary(co.id(), co.name()),
-                dto.bod(),
-                dto.weight(), dto.weightMeasuredAt(), dto.size(), dto.deceased(), dto.deceasedDate(),
-                new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate(), dto.enabled()
-        );
+        return new AnimalResponse(dto.id(), dto.name(), dto.code(),
+                new SpecieSummary(s.id(), s.name()), new BreedSummary(b.id(), b.name()),
+                new OwnerSummary(o.id(), o.name(), o.document()), dto.gender(), dto.weightType(),
+                dto.animalType(), dto.reproductiveState(),
+                new AnimalColorSummary(co.id(), co.name()), dto.bod(), dto.weight(),
+                dto.weightMeasuredAt(), dto.size(), dto.deceased(), dto.deceasedDate(),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

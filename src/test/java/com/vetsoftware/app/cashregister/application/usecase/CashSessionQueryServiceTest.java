@@ -24,8 +24,10 @@ class CashSessionQueryServiceTest {
         repository = new FakeCashSessionRepository();
         service = new CashSessionQueryService(repository);
 
-        repository.save(CashSession.open(COMPANY, BRANCH_ONE, 100L, "principal", 101L, BigDecimal.TEN, null));
-        repository.save(CashSession.open(COMPANY, BRANCH_TWO, 200L, "principal", 102L, BigDecimal.ONE, null));
+        repository.save(CashSession.open(COMPANY, BRANCH_ONE, 100L, "principal", 101L,
+                BigDecimal.TEN, null));
+        repository.save(CashSession.open(COMPANY, BRANCH_TWO, 200L, "principal", 102L,
+                BigDecimal.ONE, null));
         repository.save(CashSession.open(2L, 30L, 300L, "principal", 103L, BigDecimal.ZERO, null));
     }
 
@@ -41,6 +43,6 @@ class CashSessionQueryServiceTest {
         List<CashSessionView> result = service.listOpen(COMPANY, null);
 
         assertThat(result).extracting(CashSessionView::branchId)
-            .containsExactlyInAnyOrder(BRANCH_ONE, BRANCH_TWO);
+                .containsExactlyInAnyOrder(BRANCH_ONE, BRANCH_TWO);
     }
 }

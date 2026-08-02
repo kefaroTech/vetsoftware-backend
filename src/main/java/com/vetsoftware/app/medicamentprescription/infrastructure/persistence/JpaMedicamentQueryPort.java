@@ -23,6 +23,6 @@ public class JpaMedicamentQueryPort implements MedicamentQueryPort {
     @Override
     public Optional<MedicamentRef> findAvailableById(Long medicamentId, Long companyId) {
         return medicamentJpaRepository.findAvailableById(medicamentId, companyId)
-            .map(e -> new MedicamentRef(e.getId(), e.getName()));
+                .map(e -> new MedicamentRef(e.getId(), e.getName()));
     }
 }

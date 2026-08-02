@@ -33,20 +33,28 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Resolución de sede al abrir cuenta (multi-sucursal). Reglas: sede solicitada debe ser de la empresa y estar
- * ACTIVA (inactiva ⇒ error distinto de inexistente); sin branchId, la sede ACTIVA por defecto. Además la
- * invariante del get-or-create: una cuenta OPEN se reutiliza únicamente dentro de la misma sede; el mismo dueño
- * puede mantener cuentas independientes en sedes diferentes.
+ * Resolución de sede al abrir cuenta (multi-sucursal). Reglas: sede solicitada
+ * debe ser de la empresa y estar ACTIVA (inactiva ⇒ error distinto de
+ * inexistente); sin branchId, la sede ACTIVA por defecto. Además la invariante
+ * del get-or-create: una cuenta OPEN se reutiliza únicamente dentro de la misma
+ * sede; el mismo dueño puede mantener cuentas independientes en sedes
+ * diferentes.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateOpenAccountServiceBranchTest {
 
-    @Mock private OpenAccountRepository repository;
-    @Mock private OwnerQueryPort ownerQueryPort;
-    @Mock private CompanyQueryPort companyQueryPort;
-    @Mock private EmployeeQueryPort employeeQueryPort;
-    @Mock private BranchQueryPort branchQueryPort;
-    @InjectMocks private CreateOpenAccountService service;
+    @Mock
+    private OpenAccountRepository repository;
+    @Mock
+    private OwnerQueryPort ownerQueryPort;
+    @Mock
+    private CompanyQueryPort companyQueryPort;
+    @Mock
+    private EmployeeQueryPort employeeQueryPort;
+    @Mock
+    private BranchQueryPort branchQueryPort;
+    @InjectMocks
+    private CreateOpenAccountService service;
 
     private static final long COMPANY = 9L;
     private final OwnerRef owner = new OwnerRef(2L, "Juan", "CC123");
@@ -56,7 +64,8 @@ class CreateOpenAccountServiceBranchTest {
     private final BranchRef principal = new BranchRef(1L, "Principal", "PRINCIPAL");
 
     private static PageResult<OpenAccount> page(OpenAccount... accounts) {
-        return new PageResult<>(List.of(accounts), 0, 50, accounts.length, accounts.length == 0 ? 0 : 1);
+        return new PageResult<>(List.of(accounts), 0, 50, accounts.length,
+                accounts.length == 0 ? 0 : 1);
     }
 
     private void stubNewAccountLookups() {
@@ -70,7 +79,8 @@ class CreateOpenAccountServiceBranchTest {
     void crea_con_la_sede_solicitada_cuando_es_valida_y_activa() {
         when(repository.search(any())).thenReturn(page());
         stubNewAccountLookups();
-        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(requested));
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(requested));
 
         OpenAccountDto dto = service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L));
 
@@ -80,8 +90,8 @@ class CreateOpenAccountServiceBranchTest {
         assertThat(saved.getBranch()).isEqualTo(requested);
         assertThat(saved.getStatus()).isEqualTo(OpenAccountStatus.OPEN);
         assertThat(dto.branch().id()).isEqualTo(11L);
-        ArgumentCaptor<SearchOpenAccountsCommand> searchCaptor =
-            ArgumentCaptor.forClass(SearchOpenAccountsCommand.class);
+        ArgumentCaptor<SearchOpenAccountsCommand> searchCaptor = ArgumentCaptor
+                .forClass(SearchOpenAccountsCommand.class);
         verify(repository).search(searchCaptor.capture());
         assertThat(searchCaptor.getValue().branchId()).isEqualTo(11L);
         verify(branchQueryPort, never()).findDefaultActiveByCompanyId(any());
@@ -91,7 +101,8 @@ class CreateOpenAccountServiceBranchTest {
     void crea_con_la_sede_activa_por_defecto_cuando_no_viene_branchId() {
         when(repository.search(any())).thenReturn(page());
         stubNewAccountLookups();
-        when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY)).thenReturn(Optional.of(principal));
+        when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY))
+                .thenReturn(Optional.of(principal));
 
         OpenAccountDto dto = service.execute(new CreateOpenAccountCommand(2L, null, COMPANY, 4L));
 
@@ -107,10 +118,10 @@ class CreateOpenAccountServiceBranchTest {
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
         when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Branch is not active")
-            .hasMessageContaining("11");
+        assertThatThrownBy(
+                () -> service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Branch is not active").hasMessageContaining("11");
 
         verify(repository, never()).save(any());
         verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
@@ -121,9 +132,10 @@ class CreateOpenAccountServiceBranchTest {
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
         when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Branch not found");
+        assertThatThrownBy(
+                () -> service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Branch not found");
 
         verify(repository, never()).save(any());
         verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
@@ -133,9 +145,10 @@ class CreateOpenAccountServiceBranchTest {
     void falla_si_la_empresa_no_tiene_ninguna_sede_activa_y_no_escribe() {
         when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(new CreateOpenAccountCommand(2L, null, COMPANY, 4L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Company has no active branch");
+        assertThatThrownBy(
+                () -> service.execute(new CreateOpenAccountCommand(2L, null, COMPANY, 4L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Company has no active branch");
 
         verify(repository, never()).save(any());
         verifyNoInteractions(repository, ownerQueryPort, companyQueryPort, employeeQueryPort);
@@ -144,7 +157,8 @@ class CreateOpenAccountServiceBranchTest {
     @Test
     void reutiliza_la_cuenta_open_existente_en_la_misma_sede() {
         OpenAccount existing = OpenAccount.create(owner, company, requested, createdBy);
-        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(requested));
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(requested));
         when(repository.search(any())).thenReturn(page(existing));
 
         OpenAccountDto dto = service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L));
@@ -160,14 +174,16 @@ class CreateOpenAccountServiceBranchTest {
         closed.changeStatus(OpenAccountStatus.CLOSE, createdBy, null); // saldo 0 ⇒ cierre válido
         when(repository.search(any())).thenReturn(page(closed));
         stubNewAccountLookups();
-        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.of(requested));
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(requested));
 
         service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L));
 
         ArgumentCaptor<OpenAccount> captor = ArgumentCaptor.forClass(OpenAccount.class);
         verify(repository).save(captor.capture());
         OpenAccount saved = captor.getValue();
-        assertThat(saved.getStatus()).as("una cuenta cerrada no se reutiliza").isEqualTo(OpenAccountStatus.OPEN);
+        assertThat(saved.getStatus()).as("una cuenta cerrada no se reutiliza")
+                .isEqualTo(OpenAccountStatus.OPEN);
         assertThat(saved.getBranch()).isEqualTo(requested);
     }
 }

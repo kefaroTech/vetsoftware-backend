@@ -8,25 +8,42 @@ import java.util.Optional;
 
 public interface ProductRepository {
     Product save(Product product);
+
     Optional<Product> findById(Long id);
+
     Optional<Product> findByIdAndCompanyId(Long id, Long companyId);
 
-    /** ¿Existe ya un producto ACTIVO con este code en la empresa? (unicidad de SKU por empresa) */
+    /**
+     * ¿Existe ya un producto ACTIVO con este code en la empresa? (unicidad de SKU
+     * por empresa)
+     */
     boolean existsByCompanyIdAndCode(Long companyId, String code);
 
     /** Igual, excluyendo el propio producto (para validar en actualización). */
     boolean existsByCompanyIdAndCodeExcludingId(Long companyId, String code, Long id);
 
-    /** ¿Existe ya un producto ACTIVO con este name en la empresa? (unicidad de nombre por empresa) */
+    /**
+     * ¿Existe ya un producto ACTIVO con este name en la empresa? (unicidad de
+     * nombre por empresa)
+     */
     boolean existsByCompanyIdAndName(Long companyId, String name);
 
     /** Igual, excluyendo el propio producto (para validar en actualización). */
     boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
+
     List<Product> findAll();
+
     List<Product> findAllByCompanyId(Long companyId);
-    /** Productos PAUSADOS (enabled=false) de la empresa, para el listado de reactivación. */
+
+    /**
+     * Productos PAUSADOS (enabled=false) de la empresa, para el listado de
+     * reactivación.
+     */
     List<Product> findAllDisabledByCompanyId(Long companyId);
+
     PageResult<Product> search(SearchProductsCommand command);
+
     void delete(Long id);
+
     int reactivate(Long id, Long companyId);
 }

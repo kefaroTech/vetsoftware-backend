@@ -19,11 +19,9 @@ import org.springframework.stereotype.Component;
 public class LaboratoryTestJpaMapper {
 
     public LaboratoryTestJpaEntity toJpa(LaboratoryTest laboratoryTest,
-                                         LaboratoryTestTypeJpaEntity testType,
-                                         AnimalJpaEntity animal,
-                                         ConsultationJpaEntity consultation,
-                                         CompanyJpaEntity company,
-                                         EmployeeJpaEntity processedBy) {
+            LaboratoryTestTypeJpaEntity testType, AnimalJpaEntity animal,
+            ConsultationJpaEntity consultation, CompanyJpaEntity company,
+            EmployeeJpaEntity processedBy) {
         LaboratoryTestJpaEntity entity = new LaboratoryTestJpaEntity();
         entity.setId(laboratoryTest.getId());
         entity.setDate(laboratoryTest.getDate());
@@ -49,24 +47,23 @@ public class LaboratoryTestJpaMapper {
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
         EmployeeJpaEntity pb = entity.getProcessedBy();
-        return toDomain(entity,
-            new LaboratoryTestTypeRef(tt.getId(), tt.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            pb == null ? null : new EmployeeRef(pb.getId(), pb.getEmployeeCode(), pb.getName()));
+        return toDomain(entity, new LaboratoryTestTypeRef(tt.getId(), tt.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                pb == null
+                        ? null
+                        : new EmployeeRef(pb.getId(), pb.getEmployeeCode(), pb.getName()));
     }
 
-    public LaboratoryTest toDomain(LaboratoryTestJpaEntity entity, LaboratoryTestTypeRef testTypeRef,
-                                   AnimalRef animalRef, ConsultationRef consultationRef,
-                                   CompanyRef companyRef, EmployeeRef processedByRef) {
-        return new LaboratoryTest(
-            entity.getId(), entity.getDate(), testTypeRef,
-            entity.getQuantity(), entity.getDiagnosis(),
-            LaboratoryTestStatus.valueOf(entity.getStatus()),
-            LaboratoryTestPriority.valueOf(entity.getPrioridad()),
-            animalRef, consultationRef, companyRef, entity.getBranchId(),
-            processedByRef, entity.getProcessedDate(),
-            entity.getCreatedDate(), entity.isEnabled());
+    public LaboratoryTest toDomain(LaboratoryTestJpaEntity entity,
+            LaboratoryTestTypeRef testTypeRef, AnimalRef animalRef, ConsultationRef consultationRef,
+            CompanyRef companyRef, EmployeeRef processedByRef) {
+        return new LaboratoryTest(entity.getId(), entity.getDate(), testTypeRef,
+                entity.getQuantity(), entity.getDiagnosis(),
+                LaboratoryTestStatus.valueOf(entity.getStatus()),
+                LaboratoryTestPriority.valueOf(entity.getPrioridad()), animalRef, consultationRef,
+                companyRef, entity.getBranchId(), processedByRef, entity.getProcessedDate(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

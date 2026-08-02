@@ -43,15 +43,11 @@ public class SurgeryController {
     private final ReactivateSurgeryUseCase reactivateUseCase;
     private final Authz authz;
 
-    public SurgeryController(CreateSurgeryUseCase createUseCase,
-                             UpdateSurgeryUseCase updateUseCase,
-                             ChangeSurgeryStatusUseCase changeStatusUseCase,
-                             FindSurgeryUseCase findUseCase,
-                             ListSurgeriesUseCase listUseCase,
-                             ListSurgeriesByAnimalUseCase listByAnimalUseCase,
-                             DeleteSurgeryUseCase deleteUseCase,
-                             ReactivateSurgeryUseCase reactivateUseCase,
-                             Authz authz) {
+    public SurgeryController(CreateSurgeryUseCase createUseCase, UpdateSurgeryUseCase updateUseCase,
+            ChangeSurgeryStatusUseCase changeStatusUseCase, FindSurgeryUseCase findUseCase,
+            ListSurgeriesUseCase listUseCase, ListSurgeriesByAnimalUseCase listByAnimalUseCase,
+            DeleteSurgeryUseCase deleteUseCase, ReactivateSurgeryUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -66,11 +62,10 @@ public class SurgeryController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SurgeryResponse create(@Valid @RequestBody CreateSurgeryRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSurgeryCommand(
-                request.date(), request.surgeryTypeId(), request.description(),
-                request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreateSurgeryCommand(request.date(),
+                request.surgeryTypeId(), request.description(), request.medicament(),
+                request.observations(), request.complications(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -90,19 +85,18 @@ public class SurgeryController {
 
     @PutMapping("/{id}")
     public SurgeryResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateSurgeryRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSurgeryCommand(
-                id, request.date(), request.surgeryTypeId(), request.description(),
-                request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateSurgeryRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSurgeryCommand(id, request.date(),
+                request.surgeryTypeId(), request.description(), request.medicament(),
+                request.observations(), request.complications(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/status")
     public SurgeryResponse changeStatus(@PathVariable Long id,
-                                        @Valid @RequestBody ChangeSurgeryStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(
-            new ChangeSurgeryStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
+            @Valid @RequestBody ChangeSurgeryStatusRequest request) {
+        return toResponse(changeStatusUseCase.execute(new ChangeSurgeryStatusCommand(id,
+                request.status(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -121,15 +115,11 @@ public class SurgeryController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
-        return new SurgeryResponse(
-            dto.id(), dto.date(),
-            new SurgeryTypeSummary(st.id(), st.name()),
-            dto.description(), dto.medicament(), dto.observations(), dto.complications(),
-            dto.status(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled());
+        return new SurgeryResponse(dto.id(), dto.date(), new SurgeryTypeSummary(st.id(), st.name()),
+                dto.description(), dto.medicament(), dto.observations(), dto.complications(),
+                dto.status(), new AnimalSummary(a.id(), a.name(), a.code()),
+                co == null ? null : new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

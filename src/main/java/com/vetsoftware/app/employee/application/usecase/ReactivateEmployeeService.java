@@ -21,8 +21,9 @@ public class ReactivateEmployeeService implements ReactivateEmployeeUseCase {
     @Transactional
     public EmployeeDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new EmployeeNotFoundException(id);
-        return EmployeeDto.from(repository.findById(id)
-            .orElseThrow(() -> new EmployeeNotFoundException(id)));
+        if (rows == 0)
+            throw new EmployeeNotFoundException(id);
+        return EmployeeDto
+                .from(repository.findById(id).orElseThrow(() -> new EmployeeNotFoundException(id)));
     }
 }

@@ -15,8 +15,7 @@ public class DeleteConsultationTypeService implements DeleteConsultationTypeUseC
     private final ConsultationTypeRepository repository;
     private final ConsultationChildrenQueryPort consultationChildrenQueryPort;
 
-    public DeleteConsultationTypeService(
-            ConsultationTypeRepository repository,
+    public DeleteConsultationTypeService(ConsultationTypeRepository repository,
             ConsultationChildrenQueryPort consultationChildrenQueryPort) {
         this.repository = repository;
         this.consultationChildrenQueryPort = consultationChildrenQueryPort;

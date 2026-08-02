@@ -12,8 +12,7 @@ class TokenCleanupPropertiesTest {
         TokenCleanupProperties properties = new TokenCleanupProperties();
         properties.setRetention(Duration.ZERO);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(properties::validate).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("retention");
     }
 
@@ -22,8 +21,7 @@ class TokenCleanupPropertiesTest {
         TokenCleanupProperties properties = new TokenCleanupProperties();
         properties.setMaxBatchesPerRun(101);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(properties::validate).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("max-batches-per-run");
     }
 }

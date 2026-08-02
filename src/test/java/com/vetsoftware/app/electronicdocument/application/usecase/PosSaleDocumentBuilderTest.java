@@ -45,9 +45,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Construcción del documento desde una venta de POS. Aquí se decide cuánto se transmite a la DIAN a
- * partir de un payload que viene del navegador, así que se verifica lo que evita un fraude de precio
- * (el servidor recalcula contra el catálogo) y la matemática de extracción de base por tarifa.
+ * Construcción del documento desde una venta de POS. Aquí se decide cuánto se
+ * transmite a la DIAN a partir de un payload que viene del navegador, así que
+ * se verifica lo que evita un fraude de precio (el servidor recalcula contra el
+ * catálogo) y la matemática de extracción de base por tarifa.
  */
 @ExtendWith(MockitoExtension.class)
 class PosSaleDocumentBuilderTest {
@@ -55,13 +56,20 @@ class PosSaleDocumentBuilderTest {
     private static final Long COMPANY = 9L;
     private static final BigDecimal UVT = new BigDecimal("49799");
 
-    @Mock private CompanyFiscalProfileQueryPort fiscalProfileQueryPort;
-    @Mock private SaleCustomerQueryPort saleCustomerQueryPort;
-    @Mock private CatalogLineQueryPort catalogLineQueryPort;
-    @Mock private SalePromotionQueryPort salePromotionQueryPort;
-    @Mock private ElectronicDocumentRepository repository;
-    @Mock private UvtQueryPort uvtQueryPort;
-    @Mock private BranchResolverPort branchResolverPort;
+    @Mock
+    private CompanyFiscalProfileQueryPort fiscalProfileQueryPort;
+    @Mock
+    private SaleCustomerQueryPort saleCustomerQueryPort;
+    @Mock
+    private CatalogLineQueryPort catalogLineQueryPort;
+    @Mock
+    private SalePromotionQueryPort salePromotionQueryPort;
+    @Mock
+    private ElectronicDocumentRepository repository;
+    @Mock
+    private UvtQueryPort uvtQueryPort;
+    @Mock
+    private BranchResolverPort branchResolverPort;
 
     private PosSaleDocumentBuilder builder;
 
@@ -85,13 +93,13 @@ class PosSaleDocumentBuilderTest {
     }
 
     private static IssuerSnapshot issuer() {
-        return new IssuerSnapshot("NIT", "900123456", "7", "Vet SAS", "RESPONSABLE",
-                "vet@x.co", List.of("O-13"));
+        return new IssuerSnapshot("NIT", "900123456", "7", "Vet SAS", "RESPONSABLE", "vet@x.co",
+                List.of("O-13"));
     }
 
     private static CatalogItem gravado19(String basePrice) {
-        return new CatalogItem("Alimento premium", TaxCategory.GRAVADO, TaxScheme.IVA,
-                bd("19"), bd(basePrice), 30L);
+        return new CatalogItem("Alimento premium", TaxCategory.GRAVADO, TaxScheme.IVA, bd("19"),
+                bd(basePrice), 30L);
     }
 
     private RegisterPosSaleCommand sale(List<SaleLine> lines, List<SalePayment> payments) {
@@ -99,13 +107,17 @@ class PosSaleDocumentBuilderTest {
                 lines, payments, "req-1", 4L, null);
     }
 
-    private ElectronicDocument buildProductSale(String catalogPrice, String clientPrice, String quantity) {
+    private ElectronicDocument buildProductSale(String catalogPrice, String clientPrice,
+            String quantity) {
         when(catalogLineQueryPort.findProduct(1L, COMPANY))
                 .thenReturn(Optional.of(gravado19(catalogPrice)));
-        BigDecimal total = bd(clientPrice).multiply(bd(quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
-        return builder.build(sale(
-                List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, bd(quantity), bd(clientPrice))),
-                List.of(new SalePayment(PaymentMeans.EFECTIVO, total))));
+        BigDecimal total = bd(clientPrice).multiply(bd(quantity)).setScale(2,
+                java.math.RoundingMode.HALF_UP);
+        return builder
+                .build(sale(
+                        List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, bd(quantity),
+                                bd(clientPrice))),
+                        List.of(new SalePayment(PaymentMeans.EFECTIVO, total))));
     }
 
     @Nested
@@ -141,12 +153,13 @@ class PosSaleDocumentBuilderTest {
 
         @Test
         void una_linea_exenta_conserva_esquema_iva_con_tarifa_cero_y_sin_impuesto() {
-            when(catalogLineQueryPort.findProduct(1L, COMPANY)).thenReturn(Optional.of(
-                    new CatalogItem("Medicamento exento", TaxCategory.EXENTO, TaxScheme.IVA,
-                            BigDecimal.ZERO, bd("40000"), 30L)));
+            when(catalogLineQueryPort.findProduct(1L, COMPANY))
+                    .thenReturn(Optional.of(new CatalogItem("Medicamento exento",
+                            TaxCategory.EXENTO, TaxScheme.IVA, BigDecimal.ZERO, bd("40000"), 30L)));
 
             ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("40000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("40000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("40000.00")))));
 
             ElectronicDocumentLine line = doc.getLines().getFirst();
@@ -158,12 +171,13 @@ class PosSaleDocumentBuilderTest {
 
         @Test
         void una_linea_excluida_viaja_sin_esquema_tributario() {
-            when(catalogLineQueryPort.findProduct(1L, COMPANY)).thenReturn(Optional.of(
-                    new CatalogItem("Producto excluido", TaxCategory.EXCLUIDO, null, null,
-                            bd("40000"), 30L)));
+            when(catalogLineQueryPort.findProduct(1L, COMPANY))
+                    .thenReturn(Optional.of(new CatalogItem("Producto excluido",
+                            TaxCategory.EXCLUIDO, null, null, bd("40000"), 30L)));
 
             ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("40000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("40000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("40000.00")))));
 
             ElectronicDocumentLine line = doc.getLines().getFirst();
@@ -174,7 +188,8 @@ class PosSaleDocumentBuilderTest {
         @Test
         void una_linea_general_del_pos_es_excluida_y_sin_esquema() {
             ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "Cargo libre", BigDecimal.ONE, bd("15000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "Cargo libre", BigDecimal.ONE,
+                            bd("15000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("15000.00")))));
 
             ElectronicDocumentLine line = doc.getLines().getFirst();
@@ -193,7 +208,8 @@ class PosSaleDocumentBuilderTest {
                     .thenReturn(Optional.of(gravado19("119000")));
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no coincide con el catalogo");
@@ -207,7 +223,8 @@ class PosSaleDocumentBuilderTest {
                     .thenReturn(Optional.of(gravado19("119000")));
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("500000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("500000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("500000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class);
         }
@@ -223,12 +240,13 @@ class PosSaleDocumentBuilderTest {
         void acepta_el_precio_con_la_promocion_activa_aplicada() {
             when(catalogLineQueryPort.findProduct(1L, COMPANY))
                     .thenReturn(Optional.of(gravado19("119000")));
-            when(salePromotionQueryPort.findActive(anyLong(), any())).thenReturn(List.of(
-                    new SalePromotion(PromotionType.DISCOUNT, ApplicationType.PRODUCT, 1L,
-                            ValueType.PERCENTAGE, bd("20"))));
+            when(salePromotionQueryPort.findActive(anyLong(), any()))
+                    .thenReturn(List.of(new SalePromotion(PromotionType.DISCOUNT,
+                            ApplicationType.PRODUCT, 1L, ValueType.PERCENTAGE, bd("20"))));
 
             ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("95200"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("95200"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("95200.00")))));
 
             assertThat(doc.getPayableAmount()).isEqualByComparingTo("95200.00");
@@ -239,12 +257,13 @@ class PosSaleDocumentBuilderTest {
             // El cliente no puede "renunciar" a la promo para inflar el documento.
             when(catalogLineQueryPort.findProduct(1L, COMPANY))
                     .thenReturn(Optional.of(gravado19("119000")));
-            when(salePromotionQueryPort.findActive(anyLong(), any())).thenReturn(List.of(
-                    new SalePromotion(PromotionType.DISCOUNT, ApplicationType.PRODUCT, 1L,
-                            ValueType.PERCENTAGE, bd("20"))));
+            when(salePromotionQueryPort.findActive(anyLong(), any()))
+                    .thenReturn(List.of(new SalePromotion(PromotionType.DISCOUNT,
+                            ApplicationType.PRODUCT, 1L, ValueType.PERCENTAGE, bd("20"))));
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("119000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("119000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("119000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class);
         }
@@ -254,7 +273,8 @@ class PosSaleDocumentBuilderTest {
             when(catalogLineQueryPort.findProduct(1L, COMPANY)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no pertenece a la empresa");
@@ -267,7 +287,8 @@ class PosSaleDocumentBuilderTest {
         @Test
         void rechaza_cantidad_cero_o_negativa() {
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ZERO, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ZERO,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("0.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("quantity must be > 0");
@@ -281,16 +302,17 @@ class PosSaleDocumentBuilderTest {
         @Test
         void rechaza_precio_unitario_negativo() {
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE, bd("-1"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("-1"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("-1.00"))))))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("unitPrice");
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("unitPrice");
         }
 
         @Test
         void una_linea_de_catalogo_exige_refId() {
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, null, null, BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, null, null, BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("requires refId");
@@ -299,7 +321,8 @@ class PosSaleDocumentBuilderTest {
         @Test
         void una_linea_general_exige_descripcion() {
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "  ", BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "  ", BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("requires a description");
@@ -310,9 +333,9 @@ class PosSaleDocumentBuilderTest {
             when(catalogLineQueryPort.findProduct(1L, COMPANY))
                     .thenReturn(Optional.of(gravado19("119000")));
 
-            ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("119000")),
-                            new SaleLine(SaleLineKind.GENERAL, null, "Cargo", BigDecimal.ONE, bd("1000"))),
+            ElectronicDocument doc = builder.build(sale(List.of(
+                    new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("119000")),
+                    new SaleLine(SaleLineKind.GENERAL, null, "Cargo", BigDecimal.ONE, bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("120000.00")))));
 
             assertThat(doc.getLines()).extracting(ElectronicDocumentLine::getLineNumber)
@@ -328,7 +351,8 @@ class PosSaleDocumentBuilderTest {
             when(fiscalProfileQueryPort.findByCompany(COMPANY)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("perfil fiscal");
@@ -339,7 +363,8 @@ class PosSaleDocumentBuilderTest {
             when(branchResolverPort.resolve(anyLong(), any())).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no tiene sucursal");
@@ -348,7 +373,8 @@ class PosSaleDocumentBuilderTest {
         @Test
         void el_consumidor_final_nunca_es_agente_retenedor() {
             ElectronicDocument doc = builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE, bd("10000000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("10000000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("10000000.00")))));
 
             assertThat(doc.getReteFuenteAmount()).isEqualByComparingTo("0");
@@ -358,20 +384,22 @@ class PosSaleDocumentBuilderTest {
 
         @Test
         void un_adquiriente_identificado_agente_retenedor_si_genera_retencion() {
-            when(fiscalProfileQueryPort.findByCompany(COMPANY)).thenReturn(Optional.of(
-                    new CompanyFiscalProfile(issuer(), bd("4"), bd("15"), bd("9.66"))));
+            when(fiscalProfileQueryPort.findByCompany(COMPANY)).thenReturn(
+                    Optional.of(new CompanyFiscalProfile(issuer(), bd("4"), bd("15"), bd("9.66"))));
             when(catalogLineQueryPort.findProduct(1L, COMPANY))
                     .thenReturn(Optional.of(gravado19("1190000")));
-            when(saleCustomerQueryPort.findOwner(55L, COMPANY)).thenReturn(Optional.of(
-                    new SaleCustomerQueryPort.SaleCustomer(
-                            com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot.finalConsumer(),
+            when(saleCustomerQueryPort.findOwner(55L, COMPANY))
+                    .thenReturn(Optional.of(new SaleCustomerQueryPort.SaleCustomer(
+                            com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot
+                                    .finalConsumer(),
                             true)));
 
             RegisterPosSaleCommand command = new RegisterPosSaleCommand(COMPANY,
                     ElectronicDocumentType.FE_VENTA, false, 55L,
-                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE, bd("1190000"))),
-                    List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1190000.00"))),
-                    "req-1", 4L, null);
+                    List.of(new SaleLine(SaleLineKind.PRODUCT, 1L, null, BigDecimal.ONE,
+                            bd("1190000"))),
+                    List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1190000.00"))), "req-1", 4L,
+                    null);
 
             ElectronicDocument doc = builder.build(command);
 
@@ -384,10 +412,12 @@ class PosSaleDocumentBuilderTest {
             when(branchResolverPort.resolve(COMPANY, null)).thenReturn(Optional.of(42L));
 
             builder.build(sale(
-                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE, bd("1000"))),
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("1000"))),
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00")))));
 
-            ArgumentCaptor<ElectronicDocument> captor = ArgumentCaptor.forClass(ElectronicDocument.class);
+            ArgumentCaptor<ElectronicDocument> captor = ArgumentCaptor
+                    .forClass(ElectronicDocument.class);
             verify(repository).save(captor.capture());
             assertThat(captor.getValue().getBranchId()).isEqualTo(42L);
             assertThat(captor.getValue().getIssuedByEmployeeId()).isEqualTo(4L);

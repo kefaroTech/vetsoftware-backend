@@ -11,7 +11,8 @@ public class JpaAnimalColorRepository implements AnimalColorRepository {
     private final AnimalColorJpaRepository jpaRepository;
     private final AnimalColorJpaMapper mapper;
 
-    public JpaAnimalColorRepository(AnimalColorJpaRepository jpaRepository, AnimalColorJpaMapper mapper) {
+    public JpaAnimalColorRepository(AnimalColorJpaRepository jpaRepository,
+            AnimalColorJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

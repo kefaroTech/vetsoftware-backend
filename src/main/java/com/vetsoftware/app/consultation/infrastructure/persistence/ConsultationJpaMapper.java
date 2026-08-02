@@ -14,9 +14,8 @@ import org.springframework.stereotype.Component;
 public class ConsultationJpaMapper {
 
     public ConsultationJpaEntity toJpa(Consultation consultation,
-                                       ConsultationTypeJpaEntity consultationType,
-                                       AnimalJpaEntity animal,
-                                       CompanyJpaEntity company) {
+            ConsultationTypeJpaEntity consultationType, AnimalJpaEntity animal,
+            CompanyJpaEntity company) {
         ConsultationJpaEntity entity = new ConsultationJpaEntity();
         entity.setId(consultation.getId());
         entity.setDate(consultation.getDate());
@@ -47,23 +46,20 @@ public class ConsultationJpaMapper {
         ConsultationTypeJpaEntity ct = entity.getConsultationType();
         AnimalJpaEntity a = entity.getAnimal();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new ConsultationTypeRef(ct.getId(), ct.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new ConsultationTypeRef(ct.getId(), ct.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public Consultation toDomain(ConsultationJpaEntity entity, ConsultationTypeRef consultationTypeRef,
-                                 AnimalRef animalRef, CompanyRef companyRef) {
-        PhysicalExam exam = new PhysicalExam(
-            entity.getTemperature(), entity.getHeartRate(), entity.getRespiratoryRate(),
-            entity.getMucousMembranes(), entity.getCapillaryRefill(), entity.getHydration(),
-            entity.getBodyConditionScore(), entity.getPainScore(), entity.getAttitude(),
-            entity.getExamFindings());
-        return new Consultation(
-            entity.getId(), entity.getDate(), consultationTypeRef,
-            entity.getAnamnesis(), entity.getDiagnosis(), entity.getPrognosis(), exam,
-            entity.getNextControl(),
-            animalRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+    public Consultation toDomain(ConsultationJpaEntity entity,
+            ConsultationTypeRef consultationTypeRef, AnimalRef animalRef, CompanyRef companyRef) {
+        PhysicalExam exam = new PhysicalExam(entity.getTemperature(), entity.getHeartRate(),
+                entity.getRespiratoryRate(), entity.getMucousMembranes(),
+                entity.getCapillaryRefill(), entity.getHydration(), entity.getBodyConditionScore(),
+                entity.getPainScore(), entity.getAttitude(), entity.getExamFindings());
+        return new Consultation(entity.getId(), entity.getDate(), consultationTypeRef,
+                entity.getAnamnesis(), entity.getDiagnosis(), entity.getPrognosis(), exam,
+                entity.getNextControl(), animalRef, companyRef, entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

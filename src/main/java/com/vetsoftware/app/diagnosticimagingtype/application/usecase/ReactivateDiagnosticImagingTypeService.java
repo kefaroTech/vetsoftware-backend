@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "diagnostic.imaging.type.reactivate")
 @Service
-public class ReactivateDiagnosticImagingTypeService implements ReactivateDiagnosticImagingTypeUseCase {
+public class ReactivateDiagnosticImagingTypeService
+        implements
+            ReactivateDiagnosticImagingTypeUseCase {
     private final DiagnosticImagingTypeRepository repository;
 
     public ReactivateDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository) {
@@ -21,8 +23,9 @@ public class ReactivateDiagnosticImagingTypeService implements ReactivateDiagnos
     @Transactional
     public DiagnosticImagingTypeDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new DiagnosticImagingTypeNotFoundException(id);
+        if (rows == 0)
+            throw new DiagnosticImagingTypeNotFoundException(id);
         return DiagnosticImagingTypeDto.from(repository.findById(id)
-            .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
+                .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
     }
 }

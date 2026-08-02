@@ -18,8 +18,7 @@ public class FindMembershipSubModuleService implements FindMembershipSubModuleUs
 
     @Override
     public MembershipSubModuleDto findById(Long id) {
-        return repository.findById(id)
-            .map(MembershipSubModuleDto::from)
-            .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
+        return repository.findById(id).map(MembershipSubModuleDto::from)
+                .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
     }
 }

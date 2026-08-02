@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface GetInventoryAlertsUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
+            + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
     InventoryAlertsView alerts(InventoryAlertsQuery query);
 }

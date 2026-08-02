@@ -17,8 +17,7 @@ public class DeleteRoleService implements DeleteRoleUseCase {
     private final EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort;
     private final RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort;
 
-    public DeleteRoleService(
-            RoleRepository repository,
+    public DeleteRoleService(RoleRepository repository,
             EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort,
             RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort) {
         this.repository = repository;
@@ -29,7 +28,8 @@ public class DeleteRoleService implements DeleteRoleUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new RoleNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new RoleNotFoundException(id));
         if (employeeRoleChildrenQueryPort.existsActiveByRoleId(id)) {
             throw new RoleHasActiveChildrenException(id, "employeeRole");
         }

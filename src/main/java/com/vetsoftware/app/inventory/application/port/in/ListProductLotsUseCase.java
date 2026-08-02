@@ -7,6 +7,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListProductLotsUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.read') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('inventory.read') and @authz.isMyCompany(#command.companyId))")
     List<StockLotView> listLots(ListLotsCommand command);
 }

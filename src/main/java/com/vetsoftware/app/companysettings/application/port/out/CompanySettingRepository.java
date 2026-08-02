@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface CompanySettingRepository {
     CompanySetting save(CompanySetting setting);
+
     Optional<CompanySetting> find(Long companyId, String propertyName);
+
     List<CompanySetting> findByCompany(Long companyId);
 }

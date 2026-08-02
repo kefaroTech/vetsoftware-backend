@@ -36,12 +36,11 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     private final EmployeeJpaRepository employeeJpaRepository;
 
     public JpaLaboratoryTestRepository(LaboratoryTestJpaRepository jpaRepository,
-                                       LaboratoryTestJpaMapper mapper,
-                                       LaboratoryTestTypeJpaRepository testTypeJpaRepository,
-                                       AnimalJpaRepository animalJpaRepository,
-                                       ConsultationJpaRepository consultationJpaRepository,
-                                       CompanyJpaRepository companyJpaRepository,
-                                       EmployeeJpaRepository employeeJpaRepository) {
+            LaboratoryTestJpaMapper mapper, LaboratoryTestTypeJpaRepository testTypeJpaRepository,
+            AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.testTypeJpaRepository = testTypeJpaRepository;
@@ -53,18 +52,23 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
 
     @Override
     public LaboratoryTest save(LaboratoryTest laboratoryTest) {
-        LaboratoryTestTypeJpaEntity testType = testTypeJpaRepository.getReferenceById(laboratoryTest.getTestType().id());
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(laboratoryTest.getAnimal().id());
-        ConsultationJpaEntity consultation = laboratoryTest.getConsultation() == null ? null
-            : consultationJpaRepository.getReferenceById(laboratoryTest.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(laboratoryTest.getCompany().id());
-        EmployeeJpaEntity processedBy = laboratoryTest.getProcessedBy() == null ? null
-            : employeeJpaRepository.getReferenceById(laboratoryTest.getProcessedBy().id());
+        LaboratoryTestTypeJpaEntity testType = testTypeJpaRepository
+                .getReferenceById(laboratoryTest.getTestType().id());
+        AnimalJpaEntity animal = animalJpaRepository
+                .getReferenceById(laboratoryTest.getAnimal().id());
+        ConsultationJpaEntity consultation = laboratoryTest.getConsultation() == null
+                ? null
+                : consultationJpaRepository.getReferenceById(laboratoryTest.getConsultation().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(laboratoryTest.getCompany().id());
+        EmployeeJpaEntity processedBy = laboratoryTest.getProcessedBy() == null
+                ? null
+                : employeeJpaRepository.getReferenceById(laboratoryTest.getProcessedBy().id());
         LaboratoryTestJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(laboratoryTest, testType, animal, consultation, company, processedBy));
-        return mapper.toDomain(saved, laboratoryTest.getTestType(),
-                                laboratoryTest.getAnimal(), laboratoryTest.getConsultation(),
-                                laboratoryTest.getCompany(), laboratoryTest.getProcessedBy());
+                mapper.toJpa(laboratoryTest, testType, animal, consultation, company, processedBy));
+        return mapper.toDomain(saved, laboratoryTest.getTestType(), laboratoryTest.getAnimal(),
+                laboratoryTest.getConsultation(), laboratoryTest.getCompany(),
+                laboratoryTest.getProcessedBy());
     }
 
     @Override
@@ -90,19 +94,19 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     @Override
     public PageResult<LaboratoryTest> search(SearchLaboratoryTestsCommand command) {
         Specification<LaboratoryTestJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "createdDate"));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<LaboratoryTestJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<LaboratoryTest> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<LaboratoryTestJpaEntity> buildSpec(SearchLaboratoryTestsCommand command) {
         return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count)
+            // para evitar N+1
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("testType", JoinType.LEFT);
                 root.fetch("animal", JoinType.LEFT);
@@ -117,8 +121,8 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
                 predicates.add(cb.equal(root.get("branchId"), command.branchId()));
             }
             if (command.statuses() != null && !command.statuses().isEmpty()) {
-                predicates.add(root.get("status").in(
-                    command.statuses().stream().map(Enum::name).toList()));
+                predicates.add(root.get("status")
+                        .in(command.statuses().stream().map(Enum::name).toList()));
             }
             if (command.animalId() != null) {
                 predicates.add(cb.equal(root.get("animal").get("id"), command.animalId()));

@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface PlacePurchaseOrderUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('purchaseOrder.update') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('purchaseOrder.update') and @authz.isMyCompany(#companyId))")
     PurchaseOrderDto execute(Long id, Long companyId, Long actorId);
 }

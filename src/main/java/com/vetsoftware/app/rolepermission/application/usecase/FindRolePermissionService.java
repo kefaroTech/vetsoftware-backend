@@ -18,8 +18,7 @@ public class FindRolePermissionService implements FindRolePermissionUseCase {
 
     @Override
     public RolePermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(RolePermissionDto::from)
-            .orElseThrow(() -> new RolePermissionNotFoundException(id));
+        return repository.findById(id).map(RolePermissionDto::from)
+                .orElseThrow(() -> new RolePermissionNotFoundException(id));
     }
 }

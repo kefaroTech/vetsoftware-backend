@@ -5,9 +5,11 @@ import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Lee el documento electronico emitido al cerrar una cuenta (para imprimir su recibo). Disponible para
- * quien gestiona la cuenta (openAccount.read) o el modulo de facturacion (electronicDocument.read). Devuelve
- * vacio cuando la cuenta no genero documento (cancelada o cobrada sin el modulo de facturacion).
+ * Lee el documento electronico emitido al cerrar una cuenta (para imprimir su
+ * recibo). Disponible para quien gestiona la cuenta (openAccount.read) o el
+ * modulo de facturacion (electronicDocument.read). Devuelve vacio cuando la
+ * cuenta no genero documento (cancelada o cobrada sin el modulo de
+ * facturacion).
  */
 public interface FindElectronicDocumentByAccountUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "

@@ -41,15 +41,11 @@ public class SpaController {
     private final ChangeSpaStatusUseCase changeStatusUseCase;
     private final Authz authz;
 
-    public SpaController(CreateSpaUseCase createUseCase,
-                         UpdateSpaUseCase updateUseCase,
-                         FindSpaUseCase findUseCase,
-                         ListSpasUseCase listUseCase,
-                         ListSpasByAnimalUseCase listByAnimalUseCase,
-                         DeleteSpaUseCase deleteUseCase,
-                         ReactivateSpaUseCase reactivateUseCase,
-                         ChangeSpaStatusUseCase changeStatusUseCase,
-                         Authz authz) {
+    public SpaController(CreateSpaUseCase createUseCase, UpdateSpaUseCase updateUseCase,
+            FindSpaUseCase findUseCase, ListSpasUseCase listUseCase,
+            ListSpasByAnimalUseCase listByAnimalUseCase, DeleteSpaUseCase deleteUseCase,
+            ReactivateSpaUseCase reactivateUseCase, ChangeSpaStatusUseCase changeStatusUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -64,10 +60,8 @@ public class SpaController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SpaResponse create(@Valid @RequestBody CreateSpaRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSpaCommand(
-                request.date(), request.spaTypeId(), request.reason(),
-                request.details(), request.observations(),
+        return toResponse(createUseCase.execute(new CreateSpaCommand(request.date(),
+                request.spaTypeId(), request.reason(), request.details(), request.observations(),
                 request.animalId(), authz.currentCompanyId())));
     }
 
@@ -87,12 +81,9 @@ public class SpaController {
     }
 
     @PutMapping("/{id}")
-    public SpaResponse update(@PathVariable Long id,
-                              @Valid @RequestBody UpdateSpaRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSpaCommand(
-                id, request.date(), request.spaTypeId(), request.reason(),
-                request.details(), request.observations(),
+    public SpaResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSpaRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSpaCommand(id, request.date(),
+                request.spaTypeId(), request.reason(), request.details(), request.observations(),
                 request.animalId(), authz.currentCompanyIdOrNull())));
     }
 
@@ -109,23 +100,19 @@ public class SpaController {
 
     @PatchMapping("/{id}/status")
     public SpaResponse changeStatus(@PathVariable Long id,
-                                    @Valid @RequestBody ChangeSpaStatusRequest request) {
+            @Valid @RequestBody ChangeSpaStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeSpaStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
+                new ChangeSpaStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     private SpaResponse toResponse(SpaDto dto) {
         SpaTypeSummaryDto st = dto.spaType();
         AnimalSummaryDto a = dto.animal();
         CompanySummaryDto c = dto.company();
-        return new SpaResponse(
-            dto.id(), dto.date(),
-            new SpaTypeSummary(st.id(), st.name()),
-            dto.reason(), dto.details(), dto.observations(),
-            dto.status(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled());
+        return new SpaResponse(dto.id(), dto.date(), new SpaTypeSummary(st.id(), st.name()),
+                dto.reason(), dto.details(), dto.observations(), dto.status(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

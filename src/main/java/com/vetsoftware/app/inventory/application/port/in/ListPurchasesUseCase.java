@@ -7,6 +7,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListPurchasesUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
+            + "(hasAuthority('inventory.read') and @authz.isMyCompany(#query.companyId))")
     PageResult<PurchaseView> purchases(SearchPurchasesQuery query);
 }

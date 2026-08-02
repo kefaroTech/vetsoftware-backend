@@ -20,7 +20,7 @@ public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
     @Override
     public Optional<OpenAccountRef> findById(Long openAccountId) {
         return openAccountJpaRepository.findById(openAccountId)
-            .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
+                .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
     }
 
     @Override
@@ -31,14 +31,12 @@ public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
     @Override
     public boolean isOpen(Long openAccountId) {
         return openAccountJpaRepository.findById(openAccountId)
-            .map(e -> e.getStatus() == OpenAccountStatus.OPEN)
-            .orElse(false);
+                .map(e -> e.getStatus() == OpenAccountStatus.OPEN).orElse(false);
     }
 
     @Override
     public BigDecimal outstandingAmount(Long openAccountId) {
         return openAccountJpaRepository.findById(openAccountId)
-            .map(OpenAccountJpaEntity::getOutstandingAmount)
-            .orElse(BigDecimal.ZERO);
+                .map(OpenAccountJpaEntity::getOutstandingAmount).orElse(BigDecimal.ZERO);
     }
 }

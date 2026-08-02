@@ -18,8 +18,7 @@ public class FindCompanyService implements FindCompanyUseCase {
 
     @Override
     public CompanyDto findById(Long id) {
-        return repository.findById(id)
-            .map(CompanyDto::from)
-            .orElseThrow(() -> new CompanyNotFoundException(id));
+        return repository.findById(id).map(CompanyDto::from)
+                .orElseThrow(() -> new CompanyNotFoundException(id));
     }
 }

@@ -17,6 +17,6 @@ public class JpaSystemUserQueryPort implements SystemUserQueryPort {
     @Override
     public Optional<SystemUserRef> findById(Long systemUserId) {
         return systemUserJpaRepository.findById(systemUserId)
-            .map(e -> new SystemUserRef(e.getId(), e.getCode()));
+                .map(e -> new SystemUserRef(e.getId(), e.getCode()));
     }
 }

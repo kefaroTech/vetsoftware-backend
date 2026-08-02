@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
+import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
@@ -29,7 +29,8 @@ class ScheduledJobsObservationTest {
         TransmissionLogPort transmissionLog = mock(TransmissionLogPort.class);
         ElectronicDocument successful = document(101L);
         ElectronicDocument failed = document(202L);
-        when(repository.findByDianStatus(DianStatus.CONTINGENCIA)).thenReturn(List.of(successful, failed));
+        when(repository.findByDianStatus(DianStatus.CONTINGENCIA))
+                .thenReturn(List.of(successful, failed));
         when(transmissionLog.countAttempts(101L)).thenReturn(0);
         when(transmissionLog.countAttempts(202L)).thenReturn(0);
         when(transmitter.transmit(successful, Origin.RETRY)).thenReturn(successful);
@@ -37,13 +38,8 @@ class ScheduledJobsObservationTest {
                 .thenThrow(new IllegalStateException("provider unavailable"));
         ObservationCapture capture = new ObservationCapture();
 
-        ContingencyRetryJob job = new ContingencyRetryJob(
-                repository,
-                transmitter,
-                transmissionLog,
-                capture.telemetry(),
-                12,
-                48);
+        ContingencyRetryJob job = new ContingencyRetryJob(repository, transmitter, transmissionLog,
+                capture.telemetry(), 12, 48);
 
         runAsSpringScheduledTask(job, "retryContingencies", capture.registry());
 
@@ -55,8 +51,7 @@ class ScheduledJobsObservationTest {
         assertThat(tag(context, "job.outcome")).isEqualTo("partial_failure");
         assertThat(context.getLowCardinalityKeyValues())
                 .noneMatch(keyValue -> keyValue.getKey().contains("document")
-                        || keyValue.getValue().equals("101")
-                        || keyValue.getValue().equals("202"));
+                        || keyValue.getValue().equals("101") || keyValue.getValue().equals("202"));
     }
 
     @Test
@@ -66,8 +61,8 @@ class ScheduledJobsObservationTest {
         when(repository.findByDianStatus(DianStatus.PENDIENTE)).thenReturn(List.of());
         ObservationCapture capture = new ObservationCapture();
 
-        PendingReconciliationJob job =
-                new PendingReconciliationJob(repository, transmitter, capture.telemetry());
+        PendingReconciliationJob job = new PendingReconciliationJob(repository, transmitter,
+                capture.telemetry());
 
         runAsSpringScheduledTask(job, "reconcilePending", capture.registry());
 
@@ -80,14 +75,10 @@ class ScheduledJobsObservationTest {
         verifyNoInteractions(transmitter);
     }
 
-    private static void runAsSpringScheduledTask(
-            Object target, String methodName, ObservationRegistry registry) throws NoSuchMethodException {
-        new ScheduledMethodRunnable(
-                target,
-                target.getClass().getMethod(methodName),
-                null,
-                () -> registry)
-                .run();
+    private static void runAsSpringScheduledTask(Object target, String methodName,
+            ObservationRegistry registry) throws NoSuchMethodException {
+        new ScheduledMethodRunnable(target, target.getClass().getMethod(methodName), null,
+                () -> registry).run();
     }
 
     private static ElectronicDocument document(long id) {
@@ -100,7 +91,9 @@ class ScheduledJobsObservationTest {
         return context.getLowCardinalityKeyValue(key).getValue();
     }
 
-    private static final class ObservationCapture implements ObservationHandler<Observation.Context> {
+    private static final class ObservationCapture
+            implements
+                ObservationHandler<Observation.Context> {
         private final ObservationRegistry registry = ObservationRegistry.create();
         private final List<Observation.Context> stopped = new ArrayList<>();
 

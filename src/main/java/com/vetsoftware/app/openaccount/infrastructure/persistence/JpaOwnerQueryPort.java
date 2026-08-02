@@ -17,6 +17,6 @@ public class JpaOwnerQueryPort implements OwnerQueryPort {
     @Override
     public Optional<OwnerRef> findById(Long ownerId) {
         return ownerJpaRepository.findById(ownerId)
-            .map(e -> new OwnerRef(e.getId(), e.getName(), e.getDocument()));
+                .map(e -> new OwnerRef(e.getId(), e.getName(), e.getDocument()));
     }
 }

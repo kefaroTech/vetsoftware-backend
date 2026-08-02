@@ -25,9 +25,8 @@ public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
     private final PermissionCachePort permissionCachePort;
 
     public CreateEmployeeRoleService(EmployeeRoleRepository repository,
-                                     EmployeeQueryPort employeeQueryPort,
-                                     RoleQueryPort roleQueryPort,
-                                     PermissionCachePort permissionCachePort) {
+            EmployeeQueryPort employeeQueryPort, RoleQueryPort roleQueryPort,
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
         this.roleQueryPort = roleQueryPort;
@@ -37,18 +36,18 @@ public class CreateEmployeeRoleService implements CreateEmployeeRoleUseCase {
     @Override
     @Transactional
     public EmployeeRoleDto execute(CreateEmployeeRoleCommand command) {
-        EmployeeRef employee = employeeQueryPort.findById(command.employeeId())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
-        RoleRef role = roleQueryPort.findById(command.roleId())
-            .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
+        EmployeeRef employee = employeeQueryPort.findById(command.employeeId()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
+        RoleRef role = roleQueryPort.findById(command.roleId()).orElseThrow(
+                () -> new IllegalArgumentException("Role not found: " + command.roleId()));
 
-        Optional<Long> disabledId = repository
-            .findDisabledIdByEmployeeAndRole(command.employeeId(), command.roleId());
+        Optional<Long> disabledId = repository.findDisabledIdByEmployeeAndRole(command.employeeId(),
+                command.roleId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
             repository.reactivate(id);
             EmployeeRole refreshed = repository.findById(id)
-                .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+                    .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
             EmployeeRoleDto dto = EmployeeRoleDto.from(refreshed);
             permissionCachePort.evictByEmployeeId(command.employeeId());
             return dto;

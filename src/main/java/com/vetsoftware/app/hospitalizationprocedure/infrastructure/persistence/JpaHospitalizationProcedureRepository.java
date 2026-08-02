@@ -17,10 +17,11 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
     private final HospitalizationJpaRepository hospitalizationJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaHospitalizationProcedureRepository(HospitalizationProcedureJpaRepository jpaRepository,
-                                                 HospitalizationProcedureJpaMapper mapper,
-                                                 HospitalizationJpaRepository hospitalizationJpaRepository,
-                                                 EmployeeJpaRepository employeeJpaRepository) {
+    public JpaHospitalizationProcedureRepository(
+            HospitalizationProcedureJpaRepository jpaRepository,
+            HospitalizationProcedureJpaMapper mapper,
+            HospitalizationJpaRepository hospitalizationJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.hospitalizationJpaRepository = hospitalizationJpaRepository;
@@ -29,16 +30,17 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
 
     @Override
     public HospitalizationProcedure save(HospitalizationProcedure procedure) {
-        HospitalizationJpaEntity hospitalization =
-            hospitalizationJpaRepository.getReferenceById(procedure.getHospitalization().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(procedure.getCreatedBy().id());
-        EmployeeJpaEntity suspensionBy = procedure.getSuspensionBy() == null ? null
-            : employeeJpaRepository.getReferenceById(procedure.getSuspensionBy().id());
-        HospitalizationProcedureJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(procedure, hospitalization, createdBy, suspensionBy));
+        HospitalizationJpaEntity hospitalization = hospitalizationJpaRepository
+                .getReferenceById(procedure.getHospitalization().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(procedure.getCreatedBy().id());
+        EmployeeJpaEntity suspensionBy = procedure.getSuspensionBy() == null
+                ? null
+                : employeeJpaRepository.getReferenceById(procedure.getSuspensionBy().id());
+        HospitalizationProcedureJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(procedure, hospitalization, createdBy, suspensionBy));
         return mapper.toDomain(saved, procedure.getHospitalization(), procedure.getCreatedBy(),
-            procedure.getSuspensionBy());
+                procedure.getSuspensionBy());
     }
 
     @Override
@@ -48,13 +50,14 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
 
     @Override
     public Optional<HospitalizationProcedure> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId).map(mapper::toDomain);
+        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public List<HospitalizationProcedure> findAllByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationId(hospitalizationId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override

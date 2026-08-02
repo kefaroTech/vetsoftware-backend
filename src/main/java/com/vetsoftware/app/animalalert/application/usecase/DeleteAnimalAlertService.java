@@ -20,7 +20,7 @@ public class DeleteAnimalAlertService implements DeleteAnimalAlertUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AnimalAlertNotFoundException(id));
+                .orElseThrow(() -> new AnimalAlertNotFoundException(id));
         repository.delete(id, companyId);
     }
 }

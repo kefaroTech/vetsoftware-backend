@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdatePrescriptionUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('prescription.update') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('prescription.update') and @authz.isMyCompany(#command.companyId))")
     PrescriptionDto execute(UpdatePrescriptionCommand command);
 }

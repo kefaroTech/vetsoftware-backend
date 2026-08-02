@@ -12,12 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "service.charge.open.account.reactivate")
 @Service
-public class ReactivateServiceChargeOpenAccountService implements ReactivateServiceChargeOpenAccountUseCase {
+public class ReactivateServiceChargeOpenAccountService
+        implements
+            ReactivateServiceChargeOpenAccountUseCase {
     private final ServiceChargeOpenAccountRepository repository;
     private final OpenAccountRefresher refresher;
 
     public ReactivateServiceChargeOpenAccountService(ServiceChargeOpenAccountRepository repository,
-                                                     OpenAccountRefresher refresher) {
+            OpenAccountRefresher refresher) {
         this.repository = repository;
         this.refresher = refresher;
     }
@@ -26,9 +28,10 @@ public class ReactivateServiceChargeOpenAccountService implements ReactivateServ
     @Transactional
     public ServiceChargeOpenAccountDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ServiceChargeOpenAccountNotFoundException(id);
+        if (rows == 0)
+            throw new ServiceChargeOpenAccountNotFoundException(id);
         ServiceChargeOpenAccount charge = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id));
+                .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id));
         refresher.refresh(companyId, charge.getOpenAccount().id());
         return ServiceChargeOpenAccountDto.from(charge);
     }

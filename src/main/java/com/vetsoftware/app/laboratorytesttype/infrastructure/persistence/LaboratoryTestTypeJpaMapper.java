@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LaboratoryTestTypeJpaMapper {
-    public LaboratoryTestTypeJpaEntity toJpa(LaboratoryTestType laboratoryTestType, CompanyJpaEntity company) {
+    public LaboratoryTestTypeJpaEntity toJpa(LaboratoryTestType laboratoryTestType,
+            CompanyJpaEntity company) {
         LaboratoryTestTypeJpaEntity entity = new LaboratoryTestTypeJpaEntity();
         entity.setId(laboratoryTestType.getId());
         entity.setName(laboratoryTestType.getName());
@@ -26,13 +27,8 @@ public class LaboratoryTestTypeJpaMapper {
     }
 
     public LaboratoryTestType toDomain(LaboratoryTestTypeJpaEntity entity, CompanyRef companyRef) {
-        return new LaboratoryTestType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
+        return new LaboratoryTestType(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

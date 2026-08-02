@@ -18,8 +18,7 @@ public class FindEmployeeRoleService implements FindEmployeeRoleUseCase {
 
     @Override
     public EmployeeRoleDto findById(Long id) {
-        return repository.findById(id)
-            .map(EmployeeRoleDto::from)
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+        return repository.findById(id).map(EmployeeRoleDto::from)
+                .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
     }
 }

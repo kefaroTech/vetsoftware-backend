@@ -32,11 +32,10 @@ public class MembershipSubModuleController {
     private final ReactivateMembershipSubModuleUseCase reactivateUseCase;
 
     public MembershipSubModuleController(CreateMembershipSubModuleUseCase createUseCase,
-                                          UpdateMembershipSubModuleUseCase updateUseCase,
-                                          FindMembershipSubModuleUseCase findUseCase,
-                                          ListMembershipSubModulesUseCase listUseCase,
-                                          DeleteMembershipSubModuleUseCase deleteUseCase,
-                                          ReactivateMembershipSubModuleUseCase reactivateUseCase) {
+            UpdateMembershipSubModuleUseCase updateUseCase,
+            FindMembershipSubModuleUseCase findUseCase, ListMembershipSubModulesUseCase listUseCase,
+            DeleteMembershipSubModuleUseCase deleteUseCase,
+            ReactivateMembershipSubModuleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,9 +46,10 @@ public class MembershipSubModuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MembershipSubModuleResponse create(@Valid @RequestBody CreateMembershipSubModuleRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateMembershipSubModuleCommand(request.membershipId(), request.subModuleId())));
+    public MembershipSubModuleResponse create(
+            @Valid @RequestBody CreateMembershipSubModuleRequest request) {
+        return toResponse(createUseCase.execute(new CreateMembershipSubModuleCommand(
+                request.membershipId(), request.subModuleId())));
     }
 
     @GetMapping
@@ -64,9 +64,9 @@ public class MembershipSubModuleController {
 
     @PutMapping("/{id}")
     public MembershipSubModuleResponse update(@PathVariable Long id,
-                                               @Valid @RequestBody UpdateMembershipSubModuleRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateMembershipSubModuleCommand(id, request.membershipId(), request.subModuleId())));
+            @Valid @RequestBody UpdateMembershipSubModuleRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateMembershipSubModuleCommand(id,
+                request.membershipId(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")
@@ -83,12 +83,8 @@ public class MembershipSubModuleController {
     private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {
         MembershipSummaryDto m = dto.membership();
         SubModuleSummaryDto sm = dto.subModule();
-        return new MembershipSubModuleResponse(
-            dto.id(),
-            new MembershipSummary(m.id(), m.name()),
-            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new MembershipSubModuleResponse(dto.id(), new MembershipSummary(m.id(), m.name()),
+                new SubModuleSummary(sm.id(), sm.name(), sm.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

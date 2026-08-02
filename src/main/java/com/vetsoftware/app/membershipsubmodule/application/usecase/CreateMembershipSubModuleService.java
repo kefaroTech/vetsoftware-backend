@@ -23,8 +23,7 @@ public class CreateMembershipSubModuleService implements CreateMembershipSubModu
     private final SubModuleQueryPort subModuleQueryPort;
 
     public CreateMembershipSubModuleService(MembershipSubModuleRepository repository,
-                                             MembershipQueryPort membershipQueryPort,
-                                             SubModuleQueryPort subModuleQueryPort) {
+            MembershipQueryPort membershipQueryPort, SubModuleQueryPort subModuleQueryPort) {
         this.repository = repository;
         this.membershipQueryPort = membershipQueryPort;
         this.subModuleQueryPort = subModuleQueryPort;
@@ -34,17 +33,19 @@ public class CreateMembershipSubModuleService implements CreateMembershipSubModu
     @Transactional
     public MembershipSubModuleDto execute(CreateMembershipSubModuleCommand command) {
         MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Membership not found: " + command.membershipId()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SubModule not found: " + command.subModuleId()));
 
-        Optional<Long> disabledId = repository
-            .findDisabledIdByMembershipAndSubModule(command.membershipId(), command.subModuleId());
+        Optional<Long> disabledId = repository.findDisabledIdByMembershipAndSubModule(
+                command.membershipId(), command.subModuleId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
             repository.reactivate(id);
             MembershipSubModule refreshed = repository.findById(id)
-                .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
+                    .orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
             return MembershipSubModuleDto.from(refreshed);
         }
 

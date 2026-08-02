@@ -11,13 +11,8 @@ import org.springframework.core.io.ClassPathResource;
 
 class PdfTemplateCompatibilityTest {
 
-    private static final List<String> TEMPLATES = List.of(
-            "cash-arqueo",
-            "clinical-history",
-            "electronic-invoice",
-            "inventory-kardex",
-            "inventory-purchases",
-            "prescription",
+    private static final List<String> TEMPLATES = List.of("cash-arqueo", "clinical-history",
+            "electronic-invoice", "inventory-kardex", "inventory-purchases", "prescription",
             "purchase-book");
 
     private static final Pattern UNSUPPORTED_LAYOUT = Pattern.compile(
@@ -30,10 +25,8 @@ class PdfTemplateCompatibilityTest {
             String html = readTemplate(template);
 
             assertThat(UNSUPPORTED_LAYOUT.matcher(html).find())
-                    .as("CSS no compatible en pdf/%s.html", template)
-                    .isFalse();
-            assertThat(html)
-                    .as("Declaración UTF-8 en pdf/%s.html", template)
+                    .as("CSS no compatible en pdf/%s.html", template).isFalse();
+            assertThat(html).as("Declaración UTF-8 en pdf/%s.html", template)
                     .containsIgnoringCase("<meta charset=\"UTF-8\"");
         }
     }

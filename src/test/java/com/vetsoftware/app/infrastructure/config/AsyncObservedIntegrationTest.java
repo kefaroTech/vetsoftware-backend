@@ -28,8 +28,8 @@ class AsyncObservedIntegrationTest {
 
     @Test
     void createsTheObservedChildInsideTheWorkerAndKeepsItsParent() throws Exception {
-        try (AnnotationConfigApplicationContext context =
-                     new AnnotationConfigApplicationContext(TestConfiguration.class)) {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
+                TestConfiguration.class)) {
             ObservationRegistry registry = context.getBean(ObservationRegistry.class);
             AsyncObservedWorker worker = context.getBean(AsyncObservedWorker.class);
             Observation parent = Observation.start("test.parent", registry);
@@ -55,8 +55,8 @@ class AsyncObservedIntegrationTest {
         @Bean
         ObservationRegistry observationRegistry() {
             ObservationRegistry registry = ObservationRegistry.create();
-            registry.observationConfig().observationHandler(
-                    new ObservationHandler<Observation.Context>() {
+            registry.observationConfig()
+                    .observationHandler(new ObservationHandler<Observation.Context>() {
                         @Override
                         public boolean supportsContext(Observation.Context context) {
                             return true;
@@ -75,8 +75,7 @@ class AsyncObservedIntegrationTest {
             ContextRegistry contextRegistry = new ContextRegistry()
                     .registerThreadLocalAccessor(new ObservationThreadLocalAccessor(registry));
             ContextSnapshotFactory snapshotFactory = ContextSnapshotFactory.builder()
-                    .contextRegistry(contextRegistry)
-                    .build();
+                    .contextRegistry(contextRegistry).build();
             return new ContextPropagatingTaskDecorator(snapshotFactory);
         }
 
@@ -110,15 +109,11 @@ class AsyncObservedIntegrationTest {
         public CompletableFuture<AsyncState> execute() {
             Observation current = registry.getCurrentObservation();
             return CompletableFuture.completedFuture(new AsyncState(
-                    Thread.currentThread().getName(),
-                    current.getContextView().getName(),
+                    Thread.currentThread().getName(), current.getContextView().getName(),
                     current.getContextView().getParentObservation()));
         }
     }
 
-    private record AsyncState(
-            String threadName,
-            String observationName,
-            ObservationView parent) {
+    private record AsyncState(String threadName, String observationName, ObservationView parent) {
     }
 }

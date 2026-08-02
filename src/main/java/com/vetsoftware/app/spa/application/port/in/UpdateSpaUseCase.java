@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateSpaUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('spa.update') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('spa.update') and @authz.isMyCompany(#command.companyId))")
     SpaDto execute(UpdateSpaCommand command);
 }

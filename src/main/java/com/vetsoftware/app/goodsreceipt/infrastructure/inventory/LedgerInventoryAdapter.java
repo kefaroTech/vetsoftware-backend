@@ -9,9 +9,11 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter de orquestación recepción → inventario. Es el ÚNICO punto de esta feature que conoce el
- * {@code StockLedgerUseCase} de {@code inventory}; traduce la entrada/reversión a movimientos de kardex con
- * referencia {@link StockReferenceType#GOODS_RECEIPT} y el id de la recepción (trazabilidad + compensación).
+ * Adapter de orquestación recepción → inventario. Es el ÚNICO punto de esta
+ * feature que conoce el {@code StockLedgerUseCase} de {@code inventory};
+ * traduce la entrada/reversión a movimientos de kardex con referencia
+ * {@link StockReferenceType#GOODS_RECEIPT} y el id de la recepción
+ * (trazabilidad + compensación).
  */
 @Component("goodsReceiptLedgerInventoryAdapter")
 public class LedgerInventoryAdapter implements InventoryLedgerPort {
@@ -23,10 +25,12 @@ public class LedgerInventoryAdapter implements InventoryLedgerPort {
     }
 
     @Override
-    public void recordReceipt(Long companyId, Long branchId, Long productId, String lotNumber, LocalDate expireDate,
-                              int quantity, BigDecimal unitCost, Long receiptId, Long createdBy) {
-        stockLedger.recordPurchase(new RecordPurchaseCommand(companyId, branchId, productId, lotNumber, expireDate,
-            quantity, unitCost, StockReferenceType.GOODS_RECEIPT, receiptId, createdBy));
+    public void recordReceipt(Long companyId, Long branchId, Long productId, String lotNumber,
+            LocalDate expireDate, int quantity, BigDecimal unitCost, Long receiptId,
+            Long createdBy) {
+        stockLedger.recordPurchase(new RecordPurchaseCommand(companyId, branchId, productId,
+                lotNumber, expireDate, quantity, unitCost, StockReferenceType.GOODS_RECEIPT,
+                receiptId, createdBy));
     }
 
     @Override

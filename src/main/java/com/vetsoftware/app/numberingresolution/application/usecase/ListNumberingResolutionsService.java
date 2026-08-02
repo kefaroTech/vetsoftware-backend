@@ -18,6 +18,7 @@ public class ListNumberingResolutionsService implements ListNumberingResolutions
 
     @Override
     public List<NumberingResolutionDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(NumberingResolutionDto::from).toList();
+        return repository.findAllByCompanyId(companyId).stream().map(NumberingResolutionDto::from)
+                .toList();
     }
 }

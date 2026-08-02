@@ -19,7 +19,7 @@ public class UpdateBasePermissionService implements UpdateBasePermissionUseCase 
     private final SubModuleQueryPort subModuleQueryPort;
 
     public UpdateBasePermissionService(BasePermissionRepository repository,
-                                       SubModuleQueryPort subModuleQueryPort) {
+            SubModuleQueryPort subModuleQueryPort) {
         this.repository = repository;
         this.subModuleQueryPort = subModuleQueryPort;
     }
@@ -28,9 +28,10 @@ public class UpdateBasePermissionService implements UpdateBasePermissionUseCase 
     @Transactional
     public BasePermissionDto execute(UpdateBasePermissionCommand command) {
         BasePermission basePermission = repository.findById(command.id())
-            .orElseThrow(() -> new BasePermissionNotFoundException(command.id()));
+                .orElseThrow(() -> new BasePermissionNotFoundException(command.id()));
         SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "SubModule not found: " + command.subModuleId()));
         basePermission.update(command.name(), command.code(), subModule);
         return BasePermissionDto.from(repository.save(basePermission));
     }

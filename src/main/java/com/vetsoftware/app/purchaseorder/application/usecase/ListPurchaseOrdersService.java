@@ -20,13 +20,17 @@ public class ListPurchaseOrdersService implements ListPurchaseOrdersUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<PurchaseOrderDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(PurchaseOrderDto::from).toList();
+        return repository.findAllByCompanyId(companyId).stream().map(PurchaseOrderDto::from)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<PurchaseOrderDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae las pausadas y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(PurchaseOrderDto::from).toList();
+        // readOnly tx: la query nativa trae las pausadas y el mapper hidrata sus
+        // asociaciones LAZY aquí
+        // dentro.
+        return repository.findAllDisabledByCompanyId(companyId).stream().map(PurchaseOrderDto::from)
+                .toList();
     }
 }

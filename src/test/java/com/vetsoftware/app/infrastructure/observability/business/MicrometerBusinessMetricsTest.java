@@ -44,8 +44,7 @@ class MicrometerBusinessMetricsTest {
 
         String scrape = registry.scrape();
 
-        assertThat(scrape)
-                .contains("vetsoftware_business_sales_operations_total")
+        assertThat(scrape).contains("vetsoftware_business_sales_operations_total")
                 .contains("vetsoftware_business_sales_amount_cop_sum")
                 .contains("vetsoftware_business_sales_lines_sum")
                 .contains("vetsoftware_business_dian_transmissions_total")
@@ -55,22 +54,16 @@ class MicrometerBusinessMetricsTest {
                 .contains("vetsoftware_business_appointments_transitions_total")
                 .contains("vetsoftware_business_cash_sessions_total")
                 .contains("vetsoftware_business_cash_closing_difference_cop_sum")
-                .contains("document_type=\"doc_equiv_pos\"")
-                .doesNotContain("companyId")
-                .doesNotContain("productId")
-                .doesNotContain("traceId");
+                .contains("document_type=\"doc_equiv_pos\"").doesNotContain("companyId")
+                .doesNotContain("productId").doesNotContain("traceId");
     }
 
     @Test
     void deniesUnknownBusinessTagsAndValues() {
-        Counter.builder(BusinessMetricNames.PREFIX + "unsafe")
-                .tag("companyId", "123")
-                .register(registry)
-                .increment();
+        Counter.builder(BusinessMetricNames.PREFIX + "unsafe").tag("companyId", "123")
+                .register(registry).increment();
         Counter.builder(BusinessMetricNames.PREFIX + "unsafe.result")
-                .tag("result", "customer-provided-value")
-                .register(registry)
-                .increment();
+                .tag("result", "customer-provided-value").register(registry).increment();
 
         assertThat(registry.find(BusinessMetricNames.PREFIX + "unsafe").counter()).isNull();
         assertThat(registry.find(BusinessMetricNames.PREFIX + "unsafe.result").counter()).isNull();
@@ -80,17 +73,20 @@ class MicrometerBusinessMetricsTest {
     void doesNotPublishSuccessfulBusinessFactAfterRollback() {
         org.springframework.transaction.support.TransactionSynchronizationManager
                 .setActualTransactionActive(true);
-        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .initSynchronization();
         try {
             metrics.completed(SalesMetrics.Channel.POS, ElectronicDocumentType.DOC_EQUIV_POS,
                     BigDecimal.TEN, 1);
-            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+            org.springframework.transaction.support.TransactionSynchronizationManager
+                    .getSynchronizations()
                     .forEach(synchronization -> synchronization.afterCompletion(
                             org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
 
             assertThat(registry.find(BusinessMetricNames.SALES_OPERATIONS).counter()).isNull();
         } finally {
-            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+            org.springframework.transaction.support.TransactionSynchronizationManager
+                    .clearSynchronization();
             org.springframework.transaction.support.TransactionSynchronizationManager
                     .setActualTransactionActive(false);
         }

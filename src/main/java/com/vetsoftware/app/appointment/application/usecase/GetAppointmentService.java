@@ -20,7 +20,7 @@ public class GetAppointmentService implements GetAppointmentUseCase {
     @Override
     public AppointmentDto findById(Long id, Long companyId) {
         Appointment appointment = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AppointmentNotFoundException(id));
+                .orElseThrow(() -> new AppointmentNotFoundException(id));
         return AppointmentDto.from(appointment);
     }
 }

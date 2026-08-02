@@ -12,31 +12,29 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Venta de POS a registrar. El front nunca manda companyId (lo deriva el backend del JWT). El unitPrice de
- * cada linea es el precio final (post-promo) con IVA incluido; la clasificacion tributaria la pone el
- * servidor desde el catalogo. customerOwnerId null o finalConsumer=true => consumidor final anonimo.
+ * Venta de POS a registrar. El front nunca manda companyId (lo deriva el
+ * backend del JWT). El unitPrice de cada linea es el precio final (post-promo)
+ * con IVA incluido; la clasificacion tributaria la pone el servidor desde el
+ * catalogo. customerOwnerId null o finalConsumer=true => consumidor final
+ * anonimo.
  */
-public record RegisterPosSaleRequest(
-        @NotNull ElectronicDocumentType documentType,
-        boolean finalConsumer,
-        Long customerOwnerId,
-        @NotEmpty @Valid List<SaleLineRequest> lines,
+public record RegisterPosSaleRequest(@NotNull ElectronicDocumentType documentType,
+        boolean finalConsumer, Long customerOwnerId, @NotEmpty @Valid List<SaleLineRequest> lines,
         @NotEmpty @Valid List<SalePaymentRequest> payments,
-        /** Idempotencia de la venta: UUID que el front genera por apertura del cobro (opcional). */
-        String clientRequestId,
-        /** Sede emisora (opcional). Si no viene, se usa la sede "Principal" de la empresa. */
-        Long branchId
-) {
-    public record SaleLineRequest(
-            @NotNull SaleLineKind kind,
-            Long refId,
-            String description,
-            @NotNull @Positive BigDecimal quantity,
-            @NotNull @PositiveOrZero BigDecimal unitPrice
-    ) {}
+        /**
+         * Idempotencia de la venta: UUID que el front genera por apertura del cobro
+         * (opcional).
+         */
+        String clientRequestId, /**
+                                 * Sede emisora (opcional). Si no viene, se usa la sede "Principal"
+                                 * de la empresa.
+                                 */
+        Long branchId) {
+    public record SaleLineRequest(@NotNull SaleLineKind kind, Long refId, String description,
+            @NotNull @Positive BigDecimal quantity, @NotNull @PositiveOrZero BigDecimal unitPrice) {
+    }
 
-    public record SalePaymentRequest(
-            @NotNull PaymentMeans means,
-            @NotNull @PositiveOrZero BigDecimal amount
-    ) {}
+    public record SalePaymentRequest(@NotNull PaymentMeans means,
+            @NotNull @PositiveOrZero BigDecimal amount) {
+    }
 }

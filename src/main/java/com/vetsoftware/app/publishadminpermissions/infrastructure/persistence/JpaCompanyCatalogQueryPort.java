@@ -21,17 +21,12 @@ public class JpaCompanyCatalogQueryPort implements CompanyCatalogQueryPort {
 
     @Override
     public List<CompanyAdminContext> findAllWithAdminRole() {
-        return roleJpaRepository.findAllByCode(ADMIN_CODE).stream()
-            .map(this::toContext)
-            .toList();
+        return roleJpaRepository.findAllByCode(ADMIN_CODE).stream().map(this::toContext).toList();
     }
 
     private CompanyAdminContext toContext(RoleJpaEntity role) {
         CompanyJpaEntity company = role.getCompany();
-        return new CompanyAdminContext(
-            company.getId(),
-            company.getMembership().getId(),
-            role.getId()
-        );
+        return new CompanyAdminContext(company.getId(), company.getMembership().getId(),
+                role.getId());
     }
 }

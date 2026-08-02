@@ -4,6 +4,7 @@ import com.vetsoftware.app.hospitalizationprogressnote.application.dto.Hospitali
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindHospitalizationProgressNoteUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('hospitalization.read') and @authz.isMyCompany(#companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('hospitalization.read') and"
+            + " @authz.isMyCompany(#companyId))")
     HospitalizationProgressNoteDto findById(Long id, Long companyId);
 }

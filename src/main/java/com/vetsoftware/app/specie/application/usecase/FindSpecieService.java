@@ -18,7 +18,7 @@ public class FindSpecieService implements FindSpecieUseCase {
 
     @Override
     public SpecieDto findById(Long id) {
-        return SpecieDto.from(repository.findById(id)
-                .orElseThrow(() -> new SpecieNotFoundException(id)));
+        return SpecieDto
+                .from(repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id)));
     }
 }

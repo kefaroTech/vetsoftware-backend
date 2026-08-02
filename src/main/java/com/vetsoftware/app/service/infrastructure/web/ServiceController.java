@@ -40,14 +40,10 @@ public class ServiceController {
     private final ReactivateServiceUseCase reactivateUseCase;
     private final Authz authz;
 
-    public ServiceController(CreateServiceUseCase createUseCase,
-                             UpdateServiceUseCase updateUseCase,
-                             FindServiceUseCase findUseCase,
-                             ListServicesByCompanyUseCase listByCompanyUseCase,
-                             SearchServicesUseCase searchUseCase,
-                             DeleteServiceUseCase deleteUseCase,
-                             ReactivateServiceUseCase reactivateUseCase,
-                             Authz authz) {
+    public ServiceController(CreateServiceUseCase createUseCase, UpdateServiceUseCase updateUseCase,
+            FindServiceUseCase findUseCase, ListServicesByCompanyUseCase listByCompanyUseCase,
+            SearchServicesUseCase searchUseCase, DeleteServiceUseCase deleteUseCase,
+            ReactivateServiceUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -61,36 +57,32 @@ public class ServiceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ServiceResponse create(@Valid @RequestBody CreateServiceRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateServiceCommand(
-                request.name(), request.price(), request.taxTreatment(), request.notes(),
+        return toResponse(createUseCase.execute(new CreateServiceCommand(request.name(),
+                request.price(), request.taxTreatment(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<ServiceResponse> listByCompany() {
-        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/disabled")
     public List<ServiceResponse> listDisabled() {
-        return listByCompanyUseCase.listDisabledByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listByCompanyUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
-    public PageResponse<ServiceResponse> search(
-            @RequestParam(required = false) String name,
+    public PageResponse<ServiceResponse> search(@RequestParam(required = false) String name,
             @RequestParam(required = false) Long serviceCategoryId,
-            @RequestParam(required = false) Long taxId,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Long taxId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<ServiceDto> result = searchUseCase.execute(new SearchServicesCommand(
-            authz.currentCompanyId(), name, serviceCategoryId, taxId, page, pageSize));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                authz.currentCompanyId(), name, serviceCategoryId, taxId, page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -100,10 +92,9 @@ public class ServiceController {
 
     @PutMapping("/{id}")
     public ServiceResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateServiceRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateServiceCommand(
-                id, request.name(), request.price(), request.taxTreatment(), request.notes(),
+            @Valid @RequestBody UpdateServiceRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateServiceCommand(id, request.name(),
+                request.price(), request.taxTreatment(), request.notes(),
                 request.serviceCategoryId(), request.taxId(), authz.currentCompanyId(),
                 authz.currentEmployeeIdOrNull(), request.version())));
     }
@@ -123,11 +114,10 @@ public class ServiceController {
         ServiceCategorySummaryDto sc = dto.serviceCategory();
         TaxSummaryDto t = dto.tax();
         CompanySummaryDto c = dto.company();
-        return new ServiceResponse(
-            dto.id(), dto.name(), dto.price(), dto.taxTreatment(), dto.notes(),
-            new ServiceCategorySummary(sc.id(), sc.name()),
-            t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
+        return new ServiceResponse(dto.id(), dto.name(), dto.price(), dto.taxTreatment(),
+                dto.notes(), new ServiceCategorySummary(sc.id(), sc.name()),
+                t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
     }
 }

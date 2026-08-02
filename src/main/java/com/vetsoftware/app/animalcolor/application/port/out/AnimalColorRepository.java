@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface AnimalColorRepository {
     AnimalColor save(AnimalColor color);
+
     Optional<AnimalColor> findById(Long id);
+
     List<AnimalColor> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

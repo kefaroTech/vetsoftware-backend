@@ -12,18 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.progress.note.update")
 @Service
-public class UpdateHospitalizationProgressNoteService implements UpdateHospitalizationProgressNoteUseCase {
+public class UpdateHospitalizationProgressNoteService
+        implements
+            UpdateHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;
 
-    public UpdateHospitalizationProgressNoteService(HospitalizationProgressNoteRepository repository) {
+    public UpdateHospitalizationProgressNoteService(
+            HospitalizationProgressNoteRepository repository) {
         this.repository = repository;
     }
 
     @Override
     @Transactional
-    public HospitalizationProgressNoteDto execute(UpdateHospitalizationProgressNoteCommand command) {
+    public HospitalizationProgressNoteDto execute(
+            UpdateHospitalizationProgressNoteCommand command) {
         HospitalizationProgressNote progressNote = repository.findById(command.id())
-            .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(command.id()));
+                .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(command.id()));
         progressNote.update(command.description());
         return HospitalizationProgressNoteDto.from(repository.save(progressNote));
     }

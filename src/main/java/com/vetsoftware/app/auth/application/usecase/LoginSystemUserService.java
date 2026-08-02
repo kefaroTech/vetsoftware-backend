@@ -28,11 +28,9 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
 
     public LoginSystemUserService(SystemUserCredentialsRepository credentialsRepository,
-                                  TokenGenerator tokenGenerator,
-                                  RefreshTokenIssuer refreshTokenIssuer,
-                                  PasswordHasher passwordHasher,
-                                  AuthSystemUserRepository authSystemUserRepository,
-                                  RefreshTokenRepository refreshTokenRepository) {
+            TokenGenerator tokenGenerator, RefreshTokenIssuer refreshTokenIssuer,
+            PasswordHasher passwordHasher, AuthSystemUserRepository authSystemUserRepository,
+            RefreshTokenRepository refreshTokenRepository) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
@@ -54,10 +52,10 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
                 .orElseThrow(InvalidCredentialsException::new);
         refreshTokenRepository.revokeAllForSubject(credentials.id(), "SYSTEM_USER");
 
-        String accessToken = tokenGenerator.generate(
-                activeSession.id(), "SYSTEM_USER", null, activeSession.authVersion());
-        String refreshToken = refreshTokenIssuer.issue(
-                activeSession.id(), "SYSTEM_USER", activeSession.authVersion());
+        String accessToken = tokenGenerator.generate(activeSession.id(), "SYSTEM_USER", null,
+                activeSession.authVersion());
+        String refreshToken = refreshTokenIssuer.issue(activeSession.id(), "SYSTEM_USER",
+                activeSession.authVersion());
         return new TokenDto(accessToken, "SYSTEM_USER", refreshToken);
     }
 }

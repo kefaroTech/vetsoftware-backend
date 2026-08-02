@@ -5,6 +5,7 @@ import com.vetsoftware.app.employeebranch.application.dto.EmployeeBranchesDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SetEmployeeBranchesUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('employee.update') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('employee.update') and"
+            + " @authz.isMyCompany(#command.companyId))")
     EmployeeBranchesDto execute(SetEmployeeBranchesCommand command);
 }

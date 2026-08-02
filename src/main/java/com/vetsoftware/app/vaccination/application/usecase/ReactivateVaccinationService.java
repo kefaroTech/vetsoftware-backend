@@ -21,8 +21,9 @@ public class ReactivateVaccinationService implements ReactivateVaccinationUseCas
     @Transactional
     public VaccinationDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new VaccinationNotFoundException(id);
-        return VaccinationDto.from(repository.findById(id)
-            .orElseThrow(() -> new VaccinationNotFoundException(id)));
+        if (rows == 0)
+            throw new VaccinationNotFoundException(id);
+        return VaccinationDto.from(
+                repository.findById(id).orElseThrow(() -> new VaccinationNotFoundException(id)));
     }
 }

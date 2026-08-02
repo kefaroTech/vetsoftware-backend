@@ -12,7 +12,8 @@ public class AdminPermissionPublishController {
 
     private final PublishAdminPermissionsUseCase publishAdminPermissionsUseCase;
 
-    public AdminPermissionPublishController(PublishAdminPermissionsUseCase publishAdminPermissionsUseCase) {
+    public AdminPermissionPublishController(
+            PublishAdminPermissionsUseCase publishAdminPermissionsUseCase) {
         this.publishAdminPermissionsUseCase = publishAdminPermissionsUseCase;
     }
 

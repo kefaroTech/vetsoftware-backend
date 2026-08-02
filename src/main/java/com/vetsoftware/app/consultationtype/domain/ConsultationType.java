@@ -9,7 +9,8 @@ public class ConsultationType {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public ConsultationType(Long id, String name, String description, LocalDateTime createdDate, boolean enabled) {
+    public ConsultationType(Long id, String name, String description, LocalDateTime createdDate,
+            boolean enabled) {
         validate(name, description);
         this.id = id;
         this.name = name;
@@ -29,17 +30,41 @@ public class ConsultationType {
     }
 
     private static void validate(String name, String description) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
-        if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (description == null || description.isBlank()) throw new IllegalArgumentException("description is required");
-        if (description.length() > 500) throw new IllegalArgumentException("description must be 500 chars or less");
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("name is required");
+        if (name.length() > 100)
+            throw new IllegalArgumentException("name must be 100 chars or less");
+        if (description == null || description.isBlank())
+            throw new IllegalArgumentException("description is required");
+        if (description.length() > 500)
+            throw new IllegalArgumentException("description must be 500 chars or less");
     }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
 }

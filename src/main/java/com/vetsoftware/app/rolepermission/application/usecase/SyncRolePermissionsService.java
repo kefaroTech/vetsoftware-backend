@@ -29,9 +29,8 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
     private final PermissionCachePort permissionCachePort;
 
     public SyncRolePermissionsService(RolePermissionRepository repository,
-                                      RoleQueryPort roleQueryPort,
-                                      PermissionQueryPort permissionQueryPort,
-                                      PermissionCachePort permissionCachePort) {
+            RoleQueryPort roleQueryPort, PermissionQueryPort permissionQueryPort,
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.roleQueryPort = roleQueryPort;
         this.permissionQueryPort = permissionQueryPort;
@@ -44,12 +43,12 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
         if (command.roleId() == null) {
             throw new IllegalArgumentException("roleId is required");
         }
-        RoleRef role = roleQueryPort.findById(command.roleId())
-            .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
+        RoleRef role = roleQueryPort.findById(command.roleId()).orElseThrow(
+                () -> new IllegalArgumentException("Role not found: " + command.roleId()));
 
         Set<Long> desired = command.permissionIds() == null
-            ? new HashSet<>()
-            : new HashSet<>(command.permissionIds());
+                ? new HashSet<>()
+                : new HashSet<>(command.permissionIds());
 
         List<RolePermission> existing = repository.findAllByRoleId(command.roleId());
         Map<Long, Long> existingPermToRpId = new HashMap<>();
@@ -58,9 +57,7 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
         }
 
         List<Long> toRemoveRpIds = existingPermToRpId.entrySet().stream()
-            .filter(e -> !desired.contains(e.getKey()))
-            .map(Map.Entry::getValue)
-            .toList();
+                .filter(e -> !desired.contains(e.getKey())).map(Map.Entry::getValue).toList();
 
         Set<Long> toAddPermIds = new HashSet<>(desired);
         toAddPermIds.removeAll(existingPermToRpId.keySet());
@@ -71,13 +68,12 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
 
         if (!toAddPermIds.isEmpty()) {
             // Reactivar las filas desactivadas que coincidan con la clave única
-            List<DisabledRolePermissionLookup> disabled =
-                repository.findDisabledByRoleAndPermissions(command.roleId(), toAddPermIds);
+            List<DisabledRolePermissionLookup> disabled = repository
+                    .findDisabledByRoleAndPermissions(command.roleId(), toAddPermIds);
             Set<Long> reactivatedPermIds = new HashSet<>();
             if (!disabled.isEmpty()) {
-                List<Long> idsToReactivate = disabled.stream()
-                    .map(DisabledRolePermissionLookup::id)
-                    .toList();
+                List<Long> idsToReactivate = disabled.stream().map(DisabledRolePermissionLookup::id)
+                        .toList();
                 repository.reactivateAllByIds(idsToReactivate);
                 disabled.forEach(d -> reactivatedPermIds.add(d.permissionId()));
             }
@@ -86,20 +82,17 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
             Set<Long> toCreatePermIds = new HashSet<>(toAddPermIds);
             toCreatePermIds.removeAll(reactivatedPermIds);
             if (!toCreatePermIds.isEmpty()) {
-                List<RolePermission> nuevos = toCreatePermIds.stream()
-                    .map(pid -> {
-                        PermissionRef permission = permissionQueryPort.findById(pid)
-                            .orElseThrow(() -> new IllegalArgumentException("Permission not found: " + pid));
-                        return RolePermission.create(role, permission);
-                    })
-                    .toList();
+                List<RolePermission> nuevos = toCreatePermIds.stream().map(pid -> {
+                    PermissionRef permission = permissionQueryPort.findById(pid).orElseThrow(
+                            () -> new IllegalArgumentException("Permission not found: " + pid));
+                    return RolePermission.create(role, permission);
+                }).toList();
                 repository.saveAll(nuevos);
             }
         }
 
         List<RolePermissionDto> result = repository.findAllByRoleId(command.roleId()).stream()
-            .map(RolePermissionDto::from)
-            .toList();
+                .map(RolePermissionDto::from).toList();
         permissionCachePort.evictByRoleId(command.roleId());
         return result;
     }

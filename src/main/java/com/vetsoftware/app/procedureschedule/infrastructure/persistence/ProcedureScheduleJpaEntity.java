@@ -45,26 +45,87 @@ public class ProcedureScheduleJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected ProcedureScheduleJpaEntity() {}
+    protected ProcedureScheduleJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public HospitalizationProcedureJpaEntity getHospitalizationProcedure() { return hospitalizationProcedure; }
-    public void setHospitalizationProcedure(HospitalizationProcedureJpaEntity hospitalizationProcedure) { this.hospitalizationProcedure = hospitalizationProcedure; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getOriginalDateTime() { return originalDateTime; }
-    public void setOriginalDateTime(LocalDateTime originalDateTime) { this.originalDateTime = originalDateTime; }
-    public LocalDateTime getCurrentDateTime() { return currentDateTime; }
-    public void setCurrentDateTime(LocalDateTime currentDateTime) { this.currentDateTime = currentDateTime; }
-    public LocalDateTime getRealDateTime() { return realDateTime; }
-    public void setRealDateTime(LocalDateTime realDateTime) { this.realDateTime = realDateTime; }
-    public String getAppliedStatus() { return appliedStatus; }
-    public void setAppliedStatus(String appliedStatus) { this.appliedStatus = appliedStatus; }
-    public Boolean getRescheduled() { return rescheduled; }
-    public void setRescheduled(Boolean rescheduled) { this.rescheduled = rescheduled; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public HospitalizationProcedureJpaEntity getHospitalizationProcedure() {
+        return hospitalizationProcedure;
+    }
+
+    public void setHospitalizationProcedure(
+            HospitalizationProcedureJpaEntity hospitalizationProcedure) {
+        this.hospitalizationProcedure = hospitalizationProcedure;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getOriginalDateTime() {
+        return originalDateTime;
+    }
+
+    public void setOriginalDateTime(LocalDateTime originalDateTime) {
+        this.originalDateTime = originalDateTime;
+    }
+
+    public LocalDateTime getCurrentDateTime() {
+        return currentDateTime;
+    }
+
+    public void setCurrentDateTime(LocalDateTime currentDateTime) {
+        this.currentDateTime = currentDateTime;
+    }
+
+    public LocalDateTime getRealDateTime() {
+        return realDateTime;
+    }
+
+    public void setRealDateTime(LocalDateTime realDateTime) {
+        this.realDateTime = realDateTime;
+    }
+
+    public String getAppliedStatus() {
+        return appliedStatus;
+    }
+
+    public void setAppliedStatus(String appliedStatus) {
+        this.appliedStatus = appliedStatus;
+    }
+
+    public Boolean getRescheduled() {
+        return rescheduled;
+    }
+
+    public void setRescheduled(Boolean rescheduled) {
+        this.rescheduled = rescheduled;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

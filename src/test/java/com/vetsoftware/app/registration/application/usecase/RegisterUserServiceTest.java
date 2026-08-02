@@ -45,9 +45,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Auto-registro público (Opción B): crea empresa, perfil fiscal, sede Principal, el dueño y sus roles, y
- * deja la cuenta PENDIENTE de verificar el correo. Es un endpoint sin autenticar, así que además del
- * cableado se fija el orden anti-abuso (captcha primero) y que en BD solo queda el hash del token.
+ * Auto-registro público (Opción B): crea empresa, perfil fiscal, sede
+ * Principal, el dueño y sus roles, y deja la cuenta PENDIENTE de verificar el
+ * correo. Es un endpoint sin autenticar, así que además del cableado se fija el
+ * orden anti-abuso (captcha primero) y que en BD solo queda el hash del token.
  */
 @ExtendWith(MockitoExtension.class)
 class RegisterUserServiceTest {
@@ -56,28 +57,41 @@ class RegisterUserServiceTest {
     private static final Long EMPLOYEE = 55L;
     private static final Long MEMBERSHIP = 1L;
 
-    @Mock private CaptchaVerifier captchaVerifier;
-    @Mock private CompanyCreator companyCreator;
-    @Mock private CompanyTaxProfileCreator companyTaxProfileCreator;
-    @Mock private BranchCreator branchCreator;
-    @Mock private EmployeeCreator employeeCreator;
-    @Mock private CompanyIdentifierChecker companyIdentifierChecker;
-    @Mock private EmployeeCodeChecker employeeCodeChecker;
-    @Mock private BaseRoleProvider baseRoleProvider;
-    @Mock private RoleCreator roleCreator;
-    @Mock private EmployeeRoleAssigner employeeRoleAssigner;
-    @Mock private DefaultMembershipProvider defaultMembershipProvider;
-    @Mock private RolePermissionInitializationPort rolePermissionInitializationPort;
-    @Mock private EmailVerificationTokenRepository emailVerificationTokenRepository;
-    @Mock private VerificationEmailSender verificationEmailSender;
+    @Mock
+    private CaptchaVerifier captchaVerifier;
+    @Mock
+    private CompanyCreator companyCreator;
+    @Mock
+    private CompanyTaxProfileCreator companyTaxProfileCreator;
+    @Mock
+    private BranchCreator branchCreator;
+    @Mock
+    private EmployeeCreator employeeCreator;
+    @Mock
+    private CompanyIdentifierChecker companyIdentifierChecker;
+    @Mock
+    private EmployeeCodeChecker employeeCodeChecker;
+    @Mock
+    private BaseRoleProvider baseRoleProvider;
+    @Mock
+    private RoleCreator roleCreator;
+    @Mock
+    private EmployeeRoleAssigner employeeRoleAssigner;
+    @Mock
+    private DefaultMembershipProvider defaultMembershipProvider;
+    @Mock
+    private RolePermissionInitializationPort rolePermissionInitializationPort;
+    @Mock
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+    @Mock
+    private VerificationEmailSender verificationEmailSender;
 
     private RegisterUserService service;
 
     private static RegisterUserCommand command() {
-        return new RegisterUserCommand("Veterinaria Vetrina", "NIT", "900123456",
-                "Calle 1 # 2-3", "3001234567", 11001L, "Orlando Velásquez",
-                "orlando@vetrina.co", "Orlando1997*", "RESPONSABLE_IVA", "fiscal@vetrina.co",
-                "captcha-token", "10.0.0.1");
+        return new RegisterUserCommand("Veterinaria Vetrina", "NIT", "900123456", "Calle 1 # 2-3",
+                "3001234567", 11001L, "Orlando Velásquez", "orlando@vetrina.co", "Orlando1997*",
+                "RESPONSABLE_IVA", "fiscal@vetrina.co", "captcha-token", "10.0.0.1");
     }
 
     @BeforeEach
@@ -91,14 +105,15 @@ class RegisterUserServiceTest {
         lenient().when(companyIdentifierChecker.exists(anyString())).thenReturn(false);
         lenient().when(employeeCodeChecker.exists(anyString())).thenReturn(false);
         lenient().when(defaultMembershipProvider.getDefaultMembershipId()).thenReturn(MEMBERSHIP);
-        lenient().when(companyCreator.create(anyString(), anyString(), anyString(), anyString(),
-                anyLong(), anyLong()))
+        lenient()
+                .when(companyCreator.create(anyString(), anyString(), anyString(), anyString(),
+                        anyLong(), anyLong()))
                 .thenReturn(new CompanyResult(COMPANY, "Veterinaria Vetrina", "900123456"));
-        lenient().when(employeeCreator.create(anyString(), anyString(), anyString(), anyString(), anyLong()))
-                .thenReturn(new EmployeeResult(EMPLOYEE));
-        lenient().when(baseRoleProvider.findAll()).thenReturn(List.of(
-                new BaseRoleData(1L, "Administrador", "ADMIN", true),
-                new BaseRoleData(2L, "Veterinario", "VET", false)));
+        lenient().when(employeeCreator.create(anyString(), anyString(), anyString(), anyString(),
+                anyLong())).thenReturn(new EmployeeResult(EMPLOYEE));
+        lenient().when(baseRoleProvider.findAll())
+                .thenReturn(List.of(new BaseRoleData(1L, "Administrador", "ADMIN", true),
+                        new BaseRoleData(2L, "Veterinario", "VET", false)));
         lenient().when(roleCreator.create(anyString(), anyString(), anyLong()))
                 .thenAnswer(i -> new RoleResult("ADMIN".equals(i.getArgument(1)) ? 100L : 200L));
     }
@@ -126,19 +141,21 @@ class RegisterUserServiceTest {
 
         @Test
         void entrega_la_contrasena_cruda_al_creador_para_que_se_hashee_una_sola_vez() {
-            // Pre-hashear aquí dejaría el hash doblemente aplicado y el login nunca haría match.
+            // Pre-hashear aquí dejaría el hash doblemente aplicado y el login nunca haría
+            // match.
             service.execute(command());
 
-            verify(employeeCreator).create(anyString(), org.mockito.ArgumentMatchers.eq("Orlando1997*"),
-                    anyString(), anyString(), anyLong());
+            verify(employeeCreator).create(anyString(),
+                    org.mockito.ArgumentMatchers.eq("Orlando1997*"), anyString(), anyString(),
+                    anyLong());
         }
 
         @Test
         void toda_empresa_nace_con_su_sede_principal() {
             service.execute(command());
 
-            verify(branchCreator).create("Principal", "PRINCIPAL", "Calle 1 # 2-3",
-                    "3001234567", 11001L, COMPANY);
+            verify(branchCreator).create("Principal", "PRINCIPAL", "Calle 1 # 2-3", "3001234567",
+                    11001L, COMPANY);
         }
 
         @Test
@@ -155,8 +172,10 @@ class RegisterUserServiceTest {
 
             verify(roleCreator).create("Administrador", "ADMIN", COMPANY);
             verify(roleCreator).create("Veterinario", "VET", COMPANY);
-            verify(rolePermissionInitializationPort).initializeForRole(100L, COMPANY, 1L, MEMBERSHIP);
-            verify(rolePermissionInitializationPort).initializeForRole(200L, COMPANY, 2L, MEMBERSHIP);
+            verify(rolePermissionInitializationPort).initializeForRole(100L, COMPANY, 1L,
+                    MEMBERSHIP);
+            verify(rolePermissionInitializationPort).initializeForRole(200L, COMPANY, 2L,
+                    MEMBERSHIP);
 
             verify(employeeRoleAssigner).assign(EMPLOYEE, 100L);
             verify(employeeRoleAssigner, never()).assign(EMPLOYEE, 200L);
@@ -169,26 +188,26 @@ class RegisterUserServiceTest {
         @Test
         void persiste_solo_el_hash_del_token_y_envia_el_valor_plano_por_correo() {
             ArgumentCaptor<String> rawToken = ArgumentCaptor.forClass(String.class);
-            ArgumentCaptor<EmailVerificationToken> stored =
-                    ArgumentCaptor.forClass(EmailVerificationToken.class);
+            ArgumentCaptor<EmailVerificationToken> stored = ArgumentCaptor
+                    .forClass(EmailVerificationToken.class);
 
             service.execute(command());
 
             verify(emailVerificationTokenRepository).save(stored.capture());
-            verify(verificationEmailSender).send(anyString(), anyString(), anyString(), rawToken.capture());
+            verify(verificationEmailSender).send(anyString(), anyString(), anyString(),
+                    rawToken.capture());
 
             assertThat(stored.getValue().getTokenHash())
                     .as("en BD nunca puede quedar el token usable")
-                    .isNotEqualTo(rawToken.getValue())
-                    .hasSize(64);
+                    .isNotEqualTo(rawToken.getValue()).hasSize(64);
             assertThat(stored.getValue().getTokenHash())
                     .isEqualTo(VerificationTokens.hash(rawToken.getValue()));
         }
 
         @Test
         void el_token_se_emite_para_el_empleado_y_la_empresa_recien_creados() {
-            ArgumentCaptor<EmailVerificationToken> stored =
-                    ArgumentCaptor.forClass(EmailVerificationToken.class);
+            ArgumentCaptor<EmailVerificationToken> stored = ArgumentCaptor
+                    .forClass(EmailVerificationToken.class);
 
             service.execute(command());
 
@@ -200,15 +219,15 @@ class RegisterUserServiceTest {
 
         @Test
         void aplica_la_vigencia_configurada() {
-            ArgumentCaptor<EmailVerificationToken> stored =
-                    ArgumentCaptor.forClass(EmailVerificationToken.class);
+            ArgumentCaptor<EmailVerificationToken> stored = ArgumentCaptor
+                    .forClass(EmailVerificationToken.class);
             LocalDateTime before = LocalDateTime.now().plusHours(24);
 
             service.execute(command());
 
             verify(emailVerificationTokenRepository).save(stored.capture());
-            assertThat(stored.getValue().getExpiresAt())
-                    .isBetween(before.minusMinutes(1), before.plusMinutes(1));
+            assertThat(stored.getValue().getExpiresAt()).isBetween(before.minusMinutes(1),
+                    before.plusMinutes(1));
         }
 
         @Test
@@ -218,8 +237,8 @@ class RegisterUserServiceTest {
             service.execute(command());
             service.execute(command());
 
-            verify(verificationEmailSender, org.mockito.Mockito.times(2))
-                    .send(anyString(), anyString(), anyString(), tokens.capture());
+            verify(verificationEmailSender, org.mockito.Mockito.times(2)).send(anyString(),
+                    anyString(), anyString(), tokens.capture());
             assertThat(tokens.getAllValues()).doesNotHaveDuplicates();
         }
     }
@@ -246,8 +265,8 @@ class RegisterUserServiceTest {
             assertThatThrownBy(() -> service.execute(command()))
                     .isInstanceOf(IllegalArgumentException.class);
 
-            verify(companyCreator, never()).create(anyString(), anyString(), anyString(), anyString(),
-                    anyLong(), anyLong());
+            verify(companyCreator, never()).create(anyString(), anyString(), anyString(),
+                    anyString(), anyLong(), anyLong());
             verify(employeeCreator, never()).create(anyString(), anyString(), anyString(),
                     anyString(), anyLong());
         }
@@ -260,8 +279,8 @@ class RegisterUserServiceTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("already in use");
 
-            verify(companyCreator, never()).create(anyString(), anyString(), anyString(), anyString(),
-                    anyLong(), anyLong());
+            verify(companyCreator, never()).create(anyString(), anyString(), anyString(),
+                    anyString(), anyLong(), anyLong());
         }
 
         @Test
@@ -280,8 +299,8 @@ class RegisterUserServiceTest {
         void el_correo_se_normaliza_quitando_espacios_antes_de_usarlo_como_codigo() {
             RegisterUserCommand withSpaces = new RegisterUserCommand("Veterinaria Vetrina", "NIT",
                     "900123456", "Calle 1 # 2-3", "3001234567", 11001L, "Orlando",
-                    "  orlando@vetrina.co  ", "Orlando1997*", "RESPONSABLE_IVA", "fiscal@vetrina.co",
-                    "captcha-token", "10.0.0.1");
+                    "  orlando@vetrina.co  ", "Orlando1997*", "RESPONSABLE_IVA",
+                    "fiscal@vetrina.co", "captcha-token", "10.0.0.1");
 
             service.execute(withSpaces);
 

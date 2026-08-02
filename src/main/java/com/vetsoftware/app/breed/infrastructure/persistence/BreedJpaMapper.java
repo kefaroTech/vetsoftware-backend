@@ -24,6 +24,7 @@ public class BreedJpaMapper {
     }
 
     public Breed toDomain(BreedJpaEntity entity, SpecieRef ref) {
-        return new Breed(entity.getId(), entity.getName(), ref, entity.getCreatedDate(), entity.isEnabled());
+        return new Breed(entity.getId(), entity.getName(), ref, entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

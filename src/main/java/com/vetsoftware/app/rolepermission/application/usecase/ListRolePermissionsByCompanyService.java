@@ -18,8 +18,7 @@ public class ListRolePermissionsByCompanyService implements ListRolePermissionsB
 
     @Override
     public List<RolePermissionDto> listByCompany(Long companyId) {
-        return repository.findAllByRoleCompanyId(companyId).stream()
-            .map(RolePermissionDto::from)
-            .toList();
+        return repository.findAllByRoleCompanyId(companyId).stream().map(RolePermissionDto::from)
+                .toList();
     }
 }

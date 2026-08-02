@@ -18,13 +18,7 @@ public class BaseRoleJpaMapper {
     }
 
     public BaseRole toDomain(BaseRoleJpaEntity entity) {
-        return new BaseRole(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            entity.getMandatory(),
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+        return new BaseRole(entity.getId(), entity.getName(), entity.getCode(),
+                entity.getMandatory(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

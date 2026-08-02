@@ -6,34 +6,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record PrescriptionDto(
-        Long id,
-        LocalDate date,
-        String diagnosis,
-        String observations,
-        AnimalSummaryDto animal,
-        ConsultationSummaryDto consultation,
-        CompanySummaryDto company,
-        List<MedicamentRef> medicaments,
-        LocalDateTime createdDate,
-        boolean enabled
-) {
+public record PrescriptionDto(Long id, LocalDate date, String diagnosis, String observations,
+        AnimalSummaryDto animal, ConsultationSummaryDto consultation, CompanySummaryDto company,
+        List<MedicamentRef> medicaments, LocalDateTime createdDate, boolean enabled) {
     public static PrescriptionDto from(Prescription prescription) {
         return from(prescription, List.of());
     }
 
     public static PrescriptionDto from(Prescription prescription, List<MedicamentRef> medicaments) {
-        return new PrescriptionDto(
-            prescription.getId(),
-            prescription.getDate(),
-            prescription.getDiagnosis(),
-            prescription.getObservations(),
-            AnimalSummaryDto.from(prescription.getAnimal()),
-            ConsultationSummaryDto.from(prescription.getConsultation()),
-            CompanySummaryDto.from(prescription.getCompany()),
-            medicaments,
-            prescription.getCreatedDate(),
-            prescription.isEnabled()
-        );
+        return new PrescriptionDto(prescription.getId(), prescription.getDate(),
+                prescription.getDiagnosis(), prescription.getObservations(),
+                AnimalSummaryDto.from(prescription.getAnimal()),
+                ConsultationSummaryDto.from(prescription.getConsultation()),
+                CompanySummaryDto.from(prescription.getCompany()), medicaments,
+                prescription.getCreatedDate(), prescription.isEnabled());
     }
 }

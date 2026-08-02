@@ -12,21 +12,13 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record UpdateAnimalRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 50) String code,
-        @NotNull Long specieId,
-        @NotNull Long breedId,
-        @NotNull Long ownerId,
-        @NotNull Gender gender,
-        @NotNull WeightType weightType,
-        @NotNull AnimalType animalType,
-        @NotNull ReproductiveState reproductiveState,
-        @NotNull Long colorId,
-        LocalDate bod,
-        // Ignorado: el peso ya no se edita desde el animal; se gestiona vía /animals/{id}/weight-records.
-        @Positive BigDecimal weight,
-        @PositiveOrZero Integer size,
-        boolean deceased,
-        LocalDate deceasedDate
-) {}
+public record UpdateAnimalRequest(@NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 50) String code, @NotNull Long specieId, @NotNull Long breedId,
+        @NotNull Long ownerId, @NotNull Gender gender, @NotNull WeightType weightType,
+        @NotNull AnimalType animalType, @NotNull ReproductiveState reproductiveState,
+        @NotNull Long colorId, LocalDate bod,
+        // Ignorado: el peso ya no se edita desde el animal; se gestiona vía
+        // /animals/{id}/weight-records.
+        @Positive BigDecimal weight, @PositiveOrZero Integer size, boolean deceased,
+        LocalDate deceasedDate) {
+}

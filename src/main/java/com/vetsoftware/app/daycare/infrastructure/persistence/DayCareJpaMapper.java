@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class DayCareJpaMapper {
 
-    public DayCareJpaEntity toJpa(DayCare dayCare, AnimalJpaEntity animal, CompanyJpaEntity company) {
+    public DayCareJpaEntity toJpa(DayCare dayCare, AnimalJpaEntity animal,
+            CompanyJpaEntity company) {
         DayCareJpaEntity entity = new DayCareJpaEntity();
         entity.setId(dayCare.getId());
         entity.setDate(dayCare.getDate());
@@ -29,15 +30,14 @@ public class DayCareJpaMapper {
     public DayCare toDomain(DayCareJpaEntity entity) {
         AnimalJpaEntity a = entity.getAnimal();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public DayCare toDomain(DayCareJpaEntity entity, AnimalRef animalRef, CompanyRef companyRef) {
-        return new DayCare(
-            entity.getId(), entity.getDate(), entity.getStartDate(), entity.getEndDate(),
-            entity.getType(), entity.getObjects(), entity.getObservations(),
-            animalRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+        return new DayCare(entity.getId(), entity.getDate(), entity.getStartDate(),
+                entity.getEndDate(), entity.getType(), entity.getObjects(),
+                entity.getObservations(), animalRef, companyRef, entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

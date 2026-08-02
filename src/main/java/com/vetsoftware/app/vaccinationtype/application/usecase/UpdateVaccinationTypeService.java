@@ -19,7 +19,7 @@ public class UpdateVaccinationTypeService implements UpdateVaccinationTypeUseCas
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateVaccinationTypeService(VaccinationTypeRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -29,9 +29,11 @@ public class UpdateVaccinationTypeService implements UpdateVaccinationTypeUseCas
     public VaccinationTypeDto execute(UpdateVaccinationTypeCommand command) {
         VaccinationType vaccinationType = repository.findById(command.id())
                 .orElseThrow(() -> new VaccinationTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
         vaccinationType.update(command.name(), command.description(), company, command.general());
         return VaccinationTypeDto.from(repository.save(vaccinationType));
     }

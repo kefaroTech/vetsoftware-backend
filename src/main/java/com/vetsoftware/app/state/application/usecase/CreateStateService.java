@@ -23,8 +23,8 @@ public class CreateStateService implements CreateStateUseCase {
 
     @Override
     public StateDto execute(CreateStateCommand command) {
-        CountryRef country = countryQueryPort.findById(command.countryId())
-            .orElseThrow(() -> new IllegalArgumentException("Country not found: " + command.countryId()));
+        CountryRef country = countryQueryPort.findById(command.countryId()).orElseThrow(
+                () -> new IllegalArgumentException("Country not found: " + command.countryId()));
         State state = State.create(command.name(), country, command.daneCode());
         return StateDto.from(repository.save(state));
     }

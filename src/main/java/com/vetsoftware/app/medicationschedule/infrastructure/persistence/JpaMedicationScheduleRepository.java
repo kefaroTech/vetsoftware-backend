@@ -18,9 +18,9 @@ public class JpaMedicationScheduleRepository implements MedicationScheduleReposi
     private final EmployeeJpaRepository employeeJpaRepository;
 
     public JpaMedicationScheduleRepository(MedicationScheduleJpaRepository jpaRepository,
-                                           MedicationScheduleJpaMapper mapper,
-                                           HospitalizationMedicationJpaRepository hospitalizationMedicationJpaRepository,
-                                           EmployeeJpaRepository employeeJpaRepository) {
+            MedicationScheduleJpaMapper mapper,
+            HospitalizationMedicationJpaRepository hospitalizationMedicationJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.hospitalizationMedicationJpaRepository = hospitalizationMedicationJpaRepository;
@@ -29,13 +29,14 @@ public class JpaMedicationScheduleRepository implements MedicationScheduleReposi
 
     @Override
     public MedicationSchedule save(MedicationSchedule medicationSchedule) {
-        HospitalizationMedicationJpaEntity hospitalizationMedication =
-            hospitalizationMedicationJpaRepository.getReferenceById(medicationSchedule.getHospitalizationMedication().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(medicationSchedule.getCreatedBy().id());
-        MedicationScheduleJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(medicationSchedule, hospitalizationMedication, createdBy));
-        return mapper.toDomain(saved, medicationSchedule.getHospitalizationMedication(), medicationSchedule.getCreatedBy());
+        HospitalizationMedicationJpaEntity hospitalizationMedication = hospitalizationMedicationJpaRepository
+                .getReferenceById(medicationSchedule.getHospitalizationMedication().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(medicationSchedule.getCreatedBy().id());
+        MedicationScheduleJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(medicationSchedule, hospitalizationMedication, createdBy));
+        return mapper.toDomain(saved, medicationSchedule.getHospitalizationMedication(),
+                medicationSchedule.getCreatedBy());
     }
 
     @Override
@@ -44,15 +45,16 @@ public class JpaMedicationScheduleRepository implements MedicationScheduleReposi
     }
 
     @Override
-    public List<MedicationSchedule> findByHospitalizationMedicationId(Long hospitalizationMedicationId) {
+    public List<MedicationSchedule> findByHospitalizationMedicationId(
+            Long hospitalizationMedicationId) {
         return jpaRepository.findByHospitalizationMedicationId(hospitalizationMedicationId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override
     public List<MedicationSchedule> findByHospitalizationId(Long hospitalizationId) {
-        return jpaRepository.findByHospitalizationMedicationHospitalizationId(hospitalizationId).stream()
-            .map(mapper::toDomain).toList();
+        return jpaRepository.findByHospitalizationMedicationHospitalizationId(hospitalizationId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

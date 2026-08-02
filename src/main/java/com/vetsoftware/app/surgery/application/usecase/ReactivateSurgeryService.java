@@ -21,8 +21,9 @@ public class ReactivateSurgeryService implements ReactivateSurgeryUseCase {
     @Transactional
     public SurgeryDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SurgeryNotFoundException(id);
-        return SurgeryDto.from(repository.findById(id)
-            .orElseThrow(() -> new SurgeryNotFoundException(id)));
+        if (rows == 0)
+            throw new SurgeryNotFoundException(id);
+        return SurgeryDto
+                .from(repository.findById(id).orElseThrow(() -> new SurgeryNotFoundException(id)));
     }
 }

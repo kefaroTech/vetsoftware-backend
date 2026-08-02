@@ -12,10 +12,14 @@ public interface AppointmentRepository {
     Optional<Appointment> findByIdAndCompanyId(Long id, Long companyId);
 
     List<Appointment> findByFilters(Long companyId, LocalDateTime from, LocalDateTime to,
-                                    Long employeeId, AppointmentStatus status, Long branchId);
+            Long employeeId, AppointmentStatus status, Long branchId);
 
-    /** IDs de citas del mismo vet a la misma hora de inicio (activas, no terminales). Solo aviso. */
-    List<Long> findClashingIds(Long companyId, Long employeeId, LocalDateTime startAt, Long excludeId);
+    /**
+     * IDs de citas del mismo vet a la misma hora de inicio (activas, no
+     * terminales). Solo aviso.
+     */
+    List<Long> findClashingIds(Long companyId, Long employeeId, LocalDateTime startAt,
+            Long excludeId);
 
     void delete(Long id, Long companyId);
 }

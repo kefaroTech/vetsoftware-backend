@@ -10,16 +10,13 @@ import java.math.BigDecimal;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JpaProductCatalogPort
-        implements DefaultProductPresentationPort, UnitMeasureQueryPort {
+public class JpaProductCatalogPort implements DefaultProductPresentationPort, UnitMeasureQueryPort {
     private final ProductJpaRepository products;
     private final ProductPresentationJpaRepository presentations;
     private final UnitMeasureCatalogJpaRepository units;
 
-    public JpaProductCatalogPort(
-            ProductJpaRepository products,
-            ProductPresentationJpaRepository presentations,
-            UnitMeasureCatalogJpaRepository units) {
+    public JpaProductCatalogPort(ProductJpaRepository products,
+            ProductPresentationJpaRepository presentations, UnitMeasureCatalogJpaRepository units) {
         this.products = products;
         this.presentations = presentations;
         this.units = units;
@@ -31,8 +28,8 @@ public class JpaProductCatalogPort
     }
 
     @Override
-    public void ensureDefault(
-            Long productId, Long companyId, String unitMeasureCode, BigDecimal salePrice) {
+    public void ensureDefault(Long productId, Long companyId, String unitMeasureCode,
+            BigDecimal salePrice) {
         if (presentations
                 .findByCompany_IdAndProduct_IdAndDefaultPresentationTrue(companyId, productId)
                 .isPresent()) {
@@ -40,27 +37,26 @@ public class JpaProductCatalogPort
         }
         ProductJpaEntity product = requireProduct(productId, companyId);
         UnitMeasureCatalogJpaEntity unit = units.getReferenceById(unitMeasureCode);
-        presentations.save(ProductPresentationJpaEntity.create(
-            product.getCompany(), product, "Unidad", unit, 1, salePrice, true, null));
+        presentations.save(ProductPresentationJpaEntity.create(product.getCompany(), product,
+                "Unidad", unit, 1, salePrice, true, null));
     }
 
     @Override
-    public void synchronizeDefault(
-            Long productId, Long companyId, String unitMeasureCode,
+    public void synchronizeDefault(Long productId, Long companyId, String unitMeasureCode,
             BigDecimal salePrice, Long actorId) {
         ProductPresentationJpaEntity presentation = presentations
-            .findByCompany_IdAndProduct_IdAndDefaultPresentationTrue(companyId, productId)
-            .orElse(null);
+                .findByCompany_IdAndProduct_IdAndDefaultPresentationTrue(companyId, productId)
+                .orElse(null);
         if (presentation == null) {
             ensureDefault(productId, companyId, unitMeasureCode, salePrice);
             return;
         }
-        presentation.update(presentation.getName(), units.getReferenceById(unitMeasureCode),
-            1, salePrice, true, actorId);
+        presentation.update(presentation.getName(), units.getReferenceById(unitMeasureCode), 1,
+                salePrice, true, actorId);
     }
 
     private ProductJpaEntity requireProduct(Long productId, Long companyId) {
         return products.findByIdAndCompany_Id(productId, companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
     }
 }

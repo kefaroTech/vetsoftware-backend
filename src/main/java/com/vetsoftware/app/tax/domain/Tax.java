@@ -15,9 +15,9 @@ public class Tax {
     private Long version;
     private boolean enabled;
 
-    public Tax(Long id, String name, BigDecimal percentage, TaxScheme taxScheme,
-               CompanyRef company, LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy,
-               Long version, boolean enabled) {
+    public Tax(Long id, String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company,
+            LocalDateTime createdDate, LocalDateTime updatedDate, Long updatedBy, Long version,
+            boolean enabled) {
         validate(name, percentage, taxScheme, company);
         this.id = id;
         this.name = name;
@@ -31,12 +31,14 @@ public class Tax {
         this.enabled = enabled;
     }
 
-    public static Tax create(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company) {
-        return new Tax(null, name, percentage, taxScheme, company, LocalDateTime.now(), null, null, null, true);
+    public static Tax create(String name, BigDecimal percentage, TaxScheme taxScheme,
+            CompanyRef company) {
+        return new Tax(null, name, percentage, taxScheme, company, LocalDateTime.now(), null, null,
+                null, true);
     }
 
-    public void update(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company, Long updatedBy,
-                       Long expectedVersion) {
+    public void update(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company,
+            Long updatedBy, Long expectedVersion) {
         validate(name, percentage, taxScheme, company);
         this.name = name;
         this.percentage = percentage;
@@ -47,26 +49,69 @@ public class Tax {
         this.version = expectedVersion;
     }
 
-    private static void validate(String name, BigDecimal percentage, TaxScheme taxScheme, CompanyRef company) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
-        if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (percentage == null) throw new IllegalArgumentException("percentage is required");
-        if (percentage.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("percentage cannot be negative");
-        if (percentage.compareTo(BigDecimal.valueOf(100)) > 0) throw new IllegalArgumentException("percentage cannot exceed 100");
-        if (taxScheme == null) throw new IllegalArgumentException("taxScheme is required");
-        if (company == null) throw new IllegalArgumentException("company is required");
+    private static void validate(String name, BigDecimal percentage, TaxScheme taxScheme,
+            CompanyRef company) {
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("name is required");
+        if (name.length() > 100)
+            throw new IllegalArgumentException("name must be 100 chars or less");
+        if (percentage == null)
+            throw new IllegalArgumentException("percentage is required");
+        if (percentage.compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalArgumentException("percentage cannot be negative");
+        if (percentage.compareTo(BigDecimal.valueOf(100)) > 0)
+            throw new IllegalArgumentException("percentage cannot exceed 100");
+        if (taxScheme == null)
+            throw new IllegalArgumentException("taxScheme is required");
+        if (company == null)
+            throw new IllegalArgumentException("company is required");
     }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public BigDecimal getPercentage() { return percentage; }
-    public TaxScheme getTaxScheme() { return taxScheme; }
-    public CompanyRef getCompany() { return company; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public Long getVersion() { return version; }
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public BigDecimal getPercentage() {
+        return percentage;
+    }
+
+    public TaxScheme getTaxScheme() {
+        return taxScheme;
+    }
+
+    public CompanyRef getCompany() {
+        return company;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
 }

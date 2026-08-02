@@ -10,12 +10,10 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties("vetsoftware.pdf")
-public record PdfProperties(
-        @Min(1) @DefaultValue("2") int maxConcurrentRenders,
+public record PdfProperties(@Min(1) @DefaultValue("2") int maxConcurrentRenders,
         @NotNull @DefaultValue("30s") Duration acquireTimeout,
         @NotNull @DefaultValue("5MB") DataSize maxHtmlSize,
-        @NotNull @DefaultValue("25MB") DataSize maxPdfSize
-) {
+        @NotNull @DefaultValue("25MB") DataSize maxPdfSize) {
     public PdfProperties {
         if (acquireTimeout.isZero() || acquireTimeout.isNegative()) {
             throw new IllegalArgumentException("acquireTimeout debe ser positivo");

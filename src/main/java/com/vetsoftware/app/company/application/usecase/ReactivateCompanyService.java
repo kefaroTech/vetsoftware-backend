@@ -21,7 +21,9 @@ public class ReactivateCompanyService implements ReactivateCompanyUseCase {
     @Transactional
     public CompanyDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new CompanyNotFoundException(id);
-        return CompanyDto.from(repository.findById(id).orElseThrow(() -> new CompanyNotFoundException(id)));
+        if (rows == 0)
+            throw new CompanyNotFoundException(id);
+        return CompanyDto
+                .from(repository.findById(id).orElseThrow(() -> new CompanyNotFoundException(id)));
     }
 }

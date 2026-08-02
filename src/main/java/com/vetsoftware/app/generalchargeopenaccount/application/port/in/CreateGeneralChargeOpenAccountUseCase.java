@@ -5,8 +5,7 @@ import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateGeneralChargeOpenAccountUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('chargeOpenAccount.create') and @authz.isMyCompany(#command.companyId)) or "
-        + "hasRole('SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('chargeOpenAccount.create') and"
+            + " @authz.isMyCompany(#command.companyId)) or hasRole('SYSTEM')")
     GeneralChargeOpenAccountDto execute(CreateGeneralChargeOpenAccountCommand command);
 }

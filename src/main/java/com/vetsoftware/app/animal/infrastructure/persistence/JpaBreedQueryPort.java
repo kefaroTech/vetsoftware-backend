@@ -16,7 +16,6 @@ public class JpaBreedQueryPort implements BreedQueryPort {
 
     @Override
     public Optional<BreedRef> findById(Long breedId) {
-        return breedJpaRepository.findById(breedId)
-            .map(e -> new BreedRef(e.getId(), e.getName()));
+        return breedJpaRepository.findById(breedId).map(e -> new BreedRef(e.getId(), e.getName()));
     }
 }

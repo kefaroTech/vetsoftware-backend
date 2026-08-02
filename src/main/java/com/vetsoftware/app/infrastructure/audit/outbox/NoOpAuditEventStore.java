@@ -6,11 +6,7 @@ import org.springframework.stereotype.Component;
 
 /** En perfiles sin outbox, el evento sigue visible por el logger AUDIT. */
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "false",
-        matchIfMissing = true)
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "false", matchIfMissing = true)
 final class NoOpAuditEventStore implements AuditEventStore {
 
     @Override

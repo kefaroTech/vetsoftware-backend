@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class VaccinationTypeJpaMapper {
-    public VaccinationTypeJpaEntity toJpa(VaccinationType vaccinationType, CompanyJpaEntity company) {
+    public VaccinationTypeJpaEntity toJpa(VaccinationType vaccinationType,
+            CompanyJpaEntity company) {
         VaccinationTypeJpaEntity entity = new VaccinationTypeJpaEntity();
         entity.setId(vaccinationType.getId());
         entity.setName(vaccinationType.getName());
@@ -26,13 +27,8 @@ public class VaccinationTypeJpaMapper {
     }
 
     public VaccinationType toDomain(VaccinationTypeJpaEntity entity, CompanyRef companyRef) {
-        return new VaccinationType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
+        return new VaccinationType(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

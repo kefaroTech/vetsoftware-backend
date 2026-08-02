@@ -21,8 +21,9 @@ public class ReactivateTaxService implements ReactivateTaxUseCase {
     @Transactional
     public TaxDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new TaxNotFoundException(id);
+        if (rows == 0)
+            throw new TaxNotFoundException(id);
         return TaxDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new TaxNotFoundException(id)));
+                .orElseThrow(() -> new TaxNotFoundException(id)));
     }
 }

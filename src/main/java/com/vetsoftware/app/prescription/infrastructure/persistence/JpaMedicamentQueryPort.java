@@ -17,13 +17,8 @@ public class JpaMedicamentQueryPort implements MedicamentQueryPort {
     @Override
     public List<MedicamentRef> findByPrescriptionId(Long prescriptionId) {
         return repository.findByPrescriptionId(prescriptionId).stream()
-                .map(e -> new MedicamentRef(
-                        e.getId(),
-                        e.getName(),
-                        e.getPresentation(),
-                        e.getQuantity(),
-                        e.getPosology(),
-                        e.getObservation()))
+                .map(e -> new MedicamentRef(e.getId(), e.getName(), e.getPresentation(),
+                        e.getQuantity(), e.getPosology(), e.getObservation()))
                 .toList();
     }
 }

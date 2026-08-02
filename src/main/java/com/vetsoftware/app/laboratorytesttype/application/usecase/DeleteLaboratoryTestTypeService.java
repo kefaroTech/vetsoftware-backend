@@ -15,8 +15,7 @@ public class DeleteLaboratoryTestTypeService implements DeleteLaboratoryTestType
     private final LaboratoryTestTypeRepository repository;
     private final LaboratoryTestChildrenQueryPort laboratoryTestChildrenQueryPort;
 
-    public DeleteLaboratoryTestTypeService(
-            LaboratoryTestTypeRepository repository,
+    public DeleteLaboratoryTestTypeService(LaboratoryTestTypeRepository repository,
             LaboratoryTestChildrenQueryPort laboratoryTestChildrenQueryPort) {
         this.repository = repository;
         this.laboratoryTestChildrenQueryPort = laboratoryTestChildrenQueryPort;

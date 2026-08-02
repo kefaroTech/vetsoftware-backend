@@ -54,11 +54,10 @@ class PetshopCatalogPersistenceContractTest {
     void liquibaseParsesTheCompleteChangelog() throws Exception {
         ResourceAccessor resources = new ClassLoaderResourceAccessor();
         DatabaseChangeLog changeLog = ChangeLogParserFactory.getInstance()
-            .getParser(MASTER, resources)
-            .parse(MASTER, new ChangeLogParameters(), resources);
+                .getParser(MASTER, resources).parse(MASTER, new ChangeLogParameters(), resources);
 
-        assertTrue(changeLog.getChangeSets().stream()
-            .anyMatch(changeSet -> "212_08_create_sale_inventory_allocations".equals(changeSet.getId())));
+        assertTrue(changeLog.getChangeSets().stream().anyMatch(
+                changeSet -> "212_08_create_sale_inventory_allocations".equals(changeSet.getId())));
     }
 
     @Test
@@ -66,29 +65,25 @@ class PetshopCatalogPersistenceContractTest {
         Document document = parse(MIGRATION);
         Set<String> tables = attributeValues(document, "createTable", "tableName");
 
-        assertTrue(tables.containsAll(Set.of(
-            "unit_measure_catalog",
-            "product_presentations",
-            "product_bundles",
-            "product_bundle_items",
-            "catalog_barcodes",
-            "sale_inventory_allocations"
-        )));
+        assertTrue(tables.containsAll(
+                Set.of("unit_measure_catalog", "product_presentations", "product_bundles",
+                        "product_bundle_items", "catalog_barcodes", "sale_inventory_allocations")));
 
         String migrationText = document.getDocumentElement().getTextContent();
         assertTrue(migrationText.contains("INSERT INTO product_presentations"));
         assertTrue(migrationText.contains("p.base_unit_measure_code, 1, p.sale_price"));
         assertTrue(migrationText.contains("uq_catalog_barcodes_company_active"));
         assertTrue(attributeValues(document, "addUniqueConstraint", "constraintName")
-            .contains("uq_sale_inventory_allocations_idempotency"));
+                .contains("uq_sale_inventory_allocations_idempotency"));
 
         NodeList changeSets = document.getElementsByTagNameNS("*", "changeSet");
         Set<String> ids = new HashSet<>();
         for (int i = 0; i < changeSets.getLength(); i++) {
             Element changeSet = (Element) changeSets.item(i);
-            assertTrue(ids.add(changeSet.getAttribute("id")), "Los ids de changeset deben ser únicos");
+            assertTrue(ids.add(changeSet.getAttribute("id")),
+                    "Los ids de changeset deben ser únicos");
             assertTrue(changeSet.getElementsByTagNameNS("*", "rollback").getLength() > 0,
-                "Cada changeset de la fase 2 debe declarar rollback");
+                    "Cada changeset de la fase 2 debe declarar rollback");
         }
     }
 
@@ -105,15 +100,21 @@ class PetshopCatalogPersistenceContractTest {
         assertEquals(String.class, baseUnit.getType());
         assertEquals("base_unit_measure_code", baseUnit.getAnnotation(Column.class).name());
 
-        assertEquals(int.class, ProductPresentationJpaEntity.class.getDeclaredField("conversionFactor").getType());
-        assertEquals(int.class, SaleInventoryAllocationJpaEntity.class.getDeclaredField("baseQuantity").getType());
-        assertNotNull(ProductPresentationJpaEntity.class.getDeclaredField("version").getAnnotation(Version.class));
-        assertNotNull(ProductBundleJpaEntity.class.getDeclaredField("version").getAnnotation(Version.class));
-        assertNotNull(CatalogBarcodeJpaEntity.class.getDeclaredField("version").getAnnotation(Version.class));
+        assertEquals(int.class,
+                ProductPresentationJpaEntity.class.getDeclaredField("conversionFactor").getType());
+        assertEquals(int.class,
+                SaleInventoryAllocationJpaEntity.class.getDeclaredField("baseQuantity").getType());
+        assertNotNull(ProductPresentationJpaEntity.class.getDeclaredField("version")
+                .getAnnotation(Version.class));
+        assertNotNull(ProductBundleJpaEntity.class.getDeclaredField("version")
+                .getAnnotation(Version.class));
+        assertNotNull(CatalogBarcodeJpaEntity.class.getDeclaredField("version")
+                .getAnnotation(Version.class));
     }
 
     private static Document parse(String resource) throws Exception {
-        try (InputStream input = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
+        try (InputStream input = Thread.currentThread().getContextClassLoader()
+                .getResourceAsStream(resource)) {
             assertNotNull(input, "No se encontró " + resource);
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
@@ -121,7 +122,8 @@ class PetshopCatalogPersistenceContractTest {
         }
     }
 
-    private static Set<String> attributeValues(Document document, String elementName, String attributeName) {
+    private static Set<String> attributeValues(Document document, String elementName,
+            String attributeName) {
         NodeList elements = document.getElementsByTagNameNS("*", elementName);
         Set<String> values = new HashSet<>();
         for (int i = 0; i < elements.getLength(); i++) {

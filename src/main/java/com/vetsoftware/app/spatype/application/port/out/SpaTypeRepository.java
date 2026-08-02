@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface SpaTypeRepository {
     SpaType save(SpaType spaType);
+
     Optional<SpaType> findById(Long id);
+
     List<SpaType> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

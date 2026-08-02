@@ -18,8 +18,7 @@ public class FindStateService implements FindStateUseCase {
 
     @Override
     public StateDto findById(Long id) {
-        return repository.findById(id)
-                .map(StateDto::from)
+        return repository.findById(id).map(StateDto::from)
                 .orElseThrow(() -> new StateNotFoundException(id));
     }
 }

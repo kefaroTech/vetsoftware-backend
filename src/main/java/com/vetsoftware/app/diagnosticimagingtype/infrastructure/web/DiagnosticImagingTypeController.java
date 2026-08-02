@@ -34,13 +34,12 @@ public class DiagnosticImagingTypeController {
     private final Authz authz;
 
     public DiagnosticImagingTypeController(CreateDiagnosticImagingTypeUseCase createUseCase,
-                                           UpdateDiagnosticImagingTypeUseCase updateUseCase,
-                                           FindDiagnosticImagingTypeUseCase findUseCase,
-                                           ListDiagnosticImagingTypesUseCase listUseCase,
-                                           ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
-                                           DeleteDiagnosticImagingTypeUseCase deleteUseCase,
-                                           ReactivateDiagnosticImagingTypeUseCase reactivateUseCase,
-                                           Authz authz) {
+            UpdateDiagnosticImagingTypeUseCase updateUseCase,
+            FindDiagnosticImagingTypeUseCase findUseCase,
+            ListDiagnosticImagingTypesUseCase listUseCase,
+            ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
+            DeleteDiagnosticImagingTypeUseCase deleteUseCase,
+            ReactivateDiagnosticImagingTypeUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -53,10 +52,11 @@ public class DiagnosticImagingTypeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public DiagnosticImagingTypeResponse create(@Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateDiagnosticImagingTypeCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+    public DiagnosticImagingTypeResponse create(
+            @Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
+        return toResponse(
+                createUseCase.execute(new CreateDiagnosticImagingTypeCommand(request.name(),
+                        request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -66,8 +66,8 @@ public class DiagnosticImagingTypeController {
 
     @GetMapping("/available")
     public List<DiagnosticImagingTypeResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -77,10 +77,10 @@ public class DiagnosticImagingTypeController {
 
     @PutMapping("/{id}")
     public DiagnosticImagingTypeResponse update(@PathVariable Long id,
-                                                @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateDiagnosticImagingTypeCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+            @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
+        return toResponse(
+                updateUseCase.execute(new UpdateDiagnosticImagingTypeCommand(id, request.name(),
+                        request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -96,10 +96,8 @@ public class DiagnosticImagingTypeController {
 
     private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {
         CompanySummaryDto c = dto.company();
-        return new DiagnosticImagingTypeResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new DiagnosticImagingTypeResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(), dto.enabled());
+                dto.general(), dto.createdDate(), dto.enabled());
     }
 }

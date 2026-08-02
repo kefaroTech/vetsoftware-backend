@@ -25,15 +25,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ActivateBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @InjectMocks private ActivateBranchService service;
+    @Mock
+    private BranchRepository repository;
+    @InjectMocks
+    private ActivateBranchService service;
 
     private final CityRef city = new CityRef(5L, "Bogotá");
     private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
 
     private Branch branch(boolean active) {
         return new Branch(3L, "Sede", "S", null, null, city, company,
-            LocalDateTime.of(2020, 1, 1, 10, 0), active);
+                LocalDateTime.of(2020, 1, 1, 10, 0), active);
     }
 
     @Test
@@ -62,7 +64,8 @@ class ActivateBranchServiceTest {
     void lanza_y_no_escribe_si_no_pertenece_a_la_empresa() {
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(3L, 9L)).isInstanceOf(BranchNotFoundException.class);
+        assertThatThrownBy(() -> service.execute(3L, 9L))
+                .isInstanceOf(BranchNotFoundException.class);
         verify(repository, never()).save(any());
     }
 }

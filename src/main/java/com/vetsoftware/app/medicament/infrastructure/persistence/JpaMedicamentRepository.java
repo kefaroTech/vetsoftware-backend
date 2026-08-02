@@ -15,8 +15,7 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaMedicamentRepository(MedicamentJpaRepository jpaRepository,
-                                   MedicamentJpaMapper mapper,
-                                   CompanyJpaRepository companyJpaRepository) {
+            MedicamentJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaMedicamentRepository implements MedicamentRepository {
 
     @Override
     public Medicament save(Medicament medicament) {
-        CompanyJpaEntity company = medicament.getCompany() == null ? null
+        CompanyJpaEntity company = medicament.getCompany() == null
+                ? null
                 : companyJpaRepository.getReferenceById(medicament.getCompany().id());
         MedicamentJpaEntity saved = jpaRepository.save(mapper.toJpa(medicament, company));
         return mapper.toDomain(saved, medicament.getCompany());
@@ -47,14 +47,14 @@ public class JpaMedicamentRepository implements MedicamentRepository {
 
     @Override
     public List<Medicament> findAllAvailableForCompany(Long companyId) {
-        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByGeneralTrueOrCompany_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override
     public List<Medicament> findAllDisabledForCompany(Long companyId) {
-        return jpaRepository.findAllDisabledForCompany(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledForCompany(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override

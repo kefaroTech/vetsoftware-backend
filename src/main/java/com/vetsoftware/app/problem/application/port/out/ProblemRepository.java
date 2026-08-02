@@ -6,7 +6,10 @@ import java.util.Optional;
 
 public interface ProblemRepository {
     Problem save(Problem problem);
+
     Optional<Problem> findByIdAndCompanyId(Long id, Long companyId);
+
     List<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId);
+
     void delete(Long id, Long companyId);
 }

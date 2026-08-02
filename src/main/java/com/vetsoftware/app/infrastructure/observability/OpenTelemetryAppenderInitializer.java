@@ -5,7 +5,10 @@ import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppen
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
-/** Conecta Logback con el {@code SdkLoggerProvider} administrado por Spring Boot. */
+/**
+ * Conecta Logback con el {@code SdkLoggerProvider} administrado por Spring
+ * Boot.
+ */
 @Component
 public final class OpenTelemetryAppenderInitializer implements InitializingBean {
 

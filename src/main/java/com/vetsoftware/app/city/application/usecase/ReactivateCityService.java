@@ -21,7 +21,9 @@ public class ReactivateCityService implements ReactivateCityUseCase {
     @Transactional
     public CityDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new CityNotFoundException(id);
-        return CityDto.from(repository.findById(id).orElseThrow(() -> new CityNotFoundException(id)));
+        if (rows == 0)
+            throw new CityNotFoundException(id);
+        return CityDto
+                .from(repository.findById(id).orElseThrow(() -> new CityNotFoundException(id)));
     }
 }

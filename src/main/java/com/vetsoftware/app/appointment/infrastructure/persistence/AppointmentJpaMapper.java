@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppointmentJpaMapper {
 
-    public AppointmentJpaEntity toJpa(Appointment appointment, AnimalJpaEntity animal, OwnerJpaEntity owner,
-                                      EmployeeJpaEntity employee, CompanyJpaEntity company,
-                                      BranchJpaEntity branch) {
+    public AppointmentJpaEntity toJpa(Appointment appointment, AnimalJpaEntity animal,
+            OwnerJpaEntity owner, EmployeeJpaEntity employee, CompanyJpaEntity company,
+            BranchJpaEntity branch) {
         AppointmentJpaEntity entity = new AppointmentJpaEntity();
         entity.setId(appointment.getId());
         entity.setStartAt(appointment.getStartAt());
@@ -58,13 +58,12 @@ public class AppointmentJpaMapper {
 
     // Write path — reusa los refs ya cargados para no disparar los proxies.
     public Appointment toDomain(AppointmentJpaEntity entity, AnimalRef animalRef, OwnerRef ownerRef,
-                                EmployeeRef employeeRef, CompanyRef companyRef, BranchRef branchRef) {
-        return new Appointment(
-            entity.getId(), entity.getStartAt(),
-            AppointmentType.valueOf(entity.getType()), AppointmentStatus.valueOf(entity.getStatus()),
-            entity.getNotes(), entity.getCancellationReason(), animalRef, ownerRef,
-            entity.getClientName(), entity.getClientPhone(), entity.getClientEmail(), employeeRef,
-            companyRef, branchRef,
-            entity.getVersion(), entity.isEnabled(), entity.getCreatedDate());
+            EmployeeRef employeeRef, CompanyRef companyRef, BranchRef branchRef) {
+        return new Appointment(entity.getId(), entity.getStartAt(),
+                AppointmentType.valueOf(entity.getType()),
+                AppointmentStatus.valueOf(entity.getStatus()), entity.getNotes(),
+                entity.getCancellationReason(), animalRef, ownerRef, entity.getClientName(),
+                entity.getClientPhone(), entity.getClientEmail(), employeeRef, companyRef,
+                branchRef, entity.getVersion(), entity.isEnabled(), entity.getCreatedDate());
     }
 }

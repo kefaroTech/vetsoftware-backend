@@ -25,6 +25,7 @@ public class StateJpaMapper {
     }
 
     public State toDomain(StateJpaEntity entity, CountryRef ref) {
-        return new State(entity.getId(), entity.getName(), ref, entity.getDaneCode(), entity.getCreatedDate(), entity.isEnabled());
+        return new State(entity.getId(), entity.getName(), ref, entity.getDaneCode(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -11,14 +11,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaClinicalEventRepository implements ClinicalEventRepository {
-    private static final List<ClinicalEventType> ALL_TYPES =
-            Arrays.asList(ClinicalEventType.values());
+    private static final List<ClinicalEventType> ALL_TYPES = Arrays
+            .asList(ClinicalEventType.values());
 
     private final ClinicalEventJpaRepository jpaRepository;
     private final ClinicalEventJpaMapper mapper;
 
     public JpaClinicalEventRepository(ClinicalEventJpaRepository jpaRepository,
-                                      ClinicalEventJpaMapper mapper) {
+            ClinicalEventJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }
@@ -26,23 +26,15 @@ public class JpaClinicalEventRepository implements ClinicalEventRepository {
     @Override
     public List<ClinicalEvent> findHistory(GetClinicalHistoryQuery query) {
         List<ClinicalEventType> types = query.types().isEmpty() ? ALL_TYPES : query.types();
-        return jpaRepository.findHistory(
-                query.animalId(),
-                query.companyId(),
-                types,
-                query.from(),
-                query.to()
-        ).stream().map(mapper::toDomain).toList();
+        return jpaRepository
+                .findHistory(query.animalId(), query.companyId(), types, query.from(), query.to())
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public List<ClinicalEvent> findByCompany(ListCompanyClinicalEventsQuery query) {
         List<ClinicalEventType> types = query.types().isEmpty() ? ALL_TYPES : query.types();
-        return jpaRepository.findByCompany(
-                query.companyId(),
-                types,
-                query.from(),
-                query.to()
-        ).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findByCompany(query.companyId(), types, query.from(), query.to())
+                .stream().map(mapper::toDomain).toList();
     }
 }

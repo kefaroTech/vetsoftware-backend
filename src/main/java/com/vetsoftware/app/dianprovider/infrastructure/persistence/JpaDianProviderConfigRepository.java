@@ -14,8 +14,7 @@ public class JpaDianProviderConfigRepository implements DianProviderConfigReposi
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaDianProviderConfigRepository(DianProviderConfigJpaRepository jpaRepository,
-                                           DianProviderConfigJpaMapper mapper,
-                                           CompanyJpaRepository companyJpaRepository) {
+            DianProviderConfigJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;

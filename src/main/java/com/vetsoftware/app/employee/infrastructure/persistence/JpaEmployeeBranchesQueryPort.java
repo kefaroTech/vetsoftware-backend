@@ -20,17 +20,15 @@ public class JpaEmployeeBranchesQueryPort implements EmployeeBranchesQueryPort {
 
     @Override
     public Map<Long, List<BranchRef>> findBranchesByEmployeeIds(List<Long> employeeIds) {
-        if (employeeIds.isEmpty()) return Map.of();
+        if (employeeIds.isEmpty())
+            return Map.of();
         return employeeBranchJpaRepository.findAssignmentsByEmployeeIds(employeeIds).stream()
-            .collect(Collectors.groupingBy(
-                EmployeeBranchAssignmentView::getEmployeeId,
-                Collectors.mapping(
-                    v -> new BranchRef(v.getBranchId(), v.getBranchName()),
-                    Collectors.collectingAndThen(Collectors.toList(), list -> {
-                        list.sort(Comparator.comparing(BranchRef::name, String.CASE_INSENSITIVE_ORDER));
-                        return list;
-                    })
-                )
-            ));
+                .collect(Collectors.groupingBy(EmployeeBranchAssignmentView::getEmployeeId,
+                        Collectors.mapping(v -> new BranchRef(v.getBranchId(), v.getBranchName()),
+                                Collectors.collectingAndThen(Collectors.toList(), list -> {
+                                    list.sort(Comparator.comparing(BranchRef::name,
+                                            String.CASE_INSENSITIVE_ORDER));
+                                    return list;
+                                }))));
     }
 }

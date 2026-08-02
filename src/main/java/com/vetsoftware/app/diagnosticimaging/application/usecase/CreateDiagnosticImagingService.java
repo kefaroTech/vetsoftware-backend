@@ -26,10 +26,9 @@ public class CreateDiagnosticImagingService implements CreateDiagnosticImagingUs
     private final CompanyQueryPort companyQueryPort;
 
     public CreateDiagnosticImagingService(DiagnosticImagingRepository repository,
-                                          DiagnosticImagingTypeQueryPort diagnosticImagingTypeQueryPort,
-                                          AnimalQueryPort animalQueryPort,
-                                          ConsultationQueryPort consultationQueryPort,
-                                          CompanyQueryPort companyQueryPort) {
+            DiagnosticImagingTypeQueryPort diagnosticImagingTypeQueryPort,
+            AnimalQueryPort animalQueryPort, ConsultationQueryPort consultationQueryPort,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.diagnosticImagingTypeQueryPort = diagnosticImagingTypeQueryPort;
         this.animalQueryPort = animalQueryPort;
@@ -39,20 +38,23 @@ public class CreateDiagnosticImagingService implements CreateDiagnosticImagingUs
 
     @Override
     public DiagnosticImagingDto execute(CreateDiagnosticImagingCommand command) {
-        DiagnosticImagingTypeRef type = diagnosticImagingTypeQueryPort.findById(command.diagnosticImagingTypeId())
-            .orElseThrow(() -> new IllegalArgumentException("DiagnosticImagingType not found: " + command.diagnosticImagingTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        DiagnosticImagingTypeRef type = diagnosticImagingTypeQueryPort
+                .findById(command.diagnosticImagingTypeId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "DiagnosticImagingType not found: " + command.diagnosticImagingTypeId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        ConsultationRef consultation = command.consultationId() == null
+                ? null
+                : consultationQueryPort.findById(command.consultationId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Consultation not found: " + command.consultationId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        DiagnosticImaging imaging = DiagnosticImaging.create(
-            command.date(), type, command.clinicalSigns(), command.studyType(),
-            command.diagnosis(), command.observations(),
-            animal, consultation, company);
+        DiagnosticImaging imaging = DiagnosticImaging.create(command.date(), type,
+                command.clinicalSigns(), command.studyType(), command.diagnosis(),
+                command.observations(), animal, consultation, company);
         return DiagnosticImagingDto.from(repository.save(imaging));
     }
 }

@@ -14,8 +14,7 @@ public class DeleteBaseRoleService implements DeleteBaseRoleUseCase {
     private final BaseRoleRepository repository;
     private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
 
-    public DeleteBaseRoleService(
-            BaseRoleRepository repository,
+    public DeleteBaseRoleService(BaseRoleRepository repository,
             BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
         this.repository = repository;
         this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;

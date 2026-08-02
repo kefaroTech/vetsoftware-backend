@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 public class BaseRolePermissionJpaMapper {
 
     public BaseRolePermissionJpaEntity toJpa(BaseRolePermission baseRolePermission,
-                                              BaseRoleJpaEntity baseRole,
-                                              BasePermissionJpaEntity basePermission) {
+            BaseRoleJpaEntity baseRole, BasePermissionJpaEntity basePermission) {
         BaseRolePermissionJpaEntity entity = new BaseRolePermissionJpaEntity();
         entity.setId(baseRolePermission.getId());
         entity.setBaseRole(baseRole);
@@ -25,20 +24,13 @@ public class BaseRolePermissionJpaMapper {
     public BaseRolePermission toDomain(BaseRolePermissionJpaEntity entity) {
         BaseRoleJpaEntity br = entity.getBaseRole();
         BasePermissionJpaEntity bp = entity.getBasePermission();
-        return toDomain(entity,
-            new BaseRoleRef(br.getId(), br.getName(), br.getCode()),
-            new BasePermissionRef(bp.getId(), bp.getName(), bp.getCode()));
+        return toDomain(entity, new BaseRoleRef(br.getId(), br.getName(), br.getCode()),
+                new BasePermissionRef(bp.getId(), bp.getName(), bp.getCode()));
     }
 
-    public BaseRolePermission toDomain(BaseRolePermissionJpaEntity entity,
-                                        BaseRoleRef baseRoleRef,
-                                        BasePermissionRef basePermissionRef) {
-        return new BaseRolePermission(
-            entity.getId(),
-            baseRoleRef,
-            basePermissionRef,
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+    public BaseRolePermission toDomain(BaseRolePermissionJpaEntity entity, BaseRoleRef baseRoleRef,
+            BasePermissionRef basePermissionRef) {
+        return new BaseRolePermission(entity.getId(), baseRoleRef, basePermissionRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

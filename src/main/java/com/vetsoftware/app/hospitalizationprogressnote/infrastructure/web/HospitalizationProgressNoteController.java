@@ -33,13 +33,13 @@ public class HospitalizationProgressNoteController {
     private final ReactivateHospitalizationProgressNoteUseCase reactivateUseCase;
     private final Authz authz;
 
-    public HospitalizationProgressNoteController(CreateHospitalizationProgressNoteUseCase createUseCase,
-                                                UpdateHospitalizationProgressNoteUseCase updateUseCase,
-                                                FindHospitalizationProgressNoteUseCase findUseCase,
-                                                ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase,
-                                                DeleteHospitalizationProgressNoteUseCase deleteUseCase,
-                                                ReactivateHospitalizationProgressNoteUseCase reactivateUseCase,
-                                                Authz authz) {
+    public HospitalizationProgressNoteController(
+            CreateHospitalizationProgressNoteUseCase createUseCase,
+            UpdateHospitalizationProgressNoteUseCase updateUseCase,
+            FindHospitalizationProgressNoteUseCase findUseCase,
+            ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase,
+            DeleteHospitalizationProgressNoteUseCase deleteUseCase,
+            ReactivateHospitalizationProgressNoteUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -51,15 +51,17 @@ public class HospitalizationProgressNoteController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationProgressNoteResponse create(@Valid @RequestBody CreateHospitalizationProgressNoteRequest request) {
+    public HospitalizationProgressNoteResponse create(
+            @Valid @RequestBody CreateHospitalizationProgressNoteRequest request) {
         return toResponse(createUseCase.execute(new CreateHospitalizationProgressNoteCommand(
-            request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationProgressNoteResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
+    public List<HospitalizationProgressNoteResponse> listByHospitalization(
+            @PathVariable Long hospitalizationId) {
         return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -69,9 +71,9 @@ public class HospitalizationProgressNoteController {
 
     @PutMapping("/{id}")
     public HospitalizationProgressNoteResponse update(@PathVariable Long id,
-                                                     @Valid @RequestBody UpdateHospitalizationProgressNoteRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateHospitalizationProgressNoteCommand(id, request.description())));
+            @Valid @RequestBody UpdateHospitalizationProgressNoteRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateHospitalizationProgressNoteCommand(id, request.description())));
     }
 
     @DeleteMapping("/{id}")
@@ -88,10 +90,9 @@ public class HospitalizationProgressNoteController {
     private HospitalizationProgressNoteResponse toResponse(HospitalizationProgressNoteDto dto) {
         HospitalizationSummaryDto h = dto.hospitalization();
         EmployeeSummaryDto c = dto.createdBy();
-        return new HospitalizationProgressNoteResponse(
-            dto.id(), dto.description(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled());
+        return new HospitalizationProgressNoteResponse(dto.id(), dto.description(),
+                new HospitalizationSummary(h.id(), h.date()),
+                new EmployeeSummary(c.id(), c.employeeCode(), c.name()), dto.createdDate(),
+                dto.enabled());
     }
 }

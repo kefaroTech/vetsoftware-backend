@@ -18,15 +18,9 @@ public class JpaHospitalizationProcedureQueryPort implements HospitalizationProc
     @Override
     public Optional<ProcedureOrderParams> findById(Long hospitalizationProcedureId) {
         return procedureJpaRepository.findById(hospitalizationProcedureId)
-            .map(p -> new ProcedureOrderParams(
-                p.getId(),
-                p.getName(),
-                p.getHospitalization().getId(),
-                p.getFrequency(),
-                p.getGuidelineType(),
-                p.getDurationMeasure(),
-                p.getDurationQuantity(),
-                p.getStartDate(),
-                p.getStartTime()));
+                .map(p -> new ProcedureOrderParams(p.getId(), p.getName(),
+                        p.getHospitalization().getId(), p.getFrequency(), p.getGuidelineType(),
+                        p.getDurationMeasure(), p.getDurationQuantity(), p.getStartDate(),
+                        p.getStartTime()));
     }
 }

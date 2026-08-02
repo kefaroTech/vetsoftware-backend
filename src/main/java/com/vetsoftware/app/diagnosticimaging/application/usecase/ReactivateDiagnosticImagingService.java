@@ -21,8 +21,9 @@ public class ReactivateDiagnosticImagingService implements ReactivateDiagnosticI
     @Transactional
     public DiagnosticImagingDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new DiagnosticImagingNotFoundException(id);
+        if (rows == 0)
+            throw new DiagnosticImagingNotFoundException(id);
         return DiagnosticImagingDto.from(repository.findById(id)
-            .orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
+                .orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
     }
 }

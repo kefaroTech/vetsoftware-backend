@@ -17,6 +17,6 @@ public class JpaAnimalQueryPort implements AnimalQueryPort {
     @Override
     public Optional<AnimalRef> findByIdAndCompanyId(Long animalId, Long companyId) {
         return animalJpaRepository.findByIdAndCompany_Id(animalId, companyId)
-            .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
     }
 }

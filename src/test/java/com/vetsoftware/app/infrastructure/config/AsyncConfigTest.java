@@ -32,19 +32,15 @@ class AsyncConfigTest {
     void propagatesObservationAndSelectedMdcWithoutLeakingContext() throws Exception {
         ObservationRegistry observationRegistry = ObservationRegistry.create();
         ContextRegistry contextRegistry = new ContextRegistry()
-                .registerThreadLocalAccessor(new ObservationThreadLocalAccessor(observationRegistry))
-                .registerThreadLocalAccessor(new Slf4jThreadLocalAccessor(
-                        MdcKeys.ACTOR_TYPE,
-                        MdcKeys.ACTOR_EMPLOYEE_ID,
-                        MdcKeys.ACTOR_COMPANY_ID,
-                        MdcKeys.ACTOR_SYSTEM_USER_ID,
-                        MdcKeys.HTTP_METHOD,
-                        MdcKeys.HTTP_PATH));
+                .registerThreadLocalAccessor(
+                        new ObservationThreadLocalAccessor(observationRegistry))
+                .registerThreadLocalAccessor(new Slf4jThreadLocalAccessor(MdcKeys.ACTOR_TYPE,
+                        MdcKeys.ACTOR_EMPLOYEE_ID, MdcKeys.ACTOR_COMPANY_ID,
+                        MdcKeys.ACTOR_SYSTEM_USER_ID, MdcKeys.HTTP_METHOD, MdcKeys.HTTP_PATH));
         ContextSnapshotFactory snapshotFactory = ContextSnapshotFactory.builder()
-                .contextRegistry(contextRegistry)
-                .build();
-        ContextPropagatingTaskDecorator decorator =
-                new ContextPropagatingTaskDecorator(snapshotFactory);
+                .contextRegistry(contextRegistry).build();
+        ContextPropagatingTaskDecorator decorator = new ContextPropagatingTaskDecorator(
+                snapshotFactory);
 
         executor = new AsyncConfig().emailTaskExecutor(decorator);
         executor.initialize();
@@ -58,8 +54,8 @@ class AsyncConfigTest {
             MDC.put(MdcKeys.HTTP_PATH, "/emails");
             MDC.put(MdcKeys.CLIENT_IP, "192.0.2.10");
 
-            propagated = executor.submit(() -> captureContext(observationRegistry))
-                    .get(5, TimeUnit.SECONDS);
+            propagated = executor.submit(() -> captureContext(observationRegistry)).get(5,
+                    TimeUnit.SECONDS);
         } finally {
             MDC.clear();
             parent.stop();
@@ -73,10 +69,11 @@ class AsyncConfigTest {
         assertThat(propagated.httpPath()).isEqualTo("/emails");
         assertThat(propagated.clientIp()).isNull();
 
-        // El pool reutiliza hilos. Ninguna tarea posterior puede heredar el contexto anterior.
+        // El pool reutiliza hilos. Ninguna tarea posterior puede heredar el contexto
+        // anterior.
         for (int i = 0; i < 4; i++) {
-            AsyncContext clean = executor.submit(() -> captureContext(observationRegistry))
-                    .get(5, TimeUnit.SECONDS);
+            AsyncContext clean = executor.submit(() -> captureContext(observationRegistry)).get(5,
+                    TimeUnit.SECONDS);
             assertThat(clean.observation()).isNull();
             assertThat(clean.actorType()).isNull();
             assertThat(clean.actorEmployeeId()).isNull();
@@ -87,23 +84,13 @@ class AsyncConfigTest {
     }
 
     private static AsyncContext captureContext(ObservationRegistry observationRegistry) {
-        return new AsyncContext(
-                Thread.currentThread().getName(),
-                observationRegistry.getCurrentObservation(),
-                MDC.get(MdcKeys.ACTOR_TYPE),
-                MDC.get(MdcKeys.ACTOR_EMPLOYEE_ID),
-                MDC.get(MdcKeys.HTTP_METHOD),
-                MDC.get(MdcKeys.HTTP_PATH),
-                MDC.get(MdcKeys.CLIENT_IP));
+        return new AsyncContext(Thread.currentThread().getName(),
+                observationRegistry.getCurrentObservation(), MDC.get(MdcKeys.ACTOR_TYPE),
+                MDC.get(MdcKeys.ACTOR_EMPLOYEE_ID), MDC.get(MdcKeys.HTTP_METHOD),
+                MDC.get(MdcKeys.HTTP_PATH), MDC.get(MdcKeys.CLIENT_IP));
     }
 
-    private record AsyncContext(
-            String threadName,
-            Observation observation,
-            String actorType,
-            String actorEmployeeId,
-            String httpMethod,
-            String httpPath,
-            String clientIp) {
+    private record AsyncContext(String threadName, Observation observation, String actorType,
+            String actorEmployeeId, String httpMethod, String httpPath, String clientIp) {
     }
 }

@@ -32,19 +32,10 @@ public class PromotionJpaMapper {
     }
 
     public Promotion toDomain(PromotionJpaEntity entity, CompanyRef companyRef) {
-        return new Promotion(
-                entity.getId(),
-                entity.getName(),
-                entity.getPromotionType(),
-                entity.getApplicationType(),
-                entity.getApplicationItem(),
-                entity.getValueType(),
-                entity.getValue(),
-                entity.getStartDate(),
-                entity.getEndDate(),
-                entity.getPromotionStatus(),
-                companyRef,
-                entity.getCreatedDate(),
+        return new Promotion(entity.getId(), entity.getName(), entity.getPromotionType(),
+                entity.getApplicationType(), entity.getApplicationItem(), entity.getValueType(),
+                entity.getValue(), entity.getStartDate(), entity.getEndDate(),
+                entity.getPromotionStatus(), companyRef, entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

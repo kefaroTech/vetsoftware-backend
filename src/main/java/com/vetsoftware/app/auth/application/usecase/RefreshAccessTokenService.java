@@ -13,9 +13,9 @@ import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenRepository.StoredRefreshToken;
 import com.vetsoftware.app.auth.application.port.out.RefreshTokenSecret;
 import com.vetsoftware.app.auth.application.port.out.TokenGenerator;
+import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
 import java.util.Objects;
-import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,11 +34,9 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
     private final AuthSystemUserRepository authSystemUserRepository;
 
     public RefreshAccessTokenService(RefreshTokenRepository refreshTokenRepository,
-                                     RefreshTokenSecret refreshTokenSecret,
-                                     RefreshTokenIssuer refreshTokenIssuer,
-                                     TokenGenerator tokenGenerator,
-                                     AuthEmployeeRepository authEmployeeRepository,
-                                     AuthSystemUserRepository authSystemUserRepository) {
+            RefreshTokenSecret refreshTokenSecret, RefreshTokenIssuer refreshTokenIssuer,
+            TokenGenerator tokenGenerator, AuthEmployeeRepository authEmployeeRepository,
+            AuthSystemUserRepository authSystemUserRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.refreshTokenSecret = refreshTokenSecret;
         this.refreshTokenIssuer = refreshTokenIssuer;
@@ -64,27 +62,30 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
 
         String accessToken = switch (stored.subjectType()) {
             case EMPLOYEE -> {
-                // Re-valida que el empleado siga activo y toma companyId + authVersion actuales.
+                // Re-valida que el empleado siga activo y toma companyId + authVersion
+                // actuales.
                 AuthEmployee employee = authEmployeeRepository.findActiveById(stored.subjectId())
                         .orElseThrow(InvalidCredentialsException::new);
                 ensureCurrentSession(stored.authVersion(), employee.authVersion());
-                yield tokenGenerator.generate(
-                        employee.id(), EMPLOYEE, employee.companyId(), employee.authVersion());
+                yield tokenGenerator.generate(employee.id(), EMPLOYEE, employee.companyId(),
+                        employee.authVersion());
             }
             case SYSTEM_USER -> {
-                AuthSystemUser systemUser = authSystemUserRepository.findActiveById(stored.subjectId())
+                AuthSystemUser systemUser = authSystemUserRepository
+                        .findActiveById(stored.subjectId())
                         .orElseThrow(InvalidCredentialsException::new);
                 ensureCurrentSession(stored.authVersion(), systemUser.authVersion());
-                yield tokenGenerator.generate(
-                        systemUser.id(), SYSTEM_USER, null, systemUser.authVersion());
+                yield tokenGenerator.generate(systemUser.id(), SYSTEM_USER, null,
+                        systemUser.authVersion());
             }
             default -> throw new InvalidCredentialsException();
         };
 
-        // Rotación single-use. findByHash mantiene bloqueada la fila hasta cerrar la transacción.
+        // Rotación single-use. findByHash mantiene bloqueada la fila hasta cerrar la
+        // transacción.
         refreshTokenRepository.revokeById(stored.id());
-        String newRefreshToken = refreshTokenIssuer.issue(
-                stored.subjectId(), stored.subjectType(), stored.authVersion());
+        String newRefreshToken = refreshTokenIssuer.issue(stored.subjectId(), stored.subjectType(),
+                stored.authVersion());
         return new TokenDto(accessToken, stored.subjectType(), newRefreshToken);
     }
 

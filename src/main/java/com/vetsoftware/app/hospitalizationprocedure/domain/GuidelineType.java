@@ -1,6 +1,5 @@
 package com.vetsoftware.app.hospitalizationprocedure.domain;
 
 public enum GuidelineType {
-    FIXED,
-    INTERVAL
+    FIXED, INTERVAL
 }

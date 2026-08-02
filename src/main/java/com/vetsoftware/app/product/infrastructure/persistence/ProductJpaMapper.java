@@ -14,11 +14,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductJpaMapper {
 
-    public ProductJpaEntity toJpa(Product product,
-                                  ProductCategoryJpaEntity productCategory,
-                                  TaxJpaEntity tax,
-                                  CompanyJpaEntity company,
-                                  SupplierJpaEntity supplier) {
+    public ProductJpaEntity toJpa(Product product, ProductCategoryJpaEntity productCategory,
+            TaxJpaEntity tax, CompanyJpaEntity company, SupplierJpaEntity supplier) {
         ProductJpaEntity entity = new ProductJpaEntity();
         entity.setId(product.getId());
         entity.setName(product.getName());
@@ -45,32 +42,18 @@ public class ProductJpaMapper {
         TaxJpaEntity t = entity.getTax();
         CompanyJpaEntity c = entity.getCompany();
         SupplierJpaEntity s = entity.getSupplier();
-        return toDomain(entity,
-            new ProductCategoryRef(pc.getId(), pc.getName()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            s == null ? null : new SupplierRef(s.getId(), s.getName()));
+        return toDomain(entity, new ProductCategoryRef(pc.getId(), pc.getName()),
+                t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                s == null ? null : new SupplierRef(s.getId(), s.getName()));
     }
 
     public Product toDomain(ProductJpaEntity entity, ProductCategoryRef productCategoryRef,
-                            TaxRef taxRef, CompanyRef companyRef, SupplierRef supplierRef) {
-        return new Product(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            entity.getSalePrice(),
-            entity.getBaseUnitMeasureCode(),
-            entity.getProvider(),
-            supplierRef,
-            entity.getTaxTreatment(),
-            entity.getNotes(),
-            productCategoryRef,
-            taxRef,
-            companyRef,
-            entity.getCreatedDate(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
+            TaxRef taxRef, CompanyRef companyRef, SupplierRef supplierRef) {
+        return new Product(entity.getId(), entity.getName(), entity.getCode(),
+                entity.getSalePrice(), entity.getBaseUnitMeasureCode(), entity.getProvider(),
+                supplierRef, entity.getTaxTreatment(), entity.getNotes(), productCategoryRef,
+                taxRef, companyRef, entity.getCreatedDate(), entity.getUpdatedDate(),
+                entity.getUpdatedBy(), entity.getVersion(), entity.isEnabled());
     }
 }

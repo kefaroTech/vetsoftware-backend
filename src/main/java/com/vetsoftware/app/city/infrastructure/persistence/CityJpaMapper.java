@@ -25,6 +25,7 @@ public class CityJpaMapper {
     }
 
     public City toDomain(CityJpaEntity entity, StateRef ref) {
-        return new City(entity.getId(), entity.getName(), ref, entity.getDaneCode(), entity.getCreatedDate(), entity.isEnabled());
+        return new City(entity.getId(), entity.getName(), ref, entity.getDaneCode(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

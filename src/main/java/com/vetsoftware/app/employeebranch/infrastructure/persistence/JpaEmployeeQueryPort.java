@@ -15,7 +15,9 @@ public class JpaEmployeeQueryPort implements EmployeeQueryPort {
 
     @Override
     public boolean existsByIdAndCompanyId(Long employeeId, Long companyId) {
-        // findByIdAndCompany_Id lleva @SQLRestriction("enabled = true") → solo empleados activos de la empresa.
+        // findByIdAndCompany_Id lleva @SQLRestriction("enabled = true") → solo
+        // empleados activos de la
+        // empresa.
         return employeeJpaRepository.findByIdAndCompany_Id(employeeId, companyId).isPresent();
     }
 }

@@ -12,8 +12,8 @@ import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.appointment.domain.OwnerRef;
-import java.util.List;
 import io.micrometer.observation.annotation.Observed;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +25,9 @@ public class UpdateAppointmentService implements UpdateAppointmentUseCase {
     private final OwnerQueryPort ownerQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
 
-    public UpdateAppointmentService(AppointmentRepository repository, AnimalQueryPort animalQueryPort,
-                                    OwnerQueryPort ownerQueryPort, EmployeeQueryPort employeeQueryPort) {
+    public UpdateAppointmentService(AppointmentRepository repository,
+            AnimalQueryPort animalQueryPort, OwnerQueryPort ownerQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.ownerQueryPort = ownerQueryPort;
@@ -37,23 +38,29 @@ public class UpdateAppointmentService implements UpdateAppointmentUseCase {
     @Transactional
     public AppointmentDto execute(UpdateAppointmentCommand command) {
         Appointment appointment = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
+                .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
 
-        EmployeeRef employee = employeeQueryPort.findByIdAndCompanyId(command.employeeId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
-        AnimalRef animal = command.animalId() == null ? null
-            : animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        OwnerRef owner = command.ownerId() == null ? null
-            : ownerQueryPort.findByIdAndCompanyId(command.ownerId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
+        EmployeeRef employee = employeeQueryPort
+                .findByIdAndCompanyId(command.employeeId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Employee not found: " + command.employeeId()));
+        AnimalRef animal = command.animalId() == null
+                ? null
+                : animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Animal not found: " + command.animalId()));
+        OwnerRef owner = command.ownerId() == null
+                ? null
+                : ownerQueryPort.findByIdAndCompanyId(command.ownerId(), command.companyId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Owner not found: " + command.ownerId()));
 
         appointment.update(command.startAt(), command.type(), command.notes(), animal, owner,
-            command.clientName(), command.clientPhone(), command.clientEmail(), employee);
+                command.clientName(), command.clientPhone(), command.clientEmail(), employee);
         Appointment saved = repository.save(appointment);
 
-        List<Long> clashes = repository.findClashingIds(
-            command.companyId(), command.employeeId(), command.startAt(), saved.getId());
+        List<Long> clashes = repository.findClashingIds(command.companyId(), command.employeeId(),
+                command.startAt(), saved.getId());
         return AppointmentDto.from(saved, clashes);
     }
 }

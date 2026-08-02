@@ -12,8 +12,8 @@ import com.vetsoftware.app.supplierinvoice.domain.CompanyRef;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoice;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierRef;
-import java.math.BigDecimal;
 import io.micrometer.observation.annotation.Observed;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +26,8 @@ public class CreateSupplierInvoiceService implements CreateSupplierInvoiceUseCas
     private final SupplierQueryPort supplierQueryPort;
 
     public CreateSupplierInvoiceService(SupplierInvoiceRepository repository,
-                                        CompanyQueryPort companyQueryPort,
-                                        BranchQueryPort branchQueryPort,
-                                        SupplierQueryPort supplierQueryPort) {
+            CompanyQueryPort companyQueryPort, BranchQueryPort branchQueryPort,
+            SupplierQueryPort supplierQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.branchQueryPort = branchQueryPort;
@@ -38,22 +37,26 @@ public class CreateSupplierInvoiceService implements CreateSupplierInvoiceUseCas
     @Override
     @Transactional
     public SupplierInvoiceDto execute(CreateSupplierInvoiceCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        BranchRef branch = branchQueryPort.findByIdAndCompanyId(command.branchId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Branch not found: " + command.branchId()));
-        SupplierRef supplier = supplierQueryPort.findByIdAndCompanyId(command.supplierId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        BranchRef branch = branchQueryPort
+                .findByIdAndCompanyId(command.branchId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Branch not found: " + command.branchId()));
+        SupplierRef supplier = supplierQueryPort
+                .findByIdAndCompanyId(command.supplierId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Supplier not found: " + command.supplierId()));
 
-        if (repository.existsByCompanySupplierAndNumber(
-                command.companyId(), command.supplierId(), command.invoiceNumber())) {
+        if (repository.existsByCompanySupplierAndNumber(command.companyId(), command.supplierId(),
+                command.invoiceNumber())) {
             throw new SupplierInvoiceNumberAlreadyExistsException(command.invoiceNumber());
         }
 
         SupplierInvoice invoice = SupplierInvoice.create(company, branch, supplier,
-            command.purchaseOrderId(), command.goodsReceiptId(), command.invoiceNumber(),
-            command.issueDate(), command.dueDate(), command.subtotal(), command.taxAmount(),
-            nz(command.withholdingAmount()), command.notes(), command.actorId());
+                command.purchaseOrderId(), command.goodsReceiptId(), command.invoiceNumber(),
+                command.issueDate(), command.dueDate(), command.subtotal(), command.taxAmount(),
+                nz(command.withholdingAmount()), command.notes(), command.actorId());
         return SupplierInvoiceDto.from(repository.save(invoice));
     }
 

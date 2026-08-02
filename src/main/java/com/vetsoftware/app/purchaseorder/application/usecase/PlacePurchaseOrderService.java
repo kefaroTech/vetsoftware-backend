@@ -22,7 +22,7 @@ public class PlacePurchaseOrderService implements PlacePurchaseOrderUseCase {
     @Transactional
     public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
         PurchaseOrder order = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
+                .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
         order.place(actorId);
         return PurchaseOrderDto.from(repository.save(order));
     }

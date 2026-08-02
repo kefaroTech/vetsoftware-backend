@@ -18,6 +18,7 @@ public class ListConsultationsService implements ListConsultationsUseCase {
 
     @Override
     public List<ConsultationDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ConsultationDto::from).toList();
+        return repository.findAllByCompanyId(companyId).stream().map(ConsultationDto::from)
+                .toList();
     }
 }

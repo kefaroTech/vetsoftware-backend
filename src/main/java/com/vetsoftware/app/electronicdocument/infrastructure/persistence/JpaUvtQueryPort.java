@@ -8,8 +8,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link UvtQueryPort}: lee la fila 'uvt' de system_configurations (otra feature) y parsea su
- * valor de texto a número. Único cruce permitido de vertical slicing (persistence → persistence de otra feature).
+ * Adapter del {@link UvtQueryPort}: lee la fila 'uvt' de system_configurations
+ * (otra feature) y parsea su valor de texto a número. Único cruce permitido de
+ * vertical slicing (persistence → persistence de otra feature).
  */
 @Component
 public class JpaUvtQueryPort implements UvtQueryPort {
@@ -24,12 +25,12 @@ public class JpaUvtQueryPort implements UvtQueryPort {
     @Override
     public Optional<BigDecimal> currentUvt() {
         return systemConfigurationJpaRepository.findByPropertyName(UVT_PROPERTY)
-                .map(SystemConfigurationJpaEntity::getValue)
-                .flatMap(JpaUvtQueryPort::parse);
+                .map(SystemConfigurationJpaEntity::getValue).flatMap(JpaUvtQueryPort::parse);
     }
 
     private static Optional<BigDecimal> parse(String value) {
-        if (value == null || value.isBlank()) return Optional.empty();
+        if (value == null || value.isBlank())
+            return Optional.empty();
         try {
             return Optional.of(new BigDecimal(value.trim()));
         } catch (NumberFormatException e) {

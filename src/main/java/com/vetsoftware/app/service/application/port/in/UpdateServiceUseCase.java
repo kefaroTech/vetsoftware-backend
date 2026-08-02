@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateServiceUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('service.update') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('service.update') and @authz.isMyCompany(#command.companyId))")
     ServiceDto execute(UpdateServiceCommand command);
 }

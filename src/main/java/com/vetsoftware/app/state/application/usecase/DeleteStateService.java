@@ -15,8 +15,7 @@ public class DeleteStateService implements DeleteStateUseCase {
     private final StateRepository repository;
     private final CityChildrenQueryPort cityChildrenQueryPort;
 
-    public DeleteStateService(
-            StateRepository repository,
+    public DeleteStateService(StateRepository repository,
             CityChildrenQueryPort cityChildrenQueryPort) {
         this.repository = repository;
         this.cityChildrenQueryPort = cityChildrenQueryPort;

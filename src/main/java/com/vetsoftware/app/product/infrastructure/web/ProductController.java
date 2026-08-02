@@ -42,14 +42,10 @@ public class ProductController {
     private final ReactivateProductUseCase reactivateUseCase;
     private final Authz authz;
 
-    public ProductController(CreateProductUseCase createUseCase,
-                             UpdateProductUseCase updateUseCase,
-                             FindProductUseCase findUseCase,
-                             ListProductsUseCase listUseCase,
-                             SearchProductsUseCase searchUseCase,
-                             DeleteProductUseCase deleteUseCase,
-                             ReactivateProductUseCase reactivateUseCase,
-                             Authz authz) {
+    public ProductController(CreateProductUseCase createUseCase, UpdateProductUseCase updateUseCase,
+            FindProductUseCase findUseCase, ListProductsUseCase listUseCase,
+            SearchProductsUseCase searchUseCase, DeleteProductUseCase deleteUseCase,
+            ReactivateProductUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -63,41 +59,37 @@ public class ProductController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateProductCommand(
-                request.name(), request.code(), request.salePrice(),
+        return toResponse(createUseCase.execute(new CreateProductCommand(request.name(),
+                request.code(), request.salePrice(),
                 request.baseUnitMeasureCode() == null || request.baseUnitMeasureCode().isBlank()
-                    ? "94" : request.baseUnitMeasureCode(),
+                        ? "94"
+                        : request.baseUnitMeasureCode(),
                 request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
-                request.productCategoryId(), request.taxId(),
-                authz.currentCompanyId())));
+                request.productCategoryId(), request.taxId(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<ProductResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/disabled")
     public List<ProductResponse> listDisabled() {
-        return listUseCase.listDisabledByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
-    public PageResponse<ProductResponse> search(
-            @RequestParam(required = false) String name,
+    public PageResponse<ProductResponse> search(@RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
             @RequestParam(required = false) Long productCategoryId,
-            @RequestParam(required = false) Long taxId,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Long taxId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<ProductDto> result = searchUseCase.execute(new SearchProductsCommand(
-            authz.currentCompanyId(), name, code, productCategoryId, taxId, page, pageSize));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                authz.currentCompanyId(), name, code, productCategoryId, taxId, page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -106,15 +98,16 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateProductCommand(
-                id, request.name(), request.code(), request.salePrice(),
+    public ProductResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateProductRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateProductCommand(id, request.name(),
+                request.code(), request.salePrice(),
                 request.baseUnitMeasureCode() == null || request.baseUnitMeasureCode().isBlank()
-                    ? "94" : request.baseUnitMeasureCode(),
+                        ? "94"
+                        : request.baseUnitMeasureCode(),
                 request.provider(), request.supplierId(), request.notes(), request.taxTreatment(),
-                request.productCategoryId(), request.taxId(),
-                authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
+                request.productCategoryId(), request.taxId(), authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -133,14 +126,12 @@ public class ProductController {
         TaxSummaryDto t = dto.tax();
         CompanySummaryDto c = dto.company();
         SupplierSummaryDto s = dto.supplier();
-        return new ProductResponse(
-            dto.id(), dto.name(), dto.code(), dto.salePrice(),
-            dto.baseUnitMeasureCode(),
-            dto.provider(), s == null ? null : new SupplierSummary(s.id(), s.name()),
-            dto.taxTreatment(), dto.notes(),
-            new ProductCategorySummary(pc.id(), pc.name()),
-            t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
+        return new ProductResponse(dto.id(), dto.name(), dto.code(), dto.salePrice(),
+                dto.baseUnitMeasureCode(), dto.provider(),
+                s == null ? null : new SupplierSummary(s.id(), s.name()), dto.taxTreatment(),
+                dto.notes(), new ProductCategorySummary(pc.id(), pc.name()),
+                t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.updatedDate(), dto.updatedBy(), dto.version(), dto.enabled());
     }
 }

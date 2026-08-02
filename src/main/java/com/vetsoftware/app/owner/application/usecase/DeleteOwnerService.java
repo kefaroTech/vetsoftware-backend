@@ -15,8 +15,7 @@ public class DeleteOwnerService implements DeleteOwnerUseCase {
     private final OwnerRepository repository;
     private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteOwnerService(
-            OwnerRepository repository,
+    public DeleteOwnerService(OwnerRepository repository,
             AnimalChildrenQueryPort animalChildrenQueryPort) {
         this.repository = repository;
         this.animalChildrenQueryPort = animalChildrenQueryPort;
@@ -25,7 +24,8 @@ public class DeleteOwnerService implements DeleteOwnerUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new OwnerNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new OwnerNotFoundException(id));
         if (animalChildrenQueryPort.existsActiveByOwnerId(id)) {
             throw new OwnerHasActiveChildrenException(id, "animal");
         }

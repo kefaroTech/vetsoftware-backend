@@ -35,18 +35,15 @@ public class OwnerJpaMapper {
     public Owner toDomain(OwnerJpaEntity entity) {
         CityJpaEntity c = entity.getCity();
         CompanyJpaEntity co = entity.getCompany();
-        return toDomain(entity,
-            new CityRef(c.getId(), c.getName()),
-            new CompanyRef(co.getId(), co.getName(), co.getIdentifier()));
+        return toDomain(entity, new CityRef(c.getId(), c.getName()),
+                new CompanyRef(co.getId(), co.getName(), co.getIdentifier()));
     }
 
     public Owner toDomain(OwnerJpaEntity entity, CityRef cityRef, CompanyRef companyRef) {
-        return new Owner(
-            entity.getId(), entity.getName(), entity.getEmail(), entity.getDocument(),
-            entity.getDocumentType(), entity.getPersonType(), entity.getVerificationDigit(),
-            entity.getLegalName(), entity.getAddress(), entity.getPhone(), cityRef, companyRef,
-            entity.isWithholdingAgent(), entity.getTaxRegime(), entity.getFiscalResponsibility(),
-            entity.getCreatedDate(), entity.isEnabled()
-        );
+        return new Owner(entity.getId(), entity.getName(), entity.getEmail(), entity.getDocument(),
+                entity.getDocumentType(), entity.getPersonType(), entity.getVerificationDigit(),
+                entity.getLegalName(), entity.getAddress(), entity.getPhone(), cityRef, companyRef,
+                entity.isWithholdingAgent(), entity.getTaxRegime(),
+                entity.getFiscalResponsibility(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

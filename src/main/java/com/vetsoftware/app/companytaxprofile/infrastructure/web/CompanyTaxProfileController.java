@@ -31,11 +31,9 @@ public class CompanyTaxProfileController {
     private final Authz authz;
 
     public CompanyTaxProfileController(CreateCompanyTaxProfileUseCase createUseCase,
-                                       UpdateCompanyTaxProfileUseCase updateUseCase,
-                                       FindCompanyTaxProfileUseCase findUseCase,
-                                       DeleteCompanyTaxProfileUseCase deleteUseCase,
-                                       ReactivateCompanyTaxProfileUseCase reactivateUseCase,
-                                       Authz authz) {
+            UpdateCompanyTaxProfileUseCase updateUseCase, FindCompanyTaxProfileUseCase findUseCase,
+            DeleteCompanyTaxProfileUseCase deleteUseCase,
+            ReactivateCompanyTaxProfileUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -46,33 +44,25 @@ public class CompanyTaxProfileController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompanyTaxProfileResponse create(@Valid @RequestBody CreateCompanyTaxProfileRequest request) {
-        return toResponse(createUseCase.execute(new CreateCompanyTaxProfileCommand(
-                request.documentType(),
-                request.companyDocumentId(),
-                request.companyDocumentVerificationDigit(),
-                request.legalName(),
-                request.taxRegime(),
-                request.fiscalEmail(),
-                request.commercialName(),
-                request.economicActivityId(),
-                request.responsibilities(),
-                authz.currentCompanyId())));
+    public CompanyTaxProfileResponse create(
+            @Valid @RequestBody CreateCompanyTaxProfileRequest request) {
+        return toResponse(
+                createUseCase.execute(new CreateCompanyTaxProfileCommand(request.documentType(),
+                        request.companyDocumentId(), request.companyDocumentVerificationDigit(),
+                        request.legalName(), request.taxRegime(), request.fiscalEmail(),
+                        request.commercialName(), request.economicActivityId(),
+                        request.responsibilities(), authz.currentCompanyId())));
     }
 
     @PutMapping
-    public CompanyTaxProfileResponse update(@Valid @RequestBody UpdateCompanyTaxProfileRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateCompanyTaxProfileCommand(
-                request.documentType(),
-                request.companyDocumentId(),
-                request.companyDocumentVerificationDigit(),
-                request.legalName(),
-                request.taxRegime(),
-                request.fiscalEmail(),
-                request.commercialName(),
-                request.economicActivityId(),
-                request.responsibilities(),
-                authz.currentCompanyId())));
+    public CompanyTaxProfileResponse update(
+            @Valid @RequestBody UpdateCompanyTaxProfileRequest request) {
+        return toResponse(
+                updateUseCase.execute(new UpdateCompanyTaxProfileCommand(request.documentType(),
+                        request.companyDocumentId(), request.companyDocumentVerificationDigit(),
+                        request.legalName(), request.taxRegime(), request.fiscalEmail(),
+                        request.commercialName(), request.economicActivityId(),
+                        request.responsibilities(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -94,19 +84,12 @@ public class CompanyTaxProfileController {
     private CompanyTaxProfileResponse toResponse(CompanyTaxProfileDto dto) {
         CompanySummaryDto c = dto.company();
         EconomicActivitySummaryDto ea = dto.economicActivity();
-        return new CompanyTaxProfileResponse(
-                dto.id(),
+        return new CompanyTaxProfileResponse(dto.id(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.companyDocumentType(),
-                dto.companyDocumentId(),
-                dto.companyDocumentVerificationDigit(),
-                dto.legalName(),
-                dto.taxRegime(),
-                dto.fiscalEmail(),
-                dto.commercialName(),
+                dto.companyDocumentType(), dto.companyDocumentId(),
+                dto.companyDocumentVerificationDigit(), dto.legalName(), dto.taxRegime(),
+                dto.fiscalEmail(), dto.commercialName(),
                 ea == null ? null : new EconomicActivitySummary(ea.id(), ea.code(), ea.name()),
-                dto.responsibilities(),
-                dto.createdDate(),
-                dto.enabled());
+                dto.responsibilities(), dto.createdDate(), dto.enabled());
     }
 }

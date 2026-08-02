@@ -15,6 +15,7 @@ public class AnimalColorJpaMapper {
     }
 
     public AnimalColor toDomain(AnimalColorJpaEntity entity) {
-        return new AnimalColor(entity.getId(), entity.getName(), entity.getCreatedDate(), entity.isEnabled());
+        return new AnimalColor(entity.getId(), entity.getName(), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

@@ -18,8 +18,7 @@ public class FindModuleService implements FindModuleUseCase {
 
     @Override
     public ModuleDto findById(Long id) {
-        return repository.findById(id)
-                .map(ModuleDto::from)
+        return repository.findById(id).map(ModuleDto::from)
                 .orElseThrow(() -> new ModuleNotFoundException(id));
     }
 }

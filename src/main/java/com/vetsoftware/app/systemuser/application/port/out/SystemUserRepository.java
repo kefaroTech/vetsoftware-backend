@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface SystemUserRepository {
     SystemUser save(SystemUser systemUser);
+
     Optional<SystemUser> findById(Long id);
+
     List<SystemUser> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

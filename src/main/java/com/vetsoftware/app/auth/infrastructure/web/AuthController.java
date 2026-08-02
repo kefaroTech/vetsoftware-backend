@@ -32,11 +32,9 @@ public class AuthController {
     private final AuditLogger auditLogger;
 
     public AuthController(LoginEmployeeUseCase loginEmployeeUseCase,
-                          LoginSystemUserUseCase loginSystemUserUseCase,
-                          GetCurrentUserUseCase getCurrentUserUseCase,
-                          RefreshTokenUseCase refreshTokenUseCase,
-                          LogoutUseCase logoutUseCase,
-                          AuditLogger auditLogger) {
+            LoginSystemUserUseCase loginSystemUserUseCase,
+            GetCurrentUserUseCase getCurrentUserUseCase, RefreshTokenUseCase refreshTokenUseCase,
+            LogoutUseCase logoutUseCase, AuditLogger auditLogger) {
         this.loginEmployeeUseCase = loginEmployeeUseCase;
         this.loginSystemUserUseCase = loginSystemUserUseCase;
         this.getCurrentUserUseCase = getCurrentUserUseCase;
@@ -47,18 +45,16 @@ public class AuthController {
 
     @PostMapping("/login/employee")
     public TokenResponse loginEmployee(@Valid @RequestBody LoginEmployeeRequest request) {
-        TokenDto dto = loginEmployeeUseCase.execute(
-                new LoginEmployeeCommand(request.employeeCode(), request.password())
-        );
+        TokenDto dto = loginEmployeeUseCase
+                .execute(new LoginEmployeeCommand(request.employeeCode(), request.password()));
         auditLogger.loginSuccess("EMPLOYEE", request.employeeCode());
         return new TokenResponse(dto.token(), dto.type(), dto.refreshToken());
     }
 
     @PostMapping("/login/system")
     public TokenResponse loginSystemUser(@Valid @RequestBody LoginSystemUserRequest request) {
-        TokenDto dto = loginSystemUserUseCase.execute(
-                new LoginSystemUserCommand(request.code(), request.password())
-        );
+        TokenDto dto = loginSystemUserUseCase
+                .execute(new LoginSystemUserCommand(request.code(), request.password()));
         auditLogger.loginSuccess("SYSTEM_USER", request.code());
         return new TokenResponse(dto.token(), dto.type(), dto.refreshToken());
     }
@@ -78,15 +74,8 @@ public class AuthController {
     @GetMapping("/me")
     public MeResponse me() {
         MeDto dto = getCurrentUserUseCase.execute();
-        return new MeResponse(
-                dto.id(),
-                dto.type(),
-                dto.companyId(),
-                dto.name(),
-                dto.employeeCode(),
-                dto.mustChangePassword(),
-                new ArrayList<>(dto.permissions()),
-                new ArrayList<>(dto.branchIds())
-        );
+        return new MeResponse(dto.id(), dto.type(), dto.companyId(), dto.name(), dto.employeeCode(),
+                dto.mustChangePassword(), new ArrayList<>(dto.permissions()),
+                new ArrayList<>(dto.branchIds()));
     }
 }

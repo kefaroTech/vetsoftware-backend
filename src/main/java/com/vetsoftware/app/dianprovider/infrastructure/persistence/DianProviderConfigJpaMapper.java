@@ -30,16 +30,17 @@ public class DianProviderConfigJpaMapper {
 
     public DianProviderConfig toDomain(DianProviderConfigJpaEntity entity) {
         CompanyJpaEntity c = entity.getCompany();
-        CompanyRef companyRef = c == null ? null : new CompanyRef(c.getId(), c.getName(), c.getIdentifier());
+        CompanyRef companyRef = c == null
+                ? null
+                : new CompanyRef(c.getId(), c.getName(), c.getIdentifier());
         return toDomain(entity, companyRef);
     }
 
     public DianProviderConfig toDomain(DianProviderConfigJpaEntity entity, CompanyRef companyRef) {
-        return new DianProviderConfig(
-                entity.getId(), companyRef, entity.getProvider(), entity.getBaseUrl(),
-                entity.getClientId(), entity.getClientSecret(), entity.getUsername(), entity.getPassword(),
-                entity.getApiToken(), entity.getWebhookSecret(), entity.getAccessToken(),
-                entity.getTokenExpiresAt(), entity.getNumberingProviderRef(), entity.getCreatedDate(),
-                entity.isEnabled());
+        return new DianProviderConfig(entity.getId(), companyRef, entity.getProvider(),
+                entity.getBaseUrl(), entity.getClientId(), entity.getClientSecret(),
+                entity.getUsername(), entity.getPassword(), entity.getApiToken(),
+                entity.getWebhookSecret(), entity.getAccessToken(), entity.getTokenExpiresAt(),
+                entity.getNumberingProviderRef(), entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -55,30 +55,102 @@ public class DebtOpenAccountJpaEntity {
     @Column(name = "client_request_id", length = 36)
     private String clientRequestId;
 
-    protected DebtOpenAccountJpaEntity() {}
+    protected DebtOpenAccountJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public PaymentMethod getPaymentMethod() { return paymentMethod; }
-    public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
-    public OpenAccountJpaEntity getOpenAccount() { return openAccount; }
-    public void setOpenAccount(OpenAccountJpaEntity openAccount) { this.openAccount = openAccount; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public boolean isVoided() { return voided; }
-    public void setVoided(boolean voided) { this.voided = voided; }
-    public EmployeeJpaEntity getVoidedBy() { return voidedBy; }
-    public void setVoidedBy(EmployeeJpaEntity voidedBy) { this.voidedBy = voidedBy; }
-    public LocalDateTime getVoidedAt() { return voidedAt; }
-    public void setVoidedAt(LocalDateTime voidedAt) { this.voidedAt = voidedAt; }
-    public String getVoidReason() { return voidReason; }
-    public void setVoidReason(String voidReason) { this.voidReason = voidReason; }
-    public String getClientRequestId() { return clientRequestId; }
-    public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public OpenAccountJpaEntity getOpenAccount() {
+        return openAccount;
+    }
+
+    public void setOpenAccount(OpenAccountJpaEntity openAccount) {
+        this.openAccount = openAccount;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isVoided() {
+        return voided;
+    }
+
+    public void setVoided(boolean voided) {
+        this.voided = voided;
+    }
+
+    public EmployeeJpaEntity getVoidedBy() {
+        return voidedBy;
+    }
+
+    public void setVoidedBy(EmployeeJpaEntity voidedBy) {
+        this.voidedBy = voidedBy;
+    }
+
+    public LocalDateTime getVoidedAt() {
+        return voidedAt;
+    }
+
+    public void setVoidedAt(LocalDateTime voidedAt) {
+        this.voidedAt = voidedAt;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
+    }
+
+    public String getClientRequestId() {
+        return clientRequestId;
+    }
+
+    public void setClientRequestId(String clientRequestId) {
+        this.clientRequestId = clientRequestId;
+    }
 }

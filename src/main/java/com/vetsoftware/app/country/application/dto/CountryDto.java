@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record CountryDto(Long id, String name, LocalDateTime createdDate, boolean enabled) {
     public static CountryDto from(Country country) {
-        return new CountryDto(country.getId(), country.getName(), country.getCreatedDate(), country.isEnabled());
+        return new CountryDto(country.getId(), country.getName(), country.getCreatedDate(),
+                country.isEnabled());
     }
 }

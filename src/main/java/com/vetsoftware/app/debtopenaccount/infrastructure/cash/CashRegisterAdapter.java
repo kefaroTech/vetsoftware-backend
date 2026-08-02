@@ -15,10 +15,14 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter de orquestación cuenta abierta → caja. Único punto de esta feature que conoce el {@code CashLedgerUseCase}
- * de {@code cashregister}; resuelve la sede de la cuenta (vía la persistencia de {@code openaccount}) y traduce el
- * {@link PaymentMethod} al medio de caja ({@link CashPaymentMethod}), registrando el ingreso/compensación con
- * referencia {@link CashReferenceType#OPEN_ACCOUNT_PAYMENT} y el id del abono (idempotencia + compensación).
+ * Adapter de orquestación cuenta abierta → caja. Único punto de esta feature
+ * que conoce el {@code
+ * CashLedgerUseCase} de {@code cashregister}; resuelve la sede de la cuenta
+ * (vía la persistencia de {@code openaccount}) y traduce el
+ * {@link PaymentMethod} al medio de caja ({@link CashPaymentMethod}),
+ * registrando el ingreso/compensación con referencia
+ * {@link CashReferenceType#OPEN_ACCOUNT_PAYMENT} y el id del abono
+ * (idempotencia + compensación).
  */
 @Component("debtOpenAccountCashRegisterAdapter")
 public class CashRegisterAdapter implements CashPort {
@@ -26,7 +30,8 @@ public class CashRegisterAdapter implements CashPort {
     private final CashLedgerUseCase cashLedger;
     private final OpenAccountJpaRepository openAccountJpaRepository;
 
-    public CashRegisterAdapter(CashLedgerUseCase cashLedger, OpenAccountJpaRepository openAccountJpaRepository) {
+    public CashRegisterAdapter(CashLedgerUseCase cashLedger,
+            OpenAccountJpaRepository openAccountJpaRepository) {
         this.cashLedger = cashLedger;
         this.openAccountJpaRepository = openAccountJpaRepository;
     }
@@ -38,28 +43,27 @@ public class CashRegisterAdapter implements CashPort {
     }
 
     @Override
-    public void registerPayment(Long companyId, Long openAccountId, Long paymentId, PaymentMethod method,
-                                BigDecimal amount, Long employeeId) {
+    public void registerPayment(Long companyId, Long openAccountId, Long paymentId,
+            PaymentMethod method, BigDecimal amount, Long employeeId) {
         Long branchId = resolveBranch(openAccountId);
         cashLedger.registerInflow(new RegisterCashInflowCommand(companyId, branchId, null,
-            CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
-            List.of(new CashPaymentLine(toCashMethod(method), amount)), employeeId));
+                CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
+                List.of(new CashPaymentLine(toCashMethod(method), amount)), employeeId));
     }
 
     @Override
-    public void reversePayment(Long companyId, Long openAccountId, Long paymentId, PaymentMethod method,
-                               BigDecimal amount, Long actorId) {
+    public void reversePayment(Long companyId, Long openAccountId, Long paymentId,
+            PaymentMethod method, BigDecimal amount, Long actorId) {
         Long branchId = resolveBranch(openAccountId);
         cashLedger.reverse(new ReverseCashMovementsCommand(companyId, branchId, null,
-            CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
-            List.of(new CashPaymentLine(toCashMethod(method), amount)), actorId));
+                CashReferenceType.OPEN_ACCOUNT_PAYMENT, paymentId,
+                List.of(new CashPaymentLine(toCashMethod(method), amount)), actorId));
     }
 
     private Long resolveBranch(Long openAccountId) {
-        return openAccountJpaRepository.findById(openAccountId)
-            .map(OpenAccountJpaEntity::getBranch)
-            .map(b -> b.getId())
-            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + openAccountId));
+        return openAccountJpaRepository.findById(openAccountId).map(OpenAccountJpaEntity::getBranch)
+                .map(b -> b.getId()).orElseThrow(() -> new IllegalArgumentException(
+                        "OpenAccount not found: " + openAccountId));
     }
 
     /** CASH→CASH, CARD→CARD, BANK_TRANSFER→TRANSFER. */

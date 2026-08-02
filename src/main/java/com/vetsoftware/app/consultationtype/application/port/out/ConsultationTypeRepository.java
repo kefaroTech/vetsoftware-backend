@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface ConsultationTypeRepository {
     ConsultationType save(ConsultationType consultationType);
+
     Optional<ConsultationType> findById(Long id);
+
     List<ConsultationType> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

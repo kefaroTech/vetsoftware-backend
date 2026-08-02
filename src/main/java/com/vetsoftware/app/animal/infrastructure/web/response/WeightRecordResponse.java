@@ -6,16 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record WeightRecordResponse(
-        Long id,
-        Long animalId,
-        String animalName,
-        String animalCode,
-        BigDecimal value,
-        WeightType unit,
-        LocalDate measuredAt,
-        WeightSource source,
-        Long sourceId,
-        String note,
-        LocalDateTime createdDate
-) {}
+public record WeightRecordResponse(Long id, Long animalId, String animalName, String animalCode,
+        BigDecimal value, WeightType unit, LocalDate measuredAt, WeightSource source, Long sourceId,
+        String note, LocalDateTime createdDate) {
+}

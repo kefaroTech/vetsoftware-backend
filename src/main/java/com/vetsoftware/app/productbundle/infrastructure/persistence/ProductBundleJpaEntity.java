@@ -17,7 +17,10 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
-/** Cabecera comercial del combo. Sus componentes vigentes viven en product_bundle_items. */
+/**
+ * Cabecera comercial del combo. Sus componentes vigentes viven en
+ * product_bundle_items.
+ */
 @Entity
 @Table(name = "product_bundles")
 @SQLDelete(sql = "UPDATE product_bundles SET enabled = false WHERE id = ? AND version = ?")
@@ -60,10 +63,10 @@ public class ProductBundleJpaEntity {
     @Column(nullable = false)
     private boolean enabled = true;
 
-    protected ProductBundleJpaEntity() {}
+    protected ProductBundleJpaEntity() {
+    }
 
-    public static ProductBundleJpaEntity create(
-            CompanyJpaEntity company, String name, String code,
+    public static ProductBundleJpaEntity create(CompanyJpaEntity company, String name, String code,
             UnitMeasureCatalogJpaEntity unitMeasure, BigDecimal salePrice, Long actorId) {
         ProductBundleJpaEntity entity = new ProductBundleJpaEntity();
         entity.company = company;
@@ -73,12 +76,12 @@ public class ProductBundleJpaEntity {
     }
 
     public void update(String name, String code, UnitMeasureCatalogJpaEntity unitMeasure,
-                       BigDecimal salePrice, Long actorId) {
+            BigDecimal salePrice, Long actorId) {
         apply(name, code, unitMeasure, salePrice, actorId);
     }
 
     private void apply(String name, String code, UnitMeasureCatalogJpaEntity unitMeasure,
-                       BigDecimal salePrice, Long actorId) {
+            BigDecimal salePrice, Long actorId) {
         this.name = name;
         this.code = code;
         this.unitMeasure = unitMeasure;
@@ -87,26 +90,91 @@ public class ProductBundleJpaEntity {
         this.updatedDate = LocalDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public UnitMeasureCatalogJpaEntity getUnitMeasure() { return unitMeasure; }
-    public void setUnitMeasure(UnitMeasureCatalogJpaEntity unitMeasure) { this.unitMeasure = unitMeasure; }
-    public BigDecimal getSalePrice() { return salePrice; }
-    public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public UnitMeasureCatalogJpaEntity getUnitMeasure() {
+        return unitMeasure;
+    }
+
+    public void setUnitMeasure(UnitMeasureCatalogJpaEntity unitMeasure) {
+        this.unitMeasure = unitMeasure;
+    }
+
+    public BigDecimal getSalePrice() {
+        return salePrice;
+    }
+
+    public void setSalePrice(BigDecimal salePrice) {
+        this.salePrice = salePrice;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
+    }
+
+    public void setUpdatedDate(LocalDateTime updatedDate) {
+        this.updatedDate = updatedDate;
+    }
+
+    public Long getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

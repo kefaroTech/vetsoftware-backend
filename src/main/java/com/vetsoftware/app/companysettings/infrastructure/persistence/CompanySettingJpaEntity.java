@@ -6,8 +6,8 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "company_settings", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_company_settings_company_property", columnNames = {"company_id", "property_name"})
-})
+        @UniqueConstraint(name = "uq_company_settings_company_property", columnNames = {
+                "company_id", "property_name"})})
 @SQLRestriction("enabled = true")
 public class CompanySettingJpaEntity {
     @Id
@@ -29,18 +29,54 @@ public class CompanySettingJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected CompanySettingJpaEntity() {}
+    protected CompanySettingJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getCompanyId() { return companyId; }
-    public void setCompanyId(Long companyId) { this.companyId = companyId; }
-    public String getPropertyName() { return propertyName; }
-    public void setPropertyName(String propertyName) { this.propertyName = propertyName; }
-    public String getValue() { return value; }
-    public void setValue(String value) { this.value = value; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public String getPropertyName() {
+        return propertyName;
+    }
+
+    public void setPropertyName(String propertyName) {
+        this.propertyName = propertyName;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

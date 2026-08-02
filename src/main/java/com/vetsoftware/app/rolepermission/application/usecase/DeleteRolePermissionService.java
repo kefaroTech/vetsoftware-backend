@@ -16,7 +16,7 @@ public class DeleteRolePermissionService implements DeleteRolePermissionUseCase 
     private final PermissionCachePort permissionCachePort;
 
     public DeleteRolePermissionService(RolePermissionRepository repository,
-                                       PermissionCachePort permissionCachePort) {
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.permissionCachePort = permissionCachePort;
     }
@@ -25,9 +25,9 @@ public class DeleteRolePermissionService implements DeleteRolePermissionUseCase 
     @Transactional
     public void execute(Long id, Long companyId) {
         RolePermission rolePermission = (companyId == null
-            ? repository.findById(id)
-            : repository.findByIdAndCompanyId(id, companyId))
-            .orElseThrow(() -> new RolePermissionNotFoundException(id));
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new RolePermissionNotFoundException(id));
         repository.delete(id);
         permissionCachePort.evictByRoleId(rolePermission.getRole().id());
     }

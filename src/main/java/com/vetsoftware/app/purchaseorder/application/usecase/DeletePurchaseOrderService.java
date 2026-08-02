@@ -19,7 +19,8 @@ public class DeletePurchaseOrderService implements DeletePurchaseOrderUseCase {
     @Override
     @Transactional
     public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new PurchaseOrderNotFoundException(id));
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
         repository.delete(id);
     }
 }

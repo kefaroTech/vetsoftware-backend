@@ -40,13 +40,12 @@ public class GeneralChargeOpenAccountController {
     private final Authz authz;
 
     public GeneralChargeOpenAccountController(CreateGeneralChargeOpenAccountUseCase createUseCase,
-                                              UpdateGeneralChargeOpenAccountUseCase updateUseCase,
-                                              FindGeneralChargeOpenAccountUseCase findUseCase,
-                                              ListGeneralChargeOpenAccountsUseCase listUseCase,
-                                              ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase,
-                                              VoidGeneralChargeOpenAccountUseCase voidUseCase,
-                                              Authz authz) {
+            UpdateGeneralChargeOpenAccountUseCase updateUseCase,
+            FindGeneralChargeOpenAccountUseCase findUseCase,
+            ListGeneralChargeOpenAccountsUseCase listUseCase,
+            ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+            ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase,
+            VoidGeneralChargeOpenAccountUseCase voidUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -61,22 +60,23 @@ public class GeneralChargeOpenAccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public GeneralChargeOpenAccountResponse create(
             @Valid @RequestBody CreateGeneralChargeOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateGeneralChargeOpenAccountCommand(
+        return toResponse(createUseCase.execute(new CreateGeneralChargeOpenAccountCommand(
                 request.name(), request.unitAmount(), request.quantity(), request.taxId(),
-                request.openAccountId(), authz.currentCompanyId(),
-                authz.currentEmployeeId(), request.clientRequestId(), request.expectedVersion())));
+                request.openAccountId(), authz.currentCompanyId(), authz.currentEmployeeId(),
+                request.clientRequestId(), request.expectedVersion())));
     }
 
     @GetMapping
     public List<GeneralChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/by-open-account/{openAccountId}")
-    public List<GeneralChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+    public List<GeneralChargeOpenAccountResponse> listByOpenAccount(
+            @PathVariable Long openAccountId) {
         return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -85,11 +85,10 @@ public class GeneralChargeOpenAccountController {
     }
 
     @PutMapping("/{id}")
-    public GeneralChargeOpenAccountResponse update(
-            @PathVariable Long id, @Valid @RequestBody UpdateGeneralChargeOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateGeneralChargeOpenAccountCommand(
-                id, request.name(), request.unitAmount(), request.quantity(), request.taxId(),
+    public GeneralChargeOpenAccountResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateGeneralChargeOpenAccountRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateGeneralChargeOpenAccountCommand(id,
+                request.name(), request.unitAmount(), request.quantity(), request.taxId(),
                 request.openAccountId(), authz.currentCompanyId(), request.expectedVersion())));
     }
 
@@ -99,12 +98,11 @@ public class GeneralChargeOpenAccountController {
     }
 
     @PatchMapping("/{id}/void")
-    public GeneralChargeOpenAccountResponse voidCharge(
-            @PathVariable Long id, @Valid @RequestBody VoidGeneralChargeOpenAccountRequest request) {
-        return toResponse(voidUseCase.execute(
-            new VoidGeneralChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
-                request.expectedVersion())));
+    public GeneralChargeOpenAccountResponse voidCharge(@PathVariable Long id,
+            @Valid @RequestBody VoidGeneralChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase
+                .execute(new VoidGeneralChargeOpenAccountCommand(id, authz.currentCompanyId(),
+                        authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
     }
 
     private GeneralChargeOpenAccountResponse toResponse(GeneralChargeOpenAccountDto dto) {
@@ -112,20 +110,12 @@ public class GeneralChargeOpenAccountController {
         OpenAccountSummaryDto oa = dto.openAccount();
         EmployeeSummaryDto emp = dto.createdBy();
         EmployeeSummaryDto v = dto.voidedBy();
-        return new GeneralChargeOpenAccountResponse(
-            dto.id(), dto.name(), dto.unitAmount(), dto.quantity(),
-            t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
-            dto.hasTax(),
-            dto.taxPercentage(),
-            dto.taxName(),
-            dto.baseAmount(),
-            dto.taxAmount(),
-            dto.totalAmount(),
-            new OpenAccountSummary(oa.id(), oa.companyId()),
-            new EmployeeSummary(emp.id(), emp.name()),
-            dto.createdDate(), dto.enabled(),
-            dto.voided(),
-            v == null ? null : new EmployeeSummary(v.id(), v.name()),
-            dto.voidedAt(), dto.voidReason());
+        return new GeneralChargeOpenAccountResponse(dto.id(), dto.name(), dto.unitAmount(),
+                dto.quantity(), t == null ? null : new TaxSummary(t.id(), t.name(), t.percentage()),
+                dto.hasTax(), dto.taxPercentage(), dto.taxName(), dto.baseAmount(), dto.taxAmount(),
+                dto.totalAmount(), new OpenAccountSummary(oa.id(), oa.companyId()),
+                new EmployeeSummary(emp.id(), emp.name()), dto.createdDate(), dto.enabled(),
+                dto.voided(), v == null ? null : new EmployeeSummary(v.id(), v.name()),
+                dto.voidedAt(), dto.voidReason());
     }
 }

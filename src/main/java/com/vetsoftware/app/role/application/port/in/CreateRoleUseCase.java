@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateRoleUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('rolePermissions.create') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('rolePermissions.create') and @authz.isMyCompany(#command.companyId))")
     RoleDto execute(CreateRoleCommand command);
 }

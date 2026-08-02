@@ -27,10 +27,10 @@ public class MembershipController {
     private final DeleteMembershipUseCase deleteUseCase;
     private final ReactivateMembershipUseCase reactivateUseCase;
 
-    public MembershipController(CreateMembershipUseCase createUseCase, UpdateMembershipUseCase updateUseCase,
-                                FindMembershipUseCase findUseCase, ListMembershipsUseCase listUseCase,
-                                DeleteMembershipUseCase deleteUseCase,
-                                ReactivateMembershipUseCase reactivateUseCase) {
+    public MembershipController(CreateMembershipUseCase createUseCase,
+            UpdateMembershipUseCase updateUseCase, FindMembershipUseCase findUseCase,
+            ListMembershipsUseCase listUseCase, DeleteMembershipUseCase deleteUseCase,
+            ReactivateMembershipUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -42,9 +42,8 @@ public class MembershipController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MembershipResponse create(@Valid @RequestBody CreateMembershipRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateMembershipCommand(request.name(), request.status(), request.mandatory())
-        ));
+        return toResponse(createUseCase.execute(new CreateMembershipCommand(request.name(),
+                request.status(), request.mandatory())));
     }
 
     @GetMapping
@@ -58,10 +57,10 @@ public class MembershipController {
     }
 
     @PutMapping("/{id}")
-    public MembershipResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMembershipRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateMembershipCommand(id, request.name(), request.status(), request.mandatory())
-        ));
+    public MembershipResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateMembershipRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateMembershipCommand(id, request.name(),
+                request.status(), request.mandatory())));
     }
 
     @DeleteMapping("/{id}")
@@ -76,7 +75,7 @@ public class MembershipController {
     }
 
     private MembershipResponse toResponse(MembershipDto dto) {
-        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.mandatory(), dto.createdDate(),
-            dto.enabled());
+        return new MembershipResponse(dto.id(), dto.name(), dto.status(), dto.mandatory(),
+                dto.createdDate(), dto.enabled());
     }
 }

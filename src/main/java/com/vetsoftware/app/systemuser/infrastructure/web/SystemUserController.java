@@ -28,11 +28,9 @@ public class SystemUserController {
     private final ReactivateSystemUserUseCase reactivateUseCase;
 
     public SystemUserController(CreateSystemUserUseCase createUseCase,
-                                UpdateSystemUserUseCase updateUseCase,
-                                FindSystemUserUseCase findUseCase,
-                                ListSystemUsersUseCase listUseCase,
-                                DeleteSystemUserUseCase deleteUseCase,
-                                ReactivateSystemUserUseCase reactivateUseCase) {
+            UpdateSystemUserUseCase updateUseCase, FindSystemUserUseCase findUseCase,
+            ListSystemUsersUseCase listUseCase, DeleteSystemUserUseCase deleteUseCase,
+            ReactivateSystemUserUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -44,8 +42,8 @@ public class SystemUserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SystemUserResponse create(@Valid @RequestBody CreateSystemUserRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSystemUserCommand(request.code(), request.password())));
+        return toResponse(createUseCase
+                .execute(new CreateSystemUserCommand(request.code(), request.password())));
     }
 
     @GetMapping
@@ -60,9 +58,8 @@ public class SystemUserController {
 
     @PutMapping("/{id}")
     public SystemUserResponse update(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateSystemUserRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSystemUserCommand(id, request.code())));
+            @Valid @RequestBody UpdateSystemUserRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateSystemUserCommand(id, request.code())));
     }
 
     @DeleteMapping("/{id}")

@@ -7,9 +7,10 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link AccountReversalPort}: marca la cuenta abierta facturada como reversada cuando su
- * nota credito es validada por la DIAN. Cruce permitido (persistence -> persistence de otra feature).
- * Idempotente: no re-estampa una cuenta ya reversada ni falla si la cuenta no existe.
+ * Adapter del {@link AccountReversalPort}: marca la cuenta abierta facturada
+ * como reversada cuando su nota credito es validada por la DIAN. Cruce
+ * permitido (persistence -> persistence de otra feature). Idempotente: no
+ * re-estampa una cuenta ya reversada ni falla si la cuenta no existe.
  */
 @Component
 public class JpaAccountReversalPort implements AccountReversalPort {
@@ -21,8 +22,10 @@ public class JpaAccountReversalPort implements AccountReversalPort {
 
     @Override
     public void markReversed(Long openAccountId) {
-        OpenAccountJpaEntity account = openAccountJpaRepository.findById(openAccountId).orElse(null);
-        if (account == null || account.isReversed()) return;
+        OpenAccountJpaEntity account = openAccountJpaRepository.findById(openAccountId)
+                .orElse(null);
+        if (account == null || account.isReversed())
+            return;
         account.setReversed(true);
         account.setReversedAt(LocalDateTime.now());
         openAccountJpaRepository.save(account);

@@ -13,15 +13,14 @@ public class CreateEmployeeRoleAdapter implements EmployeeRoleAssigner {
     private final SystemAuthRunner systemAuthRunner;
 
     public CreateEmployeeRoleAdapter(CreateEmployeeRoleUseCase createEmployeeRoleUseCase,
-                                     SystemAuthRunner systemAuthRunner) {
+            SystemAuthRunner systemAuthRunner) {
         this.createEmployeeRoleUseCase = createEmployeeRoleUseCase;
         this.systemAuthRunner = systemAuthRunner;
     }
 
     @Override
     public void assign(Long employeeId, Long roleId) {
-        systemAuthRunner.run(() -> createEmployeeRoleUseCase.execute(
-            new CreateEmployeeRoleCommand(employeeId, roleId)
-        ));
+        systemAuthRunner.run(() -> createEmployeeRoleUseCase
+                .execute(new CreateEmployeeRoleCommand(employeeId, roleId)));
     }
 }

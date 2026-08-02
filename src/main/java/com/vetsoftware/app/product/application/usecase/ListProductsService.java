@@ -25,7 +25,10 @@ public class ListProductsService implements ListProductsUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<ProductDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(ProductDto::from).toList();
+        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus
+        // asociaciones LAZY aquí
+        // dentro.
+        return repository.findAllDisabledByCompanyId(companyId).stream().map(ProductDto::from)
+                .toList();
     }
 }

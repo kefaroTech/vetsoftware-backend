@@ -2,7 +2,9 @@ package com.vetsoftware.app.systempermission.infrastructure.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface SystemPermissionJpaRepository extends JpaRepository<SystemPermissionJpaEntity, Long> {
+public interface SystemPermissionJpaRepository
+        extends
+            JpaRepository<SystemPermissionJpaEntity, Long> {
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

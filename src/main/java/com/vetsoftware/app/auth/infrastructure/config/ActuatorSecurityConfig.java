@@ -27,29 +27,24 @@ public class ActuatorSecurityConfig {
 
     @Bean
     @Order(1)
-    SecurityFilterChain actuatorSecurityFilterChain(
-            HttpSecurity http,
+    SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http,
             ActuatorSecurityProperties properties,
-            @Qualifier("actuatorUserDetailsService")
-            UserDetailsService userDetailsService) throws Exception {
+            @Qualifier("actuatorUserDetailsService") UserDetailsService userDetailsService)
+            throws Exception {
         var authentication = properties.getAuthentication();
 
-        http
-            .securityMatcher(EndpointRequest.toAnyEndpoint())
-            .csrf(csrf -> csrf.disable())
-            .requestCache(cache -> cache.disable())
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(EndpointRequest.to("health")).permitAll()
-                .requestMatchers(EndpointRequest.to("prometheus", "metrics", "info"))
-                    .hasRole(OBSERVABILITY_ROLE)
-                .anyRequest().denyAll());
+        http.securityMatcher(EndpointRequest.toAnyEndpoint()).csrf(csrf -> csrf.disable())
+                .requestCache(cache -> cache.disable())
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(EndpointRequest.to("health")).permitAll()
+                        .requestMatchers(EndpointRequest.to("prometheus", "metrics", "info"))
+                        .hasRole(OBSERVABILITY_ROLE).anyRequest().denyAll());
 
         if (authentication.isEnabled()) {
-            http
-                .authenticationProvider(authenticationProvider(userDetailsService))
-                .httpBasic(withDefaults());
+            http.authenticationProvider(authenticationProvider(userDetailsService))
+                    .httpBasic(withDefaults());
         }
 
         return http.build();
@@ -62,18 +57,18 @@ public class ActuatorSecurityConfig {
             return new InMemoryUserDetailsManager();
         }
         authentication.validate();
-        PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-        UserDetails prometheusUser = User.builder()
-            .username(authentication.getUsername())
-            .password(passwordEncoder.encode(authentication.getPassword()))
-            .roles(OBSERVABILITY_ROLE)
-            .build();
+        PasswordEncoder passwordEncoder = PasswordEncoderFactories
+                .createDelegatingPasswordEncoder();
+        UserDetails prometheusUser = User.builder().username(authentication.getUsername())
+                .password(passwordEncoder.encode(authentication.getPassword()))
+                .roles(OBSERVABILITY_ROLE).build();
         return new InMemoryUserDetailsManager(prometheusUser);
     }
 
     private static DaoAuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService) {
-        PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        PasswordEncoder passwordEncoder = PasswordEncoderFactories
+                .createDelegatingPasswordEncoder();
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;

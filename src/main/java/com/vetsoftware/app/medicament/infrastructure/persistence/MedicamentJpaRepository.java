@@ -20,17 +20,18 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
     Optional<MedicamentJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
-    @org.springframework.data.jpa.repository.Query(
-        "SELECT e FROM MedicamentJpaEntity e LEFT JOIN e.company c "
+    @org.springframework.data.jpa.repository.Query("SELECT e FROM MedicamentJpaEntity e LEFT JOIN e.company c "
             + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
     Optional<MedicamentJpaEntity> findAvailableById(
-        @org.springframework.data.repository.query.Param("id") Long id,
-        @org.springframework.data.repository.query.Param("companyId") Long companyId);
+            @org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @EntityGraph(attributePaths = "company")
     List<MedicamentJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
-    // Native: los pausados (enabled = false) NO pasan el @SQLRestriction; se listan crudos para reactivar.
+    // Native: los pausados (enabled = false) NO pasan el @SQLRestriction; se listan
+    // crudos para
+    // reactivar.
     @Query(value = "SELECT * FROM medicaments WHERE enabled = false AND company_id = :companyId", nativeQuery = true)
     List<MedicamentJpaEntity> findAllDisabledForCompany(@Param("companyId") Long companyId);
 

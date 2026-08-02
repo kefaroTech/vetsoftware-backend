@@ -8,8 +8,7 @@ public interface AppointmentMetrics {
     void transitioned(AppointmentStatus status, Channel channel);
 
     enum Channel {
-        STAFF("staff"),
-        PUBLIC("public");
+        STAFF("staff"), PUBLIC("public");
 
         private final String value;
 

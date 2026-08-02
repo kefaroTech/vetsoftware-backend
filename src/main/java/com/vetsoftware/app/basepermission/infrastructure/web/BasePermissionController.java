@@ -30,11 +30,9 @@ public class BasePermissionController {
     private final ReactivateBasePermissionUseCase reactivateUseCase;
 
     public BasePermissionController(CreateBasePermissionUseCase createUseCase,
-                                    UpdateBasePermissionUseCase updateUseCase,
-                                    FindBasePermissionUseCase findUseCase,
-                                    ListBasePermissionsUseCase listUseCase,
-                                    DeleteBasePermissionUseCase deleteUseCase,
-                                    ReactivateBasePermissionUseCase reactivateUseCase) {
+            UpdateBasePermissionUseCase updateUseCase, FindBasePermissionUseCase findUseCase,
+            ListBasePermissionsUseCase listUseCase, DeleteBasePermissionUseCase deleteUseCase,
+            ReactivateBasePermissionUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -46,8 +44,8 @@ public class BasePermissionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BasePermissionResponse create(@Valid @RequestBody CreateBasePermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateBasePermissionCommand(request.name(), request.code(), request.subModuleId())));
+        return toResponse(createUseCase.execute(new CreateBasePermissionCommand(request.name(),
+                request.code(), request.subModuleId())));
     }
 
     @GetMapping
@@ -62,9 +60,9 @@ public class BasePermissionController {
 
     @PutMapping("/{id}")
     public BasePermissionResponse update(@PathVariable Long id,
-                                         @Valid @RequestBody UpdateBasePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateBasePermissionCommand(id, request.name(), request.code(), request.subModuleId())));
+            @Valid @RequestBody UpdateBasePermissionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateBasePermissionCommand(id, request.name(),
+                request.code(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")
@@ -80,11 +78,8 @@ public class BasePermissionController {
 
     private BasePermissionResponse toResponse(BasePermissionDto dto) {
         SubModuleSummaryDto sm = dto.subModule();
-        return new BasePermissionResponse(
-            dto.id(), dto.name(), dto.code(),
-            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new BasePermissionResponse(dto.id(), dto.name(), dto.code(),
+                new SubModuleSummary(sm.id(), sm.name(), sm.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

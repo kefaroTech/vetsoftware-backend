@@ -18,18 +18,23 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** READ por id scoped a la empresa (defensa IDOR): devuelve DTO fiel o lanza si no pertenece. */
+/**
+ * READ por id scoped a la empresa (defensa IDOR): devuelve DTO fiel o lanza si
+ * no pertenece.
+ */
 @ExtendWith(MockitoExtension.class)
 class FindBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @InjectMocks private FindBranchService service;
+    @Mock
+    private BranchRepository repository;
+    @InjectMocks
+    private FindBranchService service;
 
     @Test
     void devuelve_dto_cuando_pertenece_a_la_empresa() {
         Branch branch = new Branch(3L, "Sede Norte", "NORTE", "addr", "phone",
-            new CityRef(5L, "Bogotá"), new CompanyRef(9L, "Vet SAS", "900123456"),
-            LocalDateTime.of(2020, 1, 1, 10, 0), true);
+                new CityRef(5L, "Bogotá"), new CompanyRef(9L, "Vet SAS", "900123456"),
+                LocalDateTime.of(2020, 1, 1, 10, 0), true);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(branch));
 
         BranchDto dto = service.findById(3L, 9L);
@@ -45,7 +50,6 @@ class FindBranchServiceTest {
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findById(3L, 9L))
-            .isInstanceOf(BranchNotFoundException.class)
-            .hasMessageContaining("3");
+                .isInstanceOf(BranchNotFoundException.class).hasMessageContaining("3");
     }
 }

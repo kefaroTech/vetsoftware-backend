@@ -51,32 +51,110 @@ public class ElectronicDocumentLineJpaEntity {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    protected ElectronicDocumentLineJpaEntity() {}
+    protected ElectronicDocumentLineJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public ElectronicDocumentJpaEntity getDocument() { return document; }
-    public void setDocument(ElectronicDocumentJpaEntity document) { this.document = document; }
-    public int getLineNumber() { return lineNumber; }
-    public void setLineNumber(int lineNumber) { this.lineNumber = lineNumber; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public BigDecimal getQuantity() { return quantity; }
-    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
-    public String getUnitMeasureCode() { return unitMeasureCode; }
-    public void setUnitMeasureCode(String unitMeasureCode) { this.unitMeasureCode = unitMeasureCode; }
-    public BigDecimal getUnitPrice() { return unitPrice; }
-    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
-    public BigDecimal getLineExtensionAmount() { return lineExtensionAmount; }
-    public void setLineExtensionAmount(BigDecimal lineExtensionAmount) { this.lineExtensionAmount = lineExtensionAmount; }
-    public TaxCategory getTaxCategory() { return taxCategory; }
-    public void setTaxCategory(TaxCategory taxCategory) { this.taxCategory = taxCategory; }
-    public TaxScheme getTaxScheme() { return taxScheme; }
-    public void setTaxScheme(TaxScheme taxScheme) { this.taxScheme = taxScheme; }
-    public BigDecimal getTaxRate() { return taxRate; }
-    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-    public BigDecimal getTaxAmount() { return taxAmount; }
-    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public ElectronicDocumentJpaEntity getDocument() {
+        return document;
+    }
+
+    public void setDocument(ElectronicDocumentJpaEntity document) {
+        this.document = document;
+    }
+
+    public int getLineNumber() {
+        return lineNumber;
+    }
+
+    public void setLineNumber(int lineNumber) {
+        this.lineNumber = lineNumber;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getUnitMeasureCode() {
+        return unitMeasureCode;
+    }
+
+    public void setUnitMeasureCode(String unitMeasureCode) {
+        this.unitMeasureCode = unitMeasureCode;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
+    public BigDecimal getLineExtensionAmount() {
+        return lineExtensionAmount;
+    }
+
+    public void setLineExtensionAmount(BigDecimal lineExtensionAmount) {
+        this.lineExtensionAmount = lineExtensionAmount;
+    }
+
+    public TaxCategory getTaxCategory() {
+        return taxCategory;
+    }
+
+    public void setTaxCategory(TaxCategory taxCategory) {
+        this.taxCategory = taxCategory;
+    }
+
+    public TaxScheme getTaxScheme() {
+        return taxScheme;
+    }
+
+    public void setTaxScheme(TaxScheme taxScheme) {
+        this.taxScheme = taxScheme;
+    }
+
+    public BigDecimal getTaxRate() {
+        return taxRate;
+    }
+
+    public void setTaxRate(BigDecimal taxRate) {
+        this.taxRate = taxRate;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
 }

@@ -17,17 +17,19 @@ public class CreateVaccinationTypeService implements CreateVaccinationTypeUseCas
     private final CompanyQueryPort companyQueryPort;
 
     public CreateVaccinationTypeService(VaccinationTypeRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
 
     @Override
     public VaccinationTypeDto execute(CreateVaccinationTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return VaccinationTypeDto.from(
-                repository.save(VaccinationType.create(command.name(), command.description(), company, command.general())));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
+        return VaccinationTypeDto.from(repository.save(VaccinationType.create(command.name(),
+                command.description(), company, command.general())));
     }
 }

@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SetMinStockUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('inventory.adjust') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('inventory.adjust') and @authz.isMyCompany(#command.companyId))")
     void setMinStock(SetMinStockCommand command);
 }

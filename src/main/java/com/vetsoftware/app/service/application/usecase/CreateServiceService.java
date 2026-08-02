@@ -21,10 +21,8 @@ public class CreateServiceService implements CreateServiceUseCase {
     private final ServiceCategoryQueryPort serviceCategoryQueryPort;
     private final TaxQueryPort taxQueryPort;
 
-    public CreateServiceService(ServiceRepository repository,
-                                CompanyQueryPort companyQueryPort,
-                                ServiceCategoryQueryPort serviceCategoryQueryPort,
-                                TaxQueryPort taxQueryPort) {
+    public CreateServiceService(ServiceRepository repository, CompanyQueryPort companyQueryPort,
+            ServiceCategoryQueryPort serviceCategoryQueryPort, TaxQueryPort taxQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.serviceCategoryQueryPort = serviceCategoryQueryPort;
@@ -33,15 +31,18 @@ public class CreateServiceService implements CreateServiceUseCase {
 
     @Override
     public ServiceDto execute(CreateServiceCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        ServiceCategoryRef serviceCategory = serviceCategoryQueryPort.findById(command.serviceCategoryId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("ServiceCategory not found: " + command.serviceCategoryId()));
-        TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
-        Service service = Service.create(command.name(), command.price(),
-            command.taxTreatment(), command.notes(), serviceCategory, tax, company);
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        ServiceCategoryRef serviceCategory = serviceCategoryQueryPort
+                .findById(command.serviceCategoryId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "ServiceCategory not found: " + command.serviceCategoryId()));
+        TaxRef tax = command.taxId() == null
+                ? null
+                : taxQueryPort.findById(command.taxId(), command.companyId()).orElseThrow(
+                        () -> new IllegalArgumentException("Tax not found: " + command.taxId()));
+        Service service = Service.create(command.name(), command.price(), command.taxTreatment(),
+                command.notes(), serviceCategory, tax, company);
         return ServiceDto.from(repository.save(service));
     }
 }

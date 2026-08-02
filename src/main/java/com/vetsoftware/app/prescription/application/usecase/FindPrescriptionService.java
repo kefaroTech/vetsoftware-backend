@@ -18,7 +18,7 @@ public class FindPrescriptionService implements FindPrescriptionUseCase {
     private final MedicamentQueryPort medicamentQueryPort;
 
     public FindPrescriptionService(PrescriptionRepository repository,
-                                   MedicamentQueryPort medicamentQueryPort) {
+            MedicamentQueryPort medicamentQueryPort) {
         this.repository = repository;
         this.medicamentQueryPort = medicamentQueryPort;
     }
@@ -26,7 +26,7 @@ public class FindPrescriptionService implements FindPrescriptionUseCase {
     @Override
     public PrescriptionDto findById(Long id, Long companyId) {
         Prescription prescription = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new PrescriptionNotFoundException(id));
+                .orElseThrow(() -> new PrescriptionNotFoundException(id));
         List<MedicamentRef> medicaments = medicamentQueryPort.findByPrescriptionId(id);
         return PrescriptionDto.from(prescription, medicaments);
     }

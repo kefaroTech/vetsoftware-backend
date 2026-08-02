@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "procedure.schedule.suspend.pending")
 @Service
 public class SuspendPendingProcedureSchedulesService
-        implements SuspendPendingProcedureSchedulesUseCase {
+        implements
+            SuspendPendingProcedureSchedulesUseCase {
     private final ProcedureScheduleRepository repository;
 
     public SuspendPendingProcedureSchedulesService(ProcedureScheduleRepository repository) {
@@ -23,7 +24,6 @@ public class SuspendPendingProcedureSchedulesService
     public List<ProcedureScheduleDto> execute(Long hospitalizationProcedureId) {
         repository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId);
         return repository.findByHospitalizationProcedureId(hospitalizationProcedureId).stream()
-            .map(ProcedureScheduleDto::from)
-            .toList();
+                .map(ProcedureScheduleDto::from).toList();
     }
 }

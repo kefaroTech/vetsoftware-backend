@@ -19,7 +19,7 @@ public class CreateSpaTypeService implements CreateSpaTypeUseCase {
 
     @Override
     public SpaTypeDto execute(CreateSpaTypeCommand command) {
-        return SpaTypeDto.from(
-                repository.save(SpaType.create(command.name(), command.description())));
+        return SpaTypeDto
+                .from(repository.save(SpaType.create(command.name(), command.description())));
     }
 }

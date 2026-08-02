@@ -17,14 +17,16 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.medication.create")
 @Service
-public class CreateHospitalizationMedicationService implements CreateHospitalizationMedicationUseCase {
+public class CreateHospitalizationMedicationService
+        implements
+            CreateHospitalizationMedicationUseCase {
     private final HospitalizationMedicationRepository repository;
     private final HospitalizationQueryPort hospitalizationQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
 
     public CreateHospitalizationMedicationService(HospitalizationMedicationRepository repository,
-                                                  HospitalizationQueryPort hospitalizationQueryPort,
-                                                  EmployeeQueryPort employeeQueryPort) {
+            HospitalizationQueryPort hospitalizationQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.hospitalizationQueryPort = hospitalizationQueryPort;
         this.employeeQueryPort = employeeQueryPort;
@@ -32,23 +34,19 @@ public class CreateHospitalizationMedicationService implements CreateHospitaliza
 
     @Override
     public HospitalizationMedicationDto execute(CreateHospitalizationMedicationCommand command) {
-        HospitalizationRef hospitalization = hospitalizationQueryPort.findById(command.hospitalizationId())
-            .orElseThrow(() -> new IllegalArgumentException("Hospitalization not found: " + command.hospitalizationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+        HospitalizationRef hospitalization = hospitalizationQueryPort
+                .findById(command.hospitalizationId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Hospitalization not found: " + command.hospitalizationId()));
+        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        HospitalizationMedication medication = HospitalizationMedication.create(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes(),
-            hospitalization,
-            createdBy);
+        HospitalizationMedication medication = HospitalizationMedication.create(command.name(),
+                command.dose(), parseFrequency(command.frequency()),
+                parseGuidelineType(command.guidelineType()),
+                parseDurationMeasure(command.durationMeasure()), command.durationQuantity(),
+                command.startDate(), command.startTime(), command.notes(), hospitalization,
+                createdBy);
         return HospitalizationMedicationDto.from(repository.save(medication));
     }
 

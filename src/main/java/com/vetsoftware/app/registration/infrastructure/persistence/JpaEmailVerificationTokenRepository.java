@@ -12,7 +12,7 @@ public class JpaEmailVerificationTokenRepository implements EmailVerificationTok
     private final EmailVerificationTokenJpaMapper mapper;
 
     public JpaEmailVerificationTokenRepository(EmailVerificationTokenJpaRepository jpaRepository,
-                                               EmailVerificationTokenJpaMapper mapper) {
+            EmailVerificationTokenJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

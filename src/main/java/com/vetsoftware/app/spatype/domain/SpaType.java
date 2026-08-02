@@ -9,7 +9,8 @@ public class SpaType {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public SpaType(Long id, String name, String description, LocalDateTime createdDate, boolean enabled) {
+    public SpaType(Long id, String name, String description, LocalDateTime createdDate,
+            boolean enabled) {
         validate(name, description);
         this.id = id;
         this.name = name;
@@ -28,19 +29,40 @@ public class SpaType {
         this.description = description;
     }
 
-    public void enable() { this.enabled = true; }
-
-    public void disable() { this.enabled = false; }
-
-    private static void validate(String name, String description) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
-        if (name.length() > 100) throw new IllegalArgumentException("name must be 100 chars or less");
-        if (description != null && description.length() > 500) throw new IllegalArgumentException("description must be 500 chars or less");
+    public void enable() {
+        this.enabled = true;
     }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
+    public void disable() {
+        this.enabled = false;
+    }
+
+    private static void validate(String name, String description) {
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("name is required");
+        if (name.length() > 100)
+            throw new IllegalArgumentException("name must be 100 chars or less");
+        if (description != null && description.length() > 500)
+            throw new IllegalArgumentException("description must be 500 chars or less");
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 }

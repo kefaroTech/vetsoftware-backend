@@ -2,7 +2,10 @@ package com.vetsoftware.app.inventory.infrastructure.persistence;
 
 import jakarta.persistence.*;
 
-/** Línea de un conteo físico: sistema vs contado y su diferencia (persistida para reporte SQL). */
+/**
+ * Línea de un conteo físico: sistema vs contado y su diferencia (persistida
+ * para reporte SQL).
+ */
 @Entity
 @Table(name = "inventory_count_line")
 public class InventoryCountLineJpaEntity {
@@ -26,18 +29,54 @@ public class InventoryCountLineJpaEntity {
     @Column(name = "difference", nullable = false)
     private int difference;
 
-    protected InventoryCountLineJpaEntity() {}
+    protected InventoryCountLineJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public InventoryCountJpaEntity getCount() { return count; }
-    public void setCount(InventoryCountJpaEntity count) { this.count = count; }
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
-    public int getSystemQuantity() { return systemQuantity; }
-    public void setSystemQuantity(int systemQuantity) { this.systemQuantity = systemQuantity; }
-    public int getCountedQuantity() { return countedQuantity; }
-    public void setCountedQuantity(int countedQuantity) { this.countedQuantity = countedQuantity; }
-    public int getDifference() { return difference; }
-    public void setDifference(int difference) { this.difference = difference; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public InventoryCountJpaEntity getCount() {
+        return count;
+    }
+
+    public void setCount(InventoryCountJpaEntity count) {
+        this.count = count;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public int getSystemQuantity() {
+        return systemQuantity;
+    }
+
+    public void setSystemQuantity(int systemQuantity) {
+        this.systemQuantity = systemQuantity;
+    }
+
+    public int getCountedQuantity() {
+        return countedQuantity;
+    }
+
+    public void setCountedQuantity(int countedQuantity) {
+        this.countedQuantity = countedQuantity;
+    }
+
+    public int getDifference() {
+        return difference;
+    }
+
+    public void setDifference(int difference) {
+        this.difference = difference;
+    }
 }

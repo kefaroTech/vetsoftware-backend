@@ -17,8 +17,7 @@ public class WithholdingConfigController {
     private final Authz authz;
 
     public WithholdingConfigController(SetWithholdingConfigUseCase setUseCase,
-                                       FindWithholdingConfigUseCase findUseCase,
-                                       Authz authz) {
+            FindWithholdingConfigUseCase findUseCase, Authz authz) {
         this.setUseCase = setUseCase;
         this.findUseCase = findUseCase;
         this.authz = authz;
@@ -26,9 +25,8 @@ public class WithholdingConfigController {
 
     @PutMapping
     public WithholdingConfigDto set(@Valid @RequestBody SetWithholdingConfigRequest request) {
-        return setUseCase.execute(new SetWithholdingConfigCommand(
-                request.reteFuenteRate(), request.reteIvaRate(), request.reteIcaRate(),
-                authz.currentCompanyId()));
+        return setUseCase.execute(new SetWithholdingConfigCommand(request.reteFuenteRate(),
+                request.reteIvaRate(), request.reteIcaRate(), authz.currentCompanyId()));
     }
 
     @GetMapping

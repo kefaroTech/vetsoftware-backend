@@ -15,9 +15,9 @@ public class ProcedureSchedule {
     private boolean enabled;
 
     public ProcedureSchedule(Long id, HospitalizationProcedureRef hospitalizationProcedure,
-                             LocalDateTime originalDateTime, LocalDateTime currentDateTime,
-                             LocalDateTime realDateTime, AppliedStatus appliedStatus, Boolean rescheduled,
-                             EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime originalDateTime, LocalDateTime currentDateTime,
+            LocalDateTime realDateTime, AppliedStatus appliedStatus, Boolean rescheduled,
+            EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
         validate(hospitalizationProcedure, originalDateTime, createdBy);
         this.id = id;
         this.hospitalizationProcedure = hospitalizationProcedure;
@@ -32,47 +32,84 @@ public class ProcedureSchedule {
     }
 
     public static ProcedureSchedule create(HospitalizationProcedureRef hospitalizationProcedure,
-                                           LocalDateTime originalDateTime, LocalDateTime currentDateTime,
-                                           AppliedStatus appliedStatus, Boolean rescheduled,
-                                           EmployeeRef createdBy) {
-        return new ProcedureSchedule(null, hospitalizationProcedure, originalDateTime, currentDateTime,
-            null, appliedStatus, rescheduled, createdBy, LocalDateTime.now(), true);
+            LocalDateTime originalDateTime, LocalDateTime currentDateTime,
+            AppliedStatus appliedStatus, Boolean rescheduled, EmployeeRef createdBy) {
+        return new ProcedureSchedule(null, hospitalizationProcedure, originalDateTime,
+                currentDateTime, null, appliedStatus, rescheduled, createdBy, LocalDateTime.now(),
+                true);
     }
 
-    public void enable() { this.enabled = true; }
+    public void enable() {
+        this.enabled = true;
+    }
 
-    public void disable() { this.enabled = false; }
+    public void disable() {
+        this.enabled = false;
+    }
 
     /** Marca la ejecución como aplicada en la hora real indicada. */
     public void apply(LocalDateTime realDateTime) {
-        if (realDateTime == null) throw new IllegalArgumentException("realDateTime is required");
+        if (realDateTime == null)
+            throw new IllegalArgumentException("realDateTime is required");
         this.appliedStatus = AppliedStatus.APPLIED;
         this.realDateTime = realDateTime;
     }
 
     /** Reprograma la ejecución a una nueva hora (marca rescheduled). */
     public void reschedule(LocalDateTime newCurrentDateTime) {
-        if (newCurrentDateTime == null) throw new IllegalArgumentException("currentDateTime is required");
+        if (newCurrentDateTime == null)
+            throw new IllegalArgumentException("currentDateTime is required");
         this.currentDateTime = newCurrentDateTime;
         this.rescheduled = true;
     }
 
     private static void validate(HospitalizationProcedureRef hospitalizationProcedure,
-                                 LocalDateTime originalDateTime, EmployeeRef createdBy) {
+            LocalDateTime originalDateTime, EmployeeRef createdBy) {
         if (hospitalizationProcedure == null)
             throw new IllegalArgumentException("hospitalizationProcedure is required");
-        if (createdBy == null) throw new IllegalArgumentException("createdBy is required");
-        if (originalDateTime == null) throw new IllegalArgumentException("originalDateTime is required");
+        if (createdBy == null)
+            throw new IllegalArgumentException("createdBy is required");
+        if (originalDateTime == null)
+            throw new IllegalArgumentException("originalDateTime is required");
     }
 
-    public Long getId() { return id; }
-    public HospitalizationProcedureRef getHospitalizationProcedure() { return hospitalizationProcedure; }
-    public LocalDateTime getOriginalDateTime() { return originalDateTime; }
-    public LocalDateTime getCurrentDateTime() { return currentDateTime; }
-    public LocalDateTime getRealDateTime() { return realDateTime; }
-    public AppliedStatus getAppliedStatus() { return appliedStatus; }
-    public Boolean getRescheduled() { return rescheduled; }
-    public EmployeeRef getCreatedBy() { return createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public HospitalizationProcedureRef getHospitalizationProcedure() {
+        return hospitalizationProcedure;
+    }
+
+    public LocalDateTime getOriginalDateTime() {
+        return originalDateTime;
+    }
+
+    public LocalDateTime getCurrentDateTime() {
+        return currentDateTime;
+    }
+
+    public LocalDateTime getRealDateTime() {
+        return realDateTime;
+    }
+
+    public AppliedStatus getAppliedStatus() {
+        return appliedStatus;
+    }
+
+    public Boolean getRescheduled() {
+        return rescheduled;
+    }
+
+    public EmployeeRef getCreatedBy() {
+        return createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 }

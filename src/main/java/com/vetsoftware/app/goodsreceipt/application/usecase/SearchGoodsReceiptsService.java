@@ -21,7 +21,9 @@ public class SearchGoodsReceiptsService implements SearchGoodsReceiptsUseCase {
     @Override
     @Transactional(readOnly = true)
     public PageResult<GoodsReceiptDto> execute(SearchGoodsReceiptsCommand command) {
-        // readOnly tx: la query paginada trae las cabeceras y el mapper hidrata las líneas LAZY aquí dentro.
+        // readOnly tx: la query paginada trae las cabeceras y el mapper hidrata las
+        // líneas LAZY aquí
+        // dentro.
         return repository.search(command).map(GoodsReceiptDto::from);
     }
 }

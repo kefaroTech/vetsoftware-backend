@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 public class HospitalizationProgressNoteJpaMapper {
 
     public HospitalizationProgressNoteJpaEntity toJpa(HospitalizationProgressNote progressNote,
-                                                     HospitalizationJpaEntity hospitalization,
-                                                     EmployeeJpaEntity createdBy) {
+            HospitalizationJpaEntity hospitalization, EmployeeJpaEntity createdBy) {
         HospitalizationProgressNoteJpaEntity entity = new HospitalizationProgressNoteJpaEntity();
         entity.setId(progressNote.getId());
         entity.setDescription(progressNote.getDescription());
@@ -27,16 +26,15 @@ public class HospitalizationProgressNoteJpaMapper {
     public HospitalizationProgressNote toDomain(HospitalizationProgressNoteJpaEntity entity) {
         HospitalizationJpaEntity h = entity.getHospitalization();
         EmployeeJpaEntity e = entity.getCreatedBy();
-        return toDomain(entity,
-            new HospitalizationRef(h.getId(), h.getDate()),
-            new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()));
+        return toDomain(entity, new HospitalizationRef(h.getId(), h.getDate()),
+                new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()));
     }
 
-    // Write path — reusa los refs precargados, evita inicializar el proxy de getReferenceById
+    // Write path — reusa los refs precargados, evita inicializar el proxy de
+    // getReferenceById
     public HospitalizationProgressNote toDomain(HospitalizationProgressNoteJpaEntity entity,
-                                               HospitalizationRef hospitalizationRef, EmployeeRef createdByRef) {
-        return new HospitalizationProgressNote(
-            entity.getId(), entity.getDescription(), hospitalizationRef, createdByRef,
-            entity.getCreatedDate(), entity.isEnabled());
+            HospitalizationRef hospitalizationRef, EmployeeRef createdByRef) {
+        return new HospitalizationProgressNote(entity.getId(), entity.getDescription(),
+                hospitalizationRef, createdByRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

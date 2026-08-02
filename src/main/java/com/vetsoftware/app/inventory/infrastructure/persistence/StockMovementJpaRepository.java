@@ -10,73 +10,75 @@ import org.springframework.data.repository.query.Param;
 
 public interface StockMovementJpaRepository extends JpaRepository<StockMovementJpaEntity, Long> {
     boolean existsByReferenceTypeAndReferenceId(String referenceType, Long referenceId);
-    List<StockMovementJpaEntity> findByReferenceTypeAndReferenceId(String referenceType, Long referenceId);
 
-    // Kardex paginado de un producto. branchId null = todas las sedes; from/to (inclusive/exclusivo) opcionales.
-    @Query("SELECT m FROM StockMovementJpaEntity m WHERE m.companyId = :companyId AND m.productId = :productId "
-        + "AND (:branchId IS NULL OR m.branchId = :branchId) "
-        + "AND (:from IS NULL OR m.createdDate >= :from) AND (:to IS NULL OR m.createdDate < :to) "
-        + "ORDER BY m.createdDate DESC, m.id DESC")
-    Page<StockMovementJpaEntity> searchKardex(@Param("companyId") Long companyId, @Param("productId") Long productId,
-                                              @Param("branchId") Long branchId, @Param("from") LocalDateTime from,
-                                              @Param("to") LocalDateTime to, Pageable pageable);
+    List<StockMovementJpaEntity> findByReferenceTypeAndReferenceId(String referenceType,
+            Long referenceId);
 
-    // Libro de compras: movimientos de entrada real (type=PURCHASE) con nombre de producto/sede, paginado.
-    @Query(value = "SELECT m.id AS id, m.product_id AS productId, p.name AS productName, p.code AS productCode, "
-        + "m.lot_id AS lotId, m.branch_id AS branchId, b.name AS branchName, m.quantity AS quantity, "
-        + "m.unit_cost AS unitCost, m.reference_id AS referenceId, m.created_date AS createdDate "
-        + "FROM stock_movement m "
-        + "JOIN products p ON p.id = m.product_id "
-        + "JOIN branches b ON b.id = m.branch_id "
-        + "WHERE m.company_id = :companyId AND m.type = 'PURCHASE' "
-        + "AND (:branchId IS NULL OR m.branch_id = :branchId) "
-        + "AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR m.created_date < :to) "
-        + "ORDER BY m.created_date DESC, m.id DESC",
-        countQuery = "SELECT COUNT(*) FROM stock_movement m WHERE m.company_id = :companyId AND m.type = 'PURCHASE' "
-        + "AND (:branchId IS NULL OR m.branch_id = :branchId) "
-        + "AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR m.created_date < :to)",
-        nativeQuery = true)
-    Page<PurchaseRow> searchPurchases(@Param("companyId") Long companyId, @Param("branchId") Long branchId,
-                                      @Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
-                                      Pageable pageable);
+    // Kardex paginado de un producto. branchId null = todas las sedes; from/to
+    // (inclusive/exclusivo)
+    // opcionales.
+    @Query("SELECT m FROM StockMovementJpaEntity m WHERE m.companyId = :companyId AND m.productId ="
+            + " :productId AND (:branchId IS NULL OR m.branchId = :branchId) AND (:from IS NULL OR"
+            + " m.createdDate >= :from) AND (:to IS NULL OR m.createdDate < :to) ORDER BY"
+            + " m.createdDate DESC, m.id DESC")
+    Page<StockMovementJpaEntity> searchKardex(@Param("companyId") Long companyId,
+            @Param("productId") Long productId, @Param("branchId") Long branchId,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to, Pageable pageable);
 
-    // ── Exportación (sin paginar, ascendente por fecha) ───────────────────────────
+    // Libro de compras: movimientos de entrada real (type=PURCHASE) con nombre de
+    // producto/sede,
+    // paginado.
+    @Query(value = "SELECT m.id AS id, m.product_id AS productId, p.name AS productName, p.code AS"
+            + " productCode, m.lot_id AS lotId, m.branch_id AS branchId, b.name AS branchName,"
+            + " m.quantity AS quantity, m.unit_cost AS unitCost, m.reference_id AS referenceId,"
+            + " m.created_date AS createdDate FROM stock_movement m JOIN products p ON p.id ="
+            + " m.product_id JOIN branches b ON b.id = m.branch_id WHERE m.company_id ="
+            + " :companyId AND m.type = 'PURCHASE' AND (:branchId IS NULL OR m.branch_id ="
+            + " :branchId) AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR"
+            + " m.created_date < :to) ORDER BY m.created_date DESC, m.id DESC", countQuery = "SELECT COUNT(*) FROM stock_movement m WHERE m.company_id = :companyId AND m.type ="
+                    + " 'PURCHASE' AND (:branchId IS NULL OR m.branch_id = :branchId) AND (:from IS NULL"
+                    + " OR m.created_date >= :from) AND (:to IS NULL OR m.created_date < :to)", nativeQuery = true)
+    Page<PurchaseRow> searchPurchases(@Param("companyId") Long companyId,
+            @Param("branchId") Long branchId, @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to, Pageable pageable);
 
-    // Kardex completo con nombres de producto/sede, orden ASCENDENTE (para arrastrar el saldo corrido).
-    @Query(value = "SELECT p.name AS productName, p.code AS productCode, b.name AS branchName, "
-        + "m.created_date AS createdDate, m.type AS type, m.reference_type AS referenceType, "
-        + "m.reference_id AS referenceId, m.lot_id AS lotId, m.quantity AS quantity, m.unit_cost AS unitCost "
-        + "FROM stock_movement m "
-        + "JOIN products p ON p.id = m.product_id "
-        + "JOIN branches b ON b.id = m.branch_id "
-        + "WHERE m.company_id = :companyId AND m.product_id = :productId "
-        + "AND (:branchId IS NULL OR m.branch_id = :branchId) "
-        + "AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR m.created_date < :to) "
-        + "ORDER BY m.created_date ASC, m.id ASC",
-        nativeQuery = true)
-    List<KardexRow> kardexForExport(@Param("companyId") Long companyId, @Param("productId") Long productId,
-                                    @Param("branchId") Long branchId, @Param("from") LocalDateTime from,
-                                    @Param("to") LocalDateTime to);
+    // ── Exportación (sin paginar, ascendente por fecha)
+    // ───────────────────────────
 
-    // Saldo (suma con signo) del producto ANTES de `before`, para el saldo inicial del rango exportado.
-    @Query("SELECT COALESCE(SUM(m.quantity), 0) FROM StockMovementJpaEntity m WHERE m.companyId = :companyId "
-        + "AND m.productId = :productId AND (:branchId IS NULL OR m.branchId = :branchId) "
-        + "AND m.createdDate < :before")
+    // Kardex completo con nombres de producto/sede, orden ASCENDENTE (para
+    // arrastrar el saldo
+    // corrido).
+    @Query(value = "SELECT p.name AS productName, p.code AS productCode, b.name AS branchName,"
+            + " m.created_date AS createdDate, m.type AS type, m.reference_type AS referenceType,"
+            + " m.reference_id AS referenceId, m.lot_id AS lotId, m.quantity AS quantity,"
+            + " m.unit_cost AS unitCost FROM stock_movement m JOIN products p ON p.id ="
+            + " m.product_id JOIN branches b ON b.id = m.branch_id WHERE m.company_id ="
+            + " :companyId AND m.product_id = :productId AND (:branchId IS NULL OR m.branch_id ="
+            + " :branchId) AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR"
+            + " m.created_date < :to) ORDER BY m.created_date ASC, m.id ASC", nativeQuery = true)
+    List<KardexRow> kardexForExport(@Param("companyId") Long companyId,
+            @Param("productId") Long productId, @Param("branchId") Long branchId,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // Saldo (suma con signo) del producto ANTES de `before`, para el saldo inicial
+    // del rango
+    // exportado.
+    @Query("SELECT COALESCE(SUM(m.quantity), 0) FROM StockMovementJpaEntity m WHERE m.companyId ="
+            + " :companyId AND m.productId = :productId AND (:branchId IS NULL OR m.branchId ="
+            + " :branchId) AND m.createdDate < :before")
     int sumQuantityBefore(@Param("companyId") Long companyId, @Param("productId") Long productId,
-                          @Param("branchId") Long branchId, @Param("before") LocalDateTime before);
+            @Param("branchId") Long branchId, @Param("before") LocalDateTime before);
 
     // Libro de compras completo del rango, orden ASCENDENTE.
-    @Query(value = "SELECT m.id AS id, m.product_id AS productId, p.name AS productName, p.code AS productCode, "
-        + "m.lot_id AS lotId, m.branch_id AS branchId, b.name AS branchName, m.quantity AS quantity, "
-        + "m.unit_cost AS unitCost, m.reference_id AS referenceId, m.created_date AS createdDate "
-        + "FROM stock_movement m "
-        + "JOIN products p ON p.id = m.product_id "
-        + "JOIN branches b ON b.id = m.branch_id "
-        + "WHERE m.company_id = :companyId AND m.type = 'PURCHASE' "
-        + "AND (:branchId IS NULL OR m.branch_id = :branchId) "
-        + "AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR m.created_date < :to) "
-        + "ORDER BY m.created_date ASC, m.id ASC",
-        nativeQuery = true)
-    List<PurchaseRow> purchasesForExport(@Param("companyId") Long companyId, @Param("branchId") Long branchId,
-                                         @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+    @Query(value = "SELECT m.id AS id, m.product_id AS productId, p.name AS productName, p.code AS"
+            + " productCode, m.lot_id AS lotId, m.branch_id AS branchId, b.name AS branchName,"
+            + " m.quantity AS quantity, m.unit_cost AS unitCost, m.reference_id AS referenceId,"
+            + " m.created_date AS createdDate FROM stock_movement m JOIN products p ON p.id ="
+            + " m.product_id JOIN branches b ON b.id = m.branch_id WHERE m.company_id ="
+            + " :companyId AND m.type = 'PURCHASE' AND (:branchId IS NULL OR m.branch_id ="
+            + " :branchId) AND (:from IS NULL OR m.created_date >= :from) AND (:to IS NULL OR"
+            + " m.created_date < :to) ORDER BY m.created_date ASC, m.id ASC", nativeQuery = true)
+    List<PurchaseRow> purchasesForExport(@Param("companyId") Long companyId,
+            @Param("branchId") Long branchId, @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 }

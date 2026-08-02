@@ -17,6 +17,6 @@ public class JpaEmployeeQueryPort implements EmployeeQueryPort {
     @Override
     public Optional<EmployeeRef> findByIdAndCompanyId(Long employeeId, Long companyId) {
         return employeeJpaRepository.findByIdAndCompany_Id(employeeId, companyId)
-            .map(e -> new EmployeeRef(e.getId(), e.getName()));
+                .map(e -> new EmployeeRef(e.getId(), e.getName()));
     }
 }

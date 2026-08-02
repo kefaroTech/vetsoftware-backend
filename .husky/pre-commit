@@ -1,1 +1,2 @@
 sh scripts/security/scan-secrets.sh staged
+sh scripts/quality/backend-staged-gate.sh

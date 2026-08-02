@@ -9,9 +9,12 @@ public class EmployeeRole {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public EmployeeRole(Long id, EmployeeRef employee, RoleRef role, LocalDateTime createdDate, boolean enabled) {
-        if (employee == null) throw new IllegalArgumentException("employee is required");
-        if (role == null) throw new IllegalArgumentException("role is required");
+    public EmployeeRole(Long id, EmployeeRef employee, RoleRef role, LocalDateTime createdDate,
+            boolean enabled) {
+        if (employee == null)
+            throw new IllegalArgumentException("employee is required");
+        if (role == null)
+            throw new IllegalArgumentException("role is required");
         this.id = id;
         this.employee = employee;
         this.role = role;
@@ -24,19 +27,39 @@ public class EmployeeRole {
     }
 
     public void update(EmployeeRef employee, RoleRef role) {
-        if (employee == null) throw new IllegalArgumentException("employee is required");
-        if (role == null) throw new IllegalArgumentException("role is required");
+        if (employee == null)
+            throw new IllegalArgumentException("employee is required");
+        if (role == null)
+            throw new IllegalArgumentException("role is required");
         this.employee = employee;
         this.role = role;
     }
 
-    public void enable() { this.enabled = true; }
+    public void enable() {
+        this.enabled = true;
+    }
 
-    public void disable() { this.enabled = false; }
+    public void disable() {
+        this.enabled = false;
+    }
 
-    public Long getId() { return id; }
-    public EmployeeRef getEmployee() { return employee; }
-    public RoleRef getRole() { return role; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public EmployeeRef getEmployee() {
+        return employee;
+    }
+
+    public RoleRef getRole() {
+        return role;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 }

@@ -21,8 +21,9 @@ public class ReactivatePurchaseOrderService implements ReactivatePurchaseOrderUs
     @Transactional
     public PurchaseOrderDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new PurchaseOrderNotFoundException(id);
+        if (rows == 0)
+            throw new PurchaseOrderNotFoundException(id);
         return PurchaseOrderDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
+                .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
     }
 }

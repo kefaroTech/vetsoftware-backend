@@ -14,7 +14,8 @@ public class JpaEmployeeCodeChecker implements EmployeeCodeChecker {
 
     @Override
     public boolean exists(String employeeCode) {
-        // Cuenta todas las filas (incluidas las de empleados desactivados) para que la disponibilidad
+        // Cuenta todas las filas (incluidas las de empleados desactivados) para que la
+        // disponibilidad
         // coincida con la constraint unique de la BD y no falle el INSERT posterior.
         return jpaRepository.countByEmployeeCodeAllRows(employeeCode) > 0;
     }

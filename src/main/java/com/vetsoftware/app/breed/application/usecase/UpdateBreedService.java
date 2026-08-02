@@ -27,9 +27,9 @@ public class UpdateBreedService implements UpdateBreedUseCase {
     @Transactional
     public BreedDto execute(UpdateBreedCommand command) {
         Breed breed = repository.findById(command.id())
-            .orElseThrow(() -> new BreedNotFoundException(command.id()));
-        SpecieRef specie = specieQueryPort.findById(command.specieId())
-            .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
+                .orElseThrow(() -> new BreedNotFoundException(command.id()));
+        SpecieRef specie = specieQueryPort.findById(command.specieId()).orElseThrow(
+                () -> new IllegalArgumentException("Specie not found: " + command.specieId()));
         breed.update(command.name(), specie);
         return BreedDto.from(repository.save(breed));
     }

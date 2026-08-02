@@ -18,12 +18,14 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 /**
- * Prueba de gobierno sobre {@code logback-spring.xml}: la redacción no puede depender de que alguien
- * recuerde envolver el appender que añade.
+ * Prueba de gobierno sobre {@code logback-spring.xml}: la redacción no puede
+ * depender de que alguien recuerde envolver el appender que añade.
  *
- * <p>Afirma que <b>todo</b> appender referenciado desde {@code <root>} —en cualquier perfil— es un
- * {@link RedactingAppender}. Un destino nuevo enganchado directamente a la raíz rompe esta prueba,
- * que es el único momento razonable para enterarse.
+ * <p>
+ * Afirma que <b>todo</b> appender referenciado desde {@code <root>} —en
+ * cualquier perfil— es un {@link RedactingAppender}. Un destino nuevo
+ * enganchado directamente a la raíz rompe esta prueba, que es el único momento
+ * razonable para enterarse.
  */
 class LogbackRedactionConfigTest {
 
@@ -52,7 +54,10 @@ class LogbackRedactionConfigTest {
         return appenders;
     }
 
-    /** Appenders referenciados desde un elemento dado ({@code root} o {@code logger}). */
+    /**
+     * Appenders referenciados desde un elemento dado ({@code root} o
+     * {@code logger}).
+     */
     private static List<String> referencesFrom(String parentTag) {
         List<String> references = new ArrayList<>();
         NodeList parents = configuration.getElementsByTagName(parentTag);
@@ -76,11 +81,12 @@ class LogbackRedactionConfigTest {
         List<String> rootReferences = referencesFrom("root");
 
         assertThat(rootReferences).isNotEmpty();
-        assertThat(rootReferences).allSatisfy(reference ->
-                assertThat(appenders.get(reference))
-                        .as("el appender '%s' referenciado desde <root> debe ser un %s",
-                                reference, REDACTING_APPENDER)
-                        .isEqualTo(REDACTING_APPENDER));
+        assertThat(rootReferences)
+                .allSatisfy(
+                        reference -> assertThat(appenders.get(reference))
+                                .as("el appender '%s' referenciado desde <root> debe ser un %s",
+                                        reference, REDACTING_APPENDER)
+                                .isEqualTo(REDACTING_APPENDER));
     }
 
     @Test
@@ -120,7 +126,8 @@ class LogbackRedactionConfigTest {
                 if (REDACTING_APPENDER.equals(appenders.get(reference))) {
                     continue;
                 }
-                // Un logger con appender crudo solo se admite si es el canal de previsualización,
+                // Un logger con appender crudo solo se admite si es el canal de
+                // previsualización,
                 // aislado con additivity="false" y sin ruta hacia el appender de OpenTelemetry.
                 assertThat(logger.getAttribute("name")).isEqualTo("DEV_EMAIL_PREVIEW");
                 assertThat(logger.getAttribute("additivity")).isEqualTo("false");
@@ -146,8 +153,8 @@ class LogbackRedactionConfigTest {
                 assertThat(profile.getAttribute("name")).isEqualTo("!prod & !dev");
             }
         }
-        assertThat(declared)
-                .as("DEV_EMAIL_PREVIEW debe declararse dentro de un <springProfile>, no globalmente")
+        assertThat(declared).as(
+                "DEV_EMAIL_PREVIEW debe declararse dentro de un <springProfile>, no globalmente")
                 .isTrue();
     }
 }

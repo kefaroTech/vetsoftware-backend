@@ -30,14 +30,15 @@ public class JpaStockLotRepository implements StockLotRepository {
     @Override
     public List<StockLot> findAvailableFefo(Long productId, Long branchId) {
         return jpaRepository.findAvailableFefo(productId, branchId).stream()
-            .map(JpaStockLotRepository::toDomain).toList();
+                .map(JpaStockLotRepository::toDomain).toList();
     }
 
     @Override
-    public Optional<StockLot> findByIdentity(Long companyId, Long branchId, Long productId, String lotNumber,
-                                             LocalDate expireDate, BigDecimal unitCost) {
-        return jpaRepository.findByIdentity(companyId, branchId, productId, lotNumber, expireDate, unitCost)
-            .stream().findFirst().map(JpaStockLotRepository::toDomain);
+    public Optional<StockLot> findByIdentity(Long companyId, Long branchId, Long productId,
+            String lotNumber, LocalDate expireDate, BigDecimal unitCost) {
+        return jpaRepository
+                .findByIdentity(companyId, branchId, productId, lotNumber, expireDate, unitCost)
+                .stream().findFirst().map(JpaStockLotRepository::toDomain);
     }
 
     private static StockLotJpaEntity toJpa(StockLot lot) {
@@ -57,8 +58,8 @@ public class JpaStockLotRepository implements StockLotRepository {
     }
 
     private static StockLot toDomain(StockLotJpaEntity e) {
-        return new StockLot(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(), e.getLotNumber(),
-            e.getExpireDate(), e.getQuantityAvailable(), e.getUnitCost(), e.getReceivedDate(),
-            e.getCreatedDate(), e.isEnabled());
+        return new StockLot(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(),
+                e.getLotNumber(), e.getExpireDate(), e.getQuantityAvailable(), e.getUnitCost(),
+                e.getReceivedDate(), e.getCreatedDate(), e.isEnabled());
     }
 }

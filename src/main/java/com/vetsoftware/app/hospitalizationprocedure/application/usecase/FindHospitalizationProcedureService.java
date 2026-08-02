@@ -19,6 +19,6 @@ public class FindHospitalizationProcedureService implements FindHospitalizationP
     @Override
     public HospitalizationProcedureDto findById(Long id, Long companyId) {
         return HospitalizationProcedureDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new HospitalizationProcedureNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationProcedureNotFoundException(id)));
     }
 }

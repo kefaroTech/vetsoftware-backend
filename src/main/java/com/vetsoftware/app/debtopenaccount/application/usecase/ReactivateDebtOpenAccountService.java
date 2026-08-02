@@ -17,7 +17,7 @@ public class ReactivateDebtOpenAccountService implements ReactivateDebtOpenAccou
     private final OpenAccountRefresher refresher;
 
     public ReactivateDebtOpenAccountService(DebtOpenAccountRepository repository,
-                                            OpenAccountRefresher refresher) {
+            OpenAccountRefresher refresher) {
         this.repository = repository;
         this.refresher = refresher;
     }
@@ -26,9 +26,10 @@ public class ReactivateDebtOpenAccountService implements ReactivateDebtOpenAccou
     @Transactional
     public DebtOpenAccountDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new DebtOpenAccountNotFoundException(id);
+        if (rows == 0)
+            throw new DebtOpenAccountNotFoundException(id);
         DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
+                .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
         refresher.refresh(companyId, debtOpenAccount.getOpenAccount().id());
         return DebtOpenAccountDto.from(debtOpenAccount);
     }

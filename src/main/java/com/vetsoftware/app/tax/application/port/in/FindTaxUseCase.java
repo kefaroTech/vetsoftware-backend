@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindTaxUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('tax.read') and @authz.isMyCompany(#companyId))")
     TaxDto findById(Long id, Long companyId);
 }

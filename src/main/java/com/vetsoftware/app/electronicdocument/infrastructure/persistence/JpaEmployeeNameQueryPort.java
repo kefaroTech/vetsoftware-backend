@@ -7,8 +7,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link EmployeeNameQueryPort}: lee el nombre del empleado de la feature employee. Único cruce
- * permitido de vertical slicing (persistence → persistence de otra feature).
+ * Adapter del {@link EmployeeNameQueryPort}: lee el nombre del empleado de la
+ * feature employee. Único cruce permitido de vertical slicing (persistence →
+ * persistence de otra feature).
  */
 @Component
 public class JpaEmployeeNameQueryPort implements EmployeeNameQueryPort {
@@ -20,9 +21,9 @@ public class JpaEmployeeNameQueryPort implements EmployeeNameQueryPort {
 
     @Override
     public Optional<String> findName(Long employeeId) {
-        if (employeeId == null) return Optional.empty();
-        return employeeJpaRepository.findById(employeeId)
-                .map(EmployeeJpaEntity::getName)
+        if (employeeId == null)
+            return Optional.empty();
+        return employeeJpaRepository.findById(employeeId).map(EmployeeJpaEntity::getName)
                 .filter(name -> name != null && !name.isBlank());
     }
 }

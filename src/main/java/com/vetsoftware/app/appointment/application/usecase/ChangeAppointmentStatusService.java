@@ -3,9 +3,9 @@ package com.vetsoftware.app.appointment.application.usecase;
 import com.vetsoftware.app.appointment.application.command.ChangeAppointmentStatusCommand;
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.in.ChangeAppointmentStatusUseCase;
-import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
 import io.micrometer.observation.annotation.Observed;
@@ -18,7 +18,8 @@ public class ChangeAppointmentStatusService implements ChangeAppointmentStatusUs
     private final AppointmentRepository repository;
     private final AppointmentMetrics appointmentMetrics;
 
-    public ChangeAppointmentStatusService(AppointmentRepository repository, AppointmentMetrics appointmentMetrics) {
+    public ChangeAppointmentStatusService(AppointmentRepository repository,
+            AppointmentMetrics appointmentMetrics) {
         this.repository = repository;
         this.appointmentMetrics = appointmentMetrics;
     }
@@ -27,7 +28,7 @@ public class ChangeAppointmentStatusService implements ChangeAppointmentStatusUs
     @Transactional
     public AppointmentDto execute(ChangeAppointmentStatusCommand command) {
         Appointment appointment = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
+                .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
         appointment.transitionTo(command.status());
         Appointment saved = repository.save(appointment);
         appointmentMetrics.transitioned(saved.getStatus(), Channel.STAFF);

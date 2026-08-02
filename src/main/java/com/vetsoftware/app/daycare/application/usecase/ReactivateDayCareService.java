@@ -21,8 +21,9 @@ public class ReactivateDayCareService implements ReactivateDayCareUseCase {
     @Transactional
     public DayCareDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new DayCareNotFoundException(id);
-        return DayCareDto.from(repository.findById(id)
-            .orElseThrow(() -> new DayCareNotFoundException(id)));
+        if (rows == 0)
+            throw new DayCareNotFoundException(id);
+        return DayCareDto
+                .from(repository.findById(id).orElseThrow(() -> new DayCareNotFoundException(id)));
     }
 }

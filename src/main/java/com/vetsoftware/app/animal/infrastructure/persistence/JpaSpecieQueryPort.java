@@ -17,6 +17,6 @@ public class JpaSpecieQueryPort implements SpecieQueryPort {
     @Override
     public Optional<SpecieRef> findById(Long specieId) {
         return specieJpaRepository.findById(specieId)
-            .map(e -> new SpecieRef(e.getId(), e.getName()));
+                .map(e -> new SpecieRef(e.getId(), e.getName()));
     }
 }

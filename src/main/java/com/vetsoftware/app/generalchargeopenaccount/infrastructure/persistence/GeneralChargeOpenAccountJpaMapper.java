@@ -13,10 +13,8 @@ import org.springframework.stereotype.Component;
 public class GeneralChargeOpenAccountJpaMapper {
 
     public GeneralChargeOpenAccountJpaEntity toJpa(GeneralChargeOpenAccount charge,
-                                                   TaxJpaEntity tax,
-                                                   OpenAccountJpaEntity openAccount,
-                                                   EmployeeJpaEntity createdBy,
-                                                   EmployeeJpaEntity voidedBy) {
+            TaxJpaEntity tax, OpenAccountJpaEntity openAccount, EmployeeJpaEntity createdBy,
+            EmployeeJpaEntity voidedBy) {
         GeneralChargeOpenAccountJpaEntity entity = new GeneralChargeOpenAccountJpaEntity();
         entity.setId(charge.getId());
         entity.setName(charge.getName());
@@ -48,37 +46,24 @@ public class GeneralChargeOpenAccountJpaMapper {
         EmployeeJpaEntity emp = entity.getCreatedBy();
         EmployeeJpaEntity v = entity.getVoidedBy();
         return toDomain(entity,
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage(),
-                t.getTaxScheme() == null ? null : t.getTaxScheme().name()),
-            new OpenAccountRef(oa.getId(), oa.getCompany().getId()),
-            new EmployeeRef(emp.getId(), emp.getName()),
-            v == null ? null : new EmployeeRef(v.getId(), v.getName()));
+                t == null
+                        ? null
+                        : new TaxRef(t.getId(), t.getName(), t.getPercentage(),
+                                t.getTaxScheme() == null ? null : t.getTaxScheme().name()),
+                new OpenAccountRef(oa.getId(), oa.getCompany().getId()),
+                new EmployeeRef(emp.getId(), emp.getName()),
+                v == null ? null : new EmployeeRef(v.getId(), v.getName()));
     }
 
-    public GeneralChargeOpenAccount toDomain(GeneralChargeOpenAccountJpaEntity entity, TaxRef taxRef,
-                                             OpenAccountRef openAccountRef, EmployeeRef createdByRef,
-                                             EmployeeRef voidedByRef) {
-        return new GeneralChargeOpenAccount(
-            entity.getId(),
-            entity.getName(),
-            entity.getUnitAmount(),
-            entity.getQuantity(),
-            taxRef,
-            entity.isHasTax(),
-            entity.getTaxPercentage(),
-            entity.getTaxName(),
-            entity.getTaxScheme(),
-            entity.getBaseAmount(),
-            entity.getTaxAmount(),
-            entity.getTotalAmount(),
-            openAccountRef,
-            createdByRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.isVoided(),
-            voidedByRef,
-            entity.getVoidedAt(),
-            entity.getVoidReason(),
-            entity.getClientRequestId());
+    public GeneralChargeOpenAccount toDomain(GeneralChargeOpenAccountJpaEntity entity,
+            TaxRef taxRef, OpenAccountRef openAccountRef, EmployeeRef createdByRef,
+            EmployeeRef voidedByRef) {
+        return new GeneralChargeOpenAccount(entity.getId(), entity.getName(),
+                entity.getUnitAmount(), entity.getQuantity(), taxRef, entity.isHasTax(),
+                entity.getTaxPercentage(), entity.getTaxName(), entity.getTaxScheme(),
+                entity.getBaseAmount(), entity.getTaxAmount(), entity.getTotalAmount(),
+                openAccountRef, createdByRef, entity.getCreatedDate(), entity.isEnabled(),
+                entity.isVoided(), voidedByRef, entity.getVoidedAt(), entity.getVoidReason(),
+                entity.getClientRequestId());
     }
 }

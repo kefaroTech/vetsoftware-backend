@@ -14,9 +14,8 @@ public class JpaTaxRepository implements TaxRepository {
     private final TaxJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaTaxRepository(TaxJpaRepository jpaRepository,
-                            TaxJpaMapper mapper,
-                            CompanyJpaRepository companyJpaRepository) {
+    public JpaTaxRepository(TaxJpaRepository jpaRepository, TaxJpaMapper mapper,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -51,14 +50,13 @@ public class JpaTaxRepository implements TaxRepository {
 
     @Override
     public List<Tax> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompanyId(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public List<Tax> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override

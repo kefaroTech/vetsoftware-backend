@@ -12,10 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ServiceJpaMapper {
 
-    public ServiceJpaEntity toJpa(Service service,
-                                  ServiceCategoryJpaEntity serviceCategory,
-                                  TaxJpaEntity tax,
-                                  CompanyJpaEntity company) {
+    public ServiceJpaEntity toJpa(Service service, ServiceCategoryJpaEntity serviceCategory,
+            TaxJpaEntity tax, CompanyJpaEntity company) {
         ServiceJpaEntity entity = new ServiceJpaEntity();
         entity.setId(service.getId());
         entity.setName(service.getName());
@@ -37,27 +35,16 @@ public class ServiceJpaMapper {
         ServiceCategoryJpaEntity sc = entity.getServiceCategory();
         TaxJpaEntity t = entity.getTax();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new ServiceCategoryRef(sc.getId(), sc.getName()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new ServiceCategoryRef(sc.getId(), sc.getName()),
+                t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public Service toDomain(ServiceJpaEntity entity, ServiceCategoryRef serviceCategoryRef,
-                            TaxRef taxRef, CompanyRef companyRef) {
-        return new Service(
-            entity.getId(),
-            entity.getName(),
-            entity.getPrice(),
-            entity.getTaxTreatment(),
-            entity.getNotes(),
-            serviceCategoryRef,
-            taxRef,
-            companyRef,
-            entity.getCreatedDate(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
+            TaxRef taxRef, CompanyRef companyRef) {
+        return new Service(entity.getId(), entity.getName(), entity.getPrice(),
+                entity.getTaxTreatment(), entity.getNotes(), serviceCategoryRef, taxRef, companyRef,
+                entity.getCreatedDate(), entity.getUpdatedDate(), entity.getUpdatedBy(),
+                entity.getVersion(), entity.isEnabled());
     }
 }

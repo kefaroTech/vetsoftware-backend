@@ -11,16 +11,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Emisión y verificación del access token. Es la pieza que decide quién es el llamante en cada request:
- * si acepta una firma ajena, un token manipulado o uno vencido, toda la autorización posterior
- * (@PreAuthorize, multi-tenant) queda anulada.
+ * Emisión y verificación del access token. Es la pieza que decide quién es el
+ * llamante en cada request: si acepta una firma ajena, un token manipulado o
+ * uno vencido, toda la autorización posterior (@PreAuthorize, multi-tenant)
+ * queda anulada.
  */
 class JwtProviderTest {
 
-    private static final String SECRET =
-            "clave-de-pruebas-vetsoftware-de-al-menos-32-bytes-para-hmac-sha256";
-    private static final String OTHER_SECRET =
-            "otra-clave-distinta-de-pruebas-vetsoftware-con-32-bytes-o-mas-aqui";
+    private static final String SECRET = "clave-de-pruebas-vetsoftware-de-al-menos-32-bytes-para-hmac-sha256";
+    private static final String OTHER_SECRET = "otra-clave-distinta-de-pruebas-vetsoftware-con-32-bytes-o-mas-aqui";
 
     private final JwtProvider provider = new JwtProvider(SECRET, 15);
 
@@ -74,8 +73,7 @@ class JwtProviderTest {
         void rechaza_un_token_firmado_con_otra_clave() {
             String foreign = new JwtProvider(OTHER_SECRET, 15).generate(7L, "EMPLOYEE", 3L, 5L);
 
-            assertThatThrownBy(() -> provider.extractId(foreign))
-                    .isInstanceOf(JwtException.class);
+            assertThatThrownBy(() -> provider.extractId(foreign)).isInstanceOf(JwtException.class);
         }
 
         @Test
@@ -88,8 +86,7 @@ class JwtProviderTest {
                     + Base64.getUrlEncoder().withoutPadding().encodeToString(tampered.getBytes())
                     + "." + parts[2];
 
-            assertThatThrownBy(() -> provider.extractId(forged))
-                    .isInstanceOf(JwtException.class);
+            assertThatThrownBy(() -> provider.extractId(forged)).isInstanceOf(JwtException.class);
         }
 
         @Test
@@ -107,13 +104,13 @@ class JwtProviderTest {
         void rechaza_basura_que_no_es_un_jwt() {
             assertThatThrownBy(() -> provider.extractType("no-es-un-token"))
                     .isInstanceOf(Exception.class);
-            assertThatThrownBy(() -> provider.extractType(""))
-                    .isInstanceOf(Exception.class);
+            assertThatThrownBy(() -> provider.extractType("")).isInstanceOf(Exception.class);
         }
 
         @Test
         void un_token_vencido_se_distingue_de_uno_invalido() {
-            // El borde usa esta diferencia para decidir entre refrescar (TOKEN_EXPIRED) y desloguear.
+            // El borde usa esta diferencia para decidir entre refrescar (TOKEN_EXPIRED) y
+            // desloguear.
             JwtProvider expiring = new JwtProvider(SECRET, -1);
             String token = expiring.generate(7L, "EMPLOYEE", 3L, 5L);
 
@@ -149,7 +146,8 @@ class JwtProviderTest {
             String corto = new JwtProvider(SECRET, -1).generate(7L, "EMPLOYEE", 3L, 5L);
             String largo = new JwtProvider(SECRET, 60).generate(7L, "EMPLOYEE", 3L, 5L);
 
-            assertThatThrownBy(() -> provider.extractId(corto)).isInstanceOf(ExpiredJwtException.class);
+            assertThatThrownBy(() -> provider.extractId(corto))
+                    .isInstanceOf(ExpiredJwtException.class);
             assertThat(provider.extractId(largo)).isEqualTo(7L);
         }
     }

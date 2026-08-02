@@ -4,47 +4,22 @@ import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAcco
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record GeneralChargeOpenAccountDto(
-        Long id,
-        String name,
-        BigDecimal unitAmount,
-        BigDecimal quantity,
-        TaxSummaryDto tax,
-        boolean hasTax,
-        BigDecimal taxPercentage,
-        String taxName,
-        BigDecimal baseAmount,
-        BigDecimal taxAmount,
-        BigDecimal totalAmount,
-        OpenAccountSummaryDto openAccount,
-        EmployeeSummaryDto createdBy,
-        LocalDateTime createdDate,
-        boolean enabled,
-        boolean voided,
-        EmployeeSummaryDto voidedBy,
-        LocalDateTime voidedAt,
-        String voidReason
-) {
+public record GeneralChargeOpenAccountDto(Long id, String name, BigDecimal unitAmount,
+        BigDecimal quantity, TaxSummaryDto tax, boolean hasTax, BigDecimal taxPercentage,
+        String taxName, BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
+        OpenAccountSummaryDto openAccount, EmployeeSummaryDto createdBy, LocalDateTime createdDate,
+        boolean enabled, boolean voided, EmployeeSummaryDto voidedBy, LocalDateTime voidedAt,
+        String voidReason) {
     public static GeneralChargeOpenAccountDto from(GeneralChargeOpenAccount charge) {
-        return new GeneralChargeOpenAccountDto(
-                charge.getId(),
-                charge.getName(),
-                charge.getUnitAmount(),
-                charge.getQuantity(),
+        return new GeneralChargeOpenAccountDto(charge.getId(), charge.getName(),
+                charge.getUnitAmount(), charge.getQuantity(),
                 charge.getTax() == null ? null : TaxSummaryDto.from(charge.getTax()),
-                charge.isHasTax(),
-                charge.getTaxPercentage(),
-                charge.getTaxName(),
-                charge.getBaseAmount(),
-                charge.getTaxAmount(),
-                charge.getTotalAmount(),
+                charge.isHasTax(), charge.getTaxPercentage(), charge.getTaxName(),
+                charge.getBaseAmount(), charge.getTaxAmount(), charge.getTotalAmount(),
                 OpenAccountSummaryDto.from(charge.getOpenAccount()),
-                EmployeeSummaryDto.from(charge.getCreatedBy()),
-                charge.getCreatedDate(),
-                charge.isEnabled(),
-                charge.isVoided(),
+                EmployeeSummaryDto.from(charge.getCreatedBy()), charge.getCreatedDate(),
+                charge.isEnabled(), charge.isVoided(),
                 charge.getVoidedBy() == null ? null : EmployeeSummaryDto.from(charge.getVoidedBy()),
-                charge.getVoidedAt(),
-                charge.getVoidReason());
+                charge.getVoidedAt(), charge.getVoidReason());
     }
 }

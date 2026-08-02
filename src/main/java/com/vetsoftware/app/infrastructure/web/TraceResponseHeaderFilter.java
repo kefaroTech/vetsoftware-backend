@@ -27,12 +27,13 @@ public final class TraceResponseHeaderFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+            FilterChain chain) throws ServletException, IOException {
         Span span = tracer.currentSpan();
         if (span != null) {
             String traceId = span.context().traceId();
             response.setHeader(TRACE_HEADER, traceId);
-            // Compatibilidad temporal con clientes existentes. X-Trace-Id es el contrato nuevo.
+            // Compatibilidad temporal con clientes existentes. X-Trace-Id es el contrato
+            // nuevo.
             response.setHeader(LEGACY_REQUEST_HEADER, traceId);
         }
         chain.doFilter(request, response);

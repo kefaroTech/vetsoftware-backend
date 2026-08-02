@@ -35,16 +35,23 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests unitarios del {@link StockLedgerService} — el único punto de afectación del kardex.
+ * Tests unitarios del {@link StockLedgerService} — el único punto de afectación
+ * del kardex.
  *
- * <p>El servicio es <b>stateful</b> (lee → muta → escribe lotes/saldos y descuenta FEFO a través de varios lotes),
- * así que en vez de stubs {@code when/thenReturn} de Mockito (que obligarían a reimplementar el store dentro de
- * {@code thenAnswer}) se usan <b>fakes in-memory</b> de los tres repositorios. Eso permite verificar el <b>estado
- * final real</b>: cantidad disponible por lote, saldo materializado por sede y el ledger completo de movimientos con
- * su signo (entrada +, salida −), tipo, costo por lote (COGS) y referencia. Alineado con el patrón de "stubs
- * manuales" de las convenciones de testing del proyecto.
+ * <p>
+ * El servicio es <b>stateful</b> (lee → muta → escribe lotes/saldos y descuenta
+ * FEFO a través de varios lotes), así que en vez de stubs
+ * {@code when/thenReturn} de Mockito (que obligarían a reimplementar el store
+ * dentro de {@code thenAnswer}) se usan <b>fakes in-memory</b> de los tres
+ * repositorios. Eso permite verificar el <b>estado final real</b>: cantidad
+ * disponible por lote, saldo materializado por sede y el ledger completo de
+ * movimientos con su signo (entrada +, salida −), tipo, costo por lote (COGS) y
+ * referencia. Alineado con el patrón de "stubs manuales" de las convenciones de
+ * testing del proyecto.
  *
- * <p>Convenciones de los datos: empresa {@code CO=1}, sedes {@code A=10} / {@code B=20}, producto {@code P=100}.
+ * <p>
+ * Convenciones de los datos: empresa {@code CO=1}, sedes {@code A=10} /
+ * {@code B=20}, producto {@code P=100}.
  */
 class StockLedgerServiceTest {
 
@@ -66,25 +73,31 @@ class StockLedgerServiceTest {
         balances = new FakeBalanceRepository();
         movements = new FakeMovementRepository();
         policy = new FakeNegativeStockPolicy(false); // por defecto: bloquear stock negativo
-        service = new StockLedgerService(lots, balances, movements, policy, mock(InventoryMetrics.class));
+        service = new StockLedgerService(lots, balances, movements, policy,
+                mock(InventoryMetrics.class));
     }
 
     private static BigDecimal bd(String v) {
         return new BigDecimal(v);
     }
 
-    /** Precarga un lote ya persistido (con id) en una sede y refleja su cantidad en el saldo de esa sede. */
-    private StockLot seedLot(long branch, int qty, String cost, LocalDate expire, String lotNumber) {
+    /**
+     * Precarga un lote ya persistido (con id) en una sede y refleja su cantidad en
+     * el saldo de esa sede.
+     */
+    private StockLot seedLot(long branch, int qty, String cost, LocalDate expire,
+            String lotNumber) {
         StockLot lot = lots.save(new StockLot(null, CO, branch, P, lotNumber, expire, qty, bd(cost),
-            null, null, true));
-        StockBalance bal = balances.find(P, branch).orElseGet(
-            () -> balances.save(StockBalance.create(CO, branch, P, 0)));
+                null, null, true));
+        StockBalance bal = balances.find(P, branch)
+                .orElseGet(() -> balances.save(StockBalance.create(CO, branch, P, 0)));
         bal.add(qty);
         balances.save(bal);
         return lot;
     }
 
-    // ================================================================= recordPurchase
+    // =================================================================
+    // recordPurchase
 
     @Nested
     class Purchase {
@@ -92,8 +105,8 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_cantidad_cero_y_no_escribe_nada() {
             assertThatThrownBy(() -> service.recordPurchase(purchase(0, "10", null, null)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
             assertThat(lots.all()).isEmpty();
             assertThat(balances.all()).isEmpty();
             assertThat(movements.all()).isEmpty();
@@ -102,8 +115,8 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_cantidad_negativa() {
             assertThatThrownBy(() -> service.recordPurchase(purchase(-5, "10", null, null)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
             assertThat(movements.all()).isEmpty();
         }
 
@@ -161,9 +174,10 @@ class StockLedgerServiceTest {
             assertThat(balances.qty(P, A)).isEqualTo(30);
         }
 
-        private RecordPurchaseCommand purchase(int qty, String cost, String lotNumber, LocalDate expire) {
+        private RecordPurchaseCommand purchase(int qty, String cost, String lotNumber,
+                LocalDate expire) {
             return new RecordPurchaseCommand(CO, A, P, lotNumber, expire, qty,
-                cost == null ? null : bd(cost), StockReferenceType.GOODS_RECEIPT, 999L, USER);
+                    cost == null ? null : bd(cost), StockReferenceType.GOODS_RECEIPT, 999L, USER);
         }
     }
 
@@ -175,15 +189,15 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_cantidad_cero() {
             assertThatThrownBy(() -> service.recordSale(sale(0, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
         }
 
         @Test
         void rechaza_cantidad_negativa() {
             assertThatThrownBy(() -> service.recordSale(sale(-3, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
         }
 
         @Test
@@ -191,7 +205,7 @@ class StockLedgerServiceTest {
             seedLot(A, 50, "30", null, "L-1");
             // Simula un intento previo con la misma referencia POS.
             movements.save(StockMovement.of(CO, A, P, 1L, StockMovementType.SALE, 5, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+                    StockReferenceType.POS_DOCUMENT, 555L, null, USER));
             int movementsBefore = movements.all().size();
 
             List<StockConsumptionDto> result = service.recordSale(sale(5, false));
@@ -222,14 +236,17 @@ class StockLedgerServiceTest {
 
         @Test
         void consume_fefo_vencimiento_mas_proximo_primero_a_traves_de_varios_lotes() {
-            // Lote que vence antes (L-EARLY) debe consumirse completo antes de tocar el que vence después.
+            // Lote que vence antes (L-EARLY) debe consumirse completo antes de tocar el que
+            // vence
+            // después.
             StockLot late = seedLot(A, 10, "35", LocalDate.of(2027, 12, 1), "L-LATE");
             StockLot early = seedLot(A, 5, "30", LocalDate.of(2027, 1, 1), "L-EARLY");
             movements.clear();
 
             List<StockConsumptionDto> result = service.recordSale(sale(8, false));
 
-            assertThat(early.getQuantityAvailable()).as("el que vence antes se agota primero").isZero();
+            assertThat(early.getQuantityAvailable()).as("el que vence antes se agota primero")
+                    .isZero();
             assertThat(late.getQuantityAvailable()).isEqualTo(7);
             assertThat(balances.qty(P, A)).isEqualTo(7);
 
@@ -271,12 +288,10 @@ class StockLedgerServiceTest {
             movements.clear();
 
             assertThatThrownBy(() -> service.recordSale(sale(5, false)))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("Stock insuficiente")
-                .hasMessageContaining("producto " + P)
-                .hasMessageContaining("sede " + A)
-                .hasMessageContaining("disponible 3")
-                .hasMessageContaining("requerido 5");
+                    .isInstanceOf(InsufficientStockException.class)
+                    .hasMessageContaining("Stock insuficiente")
+                    .hasMessageContaining("producto " + P).hasMessageContaining("sede " + A)
+                    .hasMessageContaining("disponible 3").hasMessageContaining("requerido 5");
 
             assertThat(balances.qty(P, A)).as("no se toca el saldo").isEqualTo(3);
             assertThat(movements.all()).as("no se registra movimiento").isEmpty();
@@ -292,7 +307,8 @@ class StockLedgerServiceTest {
 
             assertThat(balances.qty(P, A)).as("saldo puede quedar negativo en POS").isEqualTo(-2);
             assertThat(lot.getQuantityAvailable()).isEqualTo(-2);
-            // 3 del stock + 2 de sobregiro sobre el mismo (último) lote => 2 movimientos de salida.
+            // 3 del stock + 2 de sobregiro sobre el mismo (último) lote => 2 movimientos de
+            // salida.
             assertThat(movements.ofType(StockMovementType.SALE)).hasSize(2);
             assertThat(result).hasSize(2);
             assertThat(result.get(0).quantity()).isEqualTo(3);
@@ -317,7 +333,8 @@ class StockLedgerServiceTest {
 
             List<StockConsumptionDto> result = service.recordSale(sale(4, false));
 
-            assertThat(lots.all()).as("se crea un lote genérico para colgar el sobregiro").hasSize(1);
+            assertThat(lots.all()).as("se crea un lote genérico para colgar el sobregiro")
+                    .hasSize(1);
             StockLot generic = lots.all().get(0);
             assertThat(generic.getLotNumber()).isNull();
             assertThat(generic.getUnitCost()).isEqualByComparingTo("0");
@@ -327,11 +344,13 @@ class StockLedgerServiceTest {
         }
 
         private RecordSaleCommand sale(int qty, boolean allowNegative) {
-            return new RecordSaleCommand(CO, A, P, qty, StockReferenceType.POS_DOCUMENT, 555L, USER, allowNegative);
+            return new RecordSaleCommand(CO, A, P, qty, StockReferenceType.POS_DOCUMENT, 555L, USER,
+                    allowNegative);
         }
     }
 
-    // ================================================================= recordClinicalUse
+    // =================================================================
+    // recordClinicalUse
 
     @Nested
     class ClinicalUse {
@@ -339,8 +358,8 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_cantidad_cero() {
             assertThatThrownBy(() -> service.recordClinicalUse(clinical(0, 42L)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
         }
 
         @Test
@@ -365,8 +384,8 @@ class StockLedgerServiceTest {
         @Test
         void es_idempotente_por_evento_clinico_cuando_hay_referencia() {
             seedLot(A, 10, "30", null, "L-1");
-            movements.save(StockMovement.of(CO, A, P, 1L, StockMovementType.CLINICAL_USE, 3, bd("30"),
-                StockReferenceType.CLINICAL_EVENT, 42L, null, USER));
+            movements.save(StockMovement.of(CO, A, P, 1L, StockMovementType.CLINICAL_USE, 3,
+                    bd("30"), StockReferenceType.CLINICAL_EVENT, 42L, null, USER));
             int before = movements.all().size();
 
             List<StockConsumptionDto> result = service.recordClinicalUse(clinical(3, 42L));
@@ -379,9 +398,11 @@ class StockLedgerServiceTest {
         @Test
         void consumo_manual_sin_referencia_no_aplica_idempotencia() {
             seedLot(A, 10, "30", null, "L-1");
-            // Aunque exista un CLINICAL_EVENT con referencia null previo, un consumo manual (ref null) siempre corre.
-            movements.save(StockMovement.of(CO, A, P, 1L, StockMovementType.CLINICAL_USE, 3, bd("30"),
-                StockReferenceType.CLINICAL_EVENT, null, null, USER));
+            // Aunque exista un CLINICAL_EVENT con referencia null previo, un consumo manual
+            // (ref null)
+            // siempre corre.
+            movements.save(StockMovement.of(CO, A, P, 1L, StockMovementType.CLINICAL_USE, 3,
+                    bd("30"), StockReferenceType.CLINICAL_EVENT, null, null, USER));
 
             List<StockConsumptionDto> result = service.recordClinicalUse(clinical(3, null));
 
@@ -396,10 +417,9 @@ class StockLedgerServiceTest {
             policy.allow = false;
 
             assertThatThrownBy(() -> service.recordClinicalUse(clinical(2, 42L)))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("consumo clínico")
-                .hasMessageContaining("disponible 1")
-                .hasMessageContaining("requerido 2");
+                    .isInstanceOf(InsufficientStockException.class)
+                    .hasMessageContaining("consumo clínico").hasMessageContaining("disponible 1")
+                    .hasMessageContaining("requerido 2");
 
             assertThat(balances.qty(P, A)).isEqualTo(1);
             assertThat(movements.all()).isEmpty();
@@ -416,11 +436,13 @@ class StockLedgerServiceTest {
         }
 
         private RecordClinicalUseCommand clinical(int qty, Long referenceId) {
-            return new RecordClinicalUseCommand(CO, A, P, qty, referenceId, "vacuna aplicada", USER);
+            return new RecordClinicalUseCommand(CO, A, P, qty, referenceId, "vacuna aplicada",
+                    USER);
         }
     }
 
-    // ================================================================= recordAdjustment
+    // =================================================================
+    // recordAdjustment
 
     @Nested
     class Adjustment {
@@ -428,22 +450,22 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_delta_cero() {
             assertThatThrownBy(() -> service.recordAdjustment(adj(0, "10", "conteo")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("delta cannot be 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("delta cannot be 0");
         }
 
         @Test
         void rechaza_motivo_null() {
             assertThatThrownBy(() -> service.recordAdjustment(adj(5, "10", null)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("reason is required");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("reason is required");
         }
 
         @Test
         void rechaza_motivo_en_blanco() {
             assertThatThrownBy(() -> service.recordAdjustment(adj(5, "10", "   ")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("reason is required");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("reason is required");
         }
 
         @Test
@@ -488,16 +510,19 @@ class StockLedgerServiceTest {
         @Test
         void ajuste_de_salida_puede_dejar_negativo_sin_consultar_la_politica() {
             seedLot(A, 2, "30", null, "L-1");
-            policy.allow = false; // aun prohibiendo negativo, el ajuste de conteo SÍ puede corregir a negativo
+            policy.allow = false; // aun prohibiendo negativo, el ajuste de conteo SÍ puede corregir
+                                  // a negativo
 
             service.recordAdjustment(adj(-5, null, "corrección de conteo"));
 
             assertThat(balances.qty(P, A)).isEqualTo(-3);
-            assertThat(policy.queried).as("los ajustes no consultan la política de negativo").isFalse();
+            assertThat(policy.queried).as("los ajustes no consultan la política de negativo")
+                    .isFalse();
         }
 
         private RecordAdjustmentCommand adj(int delta, String cost, String reason) {
-            return new RecordAdjustmentCommand(CO, A, P, delta, cost == null ? null : bd(cost), reason, 777L, USER);
+            return new RecordAdjustmentCommand(CO, A, P, delta, cost == null ? null : bd(cost),
+                    reason, 777L, USER);
         }
     }
 
@@ -509,15 +534,15 @@ class StockLedgerServiceTest {
         @Test
         void rechaza_cantidad_cero() {
             assertThatThrownBy(() -> service.transfer(transfer(A, B, 0)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("quantity must be greater than 0");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("quantity must be greater than 0");
         }
 
         @Test
         void rechaza_misma_sede_origen_y_destino() {
             assertThatThrownBy(() -> service.transfer(transfer(A, A, 5)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("misma sede");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("misma sede");
         }
 
         @Test
@@ -526,10 +551,9 @@ class StockLedgerServiceTest {
             movements.clear();
 
             assertThatThrownBy(() -> service.transfer(transfer(A, B, 5)))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("transferir")
-                .hasMessageContaining("disponible 3")
-                .hasMessageContaining("requerido 5");
+                    .isInstanceOf(InsufficientStockException.class)
+                    .hasMessageContaining("transferir").hasMessageContaining("disponible 3")
+                    .hasMessageContaining("requerido 5");
 
             assertThat(balances.qty(P, A)).isEqualTo(3);
             assertThat(balances.qty(P, B)).isZero();
@@ -549,7 +573,8 @@ class StockLedgerServiceTest {
             assertThat(balances.qty(P, B)).isEqualTo(20);
 
             // El lote destino conserva número/vencimiento/costo (preserva FEFO y COGS).
-            StockLot dest = lots.all().stream().filter(l -> l.getBranchId() == B).findFirst().orElseThrow();
+            StockLot dest = lots.all().stream().filter(l -> l.getBranchId() == B).findFirst()
+                    .orElseThrow();
             assertThat(dest.getQuantityAvailable()).isEqualTo(20);
             assertThat(dest.getLotNumber()).isEqualTo("L-1");
             assertThat(dest.getExpireDate()).isEqualTo(exp);
@@ -557,8 +582,10 @@ class StockLedgerServiceTest {
 
             assertThat(movements.ofType(StockMovementType.TRANSFER_OUT)).hasSize(1);
             assertThat(movements.ofType(StockMovementType.TRANSFER_IN)).hasSize(1);
-            assertThat(movements.ofType(StockMovementType.TRANSFER_OUT).get(0).getQuantity()).isEqualTo(-20);
-            assertThat(movements.ofType(StockMovementType.TRANSFER_IN).get(0).getQuantity()).isEqualTo(20);
+            assertThat(movements.ofType(StockMovementType.TRANSFER_OUT).get(0).getQuantity())
+                    .isEqualTo(-20);
+            assertThat(movements.ofType(StockMovementType.TRANSFER_IN).get(0).getQuantity())
+                    .isEqualTo(20);
         }
 
         @Test
@@ -575,7 +602,8 @@ class StockLedgerServiceTest {
             assertThat(balances.qty(P, B)).isEqualTo(8);
 
             // Se replican DOS lotes en destino, cada uno con su costo original.
-            List<StockLot> destLots = lots.all().stream().filter(l -> l.getBranchId() == B).toList();
+            List<StockLot> destLots = lots.all().stream().filter(l -> l.getBranchId() == B)
+                    .toList();
             assertThat(destLots).hasSize(2);
             assertThat(destLots).anySatisfy(l -> {
                 assertThat(l.getUnitCost()).isEqualByComparingTo("30");
@@ -599,14 +627,15 @@ class StockLedgerServiceTest {
             service.transfer(transfer(A, B, 10));
 
             assertThat(lots.all().stream().filter(l -> l.getBranchId() == B).toList())
-                .as("no se duplica el lote en destino").hasSize(1);
+                    .as("no se duplica el lote en destino").hasSize(1);
             assertThat(destExisting.getQuantityAvailable()).isEqualTo(15);
             assertThat(balances.qty(P, B)).isEqualTo(15);
         }
 
         @Test
         void funciona_igual_cuando_el_id_de_origen_es_mayor_que_el_de_destino() {
-            // Ejercita la rama de lock ordenado inverso (from > to): el resultado debe ser idéntico.
+            // Ejercita la rama de lock ordenado inverso (from > to): el resultado debe ser
+            // idéntico.
             seedLot(B, 40, "30", null, "L-1");
 
             service.transfer(new TransferStockCommand(CO, B, A, P, 15, "rebalanceo", USER));
@@ -617,7 +646,8 @@ class StockLedgerServiceTest {
 
         @Test
         void aborta_si_los_lotes_no_alcanzan_aunque_el_saldo_diga_que_si() {
-            // Saldo materializado (30) diverge de los lotes reales (10): la transferencia debe abortar,
+            // Saldo materializado (30) diverge de los lotes reales (10): la transferencia
+            // debe abortar,
             // nunca crear stock negativo en origen por una inconsistencia.
             seedLot(A, 10, "30", null, "L-1");
             StockBalance bal = balances.find(P, A).orElseThrow();
@@ -626,8 +656,8 @@ class StockLedgerServiceTest {
             movements.clear();
 
             assertThatThrownBy(() -> service.transfer(transfer(A, B, 25)))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("Lotes insuficientes");
+                    .isInstanceOf(InsufficientStockException.class)
+                    .hasMessageContaining("Lotes insuficientes");
         }
 
         private TransferStockCommand transfer(long from, long to, int qty) {
@@ -650,8 +680,8 @@ class StockLedgerServiceTest {
         void reversa_de_una_venta_repone_stock_al_mismo_lote_con_void_in() {
             StockLot lot = seedLot(A, 42, "30", null, "L-1"); // saldo tras vender 8 de 50
             // Movimiento original de salida por venta.
-            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.SALE, 8, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.SALE, 8,
+                    bd("30"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
             service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
 
@@ -659,15 +689,16 @@ class StockLedgerServiceTest {
             assertThat(balances.qty(P, A)).isEqualTo(50);
             List<StockMovement> voids = movements.ofType(StockMovementType.VOID_IN);
             assertThat(voids).hasSize(1);
-            assertThat(voids.get(0).getQuantity()).as("VOID_IN es entrada => positivo").isEqualTo(8);
+            assertThat(voids.get(0).getQuantity()).as("VOID_IN es entrada => positivo")
+                    .isEqualTo(8);
             assertThat(voids.get(0).getReason()).isEqualTo("reversa");
         }
 
         @Test
         void reversa_de_una_compra_retira_stock_con_void_out() {
             StockLot lot = seedLot(A, 50, "30", null, "L-1");
-            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.PURCHASE, 50, bd("30"),
-                StockReferenceType.GOODS_RECEIPT, 321L, null, USER));
+            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.PURCHASE, 50,
+                    bd("30"), StockReferenceType.GOODS_RECEIPT, 321L, null, USER));
 
             service.reverse(StockReferenceType.GOODS_RECEIPT, 321L, USER);
 
@@ -675,17 +706,22 @@ class StockLedgerServiceTest {
             assertThat(balances.qty(P, A)).isZero();
             List<StockMovement> voids = movements.ofType(StockMovementType.VOID_OUT);
             assertThat(voids).hasSize(1);
-            assertThat(voids.get(0).getQuantity()).as("VOID_OUT es salida => negativo").isEqualTo(-50);
+            assertThat(voids.get(0).getQuantity()).as("VOID_OUT es salida => negativo")
+                    .isEqualTo(-50);
         }
 
         @Test
         void reversa_de_venta_multi_lote_repone_cada_lote() {
-            StockLot early = seedLot(A, 0, "30", LocalDate.of(2027, 1, 1), "L-EARLY"); // se agotó vendiendo 5
-            StockLot late = seedLot(A, 7, "35", LocalDate.of(2027, 12, 1), "L-LATE");  // quedó en 7 tras vender 3
-            movements.save(StockMovement.of(CO, A, P, early.getId(), StockMovementType.SALE, 5, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
-            movements.save(StockMovement.of(CO, A, P, late.getId(), StockMovementType.SALE, 3, bd("35"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+            StockLot early = seedLot(A, 0, "30", LocalDate.of(2027, 1, 1), "L-EARLY"); // se agotó
+                                                                                       // vendiendo
+                                                                                       // 5
+            StockLot late = seedLot(A, 7, "35", LocalDate.of(2027, 12, 1), "L-LATE"); // quedó en 7
+                                                                                      // tras vender
+                                                                                      // 3
+            movements.save(StockMovement.of(CO, A, P, early.getId(), StockMovementType.SALE, 5,
+                    bd("30"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+            movements.save(StockMovement.of(CO, A, P, late.getId(), StockMovementType.SALE, 3,
+                    bd("35"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
             service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
 
@@ -698,10 +734,10 @@ class StockLedgerServiceTest {
         @Test
         void es_idempotente_si_ya_fue_reversado() {
             StockLot lot = seedLot(A, 50, "30", null, "L-1");
-            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.SALE, 8, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
-            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.VOID_IN, 8, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, "reversa", USER));
+            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.SALE, 8,
+                    bd("30"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+            movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.VOID_IN, 8,
+                    bd("30"), StockReferenceType.POS_DOCUMENT, 555L, "reversa", USER));
             int before = movements.all().size();
             int lotQtyBefore = lot.getQuantityAvailable();
 
@@ -715,7 +751,7 @@ class StockLedgerServiceTest {
         void ignora_movimientos_cuyo_lote_ya_no_existe() {
             // Movimiento que apunta a un lote inexistente (id 9999) => se salta sin fallar.
             movements.save(StockMovement.of(CO, A, P, 9999L, StockMovementType.SALE, 8, bd("30"),
-                StockReferenceType.POS_DOCUMENT, 555L, null, USER));
+                    StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
             service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
 
@@ -726,14 +762,18 @@ class StockLedgerServiceTest {
 
     // ================================================================= fakes
 
-    /** Repositorio de lotes in-memory: mantiene las MISMAS referencias que el servicio muta. */
+    /**
+     * Repositorio de lotes in-memory: mantiene las MISMAS referencias que el
+     * servicio muta.
+     */
     private static final class FakeLotRepository implements StockLotRepository {
         private final Map<Long, StockLot> store = new LinkedHashMap<>();
         private long seq = 0;
 
         @Override
         public StockLot save(StockLot lot) {
-            if (lot.getId() == null) lot.assignId(++seq);
+            if (lot.getId() == null)
+                lot.assignId(++seq);
             store.put(lot.getId(), lot);
             return lot;
         }
@@ -745,29 +785,27 @@ class StockLedgerServiceTest {
 
         @Override
         public List<StockLot> findAvailableFefo(Long productId, Long branchId) {
-            List<StockLot> result = new ArrayList<>(store.values().stream()
-                .filter(l -> l.isEnabled())
-                .filter(l -> Objects.equals(l.getProductId(), productId))
-                .filter(l -> Objects.equals(l.getBranchId(), branchId))
-                .filter(l -> l.getQuantityAvailable() > 0)
-                .toList());
+            List<StockLot> result = new ArrayList<>(
+                    store.values().stream().filter(l -> l.isEnabled())
+                            .filter(l -> Objects.equals(l.getProductId(), productId))
+                            .filter(l -> Objects.equals(l.getBranchId(), branchId))
+                            .filter(l -> l.getQuantityAvailable() > 0).toList());
             result.sort(Comparator
-                .comparing(StockLot::getExpireDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(StockLot::getId));
+                    .comparing(StockLot::getExpireDate,
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(StockLot::getId));
             return result;
         }
 
         @Override
-        public Optional<StockLot> findByIdentity(Long companyId, Long branchId, Long productId, String lotNumber,
-                                                 LocalDate expireDate, BigDecimal unitCost) {
-            return store.values().stream()
-                .filter(l -> Objects.equals(l.getCompanyId(), companyId))
-                .filter(l -> Objects.equals(l.getBranchId(), branchId))
-                .filter(l -> Objects.equals(l.getProductId(), productId))
-                .filter(l -> Objects.equals(l.getLotNumber(), lotNumber))
-                .filter(l -> Objects.equals(l.getExpireDate(), expireDate))
-                .filter(l -> l.getUnitCost().compareTo(unitCost) == 0)
-                .findFirst();
+        public Optional<StockLot> findByIdentity(Long companyId, Long branchId, Long productId,
+                String lotNumber, LocalDate expireDate, BigDecimal unitCost) {
+            return store.values().stream().filter(l -> Objects.equals(l.getCompanyId(), companyId))
+                    .filter(l -> Objects.equals(l.getBranchId(), branchId))
+                    .filter(l -> Objects.equals(l.getProductId(), productId))
+                    .filter(l -> Objects.equals(l.getLotNumber(), lotNumber))
+                    .filter(l -> Objects.equals(l.getExpireDate(), expireDate))
+                    .filter(l -> l.getUnitCost().compareTo(unitCost) == 0).findFirst();
         }
 
         List<StockLot> all() {
@@ -775,7 +813,10 @@ class StockLedgerServiceTest {
         }
     }
 
-    /** Saldos in-memory keyed por (producto, sede). {@code findForUpdate} == {@code find} (no hay lock real en test). */
+    /**
+     * Saldos in-memory keyed por (producto, sede). {@code findForUpdate} ==
+     * {@code find} (no hay lock real en test).
+     */
     private static final class FakeBalanceRepository implements StockBalanceRepository {
         private final Map<String, StockBalance> store = new LinkedHashMap<>();
         private long seq = 0;
@@ -786,7 +827,8 @@ class StockLedgerServiceTest {
 
         @Override
         public StockBalance save(StockBalance balance) {
-            if (balance.getId() == null) balance.assignId(++seq);
+            if (balance.getId() == null)
+                balance.assignId(++seq);
             store.put(key(balance.getProductId(), balance.getBranchId()), balance);
             return balance;
         }
@@ -817,22 +859,23 @@ class StockLedgerServiceTest {
 
         @Override
         public StockMovement save(StockMovement movement) {
-            if (movement.getId() == null) movement.assignId(++seq);
+            if (movement.getId() == null)
+                movement.assignId(++seq);
             saved.add(movement);
             return movement;
         }
 
         @Override
         public boolean existsByReference(StockReferenceType referenceType, Long referenceId) {
-            return saved.stream().anyMatch(
-                m -> m.getReferenceType() == referenceType && Objects.equals(m.getReferenceId(), referenceId));
+            return saved.stream().anyMatch(m -> m.getReferenceType() == referenceType
+                    && Objects.equals(m.getReferenceId(), referenceId));
         }
 
         @Override
-        public List<StockMovement> findByReference(StockReferenceType referenceType, Long referenceId) {
-            return saved.stream()
-                .filter(m -> m.getReferenceType() == referenceType && Objects.equals(m.getReferenceId(), referenceId))
-                .toList();
+        public List<StockMovement> findByReference(StockReferenceType referenceType,
+                Long referenceId) {
+            return saved.stream().filter(m -> m.getReferenceType() == referenceType
+                    && Objects.equals(m.getReferenceId(), referenceId)).toList();
         }
 
         List<StockMovement> all() {

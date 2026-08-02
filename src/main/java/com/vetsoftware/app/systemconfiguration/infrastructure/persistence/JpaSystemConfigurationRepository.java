@@ -12,7 +12,7 @@ public class JpaSystemConfigurationRepository implements SystemConfigurationRepo
     private final SystemConfigurationJpaMapper mapper;
 
     public JpaSystemConfigurationRepository(SystemConfigurationJpaRepository jpaRepository,
-                                            SystemConfigurationJpaMapper mapper) {
+            SystemConfigurationJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

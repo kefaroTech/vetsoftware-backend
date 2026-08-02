@@ -18,8 +18,7 @@ public class FindMembershipService implements FindMembershipUseCase {
 
     @Override
     public MembershipDto findById(Long id) {
-        return repository.findById(id)
-            .map(MembershipDto::from)
-            .orElseThrow(() -> new MembershipNotFoundException(id));
+        return repository.findById(id).map(MembershipDto::from)
+                .orElseThrow(() -> new MembershipNotFoundException(id));
     }
 }

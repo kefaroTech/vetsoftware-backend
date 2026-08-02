@@ -11,9 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cambio de la propia contraseña (primer login forzado). Hashea la nueva contraseña, la asigna y limpia
- * {@code mustChangePassword}. No toca {@code authVersion}: la sesión en curso sigue válida y el empleado
- * pasa directo al panel sin re-login.
+ * Cambio de la propia contraseña (primer login forzado). Hashea la nueva
+ * contraseña, la asigna y limpia {@code mustChangePassword}. No toca
+ * {@code authVersion}: la sesión en curso sigue válida y el empleado pasa
+ * directo al panel sin re-login.
  */
 @Observed(name = "employee.change.my.password")
 @Service
@@ -31,8 +32,10 @@ public class ChangeMyPasswordService implements ChangeMyPasswordUseCase {
     @Transactional
     public boolean execute(ChangeMyPasswordCommand command) {
         Employee employee = repository.findById(command.employeeId())
-            .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
-        // Antes de cambiar: si estaba obligado a cambiarla, este cambio ES la aceptación de la invitación.
+                .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
+        // Antes de cambiar: si estaba obligado a cambiarla, este cambio ES la
+        // aceptación de la
+        // invitación.
         boolean acceptedInvitation = employee.isMustChangePassword();
         employee.changePassword(passwordHasher.hash(command.newPassword()));
         repository.save(employee);

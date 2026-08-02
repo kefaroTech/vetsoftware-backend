@@ -33,13 +33,13 @@ public class HospitalizationObservationController {
     private final ReactivateHospitalizationObservationUseCase reactivateUseCase;
     private final Authz authz;
 
-    public HospitalizationObservationController(CreateHospitalizationObservationUseCase createUseCase,
-                                                UpdateHospitalizationObservationUseCase updateUseCase,
-                                                FindHospitalizationObservationUseCase findUseCase,
-                                                ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase,
-                                                DeleteHospitalizationObservationUseCase deleteUseCase,
-                                                ReactivateHospitalizationObservationUseCase reactivateUseCase,
-                                                Authz authz) {
+    public HospitalizationObservationController(
+            CreateHospitalizationObservationUseCase createUseCase,
+            UpdateHospitalizationObservationUseCase updateUseCase,
+            FindHospitalizationObservationUseCase findUseCase,
+            ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase,
+            DeleteHospitalizationObservationUseCase deleteUseCase,
+            ReactivateHospitalizationObservationUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -51,15 +51,17 @@ public class HospitalizationObservationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationObservationResponse create(@Valid @RequestBody CreateHospitalizationObservationRequest request) {
+    public HospitalizationObservationResponse create(
+            @Valid @RequestBody CreateHospitalizationObservationRequest request) {
         return toResponse(createUseCase.execute(new CreateHospitalizationObservationCommand(
-            request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationObservationResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
+    public List<HospitalizationObservationResponse> listByHospitalization(
+            @PathVariable Long hospitalizationId) {
         return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -69,9 +71,9 @@ public class HospitalizationObservationController {
 
     @PutMapping("/{id}")
     public HospitalizationObservationResponse update(@PathVariable Long id,
-                                                     @Valid @RequestBody UpdateHospitalizationObservationRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateHospitalizationObservationCommand(id, request.description())));
+            @Valid @RequestBody UpdateHospitalizationObservationRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateHospitalizationObservationCommand(id, request.description())));
     }
 
     @DeleteMapping("/{id}")
@@ -88,10 +90,9 @@ public class HospitalizationObservationController {
     private HospitalizationObservationResponse toResponse(HospitalizationObservationDto dto) {
         HospitalizationSummaryDto h = dto.hospitalization();
         EmployeeSummaryDto c = dto.createdBy();
-        return new HospitalizationObservationResponse(
-            dto.id(), dto.description(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled());
+        return new HospitalizationObservationResponse(dto.id(), dto.description(),
+                new HospitalizationSummary(h.id(), h.date()),
+                new EmployeeSummary(c.id(), c.employeeCode(), c.name()), dto.createdDate(),
+                dto.enabled());
     }
 }

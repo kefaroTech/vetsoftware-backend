@@ -8,11 +8,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record AnimalResponse(
-        Long id, String name, String code,
-        SpecieSummary specie, BreedSummary breed, OwnerSummary owner,
-        Gender gender, WeightType weightType, AnimalType animalType,
-        ReproductiveState reproductiveState, AnimalColorSummary color, LocalDate bod,
-        BigDecimal weight, LocalDate weightMeasuredAt, Integer size, boolean deceased, LocalDate deceasedDate,
-        CompanySummary company, LocalDateTime createdDate, boolean enabled
-) {}
+public record AnimalResponse(Long id, String name, String code, SpecieSummary specie,
+        BreedSummary breed, OwnerSummary owner, Gender gender, WeightType weightType,
+        AnimalType animalType, ReproductiveState reproductiveState, AnimalColorSummary color,
+        LocalDate bod, BigDecimal weight, LocalDate weightMeasuredAt, Integer size,
+        boolean deceased, LocalDate deceasedDate, CompanySummary company, LocalDateTime createdDate,
+        boolean enabled) {
+}

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.debtopenaccount.infrastructure.persistence;
 
-import com.vetsoftware.app.openaccount.application.port.in.AssertOpenAccountVersionUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.out.OpenAccountVersionGuard;
+import com.vetsoftware.app.openaccount.application.port.in.AssertOpenAccountVersionUseCase;
 import org.springframework.stereotype.Component;
 
 @Component

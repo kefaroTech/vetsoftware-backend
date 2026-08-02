@@ -22,9 +22,10 @@ public class ReactivateOpenAccountService implements ReactivateOpenAccountUseCas
     @Transactional
     public OpenAccountDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new OpenAccountNotFoundException(id);
+        if (rows == 0)
+            throw new OpenAccountNotFoundException(id);
         OpenAccount openAccount = repository.findById(id)
-            .orElseThrow(() -> new OpenAccountNotFoundException(id));
+                .orElseThrow(() -> new OpenAccountNotFoundException(id));
         if (!openAccount.getCompany().id().equals(companyId)) {
             throw new IllegalArgumentException("open account does not belong to company");
         }

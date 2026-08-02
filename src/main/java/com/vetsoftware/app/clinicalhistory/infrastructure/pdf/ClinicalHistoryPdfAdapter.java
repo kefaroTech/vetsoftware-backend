@@ -15,22 +15,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClinicalHistoryPdfAdapter implements ClinicalHistoryPdfPort {
 
-    private static final String[] SPANISH_MONTHS = {
-            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    };
+    private static final String[] SPANISH_MONTHS = {"Enero", "Febrero", "Marzo", "Abril", "Mayo",
+            "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"};
 
     private static final Map<ClinicalEventType, String> TYPE_LABELS = Map.of(
-            ClinicalEventType.CONSULTATION, "Consulta",
-            ClinicalEventType.SURGERY, "Cirugía",
-            ClinicalEventType.VACCINATION, "Vacunación",
-            ClinicalEventType.DEWORMING, "Desparasitación",
-            ClinicalEventType.HOSPITALIZATION, "Hospitalización",
-            ClinicalEventType.LABORATORY_TEST, "Laboratorio",
-            ClinicalEventType.DIAGNOSTIC_IMAGING, "Imagen diagnóstica",
-            ClinicalEventType.PRESCRIPTION, "Prescripción",
-            ClinicalEventType.SPA, "Estética"
-    );
+            ClinicalEventType.CONSULTATION, "Consulta", ClinicalEventType.SURGERY, "Cirugía",
+            ClinicalEventType.VACCINATION, "Vacunación", ClinicalEventType.DEWORMING,
+            "Desparasitación", ClinicalEventType.HOSPITALIZATION, "Hospitalización",
+            ClinicalEventType.LABORATORY_TEST, "Laboratorio", ClinicalEventType.DIAGNOSTIC_IMAGING,
+            "Imagen diagnóstica", ClinicalEventType.PRESCRIPTION, "Prescripción",
+            ClinicalEventType.SPA, "Estética");
 
     private final HtmlPdfRenderer renderer;
 
@@ -64,7 +58,10 @@ public class ClinicalHistoryPdfAdapter implements ClinicalHistoryPdfPort {
         return byName;
     }
 
-    /** Conteo de eventos por tipo, en el orden del enum, para el resumen del encabezado. */
+    /**
+     * Conteo de eventos por tipo, en el orden del enum, para el resumen del
+     * encabezado.
+     */
     private List<TypeCount> countByType(List<ReportClinicalEvent> events) {
         Map<ClinicalEventType, Long> counts = new LinkedHashMap<>();
         for (ClinicalEventType type : ClinicalEventType.values()) {
@@ -73,8 +70,8 @@ public class ClinicalHistoryPdfAdapter implements ClinicalHistoryPdfPort {
                 counts.put(type, n);
             }
         }
-        return counts.entrySet().stream()
-                .map(e -> new TypeCount(e.getKey().name(), TYPE_LABELS.get(e.getKey()), e.getValue()))
+        return counts.entrySet().stream().map(
+                e -> new TypeCount(e.getKey().name(), TYPE_LABELS.get(e.getKey()), e.getValue()))
                 .toList();
     }
 
@@ -85,10 +82,8 @@ public class ClinicalHistoryPdfAdapter implements ClinicalHistoryPdfPort {
                     + String.format("%02d", ev.eventDate().getMonthValue());
             map.computeIfAbsent(key, k -> new ArrayList<>()).add(ev);
         }
-        return map.entrySet().stream()
-                .map(e -> new ClinicalHistoryMonthGroup(
-                        e.getKey(), monthLabel(e.getKey()), e.getValue()))
-                .toList();
+        return map.entrySet().stream().map(e -> new ClinicalHistoryMonthGroup(e.getKey(),
+                monthLabel(e.getKey()), e.getValue())).toList();
     }
 
     private String monthLabel(String yyyymm) {

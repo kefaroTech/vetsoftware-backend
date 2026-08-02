@@ -18,11 +18,13 @@ import org.springframework.stereotype.Component;
 public class GoodsReceiptJpaMapper {
 
     /**
-     * Write path: arma la entidad reusando las referencias JPA (proxies via getReferenceById) que le pasa el
-     * repositorio; {@code productsById} mapea cada productId a su proxy.
+     * Write path: arma la entidad reusando las referencias JPA (proxies via
+     * getReferenceById) que le pasa el repositorio; {@code productsById} mapea cada
+     * productId a su proxy.
      */
-    public GoodsReceiptJpaEntity toJpa(GoodsReceipt receipt, CompanyJpaEntity company, BranchJpaEntity branch,
-                                       SupplierJpaEntity supplier, Map<Long, ProductJpaEntity> productsById) {
+    public GoodsReceiptJpaEntity toJpa(GoodsReceipt receipt, CompanyJpaEntity company,
+            BranchJpaEntity branch, SupplierJpaEntity supplier,
+            Map<Long, ProductJpaEntity> productsById) {
         GoodsReceiptJpaEntity entity = new GoodsReceiptJpaEntity();
         entity.setId(receipt.getId());
         entity.setCompany(company);
@@ -53,44 +55,34 @@ public class GoodsReceiptJpaMapper {
         return entity;
     }
 
-    /** Read path: el @EntityGraph ya hidrató company/branch/supplier/lines/lines.product. */
+    /**
+     * Read path: el @EntityGraph ya hidrató
+     * company/branch/supplier/lines/lines.product.
+     */
     public GoodsReceipt toDomain(GoodsReceiptJpaEntity entity) {
         CompanyJpaEntity c = entity.getCompany();
         BranchJpaEntity b = entity.getBranch();
         SupplierJpaEntity s = entity.getSupplier();
         List<GoodsReceiptLine> lines = entity.getLines().stream().map(le -> {
             ProductJpaEntity p = le.getProduct();
-            return new GoodsReceiptLine(
-                le.getId(),
-                new ProductRef(p.getId(), p.getName(), p.getCode()),
-                le.getPurchaseOrderLineId(),
-                le.getLotNumber(),
-                le.getExpireDate(),
-                le.getQuantityReceived(),
-                le.getUnitCost());
+            return new GoodsReceiptLine(le.getId(),
+                    new ProductRef(p.getId(), p.getName(), p.getCode()),
+                    le.getPurchaseOrderLineId(), le.getLotNumber(), le.getExpireDate(),
+                    le.getQuantityReceived(), le.getUnitCost());
         }).toList();
-        return new GoodsReceipt(
-            entity.getId(),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            new BranchRef(b.getId(), b.getName()),
-            new SupplierRef(s.getId(), s.getName()),
-            entity.getPurchaseOrderId(),
-            entity.getReceiptDate(),
-            entity.getSupplierInvoiceNumber(),
-            entity.getNotes(),
-            entity.getStatus(),
-            lines,
-            entity.getCreatedDate(),
-            entity.getCreatedBy(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
+        return new GoodsReceipt(entity.getId(),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+                new BranchRef(b.getId(), b.getName()), new SupplierRef(s.getId(), s.getName()),
+                entity.getPurchaseOrderId(), entity.getReceiptDate(),
+                entity.getSupplierInvoiceNumber(), entity.getNotes(), entity.getStatus(), lines,
+                entity.getCreatedDate(), entity.getCreatedBy(), entity.getUpdatedDate(),
+                entity.getUpdatedBy(), entity.getVersion(), entity.isEnabled());
     }
 
     /**
-     * Write-return path: rebuild del dominio reusando los Ref precargados del agregado original (evita hidratar los
-     * proxies getReferenceById), tomando del entity persistido los ids generados (recepción + líneas, en orden).
+     * Write-return path: rebuild del dominio reusando los Ref precargados del
+     * agregado original (evita hidratar los proxies getReferenceById), tomando del
+     * entity persistido los ids generados (recepción + líneas, en orden).
      */
     public GoodsReceipt toDomainReusingRefs(GoodsReceiptJpaEntity saved, GoodsReceipt original) {
         List<GoodsReceiptLineJpaEntity> savedLines = saved.getLines();
@@ -98,31 +90,14 @@ public class GoodsReceiptJpaMapper {
         List<GoodsReceiptLine> lines = new java.util.ArrayList<>(savedLines.size());
         for (int i = 0; i < savedLines.size(); i++) {
             GoodsReceiptLine ol = originalLines.get(i);
-            lines.add(new GoodsReceiptLine(
-                savedLines.get(i).getId(),
-                ol.getProduct(),
-                ol.getPurchaseOrderLineId(),
-                ol.getLotNumber(),
-                ol.getExpireDate(),
-                ol.getQuantityReceived(),
-                ol.getUnitCost()));
+            lines.add(new GoodsReceiptLine(savedLines.get(i).getId(), ol.getProduct(),
+                    ol.getPurchaseOrderLineId(), ol.getLotNumber(), ol.getExpireDate(),
+                    ol.getQuantityReceived(), ol.getUnitCost()));
         }
-        return new GoodsReceipt(
-            saved.getId(),
-            original.getCompany(),
-            original.getBranch(),
-            original.getSupplier(),
-            original.getPurchaseOrderId(),
-            original.getReceiptDate(),
-            original.getSupplierInvoiceNumber(),
-            original.getNotes(),
-            original.getStatus(),
-            lines,
-            saved.getCreatedDate(),
-            original.getCreatedBy(),
-            saved.getUpdatedDate(),
-            original.getUpdatedBy(),
-            saved.getVersion(),
-            saved.isEnabled());
+        return new GoodsReceipt(saved.getId(), original.getCompany(), original.getBranch(),
+                original.getSupplier(), original.getPurchaseOrderId(), original.getReceiptDate(),
+                original.getSupplierInvoiceNumber(), original.getNotes(), original.getStatus(),
+                lines, saved.getCreatedDate(), original.getCreatedBy(), saved.getUpdatedDate(),
+                original.getUpdatedBy(), saved.getVersion(), saved.isEnabled());
     }
 }

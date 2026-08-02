@@ -40,14 +40,12 @@ public class DebtOpenAccountController {
     private final Authz authz;
 
     public DebtOpenAccountController(CreateDebtOpenAccountUseCase createUseCase,
-                                     UpdateDebtOpenAccountUseCase updateUseCase,
-                                     FindDebtOpenAccountUseCase findUseCase,
-                                     ListDebtOpenAccountsUseCase listUseCase,
-                                     ListDebtOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                     DeleteDebtOpenAccountUseCase deleteUseCase,
-                                     ReactivateDebtOpenAccountUseCase reactivateUseCase,
-                                     VoidDebtOpenAccountUseCase voidUseCase,
-                                     Authz authz) {
+            UpdateDebtOpenAccountUseCase updateUseCase, FindDebtOpenAccountUseCase findUseCase,
+            ListDebtOpenAccountsUseCase listUseCase,
+            ListDebtOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+            DeleteDebtOpenAccountUseCase deleteUseCase,
+            ReactivateDebtOpenAccountUseCase reactivateUseCase,
+            VoidDebtOpenAccountUseCase voidUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -61,23 +59,23 @@ public class DebtOpenAccountController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public DebtOpenAccountResponse create(@Valid @RequestBody CreateDebtOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateDebtOpenAccountCommand(
-                request.amount(), request.paymentMethod(), request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId(), request.clientRequestId(),
-                request.expectedVersion())));
+    public DebtOpenAccountResponse create(
+            @Valid @RequestBody CreateDebtOpenAccountRequest request) {
+        return toResponse(createUseCase.execute(new CreateDebtOpenAccountCommand(request.amount(),
+                request.paymentMethod(), request.openAccountId(), authz.currentCompanyId(),
+                authz.currentEmployeeId(), request.clientRequestId(), request.expectedVersion())));
     }
 
     @GetMapping
     public List<DebtOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/by-open-account/{openAccountId}")
     public List<DebtOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
         return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -87,10 +85,9 @@ public class DebtOpenAccountController {
 
     @PutMapping("/{id}")
     public DebtOpenAccountResponse update(@PathVariable Long id,
-                                          @Valid @RequestBody UpdateDebtOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateDebtOpenAccountCommand(
-                id, request.amount(), request.paymentMethod(), request.openAccountId(),
+            @Valid @RequestBody UpdateDebtOpenAccountRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateDebtOpenAccountCommand(id,
+                request.amount(), request.paymentMethod(), request.openAccountId(),
                 authz.currentCompanyId(), request.expectedVersion())));
     }
 
@@ -107,23 +104,21 @@ public class DebtOpenAccountController {
 
     @PatchMapping("/{id}/void")
     public DebtOpenAccountResponse voidPayment(@PathVariable Long id,
-                                               @Valid @RequestBody VoidDebtOpenAccountRequest request) {
-        return toResponse(voidUseCase.execute(
-            new VoidDebtOpenAccountCommand(id, authz.currentCompanyId(),
-                authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
+            @Valid @RequestBody VoidDebtOpenAccountRequest request) {
+        return toResponse(
+                voidUseCase.execute(new VoidDebtOpenAccountCommand(id, authz.currentCompanyId(),
+                        authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
     }
 
     private DebtOpenAccountResponse toResponse(DebtOpenAccountDto dto) {
         OpenAccountSummaryDto oa = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
         EmployeeSummaryDto v = dto.voidedBy();
-        return new DebtOpenAccountResponse(
-            dto.id(), dto.amount(), dto.paymentMethod(),
-            new OpenAccountSummary(oa.id(), oa.companyId()),
-            e == null ? null : new EmployeeSummary(e.id(), e.name()),
-            dto.createdDate(), dto.enabled(),
-            dto.voided(),
-            v == null ? null : new EmployeeSummary(v.id(), v.name()),
-            dto.voidedAt(), dto.voidReason());
+        return new DebtOpenAccountResponse(dto.id(), dto.amount(), dto.paymentMethod(),
+                new OpenAccountSummary(oa.id(), oa.companyId()),
+                e == null ? null : new EmployeeSummary(e.id(), e.name()), dto.createdDate(),
+                dto.enabled(), dto.voided(),
+                v == null ? null : new EmployeeSummary(v.id(), v.name()), dto.voidedAt(),
+                dto.voidReason());
     }
 }

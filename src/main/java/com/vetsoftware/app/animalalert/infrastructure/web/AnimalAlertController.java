@@ -27,10 +27,8 @@ public class AnimalAlertController {
     private final Authz authz;
 
     public AnimalAlertController(CreateAnimalAlertUseCase createUseCase,
-                                 UpdateAnimalAlertUseCase updateUseCase,
-                                 DeleteAnimalAlertUseCase deleteUseCase,
-                                 ListAnimalAlertsByAnimalUseCase listByAnimalUseCase,
-                                 Authz authz) {
+            UpdateAnimalAlertUseCase updateUseCase, DeleteAnimalAlertUseCase deleteUseCase,
+            ListAnimalAlertsByAnimalUseCase listByAnimalUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.deleteUseCase = deleteUseCase;
@@ -41,26 +39,23 @@ public class AnimalAlertController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AnimalAlertResponse create(@Valid @RequestBody CreateAnimalAlertRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateAnimalAlertCommand(
-                request.animalId(), request.type(), request.description(),
-                request.severity(), authz.currentCompanyId())));
+        return toResponse(createUseCase
+                .execute(new CreateAnimalAlertCommand(request.animalId(), request.type(),
+                        request.description(), request.severity(), authz.currentCompanyId())));
     }
 
     @GetMapping("/by-animal/{animalId}")
     public List<AnimalAlertResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.execute(
-                new ListAnimalAlertsByAnimalQuery(animalId, authz.currentCompanyId()))
-            .stream().map(this::toResponse).toList();
+        return listByAnimalUseCase
+                .execute(new ListAnimalAlertsByAnimalQuery(animalId, authz.currentCompanyId()))
+                .stream().map(this::toResponse).toList();
     }
 
     @PutMapping("/{id}")
     public AnimalAlertResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdateAnimalAlertRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateAnimalAlertCommand(
-                id, request.type(), request.description(),
-                request.severity(), authz.currentCompanyId())));
+            @Valid @RequestBody UpdateAnimalAlertRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateAnimalAlertCommand(id, request.type(),
+                request.description(), request.severity(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -70,8 +65,7 @@ public class AnimalAlertController {
     }
 
     private AnimalAlertResponse toResponse(AnimalAlertDto dto) {
-        return new AnimalAlertResponse(
-            dto.id(), dto.animalId(), dto.animalName(), dto.type(),
-            dto.description(), dto.severity(), dto.createdDate(), dto.enabled());
+        return new AnimalAlertResponse(dto.id(), dto.animalId(), dto.animalName(), dto.type(),
+                dto.description(), dto.severity(), dto.createdDate(), dto.enabled());
     }
 }

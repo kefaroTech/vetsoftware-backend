@@ -16,7 +16,7 @@ public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCas
     private final OpenAccountRefresher refresher;
 
     public DeleteDebtOpenAccountService(DebtOpenAccountRepository repository,
-                                        OpenAccountRefresher refresher) {
+            OpenAccountRefresher refresher) {
         this.repository = repository;
         this.refresher = refresher;
     }
@@ -25,7 +25,7 @@ public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCas
     @Transactional
     public void execute(Long id, Long companyId) {
         DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
+                .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
         if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
             throw new IllegalArgumentException("debt open account does not belong to company");
         }

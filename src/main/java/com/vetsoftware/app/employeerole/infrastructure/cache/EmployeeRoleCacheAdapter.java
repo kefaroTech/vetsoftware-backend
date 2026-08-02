@@ -20,21 +20,24 @@ public class EmployeeRoleCacheAdapter implements PermissionCachePort {
 
     @Override
     public void evictByEmployeeId(Long employeeId) {
-        if (employeeId == null) return;
+        if (employeeId == null)
+            return;
         runAfterCommit(() -> {
             Cache cache = cacheManager.getCache(CACHE_NAME);
-            if (cache != null) cache.evict(employeeId);
+            if (cache != null)
+                cache.evict(employeeId);
         });
     }
 
     private void runAfterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
+            TransactionSynchronizationManager
+                    .registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            action.run();
+                        }
+                    });
         } else {
             action.run();
         }

@@ -15,8 +15,7 @@ public class JpaNumberingResolutionRepository implements NumberingResolutionRepo
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaNumberingResolutionRepository(NumberingResolutionJpaRepository jpaRepository,
-                                            NumberingResolutionJpaMapper mapper,
-                                            CompanyJpaRepository companyJpaRepository) {
+            NumberingResolutionJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaNumberingResolutionRepository implements NumberingResolutionRepo
 
     @Override
     public NumberingResolution save(NumberingResolution resolution) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(resolution.getCompany().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(resolution.getCompany().id());
         NumberingResolutionJpaEntity saved = jpaRepository.save(mapper.toJpa(resolution, company));
         return mapper.toDomain(saved, resolution.getCompany());
     }
@@ -41,14 +41,14 @@ public class JpaNumberingResolutionRepository implements NumberingResolutionRepo
 
     @Override
     public List<NumberingResolution> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompanyId(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public boolean existsActiveByCompanyBranchAndType(Long companyId, Long branchId,
             com.vetsoftware.app.numberingresolution.domain.ElectronicDocumentType documentType) {
-        return jpaRepository.countActiveByCompanyBranchAndType(companyId, branchId, documentType.name()) > 0;
+        return jpaRepository.countActiveByCompanyBranchAndType(companyId, branchId,
+                documentType.name()) > 0;
     }
 
     @Override

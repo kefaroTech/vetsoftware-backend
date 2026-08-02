@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindSupplierInvoiceUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('supplierinvoice.read') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('supplierinvoice.read') and @authz.isMyCompany(#companyId))")
     SupplierInvoiceDto findById(Long id, Long companyId);
 }

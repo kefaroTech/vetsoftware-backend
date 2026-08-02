@@ -28,11 +28,9 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
     private final InventoryLedgerPort inventoryLedger;
 
     public VoidProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
-                                               OpenAccountQueryPort openAccountQueryPort,
-                                               EmployeeQueryPort employeeQueryPort,
-                                               OpenAccountRefresher refresher,
-                                               OpenAccountVersionGuard versionGuard,
-                                               InventoryLedgerPort inventoryLedger) {
+            OpenAccountQueryPort openAccountQueryPort, EmployeeQueryPort employeeQueryPort,
+            OpenAccountRefresher refresher, OpenAccountVersionGuard versionGuard,
+            InventoryLedgerPort inventoryLedger) {
         this.repository = repository;
         this.openAccountQueryPort = openAccountQueryPort;
         this.employeeQueryPort = employeeQueryPort;
@@ -44,35 +42,47 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
     @Override
     @Transactional
     public ProductChargeOpenAccountDto execute(VoidProductChargeOpenAccountCommand command) {
-        ProductChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
-            .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
+        ProductChargeOpenAccount charge = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
+                .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
         Long openAccountId = charge.getOpenAccount().id();
         if (!charge.getOpenAccount().companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("product charge does not belong to company");
         }
-        // Lock pesimista de la cuenta antes de leer su estado/saldo: serializa la anulación frente a
-        // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen/saldo), no solo en el recálculo.
+        // Lock pesimista de la cuenta antes de leer su estado/saldo: serializa la
+        // anulación frente a
+        // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen/saldo), no
+        // solo en el
+        // recálculo.
         openAccountQueryPort.lockForUpdate(openAccountId);
         // Detección temprana de conflicto sobre la cuenta del cargo.
         versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");
         }
-        // No se puede anular un cargo si eso dejaría el saldo pendiente negativo (hay abonos que
-        // ya cubren más de lo que quedaría). Regla: monto del cargo <= saldo pendiente actual.
+        // No se puede anular un cargo si eso dejaría el saldo pendiente negativo (hay
+        // abonos que
+        // ya cubren más de lo que quedaría). Regla: monto del cargo <= saldo pendiente
+        // actual.
         BigDecimal outstanding = openAccountQueryPort.outstandingAmount(openAccountId);
         if (charge.getTotalAmount().compareTo(outstanding) > 0) {
             throw new IllegalStateException(
-                "No se puede anular el cargo: el saldo pendiente quedaría negativo. "
-                + "Hay abonos que lo cubren; anula primero los abonos necesarios.");
+                    "No se puede anular el cargo: el saldo pendiente quedaría negativo. "
+                            + "Hay abonos que lo cubren; anula primero los abonos necesarios.");
         }
-        EmployeeRef voidedBy = employeeQueryPort.findByIdAndCompanyId(command.voidedById(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.voidedById()));
+        EmployeeRef voidedBy = employeeQueryPort
+                .findByIdAndCompanyId(command.voidedById(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Employee not found: " + command.voidedById()));
 
         charge.voidCharge(voidedBy, command.reason());
         ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
-        // Repone el inventario descontado al crear el cargo: compensa en el kardex los movimientos de esta referencia
-        // (idempotente). La sede/lote se toman de los movimientos originales, no hace falta recalcularlos.
+        // Repone el inventario descontado al crear el cargo: compensa en el kardex los
+        // movimientos de
+        // esta referencia
+        // (idempotente). La sede/lote se toman de los movimientos originales, no hace
+        // falta
+        // recalcularlos.
         inventoryLedger.reverseSale(command.id(), command.voidedById());
         refresher.refresh(command.companyId(), openAccountId);
         return dto;

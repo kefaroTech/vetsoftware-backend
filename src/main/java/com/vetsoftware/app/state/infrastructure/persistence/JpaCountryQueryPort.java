@@ -17,6 +17,6 @@ public class JpaCountryQueryPort implements CountryQueryPort {
     @Override
     public Optional<CountryRef> findById(Long countryId) {
         return countryJpaRepository.findById(countryId)
-            .map(e -> new CountryRef(e.getId(), e.getName()));
+                .map(e -> new CountryRef(e.getId(), e.getName()));
     }
 }

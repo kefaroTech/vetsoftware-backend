@@ -5,5 +5,6 @@ import java.util.Optional;
 
 public interface DianProviderConfigRepository {
     DianProviderConfig save(DianProviderConfig config);
+
     Optional<DianProviderConfig> findByCompanyId(Long companyId);
 }

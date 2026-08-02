@@ -31,12 +31,10 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
 
     public LoginEmployeeService(EmployeeCredentialsRepository credentialsRepository,
-                                TokenGenerator tokenGenerator,
-                                RefreshTokenIssuer refreshTokenIssuer,
-                                PasswordHasher passwordHasher,
-                                EmployeeActivationPort employeeActivationPort,
-                                AuthEmployeeRepository authEmployeeRepository,
-                                RefreshTokenRepository refreshTokenRepository) {
+            TokenGenerator tokenGenerator, RefreshTokenIssuer refreshTokenIssuer,
+            PasswordHasher passwordHasher, EmployeeActivationPort employeeActivationPort,
+            AuthEmployeeRepository authEmployeeRepository,
+            RefreshTokenRepository refreshTokenRepository) {
         this.credentialsRepository = credentialsRepository;
         this.tokenGenerator = tokenGenerator;
         this.refreshTokenIssuer = refreshTokenIssuer;
@@ -55,22 +53,25 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
         if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
             throw new InvalidCredentialsException();
 
-        // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
+        // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede
+        // iniciar sesión.
         if (!credentials.emailVerified())
             throw new EmailNotVerifiedException(command.employeeCode());
 
-        // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba activo).
+        // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba
+        // activo).
         employeeActivationPort.activateOnLogin(credentials.id());
 
-        // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la misma cuenta.
+        // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la
+        // misma cuenta.
         AuthEmployee activeSession = authEmployeeRepository.rotateAuthVersion(credentials.id())
                 .orElseThrow(InvalidCredentialsException::new);
         refreshTokenRepository.revokeAllForSubject(credentials.id(), "EMPLOYEE");
 
-        String accessToken = tokenGenerator.generate(
-                activeSession.id(), "EMPLOYEE", activeSession.companyId(), activeSession.authVersion());
-        String refreshToken = refreshTokenIssuer.issue(
-                activeSession.id(), "EMPLOYEE", activeSession.authVersion());
+        String accessToken = tokenGenerator.generate(activeSession.id(), "EMPLOYEE",
+                activeSession.companyId(), activeSession.authVersion());
+        String refreshToken = refreshTokenIssuer.issue(activeSession.id(), "EMPLOYEE",
+                activeSession.authVersion());
         return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
     }
 }

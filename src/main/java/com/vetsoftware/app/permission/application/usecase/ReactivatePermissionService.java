@@ -21,8 +21,9 @@ public class ReactivatePermissionService implements ReactivatePermissionUseCase 
     @Transactional
     public PermissionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new PermissionNotFoundException(id);
-        return PermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new PermissionNotFoundException(id)));
+        if (rows == 0)
+            throw new PermissionNotFoundException(id);
+        return PermissionDto.from(
+                repository.findById(id).orElseThrow(() -> new PermissionNotFoundException(id)));
     }
 }

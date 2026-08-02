@@ -17,6 +17,6 @@ public class JpaBranchQueryPort implements BranchQueryPort {
     @Override
     public Optional<BranchRef> findByIdAndCompanyId(Long branchId, Long companyId) {
         return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
-            .map(e -> new BranchRef(e.getId(), e.getName()));
+                .map(e -> new BranchRef(e.getId(), e.getName()));
     }
 }

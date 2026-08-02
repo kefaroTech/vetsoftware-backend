@@ -6,6 +6,7 @@ import com.vetsoftware.app.supplierinvoice.application.dto.AccountsPayableAgingD
 import com.vetsoftware.app.supplierinvoice.application.port.in.GetAccountsPayableAgingUseCase;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoice;
+import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -13,13 +14,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Arma el reporte de cuentas por pagar por antigüedad: toma las facturas con saldo (PENDING/PARTIAL) y reparte el
- * saldo de cada una en un tramo según los días transcurridos desde su vencimiento hasta {@code asOf}.
+ * Arma el reporte de cuentas por pagar por antigüedad: toma las facturas con
+ * saldo (PENDING/PARTIAL) y reparte el saldo de cada una en un tramo según los
+ * días transcurridos desde su vencimiento hasta {@code asOf}.
  */
 @Observed(name = "supplier.invoice.accounts.payable.aging")
 @Service
@@ -34,16 +35,19 @@ public class GetAccountsPayableAgingService implements GetAccountsPayableAgingUs
     @Transactional(readOnly = true)
     public AccountsPayableAgingDto get(Long companyId, Long branchId, LocalDate asOf) {
         LocalDate reference = asOf != null ? asOf : LocalDate.now();
-        List<SupplierInvoice> outstanding = repository.findOutstandingByCompany(companyId, branchId);
+        List<SupplierInvoice> outstanding = repository.findOutstandingByCompany(companyId,
+                branchId);
 
         Map<Long, Acc> bySupplier = new LinkedHashMap<>();
         Acc grand = new Acc(null, null, null);
         for (SupplierInvoice inv : outstanding) {
             BigDecimal balance = inv.balance();
-            if (balance.signum() <= 0) continue;
+            if (balance.signum() <= 0)
+                continue;
             long daysOverdue = ChronoUnit.DAYS.between(inv.getDueDate(), reference);
             Acc acc = bySupplier.computeIfAbsent(inv.getSupplier().id(),
-                k -> new Acc(inv.getSupplier().id(), inv.getSupplier().name(), inv.getSupplier().taxId()));
+                    k -> new Acc(inv.getSupplier().id(), inv.getSupplier().name(),
+                            inv.getSupplier().taxId()));
             acc.add(daysOverdue, balance);
             grand.add(daysOverdue, balance);
         }
@@ -73,11 +77,16 @@ public class GetAccountsPayableAgingService implements GetAccountsPayableAgingUs
         }
 
         void add(long daysOverdue, BigDecimal amount) {
-            if (daysOverdue <= 0) current = current.add(amount);
-            else if (daysOverdue <= 30) d1to30 = d1to30.add(amount);
-            else if (daysOverdue <= 60) d31to60 = d31to60.add(amount);
-            else if (daysOverdue <= 90) d61to90 = d61to90.add(amount);
-            else over90 = over90.add(amount);
+            if (daysOverdue <= 0)
+                current = current.add(amount);
+            else if (daysOverdue <= 30)
+                d1to30 = d1to30.add(amount);
+            else if (daysOverdue <= 60)
+                d31to60 = d31to60.add(amount);
+            else if (daysOverdue <= 90)
+                d61to90 = d61to90.add(amount);
+            else
+                over90 = over90.add(amount);
         }
 
         Bucket toBucket() {

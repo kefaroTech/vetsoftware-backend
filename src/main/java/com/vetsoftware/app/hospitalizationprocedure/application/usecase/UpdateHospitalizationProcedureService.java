@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.procedure.update")
 @Service
-public class UpdateHospitalizationProcedureService implements UpdateHospitalizationProcedureUseCase {
+public class UpdateHospitalizationProcedureService
+        implements
+            UpdateHospitalizationProcedureUseCase {
     private final HospitalizationProcedureRepository repository;
 
     public UpdateHospitalizationProcedureService(HospitalizationProcedureRepository repository) {
@@ -26,17 +28,11 @@ public class UpdateHospitalizationProcedureService implements UpdateHospitalizat
     @Transactional
     public HospitalizationProcedureDto execute(UpdateHospitalizationProcedureCommand command) {
         HospitalizationProcedure procedure = repository.findById(command.id())
-            .orElseThrow(() -> new HospitalizationProcedureNotFoundException(command.id()));
-        procedure.update(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes());
+                .orElseThrow(() -> new HospitalizationProcedureNotFoundException(command.id()));
+        procedure.update(command.name(), command.dose(), parseFrequency(command.frequency()),
+                parseGuidelineType(command.guidelineType()),
+                parseDurationMeasure(command.durationMeasure()), command.durationQuantity(),
+                command.startDate(), command.startTime(), command.notes());
         return HospitalizationProcedureDto.from(repository.save(procedure));
     }
 

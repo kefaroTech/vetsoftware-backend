@@ -20,6 +20,7 @@ public class ListGoodsReceiptsService implements ListGoodsReceiptsUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<GoodsReceiptDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(GoodsReceiptDto::from).toList();
+        return repository.findAllByCompanyId(companyId).stream().map(GoodsReceiptDto::from)
+                .toList();
     }
 }

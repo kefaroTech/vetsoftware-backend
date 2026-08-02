@@ -18,7 +18,7 @@ public class ListAnimalsByOwnerService implements ListAnimalsByOwnerUseCase {
 
     @Override
     public List<AnimalDto> listByOwner(Long ownerId, Long companyId) {
-        return repository.findByOwnerIdAndCompanyId(ownerId, companyId)
-            .stream().map(AnimalDto::from).toList();
+        return repository.findByOwnerIdAndCompanyId(ownerId, companyId).stream()
+                .map(AnimalDto::from).toList();
     }
 }

@@ -5,10 +5,13 @@ import com.vetsoftware.app.prescription.application.port.out.MedicamentPrescript
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMedicamentPrescriptionChildrenQueryPort implements MedicamentPrescriptionChildrenQueryPort {
+public class JpaMedicamentPrescriptionChildrenQueryPort
+        implements
+            MedicamentPrescriptionChildrenQueryPort {
     private final MedicamentPrescriptionJpaRepository jpaRepository;
 
-    public JpaMedicamentPrescriptionChildrenQueryPort(MedicamentPrescriptionJpaRepository jpaRepository) {
+    public JpaMedicamentPrescriptionChildrenQueryPort(
+            MedicamentPrescriptionJpaRepository jpaRepository) {
         this.jpaRepository = jpaRepository;
     }
 

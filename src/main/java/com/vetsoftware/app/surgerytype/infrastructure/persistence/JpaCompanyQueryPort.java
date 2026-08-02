@@ -17,6 +17,6 @@ public class JpaCompanyQueryPort implements CompanyQueryPort {
     @Override
     public Optional<CompanyRef> findById(Long companyId) {
         return companyJpaRepository.findById(companyId)
-            .map(e -> new CompanyRef(e.getId(), e.getName(), e.getIdentifier()));
+                .map(e -> new CompanyRef(e.getId(), e.getName(), e.getIdentifier()));
     }
 }

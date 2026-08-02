@@ -16,7 +16,10 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Test del aging: reparte el saldo de las facturas pendientes en los tramos según los días vencidos vs asOf. */
+/**
+ * Test del aging: reparte el saldo de las facturas pendientes en los tramos
+ * según los días vencidos vs asOf.
+ */
 class GetAccountsPayableAgingServiceTest {
 
     private static final CompanyRef CO = new CompanyRef(1L, "Vet SAS", "900123456-7");
@@ -27,29 +30,45 @@ class GetAccountsPayableAgingServiceTest {
     private static SupplierInvoice inv(String number, LocalDate due, String amount) {
         LocalDate issue = due.minusDays(30);
         return SupplierInvoice.create(CO, BR, SUP, null, null, number, issue, due,
-            new BigDecimal(amount), BigDecimal.ZERO, BigDecimal.ZERO, null, 7L);
+                new BigDecimal(amount), BigDecimal.ZERO, BigDecimal.ZERO, null, 7L);
     }
 
     /** Repo que solo responde findOutstandingByCompany; el resto no se usa aquí. */
     private SupplierInvoiceRepository repoWith(List<SupplierInvoice> outstanding) {
         return new SupplierInvoiceRepository() {
-            public SupplierInvoice save(SupplierInvoice i) { return i; }
-            public Optional<SupplierInvoice> findByIdAndCompanyId(Long id, Long companyId) { return Optional.empty(); }
+            public SupplierInvoice save(SupplierInvoice i) {
+                return i;
+            }
+
+            public Optional<SupplierInvoice> findByIdAndCompanyId(Long id, Long companyId) {
+                return Optional.empty();
+            }
+
             public PageResult<SupplierInvoice> search(SearchSupplierInvoicesCommand c) {
                 return new PageResult<>(List.of(), 0, 20, 0, 0);
             }
-            public List<SupplierInvoice> findOutstandingByCompany(Long companyId, Long branchId) { return outstanding; }
-            public boolean existsByCompanySupplierAndNumber(Long c, Long s, String n) { return false; }
-            public void delete(Long id) {}
+
+            public List<SupplierInvoice> findOutstandingByCompany(Long companyId, Long branchId) {
+                return outstanding;
+            }
+
+            public boolean existsByCompanySupplierAndNumber(Long c, Long s, String n) {
+                return false;
+            }
+
+            public void delete(Long id) {
+            }
         };
     }
 
     @Test
     void reparte_saldos_por_tramo_de_antiguedad() {
-        List<SupplierInvoice> outstanding = List.of(
-            inv("A", LocalDate.of(2026, 8, 15), "1000"), // futuro → al día
-            inv("B", LocalDate.of(2026, 7, 20), "500"),  // 11 días vencida → 1–30
-            inv("C", LocalDate.of(2026, 4, 1), "300"));   // >90 días → +90
+        List<SupplierInvoice> outstanding = List.of(inv("A", LocalDate.of(2026, 8, 15), "1000"), // futuro
+                                                                                                 // →
+                                                                                                 // al
+                                                                                                 // día
+                inv("B", LocalDate.of(2026, 7, 20), "500"), // 11 días vencida → 1–30
+                inv("C", LocalDate.of(2026, 4, 1), "300")); // >90 días → +90
         var service = new GetAccountsPayableAgingService(repoWith(outstanding));
 
         AccountsPayableAgingDto dto = service.get(1L, null, AS_OF);

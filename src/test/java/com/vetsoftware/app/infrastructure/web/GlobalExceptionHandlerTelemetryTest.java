@@ -26,13 +26,13 @@ class GlobalExceptionHandlerTelemetryTest {
         when(tracer.currentSpan()).thenReturn(span);
         when(span.context()).thenReturn(traceContext);
         when(traceContext.traceId()).thenReturn(traceId);
-        GlobalExceptionHandler handler =
-                new GlobalExceptionHandler(mock(AuditLogger.class), tracer);
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(mock(AuditLogger.class),
+                tracer);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        ServerRequestObservationContext observation =
-                new ServerRequestObservationContext(request, new MockHttpServletResponse());
-        request.setAttribute(
-                ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
+        ServerRequestObservationContext observation = new ServerRequestObservationContext(request,
+                new MockHttpServletResponse());
+        request.setAttribute(ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE,
+                observation);
         IllegalStateException failure = new IllegalStateException("unexpected");
 
         ProblemDetail problem = handler.handleUnexpected(failure, request);

@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "diagnostic.imaging.list.by.animal")
 @Service
-public class ListDiagnosticImagingsByAnimalService implements ListDiagnosticImagingsByAnimalUseCase {
+public class ListDiagnosticImagingsByAnimalService
+        implements
+            ListDiagnosticImagingsByAnimalUseCase {
     private final DiagnosticImagingRepository repository;
 
     public ListDiagnosticImagingsByAnimalService(DiagnosticImagingRepository repository) {
@@ -18,6 +20,7 @@ public class ListDiagnosticImagingsByAnimalService implements ListDiagnosticImag
 
     @Override
     public List<DiagnosticImagingDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(DiagnosticImagingDto::from).toList();
+        return repository.findAllByAnimalId(animalId).stream().map(DiagnosticImagingDto::from)
+                .toList();
     }
 }

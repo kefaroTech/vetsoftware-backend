@@ -10,9 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class LaboratoryTestFileJpaMapper {
 
-    public LaboratoryTestFileJpaEntity toJpa(LaboratoryTestFile file,
-                                             EmployeeJpaEntity uploadedBy,
-                                             LaboratoryTestJpaEntity laboratoryTest) {
+    public LaboratoryTestFileJpaEntity toJpa(LaboratoryTestFile file, EmployeeJpaEntity uploadedBy,
+            LaboratoryTestJpaEntity laboratoryTest) {
         LaboratoryTestFileJpaEntity entity = new LaboratoryTestFileJpaEntity();
         entity.setId(file.getId());
         entity.setStorageKey(file.getStorageKey());
@@ -31,17 +30,16 @@ public class LaboratoryTestFileJpaMapper {
     public LaboratoryTestFile toDomain(LaboratoryTestFileJpaEntity entity) {
         EmployeeJpaEntity e = entity.getUploadedBy();
         LaboratoryTestJpaEntity lt = entity.getLaboratoryTest();
-        return toDomain(entity,
-            new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()),
-            new LaboratoryTestRef(lt.getId(), lt.getDate()));
+        return toDomain(entity, new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()),
+                new LaboratoryTestRef(lt.getId(), lt.getDate()));
     }
 
-    // Write path — reusa los refs precargados, evita inicializar el proxy de getReferenceById
+    // Write path — reusa los refs precargados, evita inicializar el proxy de
+    // getReferenceById
     public LaboratoryTestFile toDomain(LaboratoryTestFileJpaEntity entity,
-                                       EmployeeRef uploadedByRef, LaboratoryTestRef laboratoryTestRef) {
-        return new LaboratoryTestFile(
-            entity.getId(), entity.getStorageKey(), entity.getBucket(),
-            entity.getOriginalFileName(), entity.getContentType(), entity.getSizeBytes(),
-            entity.getETag(), uploadedByRef, laboratoryTestRef, entity.getCreatedDate());
+            EmployeeRef uploadedByRef, LaboratoryTestRef laboratoryTestRef) {
+        return new LaboratoryTestFile(entity.getId(), entity.getStorageKey(), entity.getBucket(),
+                entity.getOriginalFileName(), entity.getContentType(), entity.getSizeBytes(),
+                entity.getETag(), uploadedByRef, laboratoryTestRef, entity.getCreatedDate());
     }
 }

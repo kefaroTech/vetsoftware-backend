@@ -21,7 +21,8 @@ public class ReactivateCompanyTaxProfileService implements ReactivateCompanyTaxP
     @Transactional
     public CompanyTaxProfileDto execute(Long companyId) {
         int rows = repository.reactivate(companyId);
-        if (rows == 0) throw new CompanyTaxProfileNotFoundException(companyId);
+        if (rows == 0)
+            throw new CompanyTaxProfileNotFoundException(companyId);
         return CompanyTaxProfileDto.from(repository.findByCompanyId(companyId)
                 .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId)));
     }

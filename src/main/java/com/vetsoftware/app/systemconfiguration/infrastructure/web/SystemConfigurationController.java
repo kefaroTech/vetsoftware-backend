@@ -10,8 +10,9 @@ import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Configuración general del sistema (global, clave-valor; no scoped a empresa). Lectura para cualquier
- * autenticado; escritura (upsert por propertyName) solo admin/gestor. Controla ajustes como el UVT.
+ * Configuración general del sistema (global, clave-valor; no scoped a empresa).
+ * Lectura para cualquier autenticado; escritura (upsert por propertyName) solo
+ * admin/gestor. Controla ajustes como el UVT.
  */
 @RestController
 @RequestMapping("/system-configurations")
@@ -20,7 +21,7 @@ public class SystemConfigurationController {
     private final SetSystemConfigurationUseCase setUseCase;
 
     public SystemConfigurationController(ListSystemConfigurationsUseCase listUseCase,
-                                         SetSystemConfigurationUseCase setUseCase) {
+            SetSystemConfigurationUseCase setUseCase) {
         this.listUseCase = listUseCase;
         this.setUseCase = setUseCase;
     }
@@ -32,6 +33,7 @@ public class SystemConfigurationController {
 
     @PutMapping
     public SystemConfigurationDto set(@Valid @RequestBody SetSystemConfigurationRequest request) {
-        return setUseCase.execute(new SetSystemConfigurationCommand(request.propertyName(), request.value()));
+        return setUseCase.execute(
+                new SetSystemConfigurationCommand(request.propertyName(), request.value()));
     }
 }

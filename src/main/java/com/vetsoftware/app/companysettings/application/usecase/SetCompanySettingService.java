@@ -23,11 +23,11 @@ public class SetCompanySettingService implements SetCompanySettingUseCase {
     @Transactional
     public CompanySettingDto set(SetCompanySettingCommand command) {
         CompanySetting setting = repository.find(command.companyId(), command.propertyName())
-            .map(existing -> {
-                existing.updateValue(command.value());
-                return existing;
-            })
-            .orElseGet(() -> CompanySetting.create(command.companyId(), command.propertyName(), command.value()));
+                .map(existing -> {
+                    existing.updateValue(command.value());
+                    return existing;
+                }).orElseGet(() -> CompanySetting.create(command.companyId(),
+                        command.propertyName(), command.value()));
         return CompanySettingDto.from(repository.save(setting));
     }
 }

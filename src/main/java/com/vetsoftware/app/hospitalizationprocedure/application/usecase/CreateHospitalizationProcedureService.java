@@ -17,14 +17,16 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.procedure.create")
 @Service
-public class CreateHospitalizationProcedureService implements CreateHospitalizationProcedureUseCase {
+public class CreateHospitalizationProcedureService
+        implements
+            CreateHospitalizationProcedureUseCase {
     private final HospitalizationProcedureRepository repository;
     private final HospitalizationQueryPort hospitalizationQueryPort;
     private final EmployeeQueryPort employeeQueryPort;
 
     public CreateHospitalizationProcedureService(HospitalizationProcedureRepository repository,
-                                                 HospitalizationQueryPort hospitalizationQueryPort,
-                                                 EmployeeQueryPort employeeQueryPort) {
+            HospitalizationQueryPort hospitalizationQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.hospitalizationQueryPort = hospitalizationQueryPort;
         this.employeeQueryPort = employeeQueryPort;
@@ -32,23 +34,19 @@ public class CreateHospitalizationProcedureService implements CreateHospitalizat
 
     @Override
     public HospitalizationProcedureDto execute(CreateHospitalizationProcedureCommand command) {
-        HospitalizationRef hospitalization = hospitalizationQueryPort.findById(command.hospitalizationId())
-            .orElseThrow(() -> new IllegalArgumentException("Hospitalization not found: " + command.hospitalizationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+        HospitalizationRef hospitalization = hospitalizationQueryPort
+                .findById(command.hospitalizationId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Hospitalization not found: " + command.hospitalizationId()));
+        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        HospitalizationProcedure procedure = HospitalizationProcedure.create(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes(),
-            hospitalization,
-            createdBy);
+        HospitalizationProcedure procedure = HospitalizationProcedure.create(command.name(),
+                command.dose(), parseFrequency(command.frequency()),
+                parseGuidelineType(command.guidelineType()),
+                parseDurationMeasure(command.durationMeasure()), command.durationQuantity(),
+                command.startDate(), command.startTime(), command.notes(), hospitalization,
+                createdBy);
         return HospitalizationProcedureDto.from(repository.save(procedure));
     }
 

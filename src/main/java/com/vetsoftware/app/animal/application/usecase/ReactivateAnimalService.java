@@ -21,8 +21,9 @@ public class ReactivateAnimalService implements ReactivateAnimalUseCase {
     @Transactional
     public AnimalDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new AnimalNotFoundException(id);
+        if (rows == 0)
+            throw new AnimalNotFoundException(id);
         return AnimalDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AnimalNotFoundException(id)));
+                .orElseThrow(() -> new AnimalNotFoundException(id)));
     }
 }

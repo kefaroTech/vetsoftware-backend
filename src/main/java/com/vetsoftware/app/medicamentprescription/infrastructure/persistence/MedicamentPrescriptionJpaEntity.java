@@ -3,9 +3,9 @@ package com.vetsoftware.app.medicamentprescription.infrastructure.persistence;
 import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaEntity;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "medicament_prescriptions")
@@ -46,26 +46,86 @@ public class MedicamentPrescriptionJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected MedicamentPrescriptionJpaEntity() {}
+    protected MedicamentPrescriptionJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public MedicamentJpaEntity getMedicament() { return medicament; }
-    public void setMedicament(MedicamentJpaEntity medicament) { this.medicament = medicament; }
-    public String getPresentation() { return presentation; }
-    public void setPresentation(String presentation) { this.presentation = presentation; }
-    public Double getQuantity() { return quantity; }
-    public void setQuantity(Double quantity) { this.quantity = quantity; }
-    public String getPosology() { return posology; }
-    public void setPosology(String posology) { this.posology = posology; }
-    public String getObservation() { return observation; }
-    public void setObservation(String observation) { this.observation = observation; }
-    public PrescriptionJpaEntity getPrescription() { return prescription; }
-    public void setPrescription(PrescriptionJpaEntity prescription) { this.prescription = prescription; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public MedicamentJpaEntity getMedicament() {
+        return medicament;
+    }
+
+    public void setMedicament(MedicamentJpaEntity medicament) {
+        this.medicament = medicament;
+    }
+
+    public String getPresentation() {
+        return presentation;
+    }
+
+    public void setPresentation(String presentation) {
+        this.presentation = presentation;
+    }
+
+    public Double getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getPosology() {
+        return posology;
+    }
+
+    public void setPosology(String posology) {
+        this.posology = posology;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
+    }
+
+    public PrescriptionJpaEntity getPrescription() {
+        return prescription;
+    }
+
+    public void setPrescription(PrescriptionJpaEntity prescription) {
+        this.prescription = prescription;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

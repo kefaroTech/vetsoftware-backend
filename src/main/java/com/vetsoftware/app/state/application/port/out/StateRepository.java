@@ -6,9 +6,14 @@ import java.util.Optional;
 
 public interface StateRepository {
     State save(State state);
+
     Optional<State> findById(Long id);
+
     List<State> findAll();
+
     List<State> findByCountryId(Long countryId);
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

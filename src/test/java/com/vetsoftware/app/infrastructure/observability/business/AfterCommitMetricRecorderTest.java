@@ -40,8 +40,8 @@ class AfterCommitMetricRecorderTest {
 
         recorder.recordAfterCommit(value::incrementAndGet);
         TransactionSynchronizationManager.getSynchronizations()
-                .forEach(synchronization ->
-                        synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+                .forEach(synchronization -> synchronization
+                        .afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
 
         assertThat(value).hasValue(0);
     }

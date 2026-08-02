@@ -16,10 +16,8 @@ import org.springframework.stereotype.Component;
 public class DiagnosticImagingJpaMapper {
 
     public DiagnosticImagingJpaEntity toJpa(DiagnosticImaging imaging,
-                                            DiagnosticImagingTypeJpaEntity type,
-                                            AnimalJpaEntity animal,
-                                            ConsultationJpaEntity consultation,
-                                            CompanyJpaEntity company) {
+            DiagnosticImagingTypeJpaEntity type, AnimalJpaEntity animal,
+            ConsultationJpaEntity consultation, CompanyJpaEntity company) {
         DiagnosticImagingJpaEntity entity = new DiagnosticImagingJpaEntity();
         entity.setId(imaging.getId());
         entity.setDate(imaging.getDate());
@@ -42,21 +40,19 @@ public class DiagnosticImagingJpaMapper {
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new DiagnosticImagingTypeRef(t.getId(), t.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new DiagnosticImagingTypeRef(t.getId(), t.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public DiagnosticImaging toDomain(DiagnosticImagingJpaEntity entity, DiagnosticImagingTypeRef typeRef,
-                                      AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new DiagnosticImaging(
-            entity.getId(), entity.getDate(), typeRef,
-            entity.getClinicalSigns(), entity.getStudyType(),
-            entity.getDiagnosis(), entity.getObservations(),
-            DiagnosticImagingStatus.valueOf(entity.getStatus()),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(),
-            entity.isEnabled());
+    public DiagnosticImaging toDomain(DiagnosticImagingJpaEntity entity,
+            DiagnosticImagingTypeRef typeRef, AnimalRef animalRef, ConsultationRef consultationRef,
+            CompanyRef companyRef) {
+        return new DiagnosticImaging(entity.getId(), entity.getDate(), typeRef,
+                entity.getClinicalSigns(), entity.getStudyType(), entity.getDiagnosis(),
+                entity.getObservations(), DiagnosticImagingStatus.valueOf(entity.getStatus()),
+                animalRef, consultationRef, companyRef, entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

@@ -15,8 +15,7 @@ public class JpaBasePermissionRepository implements BasePermissionRepository {
     private final SubModuleJpaRepository subModuleJpaRepository;
 
     public JpaBasePermissionRepository(BasePermissionJpaRepository jpaRepository,
-                                       BasePermissionJpaMapper mapper,
-                                       SubModuleJpaRepository subModuleJpaRepository) {
+            BasePermissionJpaMapper mapper, SubModuleJpaRepository subModuleJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.subModuleJpaRepository = subModuleJpaRepository;
@@ -24,7 +23,8 @@ public class JpaBasePermissionRepository implements BasePermissionRepository {
 
     @Override
     public BasePermission save(BasePermission basePermission) {
-        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(basePermission.getSubModule().id());
+        SubModuleJpaEntity subModule = subModuleJpaRepository
+                .getReferenceById(basePermission.getSubModule().id());
         BasePermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(basePermission, subModule));
         return mapper.toDomain(saved, basePermission.getSubModule());
     }

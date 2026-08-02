@@ -15,11 +15,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SurgeryJpaMapper {
 
-    public SurgeryJpaEntity toJpa(Surgery surgery,
-                                  SurgeryTypeJpaEntity surgeryType,
-                                  AnimalJpaEntity animal,
-                                  ConsultationJpaEntity consultation,
-                                  CompanyJpaEntity company) {
+    public SurgeryJpaEntity toJpa(Surgery surgery, SurgeryTypeJpaEntity surgeryType,
+            AnimalJpaEntity animal, ConsultationJpaEntity consultation, CompanyJpaEntity company) {
         SurgeryJpaEntity entity = new SurgeryJpaEntity();
         entity.setId(surgery.getId());
         entity.setDate(surgery.getDate());
@@ -42,20 +39,17 @@ public class SurgeryJpaMapper {
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new SurgeryTypeRef(st.getId(), st.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new SurgeryTypeRef(st.getId(), st.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public Surgery toDomain(SurgeryJpaEntity entity, SurgeryTypeRef surgeryTypeRef,
-                            AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Surgery(
-            entity.getId(), entity.getDate(), surgeryTypeRef,
-            entity.getDescription(), entity.getMedicament(), entity.getObservations(),
-            entity.getComplications(),
-            SurgeryStatus.valueOf(entity.getStatus()),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+            AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
+        return new Surgery(entity.getId(), entity.getDate(), surgeryTypeRef,
+                entity.getDescription(), entity.getMedicament(), entity.getObservations(),
+                entity.getComplications(), SurgeryStatus.valueOf(entity.getStatus()), animalRef,
+                consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }

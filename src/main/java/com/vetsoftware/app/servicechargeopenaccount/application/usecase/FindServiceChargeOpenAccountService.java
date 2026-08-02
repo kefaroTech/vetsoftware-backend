@@ -19,6 +19,6 @@ public class FindServiceChargeOpenAccountService implements FindServiceChargeOpe
     @Override
     public ServiceChargeOpenAccountDto findById(Long id, Long companyId) {
         return ServiceChargeOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id)));
+                .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id)));
     }
 }

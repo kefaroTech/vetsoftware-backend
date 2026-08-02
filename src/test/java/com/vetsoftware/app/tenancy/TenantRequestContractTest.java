@@ -16,23 +16,16 @@ import org.junit.jupiter.api.Test;
 
 class TenantRequestContractTest {
 
-    private static final List<Class<?>> TENANT_SCOPED_REQUESTS = List.of(
-        CreateAnimalRequest.class,
-        UpdateAnimalRequest.class,
-        UpdateConsultationRequest.class,
-        CreateEmployeeRequest.class,
-        UpdateOwnerRequest.class,
-        CreatePermissionRequest.class,
-        UpdatePermissionRequest.class
-    );
+    private static final List<Class<?>> TENANT_SCOPED_REQUESTS = List.of(CreateAnimalRequest.class,
+            UpdateAnimalRequest.class, UpdateConsultationRequest.class, CreateEmployeeRequest.class,
+            UpdateOwnerRequest.class, CreatePermissionRequest.class, UpdatePermissionRequest.class);
 
     @Test
     void tenantScopedRequestsDoNotAcceptCompanyIdFromTheClient() {
         for (Class<?> requestType : TENANT_SCOPED_REQUESTS) {
-            assertThat(Stream.of(requestType.getRecordComponents())
-                .map(RecordComponent::getName))
-                .as("record components of %s", requestType.getSimpleName())
-                .doesNotContain("companyId");
+            assertThat(Stream.of(requestType.getRecordComponents()).map(RecordComponent::getName))
+                    .as("record components of %s", requestType.getSimpleName())
+                    .doesNotContain("companyId");
         }
     }
 }

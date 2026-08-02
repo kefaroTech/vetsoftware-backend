@@ -10,10 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 class AuditOutboxRepository {
 
     private final JdbcTemplate jdbcTemplate;
@@ -23,13 +20,15 @@ class AuditOutboxRepository {
     }
 
     /**
-     * Reclama filas con un lease; {@code SKIP LOCKED} permite ejecutar varias réplicas sin
-     * publicar el mismo lote de forma concurrente.
+     * Reclama filas con un lease; {@code SKIP LOCKED} permite ejecutar varias
+     * réplicas sin publicar el mismo lote de forma concurrente.
      */
     @Transactional
     public List<AuditOutboxRecord> claim(int limit, Instant now, Duration leaseDuration) {
-        // Solo se publica lo ya secuenciado: el registro que llega al archivo inmutable debe llevar
-        // su posición y su eslabón. Lo insertado entre el secuenciado y esta consulta espera al
+        // Solo se publica lo ya secuenciado: el registro que llega al archivo inmutable
+        // debe llevar
+        // su posición y su eslabón. Lo insertado entre el secuenciado y esta consulta
+        // espera al
         // ciclo siguiente.
         List<AuditOutboxRecord> records = jdbcTemplate.query("""
                 SELECT id, event_id, payload, attempts, chain_sequence, previous_hash,
@@ -42,14 +41,10 @@ class AuditOutboxRepository {
                  LIMIT ?
                  FOR UPDATE SKIP LOCKED
                 """,
-                (resultSet, row) -> new AuditOutboxRecord(
-                        resultSet.getLong("id"),
-                        resultSet.getString("event_id"),
-                        resultSet.getString("payload"),
-                        resultSet.getInt("attempts") + 1,
-                        resultSet.getLong("chain_sequence"),
-                        resultSet.getString("previous_hash"),
-                        resultSet.getString("payload_hash"),
+                (resultSet, row) -> new AuditOutboxRecord(resultSet.getLong("id"),
+                        resultSet.getString("event_id"), resultSet.getString("payload"),
+                        resultSet.getInt("attempts") + 1, resultSet.getLong("chain_sequence"),
+                        resultSet.getString("previous_hash"), resultSet.getString("payload_hash"),
                         resultSet.getString("chain_hash")),
                 Timestamp.from(now), Timestamp.from(now), limit);
 
@@ -62,13 +57,10 @@ class AuditOutboxRepository {
                    SET status = 'PROCESSING', attempts = attempts + 1,
                        locked_until = ?, last_error = NULL
                  WHERE id = ?
-                """,
-                records,
-                records.size(),
-                (statement, record) -> {
-                    statement.setTimestamp(1, lockedUntil);
-                    statement.setLong(2, record.id());
-                });
+                """, records, records.size(), (statement, record) -> {
+            statement.setTimestamp(1, lockedUntil);
+            statement.setLong(2, record.id());
+        });
         return records;
     }
 
@@ -83,14 +75,11 @@ class AuditOutboxRepository {
                    SET status = 'PUBLISHED', published_at = ?, locked_until = NULL,
                        next_attempt_at = ?, last_error = NULL
                  WHERE id = ? AND status = 'PROCESSING'
-                """,
-                ids,
-                ids.size(),
-                (statement, id) -> {
-                    statement.setTimestamp(1, publishedAt);
-                    statement.setTimestamp(2, publishedAt);
-                    statement.setLong(3, id);
-                });
+                """, ids, ids.size(), (statement, id) -> {
+            statement.setTimestamp(1, publishedAt);
+            statement.setTimestamp(2, publishedAt);
+            statement.setLong(3, id);
+        });
     }
 
     @Transactional
@@ -100,14 +89,13 @@ class AuditOutboxRepository {
                    SET status = 'FAILED', next_attempt_at = ?, locked_until = NULL,
                        last_error = ?
                  WHERE id = ? AND status = 'PROCESSING'
-                """,
-                Timestamp.from(nextAttemptAt), truncate(error), id);
+                """, Timestamp.from(nextAttemptAt), truncate(error), id);
     }
 
     /**
-     * Depura eventos ya publicados. Nunca rebasa la marca de checkpoint: eliminar un eslabón que
-     * todavía no quedó anclado en almacenamiento inmutable abriría un hueco imposible de auditar
-     * después.
+     * Depura eventos ya publicados. Nunca rebasa la marca de checkpoint: eliminar
+     * un eslabón que todavía no quedó anclado en almacenamiento inmutable abriría
+     * un hueco imposible de auditar después.
      */
     @Transactional
     public int deletePublishedBefore(Instant cutoff, int limit) {
@@ -120,8 +108,7 @@ class AuditOutboxRepository {
                        SELECT last_checkpoint_sequence FROM audit_chain_head WHERE id = 1)
                  ORDER BY id
                  LIMIT ?
-                """,
-                Timestamp.from(cutoff), limit);
+                """, Timestamp.from(cutoff), limit);
     }
 
     public long pendingCount() {

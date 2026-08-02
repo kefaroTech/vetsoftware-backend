@@ -4,6 +4,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeleteServiceCategoryUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('serviceCategory.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('serviceCategory.delete') and @authz.isMyCompany(#companyId))")
     void execute(Long id, Long companyId);
 }

@@ -23,8 +23,12 @@ public class GetReconciliationService implements GetReconciliationUseCase {
 
     @Override
     public ReconciliationDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
-        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to, branchId);
-        long validados = 0, rechazados = 0, contingencia = 0, pendientes = 0;
+        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to,
+                branchId);
+        long validados = 0;
+        long rechazados = 0;
+        long contingencia = 0;
+        long pendientes = 0;
         List<PendingDto> needsAttention = new ArrayList<>();
 
         for (SalesDocumentView d : docs) {
@@ -35,8 +39,8 @@ public class GetReconciliationService implements GetReconciliationUseCase {
                 default -> pendientes++; // PENDIENTE u otros
             }
             if (!"VALIDADO".equals(d.dianStatus())) {
-                needsAttention.add(new PendingDto(d.id(), d.documentType(), d.prefix(), d.consecutive(),
-                        d.issueDate(), d.dianStatus(), d.cufe(), d.cude()));
+                needsAttention.add(new PendingDto(d.id(), d.documentType(), d.prefix(),
+                        d.consecutive(), d.issueDate(), d.dianStatus(), d.cufe(), d.cude()));
             }
         }
         return new ReconciliationDto(from, to, docs.size(), validados, rechazados, contingencia,

@@ -16,7 +16,7 @@ public class DeleteMedicamentService implements DeleteMedicamentUseCase {
     private final MedicamentPrescriptionChildrenQueryPort childrenQueryPort;
 
     public DeleteMedicamentService(MedicamentRepository repository,
-                                   MedicamentPrescriptionChildrenQueryPort childrenQueryPort) {
+            MedicamentPrescriptionChildrenQueryPort childrenQueryPort) {
         this.repository = repository;
         this.childrenQueryPort = childrenQueryPort;
     }

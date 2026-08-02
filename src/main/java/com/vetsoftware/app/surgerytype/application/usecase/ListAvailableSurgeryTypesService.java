@@ -18,6 +18,7 @@ public class ListAvailableSurgeryTypesService implements ListAvailableSurgeryTyp
 
     @Override
     public List<SurgeryTypeDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(SurgeryTypeDto::from).toList();
+        return repository.findAllAvailableForCompany(companyId).stream().map(SurgeryTypeDto::from)
+                .toList();
     }
 }

@@ -18,8 +18,7 @@ public class FindBaseRolePermissionService implements FindBaseRolePermissionUseC
 
     @Override
     public BaseRolePermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(BaseRolePermissionDto::from)
-            .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+        return repository.findById(id).map(BaseRolePermissionDto::from)
+                .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
     }
 }

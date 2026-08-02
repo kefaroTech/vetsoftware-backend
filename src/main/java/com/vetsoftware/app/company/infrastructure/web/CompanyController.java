@@ -32,9 +32,8 @@ public class CompanyController {
     private final ReactivateCompanyUseCase reactivateUseCase;
 
     public CompanyController(CreateCompanyUseCase createUseCase, UpdateCompanyUseCase updateUseCase,
-                             FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
-                             DeleteCompanyUseCase deleteUseCase,
-                             ReactivateCompanyUseCase reactivateUseCase) {
+            FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
+            DeleteCompanyUseCase deleteUseCase, ReactivateCompanyUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,9 +46,8 @@ public class CompanyController {
     @ResponseStatus(HttpStatus.CREATED)
     public CompanyResponse create(@Valid @RequestBody CreateCompanyRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateCompanyCommand(request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId(), request.membershipId())
-        ));
+                new CreateCompanyCommand(request.name(), request.identifier(), request.address(),
+                        request.contactNumber(), request.cityId(), request.membershipId())));
     }
 
     @GetMapping
@@ -63,11 +61,11 @@ public class CompanyController {
     }
 
     @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCompanyRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId(), request.membershipId())
-        ));
+    public CompanyResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateCompanyRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateCompanyCommand(id, request.name(),
+                request.identifier(), request.address(), request.contactNumber(), request.cityId(),
+                request.membershipId())));
     }
 
     @DeleteMapping("/{id}")
@@ -85,10 +83,8 @@ public class CompanyController {
         CitySummaryDto c = dto.city();
         MembershipSummaryDto m = dto.membership();
         return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
-            dto.contactNumber(),
-            new CitySummary(c.id(), c.name()),
-            new MembershipSummary(m.id(), m.name(), m.status()),
-            dto.createdDate(),
-            dto.enabled());
+                dto.contactNumber(), new CitySummary(c.id(), c.name()),
+                new MembershipSummary(m.id(), m.name(), m.status()), dto.createdDate(),
+                dto.enabled());
     }
 }

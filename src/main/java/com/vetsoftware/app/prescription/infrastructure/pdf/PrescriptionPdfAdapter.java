@@ -25,13 +25,8 @@ public class PrescriptionPdfAdapter implements PrescriptionPdfPort {
         List<MedicamentLine> lines = new ArrayList<>();
         int i = 1;
         for (MedicamentRef m : model.medicaments()) {
-            lines.add(new MedicamentLine(
-                    i++,
-                    m.name(),
-                    m.presentation(),
-                    formatQuantity(m.quantity()),
-                    m.posology(),
-                    m.observation()));
+            lines.add(new MedicamentLine(i++, m.name(), m.presentation(),
+                    formatQuantity(m.quantity()), m.posology(), m.observation()));
         }
 
         Map<String, Object> ctx = new HashMap<>();
@@ -47,18 +42,13 @@ public class PrescriptionPdfAdapter implements PrescriptionPdfPort {
     }
 
     private static String formatQuantity(Double quantity) {
-        if (quantity == null) return "";
+        if (quantity == null)
+            return "";
         return BigDecimal.valueOf(quantity).stripTrailingZeros().toPlainString();
     }
 
     /** Fila de medicamento ya formateada para la plantilla. */
-    public record MedicamentLine(
-            int index,
-            String name,
-            String presentation,
-            String quantity,
-            String posology,
-            String observation
-    ) {
+    public record MedicamentLine(int index, String name, String presentation, String quantity,
+            String posology, String observation) {
     }
 }

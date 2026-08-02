@@ -18,13 +18,7 @@ public class SystemUserJpaMapper {
     }
 
     public SystemUser toDomain(SystemUserJpaEntity entity) {
-        return new SystemUser(
-            entity.getId(),
-            entity.getCode(),
-            entity.getHashPassword(),
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.getAuthVersion()
-        );
+        return new SystemUser(entity.getId(), entity.getCode(), entity.getHashPassword(),
+                entity.getCreatedDate(), entity.isEnabled(), entity.getAuthVersion());
     }
 }

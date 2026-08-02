@@ -23,17 +23,17 @@ import org.springframework.web.servlet.ModelAndView;
 class CorrelatedExceptionBridgeFilterTest {
 
     private final HandlerExceptionResolver resolver = mock(HandlerExceptionResolver.class);
-    private final CorrelatedExceptionBridgeFilter filter =
-            new CorrelatedExceptionBridgeFilter(resolver);
+    private final CorrelatedExceptionBridgeFilter filter = new CorrelatedExceptionBridgeFilter(
+            resolver);
 
     @Test
     void marksObservationAndDelegatesPreControllerException() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        ServerRequestObservationContext observation =
-                new ServerRequestObservationContext(request, response);
-        request.setAttribute(
-                ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
+        ServerRequestObservationContext observation = new ServerRequestObservationContext(request,
+                response);
+        request.setAttribute(ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE,
+                observation);
         ClassCastException failure = new ClassCastException("cached collection type mismatch");
         when(resolver.resolveException(request, response, null, failure))
                 .thenReturn(new ModelAndView());
@@ -53,11 +53,10 @@ class CorrelatedExceptionBridgeFilterTest {
         IllegalStateException failure = new IllegalStateException("unresolved");
         when(resolver.resolveException(request, response, null, failure)).thenReturn(null);
 
-        assertThatThrownBy(() -> filter.doFilter(
-                request, response, (ignoredRequest, ignoredResponse) -> {
+        assertThatThrownBy(
+                () -> filter.doFilter(request, response, (ignoredRequest, ignoredResponse) -> {
                     throw failure;
-                }))
-                .isSameAs(failure);
+                })).isSameAs(failure);
     }
 
     @Test
@@ -70,17 +69,14 @@ class CorrelatedExceptionBridgeFilterTest {
                 (ignoredRequest, ignoredResponse) -> reachedApplication.set(true));
 
         assertThat(reachedApplication).isTrue();
-        verify(resolver, never()).resolveException(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                isNull(),
-                org.mockito.ArgumentMatchers.any());
+        verify(resolver, never()).resolveException(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), isNull(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void runsImmediatelyInsideTheSpringHttpObservationFilter() {
-        FilterRegistration registration =
-                CorrelatedExceptionBridgeFilter.class.getAnnotation(FilterRegistration.class);
+        FilterRegistration registration = CorrelatedExceptionBridgeFilter.class
+                .getAnnotation(FilterRegistration.class);
 
         assertThat(registration).isNotNull();
         assertThat(registration.order()).isEqualTo(Ordered.HIGHEST_PRECEDENCE + 2);

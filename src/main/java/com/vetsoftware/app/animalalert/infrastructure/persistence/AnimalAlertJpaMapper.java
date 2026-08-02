@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AnimalAlertJpaMapper {
 
-    public AnimalAlertJpaEntity toJpa(AnimalAlert alert, AnimalJpaEntity animal, CompanyJpaEntity company) {
+    public AnimalAlertJpaEntity toJpa(AnimalAlert alert, AnimalJpaEntity animal,
+            CompanyJpaEntity company) {
         AnimalAlertJpaEntity entity = new AnimalAlertJpaEntity();
         entity.setId(alert.getId());
         entity.setAnimal(animal);
@@ -26,15 +27,14 @@ public class AnimalAlertJpaMapper {
     public AnimalAlert toDomain(AnimalAlertJpaEntity entity) {
         AnimalJpaEntity a = entity.getAnimal();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public AnimalAlert toDomain(AnimalAlertJpaEntity entity, AnimalRef animalRef, CompanyRef companyRef) {
-        return new AnimalAlert(
-            entity.getId(), animalRef, companyRef, entity.getType(),
-            entity.getDescription(), entity.getSeverity(),
-            entity.getCreatedDate(), entity.isEnabled());
+    public AnimalAlert toDomain(AnimalAlertJpaEntity entity, AnimalRef animalRef,
+            CompanyRef companyRef) {
+        return new AnimalAlert(entity.getId(), animalRef, companyRef, entity.getType(),
+                entity.getDescription(), entity.getSeverity(), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

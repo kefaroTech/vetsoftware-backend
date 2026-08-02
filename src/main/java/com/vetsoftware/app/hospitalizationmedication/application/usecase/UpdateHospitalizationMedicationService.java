@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.medication.update")
 @Service
-public class UpdateHospitalizationMedicationService implements UpdateHospitalizationMedicationUseCase {
+public class UpdateHospitalizationMedicationService
+        implements
+            UpdateHospitalizationMedicationUseCase {
     private final HospitalizationMedicationRepository repository;
 
     public UpdateHospitalizationMedicationService(HospitalizationMedicationRepository repository) {
@@ -26,17 +28,11 @@ public class UpdateHospitalizationMedicationService implements UpdateHospitaliza
     @Transactional
     public HospitalizationMedicationDto execute(UpdateHospitalizationMedicationCommand command) {
         HospitalizationMedication medication = repository.findById(command.id())
-            .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
-        medication.update(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes());
+                .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
+        medication.update(command.name(), command.dose(), parseFrequency(command.frequency()),
+                parseGuidelineType(command.guidelineType()),
+                parseDurationMeasure(command.durationMeasure()), command.durationQuantity(),
+                command.startDate(), command.startTime(), command.notes());
         return HospitalizationMedicationDto.from(repository.save(medication));
     }
 

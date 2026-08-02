@@ -11,9 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Transmite un documento a la DIAN a través del proveedor configurado para la empresa. Valida ownership
- * y delega el envío en {@link DocumentTransmitter}. Con MATIAS (async) el documento queda PENDIENTE
- * tras transmitir; lo cierra el webhook o el polling de estado. (Un proveedor síncrono cerraría aquí.)
+ * Transmite un documento a la DIAN a través del proveedor configurado para la
+ * empresa. Valida ownership y delega el envío en {@link DocumentTransmitter}.
+ * Con MATIAS (async) el documento queda PENDIENTE tras transmitir; lo cierra el
+ * webhook o el polling de estado. (Un proveedor síncrono cerraría aquí.)
  */
 @Observed(name = "electronic.document.transmit")
 @Service
@@ -22,7 +23,7 @@ public class TransmitElectronicDocumentService implements TransmitElectronicDocu
     private final DocumentTransmitter transmitter;
 
     public TransmitElectronicDocumentService(ElectronicDocumentRepository repository,
-                                             DocumentTransmitter transmitter) {
+            DocumentTransmitter transmitter) {
         this.repository = repository;
         this.transmitter = transmitter;
     }

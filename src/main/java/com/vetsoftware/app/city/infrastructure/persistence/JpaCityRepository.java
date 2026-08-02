@@ -14,9 +14,8 @@ public class JpaCityRepository implements CityRepository {
     private final CityJpaMapper mapper;
     private final StateJpaRepository stateJpaRepository;
 
-    public JpaCityRepository(CityJpaRepository jpaRepository,
-                              CityJpaMapper mapper,
-                              StateJpaRepository stateJpaRepository) {
+    public JpaCityRepository(CityJpaRepository jpaRepository, CityJpaMapper mapper,
+            StateJpaRepository stateJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.stateJpaRepository = stateJpaRepository;

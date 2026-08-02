@@ -18,7 +18,7 @@ public class FindAnimalColorService implements FindAnimalColorUseCase {
 
     @Override
     public AnimalColorDto findById(Long id) {
-        return AnimalColorDto.from(repository.findById(id)
-                .orElseThrow(() -> new AnimalColorNotFoundException(id)));
+        return AnimalColorDto.from(
+                repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id)));
     }
 }

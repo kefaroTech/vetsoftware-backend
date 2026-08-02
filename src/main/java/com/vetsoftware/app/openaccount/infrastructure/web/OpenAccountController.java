@@ -47,14 +47,10 @@ public class OpenAccountController {
     private final Authz authz;
 
     public OpenAccountController(CreateOpenAccountUseCase createUseCase,
-                                UpdateOpenAccountUseCase updateUseCase,
-                                FindOpenAccountUseCase findUseCase,
-                                ListOpenAccountsUseCase listUseCase,
-                                SearchOpenAccountsUseCase searchUseCase,
-                                DeleteOpenAccountUseCase deleteUseCase,
-                                ReactivateOpenAccountUseCase reactivateUseCase,
-                                ChangeOpenAccountStatusUseCase changeStatusUseCase,
-                                Authz authz) {
+            UpdateOpenAccountUseCase updateUseCase, FindOpenAccountUseCase findUseCase,
+            ListOpenAccountsUseCase listUseCase, SearchOpenAccountsUseCase searchUseCase,
+            DeleteOpenAccountUseCase deleteUseCase, ReactivateOpenAccountUseCase reactivateUseCase,
+            ChangeOpenAccountStatusUseCase changeStatusUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -69,32 +65,30 @@ public class OpenAccountController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OpenAccountResponse create(@Valid @RequestBody CreateOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateOpenAccountCommand(
-                request.ownerId(), authz.resolveAccessibleBranch(request.branchId()),
-                authz.currentCompanyId(), authz.currentEmployeeId())));
+        return toResponse(createUseCase.execute(new CreateOpenAccountCommand(request.ownerId(),
+                authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId(),
+                authz.currentEmployeeId())));
     }
 
     @GetMapping
     public List<OpenAccountResponse> list(
             @RequestParam(name = "branchId", required = false) Long branchId) {
-        return listUseCase.listByCompany(authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId)).stream()
-            .map(this::toResponse).toList();
+        return listUseCase
+                .listByCompany(authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId))
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
-    public PageResponse<OpenAccountResponse> search(
-            @RequestParam(required = false) Long ownerId,
+    public PageResponse<OpenAccountResponse> search(@RequestParam(required = false) Long ownerId,
             @RequestParam(required = false) Boolean enabled,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) Long branchId) {
-        PageResult<OpenAccountDto> result = searchUseCase.execute(new SearchOpenAccountsCommand(
-            authz.currentCompanyId(), ownerId, enabled, page, pageSize,
-            authz.resolveAccessibleBranch(branchId)));
-        return new PageResponse<>(
-            result.content().stream().map(this::toResponse).toList(),
-            result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        PageResult<OpenAccountDto> result = searchUseCase
+                .execute(new SearchOpenAccountsCommand(authz.currentCompanyId(), ownerId, enabled,
+                        page, pageSize, authz.resolveAccessibleBranch(branchId)));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
@@ -103,10 +97,10 @@ public class OpenAccountController {
     }
 
     @PutMapping("/{id}")
-    public OpenAccountResponse update(@PathVariable Long id, @Valid @RequestBody UpdateOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateOpenAccountCommand(id, request.ownerId(), authz.currentCompanyId(),
-                request.expectedVersion())));
+    public OpenAccountResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateOpenAccountRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateOpenAccountCommand(id, request.ownerId(),
+                authz.currentCompanyId(), request.expectedVersion())));
     }
 
     @DeleteMapping("/{id}")
@@ -122,11 +116,11 @@ public class OpenAccountController {
 
     @PatchMapping("/{id}/status")
     public OpenAccountResponse changeStatus(@PathVariable Long id,
-                                            @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
+            @Valid @RequestBody ChangeOpenAccountStatusRequest request) {
         return toResponse(changeStatusUseCase.execute(
-            new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(),
-                request.reason(), authz.currentCompanyId(),
-                request.documentType(), request.finalConsumer(), request.expectedVersion())));
+                new ChangeOpenAccountStatusCommand(id, request.status(), authz.currentEmployeeId(),
+                        request.reason(), authz.currentCompanyId(), request.documentType(),
+                        request.finalConsumer(), request.expectedVersion())));
     }
 
     private OpenAccountResponse toResponse(OpenAccountDto dto) {
@@ -135,17 +129,12 @@ public class OpenAccountController {
         EmployeeSummaryDto cb = dto.createdBy();
         EmployeeSummaryDto closed = dto.closedBy();
         BranchSummaryDto b = dto.branch();
-        return new OpenAccountResponse(
-            dto.id(),
-            new OwnerSummary(o.id(), o.name(), o.document()),
-            dto.totalAmount(), dto.paidAmount(), dto.outstandingAmount(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            new BranchSummary(b.id(), b.name(), b.code()),
-            dto.status(),
-            new EmployeeSummary(cb.id(), cb.name()),
-            dto.createdDate(), dto.enabled(),
-            closed != null ? new EmployeeSummary(closed.id(), closed.name()) : null,
-            dto.closedAt(), dto.closeReason(),
-            dto.reversed(), dto.reversedAt(), dto.version());
+        return new OpenAccountResponse(dto.id(), new OwnerSummary(o.id(), o.name(), o.document()),
+                dto.totalAmount(), dto.paidAmount(), dto.outstandingAmount(),
+                new CompanySummary(c.id(), c.name(), c.identifier()),
+                new BranchSummary(b.id(), b.name(), b.code()), dto.status(),
+                new EmployeeSummary(cb.id(), cb.name()), dto.createdDate(), dto.enabled(),
+                closed != null ? new EmployeeSummary(closed.id(), closed.name()) : null,
+                dto.closedAt(), dto.closeReason(), dto.reversed(), dto.reversedAt(), dto.version());
     }
 }

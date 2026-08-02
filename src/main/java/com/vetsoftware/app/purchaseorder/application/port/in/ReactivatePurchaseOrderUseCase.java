@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivatePurchaseOrderUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('purchaseOrder.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('purchaseOrder.delete') and @authz.isMyCompany(#companyId))")
     PurchaseOrderDto execute(Long id, Long companyId);
 }

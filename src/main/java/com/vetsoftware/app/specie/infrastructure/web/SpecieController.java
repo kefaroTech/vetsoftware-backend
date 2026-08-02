@@ -28,9 +28,8 @@ public class SpecieController {
     private final ReactivateSpecieUseCase reactivateUseCase;
 
     public SpecieController(CreateSpecieUseCase createUseCase, UpdateSpecieUseCase updateUseCase,
-                            FindSpecieUseCase findUseCase, ListSpeciesUseCase listUseCase,
-                            DeleteSpecieUseCase deleteUseCase,
-                            ReactivateSpecieUseCase reactivateUseCase) {
+            FindSpecieUseCase findUseCase, ListSpeciesUseCase listUseCase,
+            DeleteSpecieUseCase deleteUseCase, ReactivateSpecieUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -56,7 +55,8 @@ public class SpecieController {
     }
 
     @PutMapping("/{id}")
-    public SpecieResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSpecieRequest request) {
+    public SpecieResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateSpecieRequest request) {
         return toResponse(updateUseCase.execute(new UpdateSpecieCommand(id, request.name())));
     }
 

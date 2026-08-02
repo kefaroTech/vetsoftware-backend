@@ -32,12 +32,9 @@ public class ServiceCategoryController {
     private final Authz authz;
 
     public ServiceCategoryController(CreateServiceCategoryUseCase createUseCase,
-                                     UpdateServiceCategoryUseCase updateUseCase,
-                                     FindServiceCategoryUseCase findUseCase,
-                                     ListServiceCategoriesUseCase listUseCase,
-                                     DeleteServiceCategoryUseCase deleteUseCase,
-                                     ReactivateServiceCategoryUseCase reactivateUseCase,
-                                     Authz authz) {
+            UpdateServiceCategoryUseCase updateUseCase, FindServiceCategoryUseCase findUseCase,
+            ListServiceCategoriesUseCase listUseCase, DeleteServiceCategoryUseCase deleteUseCase,
+            ReactivateServiceCategoryUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,16 +46,16 @@ public class ServiceCategoryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ServiceCategoryResponse create(@Valid @RequestBody CreateServiceCategoryRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateServiceCategoryCommand(request.name(), request.description(),
-                        authz.currentCompanyId())));
+    public ServiceCategoryResponse create(
+            @Valid @RequestBody CreateServiceCategoryRequest request) {
+        return toResponse(createUseCase.execute(new CreateServiceCategoryCommand(request.name(),
+                request.description(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<ServiceCategoryResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -68,10 +65,10 @@ public class ServiceCategoryController {
 
     @PutMapping("/{id}")
     public ServiceCategoryResponse update(@PathVariable Long id,
-                                          @Valid @RequestBody UpdateServiceCategoryRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateServiceCategoryCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), authz.currentEmployeeIdOrNull(), request.version())));
+            @Valid @RequestBody UpdateServiceCategoryRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateServiceCategoryCommand(id, request.name(),
+                request.description(), authz.currentCompanyId(), authz.currentEmployeeIdOrNull(),
+                request.version())));
     }
 
     @DeleteMapping("/{id}")
@@ -87,13 +84,9 @@ public class ServiceCategoryController {
 
     private ServiceCategoryResponse toResponse(ServiceCategoryDto dto) {
         CompanySummaryDto c = dto.company();
-        return new ServiceCategoryResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new ServiceCategoryResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.createdDate(),
-                dto.updatedDate(),
-                dto.updatedBy(),
-                dto.version(),
+                dto.createdDate(), dto.updatedDate(), dto.updatedBy(), dto.version(),
                 dto.enabled());
     }
 }

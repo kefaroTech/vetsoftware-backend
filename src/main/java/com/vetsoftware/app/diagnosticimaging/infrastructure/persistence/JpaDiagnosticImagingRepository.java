@@ -24,11 +24,11 @@ public class JpaDiagnosticImagingRepository implements DiagnosticImagingReposito
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaDiagnosticImagingRepository(DiagnosticImagingJpaRepository jpaRepository,
-                                          DiagnosticImagingJpaMapper mapper,
-                                          DiagnosticImagingTypeJpaRepository diagnosticImagingTypeJpaRepository,
-                                          AnimalJpaRepository animalJpaRepository,
-                                          ConsultationJpaRepository consultationJpaRepository,
-                                          CompanyJpaRepository companyJpaRepository) {
+            DiagnosticImagingJpaMapper mapper,
+            DiagnosticImagingTypeJpaRepository diagnosticImagingTypeJpaRepository,
+            AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.diagnosticImagingTypeJpaRepository = diagnosticImagingTypeJpaRepository;
@@ -39,16 +39,17 @@ public class JpaDiagnosticImagingRepository implements DiagnosticImagingReposito
 
     @Override
     public DiagnosticImaging save(DiagnosticImaging imaging) {
-        DiagnosticImagingTypeJpaEntity type =
-            diagnosticImagingTypeJpaRepository.getReferenceById(imaging.getDiagnosticImagingType().id());
+        DiagnosticImagingTypeJpaEntity type = diagnosticImagingTypeJpaRepository
+                .getReferenceById(imaging.getDiagnosticImagingType().id());
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(imaging.getAnimal().id());
-        ConsultationJpaEntity consultation = imaging.getConsultation() == null ? null
-            : consultationJpaRepository.getReferenceById(imaging.getConsultation().id());
+        ConsultationJpaEntity consultation = imaging.getConsultation() == null
+                ? null
+                : consultationJpaRepository.getReferenceById(imaging.getConsultation().id());
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(imaging.getCompany().id());
-        DiagnosticImagingJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(imaging, type, animal, consultation, company));
-        return mapper.toDomain(saved, imaging.getDiagnosticImagingType(),
-            imaging.getAnimal(), imaging.getConsultation(), imaging.getCompany());
+        DiagnosticImagingJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(imaging, type, animal, consultation, company));
+        return mapper.toDomain(saved, imaging.getDiagnosticImagingType(), imaging.getAnimal(),
+                imaging.getConsultation(), imaging.getCompany());
     }
 
     @Override

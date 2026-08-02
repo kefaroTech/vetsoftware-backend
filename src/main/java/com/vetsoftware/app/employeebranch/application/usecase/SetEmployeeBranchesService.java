@@ -23,9 +23,8 @@ public class SetEmployeeBranchesService implements SetEmployeeBranchesUseCase {
     private final BranchAccessCachePort cachePort;
 
     public SetEmployeeBranchesService(EmployeeBranchRepository repository,
-                                      EmployeeQueryPort employeeQueryPort,
-                                      BranchQueryPort branchQueryPort,
-                                      BranchAccessCachePort cachePort) {
+            EmployeeQueryPort employeeQueryPort, BranchQueryPort branchQueryPort,
+            BranchAccessCachePort cachePort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
         this.branchQueryPort = branchQueryPort;
@@ -51,7 +50,9 @@ public class SetEmployeeBranchesService implements SetEmployeeBranchesUseCase {
                 target.add(branchId);
             }
         }
-        // Regla: un empleado debe quedar con al menos una sede (para revocar acceso se desactiva el empleado).
+        // Regla: un empleado debe quedar con al menos una sede (para revocar acceso se
+        // desactiva el
+        // empleado).
         if (target.isEmpty()) {
             throw new IllegalArgumentException("At least one branch is required");
         }

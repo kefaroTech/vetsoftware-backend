@@ -15,8 +15,7 @@ public class DeleteCountryService implements DeleteCountryUseCase {
     private final CountryRepository repository;
     private final StateChildrenQueryPort stateChildrenQueryPort;
 
-    public DeleteCountryService(
-            CountryRepository repository,
+    public DeleteCountryService(CountryRepository repository,
             StateChildrenQueryPort stateChildrenQueryPort) {
         this.repository = repository;
         this.stateChildrenQueryPort = stateChildrenQueryPort;

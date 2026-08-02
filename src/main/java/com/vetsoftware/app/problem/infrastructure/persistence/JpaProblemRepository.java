@@ -17,10 +17,8 @@ public class JpaProblemRepository implements ProblemRepository {
     private final AnimalJpaRepository animalJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaProblemRepository(ProblemJpaRepository jpaRepository,
-                                ProblemJpaMapper mapper,
-                                AnimalJpaRepository animalJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
+    public JpaProblemRepository(ProblemJpaRepository jpaRepository, ProblemJpaMapper mapper,
+            AnimalJpaRepository animalJpaRepository, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -43,7 +41,7 @@ public class JpaProblemRepository implements ProblemRepository {
     @Override
     public List<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
         return jpaRepository.findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-            .stream().map(mapper::toDomain).toList();
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

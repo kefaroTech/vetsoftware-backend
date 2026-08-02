@@ -5,6 +5,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateProductUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
+            + "(hasAuthority('product.delete') and @authz.isMyCompany(#companyId))")
     ProductDto execute(Long id, Long companyId);
 }

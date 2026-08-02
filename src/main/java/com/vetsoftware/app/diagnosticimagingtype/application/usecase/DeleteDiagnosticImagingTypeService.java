@@ -15,8 +15,7 @@ public class DeleteDiagnosticImagingTypeService implements DeleteDiagnosticImagi
     private final DiagnosticImagingTypeRepository repository;
     private final DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort;
 
-    public DeleteDiagnosticImagingTypeService(
-            DiagnosticImagingTypeRepository repository,
+    public DeleteDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository,
             DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort) {
         this.repository = repository;
         this.diagnosticImagingChildrenQueryPort = diagnosticImagingChildrenQueryPort;

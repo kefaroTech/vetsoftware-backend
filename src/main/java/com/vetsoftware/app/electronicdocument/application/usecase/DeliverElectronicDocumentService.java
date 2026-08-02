@@ -14,14 +14,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Entrega la representación gráfica de un documento VALIDADO: genera QR + PDF, lo guarda en S3 y lo
- * envía por correo al adquiriente (copia al emisor). Idempotente: no reprocesa si el documento ya tiene
- * PDF o no está VALIDADO. Reutilizable por la emisión y por el cierre async de MATIAS (webhook/polling).
+ * Entrega la representación gráfica de un documento VALIDADO: genera QR + PDF,
+ * lo guarda en S3 y lo envía por correo al adquiriente (copia al emisor).
+ * Idempotente: no reprocesa si el documento ya tiene PDF o no está VALIDADO.
+ * Reutilizable por la emisión y por el cierre async de MATIAS
+ * (webhook/polling).
  */
 @Observed(name = "electronic.document.deliver")
 @Component
 public class DeliverElectronicDocumentService {
-    private static final Logger log = LoggerFactory.getLogger(DeliverElectronicDocumentService.class);
+    private static final Logger log = LoggerFactory
+            .getLogger(DeliverElectronicDocumentService.class);
 
     private final ElectronicDocumentRepository repository;
     private final QrGeneratorPort qrGenerator;
@@ -31,11 +34,9 @@ public class DeliverElectronicDocumentService {
     private final String qrBaseUrl;
 
     public DeliverElectronicDocumentService(ElectronicDocumentRepository repository,
-                                            QrGeneratorPort qrGenerator,
-                                            InvoicePdfPort invoicePdf,
-                                            InvoiceFileStoragePort fileStorage,
-                                            InvoiceMailPort mail,
-                                            @Value("${vetsoftware.dian.qr-base-url:}") String qrBaseUrl) {
+            QrGeneratorPort qrGenerator, InvoicePdfPort invoicePdf,
+            InvoiceFileStoragePort fileStorage, InvoiceMailPort mail,
+            @Value("${vetsoftware.dian.qr-base-url:}") String qrBaseUrl) {
         this.repository = repository;
         this.qrGenerator = qrGenerator;
         this.invoicePdf = invoicePdf;
@@ -45,12 +46,16 @@ public class DeliverElectronicDocumentService {
     }
 
     public void deliverIfValidated(ElectronicDocument document) {
-        if (document.getDianStatus() != DianStatus.VALIDADO) return;
-        if (document.getPdfRepresentation() != null && !document.getPdfRepresentation().isBlank()) return;
+        if (document.getDianStatus() != DianStatus.VALIDADO)
+            return;
+        if (document.getPdfRepresentation() != null && !document.getPdfRepresentation().isBlank())
+            return;
 
         String seal = document.getCufe() != null ? document.getCufe() : document.getCude();
-        // La DIAN regula el CONTENIDO del QR (Anexo Técnico): usar el que calculó el proveedor
-        // (qrData) cuando exista — es el oficial; si no viene, construir la URL de consulta DIAN
+        // La DIAN regula el CONTENIDO del QR (Anexo Técnico): usar el que calculó el
+        // proveedor
+        // (qrData) cuando exista — es el oficial; si no viene, construir la URL de
+        // consulta DIAN
         // (qr-base-url) + CUFE/CUDE como respaldo.
         String qrContent = (document.getQrData() != null && !document.getQrData().isBlank())
                 ? document.getQrData()
@@ -59,7 +64,8 @@ public class DeliverElectronicDocumentService {
         byte[] pdf = invoicePdf.render(document, qrBase64);
 
         String number = numberOf(document);
-        String key = "invoices/" + document.getCompanyId() + "/" + document.getId() + "/" + number + ".pdf";
+        String key = "invoices/" + document.getCompanyId() + "/" + document.getId() + "/" + number
+                + ".pdf";
         fileStorage.store(key, pdf, "application/pdf");
 
         document.attachRepresentation(key);
@@ -72,19 +78,21 @@ public class DeliverElectronicDocumentService {
         String to = document.getCustomer().email();
         String cc = document.getIssuer().email();
         try {
-            mail.send(to, cc,
-                    "Factura electrónica " + number,
+            mail.send(to, cc, "Factura electrónica " + number,
                     "<p>Adjuntamos su factura electrónica <strong>" + number + "</strong>.</p>",
                     number + ".pdf", pdf);
         } catch (Exception e) {
             // El correo no es bloqueante: el documento ya está validado y su PDF guardado.
-            log.warn("No se pudo enviar el correo de la factura {}: {}", document.getId(), e.getMessage());
+            log.warn("No se pudo enviar el correo de la factura {}: {}", document.getId(),
+                    e.getMessage());
         }
     }
 
     private String numberOf(ElectronicDocument document) {
         String prefix = document.getPrefix() == null ? "" : document.getPrefix();
-        Object consecutive = document.getConsecutive() == null ? document.getId() : document.getConsecutive();
+        Object consecutive = document.getConsecutive() == null
+                ? document.getId()
+                : document.getConsecutive();
         return (prefix + consecutive).replaceAll("[^A-Za-z0-9_-]", "");
     }
 }

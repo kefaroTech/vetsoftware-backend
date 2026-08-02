@@ -26,13 +26,8 @@ public class MedicamentJpaMapper {
     }
 
     public Medicament toDomain(MedicamentJpaEntity entity, CompanyRef companyRef) {
-        return new Medicament(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
+        return new Medicament(entity.getId(), entity.getName(), entity.getDescription(), companyRef,
+                Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

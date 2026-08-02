@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "system.user.permission.reactivate")
 @Service
-public class ReactivateSystemUserPermissionService implements ReactivateSystemUserPermissionUseCase {
+public class ReactivateSystemUserPermissionService
+        implements
+            ReactivateSystemUserPermissionUseCase {
     private final SystemUserPermissionRepository repository;
 
     public ReactivateSystemUserPermissionService(SystemUserPermissionRepository repository) {
@@ -21,8 +23,9 @@ public class ReactivateSystemUserPermissionService implements ReactivateSystemUs
     @Transactional
     public SystemUserPermissionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new SystemUserPermissionNotFoundException(id);
+        if (rows == 0)
+            throw new SystemUserPermissionNotFoundException(id);
         return SystemUserPermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new SystemUserPermissionNotFoundException(id)));
+                .orElseThrow(() -> new SystemUserPermissionNotFoundException(id)));
     }
 }

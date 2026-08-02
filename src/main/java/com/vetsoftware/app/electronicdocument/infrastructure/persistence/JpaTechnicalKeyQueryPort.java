@@ -8,8 +8,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link TechnicalKeyQueryPort}: lee la clave técnica de la resolución activa (misma que asigna la
- * numeración). Único cruce permitido de vertical slicing (persistence → persistence de numberingresolution).
+ * Adapter del {@link TechnicalKeyQueryPort}: lee la clave técnica de la
+ * resolución activa (misma que asigna la numeración). Único cruce permitido de
+ * vertical slicing (persistence → persistence de numberingresolution).
  */
 @Component
 public class JpaTechnicalKeyQueryPort implements TechnicalKeyQueryPort {
@@ -20,7 +21,8 @@ public class JpaTechnicalKeyQueryPort implements TechnicalKeyQueryPort {
     }
 
     @Override
-    public Optional<String> findActiveTechnicalKey(Long companyId, Long branchId, ElectronicDocumentType documentType) {
+    public Optional<String> findActiveTechnicalKey(Long companyId, Long branchId,
+            ElectronicDocumentType documentType) {
         return repository.findActive(companyId, branchId, documentType.name())
                 .map(NumberingResolutionJpaEntity::getTechnicalKey)
                 .filter(key -> key != null && !key.isBlank());

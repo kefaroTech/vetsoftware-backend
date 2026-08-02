@@ -37,11 +37,9 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     private final ProductJpaRepository productJpaRepository;
 
     public JpaPurchaseOrderRepository(PurchaseOrderJpaRepository jpaRepository,
-                                      PurchaseOrderJpaMapper mapper,
-                                      CompanyJpaRepository companyJpaRepository,
-                                      BranchJpaRepository branchJpaRepository,
-                                      SupplierJpaRepository supplierJpaRepository,
-                                      ProductJpaRepository productJpaRepository) {
+            PurchaseOrderJpaMapper mapper, CompanyJpaRepository companyJpaRepository,
+            BranchJpaRepository branchJpaRepository, SupplierJpaRepository supplierJpaRepository,
+            ProductJpaRepository productJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -54,15 +52,17 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     public PurchaseOrder save(PurchaseOrder order) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(order.getCompany().id());
         BranchJpaEntity branch = branchJpaRepository.getReferenceById(order.getBranch().id());
-        SupplierJpaEntity supplier = supplierJpaRepository.getReferenceById(order.getSupplier().id());
+        SupplierJpaEntity supplier = supplierJpaRepository
+                .getReferenceById(order.getSupplier().id());
         PurchaseOrderJpaEntity toSave = mapper.toJpa(order, company, branch, supplier,
-            productJpaRepository::getReferenceById);
+                productJpaRepository::getReferenceById);
         PurchaseOrderJpaEntity saved = jpaRepository.saveAndFlush(toSave);
 
         Map<Long, ProductRef> productRefs = order.getLines().stream()
-            .map(PurchaseOrderLine::getProduct)
-            .collect(Collectors.toMap(ProductRef::id, Function.identity(), (a, b) -> a));
-        return mapper.toDomain(saved, order.getCompany(), order.getBranch(), order.getSupplier(), productRefs);
+                .map(PurchaseOrderLine::getProduct)
+                .collect(Collectors.toMap(ProductRef::id, Function.identity(), (a, b) -> a));
+        return mapper.toDomain(saved, order.getCompany(), order.getBranch(), order.getSupplier(),
+                productRefs);
     }
 
     @Override
@@ -78,31 +78,35 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     @Override
     public List<PurchaseOrder> findAllByCompanyId(Long companyId) {
         return jpaRepository.findAllByCompany_IdOrderByOrderDateDescCreatedDateDesc(companyId)
-            .stream().map(mapper::toDomain).toList();
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public List<PurchaseOrder> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
     public PageResult<PurchaseOrder> search(SearchPurchaseOrdersCommand command) {
         Specification<PurchaseOrderJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
-            Math.max(command.page(), 0),
-            command.pageSize() <= 0 ? 20 : command.pageSize(),
-            Sort.by(Sort.Direction.DESC, "orderDate").and(Sort.by(Sort.Direction.DESC, "createdDate")));
+        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
+                command.pageSize() <= 0 ? 20 : command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "orderDate")
+                        .and(Sort.by(Sort.Direction.DESC, "createdDate")));
         Page<PurchaseOrderJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
         List<PurchaseOrder> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
+                page.getTotalPages());
     }
 
     private Specification<PurchaseOrderJpaEntity> buildSpec(SearchPurchaseOrdersCommand command) {
         return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1.
-            // Las líneas (colección) NO se fetch-join aquí: se hidratan LAZY dentro de la tx de lectura para no
+            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count)
+            // para evitar N+1.
+            // Las líneas (colección) NO se fetch-join aquí: se hidratan LAZY dentro de la
+            // tx de lectura
+            // para no
             // paginar en memoria.
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("company", JoinType.LEFT);

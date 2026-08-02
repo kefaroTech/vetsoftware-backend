@@ -14,9 +14,8 @@ public class JpaPromotionRepository implements PromotionRepository {
     private final PromotionJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaPromotionRepository(PromotionJpaRepository jpaRepository,
-                                  PromotionJpaMapper mapper,
-                                  CompanyJpaRepository companyJpaRepository) {
+    public JpaPromotionRepository(PromotionJpaRepository jpaRepository, PromotionJpaMapper mapper,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
@@ -24,7 +23,8 @@ public class JpaPromotionRepository implements PromotionRepository {
 
     @Override
     public Promotion save(Promotion promotion) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(promotion.getCompany().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(promotion.getCompany().id());
         PromotionJpaEntity saved = jpaRepository.save(mapper.toJpa(promotion, company));
         return mapper.toDomain(saved, promotion.getCompany());
     }
@@ -41,8 +41,7 @@ public class JpaPromotionRepository implements PromotionRepository {
 
     @Override
     public List<Promotion> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompanyId(companyId)
-                .stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }
 
     @Override

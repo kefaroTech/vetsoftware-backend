@@ -17,7 +17,8 @@ public class JpaEmployeeAccountsByEmailPort implements EmployeeAccountsByEmailPo
     @Override
     public List<EmployeeAccount> findByEmail(String email) {
         return employeeJpaRepository.findByEmailAndEmailVerified(email, true).stream()
-            .map(e -> new EmployeeAccount(e.getName(), e.getEmployeeCode(), e.getCompany().getName()))
-            .toList();
+                .map(e -> new EmployeeAccount(e.getName(), e.getEmployeeCode(),
+                        e.getCompany().getName()))
+                .toList();
     }
 }

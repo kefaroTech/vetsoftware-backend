@@ -26,8 +26,10 @@ class ScheduledJobTelemetryTest {
         assertThat(context.getName()).isEqualTo(ScheduledJobTelemetry.OBSERVATION_NAME);
         assertThat(context.getContextualName()).isEqualTo("run dian test");
         assertThat(context.getParentObservation()).isNull();
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY)).isEqualTo("dian.test");
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY)).isEqualTo("success");
+        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY))
+                .isEqualTo("dian.test");
+        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
+                .isEqualTo("success");
         assertThat(context.getError()).isNull();
     }
 
@@ -36,7 +38,8 @@ class ScheduledJobTelemetryTest {
         CapturingHandler handler = new CapturingHandler();
         ObservationRegistry registry = registryWith(handler);
         ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
-        Observation scheduledRoot = Observation.start(ScheduledJobTelemetry.OBSERVATION_NAME, registry);
+        Observation scheduledRoot = Observation.start(ScheduledJobTelemetry.OBSERVATION_NAME,
+                registry);
 
         try (Observation.Scope ignored = scheduledRoot.openScope()) {
             telemetry.observe("dian.test", () -> Outcome.PARTIAL_FAILURE);
@@ -48,7 +51,8 @@ class ScheduledJobTelemetryTest {
         assertThat(handler.stopped).hasSize(1);
         Observation.Context context = handler.stopped.getFirst();
         assertThat(context.getParentObservation()).isNull();
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY)).isEqualTo("dian.test");
+        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY))
+                .isEqualTo("dian.test");
         assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
                 .isEqualTo("partial_failure");
     }
@@ -67,7 +71,8 @@ class ScheduledJobTelemetryTest {
         assertThat(handler.stopped).hasSize(1);
         Observation.Context context = handler.stopped.getFirst();
         assertThat(context.getError()).isSameAs(failure);
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY)).isEqualTo("error");
+        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
+                .isEqualTo("error");
         assertThat(registry.getCurrentObservation()).isNull();
     }
 
@@ -81,8 +86,7 @@ class ScheduledJobTelemetryTest {
 
     @Test
     void rejectsJobNamesOutsideLowercaseDotNotation() {
-        ScheduledJobTelemetry telemetry =
-                new ScheduledJobTelemetry(ObservationRegistry.create());
+        ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(ObservationRegistry.create());
 
         assertThatThrownBy(() -> telemetry.observe("audit_outbox.publish", () -> Outcome.SUCCESS))
                 .isInstanceOf(IllegalArgumentException.class)

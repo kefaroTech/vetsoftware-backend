@@ -10,7 +10,8 @@ import org.springframework.stereotype.Service;
 @Observed(name = "procedure.schedule.list.by.hospitalization")
 @Service
 public class ListProcedureSchedulesByHospitalizationService
-        implements ListProcedureSchedulesByHospitalizationUseCase {
+        implements
+            ListProcedureSchedulesByHospitalizationUseCase {
     private final ProcedureScheduleRepository repository;
 
     public ListProcedureSchedulesByHospitalizationService(ProcedureScheduleRepository repository) {
@@ -20,7 +21,6 @@ public class ListProcedureSchedulesByHospitalizationService
     @Override
     public List<ProcedureScheduleDto> listByHospitalization(Long hospitalizationId) {
         return repository.findByHospitalizationId(hospitalizationId).stream()
-            .map(ProcedureScheduleDto::from)
-            .toList();
+                .map(ProcedureScheduleDto::from).toList();
     }
 }

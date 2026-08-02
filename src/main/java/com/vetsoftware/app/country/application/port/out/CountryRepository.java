@@ -6,8 +6,12 @@ import java.util.Optional;
 
 public interface CountryRepository {
     Country save(Country country);
+
     Optional<Country> findById(Long id);
+
     List<Country> findAll();
+
     void delete(Long id);
+
     int reactivate(Long id);
 }

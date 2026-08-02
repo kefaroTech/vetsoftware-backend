@@ -21,8 +21,12 @@ public class JpaEmployeeBranchRepository implements EmployeeBranchRepository {
 
     @Override
     public void replaceBranches(Long employeeId, Collection<Long> branchIds) {
-        // Set atómico: desactiva todo lo vigente y luego reactiva/inserta el objetivo. Reactivar en vez de insertar
-        // ciego respeta el unique (employee_id, branch_id) sobre filas soft-deleted. El caller corre @Transactional.
+        // Set atómico: desactiva todo lo vigente y luego reactiva/inserta el objetivo.
+        // Reactivar en vez
+        // de insertar
+        // ciego respeta el unique (employee_id, branch_id) sobre filas soft-deleted. El
+        // caller corre
+        // @Transactional.
         jpaRepository.disableAllByEmployeeId(employeeId);
         for (Long branchId : branchIds) {
             if (jpaRepository.reactivate(employeeId, branchId) == 0) {

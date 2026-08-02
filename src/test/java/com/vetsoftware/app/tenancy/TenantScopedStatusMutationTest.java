@@ -31,7 +31,7 @@ class TenantScopedStatusMutationTest {
         var service = new ChangeSpaStatusService(repository);
 
         assertThrows(SpaNotFoundException.class,
-            () -> service.execute(new ChangeSpaStatusCommand(9L, "COMPLETED", 3L)));
+                () -> service.execute(new ChangeSpaStatusCommand(9L, "COMPLETED", 3L)));
         verify(repository, never()).findById(9L);
     }
 
@@ -43,7 +43,7 @@ class TenantScopedStatusMutationTest {
         var service = new ChangeSurgeryStatusService(repository);
 
         assertThrows(SurgeryNotFoundException.class,
-            () -> service.execute(new ChangeSurgeryStatusCommand(9L, "COMPLETED", 3L)));
+                () -> service.execute(new ChangeSurgeryStatusCommand(9L, "COMPLETED", 3L)));
         verify(repository, never()).findById(9L);
     }
 
@@ -54,8 +54,8 @@ class TenantScopedStatusMutationTest {
 
         var service = new ChangeDiagnosticImagingStatusService(repository);
 
-        assertThrows(DiagnosticImagingNotFoundException.class,
-            () -> service.execute(new ChangeDiagnosticImagingStatusCommand(9L, "COMPLETED", 3L)));
+        assertThrows(DiagnosticImagingNotFoundException.class, () -> service
+                .execute(new ChangeDiagnosticImagingStatusCommand(9L, "COMPLETED", 3L)));
         verify(repository, never()).findById(9L);
     }
 }

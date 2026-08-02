@@ -24,16 +24,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Cambio de la propia contraseña (primer login forzado). El retorno indica si este cambio fue además la
- * aceptación de la invitación, dato que el borde usa para auditar. Se fija que la nueva contraseña se
- * hashea y que la sesión en curso sobrevive por diseño.
+ * Cambio de la propia contraseña (primer login forzado). El retorno indica si
+ * este cambio fue además la aceptación de la invitación, dato que el borde usa
+ * para auditar. Se fija que la nueva contraseña se hashea y que la sesión en
+ * curso sobrevive por diseño.
  */
 @ExtendWith(MockitoExtension.class)
 class ChangeMyPasswordServiceTest {
 
-    @Mock private EmployeeRepository repository;
-    @Mock private PasswordHasher passwordHasher;
-    @InjectMocks private ChangeMyPasswordService service;
+    @Mock
+    private EmployeeRepository repository;
+    @Mock
+    private PasswordHasher passwordHasher;
+    @InjectMocks
+    private ChangeMyPasswordService service;
 
     private static Employee employee(boolean mustChangePassword) {
         return new Employee(55L, "VV-MARIANA", "$2a$10$old", "Mariana Rojas", "mariana@vetrina.co",
@@ -58,7 +62,8 @@ class ChangeMyPasswordServiceTest {
         when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 
-        boolean acceptedInvitation = service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
+        boolean acceptedInvitation = service
+                .execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
 
         assertThat(acceptedInvitation).isTrue();
     }
@@ -68,7 +73,8 @@ class ChangeMyPasswordServiceTest {
         when(repository.findById(55L)).thenReturn(Optional.of(employee(false)));
         when(passwordHasher.hash("OtraClave123*")).thenReturn("$2a$10$new");
 
-        boolean acceptedInvitation = service.execute(new ChangeMyPasswordCommand(55L, "OtraClave123*"));
+        boolean acceptedInvitation = service
+                .execute(new ChangeMyPasswordCommand(55L, "OtraClave123*"));
 
         assertThat(acceptedInvitation).isFalse();
     }
@@ -87,7 +93,9 @@ class ChangeMyPasswordServiceTest {
 
     @Test
     void no_invalida_la_sesion_en_curso() {
-        // Diseño explícito: el empleado pasa directo al panel sin re-login, así que authVersion no cambia.
+        // Diseño explícito: el empleado pasa directo al panel sin re-login, así que
+        // authVersion no
+        // cambia.
         when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 

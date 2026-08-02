@@ -18,8 +18,7 @@ public class FindRoleService implements FindRoleUseCase {
 
     @Override
     public RoleDto findById(Long id) {
-        return repository.findById(id)
-            .map(RoleDto::from)
-            .orElseThrow(() -> new RoleNotFoundException(id));
+        return repository.findById(id).map(RoleDto::from)
+                .orElseThrow(() -> new RoleNotFoundException(id));
     }
 }

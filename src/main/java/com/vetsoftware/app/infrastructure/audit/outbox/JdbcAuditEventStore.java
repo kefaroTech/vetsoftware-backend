@@ -1,7 +1,5 @@
 package com.vetsoftware.app.infrastructure.audit.outbox;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import com.vetsoftware.app.infrastructure.audit.chain.AuditChainHash;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import java.sql.Timestamp;
@@ -16,23 +14,20 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
- * Inserta el evento en la misma transacción de negocio cuando existe; para eventos del borde abre
- * una transacción corta independiente del request.
+ * Inserta el evento en la misma transacción de negocio cuando existe; para
+ * eventos del borde abre una transacción corta independiente del request.
  */
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 class JdbcAuditEventStore implements AuditEventStore {
 
-    private static final Set<String> CONTEXT_KEYS = Set.of(
-            "traceId", "spanId",
-            MdcKeys.ACTOR_TYPE, MdcKeys.ACTOR_EMPLOYEE_ID, MdcKeys.ACTOR_COMPANY_ID,
-            MdcKeys.ACTOR_SYSTEM_USER_ID, MdcKeys.CLIENT_IP, MdcKeys.USER_AGENT,
-            MdcKeys.HTTP_METHOD, MdcKeys.HTTP_PATH);
+    private static final Set<String> CONTEXT_KEYS = Set.of("traceId", "spanId", MdcKeys.ACTOR_TYPE,
+            MdcKeys.ACTOR_EMPLOYEE_ID, MdcKeys.ACTOR_COMPANY_ID, MdcKeys.ACTOR_SYSTEM_USER_ID,
+            MdcKeys.CLIENT_IP, MdcKeys.USER_AGENT, MdcKeys.HTTP_METHOD, MdcKeys.HTTP_PATH);
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -65,8 +60,10 @@ class JdbcAuditEventStore implements AuditEventStore {
         }
         payload.putAll(attributes);
 
-        // El hash se fija aquí, sobre los bytes exactos que se almacenan, y no requiere ningún
-        // bloqueo: la transacción de negocio no se serializa con las demás. La posición en la cadena
+        // El hash se fija aquí, sobre los bytes exactos que se almacenan, y no requiere
+        // ningún
+        // bloqueo: la transacción de negocio no se serializa con las demás. La posición
+        // en la cadena
         // la asigna después el secuenciador (ver AuditChainRepository#sequencePending).
         String serialized = serialize(payload);
 
@@ -75,8 +72,7 @@ class JdbcAuditEventStore implements AuditEventStore {
                     (event_id, event_type, payload, payload_hash, status, attempts,
                      next_attempt_at, created_at)
                 VALUES (?, ?, ?, ?, 'PENDING', 0, ?, ?)
-                """,
-                eventId, eventType, serialized, AuditChainHash.payloadHash(serialized),
+                """, eventId, eventType, serialized, AuditChainHash.payloadHash(serialized),
                 Timestamp.from(now), Timestamp.from(now));
     }
 
@@ -84,7 +80,8 @@ class JdbcAuditEventStore implements AuditEventStore {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JacksonException exception) {
-            throw new IllegalStateException("No se pudo serializar el evento de auditoría", exception);
+            throw new IllegalStateException("No se pudo serializar el evento de auditoría",
+                    exception);
         }
     }
 }

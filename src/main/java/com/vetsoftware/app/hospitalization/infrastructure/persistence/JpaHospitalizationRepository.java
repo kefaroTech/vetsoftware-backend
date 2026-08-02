@@ -21,10 +21,9 @@ public class JpaHospitalizationRepository implements HospitalizationRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaHospitalizationRepository(HospitalizationJpaRepository jpaRepository,
-                                        HospitalizationJpaMapper mapper,
-                                        AnimalJpaRepository animalJpaRepository,
-                                        ConsultationJpaRepository consultationJpaRepository,
-                                        CompanyJpaRepository companyJpaRepository) {
+            HospitalizationJpaMapper mapper, AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -34,14 +33,18 @@ public class JpaHospitalizationRepository implements HospitalizationRepository {
 
     @Override
     public Hospitalization save(Hospitalization hospitalization) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(hospitalization.getAnimal().id());
-        ConsultationJpaEntity consultation = hospitalization.getConsultation() == null ? null
-            : consultationJpaRepository.getReferenceById(hospitalization.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(hospitalization.getCompany().id());
-        HospitalizationJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(hospitalization, animal, consultation, company));
+        AnimalJpaEntity animal = animalJpaRepository
+                .getReferenceById(hospitalization.getAnimal().id());
+        ConsultationJpaEntity consultation = hospitalization.getConsultation() == null
+                ? null
+                : consultationJpaRepository
+                        .getReferenceById(hospitalization.getConsultation().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(hospitalization.getCompany().id());
+        HospitalizationJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(hospitalization, animal, consultation, company));
         return mapper.toDomain(saved, hospitalization.getAnimal(),
-            hospitalization.getConsultation(), hospitalization.getCompany());
+                hospitalization.getConsultation(), hospitalization.getCompany());
     }
 
     @Override

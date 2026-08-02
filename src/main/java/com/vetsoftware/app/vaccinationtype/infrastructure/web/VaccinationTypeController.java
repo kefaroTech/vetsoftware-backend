@@ -34,13 +34,11 @@ public class VaccinationTypeController {
     private final Authz authz;
 
     public VaccinationTypeController(CreateVaccinationTypeUseCase createUseCase,
-                                     UpdateVaccinationTypeUseCase updateUseCase,
-                                     FindVaccinationTypeUseCase findUseCase,
-                                     ListVaccinationTypesUseCase listUseCase,
-                                     ListAvailableVaccinationTypesUseCase listAvailableUseCase,
-                                     DeleteVaccinationTypeUseCase deleteUseCase,
-                                     ReactivateVaccinationTypeUseCase reactivateUseCase,
-                                     Authz authz) {
+            UpdateVaccinationTypeUseCase updateUseCase, FindVaccinationTypeUseCase findUseCase,
+            ListVaccinationTypesUseCase listUseCase,
+            ListAvailableVaccinationTypesUseCase listAvailableUseCase,
+            DeleteVaccinationTypeUseCase deleteUseCase,
+            ReactivateVaccinationTypeUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -53,10 +51,10 @@ public class VaccinationTypeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public VaccinationTypeResponse create(@Valid @RequestBody CreateVaccinationTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateVaccinationTypeCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+    public VaccinationTypeResponse create(
+            @Valid @RequestBody CreateVaccinationTypeRequest request) {
+        return toResponse(createUseCase.execute(new CreateVaccinationTypeCommand(request.name(),
+                request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -66,8 +64,8 @@ public class VaccinationTypeController {
 
     @GetMapping("/available")
     public List<VaccinationTypeResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -77,10 +75,9 @@ public class VaccinationTypeController {
 
     @PutMapping("/{id}")
     public VaccinationTypeResponse update(@PathVariable Long id,
-                                          @Valid @RequestBody UpdateVaccinationTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateVaccinationTypeCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+            @Valid @RequestBody UpdateVaccinationTypeRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateVaccinationTypeCommand(id, request.name(),
+                request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -96,11 +93,8 @@ public class VaccinationTypeController {
 
     private VaccinationTypeResponse toResponse(VaccinationTypeDto dto) {
         CompanySummaryDto c = dto.company();
-        return new VaccinationTypeResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new VaccinationTypeResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(),
-                dto.enabled());
+                dto.general(), dto.createdDate(), dto.enabled());
     }
 }

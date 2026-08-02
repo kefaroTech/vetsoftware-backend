@@ -17,6 +17,6 @@ public class JpaModuleQueryPort implements ModuleQueryPort {
     @Override
     public Optional<ModuleRef> findById(Long moduleId) {
         return moduleJpaRepository.findById(moduleId)
-            .map(e -> new ModuleRef(e.getId(), e.getName(), e.getCode()));
+                .map(e -> new ModuleRef(e.getId(), e.getName(), e.getCode()));
     }
 }

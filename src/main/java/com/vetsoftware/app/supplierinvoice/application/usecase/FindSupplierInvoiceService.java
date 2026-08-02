@@ -20,8 +20,7 @@ public class FindSupplierInvoiceService implements FindSupplierInvoiceUseCase {
     @Override
     @Transactional(readOnly = true)
     public SupplierInvoiceDto findById(Long id, Long companyId) {
-        return repository.findByIdAndCompanyId(id, companyId)
-            .map(SupplierInvoiceDto::from)
-            .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
+        return repository.findByIdAndCompanyId(id, companyId).map(SupplierInvoiceDto::from)
+                .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
     }
 }

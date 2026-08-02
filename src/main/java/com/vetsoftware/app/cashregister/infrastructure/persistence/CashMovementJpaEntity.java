@@ -7,7 +7,10 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Movimiento de caja (append-only). El {@code amount} es positivo; el signo lo da el {@code type}. */
+/**
+ * Movimiento de caja (append-only). El {@code amount} es positivo; el signo lo
+ * da el {@code type}.
+ */
 @Entity
 @Table(name = "cash_movement")
 public class CashMovementJpaEntity {
@@ -46,26 +49,86 @@ public class CashMovementJpaEntity {
     @Column(name = "note", length = 255)
     private String note;
 
-    protected CashMovementJpaEntity() {}
+    protected CashMovementJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CashSessionJpaEntity getSession() { return session; }
-    public void setSession(CashSessionJpaEntity session) { this.session = session; }
-    public CashMovementType getType() { return type; }
-    public void setType(CashMovementType type) { this.type = type; }
-    public CashPaymentMethod getMethod() { return method; }
-    public void setMethod(CashPaymentMethod method) { this.method = method; }
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public CashReferenceType getReferenceType() { return referenceType; }
-    public void setReferenceType(CashReferenceType referenceType) { this.referenceType = referenceType; }
-    public Long getReferenceId() { return referenceId; }
-    public void setReferenceId(Long referenceId) { this.referenceId = referenceId; }
-    public Long getCreatedByEmployeeId() { return createdByEmployeeId; }
-    public void setCreatedByEmployeeId(Long createdByEmployeeId) { this.createdByEmployeeId = createdByEmployeeId; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CashSessionJpaEntity getSession() {
+        return session;
+    }
+
+    public void setSession(CashSessionJpaEntity session) {
+        this.session = session;
+    }
+
+    public CashMovementType getType() {
+        return type;
+    }
+
+    public void setType(CashMovementType type) {
+        this.type = type;
+    }
+
+    public CashPaymentMethod getMethod() {
+        return method;
+    }
+
+    public void setMethod(CashPaymentMethod method) {
+        this.method = method;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public CashReferenceType getReferenceType() {
+        return referenceType;
+    }
+
+    public void setReferenceType(CashReferenceType referenceType) {
+        this.referenceType = referenceType;
+    }
+
+    public Long getReferenceId() {
+        return referenceId;
+    }
+
+    public void setReferenceId(Long referenceId) {
+        this.referenceId = referenceId;
+    }
+
+    public Long getCreatedByEmployeeId() {
+        return createdByEmployeeId;
+    }
+
+    public void setCreatedByEmployeeId(Long createdByEmployeeId) {
+        this.createdByEmployeeId = createdByEmployeeId;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
 }

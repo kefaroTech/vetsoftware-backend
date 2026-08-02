@@ -32,9 +32,8 @@ class BusinessGaugeMetricsTest {
 
         when(documents.countBacklogSince(DianStatus.PENDIENTE, currentInBogota.minusMinutes(15)))
                 .thenReturn(2L);
-        when(documents.countBacklogBetween(
-                DianStatus.PENDIENTE, currentInBogota.minusHours(1), currentInBogota.minusMinutes(15)))
-                .thenReturn(3L);
+        when(documents.countBacklogBetween(DianStatus.PENDIENTE, currentInBogota.minusHours(1),
+                currentInBogota.minusMinutes(15))).thenReturn(3L);
         when(documents.countBacklogBefore(DianStatus.PENDIENTE, currentInBogota.minusHours(1)))
                 .thenReturn(4L);
         when(balances.countLowStock()).thenReturn(5L);
@@ -56,9 +55,10 @@ class BusinessGaugeMetricsTest {
                 .tags("status", "pending", "age", "from_15m_to_1h").gauge().value()).isEqualTo(3);
         assertThat(registry.get(BusinessMetricNames.DIAN_BACKLOG)
                 .tags("status", "pending", "age", "gt_1h").gauge().value()).isEqualTo(4);
-        assertThat(registry.get(BusinessMetricNames.INVENTORY_LOW_STOCK).gauge().value()).isEqualTo(5);
-        assertThat(registry.get(BusinessMetricNames.INVENTORY_EXPIRING_LOTS)
-                .tag("age", "expired").gauge().value()).isEqualTo(6);
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_LOW_STOCK).gauge().value())
+                .isEqualTo(5);
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_EXPIRING_LOTS).tag("age", "expired")
+                .gauge().value()).isEqualTo(6);
         assertThat(registry.get(BusinessMetricNames.INVENTORY_EXPIRING_LOTS)
                 .tag("age", "from_0_to_7d").gauge().value()).isEqualTo(7);
         assertThat(registry.get(BusinessMetricNames.INVENTORY_EXPIRING_LOTS)
@@ -68,8 +68,7 @@ class BusinessGaugeMetricsTest {
         PrometheusMeterRegistry prometheus = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         prometheus.config().meterFilter(new BusinessMetricCardinalityFilter());
         metrics.bindTo(prometheus);
-        assertThat(prometheus.scrape())
-                .contains("vetsoftware_business_dian_backlog_documents")
+        assertThat(prometheus.scrape()).contains("vetsoftware_business_dian_backlog_documents")
                 .contains("vetsoftware_business_inventory_low_stock_products")
                 .contains("vetsoftware_business_inventory_expiring_lots")
                 .contains("vetsoftware_business_metrics_snapshot_age_seconds");

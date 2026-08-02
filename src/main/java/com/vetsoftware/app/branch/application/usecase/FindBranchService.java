@@ -19,6 +19,6 @@ public class FindBranchService implements FindBranchUseCase {
     @Override
     public BranchDto findById(Long id, Long companyId) {
         return BranchDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new BranchNotFoundException(id)));
+                .orElseThrow(() -> new BranchNotFoundException(id)));
     }
 }

@@ -16,8 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cancela una recepción CONFIRMED: revierte las entradas de inventario y, si venía de una orden de compra,
- * revierte lo recibido en ella; luego marca CANCELLED.
+ * Cancela una recepción CONFIRMED: revierte las entradas de inventario y, si
+ * venía de una orden de compra, revierte lo recibido en ella; luego marca
+ * CANCELLED.
  */
 @Observed(name = "goods.receipt.cancel")
 @Service
@@ -27,8 +28,8 @@ public class CancelGoodsReceiptService implements CancelGoodsReceiptUseCase {
     private final PurchaseOrderReceivingPort purchaseOrderReceiving;
 
     public CancelGoodsReceiptService(GoodsReceiptRepository repository,
-                                     InventoryLedgerPort inventoryLedger,
-                                     PurchaseOrderReceivingPort purchaseOrderReceiving) {
+            InventoryLedgerPort inventoryLedger,
+            PurchaseOrderReceivingPort purchaseOrderReceiving) {
         this.repository = repository;
         this.inventoryLedger = inventoryLedger;
         this.purchaseOrderReceiving = purchaseOrderReceiving;
@@ -38,19 +39,22 @@ public class CancelGoodsReceiptService implements CancelGoodsReceiptUseCase {
     @Transactional
     public GoodsReceiptDto execute(Long id, Long companyId, Long actorId) {
         GoodsReceipt receipt = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
+                .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
         if (receipt.getStatus() != GoodsReceiptStatus.CONFIRMED) {
-            throw new InvalidGoodsReceiptStatusTransitionException(receipt.getStatus(), GoodsReceiptStatus.CANCELLED);
+            throw new InvalidGoodsReceiptStatusTransitionException(receipt.getStatus(),
+                    GoodsReceiptStatus.CANCELLED);
         }
 
         inventoryLedger.reverseReceipt(receipt.getId(), actorId);
 
         if (receipt.getPurchaseOrderId() != null) {
             List<ReceivedLine> receivedLines = receipt.getLines().stream()
-                .filter(line -> line.getPurchaseOrderLineId() != null)
-                .map(line -> new ReceivedLine(line.getPurchaseOrderLineId(), line.getQuantityReceived()))
-                .toList();
-            purchaseOrderReceiving.revertReceipt(receipt.getPurchaseOrderId(), companyId, receivedLines, actorId);
+                    .filter(line -> line.getPurchaseOrderLineId() != null)
+                    .map(line -> new ReceivedLine(line.getPurchaseOrderLineId(),
+                            line.getQuantityReceived()))
+                    .toList();
+            purchaseOrderReceiving.revertReceipt(receipt.getPurchaseOrderId(), companyId,
+                    receivedLines, actorId);
         }
 
         receipt.cancel(actorId);

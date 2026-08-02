@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateSupplierInvoiceUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('supplierinvoice.create') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('supplierinvoice.create') and @authz.isMyCompany(#command.companyId))")
     SupplierInvoiceDto execute(CreateSupplierInvoiceCommand command);
 }

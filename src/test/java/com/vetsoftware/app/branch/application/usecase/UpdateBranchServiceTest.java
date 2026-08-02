@@ -25,16 +25,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * UPDATE de sucursal. Valida scoping por empresa (no encontrar ⇒ excepción), unicidad de código excluyéndose
- * a sí misma, resolución de ciudad, y que la actualización sea atómica (un fallo de precondición no muta el
- * agregado ni escribe).
+ * UPDATE de sucursal. Valida scoping por empresa (no encontrar ⇒ excepción),
+ * unicidad de código excluyéndose a sí misma, resolución de ciudad, y que la
+ * actualización sea atómica (un fallo de precondición no muta el agregado ni
+ * escribe).
  */
 @ExtendWith(MockitoExtension.class)
 class UpdateBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @Mock private CityQueryPort cityQueryPort;
-    @InjectMocks private UpdateBranchService service;
+    @Mock
+    private BranchRepository repository;
+    @Mock
+    private CityQueryPort cityQueryPort;
+    @InjectMocks
+    private UpdateBranchService service;
 
     private final CityRef city = new CityRef(5L, "Bogotá");
     private final CityRef otherCity = new CityRef(7L, "Medellín");
@@ -53,8 +57,8 @@ class UpdateBranchServiceTest {
         when(cityQueryPort.findById(7L)).thenReturn(Optional.of(otherCity));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        BranchDto dto = service.execute(
-            new UpdateBranchCommand(3L, "New", "NEW", "addr2", "phone2", 7L, 9L));
+        BranchDto dto = service
+                .execute(new UpdateBranchCommand(3L, "New", "NEW", "addr2", "phone2", 7L, 9L));
 
         assertThat(branch.getName()).isEqualTo("New");
         assertThat(branch.getCity()).isEqualTo(otherCity);
@@ -83,9 +87,9 @@ class UpdateBranchServiceTest {
     void falla_si_no_existe_en_la_empresa() {
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(
-                new UpdateBranchCommand(3L, "New", "NEW", "a", "p", 7L, 9L)))
-            .isInstanceOf(BranchNotFoundException.class);
+        assertThatThrownBy(
+                () -> service.execute(new UpdateBranchCommand(3L, "New", "NEW", "a", "p", 7L, 9L)))
+                .isInstanceOf(BranchNotFoundException.class);
 
         verify(repository, never()).save(any());
         verifyNoInteractions(cityQueryPort);
@@ -97,10 +101,10 @@ class UpdateBranchServiceTest {
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(branch));
         when(repository.codeExistsForOther(9L, "DUP", 3L)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.execute(
-                new UpdateBranchCommand(3L, "New", "DUP", "a", "p", 7L, 9L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("already in use");
+        assertThatThrownBy(
+                () -> service.execute(new UpdateBranchCommand(3L, "New", "DUP", "a", "p", 7L, 9L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already in use");
 
         assertThat(branch.getName()).as("no debe mutar ante código duplicado").isEqualTo("Old");
         verify(repository, never()).save(any());
@@ -114,10 +118,10 @@ class UpdateBranchServiceTest {
         when(repository.codeExistsForOther(9L, "NEW", 3L)).thenReturn(false);
         when(cityQueryPort.findById(7L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(
-                new UpdateBranchCommand(3L, "New", "NEW", "a", "p", 7L, 9L)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("City not found");
+        assertThatThrownBy(
+                () -> service.execute(new UpdateBranchCommand(3L, "New", "NEW", "a", "p", 7L, 9L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("City not found");
 
         assertThat(branch.getName()).isEqualTo("Old");
         assertThat(branch.getCity()).isEqualTo(city);

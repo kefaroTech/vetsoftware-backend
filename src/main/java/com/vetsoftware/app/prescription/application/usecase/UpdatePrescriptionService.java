@@ -25,9 +25,8 @@ public class UpdatePrescriptionService implements UpdatePrescriptionUseCase {
     private final CompanyQueryPort companyQueryPort;
 
     public UpdatePrescriptionService(PrescriptionRepository repository,
-                                     AnimalQueryPort animalQueryPort,
-                                     ConsultationQueryPort consultationQueryPort,
-                                     CompanyQueryPort companyQueryPort) {
+            AnimalQueryPort animalQueryPort, ConsultationQueryPort consultationQueryPort,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.consultationQueryPort = consultationQueryPort;
@@ -38,21 +37,24 @@ public class UpdatePrescriptionService implements UpdatePrescriptionUseCase {
     @Transactional
     public PrescriptionDto execute(UpdatePrescriptionCommand command) {
         Prescription prescription = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
-            .orElseThrow(() -> new PrescriptionNotFoundException(command.id()));
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+                .orElseThrow(() -> new PrescriptionNotFoundException(command.id()));
         Long companyId = command.companyId() == null
-            ? prescription.getCompany().id()
-            : command.companyId();
+                ? prescription.getCompany().id()
+                : command.companyId();
         AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = consultationQueryPort.findByIdAndCompanyId(command.consultationId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
+        ConsultationRef consultation = consultationQueryPort
+                .findByIdAndCompanyId(command.consultationId(), companyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
-        prescription.update(command.date(), command.diagnosis(), command.observations(),
-            animal, consultation, company);
+        prescription.update(command.date(), command.diagnosis(), command.observations(), animal,
+                consultation, company);
         return PrescriptionDto.from(repository.save(prescription));
     }
 }

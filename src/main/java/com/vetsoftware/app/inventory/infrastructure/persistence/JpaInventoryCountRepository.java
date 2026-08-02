@@ -45,27 +45,29 @@ public class JpaInventoryCountRepository implements InventoryCountRepository {
 
     @Override
     public PageResult<InventoryCountView> search(SearchCountsQuery query) {
-        Page<InventoryCountJpaEntity> page = jpaRepository.search(query.companyId(), query.branchId(),
-            PageRequest.of(query.page(), query.pageSize()));
+        Page<InventoryCountJpaEntity> page = jpaRepository.search(query.companyId(),
+                query.branchId(), PageRequest.of(query.page(), query.pageSize()));
         List<InventoryCountView> content = page.getContent().stream()
-            .map(e -> InventoryCountView.summary(e.getId(), e.getBranchId(), e.getNote(), e.getCountedBy(),
-                e.getCreatedDate(), e.getTotalLines(), e.getAdjustedLines()))
-            .toList();
+                .map(e -> InventoryCountView.summary(e.getId(), e.getBranchId(), e.getNote(),
+                        e.getCountedBy(), e.getCreatedDate(), e.getTotalLines(),
+                        e.getAdjustedLines()))
+                .toList();
         return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-            page.getTotalPages());
+                page.getTotalPages());
     }
 
     @Override
     public Optional<InventoryCountView> findDetail(Long companyId, Long id) {
-        return jpaRepository.findByIdAndCompanyId(id, companyId).map(e -> InventoryCountView.from(toDomain(e)));
+        return jpaRepository.findByIdAndCompanyId(id, companyId)
+                .map(e -> InventoryCountView.from(toDomain(e)));
     }
 
     private static InventoryCount toDomain(InventoryCountJpaEntity e) {
         List<InventoryCountLine> lines = e.getLines().stream()
-            .map(l -> new InventoryCountLine(l.getId(), l.getProductId(), l.getSystemQuantity(),
-                l.getCountedQuantity()))
-            .toList();
-        return new InventoryCount(e.getId(), e.getCompanyId(), e.getBranchId(), e.getNote(), e.getCountedBy(),
-            e.getCreatedDate(), e.isEnabled(), lines);
+                .map(l -> new InventoryCountLine(l.getId(), l.getProductId(), l.getSystemQuantity(),
+                        l.getCountedQuantity()))
+                .toList();
+        return new InventoryCount(e.getId(), e.getCompanyId(), e.getBranchId(), e.getNote(),
+                e.getCountedBy(), e.getCreatedDate(), e.isEnabled(), lines);
     }
 }

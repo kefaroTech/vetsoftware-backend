@@ -15,8 +15,7 @@ public class DeleteCityService implements DeleteCityUseCase {
     private final CityRepository repository;
     private final OwnerChildrenQueryPort ownerChildrenQueryPort;
 
-    public DeleteCityService(
-            CityRepository repository,
+    public DeleteCityService(CityRepository repository,
             OwnerChildrenQueryPort ownerChildrenQueryPort) {
         this.repository = repository;
         this.ownerChildrenQueryPort = ownerChildrenQueryPort;

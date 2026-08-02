@@ -34,13 +34,11 @@ public class LaboratoryTestTypeController {
     private final Authz authz;
 
     public LaboratoryTestTypeController(CreateLaboratoryTestTypeUseCase createUseCase,
-                              UpdateLaboratoryTestTypeUseCase updateUseCase,
-                              FindLaboratoryTestTypeUseCase findUseCase,
-                              ListLaboratoryTestTypesUseCase listUseCase,
-                              ListAvailableLaboratoryTestTypesUseCase listAvailableUseCase,
-                              DeleteLaboratoryTestTypeUseCase deleteUseCase,
-                              ReactivateLaboratoryTestTypeUseCase reactivateUseCase,
-                              Authz authz) {
+            UpdateLaboratoryTestTypeUseCase updateUseCase,
+            FindLaboratoryTestTypeUseCase findUseCase, ListLaboratoryTestTypesUseCase listUseCase,
+            ListAvailableLaboratoryTestTypesUseCase listAvailableUseCase,
+            DeleteLaboratoryTestTypeUseCase deleteUseCase,
+            ReactivateLaboratoryTestTypeUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -53,10 +51,10 @@ public class LaboratoryTestTypeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public LaboratoryTestTypeResponse create(@Valid @RequestBody CreateLaboratoryTestTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateLaboratoryTestTypeCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+    public LaboratoryTestTypeResponse create(
+            @Valid @RequestBody CreateLaboratoryTestTypeRequest request) {
+        return toResponse(createUseCase.execute(new CreateLaboratoryTestTypeCommand(request.name(),
+                request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @GetMapping
@@ -66,8 +64,8 @@ public class LaboratoryTestTypeController {
 
     @GetMapping("/available")
     public List<LaboratoryTestTypeResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -77,10 +75,10 @@ public class LaboratoryTestTypeController {
 
     @PutMapping("/{id}")
     public LaboratoryTestTypeResponse update(@PathVariable Long id,
-                                   @Valid @RequestBody UpdateLaboratoryTestTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateLaboratoryTestTypeCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
+            @Valid @RequestBody UpdateLaboratoryTestTypeRequest request) {
+        return toResponse(
+                updateUseCase.execute(new UpdateLaboratoryTestTypeCommand(id, request.name(),
+                        request.description(), authz.currentCompanyId(), request.general())));
     }
 
     @DeleteMapping("/{id}")
@@ -96,10 +94,8 @@ public class LaboratoryTestTypeController {
 
     private LaboratoryTestTypeResponse toResponse(LaboratoryTestTypeDto dto) {
         CompanySummaryDto c = dto.company();
-        return new LaboratoryTestTypeResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new LaboratoryTestTypeResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(), dto.enabled());
+                dto.general(), dto.createdDate(), dto.enabled());
     }
 }

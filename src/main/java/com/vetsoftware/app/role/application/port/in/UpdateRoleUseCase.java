@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateRoleUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('rolePermissions.update') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('rolePermissions.update') and @authz.isMyCompany(#command.companyId))")
     RoleDto execute(UpdateRoleCommand command);
 }

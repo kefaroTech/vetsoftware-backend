@@ -40,7 +40,8 @@ class OwnerTenantGuardTest {
 
     @Test
     void findByIdRequiresOwnerInCurrentCompany() {
-        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID)).thenReturn(Optional.empty());
+        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
 
         FindOwnerService service = new FindOwnerService(ownerRepository);
 
@@ -60,12 +61,13 @@ class OwnerTenantGuardTest {
 
     @Test
     void updateDoesNotLoadCityOrCompanyWhenOwnerIsOutsideCurrentCompany() {
-        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID)).thenReturn(Optional.empty());
-        UpdateOwnerCommand command = new UpdateOwnerCommand(
-                OWNER_ID, null, null, null, null, null, null, null,
-                null, null, 30L, COMPANY_ID, false, null, null);
+        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
+        UpdateOwnerCommand command = new UpdateOwnerCommand(OWNER_ID, null, null, null, null, null,
+                null, null, null, null, 30L, COMPANY_ID, false, null, null);
 
-        UpdateOwnerService service = new UpdateOwnerService(ownerRepository, cityQueryPort, companyQueryPort);
+        UpdateOwnerService service = new UpdateOwnerService(ownerRepository, cityQueryPort,
+                companyQueryPort);
 
         assertThatThrownBy(() -> service.execute(command))
                 .isInstanceOf(OwnerNotFoundException.class);
@@ -76,9 +78,11 @@ class OwnerTenantGuardTest {
 
     @Test
     void deleteDoesNotCheckChildrenOrDeleteWhenOwnerIsOutsideCurrentCompany() {
-        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID)).thenReturn(Optional.empty());
+        when(ownerRepository.findByIdAndCompanyId(OWNER_ID, COMPANY_ID))
+                .thenReturn(Optional.empty());
 
-        DeleteOwnerService service = new DeleteOwnerService(ownerRepository, animalChildrenQueryPort);
+        DeleteOwnerService service = new DeleteOwnerService(ownerRepository,
+                animalChildrenQueryPort);
 
         assertThatThrownBy(() -> service.execute(OWNER_ID, COMPANY_ID))
                 .isInstanceOf(OwnerNotFoundException.class);

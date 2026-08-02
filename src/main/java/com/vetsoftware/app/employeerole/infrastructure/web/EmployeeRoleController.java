@@ -32,11 +32,9 @@ public class EmployeeRoleController {
     private final ReactivateEmployeeRoleUseCase reactivateUseCase;
 
     public EmployeeRoleController(CreateEmployeeRoleUseCase createUseCase,
-                                  UpdateEmployeeRoleUseCase updateUseCase,
-                                  FindEmployeeRoleUseCase findUseCase,
-                                  ListEmployeeRolesUseCase listUseCase,
-                                  DeleteEmployeeRoleUseCase deleteUseCase,
-                                  ReactivateEmployeeRoleUseCase reactivateUseCase) {
+            UpdateEmployeeRoleUseCase updateUseCase, FindEmployeeRoleUseCase findUseCase,
+            ListEmployeeRolesUseCase listUseCase, DeleteEmployeeRoleUseCase deleteUseCase,
+            ReactivateEmployeeRoleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -48,8 +46,8 @@ public class EmployeeRoleController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EmployeeRoleResponse create(@Valid @RequestBody CreateEmployeeRoleRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateEmployeeRoleCommand(request.employeeId(), request.roleId())));
+        return toResponse(createUseCase
+                .execute(new CreateEmployeeRoleCommand(request.employeeId(), request.roleId())));
     }
 
     @GetMapping
@@ -64,9 +62,9 @@ public class EmployeeRoleController {
 
     @PutMapping("/{id}")
     public EmployeeRoleResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdateEmployeeRoleRequest request) {
+            @Valid @RequestBody UpdateEmployeeRoleRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateEmployeeRoleCommand(id, request.employeeId(), request.roleId())));
+                new UpdateEmployeeRoleCommand(id, request.employeeId(), request.roleId())));
     }
 
     @DeleteMapping("/{id}")
@@ -83,12 +81,8 @@ public class EmployeeRoleController {
     private EmployeeRoleResponse toResponse(EmployeeRoleDto dto) {
         EmployeeSummaryDto e = dto.employee();
         RoleSummaryDto r = dto.role();
-        return new EmployeeRoleResponse(
-            dto.id(),
-            new EmployeeSummary(e.id(), e.employeeCode(), e.name()),
-            new RoleSummary(r.id(), r.name(), r.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new EmployeeRoleResponse(dto.id(),
+                new EmployeeSummary(e.id(), e.employeeCode(), e.name()),
+                new RoleSummary(r.id(), r.name(), r.code()), dto.createdDate(), dto.enabled());
     }
 }

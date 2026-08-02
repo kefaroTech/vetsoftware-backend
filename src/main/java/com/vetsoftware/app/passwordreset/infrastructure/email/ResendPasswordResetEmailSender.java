@@ -11,13 +11,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Correo de restablecimiento de contraseña enviado con una <b>plantilla de Resend</b>
- * ({@code template: { id, variables }}). El enlace apunta a la página del front ({@code reset-base-url}) con
- * el token plano; el front llama a {@code POST /auth/reset-password}. Async/best-effort: si Resend falla o el
- * envío está deshabilitado (dev), se registra el enlace/aviso en el log y el flujo continúa.
+ * Correo de restablecimiento de contraseña enviado con una <b>plantilla de
+ * Resend</b> ({@code
+ * template: { id, variables }}). El enlace apunta a la página del front
+ * ({@code reset-base-url}) con el token plano; el front llama a
+ * {@code POST /auth/reset-password}. Async/best-effort: si Resend falla o el
+ * envío está deshabilitado (dev), se registra el enlace/aviso en el log y el
+ * flujo continúa.
  *
- * <p>Variables de la plantilla (coinciden con los {@code {{{VARIABLE}}}} del HTML en Resend):
- * EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL.
+ * <p>
+ * Variables de la plantilla (coinciden con los {@code {{{VARIABLE}}}} del HTML
+ * en Resend): EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL,
+ * EMPLOYEE_EMAIL.
  */
 @Component
 public class ResendPasswordResetEmailSender implements PasswordResetEmailSender {
@@ -28,8 +33,7 @@ public class ResendPasswordResetEmailSender implements PasswordResetEmailSender 
     private final String resetBaseUrl;
     private final String templateId;
 
-    public ResendPasswordResetEmailSender(
-            ResendEmailClient email,
+    public ResendPasswordResetEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.password-reset.reset-base-url}") String resetBaseUrl,
             @Value("${vetsoftware.password-reset.template-id:}") String templateId) {
         this.email = email;
@@ -39,11 +43,12 @@ public class ResendPasswordResetEmailSender implements PasswordResetEmailSender 
 
     @Override
     public void send(String toEmail, String employeeName, String employeeCode, String companyName,
-                     String rawToken) {
+            String rawToken) {
         String link = buildLink(rawToken);
         if (!email.isEnabled()) {
             // El enlace lleva el token de restablecimiento en claro: va por el canal de
-            // previsualización local, que no alcanza el pipeline exportado (ver DevEmailPreview).
+            // previsualización local, que no alcanza el pipeline exportado (ver
+            // DevEmailPreview).
             DevEmailPreview.show(toEmail, "Enlace de restablecimiento", link);
             return;
         }
@@ -59,7 +64,8 @@ public class ResendPasswordResetEmailSender implements PasswordResetEmailSender 
 
     private String buildLink(String rawToken) {
         String separator = resetBaseUrl.contains("?") ? "&" : "?";
-        return resetBaseUrl + separator + "token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        return resetBaseUrl + separator + "token="
+                + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
     }
 
     private static String nz(String s) {

@@ -36,13 +36,11 @@ public class PermissionController {
     private final Authz authz;
 
     public PermissionController(CreatePermissionUseCase createUseCase,
-                                 UpdatePermissionUseCase updateUseCase,
-                                 FindPermissionUseCase findUseCase,
-                                 ListPermissionsUseCase listUseCase,
-                                 ListPermissionsByCompanyUseCase listByCompanyUseCase,
-                                 DeletePermissionUseCase deleteUseCase,
-                                 ReactivatePermissionUseCase reactivateUseCase,
-                                 Authz authz) {
+            UpdatePermissionUseCase updateUseCase, FindPermissionUseCase findUseCase,
+            ListPermissionsUseCase listUseCase,
+            ListPermissionsByCompanyUseCase listByCompanyUseCase,
+            DeletePermissionUseCase deleteUseCase, ReactivatePermissionUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -56,8 +54,8 @@ public class PermissionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreatePermissionCommand(request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
+        return toResponse(createUseCase.execute(new CreatePermissionCommand(request.name(),
+                request.code(), authz.currentCompanyId(), request.subModuleId())));
     }
 
     @GetMapping
@@ -67,8 +65,8 @@ public class PermissionController {
 
     @GetMapping("/by-company")
     public List<PermissionResponse> listByCompany() {
-        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -78,9 +76,9 @@ public class PermissionController {
 
     @PutMapping("/{id}")
     public PermissionResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdatePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdatePermissionCommand(id, request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
+            @Valid @RequestBody UpdatePermissionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdatePermissionCommand(id, request.name(),
+                request.code(), authz.currentCompanyId(), request.subModuleId())));
     }
 
     @DeleteMapping("/{id}")
@@ -97,12 +95,9 @@ public class PermissionController {
     private PermissionResponse toResponse(PermissionDto dto) {
         CompanySummaryDto c = dto.company();
         SubModuleSummaryDto sm = dto.subModule();
-        return new PermissionResponse(
-            dto.id(), dto.name(), dto.code(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new PermissionResponse(dto.id(), dto.name(), dto.code(),
+                new CompanySummary(c.id(), c.name(), c.identifier()),
+                new SubModuleSummary(sm.id(), sm.name(), sm.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

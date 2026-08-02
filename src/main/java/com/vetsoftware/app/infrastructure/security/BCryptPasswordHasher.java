@@ -15,7 +15,8 @@ public class BCryptPasswordHasher implements PasswordHasher {
 
     @Override
     public boolean matches(String rawPassword, String storedHash) {
-        if (storedHash == null || storedHash.isBlank()) return false;
+        if (storedHash == null || storedHash.isBlank())
+            return false;
         return encoder.matches(rawPassword, storedHash);
     }
 }

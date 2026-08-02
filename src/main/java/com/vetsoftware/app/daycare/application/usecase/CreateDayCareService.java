@@ -19,9 +19,8 @@ public class CreateDayCareService implements CreateDayCareUseCase {
     private final AnimalQueryPort animalQueryPort;
     private final CompanyQueryPort companyQueryPort;
 
-    public CreateDayCareService(DayCareRepository repository,
-                                AnimalQueryPort animalQueryPort,
-                                CompanyQueryPort companyQueryPort) {
+    public CreateDayCareService(DayCareRepository repository, AnimalQueryPort animalQueryPort,
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.companyQueryPort = companyQueryPort;
@@ -29,15 +28,13 @@ public class CreateDayCareService implements CreateDayCareUseCase {
 
     @Override
     public DayCareDto execute(CreateDayCareCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        DayCare dayCare = DayCare.create(
-            command.date(), command.startDate(), command.endDate(),
-            command.type(), command.objects(), command.observations(),
-            animal, company);
+        DayCare dayCare = DayCare.create(command.date(), command.startDate(), command.endDate(),
+                command.type(), command.objects(), command.observations(), animal, company);
         return DayCareDto.from(repository.save(dayCare));
     }
 }

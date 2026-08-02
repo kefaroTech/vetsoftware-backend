@@ -24,9 +24,8 @@ public class UpdateEmployeeRoleService implements UpdateEmployeeRoleUseCase {
     private final PermissionCachePort permissionCachePort;
 
     public UpdateEmployeeRoleService(EmployeeRoleRepository repository,
-                                     EmployeeQueryPort employeeQueryPort,
-                                     RoleQueryPort roleQueryPort,
-                                     PermissionCachePort permissionCachePort) {
+            EmployeeQueryPort employeeQueryPort, RoleQueryPort roleQueryPort,
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.employeeQueryPort = employeeQueryPort;
         this.roleQueryPort = roleQueryPort;
@@ -37,12 +36,12 @@ public class UpdateEmployeeRoleService implements UpdateEmployeeRoleUseCase {
     @Transactional
     public EmployeeRoleDto execute(UpdateEmployeeRoleCommand command) {
         EmployeeRole employeeRole = repository.findById(command.id())
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(command.id()));
+                .orElseThrow(() -> new EmployeeRoleNotFoundException(command.id()));
         Long previousEmployeeId = employeeRole.getEmployee().id();
-        EmployeeRef employee = employeeQueryPort.findById(command.employeeId())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
-        RoleRef role = roleQueryPort.findById(command.roleId())
-            .orElseThrow(() -> new IllegalArgumentException("Role not found: " + command.roleId()));
+        EmployeeRef employee = employeeQueryPort.findById(command.employeeId()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
+        RoleRef role = roleQueryPort.findById(command.roleId()).orElseThrow(
+                () -> new IllegalArgumentException("Role not found: " + command.roleId()));
         employeeRole.update(employee, role);
         EmployeeRoleDto dto = EmployeeRoleDto.from(repository.save(employeeRole));
         permissionCachePort.evictByEmployeeId(previousEmployeeId);

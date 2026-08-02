@@ -12,10 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.observation.update")
 @Service
-public class UpdateHospitalizationObservationService implements UpdateHospitalizationObservationUseCase {
+public class UpdateHospitalizationObservationService
+        implements
+            UpdateHospitalizationObservationUseCase {
     private final HospitalizationObservationRepository repository;
 
-    public UpdateHospitalizationObservationService(HospitalizationObservationRepository repository) {
+    public UpdateHospitalizationObservationService(
+            HospitalizationObservationRepository repository) {
         this.repository = repository;
     }
 
@@ -23,7 +26,7 @@ public class UpdateHospitalizationObservationService implements UpdateHospitaliz
     @Transactional
     public HospitalizationObservationDto execute(UpdateHospitalizationObservationCommand command) {
         HospitalizationObservation observation = repository.findById(command.id())
-            .orElseThrow(() -> new HospitalizationObservationNotFoundException(command.id()));
+                .orElseThrow(() -> new HospitalizationObservationNotFoundException(command.id()));
         observation.update(command.description());
         return HospitalizationObservationDto.from(repository.save(observation));
     }

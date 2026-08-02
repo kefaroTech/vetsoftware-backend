@@ -31,10 +31,9 @@ public class BreedController {
     private final ReactivateBreedUseCase reactivateUseCase;
 
     public BreedController(CreateBreedUseCase createUseCase, UpdateBreedUseCase updateUseCase,
-                           FindBreedUseCase findUseCase, ListBreedsUseCase listUseCase,
-                           ListBreedsBySpecieUseCase listBySpecieUseCase,
-                           DeleteBreedUseCase deleteUseCase,
-                           ReactivateBreedUseCase reactivateUseCase) {
+            FindBreedUseCase findUseCase, ListBreedsUseCase listUseCase,
+            ListBreedsBySpecieUseCase listBySpecieUseCase, DeleteBreedUseCase deleteUseCase,
+            ReactivateBreedUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -47,8 +46,8 @@ public class BreedController {
     @PostMapping("/breeds")
     @ResponseStatus(HttpStatus.CREATED)
     public BreedResponse create(@Valid @RequestBody CreateBreedRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateBreedCommand(request.name(), request.specieId())));
+        return toResponse(
+                createUseCase.execute(new CreateBreedCommand(request.name(), request.specieId())));
     }
 
     @GetMapping("/breeds")
@@ -58,8 +57,7 @@ public class BreedController {
 
     @GetMapping("/species/{specieId}/breeds")
     public List<BreedResponse> listBySpecie(@PathVariable Long specieId) {
-        return listBySpecieUseCase.listBySpecie(specieId).stream()
-            .map(this::toResponse).toList();
+        return listBySpecieUseCase.listBySpecie(specieId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/breeds/{id}")
@@ -68,9 +66,10 @@ public class BreedController {
     }
 
     @PutMapping("/breeds/{id}")
-    public BreedResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBreedRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateBreedCommand(id, request.name(), request.specieId())));
+    public BreedResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateBreedRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateBreedCommand(id, request.name(), request.specieId())));
     }
 
     @DeleteMapping("/breeds/{id}")
@@ -86,10 +85,7 @@ public class BreedController {
 
     private BreedResponse toResponse(BreedDto dto) {
         SpecieSummaryDto s = dto.specie();
-        return new BreedResponse(
-            dto.id(), dto.name(),
-            new SpecieSummary(s.id(), s.name()),
-            dto.createdDate(), dto.enabled()
-        );
+        return new BreedResponse(dto.id(), dto.name(), new SpecieSummary(s.id(), s.name()),
+                dto.createdDate(), dto.enabled());
     }
 }

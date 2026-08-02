@@ -2,10 +2,10 @@ package com.vetsoftware.app.withholdingconfig.infrastructure.persistence;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "withholding_configs")
@@ -35,20 +35,62 @@ public class WithholdingConfigJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected WithholdingConfigJpaEntity() {}
+    protected WithholdingConfigJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public BigDecimal getReteFuenteRate() { return reteFuenteRate; }
-    public void setReteFuenteRate(BigDecimal reteFuenteRate) { this.reteFuenteRate = reteFuenteRate; }
-    public BigDecimal getReteIvaRate() { return reteIvaRate; }
-    public void setReteIvaRate(BigDecimal reteIvaRate) { this.reteIvaRate = reteIvaRate; }
-    public BigDecimal getReteIcaRate() { return reteIcaRate; }
-    public void setReteIcaRate(BigDecimal reteIcaRate) { this.reteIcaRate = reteIcaRate; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public BigDecimal getReteFuenteRate() {
+        return reteFuenteRate;
+    }
+
+    public void setReteFuenteRate(BigDecimal reteFuenteRate) {
+        this.reteFuenteRate = reteFuenteRate;
+    }
+
+    public BigDecimal getReteIvaRate() {
+        return reteIvaRate;
+    }
+
+    public void setReteIvaRate(BigDecimal reteIvaRate) {
+        this.reteIvaRate = reteIvaRate;
+    }
+
+    public BigDecimal getReteIcaRate() {
+        return reteIcaRate;
+    }
+
+    public void setReteIcaRate(BigDecimal reteIcaRate) {
+        this.reteIcaRate = reteIcaRate;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

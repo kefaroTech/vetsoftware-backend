@@ -18,7 +18,7 @@ public class SearchOwnersService implements SearchOwnersUseCase {
 
     @Override
     public List<OwnerDto> search(Long companyId, String query) {
-        return repository.searchByCompanyAndTerm(companyId, query)
-            .stream().map(OwnerDto::from).toList();
+        return repository.searchByCompanyAndTerm(companyId, query).stream().map(OwnerDto::from)
+                .toList();
     }
 }

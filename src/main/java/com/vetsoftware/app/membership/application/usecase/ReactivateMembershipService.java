@@ -21,8 +21,9 @@ public class ReactivateMembershipService implements ReactivateMembershipUseCase 
     @Transactional
     public MembershipDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new MembershipNotFoundException(id);
-        return MembershipDto.from(repository.findById(id)
-            .orElseThrow(() -> new MembershipNotFoundException(id)));
+        if (rows == 0)
+            throw new MembershipNotFoundException(id);
+        return MembershipDto.from(
+                repository.findById(id).orElseThrow(() -> new MembershipNotFoundException(id)));
     }
 }

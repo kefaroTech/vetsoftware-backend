@@ -19,6 +19,6 @@ public class FindDewormingService implements FindDewormingUseCase {
     @Override
     public DewormingDto findById(Long id, Long companyId) {
         return DewormingDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new DewormingNotFoundException(id)));
+                .orElseThrow(() -> new DewormingNotFoundException(id)));
     }
 }

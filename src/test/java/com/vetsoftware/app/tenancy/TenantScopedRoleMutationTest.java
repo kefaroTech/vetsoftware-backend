@@ -30,8 +30,8 @@ class TenantScopedRoleMutationTest {
         when(repository.findByIdAndCompanyId(ROLE_ID, COMPANY_ID)).thenReturn(Optional.empty());
         var service = new UpdateRoleService(repository, companyQueryPort);
 
-        assertThrows(RoleNotFoundException.class,
-            () -> service.execute(new UpdateRoleCommand(ROLE_ID, "Manager", "MANAGER", COMPANY_ID)));
+        assertThrows(RoleNotFoundException.class, () -> service
+                .execute(new UpdateRoleCommand(ROLE_ID, "Manager", "MANAGER", COMPANY_ID)));
 
         verify(repository).findByIdAndCompanyId(ROLE_ID, COMPANY_ID);
         verifyNoMoreInteractions(repository, companyQueryPort);
@@ -40,10 +40,8 @@ class TenantScopedRoleMutationTest {
     @Test
     void deleteDoesNotFallBackToAGlobalRoleLookup() {
         RoleRepository repository = mock(RoleRepository.class);
-        var service = new DeleteRoleService(
-            repository,
-            mock(EmployeeRoleChildrenQueryPort.class),
-            mock(RolePermissionChildrenCascadePort.class));
+        var service = new DeleteRoleService(repository, mock(EmployeeRoleChildrenQueryPort.class),
+                mock(RolePermissionChildrenCascadePort.class));
         when(repository.findByIdAndCompanyId(ROLE_ID, COMPANY_ID)).thenReturn(Optional.empty());
 
         assertThrows(RoleNotFoundException.class, () -> service.execute(ROLE_ID, COMPANY_ID));

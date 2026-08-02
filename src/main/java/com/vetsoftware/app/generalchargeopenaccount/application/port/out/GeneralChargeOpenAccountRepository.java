@@ -6,14 +6,30 @@ import java.util.Optional;
 
 public interface GeneralChargeOpenAccountRepository {
     GeneralChargeOpenAccount save(GeneralChargeOpenAccount charge);
+
     Optional<GeneralChargeOpenAccount> findById(Long id);
-    /** Lectura scoped a la empresa (vía la cuenta): evita IDOR cross-tenant al consultar un cargo por id directo. */
+
+    /**
+     * Lectura scoped a la empresa (vía la cuenta): evita IDOR cross-tenant al
+     * consultar un cargo por id directo.
+     */
     Optional<GeneralChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId);
-    /** Cargo ya registrado con esta idempotency key en la cuenta (para deduplicar reintentos). */
-    Optional<GeneralChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId);
+
+    /**
+     * Cargo ya registrado con esta idempotency key en la cuenta (para deduplicar
+     * reintentos).
+     */
+    Optional<GeneralChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId,
+            String clientRequestId);
+
     List<GeneralChargeOpenAccount> findAll();
+
     List<GeneralChargeOpenAccount> findAllByCompanyId(Long companyId);
-    List<GeneralChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId);
+
+    List<GeneralChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId,
+            Long companyId);
+
     void delete(Long id);
+
     int reactivate(Long id, Long companyId);
 }

@@ -19,6 +19,6 @@ public class FindSupplierService implements FindSupplierUseCase {
     @Override
     public SupplierDto findById(Long id, Long companyId) {
         return SupplierDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new SupplierNotFoundException(id)));
+                .orElseThrow(() -> new SupplierNotFoundException(id)));
     }
 }

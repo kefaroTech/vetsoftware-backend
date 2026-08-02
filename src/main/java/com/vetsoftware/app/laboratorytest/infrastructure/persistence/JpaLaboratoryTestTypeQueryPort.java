@@ -17,6 +17,6 @@ public class JpaLaboratoryTestTypeQueryPort implements LaboratoryTestTypeQueryPo
     @Override
     public Optional<LaboratoryTestTypeRef> findById(Long testTypeId) {
         return testTypeJpaRepository.findById(testTypeId)
-            .map(e -> new LaboratoryTestTypeRef(e.getId(), e.getName()));
+                .map(e -> new LaboratoryTestTypeRef(e.getId(), e.getName()));
     }
 }

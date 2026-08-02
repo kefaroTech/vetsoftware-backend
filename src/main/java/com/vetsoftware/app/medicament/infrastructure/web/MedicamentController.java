@@ -36,14 +36,12 @@ public class MedicamentController {
     private final Authz authz;
 
     public MedicamentController(CreateMedicamentUseCase createUseCase,
-                                UpdateMedicamentUseCase updateUseCase,
-                                FindMedicamentUseCase findUseCase,
-                                ListMedicamentsUseCase listUseCase,
-                                ListAvailableMedicamentsUseCase listAvailableUseCase,
-                                ListDisabledMedicamentsUseCase listDisabledUseCase,
-                                DeleteMedicamentUseCase deleteUseCase,
-                                ReactivateMedicamentUseCase reactivateUseCase,
-                                Authz authz) {
+            UpdateMedicamentUseCase updateUseCase, FindMedicamentUseCase findUseCase,
+            ListMedicamentsUseCase listUseCase,
+            ListAvailableMedicamentsUseCase listAvailableUseCase,
+            ListDisabledMedicamentsUseCase listDisabledUseCase,
+            DeleteMedicamentUseCase deleteUseCase, ReactivateMedicamentUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -55,14 +53,14 @@ public class MedicamentController {
         this.authz = authz;
     }
 
-    // Los medicamentos creados por una empresa son propios de esa empresa (general = false).
+    // Los medicamentos creados por una empresa son propios de esa empresa (general
+    // = false).
     // El catálogo global compartido (general = true) se siembra por migración.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MedicamentResponse create(@Valid @RequestBody CreateMedicamentRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateMedicamentCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), false)));
+        return toResponse(createUseCase.execute(new CreateMedicamentCommand(request.name(),
+                request.description(), authz.currentCompanyId(), false)));
     }
 
     @GetMapping
@@ -72,14 +70,14 @@ public class MedicamentController {
 
     @GetMapping("/available")
     public List<MedicamentResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/disabled")
     public List<MedicamentResponse> listDisabled() {
-        return listDisabledUseCase.listDisabled(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
+        return listDisabledUseCase.listDisabled(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -89,9 +87,9 @@ public class MedicamentController {
 
     @PutMapping("/{id}")
     public MedicamentResponse update(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateMedicamentRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateMedicamentCommand(id, request.name(), request.description())));
+            @Valid @RequestBody UpdateMedicamentRequest request) {
+        return toResponse(updateUseCase
+                .execute(new UpdateMedicamentCommand(id, request.name(), request.description())));
     }
 
     @DeleteMapping("/{id}")
@@ -107,10 +105,8 @@ public class MedicamentController {
 
     private MedicamentResponse toResponse(MedicamentDto dto) {
         CompanySummaryDto c = dto.company();
-        return new MedicamentResponse(
-                dto.id(), dto.name(), dto.description(),
+        return new MedicamentResponse(dto.id(), dto.name(), dto.description(),
                 c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(), dto.enabled());
+                dto.general(), dto.createdDate(), dto.enabled());
     }
 }

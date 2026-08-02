@@ -8,9 +8,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariantes del agregado Employee: es la identidad con la que alguien inicia sesión, así que sus reglas
- * de creación, cambio de contraseña y ciclo INVITED→ACTIVE son control de acceso, no solo validación de
- * formulario. Se fija además qué operaciones invalidan sesiones vivas (authVersion) y cuáles no.
+ * Invariantes del agregado Employee: es la identidad con la que alguien inicia
+ * sesión, así que sus reglas de creación, cambio de contraseña y ciclo
+ * INVITED→ACTIVE son control de acceso, no solo validación de formulario. Se
+ * fija además qué operaciones invalidan sesiones vivas (authVersion) y cuáles
+ * no.
  */
 class EmployeeTest {
 
@@ -42,7 +44,8 @@ class EmployeeTest {
                     "orlando@vetrina.co", company(), false, false);
 
             assertThat(employee.getStatus()).isEqualTo(EmployeeStatus.ACTIVE);
-            assertThat(employee.isEmailVerified()).as("Opción B: debe verificar antes de entrar").isFalse();
+            assertThat(employee.isEmailVerified()).as("Opción B: debe verificar antes de entrar")
+                    .isFalse();
             assertThat(employee.isMustChangePassword()).isFalse();
         }
 
@@ -57,7 +60,8 @@ class EmployeeTest {
 
         @Test
         void nunca_guarda_la_contrasena_en_claro() {
-            // El agregado recibe SIEMPRE un hash ya calculado; no tiene forma de hashear por sí mismo.
+            // El agregado recibe SIEMPRE un hash ya calculado; no tiene forma de hashear
+            // por sí mismo.
             Employee employee = valid();
 
             assertThat(employee.getHashPassword()).startsWith("$2a$");
@@ -69,45 +73,50 @@ class EmployeeTest {
 
         @Test
         void exige_codigo_de_empleado() {
-            assertThatThrownBy(() -> Employee.create(null, "h", "n", "e@e.co", company(), true, false))
+            assertThatThrownBy(
+                    () -> Employee.create(null, "h", "n", "e@e.co", company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("employeeCode is required");
-            assertThatThrownBy(() -> Employee.create("  ", "h", "n", "e@e.co", company(), true, false))
+            assertThatThrownBy(
+                    () -> Employee.create("  ", "h", "n", "e@e.co", company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void limita_el_codigo_a_50_caracteres() {
-            assertThatThrownBy(() -> Employee.create("X".repeat(51), "h", "n", "e@e.co",
-                    company(), true, false))
-                    .isInstanceOf(IllegalArgumentException.class)
+            assertThatThrownBy(() -> Employee.create("X".repeat(51), "h", "n", "e@e.co", company(),
+                    true, false)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("50 chars or less");
 
-            assertThatCode(() -> Employee.create("X".repeat(50), "h", "n", "e@e.co",
-                    company(), true, false)).doesNotThrowAnyException();
+            assertThatCode(() -> Employee.create("X".repeat(50), "h", "n", "e@e.co", company(),
+                    true, false)).doesNotThrowAnyException();
         }
 
         @Test
         void exige_hash_de_contrasena() {
-            assertThatThrownBy(() -> Employee.create("C", null, "n", "e@e.co", company(), true, false))
+            assertThatThrownBy(
+                    () -> Employee.create("C", null, "n", "e@e.co", company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("password is required");
-            assertThatThrownBy(() -> Employee.create("C", "   ", "n", "e@e.co", company(), true, false))
+            assertThatThrownBy(
+                    () -> Employee.create("C", "   ", "n", "e@e.co", company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void exige_nombre_y_correo_dentro_de_100_caracteres() {
-            assertThatThrownBy(() -> Employee.create("C", "h", "", "e@e.co", company(), true, false))
+            assertThatThrownBy(
+                    () -> Employee.create("C", "h", "", "e@e.co", company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("name is required");
-            assertThatThrownBy(() -> Employee.create("C", "h", "N".repeat(101), "e@e.co",
-                    company(), true, false)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Employee.create("C", "h", "N".repeat(101), "e@e.co", company(),
+                    true, false)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> Employee.create("C", "h", "n", null, company(), true, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("email is required");
-            assertThatThrownBy(() -> Employee.create("C", "h", "n", "e".repeat(101),
-                    company(), true, false)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(
+                    () -> Employee.create("C", "h", "n", "e".repeat(101), company(), true, false))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -133,7 +142,8 @@ class EmployeeTest {
 
         @Test
         void cambiar_la_clave_limpia_la_obligacion_de_cambiarla() {
-            Employee employee = Employee.create("C", "$2a$10$old", "n", "e@e.co", company(), true, true);
+            Employee employee = Employee.create("C", "$2a$10$old", "n", "e@e.co", company(), true,
+                    true);
 
             employee.changePassword("$2a$10$new");
 
@@ -143,9 +153,12 @@ class EmployeeTest {
 
         @Test
         void cambiar_la_clave_NO_invalida_las_sesiones_vivas() {
-            // Comportamiento actual documentado: authVersion no sube, así que la sesión en curso sobrevive
+            // Comportamiento actual documentado: authVersion no sube, así que la sesión en
+            // curso
+            // sobrevive
             // (y con ella cualquier refresh token emitido antes del cambio).
-            Employee employee = Employee.create("C", "$2a$10$old", "n", "e@e.co", company(), true, true);
+            Employee employee = Employee.create("C", "$2a$10$old", "n", "e@e.co", company(), true,
+                    true);
             Long before = employee.getAuthVersion();
 
             employee.changePassword("$2a$10$new");

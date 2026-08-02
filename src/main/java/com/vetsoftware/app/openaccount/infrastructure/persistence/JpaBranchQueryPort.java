@@ -21,8 +21,7 @@ public class JpaBranchQueryPort implements BranchQueryPort {
     @Override
     public Optional<BranchRef> findActiveByIdAndCompanyId(Long branchId, Long companyId) {
         return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
-            .filter(BranchJpaEntity::isActive)
-            .map(JpaBranchQueryPort::toRef);
+                .filter(BranchJpaEntity::isActive).map(JpaBranchQueryPort::toRef);
     }
 
     @Override
@@ -32,9 +31,11 @@ public class JpaBranchQueryPort implements BranchQueryPort {
 
     @Override
     public Optional<BranchRef> findDefaultActiveByCompanyId(Long companyId) {
-        return branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
-            .or(() -> branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
-            .map(JpaBranchQueryPort::toRef);
+        return branchJpaRepository
+                .findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
+                .or(() -> branchJpaRepository
+                        .findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
+                .map(JpaBranchQueryPort::toRef);
     }
 
     private static BranchRef toRef(BranchJpaEntity e) {

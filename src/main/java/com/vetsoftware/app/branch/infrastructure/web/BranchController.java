@@ -34,9 +34,9 @@ public class BranchController {
     private final Authz authz;
 
     public BranchController(CreateBranchUseCase createUseCase, UpdateBranchUseCase updateUseCase,
-                            FindBranchUseCase findUseCase, ListBranchesUseCase listUseCase,
-                            ActivateBranchUseCase activateUseCase, DeactivateBranchUseCase deactivateUseCase,
-                            Authz authz) {
+            FindBranchUseCase findUseCase, ListBranchesUseCase listUseCase,
+            ActivateBranchUseCase activateUseCase, DeactivateBranchUseCase deactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,14 +49,15 @@ public class BranchController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BranchResponse create(@Valid @RequestBody CreateBranchRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateBranchCommand(request.name(), request.code(), request.address(),
-                request.phone(), request.cityId(), authz.currentCompanyId())));
+        return toResponse(createUseCase
+                .execute(new CreateBranchCommand(request.name(), request.code(), request.address(),
+                        request.phone(), request.cityId(), authz.currentCompanyId())));
     }
 
     @GetMapping
     public List<BranchResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -65,10 +66,11 @@ public class BranchController {
     }
 
     @PutMapping("/{id}")
-    public BranchResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBranchRequest request) {
+    public BranchResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateBranchRequest request) {
         return toResponse(updateUseCase.execute(
-            new UpdateBranchCommand(id, request.name(), request.code(), request.address(),
-                request.phone(), request.cityId(), authz.currentCompanyId())));
+                new UpdateBranchCommand(id, request.name(), request.code(), request.address(),
+                        request.phone(), request.cityId(), authz.currentCompanyId())));
     }
 
     @PatchMapping("/{id}/activate")
@@ -84,11 +86,9 @@ public class BranchController {
     private BranchResponse toResponse(BranchDto dto) {
         CitySummaryDto c = dto.city();
         CompanySummaryDto co = dto.company();
-        return new BranchResponse(
-            dto.id(), dto.name(), dto.code(), dto.address(), dto.phone(),
-            new CitySummary(c.id(), c.name()),
-            new CompanySummary(co.id(), co.name(), co.identifier()),
-            dto.createdDate(), dto.active()
-        );
+        return new BranchResponse(dto.id(), dto.name(), dto.code(), dto.address(), dto.phone(),
+                new CitySummary(c.id(), c.name()),
+                new CompanySummary(co.id(), co.name(), co.identifier()), dto.createdDate(),
+                dto.active());
     }
 }

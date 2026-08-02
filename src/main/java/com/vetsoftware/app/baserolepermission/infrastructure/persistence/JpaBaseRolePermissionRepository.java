@@ -18,9 +18,8 @@ public class JpaBaseRolePermissionRepository implements BaseRolePermissionReposi
     private final BasePermissionJpaRepository basePermissionJpaRepository;
 
     public JpaBaseRolePermissionRepository(BaseRolePermissionJpaRepository jpaRepository,
-                                            BaseRolePermissionJpaMapper mapper,
-                                            BaseRoleJpaRepository baseRoleJpaRepository,
-                                            BasePermissionJpaRepository basePermissionJpaRepository) {
+            BaseRolePermissionJpaMapper mapper, BaseRoleJpaRepository baseRoleJpaRepository,
+            BasePermissionJpaRepository basePermissionJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.baseRoleJpaRepository = baseRoleJpaRepository;
@@ -29,10 +28,14 @@ public class JpaBaseRolePermissionRepository implements BaseRolePermissionReposi
 
     @Override
     public BaseRolePermission save(BaseRolePermission baseRolePermission) {
-        BaseRoleJpaEntity baseRole = baseRoleJpaRepository.getReferenceById(baseRolePermission.getBaseRole().id());
-        BasePermissionJpaEntity basePermission = basePermissionJpaRepository.getReferenceById(baseRolePermission.getBasePermission().id());
-        BaseRolePermissionJpaEntity saved = jpaRepository.save(mapper.toJpa(baseRolePermission, baseRole, basePermission));
-        return mapper.toDomain(saved, baseRolePermission.getBaseRole(), baseRolePermission.getBasePermission());
+        BaseRoleJpaEntity baseRole = baseRoleJpaRepository
+                .getReferenceById(baseRolePermission.getBaseRole().id());
+        BasePermissionJpaEntity basePermission = basePermissionJpaRepository
+                .getReferenceById(baseRolePermission.getBasePermission().id());
+        BaseRolePermissionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(baseRolePermission, baseRole, basePermission));
+        return mapper.toDomain(saved, baseRolePermission.getBaseRole(),
+                baseRolePermission.getBasePermission());
     }
 
     @Override
@@ -56,7 +59,9 @@ public class JpaBaseRolePermissionRepository implements BaseRolePermissionReposi
     }
 
     @Override
-    public Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId, Long basePermissionId) {
-        return jpaRepository.findDisabledIdByBaseRoleAndBasePermission(baseRoleId, basePermissionId);
+    public Optional<Long> findDisabledIdByBaseRoleAndBasePermission(Long baseRoleId,
+            Long basePermissionId) {
+        return jpaRepository.findDisabledIdByBaseRoleAndBasePermission(baseRoleId,
+                basePermissionId);
     }
 }

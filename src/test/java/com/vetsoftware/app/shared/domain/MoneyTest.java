@@ -1,7 +1,6 @@
 package com.vetsoftware.app.shared.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,9 +8,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * Kernel monetario: toda cifra de dinero del sistema pasa por aquí. Un error de redondeo o de signo
- * se propaga a la base gravable, al IVA, a las retenciones y al total transmitido a la DIAN, así que
- * cada regla se fija explícitamente (escala 2, HALF_UP) incluidos los bordes de .005 y los nulos.
+ * Kernel monetario: toda cifra de dinero del sistema pasa por aquí. Un error de
+ * redondeo o de signo se propaga a la base gravable, al IVA, a las retenciones
+ * y al total transmitido a la DIAN, así que cada regla se fija explícitamente
+ * (escala 2, HALF_UP) incluidos los bordes de .005 y los nulos.
  */
 class MoneyTest {
 
@@ -31,7 +31,8 @@ class MoneyTest {
 
         @Test
         void half_up_en_negativos_redondea_alejandose_del_cero() {
-            // HALF_UP mira el valor absoluto: -0.005 → -0.01 (no -0.00). Importante en notas crédito.
+            // HALF_UP mira el valor absoluto: -0.005 → -0.01 (no -0.00). Importante en
+            // notas crédito.
             assertThat(Money.scaled(bd("-10.005"))).isEqualByComparingTo("-10.01");
         }
 
@@ -83,7 +84,8 @@ class MoneyTest {
 
         @Test
         void multiplicar_por_cero_da_cero() {
-            assertThat(Money.multiply(bd("99999.99"), BigDecimal.ZERO)).isEqualByComparingTo("0.00");
+            assertThat(Money.multiply(bd("99999.99"), BigDecimal.ZERO))
+                    .isEqualByComparingTo("0.00");
         }
     }
 
@@ -93,7 +95,8 @@ class MoneyTest {
         @Test
         void sin_porcentaje_el_total_ya_es_la_base() {
             assertThat(Money.extractBase(bd("50000"), null)).isEqualByComparingTo("50000");
-            assertThat(Money.extractBase(bd("50000"), BigDecimal.ZERO)).isEqualByComparingTo("50000");
+            assertThat(Money.extractBase(bd("50000"), BigDecimal.ZERO))
+                    .isEqualByComparingTo("50000");
         }
 
         @Test
@@ -115,7 +118,8 @@ class MoneyTest {
 
         @Test
         void base_mas_impuesto_reconstruye_el_total_dentro_de_un_peso() {
-            // Invariante operativa: el redondeo de la base no puede desviar el total más de 1 peso.
+            // Invariante operativa: el redondeo de la base no puede desviar el total más de
+            // 1 peso.
             BigDecimal total = bd("77777");
             BigDecimal base = Money.extractBase(total, bd("19"));
             BigDecimal reconstruido = base.add(Money.percentOf(base, bd("19")));
@@ -124,7 +128,9 @@ class MoneyTest {
 
         @Test
         void tarifa_negativa_no_se_ignora_y_produce_una_base_mayor() {
-            // Documenta el comportamiento actual: extractBase solo cortocircuita en null/0, no en negativos.
+            // Documenta el comportamiento actual: extractBase solo cortocircuita en null/0,
+            // no en
+            // negativos.
             assertThat(Money.extractBase(bd("100"), bd("-10"))).isGreaterThan(bd("100"));
         }
     }
@@ -195,11 +201,13 @@ class MoneyTest {
 
         @Test
         void es_una_clase_de_utilidad_sin_estado_y_no_extensible() throws Exception {
-            // Kernel puro: sin campos de instancia, final y con constructor privado. Si alguien le
-            // añadiera estado, dejaría de ser seguro compartirlo entre features y entre hilos.
+            // Kernel puro: sin campos de instancia, final y con constructor privado. Si
+            // alguien le
+            // añadiera estado, dejaría de ser seguro compartirlo entre features y entre
+            // hilos.
             assertThat(java.lang.reflect.Modifier.isFinal(Money.class.getModifiers())).isTrue();
-            assertThat(java.lang.reflect.Modifier.isPrivate(
-                    Money.class.getDeclaredConstructor().getModifiers())).isTrue();
+            assertThat(java.lang.reflect.Modifier
+                    .isPrivate(Money.class.getDeclaredConstructor().getModifiers())).isTrue();
             assertThat(Money.class.getDeclaredFields())
                     .allMatch(f -> java.lang.reflect.Modifier.isStatic(f.getModifiers()));
         }

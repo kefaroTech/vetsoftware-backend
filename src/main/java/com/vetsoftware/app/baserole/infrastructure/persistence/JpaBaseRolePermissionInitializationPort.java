@@ -8,14 +8,16 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaBaseRolePermissionInitializationPort implements BaseRolePermissionInitializationPort {
+public class JpaBaseRolePermissionInitializationPort
+        implements
+            BaseRolePermissionInitializationPort {
     private final BaseRoleJpaRepository baseRoleJpaRepository;
     private final BasePermissionJpaRepository basePermissionJpaRepository;
     private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
 
     public JpaBaseRolePermissionInitializationPort(BaseRoleJpaRepository baseRoleJpaRepository,
-                                                    BasePermissionJpaRepository basePermissionJpaRepository,
-                                                    BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
+            BasePermissionJpaRepository basePermissionJpaRepository,
+            BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
         this.baseRoleJpaRepository = baseRoleJpaRepository;
         this.basePermissionJpaRepository = basePermissionJpaRepository;
         this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
@@ -25,15 +27,15 @@ public class JpaBaseRolePermissionInitializationPort implements BaseRolePermissi
     public void initializeForAllBasePermissions(Long baseRoleId) {
         var baseRole = baseRoleJpaRepository.getReferenceById(baseRoleId);
         var entities = basePermissionJpaRepository.findAll().stream()
-            .filter(bp -> !baseRolePermissionJpaRepository.existsByBaseRoleIdAndBasePermissionId(baseRoleId, bp.getId()))
-            .map(bp -> {
-                var entity = new BaseRolePermissionJpaEntity();
-                entity.setBaseRole(baseRole);
-                entity.setBasePermission(bp);
-                entity.setCreatedDate(LocalDateTime.now());
-                return entity;
-            })
-            .toList();
+                .filter(bp -> !baseRolePermissionJpaRepository
+                        .existsByBaseRoleIdAndBasePermissionId(baseRoleId, bp.getId()))
+                .map(bp -> {
+                    var entity = new BaseRolePermissionJpaEntity();
+                    entity.setBaseRole(baseRole);
+                    entity.setBasePermission(bp);
+                    entity.setCreatedDate(LocalDateTime.now());
+                    return entity;
+                }).toList();
         baseRolePermissionJpaRepository.saveAll(entities);
     }
 }

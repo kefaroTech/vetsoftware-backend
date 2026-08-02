@@ -19,13 +19,16 @@ import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
 
 /**
- * Prueba de extremo a extremo de la política de redacción (OBS-019) sobre un pipeline de Logback
- * <b>real</b>: {@link RedactingAppender} envolviendo un appender destino, igual que en
- * {@code logback-spring.xml}.
+ * Prueba de extremo a extremo de la política de redacción (OBS-019) sobre un
+ * pipeline de Logback <b>real</b>: {@link RedactingAppender} envolviendo un
+ * appender destino, igual que en {@code
+ * logback-spring.xml}.
  *
- * <p>El valor señuelo se inyecta por las cuatro superficies posibles (mensaje formateado, MDC, pares
- * clave-valor y cadena de excepciones) y se afirma que no sobrevive en <em>ninguna</em> de ellas en el
- * evento que recibe el appender destino — que es exactamente lo que se serializa a Loki.
+ * <p>
+ * El valor señuelo se inyecta por las cuatro superficies posibles (mensaje
+ * formateado, MDC, pares clave-valor y cadena de excepciones) y se afirma que
+ * no sobrevive en <em>ninguna</em> de ellas en el evento que recibe el appender
+ * destino — que es exactamente lo que se serializa a Loki.
  */
 class LogRedactionPipelineTest {
 
@@ -38,8 +41,10 @@ class LogRedactionPipelineTest {
     @BeforeEach
     void wirePipeline() {
         context = new LoggerContext();
-        // Un LoggerContext construido a mano no trae adaptador de MDC (en producción lo inyecta el
-        // binding de SLF4J), y LoggingEvent.getMDCPropertyMap() reventaría con NPE. Se reutiliza el
+        // Un LoggerContext construido a mano no trae adaptador de MDC (en producción lo
+        // inyecta el
+        // binding de SLF4J), y LoggingEvent.getMDCPropertyMap() reventaría con NPE. Se
+        // reutiliza el
         // adaptador real para que los MDC.put de la prueba lleguen de verdad al evento.
         context.setMDCAdapter(MDC.getMDCAdapter());
         context.start();
@@ -71,7 +76,9 @@ class LogRedactionPipelineTest {
         return sink.list.get(0);
     }
 
-    /** Todo el texto que el evento puede llegar a serializar, en una sola cadena. */
+    /**
+     * Todo el texto que el evento puede llegar a serializar, en una sola cadena.
+     */
     private static String everythingSerialized(ILoggingEvent event) {
         StringBuilder all = new StringBuilder();
         all.append(event.getFormattedMessage()).append('\n');
@@ -81,8 +88,8 @@ class LogRedactionPipelineTest {
                 all.append(argument).append('\n');
             }
         }
-        event.getMDCPropertyMap().forEach((key, value) ->
-                all.append(key).append('=').append(value).append('\n'));
+        event.getMDCPropertyMap()
+                .forEach((key, value) -> all.append(key).append('=').append(value).append('\n'));
         if (event.getKeyValuePairs() != null) {
             for (KeyValuePair pair : event.getKeyValuePairs()) {
                 all.append(pair.key).append('=').append(pair.value).append('\n');
@@ -101,8 +108,10 @@ class LogRedactionPipelineTest {
     @Test
     @DisplayName("un secreto interpolado como argumento no llega al appender destino")
     void redactsSecretsComposedFromTemplateAndArgument() {
-        // El argumento aislado es texto anodino; el secreto solo existe al unir plantilla y argumento.
-        // Es la razón por la que se redacta el mensaje ya formateado y no argumento a argumento.
+        // El argumento aislado es texto anodino; el secreto solo existe al unir
+        // plantilla y argumento.
+        // Es la razón por la que se redacta el mensaje ya formateado y no argumento a
+        // argumento.
         logger.info("password={}", DECOY);
 
         ILoggingEvent event = onlyEvent();
@@ -129,22 +138,18 @@ class LogRedactionPipelineTest {
 
         ILoggingEvent event = onlyEvent();
         assertThat(everythingSerialized(event)).doesNotContain(DECOY);
-        assertThat(event.getMDCPropertyMap())
-                .containsEntry("owner.email", LogRedactor.MASK)
+        assertThat(event.getMDCPropertyMap()).containsEntry("owner.email", LogRedactor.MASK)
                 .containsEntry(MdcKeys.ACTOR_EMPLOYEE_ID, "77");
     }
 
     @Test
     void redactsStructuredKeyValuePairsOutsideTheAllowlist() {
-        logger.atInfo()
-                .addKeyValue("event", "login_success")
-                .addKeyValue("owner.diagnosis", DECOY)
+        logger.atInfo().addKeyValue("event", "login_success").addKeyValue("owner.diagnosis", DECOY)
                 .log("evento de auditoría");
 
         ILoggingEvent event = onlyEvent();
         assertThat(everythingSerialized(event)).doesNotContain(DECOY);
-        assertThat(event.getKeyValuePairs())
-                .extracting(pair -> pair.key + "=" + pair.value)
+        assertThat(event.getKeyValuePairs()).extracting(pair -> pair.key + "=" + pair.value)
                 .containsExactly("event=login_success", "owner.diagnosis=" + LogRedactor.MASK);
     }
 
@@ -181,7 +186,8 @@ class LogRedactionPipelineTest {
     @Test
     @DisplayName("una excepción sin datos sensibles llega intacta: no se paga fidelidad sin motivo")
     void leavesCleanThrowablesCompletelyUntouched() {
-        IllegalStateException clean = new IllegalStateException("estado inválido de la sesión de caja");
+        IllegalStateException clean = new IllegalStateException(
+                "estado inválido de la sesión de caja");
 
         logger.error("Unexpected error", clean);
 

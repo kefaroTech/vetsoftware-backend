@@ -18,8 +18,7 @@ public class FindSystemUserPermissionService implements FindSystemUserPermission
 
     @Override
     public SystemUserPermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(SystemUserPermissionDto::from)
-            .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
+        return repository.findById(id).map(SystemUserPermissionDto::from)
+                .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
     }
 }

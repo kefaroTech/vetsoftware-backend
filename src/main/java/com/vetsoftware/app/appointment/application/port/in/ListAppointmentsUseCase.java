@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAppointmentsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('appointment.read') and @authz.isMyCompany(#query.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('appointment.read') and"
+            + " @authz.isMyCompany(#query.companyId))")
     List<AppointmentDto> execute(ListAppointmentsQuery query);
 }

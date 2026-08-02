@@ -16,16 +16,15 @@ public class CreateSubModuleService implements CreateSubModuleUseCase {
     private final SubModuleRepository repository;
     private final ModuleQueryPort moduleQueryPort;
 
-    public CreateSubModuleService(SubModuleRepository repository,
-                                  ModuleQueryPort moduleQueryPort) {
+    public CreateSubModuleService(SubModuleRepository repository, ModuleQueryPort moduleQueryPort) {
         this.repository = repository;
         this.moduleQueryPort = moduleQueryPort;
     }
 
     @Override
     public SubModuleDto execute(CreateSubModuleCommand command) {
-        ModuleRef module = moduleQueryPort.findById(command.moduleId())
-            .orElseThrow(() -> new IllegalArgumentException("Module not found: " + command.moduleId()));
+        ModuleRef module = moduleQueryPort.findById(command.moduleId()).orElseThrow(
+                () -> new IllegalArgumentException("Module not found: " + command.moduleId()));
         SubModule subModule = SubModule.create(command.name(), command.code(), module);
         return SubModuleDto.from(repository.save(subModule));
     }

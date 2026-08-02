@@ -17,18 +17,17 @@ public class JpaAuthSystemUserRepository implements AuthSystemUserRepository {
     @Override
     public Optional<AuthSystemUser> findActiveById(Long systemUserId) {
         return systemUserJpaRepository.findById(systemUserId)
-            .map(user -> new AuthSystemUser(user.getId(), user.getAuthVersion()));
+                .map(user -> new AuthSystemUser(user.getId(), user.getAuthVersion()));
     }
 
     @Override
     public Optional<AuthSystemUser> rotateAuthVersion(Long systemUserId) {
-        return systemUserJpaRepository.findByIdForUpdate(systemUserId)
-            .map(user -> {
-                long nextVersion = user.getAuthVersion() + 1L;
-                user.setAuthVersion(nextVersion);
-                systemUserJpaRepository.saveAndFlush(user);
-                return new AuthSystemUser(user.getId(), nextVersion);
-            });
+        return systemUserJpaRepository.findByIdForUpdate(systemUserId).map(user -> {
+            long nextVersion = user.getAuthVersion() + 1L;
+            user.setAuthVersion(nextVersion);
+            systemUserJpaRepository.saveAndFlush(user);
+            return new AuthSystemUser(user.getId(), nextVersion);
+        });
     }
 
     @Override

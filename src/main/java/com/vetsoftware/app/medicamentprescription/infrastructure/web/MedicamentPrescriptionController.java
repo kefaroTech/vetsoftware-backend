@@ -32,12 +32,11 @@ public class MedicamentPrescriptionController {
     private final Authz authz;
 
     public MedicamentPrescriptionController(CreateMedicamentPrescriptionUseCase createUseCase,
-                                            UpdateMedicamentPrescriptionUseCase updateUseCase,
-                                            FindMedicamentPrescriptionUseCase findUseCase,
-                                            ListMedicamentPrescriptionsUseCase listUseCase,
-                                            DeleteMedicamentPrescriptionUseCase deleteUseCase,
-                                            ReactivateMedicamentPrescriptionUseCase reactivateUseCase,
-                                            Authz authz) {
+            UpdateMedicamentPrescriptionUseCase updateUseCase,
+            FindMedicamentPrescriptionUseCase findUseCase,
+            ListMedicamentPrescriptionsUseCase listUseCase,
+            DeleteMedicamentPrescriptionUseCase deleteUseCase,
+            ReactivateMedicamentPrescriptionUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -49,9 +48,9 @@ public class MedicamentPrescriptionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public MedicamentPrescriptionResponse create(@Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateMedicamentPrescriptionCommand(
+    public MedicamentPrescriptionResponse create(
+            @Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
+        return toResponse(createUseCase.execute(new CreateMedicamentPrescriptionCommand(
                 request.medicamentId(), request.presentation(), request.quantity(),
                 request.posology(), request.observation(), request.prescriptionId())));
     }
@@ -68,10 +67,9 @@ public class MedicamentPrescriptionController {
 
     @PutMapping("/{id}")
     public MedicamentPrescriptionResponse update(@PathVariable Long id,
-                                                  @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateMedicamentPrescriptionCommand(
-                id, request.medicamentId(), request.presentation(), request.quantity(),
+            @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateMedicamentPrescriptionCommand(id,
+                request.medicamentId(), request.presentation(), request.quantity(),
                 request.posology(), request.observation(), request.prescriptionId(),
                 authz.currentCompanyIdOrNull())));
     }
@@ -89,11 +87,8 @@ public class MedicamentPrescriptionController {
 
     private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {
         PrescriptionSummaryDto p = dto.prescription();
-        return new MedicamentPrescriptionResponse(
-            dto.id(), dto.medicamentId(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
-            dto.observation(),
-            new PrescriptionSummary(p.id(), p.date()),
-            dto.createdDate(),
-            dto.enabled());
+        return new MedicamentPrescriptionResponse(dto.id(), dto.medicamentId(), dto.name(),
+                dto.presentation(), dto.quantity(), dto.posology(), dto.observation(),
+                new PrescriptionSummary(p.id(), p.date()), dto.createdDate(), dto.enabled());
     }
 }

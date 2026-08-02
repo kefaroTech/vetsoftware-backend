@@ -6,10 +6,10 @@ import com.vetsoftware.app.procedureschedule.application.port.in.GenerateProcedu
 import com.vetsoftware.app.procedureschedule.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.procedureschedule.application.port.out.HospitalizationProcedureQueryPort;
 import com.vetsoftware.app.procedureschedule.application.port.out.ProcedureScheduleRepository;
+import com.vetsoftware.app.procedureschedule.domain.AppliedStatus;
 import com.vetsoftware.app.procedureschedule.domain.EmployeeRef;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureOrderParams;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureSchedule;
-import com.vetsoftware.app.procedureschedule.domain.AppliedStatus;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureScheduleGenerator;
 import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
@@ -28,8 +28,8 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
     private final EmployeeQueryPort employeeQueryPort;
 
     public GenerateProcedureScheduleService(ProcedureScheduleRepository repository,
-                                            HospitalizationProcedureQueryPort procedureQueryPort,
-                                            EmployeeQueryPort employeeQueryPort) {
+            HospitalizationProcedureQueryPort procedureQueryPort,
+            EmployeeQueryPort employeeQueryPort) {
         this.repository = repository;
         this.procedureQueryPort = procedureQueryPort;
         this.employeeQueryPort = employeeQueryPort;
@@ -38,18 +38,18 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
     @Override
     @Transactional
     public List<ProcedureScheduleDto> execute(GenerateProcedureScheduleCommand command) {
-        ProcedureOrderParams params = procedureQueryPort.findById(command.hospitalizationProcedureId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Hospitalization procedure not found: " + command.hospitalizationProcedureId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Employee not found: " + command.createdById()));
+        ProcedureOrderParams params = procedureQueryPort
+                .findById(command.hospitalizationProcedureId()).orElseThrow(
+                        () -> new IllegalArgumentException("Hospitalization procedure not found: "
+                                + command.hospitalizationProcedureId()));
+        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        // Regla de integridad: las ejecuciones APLICADAS son histórico inmutable; solo se
+        // Regla de integridad: las ejecuciones APLICADAS son histórico inmutable; solo
+        // se
         // recalculan las pendientes.
-        List<ProcedureSchedule> applied = repository.findByHospitalizationProcedureId(params.id()).stream()
-            .filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED)
-            .toList();
+        List<ProcedureSchedule> applied = repository.findByHospitalizationProcedureId(params.id())
+                .stream().filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED).toList();
 
         List<ProcedureSchedule> result = new ArrayList<>();
         if (applied.isEmpty()) {
@@ -61,13 +61,10 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
         } else {
             // Conserva las aplicadas; reconstruye solo las pendientes.
             repository.disablePendingByHospitalizationProcedureId(params.id());
-            LocalDateTime lastApplied = applied.stream()
-                .map(ProcedureSchedule::getRealDateTime)
-                .filter(Objects::nonNull)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
-            List<ProcedureSchedule> pending = ProcedureScheduleGenerator.generatePending(
-                params, applied.size(), lastApplied, createdBy);
+            LocalDateTime lastApplied = applied.stream().map(ProcedureSchedule::getRealDateTime)
+                    .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+            List<ProcedureSchedule> pending = ProcedureScheduleGenerator.generatePending(params,
+                    applied.size(), lastApplied, createdBy);
             result.addAll(applied);
             for (ProcedureSchedule s : pending) {
                 result.add(repository.save(s));

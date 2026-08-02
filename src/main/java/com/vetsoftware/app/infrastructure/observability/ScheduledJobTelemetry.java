@@ -8,11 +8,14 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * Enriquece la observación raíz que Spring crea para cada método {@code @Scheduled}.
+ * Enriquece la observación raíz que Spring crea para cada método
+ * {@code @Scheduled}.
  *
- * <p>Spring Boot configura automáticamente {@code tasks.scheduled.execution}. Esta clase no crea
- * una observación anidada cuando el job se ejecuta desde el scheduler; añade únicamente dimensiones
- * de negocio acotadas. El fallback conserva observabilidad cuando el método se invoca manualmente.
+ * <p>
+ * Spring Boot configura automáticamente {@code tasks.scheduled.execution}. Esta
+ * clase no crea una observación anidada cuando el job se ejecuta desde el
+ * scheduler; añade únicamente dimensiones de negocio acotadas. El fallback
+ * conserva observabilidad cuando el método se invoca manualmente.
  */
 @Component
 public final class ScheduledJobTelemetry {
@@ -20,8 +23,8 @@ public final class ScheduledJobTelemetry {
     static final String OBSERVATION_NAME = "tasks.scheduled.execution";
     static final String JOB_NAME_KEY = "job.name";
     static final String JOB_OUTCOME_KEY = "job.outcome";
-    private static final Pattern JOB_NAME_PATTERN =
-            Pattern.compile("^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+$");
+    private static final Pattern JOB_NAME_PATTERN = Pattern
+            .compile("^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+$");
 
     private final ObservationRegistry observationRegistry;
 
@@ -55,7 +58,8 @@ public final class ScheduledJobTelemetry {
     private static void execute(Observation observation, String jobName, Supplier<Outcome> action) {
         observation.lowCardinalityKeyValue(JOB_NAME_KEY, jobName);
         try {
-            Outcome outcome = Objects.requireNonNull(action.get(), "El job debe informar un resultado");
+            Outcome outcome = Objects.requireNonNull(action.get(),
+                    "El job debe informar un resultado");
             observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, outcome.value());
         } catch (RuntimeException | Error exception) {
             observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, Outcome.ERROR.value());
@@ -64,14 +68,12 @@ public final class ScheduledJobTelemetry {
     }
 
     /**
-     * Resultados deliberadamente acotados para no crear cardinalidad ilimitada en Prometheus.
+     * Resultados deliberadamente acotados para no crear cardinalidad ilimitada en
+     * Prometheus.
      */
     public enum Outcome {
-        NO_WORK("no_work"),
-        SUCCESS("success"),
-        PARTIAL_FAILURE("partial_failure"),
-        FAILURE("failure"),
-        ERROR("error");
+        NO_WORK("no_work"), SUCCESS("success"), PARTIAL_FAILURE("partial_failure"), FAILURE(
+                "failure"), ERROR("error");
 
         private final String value;
 

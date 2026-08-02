@@ -29,9 +29,8 @@ public class CountryController {
     private final ReactivateCountryUseCase reactivateUseCase;
 
     public CountryController(CreateCountryUseCase createUseCase, UpdateCountryUseCase updateUseCase,
-                             FindCountryUseCase findUseCase, ListCountriesUseCase listUseCase,
-                             DeleteCountryUseCase deleteUseCase,
-                             ReactivateCountryUseCase reactivateUseCase) {
+            FindCountryUseCase findUseCase, ListCountriesUseCase listUseCase,
+            DeleteCountryUseCase deleteUseCase, ReactivateCountryUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -57,7 +56,8 @@ public class CountryController {
     }
 
     @PutMapping("/{id}")
-    public CountryResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCountryRequest request) {
+    public CountryResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateCountryRequest request) {
         return toResponse(updateUseCase.execute(new UpdateCountryCommand(id, request.name())));
     }
 

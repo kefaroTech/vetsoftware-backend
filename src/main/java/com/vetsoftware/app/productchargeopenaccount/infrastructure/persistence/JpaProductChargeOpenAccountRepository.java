@@ -26,13 +26,12 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     private final OpenAccountJpaRepository openAccountJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaProductChargeOpenAccountRepository(ProductChargeOpenAccountJpaRepository jpaRepository,
-                                                 ProductChargeOpenAccountJpaMapper mapper,
-                                                 AnimalJpaRepository animalJpaRepository,
-                                                 ProductJpaRepository productJpaRepository,
-                                                 TaxJpaRepository taxJpaRepository,
-                                                 OpenAccountJpaRepository openAccountJpaRepository,
-                                                 EmployeeJpaRepository employeeJpaRepository) {
+    public JpaProductChargeOpenAccountRepository(
+            ProductChargeOpenAccountJpaRepository jpaRepository,
+            ProductChargeOpenAccountJpaMapper mapper, AnimalJpaRepository animalJpaRepository,
+            ProductJpaRepository productJpaRepository, TaxJpaRepository taxJpaRepository,
+            OpenAccountJpaRepository openAccountJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -46,17 +45,21 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     public ProductChargeOpenAccount save(ProductChargeOpenAccount charge) {
         AnimalJpaEntity animal = animalJpaRepository.getReferenceById(charge.getAnimal().id());
         ProductJpaEntity product = productJpaRepository.getReferenceById(charge.getProduct().id());
-        TaxJpaEntity tax = charge.getTax() == null ? null
-            : taxJpaRepository.getReferenceById(charge.getTax().id());
-        OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
-        EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
-            : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
-        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
-            : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
-        ProductChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, product, tax, openAccount, createdBy, voidedBy));
+        TaxJpaEntity tax = charge.getTax() == null
+                ? null
+                : taxJpaRepository.getReferenceById(charge.getTax().id());
+        OpenAccountJpaEntity openAccount = openAccountJpaRepository
+                .getReferenceById(charge.getOpenAccount().id());
+        EmployeeJpaEntity createdBy = charge.getCreatedBy() == null
+                ? null
+                : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
+        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null
+                ? null
+                : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
+        ProductChargeOpenAccountJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(charge, animal, product, tax, openAccount, createdBy, voidedBy));
         return mapper.toDomain(saved, charge.getAnimal(), charge.getProduct(), charge.getTax(),
-            charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
+                charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
     }
 
     @Override
@@ -70,8 +73,10 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
-    public Optional<ProductChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId) {
-        return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId).map(mapper::toDomain);
+    public Optional<ProductChargeOpenAccount> findByOpenAccountIdAndClientRequestId(
+            Long openAccountId, String clientRequestId) {
+        return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId)
+                .map(mapper::toDomain);
     }
 
     @Override
@@ -81,13 +86,15 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
 
     @Override
     public List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream()
+                .map(mapper::toDomain).toList();
     }
 
     @Override
-    public List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId) {
-        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId).stream()
-            .map(mapper::toDomain).toList();
+    public List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId,
+            Long companyId) {
+        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

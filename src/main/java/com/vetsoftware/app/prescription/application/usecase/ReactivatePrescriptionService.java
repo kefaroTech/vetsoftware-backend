@@ -21,8 +21,9 @@ public class ReactivatePrescriptionService implements ReactivatePrescriptionUseC
     @Transactional
     public PrescriptionDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new PrescriptionNotFoundException(id);
-        return PrescriptionDto.from(repository.findById(id)
-            .orElseThrow(() -> new PrescriptionNotFoundException(id)));
+        if (rows == 0)
+            throw new PrescriptionNotFoundException(id);
+        return PrescriptionDto.from(
+                repository.findById(id).orElseThrow(() -> new PrescriptionNotFoundException(id)));
     }
 }

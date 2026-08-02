@@ -16,7 +16,7 @@ public class DeleteLaboratoryTestFileService implements DeleteLaboratoryTestFile
     private final FileStoragePort fileStoragePort;
 
     public DeleteLaboratoryTestFileService(LaboratoryTestFileRepository repository,
-                                           FileStoragePort fileStoragePort) {
+            FileStoragePort fileStoragePort) {
         this.repository = repository;
         this.fileStoragePort = fileStoragePort;
     }
@@ -25,7 +25,7 @@ public class DeleteLaboratoryTestFileService implements DeleteLaboratoryTestFile
     @Transactional
     public void execute(Long id) {
         LaboratoryTestFile file = repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
+                .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
         // se borra primero la fila (dentro de la tx) y luego el objeto en S3:
         // si S3 falla, la tx hace rollback y la metadata se conserva.
         repository.delete(id);

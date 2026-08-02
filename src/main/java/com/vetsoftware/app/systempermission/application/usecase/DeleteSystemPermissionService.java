@@ -14,8 +14,7 @@ public class DeleteSystemPermissionService implements DeleteSystemPermissionUseC
     private final SystemPermissionRepository repository;
     private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
 
-    public DeleteSystemPermissionService(
-            SystemPermissionRepository repository,
+    public DeleteSystemPermissionService(SystemPermissionRepository repository,
             SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
         this.repository = repository;
         this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;

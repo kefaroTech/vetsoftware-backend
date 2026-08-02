@@ -24,7 +24,7 @@ public class RescheduleMedicationScheduleService implements RescheduleMedication
     private final HospitalizationMedicationQueryPort medicationQueryPort;
 
     public RescheduleMedicationScheduleService(MedicationScheduleRepository repository,
-                                               HospitalizationMedicationQueryPort medicationQueryPort) {
+            HospitalizationMedicationQueryPort medicationQueryPort) {
         this.repository = repository;
         this.medicationQueryPort = medicationQueryPort;
     }
@@ -36,12 +36,13 @@ public class RescheduleMedicationScheduleService implements RescheduleMedication
             throw new IllegalArgumentException("newDateTime is required");
 
         MedicationSchedule probe = repository.findById(command.scheduleId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Medication schedule not found: " + command.scheduleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Medication schedule not found: " + command.scheduleId()));
         Long medicationId = probe.getHospitalizationMedication().id();
 
         // Orden previo al movimiento (define "las siguientes").
-        List<MedicationSchedule> all = new ArrayList<>(repository.findByHospitalizationMedicationId(medicationId));
+        List<MedicationSchedule> all = new ArrayList<>(
+                repository.findByHospitalizationMedicationId(medicationId));
         all.sort(Comparator.comparing(MedicationSchedule::getCurrentDateTime));
         int idx = indexOfId(all, command.scheduleId());
 
@@ -53,7 +54,8 @@ public class RescheduleMedicationScheduleService implements RescheduleMedication
             MedicationOrderParams params = medicationQueryPort.findById(medicationId).orElse(null);
             if (params != null && "INTERVAL".equalsIgnoreCase(params.guidelineType())) {
                 Integer interval = MedicationScheduleGenerator.intervalHours(params.frequency());
-                if (interval != null) recalcFollowing(all, idx, command.newDateTime(), interval);
+                if (interval != null)
+                    recalcFollowing(all, idx, command.newDateTime(), interval);
             }
         }
 
@@ -62,17 +64,19 @@ public class RescheduleMedicationScheduleService implements RescheduleMedication
 
     private static int indexOfId(List<MedicationSchedule> all, Long id) {
         for (int i = 0; i < all.size(); i++) {
-            if (id.equals(all.get(i).getId())) return i;
+            if (id.equals(all.get(i).getId()))
+                return i;
         }
         throw new IllegalArgumentException("Medication schedule not found in plan: " + id);
     }
 
-    private void recalcFollowing(List<MedicationSchedule> all, int pivotIdx,
-                                 LocalDateTime from, int intervalHours) {
+    private void recalcFollowing(List<MedicationSchedule> all, int pivotIdx, LocalDateTime from,
+            int intervalHours) {
         LocalDateTime cursor = from;
         for (int i = pivotIdx + 1; i < all.size(); i++) {
             MedicationSchedule s = all.get(i);
-            if (s.getAppliedStatus() != AppliedStatus.PENDING) continue;
+            if (s.getAppliedStatus() != AppliedStatus.PENDING)
+                continue;
             cursor = cursor.plusHours(intervalHours);
             s.reschedule(cursor);
             repository.save(s);

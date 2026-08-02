@@ -42,13 +42,12 @@ public class ProductChargeOpenAccountController {
     private final Authz authz;
 
     public ProductChargeOpenAccountController(CreateProductChargeOpenAccountUseCase createUseCase,
-                                              UpdateProductChargeOpenAccountUseCase updateUseCase,
-                                              FindProductChargeOpenAccountUseCase findUseCase,
-                                              ListProductChargeOpenAccountsUseCase listUseCase,
-                                              ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
-                                              VoidProductChargeOpenAccountUseCase voidUseCase,
-                                              Authz authz) {
+            UpdateProductChargeOpenAccountUseCase updateUseCase,
+            FindProductChargeOpenAccountUseCase findUseCase,
+            ListProductChargeOpenAccountsUseCase listUseCase,
+            ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+            ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
+            VoidProductChargeOpenAccountUseCase voidUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -63,27 +62,28 @@ public class ProductChargeOpenAccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public ProductChargeOpenAccountResponse create(
             @Valid @RequestBody CreateProductChargeOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateProductChargeOpenAccountCommand(
+        return toResponse(createUseCase.execute(new CreateProductChargeOpenAccountCommand(
                 request.animalId(), request.productId(),
-                request.quantity() == null ? 1 : request.quantity(),
-                request.openAccountId(),
+                request.quantity() == null ? 1 : request.quantity(), request.openAccountId(),
                 authz.currentCompanyId(), authz.currentEmployeeId(),
-                // Alcance por empleado: no-admin acotado a sus sedes; admin usa la pedida o null → Principal.
-                authz.resolveAccessibleBranch(request.branchId()),
-                request.clientRequestId(),
+                // Alcance por empleado: no-admin acotado a sus sedes; admin usa la pedida o
+                // null →
+                // Principal.
+                authz.resolveAccessibleBranch(request.branchId()), request.clientRequestId(),
                 request.expectedVersion())));
     }
 
     @GetMapping
     public List<ProductChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/by-open-account/{openAccountId}")
-    public List<ProductChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
+    public List<ProductChargeOpenAccountResponse> listByOpenAccount(
+            @PathVariable Long openAccountId) {
         return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -92,11 +92,10 @@ public class ProductChargeOpenAccountController {
     }
 
     @PutMapping("/{id}")
-    public ProductChargeOpenAccountResponse update(
-            @PathVariable Long id, @Valid @RequestBody UpdateProductChargeOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateProductChargeOpenAccountCommand(
-                id, request.animalId(), request.productId(), request.openAccountId(),
+    public ProductChargeOpenAccountResponse update(@PathVariable Long id,
+            @Valid @RequestBody UpdateProductChargeOpenAccountRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateProductChargeOpenAccountCommand(id,
+                request.animalId(), request.productId(), request.openAccountId(),
                 authz.currentCompanyId(), request.expectedVersion())));
     }
 
@@ -106,12 +105,11 @@ public class ProductChargeOpenAccountController {
     }
 
     @PatchMapping("/{id}/void")
-    public ProductChargeOpenAccountResponse voidCharge(
-            @PathVariable Long id, @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
-        return toResponse(voidUseCase.execute(
-            new VoidProductChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
-                request.expectedVersion())));
+    public ProductChargeOpenAccountResponse voidCharge(@PathVariable Long id,
+            @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
+        return toResponse(voidUseCase
+                .execute(new VoidProductChargeOpenAccountCommand(id, authz.currentCompanyId(),
+                        authz.currentEmployeeId(), request.reason(), request.expectedVersion())));
     }
 
     private ProductChargeOpenAccountResponse toResponse(ProductChargeOpenAccountDto dto) {
@@ -120,25 +118,14 @@ public class ProductChargeOpenAccountController {
         OpenAccountSummaryDto o = dto.openAccount();
         EmployeeSummaryDto e = dto.createdBy();
         EmployeeSummaryDto v = dto.voidedBy();
-        return new ProductChargeOpenAccountResponse(
-            dto.id(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()),
-            dto.unitPrice(),
-            dto.quantity(),
-            dto.hasTax(),
-            dto.taxPercentage(),
-            dto.taxName(),
-            dto.baseAmount(),
-            dto.taxAmount(),
-            dto.totalAmount(),
-            new OpenAccountSummary(o.id(), o.companyId()),
-            e == null ? null : new EmployeeSummary(e.id(), e.name()),
-            dto.createdDate(),
-            dto.enabled(),
-            dto.voided(),
-            v == null ? null : new EmployeeSummary(v.id(), v.name()),
-            dto.voidedAt(),
-            dto.voidReason());
+        return new ProductChargeOpenAccountResponse(dto.id(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()), dto.unitPrice(),
+                dto.quantity(), dto.hasTax(), dto.taxPercentage(), dto.taxName(), dto.baseAmount(),
+                dto.taxAmount(), dto.totalAmount(), new OpenAccountSummary(o.id(), o.companyId()),
+                e == null ? null : new EmployeeSummary(e.id(), e.name()), dto.createdDate(),
+                dto.enabled(), dto.voided(),
+                v == null ? null : new EmployeeSummary(v.id(), v.name()), dto.voidedAt(),
+                dto.voidReason());
     }
 }

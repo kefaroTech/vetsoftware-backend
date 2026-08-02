@@ -21,8 +21,9 @@ public class ReactivateDewormingService implements ReactivateDewormingUseCase {
     @Transactional
     public DewormingDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new DewormingNotFoundException(id);
-        return DewormingDto.from(repository.findById(id)
-            .orElseThrow(() -> new DewormingNotFoundException(id)));
+        if (rows == 0)
+            throw new DewormingNotFoundException(id);
+        return DewormingDto.from(
+                repository.findById(id).orElseThrow(() -> new DewormingNotFoundException(id)));
     }
 }

@@ -21,10 +21,9 @@ public class JpaPrescriptionRepository implements PrescriptionRepository {
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaPrescriptionRepository(PrescriptionJpaRepository jpaRepository,
-                                     PrescriptionJpaMapper mapper,
-                                     AnimalJpaRepository animalJpaRepository,
-                                     ConsultationJpaRepository consultationJpaRepository,
-                                     CompanyJpaRepository companyJpaRepository) {
+            PrescriptionJpaMapper mapper, AnimalJpaRepository animalJpaRepository,
+            ConsultationJpaRepository consultationJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.animalJpaRepository = animalJpaRepository;
@@ -34,14 +33,16 @@ public class JpaPrescriptionRepository implements PrescriptionRepository {
 
     @Override
     public Prescription save(Prescription prescription) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(prescription.getAnimal().id());
-        ConsultationJpaEntity consultation =
-            consultationJpaRepository.getReferenceById(prescription.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(prescription.getCompany().id());
-        PrescriptionJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(prescription, animal, consultation, company));
-        return mapper.toDomain(saved, prescription.getAnimal(),
-            prescription.getConsultation(), prescription.getCompany());
+        AnimalJpaEntity animal = animalJpaRepository
+                .getReferenceById(prescription.getAnimal().id());
+        ConsultationJpaEntity consultation = consultationJpaRepository
+                .getReferenceById(prescription.getConsultation().id());
+        CompanyJpaEntity company = companyJpaRepository
+                .getReferenceById(prescription.getCompany().id());
+        PrescriptionJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(prescription, animal, consultation, company));
+        return mapper.toDomain(saved, prescription.getAnimal(), prescription.getConsultation(),
+                prescription.getCompany());
     }
 
     @Override

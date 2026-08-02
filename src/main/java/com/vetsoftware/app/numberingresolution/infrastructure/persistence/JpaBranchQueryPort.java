@@ -5,8 +5,9 @@ import com.vetsoftware.app.numberingresolution.application.port.out.BranchQueryP
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link BranchQueryPort}: cruce permitido de vertical slicing (persistence → persistence de
- * branch) para validar que la sede de una resolución pertenezca a la empresa.
+ * Adapter del {@link BranchQueryPort}: cruce permitido de vertical slicing
+ * (persistence → persistence de branch) para validar que la sede de una
+ * resolución pertenezca a la empresa.
  */
 @Component("numberingResolutionJpaBranchQueryPort")
 public class JpaBranchQueryPort implements BranchQueryPort {

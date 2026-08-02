@@ -19,16 +19,14 @@ public class CacheConfig {
     @Bean(destroyMethod = "shutdown")
     public ClientResources clientResources(ObservationRegistry observationRegistry) {
         return DefaultClientResources.builder()
-            .tracing(new MicrometerTracing(observationRegistry, "Redis"))
-            .build();
+                .tracing(new MicrometerTracing(observationRegistry, "Redis")).build();
     }
 
     @Bean
     public RedisCacheConfiguration defaultCacheConfig() {
-        return RedisCacheConfiguration.defaultCacheConfig()
-            .entryTtl(Duration.ofMinutes(5))
-            .disableCachingNullValues()
-            .serializeValuesWith(RedisSerializationContext.SerializationPair
-                .fromSerializer(GenericJacksonJsonRedisSerializer.builder().build()));
+        return RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(5))
+                .disableCachingNullValues()
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(GenericJacksonJsonRedisSerializer.builder().build()));
     }
 }

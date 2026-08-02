@@ -24,10 +24,19 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-/** Lecturas del inventario. El gate {@code inventory.read} vive en los @PreAuthorize de los puertos de entrada. */
+/**
+ * Lecturas del inventario. El gate {@code inventory.read} vive en
+ * los @PreAuthorize de los puertos de entrada.
+ */
 @Service
-public class InventoryQueryService implements ListStockUseCase, ListProductLotsUseCase, ListKardexUseCase,
-        GetInventoryAlertsUseCase, GetInventoryValuationUseCase, ListPurchasesUseCase {
+public class InventoryQueryService
+        implements
+            ListStockUseCase,
+            ListProductLotsUseCase,
+            ListKardexUseCase,
+            GetInventoryAlertsUseCase,
+            GetInventoryValuationUseCase,
+            ListPurchasesUseCase {
 
     private final StockQueryPort stockQueryPort;
 
@@ -62,7 +71,8 @@ public class InventoryQueryService implements ListStockUseCase, ListProductLotsU
     @Override
     @Observed(name = "inventory.list.lots")
     public List<StockLotView> listLots(ListLotsCommand command) {
-        return stockQueryPort.listLots(command.companyId(), command.branchId(), command.productId());
+        return stockQueryPort.listLots(command.companyId(), command.branchId(),
+                command.productId());
     }
 
     @Override

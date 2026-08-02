@@ -11,16 +11,19 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JpaHospitalizationObservationRepository implements HospitalizationObservationRepository {
+public class JpaHospitalizationObservationRepository
+        implements
+            HospitalizationObservationRepository {
     private final HospitalizationObservationJpaRepository jpaRepository;
     private final HospitalizationObservationJpaMapper mapper;
     private final HospitalizationJpaRepository hospitalizationJpaRepository;
     private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaHospitalizationObservationRepository(HospitalizationObservationJpaRepository jpaRepository,
-                                                   HospitalizationObservationJpaMapper mapper,
-                                                   HospitalizationJpaRepository hospitalizationJpaRepository,
-                                                   EmployeeJpaRepository employeeJpaRepository) {
+    public JpaHospitalizationObservationRepository(
+            HospitalizationObservationJpaRepository jpaRepository,
+            HospitalizationObservationJpaMapper mapper,
+            HospitalizationJpaRepository hospitalizationJpaRepository,
+            EmployeeJpaRepository employeeJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.hospitalizationJpaRepository = hospitalizationJpaRepository;
@@ -29,12 +32,12 @@ public class JpaHospitalizationObservationRepository implements HospitalizationO
 
     @Override
     public HospitalizationObservation save(HospitalizationObservation observation) {
-        HospitalizationJpaEntity hospitalization =
-            hospitalizationJpaRepository.getReferenceById(observation.getHospitalization().id());
-        EmployeeJpaEntity createdBy =
-            employeeJpaRepository.getReferenceById(observation.getCreatedBy().id());
-        HospitalizationObservationJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(observation, hospitalization, createdBy));
+        HospitalizationJpaEntity hospitalization = hospitalizationJpaRepository
+                .getReferenceById(observation.getHospitalization().id());
+        EmployeeJpaEntity createdBy = employeeJpaRepository
+                .getReferenceById(observation.getCreatedBy().id());
+        HospitalizationObservationJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(observation, hospitalization, createdBy));
         return mapper.toDomain(saved, observation.getHospitalization(), observation.getCreatedBy());
     }
 
@@ -45,13 +48,14 @@ public class JpaHospitalizationObservationRepository implements HospitalizationO
 
     @Override
     public Optional<HospitalizationObservation> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId).map(mapper::toDomain);
+        return jpaRepository.findByIdAndHospitalization_Company_Id(id, companyId)
+                .map(mapper::toDomain);
     }
 
     @Override
     public List<HospitalizationObservation> findAllByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationId(hospitalizationId).stream()
-            .map(mapper::toDomain).toList();
+                .map(mapper::toDomain).toList();
     }
 
     @Override

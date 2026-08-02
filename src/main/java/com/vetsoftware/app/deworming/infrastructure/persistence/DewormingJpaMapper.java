@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 public class DewormingJpaMapper {
 
     public DewormingJpaEntity toJpa(Deworming deworming, AnimalJpaEntity animal,
-                                    ConsultationJpaEntity consultation, CompanyJpaEntity company) {
+            ConsultationJpaEntity consultation, CompanyJpaEntity company) {
         DewormingJpaEntity entity = new DewormingJpaEntity();
         entity.setId(deworming.getId());
         entity.setDate(deworming.getDate());
@@ -35,18 +35,16 @@ public class DewormingJpaMapper {
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public Deworming toDomain(DewormingJpaEntity entity, AnimalRef animalRef,
-                              ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Deworming(
-            entity.getId(), entity.getDate(), entity.getLastDeworming(), entity.getType(),
-            entity.getProduct(), entity.getDosage(), entity.getNextControl(),
-            entity.getObservations(), animalRef, consultationRef, companyRef, entity.getCreatedDate(),
-            entity.isEnabled());
+            ConsultationRef consultationRef, CompanyRef companyRef) {
+        return new Deworming(entity.getId(), entity.getDate(), entity.getLastDeworming(),
+                entity.getType(), entity.getProduct(), entity.getDosage(), entity.getNextControl(),
+                entity.getObservations(), animalRef, consultationRef, companyRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

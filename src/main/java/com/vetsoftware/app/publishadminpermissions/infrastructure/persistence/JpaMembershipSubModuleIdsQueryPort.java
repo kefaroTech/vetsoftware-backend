@@ -14,17 +14,20 @@ public class JpaMembershipSubModuleIdsQueryPort implements MembershipSubModuleId
 
     private final MembershipSubModuleJpaRepository membershipSubModuleJpaRepository;
 
-    public JpaMembershipSubModuleIdsQueryPort(MembershipSubModuleJpaRepository membershipSubModuleJpaRepository) {
+    public JpaMembershipSubModuleIdsQueryPort(
+            MembershipSubModuleJpaRepository membershipSubModuleJpaRepository) {
         this.membershipSubModuleJpaRepository = membershipSubModuleJpaRepository;
     }
 
     @Override
     public Map<Long, Set<Long>> findSubModuleIdsByMembershipIds(Set<Long> membershipIds) {
-        if (membershipIds.isEmpty()) return Map.of();
+        if (membershipIds.isEmpty())
+            return Map.of();
         Map<Long, Set<Long>> result = new HashMap<>();
-        for (MembershipSubModuleJpaEntity msm : membershipSubModuleJpaRepository.findByMembershipIdIn(membershipIds)) {
+        for (MembershipSubModuleJpaEntity msm : membershipSubModuleJpaRepository
+                .findByMembershipIdIn(membershipIds)) {
             result.computeIfAbsent(msm.getMembership().getId(), k -> new HashSet<>())
-                  .add(msm.getSubModule().getId());
+                    .add(msm.getSubModule().getId());
         }
         return result;
     }

@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DiagnosticImagingTypeJpaMapper {
-    public DiagnosticImagingTypeJpaEntity toJpa(DiagnosticImagingType type, CompanyJpaEntity company) {
+    public DiagnosticImagingTypeJpaEntity toJpa(DiagnosticImagingType type,
+            CompanyJpaEntity company) {
         DiagnosticImagingTypeJpaEntity entity = new DiagnosticImagingTypeJpaEntity();
         entity.setId(type.getId());
         entity.setName(type.getName());
@@ -25,14 +26,10 @@ public class DiagnosticImagingTypeJpaMapper {
                 c == null ? null : new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public DiagnosticImagingType toDomain(DiagnosticImagingTypeJpaEntity entity, CompanyRef companyRef) {
-        return new DiagnosticImagingType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
+    public DiagnosticImagingType toDomain(DiagnosticImagingTypeJpaEntity entity,
+            CompanyRef companyRef) {
+        return new DiagnosticImagingType(entity.getId(), entity.getName(), entity.getDescription(),
+                companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
                 entity.isEnabled());
     }
 }

@@ -27,15 +27,12 @@ public class BranchJpaMapper {
     public Branch toDomain(BranchJpaEntity entity) {
         CityJpaEntity c = entity.getCity();
         CompanyJpaEntity co = entity.getCompany();
-        return toDomain(entity,
-            new CityRef(c.getId(), c.getName()),
-            new CompanyRef(co.getId(), co.getName(), co.getIdentifier()));
+        return toDomain(entity, new CityRef(c.getId(), c.getName()),
+                new CompanyRef(co.getId(), co.getName(), co.getIdentifier()));
     }
 
     public Branch toDomain(BranchJpaEntity entity, CityRef cityRef, CompanyRef companyRef) {
-        return new Branch(
-            entity.getId(), entity.getName(), entity.getCode(), entity.getAddress(), entity.getPhone(),
-            cityRef, companyRef, entity.getCreatedDate(), entity.isActive()
-        );
+        return new Branch(entity.getId(), entity.getName(), entity.getCode(), entity.getAddress(),
+                entity.getPhone(), cityRef, companyRef, entity.getCreatedDate(), entity.isActive());
     }
 }

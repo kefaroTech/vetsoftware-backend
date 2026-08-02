@@ -9,17 +9,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.progress.note.delete")
 @Service
-public class DeleteHospitalizationProgressNoteService implements DeleteHospitalizationProgressNoteUseCase {
+public class DeleteHospitalizationProgressNoteService
+        implements
+            DeleteHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;
 
-    public DeleteHospitalizationProgressNoteService(HospitalizationProgressNoteRepository repository) {
+    public DeleteHospitalizationProgressNoteService(
+            HospitalizationProgressNoteRepository repository) {
         this.repository = repository;
     }
 
     @Override
     @Transactional
     public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id));
+        repository.findById(id)
+                .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id));
         repository.delete(id);
     }
 }

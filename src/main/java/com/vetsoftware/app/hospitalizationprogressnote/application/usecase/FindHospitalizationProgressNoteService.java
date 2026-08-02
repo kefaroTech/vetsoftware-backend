@@ -9,16 +9,19 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.progress.note.find")
 @Service
-public class FindHospitalizationProgressNoteService implements FindHospitalizationProgressNoteUseCase {
+public class FindHospitalizationProgressNoteService
+        implements
+            FindHospitalizationProgressNoteUseCase {
     private final HospitalizationProgressNoteRepository repository;
 
-    public FindHospitalizationProgressNoteService(HospitalizationProgressNoteRepository repository) {
+    public FindHospitalizationProgressNoteService(
+            HospitalizationProgressNoteRepository repository) {
         this.repository = repository;
     }
 
     @Override
     public HospitalizationProgressNoteDto findById(Long id, Long companyId) {
         return HospitalizationProgressNoteDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id)));
+                .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(id)));
     }
 }

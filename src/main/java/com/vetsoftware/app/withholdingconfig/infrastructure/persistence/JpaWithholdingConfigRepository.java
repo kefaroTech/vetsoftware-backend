@@ -14,8 +14,7 @@ public class JpaWithholdingConfigRepository implements WithholdingConfigReposito
     private final CompanyJpaRepository companyJpaRepository;
 
     public JpaWithholdingConfigRepository(WithholdingConfigJpaRepository jpaRepository,
-                                          WithholdingConfigJpaMapper mapper,
-                                          CompanyJpaRepository companyJpaRepository) {
+            WithholdingConfigJpaMapper mapper, CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;

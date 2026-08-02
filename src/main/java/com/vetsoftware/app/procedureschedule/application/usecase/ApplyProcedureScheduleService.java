@@ -24,14 +24,16 @@ public class ApplyProcedureScheduleService implements ApplyProcedureScheduleUseC
     @Transactional
     public List<ProcedureScheduleDto> execute(ApplyProcedureScheduleCommand command) {
         ProcedureSchedule target = repository.findById(command.scheduleId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Procedure schedule not found: " + command.scheduleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Procedure schedule not found: " + command.scheduleId()));
         target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
         repository.save(target);
 
-        // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre al
+        // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre
+        // al
         // reprogramar una ejecución (drag&drop → reschedule mode=cascade).
-        return repository.findByHospitalizationProcedureId(target.getHospitalizationProcedure().id())
-            .stream().map(ProcedureScheduleDto::from).toList();
+        return repository
+                .findByHospitalizationProcedureId(target.getHospitalizationProcedure().id())
+                .stream().map(ProcedureScheduleDto::from).toList();
     }
 }

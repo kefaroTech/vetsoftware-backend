@@ -1,8 +1,7 @@
 package com.vetsoftware.app.tax.domain;
 
 public enum TaxScheme {
-    IVA("01"),
-    INC("04");
+    IVA("01"), INC("04");
 
     private final String dianCode;
 

@@ -30,10 +30,11 @@ public class SeededPasswordRehasher implements ApplicationRunner {
         var rows = jdbc.queryForList("SELECT id, hash_password FROM " + table);
         for (var row : rows) {
             String current = (String) row.get("hash_password");
-            if (current == null || isBcrypt(current)) continue;
+            if (current == null || isBcrypt(current))
+                continue;
             String rehashed = hasher.hash(current);
-            jdbc.update("UPDATE " + table + " SET hash_password = ? WHERE id = ?",
-                rehashed, row.get("id"));
+            jdbc.update("UPDATE " + table + " SET hash_password = ? WHERE id = ?", rehashed,
+                    row.get("id"));
             log.info("Rehashed seeded password for {} id={}", table, row.get("id"));
         }
     }

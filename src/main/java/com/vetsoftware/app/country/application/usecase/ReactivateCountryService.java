@@ -21,7 +21,9 @@ public class ReactivateCountryService implements ReactivateCountryUseCase {
     @Transactional
     public CountryDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new CountryNotFoundException(id);
-        return CountryDto.from(repository.findById(id).orElseThrow(() -> new CountryNotFoundException(id)));
+        if (rows == 0)
+            throw new CountryNotFoundException(id);
+        return CountryDto
+                .from(repository.findById(id).orElseThrow(() -> new CountryNotFoundException(id)));
     }
 }

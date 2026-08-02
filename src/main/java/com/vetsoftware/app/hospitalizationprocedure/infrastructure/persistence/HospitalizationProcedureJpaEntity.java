@@ -66,38 +66,134 @@ public class HospitalizationProcedureJpaEntity {
     @JoinColumn(name = "suspension_by_id")
     private EmployeeJpaEntity suspensionBy;
 
-    protected HospitalizationProcedureJpaEntity() {}
+    protected HospitalizationProcedureJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDose() { return dose; }
-    public void setDose(String dose) { this.dose = dose; }
-    public String getFrequency() { return frequency; }
-    public void setFrequency(String frequency) { this.frequency = frequency; }
-    public String getGuidelineType() { return guidelineType; }
-    public void setGuidelineType(String guidelineType) { this.guidelineType = guidelineType; }
-    public String getDurationMeasure() { return durationMeasure; }
-    public void setDurationMeasure(String durationMeasure) { this.durationMeasure = durationMeasure; }
-    public Integer getDurationQuantity() { return durationQuantity; }
-    public void setDurationQuantity(Integer durationQuantity) { this.durationQuantity = durationQuantity; }
-    public LocalDate getStartDate() { return startDate; }
-    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
-    public LocalTime getStartTime() { return startTime; }
-    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-    public HospitalizationJpaEntity getHospitalization() { return hospitalization; }
-    public void setHospitalization(HospitalizationJpaEntity hospitalization) { this.hospitalization = hospitalization; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public LocalDateTime getSuspensionDate() { return suspensionDate; }
-    public void setSuspensionDate(LocalDateTime suspensionDate) { this.suspensionDate = suspensionDate; }
-    public EmployeeJpaEntity getSuspensionBy() { return suspensionBy; }
-    public void setSuspensionBy(EmployeeJpaEntity suspensionBy) { this.suspensionBy = suspensionBy; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDose() {
+        return dose;
+    }
+
+    public void setDose(String dose) {
+        this.dose = dose;
+    }
+
+    public String getFrequency() {
+        return frequency;
+    }
+
+    public void setFrequency(String frequency) {
+        this.frequency = frequency;
+    }
+
+    public String getGuidelineType() {
+        return guidelineType;
+    }
+
+    public void setGuidelineType(String guidelineType) {
+        this.guidelineType = guidelineType;
+    }
+
+    public String getDurationMeasure() {
+        return durationMeasure;
+    }
+
+    public void setDurationMeasure(String durationMeasure) {
+        this.durationMeasure = durationMeasure;
+    }
+
+    public Integer getDurationQuantity() {
+        return durationQuantity;
+    }
+
+    public void setDurationQuantity(Integer durationQuantity) {
+        this.durationQuantity = durationQuantity;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public HospitalizationJpaEntity getHospitalization() {
+        return hospitalization;
+    }
+
+    public void setHospitalization(HospitalizationJpaEntity hospitalization) {
+        this.hospitalization = hospitalization;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public LocalDateTime getSuspensionDate() {
+        return suspensionDate;
+    }
+
+    public void setSuspensionDate(LocalDateTime suspensionDate) {
+        this.suspensionDate = suspensionDate;
+    }
+
+    public EmployeeJpaEntity getSuspensionBy() {
+        return suspensionBy;
+    }
+
+    public void setSuspensionBy(EmployeeJpaEntity suspensionBy) {
+        this.suspensionBy = suspensionBy;
+    }
 }

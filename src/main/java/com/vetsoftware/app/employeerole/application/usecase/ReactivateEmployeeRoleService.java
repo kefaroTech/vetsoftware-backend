@@ -17,7 +17,7 @@ public class ReactivateEmployeeRoleService implements ReactivateEmployeeRoleUseC
     private final PermissionCachePort permissionCachePort;
 
     public ReactivateEmployeeRoleService(EmployeeRoleRepository repository,
-                                         PermissionCachePort permissionCachePort) {
+            PermissionCachePort permissionCachePort) {
         this.repository = repository;
         this.permissionCachePort = permissionCachePort;
     }
@@ -26,9 +26,10 @@ public class ReactivateEmployeeRoleService implements ReactivateEmployeeRoleUseC
     @Transactional
     public EmployeeRoleDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new EmployeeRoleNotFoundException(id);
+        if (rows == 0)
+            throw new EmployeeRoleNotFoundException(id);
         EmployeeRole employeeRole = repository.findById(id)
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+                .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
         permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
         return EmployeeRoleDto.from(employeeRole);
     }

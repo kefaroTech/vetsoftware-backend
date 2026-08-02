@@ -25,16 +25,22 @@ public class GetPurchaseBookService implements GetPurchaseBookUseCase {
 
     @Override
     public PurchaseBookDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
-        List<PurchaseDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to, branchId);
+        List<PurchaseDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to,
+                branchId);
 
         List<EntryDto> entries = new ArrayList<>();
-        BigDecimal tSubtotal = BigDecimal.ZERO, tTax = BigDecimal.ZERO, tWith = BigDecimal.ZERO,
-                tTotal = BigDecimal.ZERO, tPaid = BigDecimal.ZERO, tBalance = BigDecimal.ZERO;
+        BigDecimal tSubtotal = BigDecimal.ZERO;
+        BigDecimal tTax = BigDecimal.ZERO;
+        BigDecimal tWith = BigDecimal.ZERO;
+        BigDecimal tTotal = BigDecimal.ZERO;
+        BigDecimal tPaid = BigDecimal.ZERO;
+        BigDecimal tBalance = BigDecimal.ZERO;
 
         for (PurchaseDocumentView d : docs) {
             entries.add(new EntryDto(d.id(), d.supplierName(), d.supplierTaxId(), d.invoiceNumber(),
-                    d.issueDate(), d.dueDate(), nz(d.subtotal()), nz(d.taxAmount()), nz(d.withholdingAmount()),
-                    nz(d.total()), nz(d.paidAmount()), nz(d.balance()), d.status()));
+                    d.issueDate(), d.dueDate(), nz(d.subtotal()), nz(d.taxAmount()),
+                    nz(d.withholdingAmount()), nz(d.total()), nz(d.paidAmount()), nz(d.balance()),
+                    d.status()));
             tSubtotal = tSubtotal.add(nz(d.subtotal()));
             tTax = tTax.add(nz(d.taxAmount()));
             tWith = tWith.add(nz(d.withholdingAmount()));
@@ -43,7 +49,8 @@ public class GetPurchaseBookService implements GetPurchaseBookUseCase {
             tBalance = tBalance.add(nz(d.balance()));
         }
 
-        TotalsDto totals = new TotalsDto(entries.size(), tSubtotal, tTax, tWith, tTotal, tPaid, tBalance);
+        TotalsDto totals = new TotalsDto(entries.size(), tSubtotal, tTax, tWith, tTotal, tPaid,
+                tBalance);
         return new PurchaseBookDto(from, to, entries, totals);
     }
 

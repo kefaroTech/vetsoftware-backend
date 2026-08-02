@@ -11,7 +11,8 @@ public class JpaConsultationTypeRepository implements ConsultationTypeRepository
     private final ConsultationTypeJpaRepository jpaRepository;
     private final ConsultationTypeJpaMapper mapper;
 
-    public JpaConsultationTypeRepository(ConsultationTypeJpaRepository jpaRepository, ConsultationTypeJpaMapper mapper) {
+    public JpaConsultationTypeRepository(ConsultationTypeJpaRepository jpaRepository,
+            ConsultationTypeJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

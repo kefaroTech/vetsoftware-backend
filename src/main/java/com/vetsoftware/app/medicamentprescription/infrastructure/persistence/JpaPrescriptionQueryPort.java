@@ -17,12 +17,12 @@ public class JpaPrescriptionQueryPort implements PrescriptionQueryPort {
     @Override
     public Optional<PrescriptionRef> findById(Long prescriptionId) {
         return prescriptionJpaRepository.findById(prescriptionId)
-            .map(e -> new PrescriptionRef(e.getId(), e.getDate()));
+                .map(e -> new PrescriptionRef(e.getId(), e.getDate()));
     }
 
     @Override
     public Optional<PrescriptionRef> findByIdAndCompanyId(Long prescriptionId, Long companyId) {
         return prescriptionJpaRepository.findByIdAndCompany_Id(prescriptionId, companyId)
-            .map(e -> new PrescriptionRef(e.getId(), e.getDate()));
+                .map(e -> new PrescriptionRef(e.getId(), e.getDate()));
     }
 }

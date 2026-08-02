@@ -13,7 +13,7 @@ public class JpaPasswordResetTokenRepository implements PasswordResetTokenReposi
     private final PasswordResetTokenJpaMapper mapper;
 
     public JpaPasswordResetTokenRepository(PasswordResetTokenJpaRepository jpaRepository,
-                                           PasswordResetTokenJpaMapper mapper) {
+            PasswordResetTokenJpaMapper mapper) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
     }

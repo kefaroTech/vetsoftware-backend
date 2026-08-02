@@ -9,9 +9,12 @@ public class MembershipSubModule {
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public MembershipSubModule(Long id, MembershipRef membership, SubModuleRef subModule, LocalDateTime createdDate, boolean enabled) {
-        if (membership == null) throw new IllegalArgumentException("membership is required");
-        if (subModule == null) throw new IllegalArgumentException("subModule is required");
+    public MembershipSubModule(Long id, MembershipRef membership, SubModuleRef subModule,
+            LocalDateTime createdDate, boolean enabled) {
+        if (membership == null)
+            throw new IllegalArgumentException("membership is required");
+        if (subModule == null)
+            throw new IllegalArgumentException("subModule is required");
         this.id = id;
         this.membership = membership;
         this.subModule = subModule;
@@ -24,17 +27,39 @@ public class MembershipSubModule {
     }
 
     public void update(MembershipRef membership, SubModuleRef subModule) {
-        if (membership == null) throw new IllegalArgumentException("membership is required");
-        if (subModule == null) throw new IllegalArgumentException("subModule is required");
+        if (membership == null)
+            throw new IllegalArgumentException("membership is required");
+        if (subModule == null)
+            throw new IllegalArgumentException("subModule is required");
         this.membership = membership;
         this.subModule = subModule;
     }
 
-    public Long getId() { return id; }
-    public MembershipRef getMembership() { return membership; }
-    public SubModuleRef getSubModule() { return subModule; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void enable() { this.enabled = true; }
-    public void disable() { this.enabled = false; }
+    public Long getId() {
+        return id;
+    }
+
+    public MembershipRef getMembership() {
+        return membership;
+    }
+
+    public SubModuleRef getSubModule() {
+        return subModule;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
 }

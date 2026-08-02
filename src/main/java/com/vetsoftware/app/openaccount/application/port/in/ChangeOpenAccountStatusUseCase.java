@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ChangeOpenAccountStatusUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('openAccount.update') and @authz.isMyCompany(#command.companyId)) or "
-        + "hasRole('SYSTEM')")
+            + "(hasAuthority('openAccount.update') and @authz.isMyCompany(#command.companyId)) or "
+            + "hasRole('SYSTEM')")
     OpenAccountDto execute(ChangeOpenAccountStatusCommand command);
 }

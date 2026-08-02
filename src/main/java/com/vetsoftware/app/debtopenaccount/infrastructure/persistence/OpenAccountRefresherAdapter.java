@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 public class OpenAccountRefresherAdapter implements OpenAccountRefresher {
     private final RecalculateOpenAccountUseCase recalculateOpenAccountUseCase;
 
-    public OpenAccountRefresherAdapter(RecalculateOpenAccountUseCase recalculateOpenAccountUseCase) {
+    public OpenAccountRefresherAdapter(
+            RecalculateOpenAccountUseCase recalculateOpenAccountUseCase) {
         this.recalculateOpenAccountUseCase = recalculateOpenAccountUseCase;
     }
 

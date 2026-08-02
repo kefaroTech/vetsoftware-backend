@@ -18,8 +18,7 @@ public class JpaRolePermissionUpsertPort implements RolePermissionUpsertPort {
     private final PermissionJpaRepository permissionJpaRepository;
 
     public JpaRolePermissionUpsertPort(RolePermissionJpaRepository rolePermissionJpaRepository,
-                                       RoleJpaRepository roleJpaRepository,
-                                       PermissionJpaRepository permissionJpaRepository) {
+            RoleJpaRepository roleJpaRepository, PermissionJpaRepository permissionJpaRepository) {
         this.rolePermissionJpaRepository = rolePermissionJpaRepository;
         this.roleJpaRepository = roleJpaRepository;
         this.permissionJpaRepository = permissionJpaRepository;

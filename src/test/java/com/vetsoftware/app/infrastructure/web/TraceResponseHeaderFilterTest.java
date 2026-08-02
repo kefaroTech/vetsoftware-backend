@@ -43,7 +43,8 @@ class TraceResponseHeaderFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(new MockHttpServletRequest(), response,
-                (ignoredRequest, ignoredResponse) -> { });
+                (ignoredRequest, ignoredResponse) -> {
+                });
 
         assertThat(response.getHeaderNames()).isEmpty();
     }

@@ -16,10 +16,8 @@ public class JpaDefaultMembershipProvider implements DefaultMembershipProvider {
 
     @Override
     public Long getDefaultMembershipId() {
-        return membershipJpaRepository
-            .findFirstByMandatoryTrue()
-            .map(MembershipJpaEntity::getId)
-            .orElseThrow(() -> new IllegalStateException(
-                "No mandatory membership found. Mark one membership with mandatory=true."));
+        return membershipJpaRepository.findFirstByMandatoryTrue().map(MembershipJpaEntity::getId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No mandatory membership found. Mark one membership with mandatory=true."));
     }
 }

@@ -15,6 +15,7 @@ public class CountryJpaMapper {
     }
 
     public Country toDomain(CountryJpaEntity entity) {
-        return new Country(entity.getId(), entity.getName(), entity.getCreatedDate(), entity.isEnabled());
+        return new Country(entity.getId(), entity.getName(), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

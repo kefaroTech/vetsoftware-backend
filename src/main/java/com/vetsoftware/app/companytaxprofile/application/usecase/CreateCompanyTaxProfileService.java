@@ -25,8 +25,8 @@ public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUs
     private final EconomicActivityQueryPort economicActivityQueryPort;
 
     public CreateCompanyTaxProfileService(CompanyTaxProfileRepository repository,
-                                          CompanyQueryPort companyQueryPort,
-                                          EconomicActivityQueryPort economicActivityQueryPort) {
+            CompanyQueryPort companyQueryPort,
+            EconomicActivityQueryPort economicActivityQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.economicActivityQueryPort = economicActivityQueryPort;
@@ -34,37 +34,35 @@ public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUs
 
     @Override
     public CompanyTaxProfileDto execute(CreateCompanyTaxProfileCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         if (repository.existsByCompanyId(command.companyId())) {
             throw new CompanyTaxProfileAlreadyExistsException(command.companyId());
         }
-        EconomicActivityRef economicActivity = command.economicActivityId() == null ? null
+        EconomicActivityRef economicActivity = command.economicActivityId() == null
+                ? null
                 : economicActivityQueryPort.findById(command.economicActivityId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Economic activity not found: " + command.economicActivityId()));
-        List<CompanyTaxProfileResponsibility> responsibilities = toResponsibilities(command.responsibilityCodes());
-        // El DV del NIT es determinístico (módulo 11): se autocalcula y es autoritativo, ignorando cualquier
+        List<CompanyTaxProfileResponsibility> responsibilities = toResponsibilities(
+                command.responsibilityCodes());
+        // El DV del NIT es determinístico (módulo 11): se autocalcula y es
+        // autoritativo, ignorando
+        // cualquier
         // valor entrante. Para otros tipos de documento no aplica DV.
         String verificationDigit = command.companyDocumentType() == CompanyDocumentType.NIT
                 ? NitVerificationDigit.calculate(command.companyDocumentId())
                 : null;
-        CompanyTaxProfile profile = CompanyTaxProfile.create(
-                company,
-                command.companyDocumentType(),
-                command.companyDocumentId(),
-                verificationDigit,
-                command.legalName(),
-                command.taxRegime(),
-                command.fiscalEmail(),
-                command.commercialName(),
-                economicActivity,
-                responsibilities);
+        CompanyTaxProfile profile = CompanyTaxProfile.create(company, command.companyDocumentType(),
+                command.companyDocumentId(), verificationDigit, command.legalName(),
+                command.taxRegime(), command.fiscalEmail(), command.commercialName(),
+                economicActivity, responsibilities);
         return CompanyTaxProfileDto.from(repository.save(profile));
     }
 
     private static List<CompanyTaxProfileResponsibility> toResponsibilities(List<String> codes) {
-        if (codes == null) return List.of();
+        if (codes == null)
+            return List.of();
         return codes.stream().map(CompanyTaxProfileResponsibility::new).toList();
     }
 }

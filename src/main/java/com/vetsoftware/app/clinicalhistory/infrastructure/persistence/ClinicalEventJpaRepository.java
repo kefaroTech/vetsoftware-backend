@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ClinicalEventJpaRepository extends JpaRepository<ClinicalEventViewJpaEntity, String> {
+public interface ClinicalEventJpaRepository
+        extends
+            JpaRepository<ClinicalEventViewJpaEntity, String> {
 
     @Query("""
             SELECT e FROM ClinicalEventViewJpaEntity e
@@ -18,13 +20,9 @@ public interface ClinicalEventJpaRepository extends JpaRepository<ClinicalEventV
               AND (:to IS NULL OR e.eventDate <= :to)
             ORDER BY e.eventDate DESC, e.sourceId DESC
             """)
-    List<ClinicalEventViewJpaEntity> findHistory(
-            @Param("animalId") Long animalId,
-            @Param("companyId") Long companyId,
-            @Param("types") List<ClinicalEventType> types,
-            @Param("from") LocalDate from,
-            @Param("to") LocalDate to
-    );
+    List<ClinicalEventViewJpaEntity> findHistory(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("types") List<ClinicalEventType> types,
+            @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     @Query("""
             SELECT e FROM ClinicalEventViewJpaEntity e
@@ -34,10 +32,7 @@ public interface ClinicalEventJpaRepository extends JpaRepository<ClinicalEventV
               AND (:to IS NULL OR e.eventDate <= :to)
             ORDER BY e.eventDate ASC, e.sourceId ASC
             """)
-    List<ClinicalEventViewJpaEntity> findByCompany(
-            @Param("companyId") Long companyId,
-            @Param("types") List<ClinicalEventType> types,
-            @Param("from") LocalDate from,
-            @Param("to") LocalDate to
-    );
+    List<ClinicalEventViewJpaEntity> findByCompany(@Param("companyId") Long companyId,
+            @Param("types") List<ClinicalEventType> types, @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }

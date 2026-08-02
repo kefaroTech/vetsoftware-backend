@@ -20,7 +20,7 @@ public class DeleteProblemService implements DeleteProblemUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ProblemNotFoundException(id));
+                .orElseThrow(() -> new ProblemNotFoundException(id));
         repository.delete(id, companyId);
     }
 }

@@ -13,5 +13,6 @@ public interface AuthSystemUserRepository {
     /** Invalida de inmediato el access token actualmente emitido. */
     void bumpAuthVersion(Long systemUserId);
 
-    record AuthSystemUser(Long id, Long authVersion) {}
+    record AuthSystemUser(Long id, Long authVersion) {
+    }
 }

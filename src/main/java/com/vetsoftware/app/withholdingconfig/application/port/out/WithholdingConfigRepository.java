@@ -5,5 +5,6 @@ import java.util.Optional;
 
 public interface WithholdingConfigRepository {
     WithholdingConfig save(WithholdingConfig config);
+
     Optional<WithholdingConfig> findByCompanyId(Long companyId);
 }

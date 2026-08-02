@@ -21,7 +21,9 @@ public class ReactivateStateService implements ReactivateStateUseCase {
     @Transactional
     public StateDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new StateNotFoundException(id);
-        return StateDto.from(repository.findById(id).orElseThrow(() -> new StateNotFoundException(id)));
+        if (rows == 0)
+            throw new StateNotFoundException(id);
+        return StateDto
+                .from(repository.findById(id).orElseThrow(() -> new StateNotFoundException(id)));
     }
 }

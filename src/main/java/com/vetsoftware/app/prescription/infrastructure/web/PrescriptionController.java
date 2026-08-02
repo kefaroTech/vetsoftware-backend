@@ -42,13 +42,10 @@ public class PrescriptionController {
     private final Authz authz;
 
     public PrescriptionController(CreatePrescriptionUseCase createUseCase,
-                                  UpdatePrescriptionUseCase updateUseCase,
-                                  FindPrescriptionUseCase findUseCase,
-                                  ListPrescriptionsUseCase listUseCase,
-                                  DeletePrescriptionUseCase deleteUseCase,
-                                  ReactivatePrescriptionUseCase reactivateUseCase,
-                                  ExportPrescriptionUseCase exportUseCase,
-                                  Authz authz) {
+            UpdatePrescriptionUseCase updateUseCase, FindPrescriptionUseCase findUseCase,
+            ListPrescriptionsUseCase listUseCase, DeletePrescriptionUseCase deleteUseCase,
+            ReactivatePrescriptionUseCase reactivateUseCase,
+            ExportPrescriptionUseCase exportUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -62,10 +59,9 @@ public class PrescriptionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PrescriptionResponse create(@Valid @RequestBody CreatePrescriptionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreatePrescriptionCommand(
-                request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreatePrescriptionCommand(request.date(),
+                request.diagnosis(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -80,11 +76,10 @@ public class PrescriptionController {
 
     @PutMapping("/{id}")
     public PrescriptionResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdatePrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdatePrescriptionCommand(
-                id, request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyIdOrNull())));
+            @Valid @RequestBody UpdatePrescriptionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdatePrescriptionCommand(id, request.date(),
+                request.diagnosis(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -100,10 +95,10 @@ public class PrescriptionController {
 
     @GetMapping("/{id}/export.pdf")
     public ResponseEntity<byte[]> export(@PathVariable Long id) {
-        byte[] pdf = exportUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull());
+        byte[] pdf = exportUseCase.execute(id, authz.currentCompanyId(),
+                authz.currentEmployeeIdOrNull());
         String filename = "receta-" + id + ".pdf";
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + filename + "\"")
                 .body(pdf);
@@ -114,16 +109,13 @@ public class PrescriptionController {
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
         List<MedicamentSummary> medicaments = dto.medicaments().stream()
-            .map(m -> new MedicamentSummary(
-                m.id(), m.name(), m.presentation(), m.quantity(), m.posology(), m.observation()))
-            .toList();
-        return new PrescriptionResponse(
-            dto.id(), dto.date(), dto.diagnosis(), dto.observations(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            medicaments,
-            dto.createdDate(),
-            dto.enabled());
+                .map(m -> new MedicamentSummary(m.id(), m.name(), m.presentation(), m.quantity(),
+                        m.posology(), m.observation()))
+                .toList();
+        return new PrescriptionResponse(dto.id(), dto.date(), dto.diagnosis(), dto.observations(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), medicaments,
+                dto.createdDate(), dto.enabled());
     }
 }

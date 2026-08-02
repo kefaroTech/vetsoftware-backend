@@ -21,8 +21,9 @@ public class ReactivateAnimalColorService implements ReactivateAnimalColorUseCas
     @Transactional
     public AnimalColorDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new AnimalColorNotFoundException(id);
-        return AnimalColorDto.from(repository.findById(id)
-            .orElseThrow(() -> new AnimalColorNotFoundException(id)));
+        if (rows == 0)
+            throw new AnimalColorNotFoundException(id);
+        return AnimalColorDto.from(
+                repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id)));
     }
 }

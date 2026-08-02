@@ -10,7 +10,8 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.file.list.by.laboratory.test")
 @Service
 public class ListLaboratoryTestFilesByLaboratoryTestService
-        implements ListLaboratoryTestFilesByLaboratoryTestUseCase {
+        implements
+            ListLaboratoryTestFilesByLaboratoryTestUseCase {
     private final LaboratoryTestFileRepository repository;
 
     public ListLaboratoryTestFilesByLaboratoryTestService(LaboratoryTestFileRepository repository) {
@@ -20,6 +21,6 @@ public class ListLaboratoryTestFilesByLaboratoryTestService
     @Override
     public List<LaboratoryTestFileDto> listByLaboratoryTest(Long laboratoryTestId) {
         return repository.findAllByLaboratoryTestId(laboratoryTestId).stream()
-            .map(LaboratoryTestFileDto::from).toList();
+                .map(LaboratoryTestFileDto::from).toList();
     }
 }

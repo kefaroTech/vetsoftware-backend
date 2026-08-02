@@ -13,15 +13,15 @@ import org.springframework.http.server.observation.ServerRequestObservationConte
 
 class ObservabilityConfigTest {
 
-    private final ObservationPredicate predicate =
-            new ObservabilityConfig().productionActuatorObservationPredicate();
+    private final ObservationPredicate predicate = new ObservabilityConfig()
+            .productionActuatorObservationPredicate();
 
     @Test
     void excludesPrometheusAndHealthButKeepsBusinessTraffic() {
         assertThat(predicate.test("http.server.requests", context("/api/v1/actuator/prometheus")))
                 .isFalse();
-        assertThat(predicate.test("http.server.requests", context("/api/v1/actuator/health/readiness")))
-                .isFalse();
+        assertThat(predicate.test("http.server.requests",
+                context("/api/v1/actuator/health/readiness"))).isFalse();
         assertThat(predicate.test("http.server.requests", context("/api/v1/appointments")))
                 .isTrue();
     }

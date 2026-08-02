@@ -38,13 +38,10 @@ public class DewormingController {
     private final Authz authz;
 
     public DewormingController(CreateDewormingUseCase createUseCase,
-                               UpdateDewormingUseCase updateUseCase,
-                               FindDewormingUseCase findUseCase,
-                               ListDewormingsUseCase listUseCase,
-                               ListDewormingsByAnimalUseCase listByAnimalUseCase,
-                               DeleteDewormingUseCase deleteUseCase,
-                               ReactivateDewormingUseCase reactivateUseCase,
-                               Authz authz) {
+            UpdateDewormingUseCase updateUseCase, FindDewormingUseCase findUseCase,
+            ListDewormingsUseCase listUseCase, ListDewormingsByAnimalUseCase listByAnimalUseCase,
+            DeleteDewormingUseCase deleteUseCase, ReactivateDewormingUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -58,12 +55,10 @@ public class DewormingController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DewormingResponse create(@Valid @RequestBody CreateDewormingRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateDewormingCommand(
-                request.date(), request.lastDeworming(), request.type(),
-                request.product(), request.dosage(), request.nextControl(),
-                request.observations(), request.animalId(), request.consultationId(),
-                authz.currentCompanyId())));
+        return toResponse(createUseCase.execute(new CreateDewormingCommand(request.date(),
+                request.lastDeworming(), request.type(), request.product(), request.dosage(),
+                request.nextControl(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @GetMapping
@@ -83,13 +78,11 @@ public class DewormingController {
 
     @PutMapping("/{id}")
     public DewormingResponse update(@PathVariable Long id,
-                                    @Valid @RequestBody UpdateDewormingRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateDewormingCommand(
-                id, request.date(), request.lastDeworming(), request.type(),
-                request.product(), request.dosage(), request.nextControl(),
-                request.observations(), request.animalId(), request.consultationId(),
-                authz.currentCompanyId())));
+            @Valid @RequestBody UpdateDewormingRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateDewormingCommand(id, request.date(),
+                request.lastDeworming(), request.type(), request.product(), request.dosage(),
+                request.nextControl(), request.observations(), request.animalId(),
+                request.consultationId(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
@@ -107,12 +100,11 @@ public class DewormingController {
         AnimalSummaryDto a = dto.animal();
         ConsultationSummaryDto co = dto.consultation();
         CompanySummaryDto c = dto.company();
-        return new DewormingResponse(
-            dto.id(), dto.date(), dto.lastDeworming(), dto.type(),
-            dto.product(), dto.dosage(), dto.nextControl(), dto.observations(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.enabled());
+        return new DewormingResponse(dto.id(), dto.date(), dto.lastDeworming(), dto.type(),
+                dto.product(), dto.dosage(), dto.nextControl(), dto.observations(),
+                new AnimalSummary(a.id(), a.name(), a.code()),
+                co == null ? null : new ConsultationSummary(co.id(), co.date()),
+                new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
+                dto.enabled());
     }
 }

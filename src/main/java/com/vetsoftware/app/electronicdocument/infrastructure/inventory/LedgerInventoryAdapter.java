@@ -7,9 +7,11 @@ import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter de orquestación POS → inventario. Es el ÚNICO punto de esta feature que conoce el
- * {@code StockLedgerUseCase} de {@code inventory}; traduce la venta/anulación POS a movimientos de kardex con
- * referencia {@link StockReferenceType#POS_DOCUMENT} y el id del documento (idempotencia + compensación).
+ * Adapter de orquestación POS → inventario. Es el ÚNICO punto de esta feature
+ * que conoce el {@code
+ * StockLedgerUseCase} de {@code inventory}; traduce la venta/anulación POS a
+ * movimientos de kardex con referencia {@link StockReferenceType#POS_DOCUMENT}
+ * y el id del documento (idempotencia + compensación).
  */
 @Component("posLedgerInventoryAdapter")
 public class LedgerInventoryAdapter implements InventoryLedgerPort {
@@ -21,11 +23,11 @@ public class LedgerInventoryAdapter implements InventoryLedgerPort {
     }
 
     @Override
-    public void recordPosSale(Long companyId, Long branchId, Long productId, int quantity, Long documentId,
-                              Long issuedBy) {
+    public void recordPosSale(Long companyId, Long branchId, Long productId, int quantity,
+            Long documentId, Long issuedBy) {
         // allowNegative=true: la venta de mostrador nunca se frena por stock.
         stockLedger.recordSale(new RecordSaleCommand(companyId, branchId, productId, quantity,
-            StockReferenceType.POS_DOCUMENT, documentId, issuedBy, true));
+                StockReferenceType.POS_DOCUMENT, documentId, issuedBy, true));
     }
 
     @Override

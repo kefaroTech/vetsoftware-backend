@@ -18,6 +18,7 @@ public class ListProductCategoriesService implements ListProductCategoriesUseCas
 
     @Override
     public List<ProductCategoryDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ProductCategoryDto::from).toList();
+        return repository.findAllByCompanyId(companyId).stream().map(ProductCategoryDto::from)
+                .toList();
     }
 }

@@ -21,12 +21,18 @@ import java.util.Locale;
 import org.springframework.stereotype.Component;
 
 /**
- * Adaptador único de los contratos de telemetría comercial. Todos sus tags provienen de enums
- * o transformaciones cerradas y son validados además por {@link BusinessMetricCardinalityFilter}.
+ * Adaptador único de los contratos de telemetría comercial. Todos sus tags
+ * provienen de enums o transformaciones cerradas y son validados además por
+ * {@link BusinessMetricCardinalityFilter}.
  */
 @Component
 public class MicrometerBusinessMetrics
-        implements SalesMetrics, BillingMetrics, InventoryMetrics, AppointmentMetrics, CashMetrics {
+        implements
+            SalesMetrics,
+            BillingMetrics,
+            InventoryMetrics,
+            AppointmentMetrics,
+            CashMetrics {
 
     private final AfterCommitMetricRecorder recorder;
 
@@ -45,14 +51,13 @@ public class MicrometerBusinessMetrics
         this.recorder = recorder;
         salesOperations = Counter.builder(BusinessMetricNames.SALES_OPERATIONS)
                 .baseUnit("operations")
-                .description("Operaciones comerciales de venta por resultado, canal y tipo de documento")
+                .description(
+                        "Operaciones comerciales de venta por resultado, canal y tipo de documento")
                 .withRegistry(registry);
-        salesAmount = DistributionSummary.builder(BusinessMetricNames.SALES_AMOUNT)
-                .baseUnit("cop")
+        salesAmount = DistributionSummary.builder(BusinessMetricNames.SALES_AMOUNT).baseUnit("cop")
                 .description("Valor operativo de ventas completadas; no sustituye la contabilidad")
                 .withRegistry(registry);
-        salesLines = DistributionSummary.builder(BusinessMetricNames.SALES_LINES)
-                .baseUnit("lines")
+        salesLines = DistributionSummary.builder(BusinessMetricNames.SALES_LINES).baseUnit("lines")
                 .description("Cantidad de líneas comerciales por venta completada")
                 .withRegistry(registry);
         dianTransmissions = Counter.builder(BusinessMetricNames.DIAN_TRANSMISSIONS)
@@ -71,66 +76,50 @@ public class MicrometerBusinessMetrics
                 .description("Unidades base afectadas por movimientos exitosos de inventario")
                 .withRegistry(registry);
         appointmentTransitions = Counter.builder(BusinessMetricNames.APPOINTMENT_TRANSITIONS)
-                .baseUnit("transitions")
-                .description("Transiciones persistidas del estado de citas")
+                .baseUnit("transitions").description("Transiciones persistidas del estado de citas")
                 .withRegistry(registry);
-        cashSessions = Counter.builder(BusinessMetricNames.CASH_SESSIONS)
-                .baseUnit("sessions")
-                .description("Aperturas y cierres persistidos de caja")
-                .withRegistry(registry);
-        cashClosingDifference = DistributionSummary.builder(BusinessMetricNames.CASH_CLOSING_DIFFERENCE)
-                .baseUnit("cop")
+        cashSessions = Counter.builder(BusinessMetricNames.CASH_SESSIONS).baseUnit("sessions")
+                .description("Aperturas y cierres persistidos de caja").withRegistry(registry);
+        cashClosingDifference = DistributionSummary
+                .builder(BusinessMetricNames.CASH_CLOSING_DIFFERENCE).baseUnit("cop")
                 .description("Valor absoluto de diferencias encontradas al cerrar caja")
                 .withRegistry(registry);
     }
 
     @Override
-    public void completed(
-            SalesMetrics.Channel channel,
-            ElectronicDocumentType documentType,
-            BigDecimal amount,
-            int lineCount) {
+    public void completed(SalesMetrics.Channel channel, ElectronicDocumentType documentType,
+            BigDecimal amount, int lineCount) {
         BigDecimal immutableAmount = nonNegative(amount);
         int immutableLineCount = Math.max(0, lineCount);
         recorder.recordAfterCommit(() -> {
             String documentTypeValue = documentType(documentType);
-            salesOperations.withTags(
-                    "result", "completed",
-                    "channel", channel.value(),
+            salesOperations.withTags("result", "completed", "channel", channel.value(),
                     "document.type", documentTypeValue).increment();
-            salesAmount.withTags(
-                    "channel", channel.value(),
-                    "document.type", documentTypeValue).record(immutableAmount.doubleValue());
-            salesLines.withTags(
-                    "channel", channel.value(),
-                    "document.type", documentTypeValue).record(immutableLineCount);
+            salesAmount.withTags("channel", channel.value(), "document.type", documentTypeValue)
+                    .record(immutableAmount.doubleValue());
+            salesLines.withTags("channel", channel.value(), "document.type", documentTypeValue)
+                    .record(immutableLineCount);
         });
     }
 
     @Override
-    public void failed(
-            SalesMetrics.Channel channel,
-            ElectronicDocumentType documentType,
+    public void failed(SalesMetrics.Channel channel, ElectronicDocumentType documentType,
             SalesMetrics.Result result) {
-        recorder.recordNow(() -> salesOperations.withTags(
-                "result", result.value(),
-                "channel", channel.value(),
-                "document.type", documentType(documentType)).increment());
+        recorder.recordNow(() -> salesOperations.withTags("result", result.value(), "channel",
+                channel.value(), "document.type", documentType(documentType)).increment());
     }
 
     @Override
-    public void finished(DianStatus status, Origin origin, ElectronicDocumentType documentType, Duration duration) {
+    public void finished(DianStatus status, Origin origin, ElectronicDocumentType documentType,
+            Duration duration) {
         Duration immutableDuration = nonNegative(duration);
         recorder.recordAfterCommit(() -> {
             String result = dianResult(status);
             String documentTypeValue = documentType(documentType);
-            dianTransmissions.withTags(
-                    "result", result,
-                    "origin", origin.value(),
-                    "document.type", documentTypeValue).increment();
-            dianTransmissionDuration.withTags(
-                    "result", result,
-                    "origin", origin.value()).record(immutableDuration);
+            dianTransmissions.withTags("result", result, "origin", origin.value(), "document.type",
+                    documentTypeValue).increment();
+            dianTransmissionDuration.withTags("result", result, "origin", origin.value())
+                    .record(immutableDuration);
         });
     }
 
@@ -138,23 +127,20 @@ public class MicrometerBusinessMetrics
     public void failed(Origin origin, ElectronicDocumentType documentType, Duration duration) {
         Duration immutableDuration = nonNegative(duration);
         recorder.recordNow(() -> {
-            dianTransmissions.withTags(
-                    "result", "error",
-                    "origin", origin.value(),
-                    "document.type", documentType(documentType)).increment();
-            dianTransmissionDuration.withTags(
-                    "result", "error",
-                    "origin", origin.value()).record(immutableDuration);
+            dianTransmissions.withTags("result", "error", "origin", origin.value(), "document.type",
+                    documentType(documentType)).increment();
+            dianTransmissionDuration.withTags("result", "error", "origin", origin.value())
+                    .record(immutableDuration);
         });
     }
 
     @Override
-    public void movement(StockMovementType movementType, InventoryMetrics.Result result, int units) {
+    public void movement(StockMovementType movementType, InventoryMetrics.Result result,
+            int units) {
         Runnable action = () -> {
             String type = lower(movementType);
-            inventoryMovements.withTags(
-                    "movement.type", type,
-                    "result", result.value()).increment();
+            inventoryMovements.withTags("movement.type", type, "result", result.value())
+                    .increment();
             if (result == InventoryMetrics.Result.SUCCESS && units > 0) {
                 inventoryUnits.withTags("movement.type", type).record(units);
             }
@@ -168,16 +154,14 @@ public class MicrometerBusinessMetrics
 
     @Override
     public void transitioned(AppointmentStatus status, AppointmentMetrics.Channel channel) {
-        recorder.recordAfterCommit(() -> appointmentTransitions.withTags(
-                "status", lower(status),
-                "channel", channel.value()).increment());
+        recorder.recordAfterCommit(() -> appointmentTransitions
+                .withTags("status", lower(status), "channel", channel.value()).increment());
     }
 
     @Override
     public void opened() {
-        recorder.recordAfterCommit(() -> cashSessions.withTags(
-                "event", "opened",
-                "result", "success").increment());
+        recorder.recordAfterCommit(
+                () -> cashSessions.withTags("event", "opened", "result", "success").increment());
     }
 
     @Override
@@ -186,10 +170,11 @@ public class MicrometerBusinessMetrics
                 ? List.of()
                 : differences.stream().map(MicrometerBusinessMetrics::zeroIfNull).toList();
         recorder.recordAfterCommit(() -> {
-            boolean hasDifference = immutableDifferences.stream().anyMatch(value -> value.signum() != 0);
-            cashSessions.withTags(
-                    "event", "closed",
-                    "result", hasDifference ? "difference" : "success").increment();
+            boolean hasDifference = immutableDifferences.stream()
+                    .anyMatch(value -> value.signum() != 0);
+            cashSessions
+                    .withTags("event", "closed", "result", hasDifference ? "difference" : "success")
+                    .increment();
             if (immutableDifferences.isEmpty()) {
                 cashClosingDifference.withTags("direction", "balanced").record(0);
                 return;

@@ -19,7 +19,7 @@ public class UpdateLaboratoryTestTypeService implements UpdateLaboratoryTestType
     private final CompanyQueryPort companyQueryPort;
 
     public UpdateLaboratoryTestTypeService(LaboratoryTestTypeRepository repository,
-                                 CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
     }
@@ -29,10 +29,13 @@ public class UpdateLaboratoryTestTypeService implements UpdateLaboratoryTestType
     public LaboratoryTestTypeDto execute(UpdateLaboratoryTestTypeCommand command) {
         LaboratoryTestType laboratoryTestType = repository.findById(command.id())
                 .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
+        CompanyRef company = command.companyId() == null
+                ? null
                 : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        laboratoryTestType.update(command.name(), command.description(), company, command.general());
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Company not found: " + command.companyId()));
+        laboratoryTestType.update(command.name(), command.description(), company,
+                command.general());
         return LaboratoryTestTypeDto.from(repository.save(laboratoryTestType));
     }
 }

@@ -15,10 +15,8 @@ import org.springframework.stereotype.Component;
 public class VaccinationJpaMapper {
 
     public VaccinationJpaEntity toJpa(Vaccination vaccination,
-                                      VaccinationTypeJpaEntity vaccinationType,
-                                      AnimalJpaEntity animal,
-                                      ConsultationJpaEntity consultation,
-                                      CompanyJpaEntity company) {
+            VaccinationTypeJpaEntity vaccinationType, AnimalJpaEntity animal,
+            ConsultationJpaEntity consultation, CompanyJpaEntity company) {
         VaccinationJpaEntity entity = new VaccinationJpaEntity();
         entity.setId(vaccination.getId());
         entity.setDate(vaccination.getDate());
@@ -41,19 +39,17 @@ public class VaccinationJpaMapper {
         AnimalJpaEntity a = entity.getAnimal();
         ConsultationJpaEntity co = entity.getConsultation();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new VaccinationTypeRef(vt.getId(), vt.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new VaccinationTypeRef(vt.getId(), vt.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
     public Vaccination toDomain(VaccinationJpaEntity entity, VaccinationTypeRef vaccinationTypeRef,
-                                AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Vaccination(
-            entity.getId(), entity.getDate(), vaccinationTypeRef,
-            entity.getLot(), entity.getNotes(), entity.getRoute(), entity.getApplicationSite(),
-            entity.getNextVaccination(),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+            AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
+        return new Vaccination(entity.getId(), entity.getDate(), vaccinationTypeRef,
+                entity.getLot(), entity.getNotes(), entity.getRoute(), entity.getApplicationSite(),
+                entity.getNextVaccination(), animalRef, consultationRef, companyRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

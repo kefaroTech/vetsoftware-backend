@@ -28,11 +28,9 @@ public class BaseRoleController {
     private final ReactivateBaseRoleUseCase reactivateUseCase;
 
     public BaseRoleController(CreateBaseRoleUseCase createUseCase,
-                               UpdateBaseRoleUseCase updateUseCase,
-                               FindBaseRoleUseCase findUseCase,
-                               ListBaseRolesUseCase listUseCase,
-                               DeleteBaseRoleUseCase deleteUseCase,
-                               ReactivateBaseRoleUseCase reactivateUseCase) {
+            UpdateBaseRoleUseCase updateUseCase, FindBaseRoleUseCase findUseCase,
+            ListBaseRolesUseCase listUseCase, DeleteBaseRoleUseCase deleteUseCase,
+            ReactivateBaseRoleUseCase reactivateUseCase) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -45,7 +43,7 @@ public class BaseRoleController {
     @ResponseStatus(HttpStatus.CREATED)
     public BaseRoleResponse create(@Valid @RequestBody CreateBaseRoleRequest request) {
         return toResponse(createUseCase.execute(
-            new CreateBaseRoleCommand(request.name(), request.code(), request.mandatory())));
+                new CreateBaseRoleCommand(request.name(), request.code(), request.mandatory())));
     }
 
     @GetMapping
@@ -60,9 +58,9 @@ public class BaseRoleController {
 
     @PutMapping("/{id}")
     public BaseRoleResponse update(@PathVariable Long id,
-                                    @Valid @RequestBody UpdateBaseRoleRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateBaseRoleCommand(id, request.name(), request.code(), request.mandatory())));
+            @Valid @RequestBody UpdateBaseRoleRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateBaseRoleCommand(id, request.name(),
+                request.code(), request.mandatory())));
     }
 
     @DeleteMapping("/{id}")
@@ -77,6 +75,7 @@ public class BaseRoleController {
     }
 
     private BaseRoleResponse toResponse(BaseRoleDto dto) {
-        return new BaseRoleResponse(dto.id(), dto.name(), dto.code(), dto.mandatory(), dto.createdDate(), dto.enabled());
+        return new BaseRoleResponse(dto.id(), dto.name(), dto.code(), dto.mandatory(),
+                dto.createdDate(), dto.enabled());
     }
 }

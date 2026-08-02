@@ -21,8 +21,9 @@ public class ReactivateProductService implements ReactivateProductUseCase {
     @Transactional
     public ProductDto execute(Long id, Long companyId) {
         int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ProductNotFoundException(id);
+        if (rows == 0)
+            throw new ProductNotFoundException(id);
         return ProductDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new ProductNotFoundException(id)));
+                .orElseThrow(() -> new ProductNotFoundException(id)));
     }
 }

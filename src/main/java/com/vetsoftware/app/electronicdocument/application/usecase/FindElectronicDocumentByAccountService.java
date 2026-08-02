@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "electronic.document.find.by.account")
 @Service
-public class FindElectronicDocumentByAccountService implements FindElectronicDocumentByAccountUseCase {
+public class FindElectronicDocumentByAccountService
+        implements
+            FindElectronicDocumentByAccountUseCase {
     private final ElectronicDocumentRepository repository;
 
     public FindElectronicDocumentByAccountService(ElectronicDocumentRepository repository) {
@@ -18,6 +20,7 @@ public class FindElectronicDocumentByAccountService implements FindElectronicDoc
 
     @Override
     public Optional<ElectronicDocumentDto> findByOpenAccount(Long openAccountId, Long companyId) {
-        return repository.findByOpenAccountId(openAccountId, companyId).map(ElectronicDocumentDto::from);
+        return repository.findByOpenAccountId(openAccountId, companyId)
+                .map(ElectronicDocumentDto::from);
     }
 }

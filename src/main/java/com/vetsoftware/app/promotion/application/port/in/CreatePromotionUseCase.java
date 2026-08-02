@@ -5,6 +5,7 @@ import com.vetsoftware.app.promotion.application.dto.PromotionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreatePromotionUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('promotion.create') and @authz.isMyCompany(#command.companyId))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('promotion.create') and"
+            + " @authz.isMyCompany(#command.companyId))")
     PromotionDto execute(CreatePromotionCommand command);
 }

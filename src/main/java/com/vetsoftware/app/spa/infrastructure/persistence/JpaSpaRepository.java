@@ -20,11 +20,9 @@ public class JpaSpaRepository implements SpaRepository {
     private final AnimalJpaRepository animalJpaRepository;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaSpaRepository(SpaJpaRepository jpaRepository,
-                            SpaJpaMapper mapper,
-                            SpaTypeJpaRepository spaTypeJpaRepository,
-                            AnimalJpaRepository animalJpaRepository,
-                            CompanyJpaRepository companyJpaRepository) {
+    public JpaSpaRepository(SpaJpaRepository jpaRepository, SpaJpaMapper mapper,
+            SpaTypeJpaRepository spaTypeJpaRepository, AnimalJpaRepository animalJpaRepository,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.spaTypeJpaRepository = spaTypeJpaRepository;

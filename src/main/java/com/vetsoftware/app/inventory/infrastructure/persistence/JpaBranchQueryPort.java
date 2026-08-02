@@ -16,9 +16,9 @@ public class JpaBranchQueryPort implements BranchQueryPort {
 
     @Override
     public boolean existsActiveInCompany(Long branchId, Long companyId) {
-        if (branchId == null || companyId == null) return false;
+        if (branchId == null || companyId == null)
+            return false;
         return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
-            .filter(BranchJpaEntity::isActive)
-            .isPresent();
+                .filter(BranchJpaEntity::isActive).isPresent();
     }
 }

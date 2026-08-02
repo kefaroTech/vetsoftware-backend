@@ -13,9 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompanyTaxProfileJpaMapper {
 
-    public CompanyTaxProfileJpaEntity toJpa(CompanyTaxProfile profile,
-                                            CompanyJpaEntity company,
-                                            EconomicActivityJpaEntity economicActivity) {
+    public CompanyTaxProfileJpaEntity toJpa(CompanyTaxProfile profile, CompanyJpaEntity company,
+            EconomicActivityJpaEntity economicActivity) {
         CompanyTaxProfileJpaEntity entity = new CompanyTaxProfileJpaEntity();
         entity.setId(profile.getId());
         entity.setCompany(company);
@@ -30,17 +29,17 @@ public class CompanyTaxProfileJpaMapper {
         entity.setCreatedDate(profile.getCreatedDate());
         entity.setEnabled(profile.isEnabled());
 
-        List<CompanyTaxProfileResponsibilityJpaEntity> children = profile.getResponsibilities().stream()
-                .map(r -> {
+        List<CompanyTaxProfileResponsibilityJpaEntity> children = profile.getResponsibilities()
+                .stream().map(r -> {
                     CompanyTaxProfileResponsibilityJpaEntity child = new CompanyTaxProfileResponsibilityJpaEntity();
                     child.setCompanyTaxProfile(entity);
                     child.setCode(r.code());
                     child.setCreatedDate(profile.getCreatedDate() == null
-                            ? LocalDateTime.now() : profile.getCreatedDate());
+                            ? LocalDateTime.now()
+                            : profile.getCreatedDate());
                     child.setEnabled(true);
                     return child;
-                })
-                .toList();
+                }).toList();
         entity.getResponsibilities().clear();
         entity.getResponsibilities().addAll(children);
         return entity;
@@ -48,34 +47,25 @@ public class CompanyTaxProfileJpaMapper {
 
     public CompanyTaxProfile toDomain(CompanyTaxProfileJpaEntity entity) {
         CompanyJpaEntity c = entity.getCompany();
-        CompanyRef companyRef = c == null ? null
+        CompanyRef companyRef = c == null
+                ? null
                 : new CompanyRef(c.getId(), c.getName(), c.getIdentifier());
         EconomicActivityJpaEntity ea = entity.getEconomicActivity();
-        EconomicActivityRef economicActivityRef = ea == null ? null
+        EconomicActivityRef economicActivityRef = ea == null
+                ? null
                 : new EconomicActivityRef(ea.getId(), ea.getCode(), ea.getName());
         return toDomain(entity, companyRef, economicActivityRef);
     }
 
-    public CompanyTaxProfile toDomain(CompanyTaxProfileJpaEntity entity,
-                                      CompanyRef companyRef,
-                                      EconomicActivityRef economicActivityRef) {
-        List<CompanyTaxProfileResponsibility> responsibilities = entity.getResponsibilities().stream()
-                .filter(CompanyTaxProfileResponsibilityJpaEntity::isEnabled)
-                .map(r -> new CompanyTaxProfileResponsibility(r.getCode()))
-                .toList();
-        return new CompanyTaxProfile(
-                entity.getId(),
-                companyRef,
-                entity.getCompanyDocumentType(),
-                entity.getCompanyDocumentId(),
-                entity.getCompanyDocumentVerificationDigit(),
-                entity.getLegalName(),
-                entity.getTaxRegime(),
-                entity.getFiscalEmail(),
-                entity.getCommercialName(),
-                economicActivityRef,
-                responsibilities,
-                entity.getCreatedDate(),
-                entity.isEnabled());
+    public CompanyTaxProfile toDomain(CompanyTaxProfileJpaEntity entity, CompanyRef companyRef,
+            EconomicActivityRef economicActivityRef) {
+        List<CompanyTaxProfileResponsibility> responsibilities = entity.getResponsibilities()
+                .stream().filter(CompanyTaxProfileResponsibilityJpaEntity::isEnabled)
+                .map(r -> new CompanyTaxProfileResponsibility(r.getCode())).toList();
+        return new CompanyTaxProfile(entity.getId(), companyRef, entity.getCompanyDocumentType(),
+                entity.getCompanyDocumentId(), entity.getCompanyDocumentVerificationDigit(),
+                entity.getLegalName(), entity.getTaxRegime(), entity.getFiscalEmail(),
+                entity.getCommercialName(), economicActivityRef, responsibilities,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

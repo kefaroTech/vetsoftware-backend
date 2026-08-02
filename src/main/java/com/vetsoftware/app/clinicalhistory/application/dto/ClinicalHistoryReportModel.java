@@ -5,14 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record ClinicalHistoryReportModel(
-        AnimalReportInfo animal,
-        LocalDate from,
-        LocalDate to,
-        List<ClinicalEventType> typeFilters,
-        List<ReportAlert> alerts,
-        List<ReportProblem> problems,
-        List<ReportClinicalEvent> events,
-        LocalDateTime generatedAt
-) {
+public record ClinicalHistoryReportModel(AnimalReportInfo animal, LocalDate from, LocalDate to,
+        List<ClinicalEventType> typeFilters, List<ReportAlert> alerts, List<ReportProblem> problems,
+        List<ReportClinicalEvent> events, LocalDateTime generatedAt) {
 }

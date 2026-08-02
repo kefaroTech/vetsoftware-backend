@@ -24,7 +24,7 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
     private final HospitalizationProcedureQueryPort procedureQueryPort;
 
     public RescheduleProcedureScheduleService(ProcedureScheduleRepository repository,
-                                              HospitalizationProcedureQueryPort procedureQueryPort) {
+            HospitalizationProcedureQueryPort procedureQueryPort) {
         this.repository = repository;
         this.procedureQueryPort = procedureQueryPort;
     }
@@ -36,11 +36,12 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
             throw new IllegalArgumentException("newDateTime is required");
 
         ProcedureSchedule probe = repository.findById(command.scheduleId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Procedure schedule not found: " + command.scheduleId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Procedure schedule not found: " + command.scheduleId()));
         Long procedureId = probe.getHospitalizationProcedure().id();
 
-        List<ProcedureSchedule> all = new ArrayList<>(repository.findByHospitalizationProcedureId(procedureId));
+        List<ProcedureSchedule> all = new ArrayList<>(
+                repository.findByHospitalizationProcedureId(procedureId));
         all.sort(Comparator.comparing(ProcedureSchedule::getCurrentDateTime));
         int idx = indexOfId(all, command.scheduleId());
 
@@ -52,7 +53,8 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
             ProcedureOrderParams params = procedureQueryPort.findById(procedureId).orElse(null);
             if (params != null && "INTERVAL".equalsIgnoreCase(params.guidelineType())) {
                 Integer interval = ProcedureScheduleGenerator.intervalHours(params.frequency());
-                if (interval != null) recalcFollowing(all, idx, command.newDateTime(), interval);
+                if (interval != null)
+                    recalcFollowing(all, idx, command.newDateTime(), interval);
             }
         }
 
@@ -61,17 +63,19 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
 
     private static int indexOfId(List<ProcedureSchedule> all, Long id) {
         for (int i = 0; i < all.size(); i++) {
-            if (id.equals(all.get(i).getId())) return i;
+            if (id.equals(all.get(i).getId()))
+                return i;
         }
         throw new IllegalArgumentException("Procedure schedule not found in plan: " + id);
     }
 
-    private void recalcFollowing(List<ProcedureSchedule> all, int pivotIdx,
-                                 LocalDateTime from, int intervalHours) {
+    private void recalcFollowing(List<ProcedureSchedule> all, int pivotIdx, LocalDateTime from,
+            int intervalHours) {
         LocalDateTime cursor = from;
         for (int i = pivotIdx + 1; i < all.size(); i++) {
             ProcedureSchedule s = all.get(i);
-            if (s.getAppliedStatus() != AppliedStatus.PENDING) continue;
+            if (s.getAppliedStatus() != AppliedStatus.PENDING)
+                continue;
             cursor = cursor.plusHours(intervalHours);
             s.reschedule(cursor);
             repository.save(s);

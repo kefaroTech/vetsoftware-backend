@@ -13,10 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SpaJpaMapper {
 
-    public SpaJpaEntity toJpa(Spa spa,
-                              SpaTypeJpaEntity spaType,
-                              AnimalJpaEntity animal,
-                              CompanyJpaEntity company) {
+    public SpaJpaEntity toJpa(Spa spa, SpaTypeJpaEntity spaType, AnimalJpaEntity animal,
+            CompanyJpaEntity company) {
         SpaJpaEntity entity = new SpaJpaEntity();
         entity.setId(spa.getId());
         entity.setDate(spa.getDate());
@@ -36,18 +34,16 @@ public class SpaJpaMapper {
         SpaTypeJpaEntity st = entity.getSpaType();
         AnimalJpaEntity a = entity.getAnimal();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new SpaTypeRef(st.getId(), st.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new SpaTypeRef(st.getId(), st.getName()),
+                new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    public Spa toDomain(SpaJpaEntity entity, SpaTypeRef spaTypeRef,
-                        AnimalRef animalRef, CompanyRef companyRef) {
-        return new Spa(
-            entity.getId(), entity.getDate(), spaTypeRef,
-            entity.getReason(), entity.getDetails(), entity.getObservations(),
-            SpaStatus.valueOf(entity.getStatus()),
-            animalRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+    public Spa toDomain(SpaJpaEntity entity, SpaTypeRef spaTypeRef, AnimalRef animalRef,
+            CompanyRef companyRef) {
+        return new Spa(entity.getId(), entity.getDate(), spaTypeRef, entity.getReason(),
+                entity.getDetails(), entity.getObservations(),
+                SpaStatus.valueOf(entity.getStatus()), animalRef, companyRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

@@ -18,9 +18,8 @@ public class JpaMembershipSubModuleRepository implements MembershipSubModuleRepo
     private final SubModuleJpaRepository subModuleJpaRepository;
 
     public JpaMembershipSubModuleRepository(MembershipSubModuleJpaRepository jpaRepository,
-                                             MembershipSubModuleJpaMapper mapper,
-                                             MembershipJpaRepository membershipJpaRepository,
-                                             SubModuleJpaRepository subModuleJpaRepository) {
+            MembershipSubModuleJpaMapper mapper, MembershipJpaRepository membershipJpaRepository,
+            SubModuleJpaRepository subModuleJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.membershipJpaRepository = membershipJpaRepository;
@@ -29,10 +28,14 @@ public class JpaMembershipSubModuleRepository implements MembershipSubModuleRepo
 
     @Override
     public MembershipSubModule save(MembershipSubModule membershipSubModule) {
-        MembershipJpaEntity membership = membershipJpaRepository.getReferenceById(membershipSubModule.getMembership().id());
-        SubModuleJpaEntity subModule = subModuleJpaRepository.getReferenceById(membershipSubModule.getSubModule().id());
-        MembershipSubModuleJpaEntity saved = jpaRepository.save(mapper.toJpa(membershipSubModule, membership, subModule));
-        return mapper.toDomain(saved, membershipSubModule.getMembership(), membershipSubModule.getSubModule());
+        MembershipJpaEntity membership = membershipJpaRepository
+                .getReferenceById(membershipSubModule.getMembership().id());
+        SubModuleJpaEntity subModule = subModuleJpaRepository
+                .getReferenceById(membershipSubModule.getSubModule().id());
+        MembershipSubModuleJpaEntity saved = jpaRepository
+                .save(mapper.toJpa(membershipSubModule, membership, subModule));
+        return mapper.toDomain(saved, membershipSubModule.getMembership(),
+                membershipSubModule.getSubModule());
     }
 
     @Override
@@ -56,7 +59,8 @@ public class JpaMembershipSubModuleRepository implements MembershipSubModuleRepo
     }
 
     @Override
-    public Optional<Long> findDisabledIdByMembershipAndSubModule(Long membershipId, Long subModuleId) {
+    public Optional<Long> findDisabledIdByMembershipAndSubModule(Long membershipId,
+            Long subModuleId) {
         return jpaRepository.findDisabledIdByMembershipAndSubModule(membershipId, subModuleId);
     }
 }

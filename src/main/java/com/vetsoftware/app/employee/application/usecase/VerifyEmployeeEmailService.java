@@ -22,7 +22,7 @@ public class VerifyEmployeeEmailService implements VerifyEmployeeEmailUseCase {
     @Transactional
     public void execute(Long employeeId) {
         Employee employee = repository.findById(employeeId)
-            .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
+                .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
         employee.verifyEmail();
         repository.save(employee);
     }

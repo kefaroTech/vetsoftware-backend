@@ -23,10 +23,11 @@ public class DeleteGoodsReceiptService implements DeleteGoodsReceiptUseCase {
     @Transactional
     public void execute(Long id, Long companyId) {
         GoodsReceipt receipt = repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
+                .orElseThrow(() -> new GoodsReceiptNotFoundException(id));
         if (receipt.getStatus() != GoodsReceiptStatus.DRAFT) {
             throw new InvalidGoodsReceiptStatusTransitionException(
-                "Only DRAFT goods receipts can be deleted, current status: " + receipt.getStatus());
+                    "Only DRAFT goods receipts can be deleted, current status: "
+                            + receipt.getStatus());
         }
         repository.delete(id);
     }

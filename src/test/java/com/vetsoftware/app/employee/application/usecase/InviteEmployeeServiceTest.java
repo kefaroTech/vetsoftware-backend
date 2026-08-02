@@ -36,9 +36,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Alta de staff por un admin: es el camino por el que nace una credencial de acceso al sistema. Se fija
- * que la contraseña se hashea antes de persistir, que el empleado no puede quedar sin sede (quedaría
- * bloqueado de todo recurso scopeado) y que el correo con la clave temporal se envía después de que el
+ * Alta de staff por un admin: es el camino por el que nace una credencial de
+ * acceso al sistema. Se fija que la contraseña se hashea antes de persistir,
+ * que el empleado no puede quedar sin sede (quedaría bloqueado de todo recurso
+ * scopeado) y que el correo con la clave temporal se envía después de que el
  * alta ya cuadró.
  */
 @ExtendWith(MockitoExtension.class)
@@ -46,13 +47,20 @@ class InviteEmployeeServiceTest {
 
     private static final Long COMPANY = 9L;
 
-    @Mock private EmployeeRepository repository;
-    @Mock private CompanyQueryPort companyQueryPort;
-    @Mock private PasswordHasher passwordHasher;
-    @Mock private EmployeeRoleAssigner roleAssigner;
-    @Mock private EmployeeBranchAssigner branchAssigner;
-    @Mock private EmployeeInvitationEmailSender invitationEmailSender;
-    @InjectMocks private InviteEmployeeService service;
+    @Mock
+    private EmployeeRepository repository;
+    @Mock
+    private CompanyQueryPort companyQueryPort;
+    @Mock
+    private PasswordHasher passwordHasher;
+    @Mock
+    private EmployeeRoleAssigner roleAssigner;
+    @Mock
+    private EmployeeBranchAssigner branchAssigner;
+    @Mock
+    private EmployeeInvitationEmailSender invitationEmailSender;
+    @InjectMocks
+    private InviteEmployeeService service;
 
     private static CompanyRef company() {
         return new CompanyRef(COMPANY, "Veterinaria Vetrina", "900123456");
@@ -130,11 +138,13 @@ class InviteEmployeeServiceTest {
 
         @Test
         void guarda_antes_de_asignar_roles_sedes_y_de_enviar_el_correo() {
-            // El INSERT valida la unicidad del código: si el correo saliera primero, un código duplicado
+            // El INSERT valida la unicidad del código: si el correo saliera primero, un
+            // código duplicado
             // dejaría una invitación enviada para una cuenta que nunca existió.
             service.execute(command(List.of(3L), List.of(7L)));
 
-            InOrder order = inOrder(repository, roleAssigner, branchAssigner, invitationEmailSender);
+            InOrder order = inOrder(repository, roleAssigner, branchAssigner,
+                    invitationEmailSender);
             order.verify(repository).save(any());
             order.verify(roleAssigner).assign(55L, 3L);
             order.verify(branchAssigner).assign(55L, COMPANY, List.of(7L));

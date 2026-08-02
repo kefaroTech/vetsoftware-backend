@@ -40,14 +40,11 @@ public class RolePermissionController {
     private final Authz authz;
 
     public RolePermissionController(CreateRolePermissionUseCase createUseCase,
-                                    SyncRolePermissionsUseCase syncUseCase,
-                                    UpdateRolePermissionUseCase updateUseCase,
-                                    FindRolePermissionUseCase findUseCase,
-                                    ListRolePermissionsUseCase listUseCase,
-                                    ListRolePermissionsByCompanyUseCase listByCompanyUseCase,
-                                    DeleteRolePermissionUseCase deleteUseCase,
-                                    ReactivateRolePermissionUseCase reactivateUseCase,
-                                    Authz authz) {
+            SyncRolePermissionsUseCase syncUseCase, UpdateRolePermissionUseCase updateUseCase,
+            FindRolePermissionUseCase findUseCase, ListRolePermissionsUseCase listUseCase,
+            ListRolePermissionsByCompanyUseCase listByCompanyUseCase,
+            DeleteRolePermissionUseCase deleteUseCase,
+            ReactivateRolePermissionUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.syncUseCase = syncUseCase;
         this.updateUseCase = updateUseCase;
@@ -62,16 +59,15 @@ public class RolePermissionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RolePermissionResponse create(@Valid @RequestBody CreateRolePermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateRolePermissionCommand(
-                request.roleId(), request.permissionId(), authz.currentCompanyIdOrNull())));
+        return toResponse(createUseCase.execute(new CreateRolePermissionCommand(request.roleId(),
+                request.permissionId(), authz.currentCompanyIdOrNull())));
     }
 
     @PutMapping("/by-role/{roleId}")
     public List<RolePermissionResponse> syncByRole(@PathVariable Long roleId,
-                                                   @Valid @RequestBody SyncRolePermissionsRequest request) {
+            @Valid @RequestBody SyncRolePermissionsRequest request) {
         return syncUseCase.execute(new SyncRolePermissionsCommand(roleId, request.permissionIds()))
-            .stream().map(this::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @GetMapping
@@ -81,8 +77,8 @@ public class RolePermissionController {
 
     @GetMapping("/by-company")
     public List<RolePermissionResponse> listByCompany() {
-        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -92,10 +88,9 @@ public class RolePermissionController {
 
     @PutMapping("/{id}")
     public RolePermissionResponse update(@PathVariable Long id,
-                                         @Valid @RequestBody UpdateRolePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateRolePermissionCommand(
-                id, request.roleId(), request.permissionId(), authz.currentCompanyIdOrNull())));
+            @Valid @RequestBody UpdateRolePermissionRequest request) {
+        return toResponse(updateUseCase.execute(new UpdateRolePermissionCommand(id,
+                request.roleId(), request.permissionId(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
@@ -112,12 +107,8 @@ public class RolePermissionController {
     private RolePermissionResponse toResponse(RolePermissionDto dto) {
         RoleSummaryDto r = dto.role();
         PermissionSummaryDto p = dto.permission();
-        return new RolePermissionResponse(
-            dto.id(),
-            new RoleSummary(r.id(), r.name(), r.code()),
-            new PermissionSummary(p.id(), p.name(), p.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
+        return new RolePermissionResponse(dto.id(), new RoleSummary(r.id(), r.name(), r.code()),
+                new PermissionSummary(p.id(), p.name(), p.code()), dto.createdDate(),
+                dto.enabled());
     }
 }

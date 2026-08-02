@@ -79,11 +79,11 @@ class SystemRoleIsolationTest {
 
     private static boolean hasSystemRole(Authentication authentication) {
         return authentication.getAuthorities().stream()
-            .anyMatch(authority -> "ROLE_SYSTEM".equals(authority.getAuthority()));
+                .anyMatch(authority -> "ROLE_SYSTEM".equals(authority.getAuthority()));
     }
 
     private static void authenticate(Object principal) {
         SecurityContextHolder.getContext().setAuthentication(
-            new UsernamePasswordAuthenticationToken(principal, null, List.of()));
+                new UsernamePasswordAuthenticationToken(principal, null, List.of()));
     }
 }

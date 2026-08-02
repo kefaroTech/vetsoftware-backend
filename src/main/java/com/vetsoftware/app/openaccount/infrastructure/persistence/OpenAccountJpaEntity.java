@@ -75,40 +75,142 @@ public class OpenAccountJpaEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
-    protected OpenAccountJpaEntity() {}
+    protected OpenAccountJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public OwnerJpaEntity getOwner() { return owner; }
-    public void setOwner(OwnerJpaEntity owner) { this.owner = owner; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public BigDecimal getPaidAmount() { return paidAmount; }
-    public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
-    public BigDecimal getOutstandingAmount() { return outstandingAmount; }
-    public void setOutstandingAmount(BigDecimal outstandingAmount) { this.outstandingAmount = outstandingAmount; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public BranchJpaEntity getBranch() { return branch; }
-    public void setBranch(BranchJpaEntity branch) { this.branch = branch; }
-    public OpenAccountStatus getStatus() { return status; }
-    public void setStatus(OpenAccountStatus status) { this.status = status; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public EmployeeJpaEntity getClosedBy() { return closedBy; }
-    public void setClosedBy(EmployeeJpaEntity closedBy) { this.closedBy = closedBy; }
-    public LocalDateTime getClosedAt() { return closedAt; }
-    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
-    public String getCloseReason() { return closeReason; }
-    public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
-    public boolean isReversed() { return reversed; }
-    public void setReversed(boolean reversed) { this.reversed = reversed; }
-    public LocalDateTime getReversedAt() { return reversedAt; }
-    public void setReversedAt(LocalDateTime reversedAt) { this.reversedAt = reversedAt; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public OwnerJpaEntity getOwner() {
+        return owner;
+    }
+
+    public void setOwner(OwnerJpaEntity owner) {
+        this.owner = owner;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public BigDecimal getPaidAmount() {
+        return paidAmount;
+    }
+
+    public void setPaidAmount(BigDecimal paidAmount) {
+        this.paidAmount = paidAmount;
+    }
+
+    public BigDecimal getOutstandingAmount() {
+        return outstandingAmount;
+    }
+
+    public void setOutstandingAmount(BigDecimal outstandingAmount) {
+        this.outstandingAmount = outstandingAmount;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public BranchJpaEntity getBranch() {
+        return branch;
+    }
+
+    public void setBranch(BranchJpaEntity branch) {
+        this.branch = branch;
+    }
+
+    public OpenAccountStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(OpenAccountStatus status) {
+        this.status = status;
+    }
+
+    public EmployeeJpaEntity getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(EmployeeJpaEntity createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public EmployeeJpaEntity getClosedBy() {
+        return closedBy;
+    }
+
+    public void setClosedBy(EmployeeJpaEntity closedBy) {
+        this.closedBy = closedBy;
+    }
+
+    public LocalDateTime getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(LocalDateTime closedAt) {
+        this.closedAt = closedAt;
+    }
+
+    public String getCloseReason() {
+        return closeReason;
+    }
+
+    public void setCloseReason(String closeReason) {
+        this.closeReason = closeReason;
+    }
+
+    public boolean isReversed() {
+        return reversed;
+    }
+
+    public void setReversed(boolean reversed) {
+        this.reversed = reversed;
+    }
+
+    public LocalDateTime getReversedAt() {
+        return reversedAt;
+    }
+
+    public void setReversedAt(LocalDateTime reversedAt) {
+        this.reversedAt = reversedAt;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
 }

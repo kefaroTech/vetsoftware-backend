@@ -14,9 +14,8 @@ public class JpaRoleRepository implements RoleRepository {
     private final RoleJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaRoleRepository(RoleJpaRepository jpaRepository,
-                             RoleJpaMapper mapper,
-                             CompanyJpaRepository companyJpaRepository) {
+    public JpaRoleRepository(RoleJpaRepository jpaRepository, RoleJpaMapper mapper,
+            CompanyJpaRepository companyJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;

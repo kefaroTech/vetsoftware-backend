@@ -18,7 +18,7 @@ public class FindSubModuleService implements FindSubModuleUseCase {
 
     @Override
     public SubModuleDto findById(Long id) {
-        return SubModuleDto.from(repository.findById(id)
-            .orElseThrow(() -> new SubModuleNotFoundException(id)));
+        return SubModuleDto.from(
+                repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
     }
 }

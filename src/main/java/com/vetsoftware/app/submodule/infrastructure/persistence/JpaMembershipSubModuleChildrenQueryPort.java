@@ -5,7 +5,9 @@ import com.vetsoftware.app.submodule.application.port.out.MembershipSubModuleChi
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMembershipSubModuleChildrenQueryPort implements MembershipSubModuleChildrenQueryPort {
+public class JpaMembershipSubModuleChildrenQueryPort
+        implements
+            MembershipSubModuleChildrenQueryPort {
     private final MembershipSubModuleJpaRepository jpaRepository;
 
     public JpaMembershipSubModuleChildrenQueryPort(MembershipSubModuleJpaRepository jpaRepository) {

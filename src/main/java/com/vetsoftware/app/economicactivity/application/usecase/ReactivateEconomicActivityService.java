@@ -21,8 +21,9 @@ public class ReactivateEconomicActivityService implements ReactivateEconomicActi
     @Transactional
     public EconomicActivityDto execute(Long id) {
         int rows = repository.reactivate(id);
-        if (rows == 0) throw new EconomicActivityNotFoundException(id);
+        if (rows == 0)
+            throw new EconomicActivityNotFoundException(id);
         return EconomicActivityDto.from(repository.findById(id)
-            .orElseThrow(() -> new EconomicActivityNotFoundException(id)));
+                .orElseThrow(() -> new EconomicActivityNotFoundException(id)));
     }
 }

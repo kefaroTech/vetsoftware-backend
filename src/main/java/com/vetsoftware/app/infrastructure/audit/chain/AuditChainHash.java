@@ -8,23 +8,32 @@ import java.util.HexFormat;
 /**
  * Primitivas de la cadena de hash de auditoría.
  *
- * <p>El eslabón de la posición {@code n} es:
+ * <p>
+ * El eslabón de la posición {@code n} es:
  *
- * <pre>chain_hash(n) = SHA-256( previous_hash(n) + ":" + n + ":" + payload_hash(n) )</pre>
+ * <pre>
+ * chain_hash(n) = SHA-256( previous_hash(n) + ":" + n + ":" + payload_hash(n) )
+ * </pre>
  *
- * <p>donde {@code previous_hash(n)} es {@code chain_hash(n-1)} y el eslabón cero usa
- * {@link #GENESIS_HASH}. Encadenar así hace que suprimir, reordenar o alterar cualquier evento
- * invalide todos los eslabones posteriores, de modo que la manipulación es detectable aunque el
- * atacante tenga permisos de escritura sobre la tabla.
+ * <p>
+ * donde {@code previous_hash(n)} es {@code chain_hash(n-1)} y el eslabón cero
+ * usa {@link #GENESIS_HASH}. Encadenar así hace que suprimir, reordenar o
+ * alterar cualquier evento invalide todos los eslabones posteriores, de modo
+ * que la manipulación es detectable aunque el atacante tenga permisos de
+ * escritura sobre la tabla.
  *
- * <p>Todos los hexadecimales son minúsculos para coincidir con {@code SHA2(x, 256)} de MySQL, que
- * es lo que usa el relleno de la migración 215.
+ * <p>
+ * Todos los hexadecimales son minúsculos para coincidir con
+ * {@code SHA2(x, 256)} de MySQL, que es lo que usa el relleno de la migración
+ * 215.
  */
 public final class AuditChainHash {
 
-    /** {@code previous_hash} del primer eslabón. 64 ceros, no es un hash real de nada. */
-    public static final String GENESIS_HASH =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+    /**
+     * {@code previous_hash} del primer eslabón. 64 ceros, no es un hash real de
+     * nada.
+     */
+    public static final String GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000";
 
     private static final HexFormat HEX = HexFormat.of().withLowerCase();
 
@@ -32,9 +41,10 @@ public final class AuditChainHash {
     }
 
     /**
-     * Hash del payload tal como se serializó. Se calcula sobre los bytes UTF-8 exactos, por lo que
-     * la columna debe conservarlos sin normalizar (ver migración 215: {@code LONGTEXT}, no
-     * {@code JSON}).
+     * Hash del payload tal como se serializó. Se calcula sobre los bytes UTF-8
+     * exactos, por lo que la columna debe conservarlos sin normalizar (ver
+     * migración 215: {@code LONGTEXT}, no {@code
+     * JSON}).
      */
     public static String payloadHash(String payload) {
         if (payload == null) {

@@ -3,10 +3,10 @@ package com.vetsoftware.app.numberingresolution.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.numberingresolution.domain.ElectronicDocumentType;
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "numbering_resolutions")
@@ -21,8 +21,10 @@ public class NumberingResolutionJpaEntity {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
-    // Multi-sucursal (B-6): sede a la que aplica el prefijo. Id pelado (sin @ManyToOne, como
-    // electronic_documents.branch_id). null = resolución de empresa (todas las sedes).
+    // Multi-sucursal (B-6): sede a la que aplica el prefijo. Id pelado (sin
+    // @ManyToOne, como
+    // electronic_documents.branch_id). null = resolución de empresa (todas las
+    // sedes).
     @Column(name = "branch_id")
     private Long branchId;
 
@@ -63,36 +65,126 @@ public class NumberingResolutionJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    protected NumberingResolutionJpaEntity() {}
+    protected NumberingResolutionJpaEntity() {
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public Long getBranchId() { return branchId; }
-    public void setBranchId(Long branchId) { this.branchId = branchId; }
-    public ElectronicDocumentType getDocumentType() { return documentType; }
-    public void setDocumentType(ElectronicDocumentType documentType) { this.documentType = documentType; }
-    public String getResolutionNumber() { return resolutionNumber; }
-    public void setResolutionNumber(String resolutionNumber) { this.resolutionNumber = resolutionNumber; }
-    public LocalDate getResolutionDate() { return resolutionDate; }
-    public void setResolutionDate(LocalDate resolutionDate) { this.resolutionDate = resolutionDate; }
-    public String getPrefix() { return prefix; }
-    public void setPrefix(String prefix) { this.prefix = prefix; }
-    public Long getRangeFrom() { return rangeFrom; }
-    public void setRangeFrom(Long rangeFrom) { this.rangeFrom = rangeFrom; }
-    public Long getRangeTo() { return rangeTo; }
-    public void setRangeTo(Long rangeTo) { this.rangeTo = rangeTo; }
-    public LocalDate getValidFrom() { return validFrom; }
-    public void setValidFrom(LocalDate validFrom) { this.validFrom = validFrom; }
-    public LocalDate getValidTo() { return validTo; }
-    public void setValidTo(LocalDate validTo) { this.validTo = validTo; }
-    public String getTechnicalKey() { return technicalKey; }
-    public void setTechnicalKey(String technicalKey) { this.technicalKey = technicalKey; }
-    public Long getCurrentNumber() { return currentNumber; }
-    public void setCurrentNumber(Long currentNumber) { this.currentNumber = currentNumber; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public CompanyJpaEntity getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyJpaEntity company) {
+        this.company = company;
+    }
+
+    public Long getBranchId() {
+        return branchId;
+    }
+
+    public void setBranchId(Long branchId) {
+        this.branchId = branchId;
+    }
+
+    public ElectronicDocumentType getDocumentType() {
+        return documentType;
+    }
+
+    public void setDocumentType(ElectronicDocumentType documentType) {
+        this.documentType = documentType;
+    }
+
+    public String getResolutionNumber() {
+        return resolutionNumber;
+    }
+
+    public void setResolutionNumber(String resolutionNumber) {
+        this.resolutionNumber = resolutionNumber;
+    }
+
+    public LocalDate getResolutionDate() {
+        return resolutionDate;
+    }
+
+    public void setResolutionDate(LocalDate resolutionDate) {
+        this.resolutionDate = resolutionDate;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
+    }
+
+    public Long getRangeFrom() {
+        return rangeFrom;
+    }
+
+    public void setRangeFrom(Long rangeFrom) {
+        this.rangeFrom = rangeFrom;
+    }
+
+    public Long getRangeTo() {
+        return rangeTo;
+    }
+
+    public void setRangeTo(Long rangeTo) {
+        this.rangeTo = rangeTo;
+    }
+
+    public LocalDate getValidFrom() {
+        return validFrom;
+    }
+
+    public void setValidFrom(LocalDate validFrom) {
+        this.validFrom = validFrom;
+    }
+
+    public LocalDate getValidTo() {
+        return validTo;
+    }
+
+    public void setValidTo(LocalDate validTo) {
+        this.validTo = validTo;
+    }
+
+    public String getTechnicalKey() {
+        return technicalKey;
+    }
+
+    public void setTechnicalKey(String technicalKey) {
+        this.technicalKey = technicalKey;
+    }
+
+    public Long getCurrentNumber() {
+        return currentNumber;
+    }
+
+    public void setCurrentNumber(Long currentNumber) {
+        this.currentNumber = currentNumber;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(LocalDateTime createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

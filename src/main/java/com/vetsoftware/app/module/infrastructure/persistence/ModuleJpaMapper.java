@@ -16,6 +16,7 @@ public class ModuleJpaMapper {
     }
 
     public Module toDomain(ModuleJpaEntity entity) {
-        return new Module(entity.getId(), entity.getName(), entity.getCode(), entity.getCreatedDate(), entity.isEnabled());
+        return new Module(entity.getId(), entity.getName(), entity.getCode(),
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

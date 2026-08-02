@@ -1,6 +1,9 @@
 package com.vetsoftware.app.electronicdocument.domain;
 
-/** Forma de pago DIAN: 1 contado. El crédito (2) no está soportado: toda venta es de contado. */
+/**
+ * Forma de pago DIAN: 1 contado. El crédito (2) no está soportado: toda venta
+ * es de contado.
+ */
 public enum PaymentForm {
     CONTADO("1");
 

@@ -19,6 +19,6 @@ public class FindSpaService implements FindSpaUseCase {
     @Override
     public SpaDto findById(Long id, Long companyId) {
         return SpaDto.from(repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new SpaNotFoundException(id)));
+                .orElseThrow(() -> new SpaNotFoundException(id)));
     }
 }

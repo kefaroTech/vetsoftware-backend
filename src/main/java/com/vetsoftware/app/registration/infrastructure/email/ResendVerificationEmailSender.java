@@ -11,14 +11,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Correo de verificación de cuenta (auto-registro Opción B) enviado con una <b>plantilla de Resend</b>
- * ({@code template: { id, variables }}). El enlace apunta a la página del front ({@code verification-base-url})
- * con el token plano; el front llama a {@code POST /register/verify}. Si el envío está deshabilitado (dev),
- * deja el enlace + código en el log. El envío es asíncrono y no bloquea el registro (si Resend falla, se
- * registra un warning y el registro continúa).
+ * Correo de verificación de cuenta (auto-registro Opción B) enviado con una
+ * <b>plantilla de Resend</b> ({@code template: { id, variables }}). El enlace
+ * apunta a la página del front ({@code
+ * verification-base-url}) con el token plano; el front llama a
+ * {@code POST /register/verify}. Si el envío está deshabilitado (dev), deja el
+ * enlace + código en el log. El envío es asíncrono y no bloquea el registro (si
+ * Resend falla, se registra un warning y el registro continúa).
  *
- * <p>Variables de la plantilla (deben coincidir con los {@code {{{VARIABLE}}}} del HTML en Resend):
- * ADMIN_NAME, COMPANY_NAME, VERIFY_URL, HELP_URL, PRIVACY_URL, TERMS_URL.
+ * <p>
+ * Variables de la plantilla (deben coincidir con los {@code {{{VARIABLE}}}} del
+ * HTML en Resend): ADMIN_NAME, COMPANY_NAME, VERIFY_URL, HELP_URL, PRIVACY_URL,
+ * TERMS_URL.
  */
 @Component
 public class ResendVerificationEmailSender implements VerificationEmailSender {
@@ -32,8 +36,7 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
     private final String privacyUrl;
     private final String termsUrl;
 
-    public ResendVerificationEmailSender(
-            ResendEmailClient email,
+    public ResendVerificationEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.registration.verification-base-url}") String verificationBaseUrl,
             @Value("${vetsoftware.registration.verification-template-id:}") String templateId,
             @Value("${vetsoftware.email.help-url:}") String helpUrl,
@@ -51,7 +54,8 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
     public void send(String toEmail, String employeeName, String companyName, String rawToken) {
         String link = buildLink(rawToken);
         if (!email.isEnabled()) {
-            // El enlace lleva el token de verificación en claro: va por el canal de previsualización
+            // El enlace lleva el token de verificación en claro: va por el canal de
+            // previsualización
             // local, que no alcanza el pipeline exportado (ver DevEmailPreview).
             DevEmailPreview.show(toEmail, "Enlace de verificación", link);
             return;

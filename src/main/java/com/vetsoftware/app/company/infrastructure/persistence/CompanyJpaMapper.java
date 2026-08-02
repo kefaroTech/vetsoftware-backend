@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompanyJpaMapper {
 
-    public CompanyJpaEntity toJpa(Company company, CityJpaEntity city, MembershipJpaEntity membership) {
+    public CompanyJpaEntity toJpa(Company company, CityJpaEntity city,
+            MembershipJpaEntity membership) {
         CompanyJpaEntity entity = new CompanyJpaEntity();
         entity.setId(company.getId());
         entity.setName(company.getName());
@@ -27,22 +28,13 @@ public class CompanyJpaMapper {
     public Company toDomain(CompanyJpaEntity entity) {
         CityJpaEntity c = entity.getCity();
         MembershipJpaEntity m = entity.getMembership();
-        return toDomain(entity,
-            new CityRef(c.getId(), c.getName()),
-            new MembershipRef(m.getId(), m.getName(), m.getStatus()));
+        return toDomain(entity, new CityRef(c.getId(), c.getName()),
+                new MembershipRef(m.getId(), m.getName(), m.getStatus()));
     }
 
     public Company toDomain(CompanyJpaEntity entity, CityRef cityRef, MembershipRef membershipRef) {
-        return new Company(
-            entity.getId(),
-            entity.getName(),
-            entity.getIdentifier(),
-            entity.getAddress(),
-            entity.getContactNumber(),
-            cityRef,
-            membershipRef,
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
+        return new Company(entity.getId(), entity.getName(), entity.getIdentifier(),
+                entity.getAddress(), entity.getContactNumber(), cityRef, membershipRef,
+                entity.getCreatedDate(), entity.isEnabled());
     }
 }

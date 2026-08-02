@@ -22,12 +22,15 @@ public class WithholdingConfigJpaMapper {
 
     public WithholdingConfig toDomain(WithholdingConfigJpaEntity entity) {
         CompanyJpaEntity c = entity.getCompany();
-        CompanyRef ref = c == null ? null : new CompanyRef(c.getId(), c.getName(), c.getIdentifier());
+        CompanyRef ref = c == null
+                ? null
+                : new CompanyRef(c.getId(), c.getName(), c.getIdentifier());
         return toDomain(entity, ref);
     }
 
     public WithholdingConfig toDomain(WithholdingConfigJpaEntity entity, CompanyRef ref) {
         return new WithholdingConfig(entity.getId(), ref, entity.getReteFuenteRate(),
-                entity.getReteIvaRate(), entity.getReteIcaRate(), entity.getCreatedDate(), entity.isEnabled());
+                entity.getReteIvaRate(), entity.getReteIcaRate(), entity.getCreatedDate(),
+                entity.isEnabled());
     }
 }

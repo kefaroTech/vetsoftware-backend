@@ -24,13 +24,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 class TenantScopedFindServicesTest {
 
     private static final String BASE_PACKAGE = "com.vetsoftware.app.";
-    private static final Path SOURCE_ROOT = Path.of("src", "main", "java", "com", "vetsoftware", "app");
+    private static final Path SOURCE_ROOT = Path.of("src", "main", "java", "com", "vetsoftware",
+            "app");
     private static final Long RESOURCE_ID = 42L;
     private static final Long COMPANY_ID = 7L;
 
     private static final List<FindCase> FIND_CASES = List.of(
-            new FindCase("prescription", "Prescription"),
-            new FindCase("medicament", "Medicament"),
+            new FindCase("prescription", "Prescription"), new FindCase("medicament", "Medicament"),
             new FindCase("medicamentprescription", "MedicamentPrescription"),
             new FindCase("hospitalization", "Hospitalization"),
             new FindCase("hospitalizationmedication", "HospitalizationMedication"),
@@ -40,24 +40,21 @@ class TenantScopedFindServicesTest {
             new FindCase("laboratorytest", "LaboratoryTest"),
             new FindCase("laboratorytestfile", "LaboratoryTestFile"),
             new FindCase("laboratorytesttype", "LaboratoryTestType"),
-            new FindCase("surgery", "Surgery"),
-            new FindCase("surgerytype", "SurgeryType"),
+            new FindCase("surgery", "Surgery"), new FindCase("surgerytype", "SurgeryType"),
             new FindCase("vaccination", "Vaccination"),
             new FindCase("vaccinationtype", "VaccinationType"),
             new FindCase("deworming", "Deworming"),
             new FindCase("diagnosticimaging", "DiagnosticImaging"),
             new FindCase("diagnosticimagingtype", "DiagnosticImagingType"),
-            new FindCase("spa", "Spa"),
-            new FindCase("daycare", "DayCare"),
+            new FindCase("spa", "Spa"), new FindCase("daycare", "DayCare"),
             new FindCase("employee", "Employee"),
             new FindCase("numberingresolution", "NumberingResolution"),
-            new FindCase("promotion", "Promotion")
-    );
+            new FindCase("promotion", "Promotion"));
 
     @TestFactory
     Stream<DynamicTest> everyFindServiceRejectsResourcesOutsideTheCompanyScope() {
-        return FIND_CASES.stream().map(findCase -> DynamicTest.dynamicTest(
-                findCase.feature(), () -> verifyTenantScopedFind(findCase)));
+        return FIND_CASES.stream().map(findCase -> DynamicTest.dynamicTest(findCase.feature(),
+                () -> verifyTenantScopedFind(findCase)));
     }
 
     @Test
@@ -65,27 +62,26 @@ class TenantScopedFindServicesTest {
         WeightRecordRepository repository = mock(WeightRecordRepository.class);
         FindLatestWeightRecordService service = new FindLatestWeightRecordService(repository);
 
-        assertThat(catchThrowableOfType(
-                () -> service.findLatest(RESOURCE_ID, COMPANY_ID), RuntimeException.class))
-                .hasMessageContaining(String.valueOf(RESOURCE_ID));
+        assertThat(catchThrowableOfType(() -> service.findLatest(RESOURCE_ID, COMPANY_ID),
+                RuntimeException.class)).hasMessageContaining(String.valueOf(RESOURCE_ID));
         verify(repository).findLatestByAnimalIdAndCompanyId(RESOURCE_ID, COMPANY_ID);
 
-        Method portMethod = FindLatestWeightRecordUseCase.class
-                .getMethod("findLatest", Long.class, Long.class);
+        Method portMethod = FindLatestWeightRecordUseCase.class.getMethod("findLatest", Long.class,
+                Long.class);
         assertCompanyGuard(portMethod);
     }
 
     private static void verifyTenantScopedFind(FindCase findCase) throws Exception {
-        Class<?> serviceType = Class.forName(findCase.className("application.usecase.Find", "Service"));
+        Class<?> serviceType = Class
+                .forName(findCase.className("application.usecase.Find", "Service"));
         Constructor<?> constructor = serviceType.getConstructors()[0];
         Object[] dependencies = Arrays.stream(constructor.getParameterTypes())
-                .map(TenantScopedFindServicesTest::mockDependency)
-                .toArray();
+                .map(TenantScopedFindServicesTest::mockDependency).toArray();
         Object service = constructor.newInstance(dependencies);
 
         Class<?> repositoryType = constructor.getParameterTypes()[0];
-        Method repositoryMethod = repositoryType.getMethod(
-                "findByIdAndCompanyId", Long.class, Long.class);
+        Method repositoryMethod = repositoryType.getMethod("findByIdAndCompanyId", Long.class,
+                Long.class);
         Method serviceMethod = serviceType.getMethod("findById", Long.class, Long.class);
 
         InvocationTargetException failure = catchThrowableOfType(
@@ -94,7 +90,8 @@ class TenantScopedFindServicesTest {
         assertThat(failure.getCause().getClass().getSimpleName()).endsWith("NotFoundException");
         repositoryMethod.invoke(verify(dependencies[0]), RESOURCE_ID, COMPANY_ID);
 
-        Class<?> useCaseType = Class.forName(findCase.className("application.port.in.Find", "UseCase"));
+        Class<?> useCaseType = Class
+                .forName(findCase.className("application.port.in.Find", "UseCase"));
         assertCompanyGuard(useCaseType.getMethod("findById", Long.class, Long.class));
         assertSourceArchitecture(findCase);
     }
@@ -106,16 +103,18 @@ class TenantScopedFindServicesTest {
     }
 
     private static void assertSourceArchitecture(FindCase findCase) throws Exception {
-        Path serviceFile = SOURCE_ROOT.resolve(Path.of(
-                findCase.feature(), "application", "usecase", "Find" + findCase.name() + "Service.java"));
+        Path serviceFile = SOURCE_ROOT.resolve(Path.of(findCase.feature(), "application", "usecase",
+                "Find" + findCase.name() + "Service.java"));
         String serviceSource = Files.readString(serviceFile);
-        assertThat(serviceSource).contains("repository.findByIdAndCompanyId(id, companyId)");
-        assertThat(serviceSource).doesNotContain("repository.findById(id)");
+        String compactServiceSource = serviceSource.replaceAll("\\s+", "");
+        assertThat(compactServiceSource).contains("repository.findByIdAndCompanyId(id,companyId)");
+        assertThat(compactServiceSource).doesNotContain("repository.findById(id)");
 
-        Path controllerFile = SOURCE_ROOT.resolve(Path.of(
-                findCase.feature(), "infrastructure", "web", findCase.name() + "Controller.java"));
-        assertThat(Files.readString(controllerFile))
-                .contains("findUseCase.findById(id, authz.currentCompanyId())");
+        Path controllerFile = SOURCE_ROOT.resolve(Path.of(findCase.feature(), "infrastructure",
+                "web", findCase.name() + "Controller.java"));
+        String compactControllerSource = Files.readString(controllerFile).replaceAll("\\s+", "");
+        assertThat(compactControllerSource)
+                .contains("findUseCase.findById(id,authz.currentCompanyId())");
     }
 
     @SuppressWarnings("unchecked")

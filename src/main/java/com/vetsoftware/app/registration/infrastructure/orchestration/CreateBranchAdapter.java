@@ -13,15 +13,15 @@ public class CreateBranchAdapter implements BranchCreator {
     private final SystemAuthRunner systemAuthRunner;
 
     public CreateBranchAdapter(CreateBranchUseCase createBranchUseCase,
-                               SystemAuthRunner systemAuthRunner) {
+            SystemAuthRunner systemAuthRunner) {
         this.createBranchUseCase = createBranchUseCase;
         this.systemAuthRunner = systemAuthRunner;
     }
 
     @Override
-    public void create(String name, String code, String address, String phone,
-                       Long cityId, Long companyId) {
-        systemAuthRunner.run(() -> createBranchUseCase.execute(
-            new CreateBranchCommand(name, code, address, phone, cityId, companyId)));
+    public void create(String name, String code, String address, String phone, Long cityId,
+            Long companyId) {
+        systemAuthRunner.run(() -> createBranchUseCase
+                .execute(new CreateBranchCommand(name, code, address, phone, cityId, companyId)));
     }
 }

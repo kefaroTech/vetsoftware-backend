@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class WeightRecordJpaMapper {
 
-    public WeightRecordJpaEntity toJpa(WeightRecord record, AnimalJpaEntity animal, CompanyJpaEntity company) {
+    public WeightRecordJpaEntity toJpa(WeightRecord record, AnimalJpaEntity animal,
+            CompanyJpaEntity company) {
         WeightRecordJpaEntity entity = new WeightRecordJpaEntity();
         entity.setId(record.getId());
         entity.setAnimal(animal);
@@ -29,16 +30,16 @@ public class WeightRecordJpaMapper {
     public WeightRecord toDomain(WeightRecordJpaEntity entity) {
         AnimalJpaEntity a = entity.getAnimal();
         CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+        return toDomain(entity, new AnimalRef(a.getId(), a.getName(), a.getCode()),
+                new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
     }
 
-    // Write path — reusa los refs precargados, evita inicializar los proxies de getReferenceById.
-    public WeightRecord toDomain(WeightRecordJpaEntity entity, AnimalRef animalRef, CompanyRef companyRef) {
-        return new WeightRecord(
-            entity.getId(), animalRef, entity.getValue(), entity.getUnit(),
-            entity.getMeasuredAt(), entity.getSource(), entity.getSourceId(), entity.getNote(),
-            companyRef, entity.getCreatedDate(), entity.isEnabled());
+    // Write path — reusa los refs precargados, evita inicializar los proxies de
+    // getReferenceById.
+    public WeightRecord toDomain(WeightRecordJpaEntity entity, AnimalRef animalRef,
+            CompanyRef companyRef) {
+        return new WeightRecord(entity.getId(), animalRef, entity.getValue(), entity.getUnit(),
+                entity.getMeasuredAt(), entity.getSource(), entity.getSourceId(), entity.getNote(),
+                companyRef, entity.getCreatedDate(), entity.isEnabled());
     }
 }
