@@ -1,0 +1,127 @@
+name: Prepare SemVer release
+
+on:
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: "Existing release/X.Y.Z branch created from develop"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: backend-prepare-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare and propose release
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: release-preparation
+    env:
+      CI: true
+      RELEASE_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.ref_name }}
+
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Validate GitFlow branch and version
+        id: release
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_BRANCH" =~ ^release/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "The branch must match release/X.Y.Z with strict SemVer." >&2
+            exit 1
+          fi
+          git merge-base --is-ancestor origin/develop HEAD || {
+            echo "The release branch must descend from develop." >&2
+            exit 1
+          }
+          echo "version=${RELEASE_BRANCH#release/}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Prepare synchronized release metadata
+        run: node .github/scripts/release-version.mjs prepare "${{ steps.release.outputs.version }}"
+
+      - name: Reject changes outside release metadata
+        shell: bash
+        run: |
+          unexpected="$(git diff --name-only | grep -Ev '^(CHANGELOG\.md|package\.json|package-lock\.json|pom\.xml)$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected files modified by release preparation:" >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+
+      - name: Install workflow tooling and hooks
+        run: npm ci
+
+      - name: Audit workflow tooling dependencies
+        run: npm audit --audit-level=high
+
+      - name: Verify backend release candidate
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Commit release metadata when needed
+        id: commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md package.json package-lock.json pom.xml
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m ":bookmark: chore(release): prepare ${{ steps.release.outputs.version }}"
+          git push origin "HEAD:$RELEASE_BRANCH"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open release and back-merge pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          count="$(gh pr list --base main --head "$RELEASE_BRANCH" --state open --json number --jq 'length')"
+          if [[ "$count" == "0" ]]; then
+            gh pr create \
+              --base main \
+              --head "$RELEASE_BRANCH" \
+              --title "Release ${{ steps.release.outputs.version }}" \
+              --body "Release GitFlow ${{ steps.release.outputs.version }}. Requiere aprobación humana y todos los checks obligatorios antes del merge."
+          fi
+          back_merge_count="$(gh pr list --base develop --head "$RELEASE_BRANCH" --state open --json number --jq 'length')"
+          if [[ "$back_merge_count" == "0" ]]; then
+            gh pr create \
+              --draft \
+              --base develop \
+              --head "$RELEASE_BRANCH" \
+              --title "Back-merge release ${{ steps.release.outputs.version }} into develop" \
+              --body "Back-merge obligatorio de GitFlow. Convertir a Ready y mezclar solo después de integrar esta release en main."
+          fi
