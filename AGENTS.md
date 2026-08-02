@@ -65,6 +65,15 @@ No se permiten ramas de trabajo creadas desde otra rama temporal ni ramas con fl
 4. Integrar `hotfix/*` en `develop` con `--no-ff`.
 5. Eliminar `hotfix/*` después de verificar ambos merges.
 
+## Excepción controlada para versionado automático
+
+- Únicamente `.github/workflows/prepare-release.yml` puede crear un commit automático, y solo en una rama existente `release/X.Y.Z` que descienda de `develop`.
+- La aprobación manual registrada por un developer autorizado en el environment protegido `release-preparation` constituye la aprobación escrita y auditable de ese commit concreto. La rama determina la versión y el mensaje autorizado es `:bookmark: chore(release): prepare X.Y.Z`.
+- Ese commit solo puede modificar `pom.xml`, `package.json`, `package-lock.json` y `CHANGELOG.md`. Debe sincronizar la misma versión SemVer, ejecutar todos los controles de calidad y finalizar sin commit si no existe un diff.
+- Únicamente `.github/workflows/publish-release.yml`, después de la aprobación del environment protegido `production`, puede crear el tag anotado inmutable `vX.Y.Z` y el GitHub Release correspondiente sobre el commit ya integrado en `main`.
+- La automatización nunca puede aprobar su propio pull request, hacer merge, evadir reglas de protección, hacer force-push, modificar código funcional ni crear una versión que no coincida con la rama.
+- Cualquier otro commit automático permanece prohibido y sujeto a la política general de aprobación humana.
+
 ## Prohibiciones
 
 - No hacer commits directos, cherry-picks rutinarios ni pushes directos a `main` o `develop`.
