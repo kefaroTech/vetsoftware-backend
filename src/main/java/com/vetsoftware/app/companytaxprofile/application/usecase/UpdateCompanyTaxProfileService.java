@@ -19,45 +19,55 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "company.tax.profile.update")
 @Service
 public class UpdateCompanyTaxProfileService implements UpdateCompanyTaxProfileUseCase {
-    private final CompanyTaxProfileRepository repository;
-    private final EconomicActivityQueryPort economicActivityQueryPort;
+  private final CompanyTaxProfileRepository repository;
+  private final EconomicActivityQueryPort economicActivityQueryPort;
 
-    public UpdateCompanyTaxProfileService(CompanyTaxProfileRepository repository,
-                                          EconomicActivityQueryPort economicActivityQueryPort) {
-        this.repository = repository;
-        this.economicActivityQueryPort = economicActivityQueryPort;
-    }
+  public UpdateCompanyTaxProfileService(
+      CompanyTaxProfileRepository repository, EconomicActivityQueryPort economicActivityQueryPort) {
+    this.repository = repository;
+    this.economicActivityQueryPort = economicActivityQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public CompanyTaxProfileDto execute(UpdateCompanyTaxProfileCommand command) {
-        CompanyTaxProfile profile = repository.findByCompanyId(command.companyId())
-                .orElseThrow(() -> new CompanyTaxProfileNotFoundException(command.companyId()));
-        EconomicActivityRef economicActivity = command.economicActivityId() == null ? null
-                : economicActivityQueryPort.findById(command.economicActivityId())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "Economic activity not found: " + command.economicActivityId()));
-        List<CompanyTaxProfileResponsibility> responsibilities = toResponsibilities(command.responsibilityCodes());
-        // El DV del NIT es determinístico (módulo 11): se autocalcula y es autoritativo, ignorando cualquier
-        // valor entrante. Para otros tipos de documento no aplica DV.
-        String verificationDigit = command.companyDocumentType() == CompanyDocumentType.NIT
-                ? NitVerificationDigit.calculate(command.companyDocumentId())
-                : null;
-        profile.update(
-                command.companyDocumentType(),
-                command.companyDocumentId(),
-                verificationDigit,
-                command.legalName(),
-                command.taxRegime(),
-                command.fiscalEmail(),
-                command.commercialName(),
-                economicActivity,
-                responsibilities);
-        return CompanyTaxProfileDto.from(repository.save(profile));
-    }
+  @Override
+  @Transactional
+  public CompanyTaxProfileDto execute(UpdateCompanyTaxProfileCommand command) {
+    CompanyTaxProfile profile =
+        repository
+            .findByCompanyId(command.companyId())
+            .orElseThrow(() -> new CompanyTaxProfileNotFoundException(command.companyId()));
+    EconomicActivityRef economicActivity =
+        command.economicActivityId() == null
+            ? null
+            : economicActivityQueryPort
+                .findById(command.economicActivityId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Economic activity not found: " + command.economicActivityId()));
+    List<CompanyTaxProfileResponsibility> responsibilities =
+        toResponsibilities(command.responsibilityCodes());
+    // El DV del NIT es determinístico (módulo 11): se autocalcula y es autoritativo, ignorando
+    // cualquier
+    // valor entrante. Para otros tipos de documento no aplica DV.
+    String verificationDigit =
+        command.companyDocumentType() == CompanyDocumentType.NIT
+            ? NitVerificationDigit.calculate(command.companyDocumentId())
+            : null;
+    profile.update(
+        command.companyDocumentType(),
+        command.companyDocumentId(),
+        verificationDigit,
+        command.legalName(),
+        command.taxRegime(),
+        command.fiscalEmail(),
+        command.commercialName(),
+        economicActivity,
+        responsibilities);
+    return CompanyTaxProfileDto.from(repository.save(profile));
+  }
 
-    private static List<CompanyTaxProfileResponsibility> toResponsibilities(List<String> codes) {
-        if (codes == null) return List.of();
-        return codes.stream().map(CompanyTaxProfileResponsibility::new).toList();
-    }
+  private static List<CompanyTaxProfileResponsibility> toResponsibilities(List<String> codes) {
+    if (codes == null) return List.of();
+    return codes.stream().map(CompanyTaxProfileResponsibility::new).toList();
+  }
 }

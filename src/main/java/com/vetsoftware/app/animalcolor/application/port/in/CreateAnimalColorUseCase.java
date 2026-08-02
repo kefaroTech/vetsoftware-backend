@@ -5,6 +5,6 @@ import com.vetsoftware.app.animalcolor.application.dto.AnimalColorDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateAnimalColorUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    AnimalColorDto execute(CreateAnimalColorCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  AnimalColorDto execute(CreateAnimalColorCommand command);
 }

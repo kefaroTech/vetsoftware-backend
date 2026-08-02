@@ -8,14 +8,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmployeePasswordResetterAdapter implements EmployeePasswordResetter {
 
-    private final ResetEmployeePasswordUseCase resetEmployeePasswordUseCase;
+  private final ResetEmployeePasswordUseCase resetEmployeePasswordUseCase;
 
-    public EmployeePasswordResetterAdapter(ResetEmployeePasswordUseCase resetEmployeePasswordUseCase) {
-        this.resetEmployeePasswordUseCase = resetEmployeePasswordUseCase;
-    }
+  public EmployeePasswordResetterAdapter(
+      ResetEmployeePasswordUseCase resetEmployeePasswordUseCase) {
+    this.resetEmployeePasswordUseCase = resetEmployeePasswordUseCase;
+  }
 
-    @Override
-    public void reset(Long employeeId, String rawNewPassword) {
-        resetEmployeePasswordUseCase.execute(new ResetEmployeePasswordCommand(employeeId, rawNewPassword));
-    }
+  @Override
+  public void reset(Long employeeId, String rawNewPassword) {
+    resetEmployeePasswordUseCase.execute(
+        new ResetEmployeePasswordCommand(employeeId, rawNewPassword));
+  }
 }

@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "spa.type.update")
 @Service
 public class UpdateSpaTypeService implements UpdateSpaTypeUseCase {
-    private final SpaTypeRepository repository;
+  private final SpaTypeRepository repository;
 
-    public UpdateSpaTypeService(SpaTypeRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateSpaTypeService(SpaTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SpaTypeDto execute(UpdateSpaTypeCommand command) {
-        SpaType spaType = repository.findById(command.id())
-                .orElseThrow(() -> new SpaTypeNotFoundException(command.id()));
-        spaType.update(command.name(), command.description());
-        return SpaTypeDto.from(repository.save(spaType));
-    }
+  @Override
+  @Transactional
+  public SpaTypeDto execute(UpdateSpaTypeCommand command) {
+    SpaType spaType =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new SpaTypeNotFoundException(command.id()));
+    spaType.update(command.name(), command.description());
+    return SpaTypeDto.from(repository.save(spaType));
+  }
 }

@@ -11,35 +11,37 @@ import org.springframework.core.io.ClassPathResource;
 
 class PdfTemplateCompatibilityTest {
 
-    private static final List<String> TEMPLATES = List.of(
-            "cash-arqueo",
-            "clinical-history",
-            "electronic-invoice",
-            "inventory-kardex",
-            "inventory-purchases",
-            "prescription",
-            "purchase-book");
+  private static final List<String> TEMPLATES =
+      List.of(
+          "cash-arqueo",
+          "clinical-history",
+          "electronic-invoice",
+          "inventory-kardex",
+          "inventory-purchases",
+          "prescription",
+          "purchase-book");
 
-    private static final Pattern UNSUPPORTED_LAYOUT = Pattern.compile(
-            "display\\s*:\\s*(?:flex|grid)|\\bflex(?:-[a-z]+)?\\s*:|\\bgap\\s*:",
-            Pattern.CASE_INSENSITIVE);
+  private static final Pattern UNSUPPORTED_LAYOUT =
+      Pattern.compile(
+          "display\\s*:\\s*(?:flex|grid)|\\bflex(?:-[a-z]+)?\\s*:|\\bgap\\s*:",
+          Pattern.CASE_INSENSITIVE);
 
-    @Test
-    void templatesAvoidUnsupportedFlexboxAndGridLayouts() throws IOException {
-        for (String template : TEMPLATES) {
-            String html = readTemplate(template);
+  @Test
+  void templatesAvoidUnsupportedFlexboxAndGridLayouts() throws IOException {
+    for (String template : TEMPLATES) {
+      String html = readTemplate(template);
 
-            assertThat(UNSUPPORTED_LAYOUT.matcher(html).find())
-                    .as("CSS no compatible en pdf/%s.html", template)
-                    .isFalse();
-            assertThat(html)
-                    .as("Declaración UTF-8 en pdf/%s.html", template)
-                    .containsIgnoringCase("<meta charset=\"UTF-8\"");
-        }
+      assertThat(UNSUPPORTED_LAYOUT.matcher(html).find())
+          .as("CSS no compatible en pdf/%s.html", template)
+          .isFalse();
+      assertThat(html)
+          .as("Declaración UTF-8 en pdf/%s.html", template)
+          .containsIgnoringCase("<meta charset=\"UTF-8\"");
     }
+  }
 
-    private static String readTemplate(String template) throws IOException {
-        var resource = new ClassPathResource("templates/pdf/" + template + ".html");
-        return resource.getContentAsString(StandardCharsets.UTF_8);
-    }
+  private static String readTemplate(String template) throws IOException {
+    var resource = new ClassPathResource("templates/pdf/" + template + ".html");
+    return resource.getContentAsString(StandardCharsets.UTF_8);
+  }
 }

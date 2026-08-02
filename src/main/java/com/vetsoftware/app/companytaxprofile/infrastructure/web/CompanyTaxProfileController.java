@@ -23,31 +23,35 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/company-tax-profile")
 public class CompanyTaxProfileController {
-    private final CreateCompanyTaxProfileUseCase createUseCase;
-    private final UpdateCompanyTaxProfileUseCase updateUseCase;
-    private final FindCompanyTaxProfileUseCase findUseCase;
-    private final DeleteCompanyTaxProfileUseCase deleteUseCase;
-    private final ReactivateCompanyTaxProfileUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateCompanyTaxProfileUseCase createUseCase;
+  private final UpdateCompanyTaxProfileUseCase updateUseCase;
+  private final FindCompanyTaxProfileUseCase findUseCase;
+  private final DeleteCompanyTaxProfileUseCase deleteUseCase;
+  private final ReactivateCompanyTaxProfileUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public CompanyTaxProfileController(CreateCompanyTaxProfileUseCase createUseCase,
-                                       UpdateCompanyTaxProfileUseCase updateUseCase,
-                                       FindCompanyTaxProfileUseCase findUseCase,
-                                       DeleteCompanyTaxProfileUseCase deleteUseCase,
-                                       ReactivateCompanyTaxProfileUseCase reactivateUseCase,
-                                       Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public CompanyTaxProfileController(
+      CreateCompanyTaxProfileUseCase createUseCase,
+      UpdateCompanyTaxProfileUseCase updateUseCase,
+      FindCompanyTaxProfileUseCase findUseCase,
+      DeleteCompanyTaxProfileUseCase deleteUseCase,
+      ReactivateCompanyTaxProfileUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CompanyTaxProfileResponse create(@Valid @RequestBody CreateCompanyTaxProfileRequest request) {
-        return toResponse(createUseCase.execute(new CreateCompanyTaxProfileCommand(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public CompanyTaxProfileResponse create(
+      @Valid @RequestBody CreateCompanyTaxProfileRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateCompanyTaxProfileCommand(
                 request.documentType(),
                 request.companyDocumentId(),
                 request.companyDocumentVerificationDigit(),
@@ -58,11 +62,14 @@ public class CompanyTaxProfileController {
                 request.economicActivityId(),
                 request.responsibilities(),
                 authz.currentCompanyId())));
-    }
+  }
 
-    @PutMapping
-    public CompanyTaxProfileResponse update(@Valid @RequestBody UpdateCompanyTaxProfileRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateCompanyTaxProfileCommand(
+  @PutMapping
+  public CompanyTaxProfileResponse update(
+      @Valid @RequestBody UpdateCompanyTaxProfileRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateCompanyTaxProfileCommand(
                 request.documentType(),
                 request.companyDocumentId(),
                 request.companyDocumentVerificationDigit(),
@@ -73,40 +80,40 @@ public class CompanyTaxProfileController {
                 request.economicActivityId(),
                 request.responsibilities(),
                 authz.currentCompanyId())));
-    }
+  }
 
-    @GetMapping
-    public CompanyTaxProfileResponse find() {
-        return toResponse(findUseCase.findByCompanyId(authz.currentCompanyId()));
-    }
+  @GetMapping
+  public CompanyTaxProfileResponse find() {
+    return toResponse(findUseCase.findByCompanyId(authz.currentCompanyId()));
+  }
 
-    @DeleteMapping
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete() {
-        deleteUseCase.execute(authz.currentCompanyId());
-    }
+  @DeleteMapping
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete() {
+    deleteUseCase.execute(authz.currentCompanyId());
+  }
 
-    @PostMapping("/reactivate")
-    public CompanyTaxProfileResponse reactivate() {
-        return toResponse(reactivateUseCase.execute(authz.currentCompanyId()));
-    }
+  @PostMapping("/reactivate")
+  public CompanyTaxProfileResponse reactivate() {
+    return toResponse(reactivateUseCase.execute(authz.currentCompanyId()));
+  }
 
-    private CompanyTaxProfileResponse toResponse(CompanyTaxProfileDto dto) {
-        CompanySummaryDto c = dto.company();
-        EconomicActivitySummaryDto ea = dto.economicActivity();
-        return new CompanyTaxProfileResponse(
-                dto.id(),
-                c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.companyDocumentType(),
-                dto.companyDocumentId(),
-                dto.companyDocumentVerificationDigit(),
-                dto.legalName(),
-                dto.taxRegime(),
-                dto.fiscalEmail(),
-                dto.commercialName(),
-                ea == null ? null : new EconomicActivitySummary(ea.id(), ea.code(), ea.name()),
-                dto.responsibilities(),
-                dto.createdDate(),
-                dto.enabled());
-    }
+  private CompanyTaxProfileResponse toResponse(CompanyTaxProfileDto dto) {
+    CompanySummaryDto c = dto.company();
+    EconomicActivitySummaryDto ea = dto.economicActivity();
+    return new CompanyTaxProfileResponse(
+        dto.id(),
+        c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.companyDocumentType(),
+        dto.companyDocumentId(),
+        dto.companyDocumentVerificationDigit(),
+        dto.legalName(),
+        dto.taxRegime(),
+        dto.fiscalEmail(),
+        dto.commercialName(),
+        ea == null ? null : new EconomicActivitySummary(ea.id(), ea.code(), ea.name()),
+        dto.responsibilities(),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

@@ -17,83 +17,81 @@ import org.springframework.stereotype.Component;
 @Component
 public final class ScheduledJobTelemetry {
 
-    static final String OBSERVATION_NAME = "tasks.scheduled.execution";
-    static final String JOB_NAME_KEY = "job.name";
-    static final String JOB_OUTCOME_KEY = "job.outcome";
-    private static final Pattern JOB_NAME_PATTERN =
-            Pattern.compile("^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+$");
+  static final String OBSERVATION_NAME = "tasks.scheduled.execution";
+  static final String JOB_NAME_KEY = "job.name";
+  static final String JOB_OUTCOME_KEY = "job.outcome";
+  private static final Pattern JOB_NAME_PATTERN =
+      Pattern.compile("^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9]*)+$");
 
-    private final ObservationRegistry observationRegistry;
+  private final ObservationRegistry observationRegistry;
 
-    public ScheduledJobTelemetry(ObservationRegistry observationRegistry) {
-        this.observationRegistry = observationRegistry;
+  public ScheduledJobTelemetry(ObservationRegistry observationRegistry) {
+    this.observationRegistry = observationRegistry;
+  }
+
+  public void observe(String jobName, Supplier<Outcome> action) {
+    validateJobName(jobName);
+    Objects.requireNonNull(action, "action es obligatoria");
+
+    Observation current = observationRegistry.getCurrentObservation();
+    if (current != null) {
+      execute(current, jobName, action);
+      return;
     }
 
-    public void observe(String jobName, Supplier<Outcome> action) {
-        validateJobName(jobName);
-        Objects.requireNonNull(action, "action es obligatoria");
+    Observation root =
+        Observation.createNotStarted(OBSERVATION_NAME, observationRegistry)
+            .contextualName("run " + jobName.replace('.', ' '));
+    root.observe(() -> execute(root, jobName, action));
+  }
 
-        Observation current = observationRegistry.getCurrentObservation();
-        if (current != null) {
-            execute(current, jobName, action);
-            return;
-        }
+  private static void validateJobName(String jobName) {
+    Objects.requireNonNull(jobName, "jobName es obligatorio");
+    if (!JOB_NAME_PATTERN.matcher(jobName).matches()) {
+      throw new IllegalArgumentException("jobName debe usar lowercase.dot.notation: " + jobName);
+    }
+  }
 
-        Observation root = Observation.createNotStarted(OBSERVATION_NAME, observationRegistry)
-                .contextualName("run " + jobName.replace('.', ' '));
-        root.observe(() -> execute(root, jobName, action));
+  private static void execute(Observation observation, String jobName, Supplier<Outcome> action) {
+    observation.lowCardinalityKeyValue(JOB_NAME_KEY, jobName);
+    try {
+      Outcome outcome = Objects.requireNonNull(action.get(), "El job debe informar un resultado");
+      observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, outcome.value());
+    } catch (RuntimeException | Error exception) {
+      observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, Outcome.ERROR.value());
+      throw exception;
+    }
+  }
+
+  /** Resultados deliberadamente acotados para no crear cardinalidad ilimitada en Prometheus. */
+  public enum Outcome {
+    NO_WORK("no_work"),
+    SUCCESS("success"),
+    PARTIAL_FAILURE("partial_failure"),
+    FAILURE("failure"),
+    ERROR("error");
+
+    private final String value;
+
+    Outcome(String value) {
+      this.value = value;
     }
 
-    private static void validateJobName(String jobName) {
-        Objects.requireNonNull(jobName, "jobName es obligatorio");
-        if (!JOB_NAME_PATTERN.matcher(jobName).matches()) {
-            throw new IllegalArgumentException(
-                    "jobName debe usar lowercase.dot.notation: " + jobName);
-        }
+    public String value() {
+      return value;
     }
 
-    private static void execute(Observation observation, String jobName, Supplier<Outcome> action) {
-        observation.lowCardinalityKeyValue(JOB_NAME_KEY, jobName);
-        try {
-            Outcome outcome = Objects.requireNonNull(action.get(), "El job debe informar un resultado");
-            observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, outcome.value());
-        } catch (RuntimeException | Error exception) {
-            observation.lowCardinalityKeyValue(JOB_OUTCOME_KEY, Outcome.ERROR.value());
-            throw exception;
-        }
+    public static Outcome from(int attempted, int failures) {
+      if (attempted < 0 || failures < 0 || failures > attempted) {
+        throw new IllegalArgumentException("Conteos inválidos del job");
+      }
+      if (attempted == 0) {
+        return NO_WORK;
+      }
+      if (failures == 0) {
+        return SUCCESS;
+      }
+      return failures == attempted ? FAILURE : PARTIAL_FAILURE;
     }
-
-    /**
-     * Resultados deliberadamente acotados para no crear cardinalidad ilimitada en Prometheus.
-     */
-    public enum Outcome {
-        NO_WORK("no_work"),
-        SUCCESS("success"),
-        PARTIAL_FAILURE("partial_failure"),
-        FAILURE("failure"),
-        ERROR("error");
-
-        private final String value;
-
-        Outcome(String value) {
-            this.value = value;
-        }
-
-        public String value() {
-            return value;
-        }
-
-        public static Outcome from(int attempted, int failures) {
-            if (attempted < 0 || failures < 0 || failures > attempted) {
-                throw new IllegalArgumentException("Conteos inválidos del job");
-            }
-            if (attempted == 0) {
-                return NO_WORK;
-            }
-            if (failures == 0) {
-                return SUCCESS;
-            }
-            return failures == attempted ? FAILURE : PARTIAL_FAILURE;
-        }
-    }
+  }
 }

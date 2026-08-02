@@ -10,19 +10,18 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateOwnerRequest(
-        @NotBlank @Size(max = 150) String name,
-        @Email @Size(max = 150) String email,
-        @NotBlank @Size(max = 50) String document,
-        @NotNull OwnerDocumentType documentType,
-        @NotNull PersonType personType,
-        @Size(max = 1) String verificationDigit,
-        @Size(max = 255) String legalName,
-        @Size(max = 255) String address,
-        @Size(max = 30) String phone,
-        @NotNull Long cityId,
-        boolean withholdingAgent,
-        // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable de IVA).
-        TaxRegime taxRegime,
-        // Opcional: si no se envía, el backend usa NO_APLICA (R-99-PN), el caso por defecto.
-        FiscalResponsibility fiscalResponsibility
-) {}
+    @NotBlank @Size(max = 150) String name,
+    @Email @Size(max = 150) String email,
+    @NotBlank @Size(max = 50) String document,
+    @NotNull OwnerDocumentType documentType,
+    @NotNull PersonType personType,
+    @Size(max = 1) String verificationDigit,
+    @Size(max = 255) String legalName,
+    @Size(max = 255) String address,
+    @Size(max = 30) String phone,
+    @NotNull Long cityId,
+    boolean withholdingAgent,
+    // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable de IVA).
+    TaxRegime taxRegime,
+    // Opcional: si no se envía, el backend usa NO_APLICA (R-99-PN), el caso por defecto.
+    FiscalResponsibility fiscalResponsibility) {}

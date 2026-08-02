@@ -8,36 +8,37 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaMembershipRepository implements MembershipRepository {
-    private final MembershipJpaRepository jpaRepository;
-    private final MembershipJpaMapper mapper;
+  private final MembershipJpaRepository jpaRepository;
+  private final MembershipJpaMapper mapper;
 
-    public JpaMembershipRepository(MembershipJpaRepository jpaRepository, MembershipJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaMembershipRepository(
+      MembershipJpaRepository jpaRepository, MembershipJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public Membership save(Membership membership) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(membership)));
-    }
+  @Override
+  public Membership save(Membership membership) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(membership)));
+  }
 
-    @Override
-    public Optional<Membership> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Membership> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Membership> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Membership> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

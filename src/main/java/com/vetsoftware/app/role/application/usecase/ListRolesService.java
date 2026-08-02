@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "role.list")
 @Service
 public class ListRolesService implements ListRolesUseCase {
-    private final RoleRepository repository;
+  private final RoleRepository repository;
 
-    public ListRolesService(RoleRepository repository) {
-        this.repository = repository;
-    }
+  public ListRolesService(RoleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<RoleDto> listAll() {
-        return repository.findAll().stream().map(RoleDto::from).toList();
-    }
+  @Override
+  public List<RoleDto> listAll() {
+    return repository.findAll().stream().map(RoleDto::from).toList();
+  }
 }

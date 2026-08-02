@@ -13,21 +13,27 @@ import org.springframework.stereotype.Service;
 @Observed(name = "surgery.type.create")
 @Service
 public class CreateSurgeryTypeService implements CreateSurgeryTypeUseCase {
-    private final SurgeryTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final SurgeryTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateSurgeryTypeService(SurgeryTypeRepository repository,
-                                    CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateSurgeryTypeService(
+      SurgeryTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public SurgeryTypeDto execute(CreateSurgeryTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return SurgeryTypeDto.from(
-                repository.save(SurgeryType.create(command.name(), command.description(), company, command.general())));
-    }
+  @Override
+  public SurgeryTypeDto execute(CreateSurgeryTypeCommand command) {
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    return SurgeryTypeDto.from(
+        repository.save(
+            SurgeryType.create(command.name(), command.description(), company, command.general())));
+  }
 }

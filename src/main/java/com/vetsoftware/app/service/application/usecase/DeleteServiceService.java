@@ -9,16 +9,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "service.delete")
 @org.springframework.stereotype.Service
 public class DeleteServiceService implements DeleteServiceUseCase {
-    private final ServiceRepository repository;
+  private final ServiceRepository repository;
 
-    public DeleteServiceService(ServiceRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteServiceService(ServiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new ServiceNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new ServiceNotFoundException(id));
+    repository.delete(id);
+  }
 }

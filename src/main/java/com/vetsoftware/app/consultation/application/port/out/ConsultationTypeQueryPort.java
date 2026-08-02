@@ -4,5 +4,5 @@ import com.vetsoftware.app.consultation.domain.ConsultationTypeRef;
 import java.util.Optional;
 
 public interface ConsultationTypeQueryPort {
-    Optional<ConsultationTypeRef> findById(Long consultationTypeId);
+  Optional<ConsultationTypeRef> findById(Long consultationTypeId);
 }

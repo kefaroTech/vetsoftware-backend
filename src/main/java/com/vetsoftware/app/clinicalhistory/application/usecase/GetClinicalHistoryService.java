@@ -11,16 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "clinical.history.get")
 @Service
 public class GetClinicalHistoryService implements GetClinicalHistoryUseCase {
-    private final ClinicalEventRepository repository;
+  private final ClinicalEventRepository repository;
 
-    public GetClinicalHistoryService(ClinicalEventRepository repository) {
-        this.repository = repository;
-    }
+  public GetClinicalHistoryService(ClinicalEventRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ClinicalEventDto> execute(GetClinicalHistoryQuery query) {
-        return repository.findHistory(query).stream()
-                .map(ClinicalEventDto::from)
-                .toList();
-    }
+  @Override
+  public List<ClinicalEventDto> execute(GetClinicalHistoryQuery query) {
+    return repository.findHistory(query).stream().map(ClinicalEventDto::from).toList();
+  }
 }

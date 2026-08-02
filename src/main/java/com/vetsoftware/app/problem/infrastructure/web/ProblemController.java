@@ -20,60 +20,81 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/problems")
 public class ProblemController {
-    private final CreateProblemUseCase createUseCase;
-    private final UpdateProblemUseCase updateUseCase;
-    private final DeleteProblemUseCase deleteUseCase;
-    private final ListProblemsByAnimalUseCase listByAnimalUseCase;
-    private final Authz authz;
+  private final CreateProblemUseCase createUseCase;
+  private final UpdateProblemUseCase updateUseCase;
+  private final DeleteProblemUseCase deleteUseCase;
+  private final ListProblemsByAnimalUseCase listByAnimalUseCase;
+  private final Authz authz;
 
-    public ProblemController(CreateProblemUseCase createUseCase,
-                             UpdateProblemUseCase updateUseCase,
-                             DeleteProblemUseCase deleteUseCase,
-                             ListProblemsByAnimalUseCase listByAnimalUseCase,
-                             Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.listByAnimalUseCase = listByAnimalUseCase;
-        this.authz = authz;
-    }
+  public ProblemController(
+      CreateProblemUseCase createUseCase,
+      UpdateProblemUseCase updateUseCase,
+      DeleteProblemUseCase deleteUseCase,
+      ListProblemsByAnimalUseCase listByAnimalUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.listByAnimalUseCase = listByAnimalUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ProblemResponse create(@Valid @RequestBody CreateProblemRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ProblemResponse create(@Valid @RequestBody CreateProblemRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateProblemCommand(
-                request.animalId(), request.description(), request.status(),
-                request.onsetDate(), request.resolvedDate(), request.notes(),
+                request.animalId(),
+                request.description(),
+                request.status(),
+                request.onsetDate(),
+                request.resolvedDate(),
+                request.notes(),
                 authz.currentCompanyId())));
-    }
+  }
 
-    @GetMapping("/by-animal/{animalId}")
-    public List<ProblemResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.execute(
-                new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId()))
-            .stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-animal/{animalId}")
+  public List<ProblemResponse> listByAnimal(@PathVariable Long animalId) {
+    return listByAnimalUseCase
+        .execute(new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId()))
+        .stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @PutMapping("/{id}")
-    public ProblemResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateProblemRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public ProblemResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateProblemRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateProblemCommand(
-                id, request.description(), request.status(), request.onsetDate(),
-                request.resolvedDate(), request.notes(), authz.currentCompanyId())));
-    }
+                id,
+                request.description(),
+                request.status(),
+                request.onsetDate(),
+                request.resolvedDate(),
+                request.notes(),
+                authz.currentCompanyId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id, authz.currentCompanyId());
+  }
 
-    private ProblemResponse toResponse(ProblemDto dto) {
-        return new ProblemResponse(
-            dto.id(), dto.animalId(), dto.animalName(), dto.description(),
-            dto.status(), dto.onsetDate(), dto.resolvedDate(), dto.notes(),
-            dto.createdDate(), dto.enabled());
-    }
+  private ProblemResponse toResponse(ProblemDto dto) {
+    return new ProblemResponse(
+        dto.id(),
+        dto.animalId(),
+        dto.animalName(),
+        dto.description(),
+        dto.status(),
+        dto.onsetDate(),
+        dto.resolvedDate(),
+        dto.notes(),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

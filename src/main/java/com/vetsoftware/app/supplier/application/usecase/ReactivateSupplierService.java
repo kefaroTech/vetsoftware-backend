@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.reactivate")
 @Service
 public class ReactivateSupplierService implements ReactivateSupplierUseCase {
-    private final SupplierRepository repository;
+  private final SupplierRepository repository;
 
-    public ReactivateSupplierService(SupplierRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSupplierService(SupplierRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SupplierDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new SupplierNotFoundException(id);
-        return SupplierDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public SupplierDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new SupplierNotFoundException(id);
+    return SupplierDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new SupplierNotFoundException(id)));
-    }
+  }
 }

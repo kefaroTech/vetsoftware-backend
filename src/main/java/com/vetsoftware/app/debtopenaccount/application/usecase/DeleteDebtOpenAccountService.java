@@ -12,25 +12,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "debt.open.account.delete")
 @Service
 public class DeleteDebtOpenAccountService implements DeleteDebtOpenAccountUseCase {
-    private final DebtOpenAccountRepository repository;
-    private final OpenAccountRefresher refresher;
+  private final DebtOpenAccountRepository repository;
+  private final OpenAccountRefresher refresher;
 
-    public DeleteDebtOpenAccountService(DebtOpenAccountRepository repository,
-                                        OpenAccountRefresher refresher) {
-        this.repository = repository;
-        this.refresher = refresher;
-    }
+  public DeleteDebtOpenAccountService(
+      DebtOpenAccountRepository repository, OpenAccountRefresher refresher) {
+    this.repository = repository;
+    this.refresher = refresher;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    DebtOpenAccount debtOpenAccount =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
-        if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
-            throw new IllegalArgumentException("debt open account does not belong to company");
-        }
-        Long openAccountId = debtOpenAccount.getOpenAccount().id();
-        repository.delete(id, companyId);
-        refresher.refresh(companyId, openAccountId);
+    if (!debtOpenAccount.getOpenAccount().companyId().equals(companyId)) {
+      throw new IllegalArgumentException("debt open account does not belong to company");
     }
+    Long openAccountId = debtOpenAccount.getOpenAccount().id();
+    repository.delete(id, companyId);
+    refresher.refresh(companyId, openAccountId);
+  }
 }

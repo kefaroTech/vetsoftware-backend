@@ -4,6 +4,7 @@ import com.vetsoftware.app.branch.application.dto.BranchDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface DeactivateBranchUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('branch.update') and @authz.isMyCompany(#companyId))")
-    BranchDto execute(Long id, Long companyId);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('branch.update') and @authz.isMyCompany(#companyId))")
+  BranchDto execute(Long id, Long companyId);
 }

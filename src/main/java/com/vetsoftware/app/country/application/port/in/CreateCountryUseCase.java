@@ -5,6 +5,6 @@ import com.vetsoftware.app.country.application.dto.CountryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateCountryUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    CountryDto execute(CreateCountryCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  CountryDto execute(CreateCountryCommand command);
 }

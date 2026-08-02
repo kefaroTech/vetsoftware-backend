@@ -14,27 +14,36 @@ import org.springframework.stereotype.Service;
 @Observed(name = "supplier.create")
 @Service
 public class CreateSupplierService implements CreateSupplierUseCase {
-    private final SupplierRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final SupplierRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateSupplierService(SupplierRepository repository,
-                                 CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
+  public CreateSupplierService(SupplierRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
+
+  @Override
+  public SupplierDto execute(CreateSupplierCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+      throw new SupplierNameAlreadyExistsException(command.name());
     }
 
-    @Override
-    public SupplierDto execute(CreateSupplierCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
-            throw new SupplierNameAlreadyExistsException(command.name());
-        }
-
-        Supplier supplier = Supplier.create(
-            command.name(), command.taxId(), command.contactName(), command.phone(),
-            command.email(), command.address(), command.paymentTermsDays(), command.notes(),
+    Supplier supplier =
+        Supplier.create(
+            command.name(),
+            command.taxId(),
+            command.contactName(),
+            command.phone(),
+            command.email(),
+            command.address(),
+            command.paymentTermsDays(),
+            command.notes(),
             company);
-        return SupplierDto.from(repository.save(supplier));
-    }
+    return SupplierDto.from(repository.save(supplier));
+  }
 }

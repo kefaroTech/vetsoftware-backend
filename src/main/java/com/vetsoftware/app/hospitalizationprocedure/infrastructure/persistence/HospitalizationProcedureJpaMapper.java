@@ -13,63 +13,71 @@ import org.springframework.stereotype.Component;
 @Component
 public class HospitalizationProcedureJpaMapper {
 
-    public HospitalizationProcedureJpaEntity toJpa(HospitalizationProcedure procedure,
-                                                   HospitalizationJpaEntity hospitalization,
-                                                   EmployeeJpaEntity createdBy,
-                                                   EmployeeJpaEntity suspensionBy) {
-        HospitalizationProcedureJpaEntity entity = new HospitalizationProcedureJpaEntity();
-        entity.setId(procedure.getId());
-        entity.setName(procedure.getName());
-        entity.setDose(procedure.getDose());
-        entity.setFrequency(procedure.getFrequency() == null ? null : procedure.getFrequency().name());
-        entity.setGuidelineType(procedure.getGuidelineType() == null ? null : procedure.getGuidelineType().name());
-        entity.setDurationMeasure(procedure.getDurationMeasure() == null ? null : procedure.getDurationMeasure().name());
-        entity.setDurationQuantity(procedure.getDurationQuantity());
-        entity.setStartDate(procedure.getStartDate());
-        entity.setStartTime(procedure.getStartTime());
-        entity.setNotes(procedure.getNotes());
-        entity.setHospitalization(hospitalization);
-        entity.setCreatedBy(createdBy);
-        entity.setCreatedDate(procedure.getCreatedDate());
-        entity.setEnabled(procedure.isEnabled());
-        entity.setSuspensionDate(procedure.getSuspensionDate());
-        entity.setSuspensionBy(suspensionBy);
-        return entity;
-    }
+  public HospitalizationProcedureJpaEntity toJpa(
+      HospitalizationProcedure procedure,
+      HospitalizationJpaEntity hospitalization,
+      EmployeeJpaEntity createdBy,
+      EmployeeJpaEntity suspensionBy) {
+    HospitalizationProcedureJpaEntity entity = new HospitalizationProcedureJpaEntity();
+    entity.setId(procedure.getId());
+    entity.setName(procedure.getName());
+    entity.setDose(procedure.getDose());
+    entity.setFrequency(procedure.getFrequency() == null ? null : procedure.getFrequency().name());
+    entity.setGuidelineType(
+        procedure.getGuidelineType() == null ? null : procedure.getGuidelineType().name());
+    entity.setDurationMeasure(
+        procedure.getDurationMeasure() == null ? null : procedure.getDurationMeasure().name());
+    entity.setDurationQuantity(procedure.getDurationQuantity());
+    entity.setStartDate(procedure.getStartDate());
+    entity.setStartTime(procedure.getStartTime());
+    entity.setNotes(procedure.getNotes());
+    entity.setHospitalization(hospitalization);
+    entity.setCreatedBy(createdBy);
+    entity.setCreatedDate(procedure.getCreatedDate());
+    entity.setEnabled(procedure.isEnabled());
+    entity.setSuspensionDate(procedure.getSuspensionDate());
+    entity.setSuspensionBy(suspensionBy);
+    return entity;
+  }
 
-    // Read path — el @EntityGraph ya hidrató hospitalization y createdBy
-    public HospitalizationProcedure toDomain(HospitalizationProcedureJpaEntity entity) {
-        HospitalizationJpaEntity h = entity.getHospitalization();
-        EmployeeJpaEntity e = entity.getCreatedBy();
-        EmployeeJpaEntity sb = entity.getSuspensionBy();
-        EmployeeRef suspensionByRef = sb == null ? null
-            : new EmployeeRef(sb.getId(), sb.getEmployeeCode(), sb.getName());
-        return toDomain(entity,
-            new HospitalizationRef(h.getId(), h.getDate()),
-            new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()),
-            suspensionByRef);
-    }
+  // Read path — el @EntityGraph ya hidrató hospitalization y createdBy
+  public HospitalizationProcedure toDomain(HospitalizationProcedureJpaEntity entity) {
+    HospitalizationJpaEntity h = entity.getHospitalization();
+    EmployeeJpaEntity e = entity.getCreatedBy();
+    EmployeeJpaEntity sb = entity.getSuspensionBy();
+    EmployeeRef suspensionByRef =
+        sb == null ? null : new EmployeeRef(sb.getId(), sb.getEmployeeCode(), sb.getName());
+    return toDomain(
+        entity,
+        new HospitalizationRef(h.getId(), h.getDate()),
+        new EmployeeRef(e.getId(), e.getEmployeeCode(), e.getName()),
+        suspensionByRef);
+  }
 
-    // Write path — reusa los refs precargados, evita inicializar el proxy de getReferenceById
-    public HospitalizationProcedure toDomain(HospitalizationProcedureJpaEntity entity,
-                                             HospitalizationRef hospitalizationRef, EmployeeRef createdByRef,
-                                             EmployeeRef suspensionByRef) {
-        return new HospitalizationProcedure(
-            entity.getId(),
-            entity.getName(),
-            entity.getDose(),
-            entity.getFrequency() == null ? null : Frequency.valueOf(entity.getFrequency()),
-            entity.getGuidelineType() == null ? null : GuidelineType.valueOf(entity.getGuidelineType()),
-            entity.getDurationMeasure() == null ? null : DurationMeasure.valueOf(entity.getDurationMeasure()),
-            entity.getDurationQuantity(),
-            entity.getStartDate(),
-            entity.getStartTime(),
-            entity.getNotes(),
-            hospitalizationRef,
-            createdByRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.getSuspensionDate(),
-            suspensionByRef);
-    }
+  // Write path — reusa los refs precargados, evita inicializar el proxy de getReferenceById
+  public HospitalizationProcedure toDomain(
+      HospitalizationProcedureJpaEntity entity,
+      HospitalizationRef hospitalizationRef,
+      EmployeeRef createdByRef,
+      EmployeeRef suspensionByRef) {
+    return new HospitalizationProcedure(
+        entity.getId(),
+        entity.getName(),
+        entity.getDose(),
+        entity.getFrequency() == null ? null : Frequency.valueOf(entity.getFrequency()),
+        entity.getGuidelineType() == null ? null : GuidelineType.valueOf(entity.getGuidelineType()),
+        entity.getDurationMeasure() == null
+            ? null
+            : DurationMeasure.valueOf(entity.getDurationMeasure()),
+        entity.getDurationQuantity(),
+        entity.getStartDate(),
+        entity.getStartTime(),
+        entity.getNotes(),
+        hospitalizationRef,
+        createdByRef,
+        entity.getCreatedDate(),
+        entity.isEnabled(),
+        entity.getSuspensionDate(),
+        suspensionByRef);
+  }
 }

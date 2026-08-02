@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "diagnostic.imaging.delete")
 @Service
 public class DeleteDiagnosticImagingService implements DeleteDiagnosticImagingUseCase {
-    private final DiagnosticImagingRepository repository;
+  private final DiagnosticImagingRepository repository;
 
-    public DeleteDiagnosticImagingService(DiagnosticImagingRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteDiagnosticImagingService(DiagnosticImagingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new DiagnosticImagingNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new DiagnosticImagingNotFoundException(id));
+    repository.delete(id);
+  }
 }

@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "membership.reactivate")
 @Service
 public class ReactivateMembershipService implements ReactivateMembershipUseCase {
-    private final MembershipRepository repository;
+  private final MembershipRepository repository;
 
-    public ReactivateMembershipService(MembershipRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateMembershipService(MembershipRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public MembershipDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new MembershipNotFoundException(id);
-        return MembershipDto.from(repository.findById(id)
-            .orElseThrow(() -> new MembershipNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public MembershipDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new MembershipNotFoundException(id);
+    return MembershipDto.from(
+        repository.findById(id).orElseThrow(() -> new MembershipNotFoundException(id)));
+  }
 }

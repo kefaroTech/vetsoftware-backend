@@ -15,22 +15,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "role.update")
 @Service
 public class UpdateRoleService implements UpdateRoleUseCase {
-    private final RoleRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final RoleRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateRoleService(RoleRepository repository, CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateRoleService(RoleRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public RoleDto execute(UpdateRoleCommand command) {
-        Role role = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public RoleDto execute(UpdateRoleCommand command) {
+    Role role =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new RoleNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        role.update(command.name(), command.code(), company);
-        return RoleDto.from(repository.save(role));
-    }
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    role.update(command.name(), command.code(), company);
+    return RoleDto.from(repository.save(role));
+  }
 }

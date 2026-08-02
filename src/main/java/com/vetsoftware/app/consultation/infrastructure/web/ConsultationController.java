@@ -27,93 +27,132 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/consultations")
 public class ConsultationController {
-    private final CreateConsultationUseCase createUseCase;
-    private final UpdateConsultationUseCase updateUseCase;
-    private final FindConsultationUseCase findUseCase;
-    private final ListConsultationsUseCase listUseCase;
-    private final DeleteConsultationUseCase deleteUseCase;
-    private final ReactivateConsultationUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateConsultationUseCase createUseCase;
+  private final UpdateConsultationUseCase updateUseCase;
+  private final FindConsultationUseCase findUseCase;
+  private final ListConsultationsUseCase listUseCase;
+  private final DeleteConsultationUseCase deleteUseCase;
+  private final ReactivateConsultationUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public ConsultationController(CreateConsultationUseCase createUseCase,
-                                  UpdateConsultationUseCase updateUseCase,
-                                  FindConsultationUseCase findUseCase,
-                                  ListConsultationsUseCase listUseCase,
-                                  DeleteConsultationUseCase deleteUseCase,
-                                  ReactivateConsultationUseCase reactivateUseCase, Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public ConsultationController(
+      CreateConsultationUseCase createUseCase,
+      UpdateConsultationUseCase updateUseCase,
+      FindConsultationUseCase findUseCase,
+      ListConsultationsUseCase listUseCase,
+      DeleteConsultationUseCase deleteUseCase,
+      ReactivateConsultationUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ConsultationResponse create(@Valid @RequestBody CreateConsultationRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ConsultationResponse create(@Valid @RequestBody CreateConsultationRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateConsultationCommand(
-                request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
-                authz.currentCompanyId(), request.weight(), request.weightUnit(),
-                request.temperature(), request.heartRate(), request.respiratoryRate(),
-                request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
-                request.bodyConditionScore(), request.painScore(), request.attitude(),
-                request.examFindings())));
-    }
-
-    @GetMapping
-    public List<ConsultationResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
-    }
-
-    @GetMapping("/{id}")
-    public ConsultationResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
-    @PutMapping("/{id}")
-    public ConsultationResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdateConsultationRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateConsultationCommand(
-                id, request.date(), request.consultationTypeId(), request.anamnesis(),
-                request.diagnosis(), request.prognosis(), request.nextControl(), request.animalId(),
+                request.date(),
+                request.consultationTypeId(),
+                request.anamnesis(),
+                request.diagnosis(),
+                request.prognosis(),
+                request.nextControl(),
+                request.animalId(),
                 authz.currentCompanyId(),
-                request.temperature(), request.heartRate(), request.respiratoryRate(),
-                request.mucousMembranes(), request.capillaryRefill(), request.hydration(),
-                request.bodyConditionScore(), request.painScore(), request.attitude(),
+                request.weight(),
+                request.weightUnit(),
+                request.temperature(),
+                request.heartRate(),
+                request.respiratoryRate(),
+                request.mucousMembranes(),
+                request.capillaryRefill(),
+                request.hydration(),
+                request.bodyConditionScore(),
+                request.painScore(),
+                request.attitude(),
                 request.examFindings())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
+  @GetMapping
+  public List<ConsultationResponse> listAll() {
+    return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+  }
 
-    @PatchMapping("/{id}/enable")
-    public ConsultationResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public ConsultationResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    private ConsultationResponse toResponse(ConsultationDto dto) {
-        ConsultationTypeSummaryDto ct = dto.consultationType();
-        AnimalSummaryDto a = dto.animal();
-        CompanySummaryDto c = dto.company();
-        return new ConsultationResponse(
-            dto.id(), dto.date(),
-            new ConsultationTypeSummary(ct.id(), ct.name()),
-            dto.anamnesis(), dto.diagnosis(), dto.prognosis(), dto.nextControl(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled(),
-            dto.temperature(), dto.heartRate(), dto.respiratoryRate(),
-            dto.mucousMembranes(), dto.capillaryRefill(), dto.hydration(),
-            dto.bodyConditionScore(), dto.painScore(), dto.attitude(),
-            dto.examFindings());
-    }
+  @PutMapping("/{id}")
+  public ConsultationResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateConsultationRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateConsultationCommand(
+                id,
+                request.date(),
+                request.consultationTypeId(),
+                request.anamnesis(),
+                request.diagnosis(),
+                request.prognosis(),
+                request.nextControl(),
+                request.animalId(),
+                authz.currentCompanyId(),
+                request.temperature(),
+                request.heartRate(),
+                request.respiratoryRate(),
+                request.mucousMembranes(),
+                request.capillaryRefill(),
+                request.hydration(),
+                request.bodyConditionScore(),
+                request.painScore(),
+                request.attitude(),
+                request.examFindings())));
+  }
+
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
+  }
+
+  @PatchMapping("/{id}/enable")
+  public ConsultationResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
+  }
+
+  private ConsultationResponse toResponse(ConsultationDto dto) {
+    ConsultationTypeSummaryDto ct = dto.consultationType();
+    AnimalSummaryDto a = dto.animal();
+    CompanySummaryDto c = dto.company();
+    return new ConsultationResponse(
+        dto.id(),
+        dto.date(),
+        new ConsultationTypeSummary(ct.id(), ct.name()),
+        dto.anamnesis(),
+        dto.diagnosis(),
+        dto.prognosis(),
+        dto.nextControl(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.createdDate(),
+        dto.enabled(),
+        dto.temperature(),
+        dto.heartRate(),
+        dto.respiratoryRate(),
+        dto.mucousMembranes(),
+        dto.capillaryRefill(),
+        dto.hydration(),
+        dto.bodyConditionScore(),
+        dto.painScore(),
+        dto.attitude(),
+        dto.examFindings());
+  }
 }

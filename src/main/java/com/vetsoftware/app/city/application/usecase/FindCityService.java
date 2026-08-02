@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "city.find")
 @Service
 public class FindCityService implements FindCityUseCase {
-    private final CityRepository repository;
+  private final CityRepository repository;
 
-    public FindCityService(CityRepository repository) {
-        this.repository = repository;
-    }
+  public FindCityService(CityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public CityDto findById(Long id) {
-        return repository.findById(id)
-                .map(CityDto::from)
-                .orElseThrow(() -> new CityNotFoundException(id));
-    }
+  @Override
+  public CityDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(CityDto::from)
+        .orElseThrow(() -> new CityNotFoundException(id));
+  }
 }

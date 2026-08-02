@@ -7,25 +7,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class MembershipJpaMapper {
 
-    public MembershipJpaEntity toJpa(Membership membership) {
-        MembershipJpaEntity entity = new MembershipJpaEntity();
-        entity.setId(membership.getId());
-        entity.setName(membership.getName());
-        entity.setStatus(membership.getStatus().name());
-        entity.setMandatory(membership.isMandatory());
-        entity.setCreatedDate(membership.getCreatedDate());
-        entity.setEnabled(membership.isEnabled());
-        return entity;
-    }
+  public MembershipJpaEntity toJpa(Membership membership) {
+    MembershipJpaEntity entity = new MembershipJpaEntity();
+    entity.setId(membership.getId());
+    entity.setName(membership.getName());
+    entity.setStatus(membership.getStatus().name());
+    entity.setMandatory(membership.isMandatory());
+    entity.setCreatedDate(membership.getCreatedDate());
+    entity.setEnabled(membership.isEnabled());
+    return entity;
+  }
 
-    public Membership toDomain(MembershipJpaEntity entity) {
-        return new Membership(
-            entity.getId(),
-            entity.getName(),
-            MembershipStatus.valueOf(entity.getStatus()),
-            Boolean.TRUE.equals(entity.getMandatory()),
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
-    }
+  public Membership toDomain(MembershipJpaEntity entity) {
+    return new Membership(
+        entity.getId(),
+        entity.getName(),
+        MembershipStatus.valueOf(entity.getStatus()),
+        Boolean.TRUE.equals(entity.getMandatory()),
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

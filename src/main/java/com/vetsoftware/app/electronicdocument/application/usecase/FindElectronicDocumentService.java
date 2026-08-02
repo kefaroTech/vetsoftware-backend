@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "electronic.document.find")
 @Service
 public class FindElectronicDocumentService implements FindElectronicDocumentUseCase {
-    private final ElectronicDocumentRepository repository;
+  private final ElectronicDocumentRepository repository;
 
-    public FindElectronicDocumentService(ElectronicDocumentRepository repository) {
-        this.repository = repository;
-    }
+  public FindElectronicDocumentService(ElectronicDocumentRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ElectronicDocumentDto findById(Long id, Long companyId) {
-        return ElectronicDocumentDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new ElectronicDocumentNotFoundException(id)));
-    }
+  @Override
+  public ElectronicDocumentDto findById(Long id, Long companyId) {
+    return ElectronicDocumentDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new ElectronicDocumentNotFoundException(id)));
+  }
 }

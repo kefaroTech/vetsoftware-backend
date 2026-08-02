@@ -7,21 +7,25 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StateJpaRepository extends JpaRepository<StateJpaEntity, Long> {
 
-    @Override
-    @EntityGraph(attributePaths = "country")
-    List<StateJpaEntity> findAll();
+  @Override
+  @EntityGraph(attributePaths = "country")
+  List<StateJpaEntity> findAll();
 
-    @Override
-    @EntityGraph(attributePaths = "country")
-    Optional<StateJpaEntity> findById(Long id);
+  @Override
+  @EntityGraph(attributePaths = "country")
+  Optional<StateJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = "country")
-    List<StateJpaEntity> findAllByCountry_Id(Long countryId);
+  @EntityGraph(attributePaths = "country")
+  List<StateJpaEntity> findAllByCountry_Id(Long countryId);
 
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE states SET enabled = true WHERE id = :id", nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+  @org.springframework.data.jpa.repository.Modifying(
+      flushAutomatically = true,
+      clearAutomatically = true)
+  @org.springframework.transaction.annotation.Transactional
+  @org.springframework.data.jpa.repository.Query(
+      value = "UPDATE states SET enabled = true WHERE id = :id",
+      nativeQuery = true)
+  int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
-    boolean existsByCountry_Id(Long countryId);
+  boolean existsByCountry_Id(Long countryId);
 }

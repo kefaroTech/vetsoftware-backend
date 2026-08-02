@@ -1,8 +1,4 @@
 package com.vetsoftware.app.openaccount.application.command;
 
 public record CreateOpenAccountCommand(
-        Long ownerId,
-        Long branchId,
-        Long companyId,
-        Long createdById
-) {}
+    Long ownerId, Long branchId, Long companyId, Long createdById) {}

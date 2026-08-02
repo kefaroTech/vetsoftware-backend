@@ -12,23 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "owner.delete")
 @Service
 public class DeleteOwnerService implements DeleteOwnerUseCase {
-    private final OwnerRepository repository;
-    private final AnimalChildrenQueryPort animalChildrenQueryPort;
+  private final OwnerRepository repository;
+  private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteOwnerService(
-            OwnerRepository repository,
-            AnimalChildrenQueryPort animalChildrenQueryPort) {
-        this.repository = repository;
-        this.animalChildrenQueryPort = animalChildrenQueryPort;
-    }
+  public DeleteOwnerService(
+      OwnerRepository repository, AnimalChildrenQueryPort animalChildrenQueryPort) {
+    this.repository = repository;
+    this.animalChildrenQueryPort = animalChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new OwnerNotFoundException(id));
-        if (animalChildrenQueryPort.existsActiveByOwnerId(id)) {
-            throw new OwnerHasActiveChildrenException(id, "animal");
-        }
-        repository.delete(id, companyId);
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new OwnerNotFoundException(id));
+    if (animalChildrenQueryPort.existsActiveByOwnerId(id)) {
+      throw new OwnerHasActiveChildrenException(id, "animal");
     }
+    repository.delete(id, companyId);
+  }
 }

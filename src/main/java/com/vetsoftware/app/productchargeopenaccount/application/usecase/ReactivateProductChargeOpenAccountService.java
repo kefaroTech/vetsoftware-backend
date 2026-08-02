@@ -12,24 +12,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "product.charge.open.account.reactivate")
 @Service
-public class ReactivateProductChargeOpenAccountService implements ReactivateProductChargeOpenAccountUseCase {
-    private final ProductChargeOpenAccountRepository repository;
-    private final OpenAccountRefresher refresher;
+public class ReactivateProductChargeOpenAccountService
+    implements ReactivateProductChargeOpenAccountUseCase {
+  private final ProductChargeOpenAccountRepository repository;
+  private final OpenAccountRefresher refresher;
 
-    public ReactivateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
-                                                     OpenAccountRefresher refresher) {
-        this.repository = repository;
-        this.refresher = refresher;
-    }
+  public ReactivateProductChargeOpenAccountService(
+      ProductChargeOpenAccountRepository repository, OpenAccountRefresher refresher) {
+    this.repository = repository;
+    this.refresher = refresher;
+  }
 
-    @Override
-    @Transactional
-    public ProductChargeOpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ProductChargeOpenAccountNotFoundException(id);
-        ProductChargeOpenAccount charge = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public ProductChargeOpenAccountDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new ProductChargeOpenAccountNotFoundException(id);
+    ProductChargeOpenAccount charge =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(id));
-        refresher.refresh(companyId, charge.getOpenAccount().id());
-        return ProductChargeOpenAccountDto.from(charge);
-    }
+    refresher.refresh(companyId, charge.getOpenAccount().id());
+    return ProductChargeOpenAccountDto.from(charge);
+  }
 }

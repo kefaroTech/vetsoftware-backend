@@ -18,85 +18,107 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenAccountRepository {
-    private final ProductChargeOpenAccountJpaRepository jpaRepository;
-    private final ProductChargeOpenAccountJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final ProductJpaRepository productJpaRepository;
-    private final TaxJpaRepository taxJpaRepository;
-    private final OpenAccountJpaRepository openAccountJpaRepository;
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final ProductChargeOpenAccountJpaRepository jpaRepository;
+  private final ProductChargeOpenAccountJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final ProductJpaRepository productJpaRepository;
+  private final TaxJpaRepository taxJpaRepository;
+  private final OpenAccountJpaRepository openAccountJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaProductChargeOpenAccountRepository(ProductChargeOpenAccountJpaRepository jpaRepository,
-                                                 ProductChargeOpenAccountJpaMapper mapper,
-                                                 AnimalJpaRepository animalJpaRepository,
-                                                 ProductJpaRepository productJpaRepository,
-                                                 TaxJpaRepository taxJpaRepository,
-                                                 OpenAccountJpaRepository openAccountJpaRepository,
-                                                 EmployeeJpaRepository employeeJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.productJpaRepository = productJpaRepository;
-        this.taxJpaRepository = taxJpaRepository;
-        this.openAccountJpaRepository = openAccountJpaRepository;
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaProductChargeOpenAccountRepository(
+      ProductChargeOpenAccountJpaRepository jpaRepository,
+      ProductChargeOpenAccountJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      ProductJpaRepository productJpaRepository,
+      TaxJpaRepository taxJpaRepository,
+      OpenAccountJpaRepository openAccountJpaRepository,
+      EmployeeJpaRepository employeeJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.productJpaRepository = productJpaRepository;
+    this.taxJpaRepository = taxJpaRepository;
+    this.openAccountJpaRepository = openAccountJpaRepository;
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public ProductChargeOpenAccount save(ProductChargeOpenAccount charge) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(charge.getAnimal().id());
-        ProductJpaEntity product = productJpaRepository.getReferenceById(charge.getProduct().id());
-        TaxJpaEntity tax = charge.getTax() == null ? null
-            : taxJpaRepository.getReferenceById(charge.getTax().id());
-        OpenAccountJpaEntity openAccount = openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
-        EmployeeJpaEntity createdBy = charge.getCreatedBy() == null ? null
+  @Override
+  public ProductChargeOpenAccount save(ProductChargeOpenAccount charge) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(charge.getAnimal().id());
+    ProductJpaEntity product = productJpaRepository.getReferenceById(charge.getProduct().id());
+    TaxJpaEntity tax =
+        charge.getTax() == null ? null : taxJpaRepository.getReferenceById(charge.getTax().id());
+    OpenAccountJpaEntity openAccount =
+        openAccountJpaRepository.getReferenceById(charge.getOpenAccount().id());
+    EmployeeJpaEntity createdBy =
+        charge.getCreatedBy() == null
+            ? null
             : employeeJpaRepository.getReferenceById(charge.getCreatedBy().id());
-        EmployeeJpaEntity voidedBy = charge.getVoidedBy() == null ? null
+    EmployeeJpaEntity voidedBy =
+        charge.getVoidedBy() == null
+            ? null
             : employeeJpaRepository.getReferenceById(charge.getVoidedBy().id());
-        ProductChargeOpenAccountJpaEntity saved =
-            jpaRepository.save(mapper.toJpa(charge, animal, product, tax, openAccount, createdBy, voidedBy));
-        return mapper.toDomain(saved, charge.getAnimal(), charge.getProduct(), charge.getTax(),
-            charge.getOpenAccount(), charge.getCreatedBy(), charge.getVoidedBy());
-    }
+    ProductChargeOpenAccountJpaEntity saved =
+        jpaRepository.save(
+            mapper.toJpa(charge, animal, product, tax, openAccount, createdBy, voidedBy));
+    return mapper.toDomain(
+        saved,
+        charge.getAnimal(),
+        charge.getProduct(),
+        charge.getTax(),
+        charge.getOpenAccount(),
+        charge.getCreatedBy(),
+        charge.getVoidedBy());
+  }
 
-    @Override
-    public Optional<ProductChargeOpenAccount> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ProductChargeOpenAccount> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<ProductChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ProductChargeOpenAccount> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndOpenAccount_Company_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<ProductChargeOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId, String clientRequestId) {
-        return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ProductChargeOpenAccount> findByOpenAccountIdAndClientRequestId(
+      Long openAccountId, String clientRequestId) {
+    return jpaRepository
+        .findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId)
+        .map(mapper::toDomain);
+  }
 
-    @Override
-    public List<ProductChargeOpenAccount> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<ProductChargeOpenAccount> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId) {
+    return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 
-    @Override
-    public List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId) {
-        return jpaRepository.findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId).stream()
-            .map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(
+      Long openAccountId, Long companyId) {
+    return jpaRepository
+        .findByOpenAccount_IdAndOpenAccount_Company_Id(openAccountId, companyId)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
+  @Override
+  public int reactivate(Long id, Long companyId) {
+    return jpaRepository.reactivate(id, companyId);
+  }
 }

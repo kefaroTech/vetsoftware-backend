@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "diagnostic.imaging.type.delete")
 @Service
 public class DeleteDiagnosticImagingTypeService implements DeleteDiagnosticImagingTypeUseCase {
-    private final DiagnosticImagingTypeRepository repository;
-    private final DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort;
+  private final DiagnosticImagingTypeRepository repository;
+  private final DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort;
 
-    public DeleteDiagnosticImagingTypeService(
-            DiagnosticImagingTypeRepository repository,
-            DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort) {
-        this.repository = repository;
-        this.diagnosticImagingChildrenQueryPort = diagnosticImagingChildrenQueryPort;
-    }
+  public DeleteDiagnosticImagingTypeService(
+      DiagnosticImagingTypeRepository repository,
+      DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort) {
+    this.repository = repository;
+    this.diagnosticImagingChildrenQueryPort = diagnosticImagingChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id));
-        if (diagnosticImagingChildrenQueryPort.existsActiveByDiagnosticImagingTypeId(id)) {
-            throw new DiagnosticImagingTypeHasActiveChildrenException(id, "diagnosticImaging");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id));
+    if (diagnosticImagingChildrenQueryPort.existsActiveByDiagnosticImagingTypeId(id)) {
+      throw new DiagnosticImagingTypeHasActiveChildrenException(id, "diagnosticImaging");
     }
+    repository.delete(id);
+  }
 }

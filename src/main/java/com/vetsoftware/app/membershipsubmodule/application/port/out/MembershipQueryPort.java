@@ -4,5 +4,5 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipRef;
 import java.util.Optional;
 
 public interface MembershipQueryPort {
-    Optional<MembershipRef> findById(Long membershipId);
+  Optional<MembershipRef> findById(Long membershipId);
 }

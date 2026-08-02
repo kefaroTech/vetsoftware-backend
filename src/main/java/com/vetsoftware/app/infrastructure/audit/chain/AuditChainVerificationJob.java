@@ -22,69 +22,70 @@ import org.springframework.stereotype.Component;
  * intervalo.
  */
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 final class AuditChainVerificationJob {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditChainVerificationJob.class);
+  private static final Logger log = LoggerFactory.getLogger(AuditChainVerificationJob.class);
 
-    private final AuditChainRepository repository;
-    private final AuditChainMetrics metrics;
-    private final ScheduledJobTelemetry telemetry;
-    private final int batchSize;
+  private final AuditChainRepository repository;
+  private final AuditChainMetrics metrics;
+  private final ScheduledJobTelemetry telemetry;
+  private final int batchSize;
 
-    AuditChainVerificationJob(
-            AuditChainRepository repository,
-            AuditChainMetrics metrics,
-            ScheduledJobTelemetry telemetry,
-            AuditOutboxProperties properties) {
-        this.repository = repository;
-        this.metrics = metrics;
-        this.telemetry = telemetry;
-        this.batchSize = properties.getVerifyBatchSize();
+  AuditChainVerificationJob(
+      AuditChainRepository repository,
+      AuditChainMetrics metrics,
+      ScheduledJobTelemetry telemetry,
+      AuditOutboxProperties properties) {
+    this.repository = repository;
+    this.metrics = metrics;
+    this.telemetry = telemetry;
+    this.batchSize = properties.getVerifyBatchSize();
+  }
+
+  @Scheduled(
+      fixedDelayString = "${vetsoftware.audit.outbox.verify-interval:PT5M}",
+      initialDelayString = "${vetsoftware.audit.outbox.verify-initial-delay:PT1M}")
+  void verify() {
+    telemetry.observe("audit.chain.verify", this::verifySweep);
+  }
+
+  ScheduledJobTelemetry.Outcome verifySweep() {
+    List<AuditChainRepository.Link> batch = repository.linksAfter(0, batchSize);
+    if (batch.isEmpty()) {
+      return ScheduledJobTelemetry.Outcome.NO_WORK;
     }
 
-    @Scheduled(
-            fixedDelayString = "${vetsoftware.audit.outbox.verify-interval:PT5M}",
-            initialDelayString = "${vetsoftware.audit.outbox.verify-initial-delay:PT1M}")
-    void verify() {
-        telemetry.observe("audit.chain.verify", this::verifySweep);
+    // Los eslabones anteriores al primero retenido ya fueron anclados en el archivo inmutable:
+    // no se pueden recalcular aquí, así que su enlace se toma como punto de partida.
+    long expectedSequence = batch.getFirst().sequence();
+    String expectedPreviousHash = batch.getFirst().previousHash();
+    int totalChecked = 0;
+
+    while (!batch.isEmpty()) {
+      AuditChainVerifier.Result result =
+          AuditChainVerifier.verify(batch, expectedSequence, expectedPreviousHash);
+      totalChecked += result.checkedCount();
+
+      if (!result.intact()) {
+        metrics.verified(result);
+        log.error(
+            "CADENA DE AUDITORÍA ROTA en la posición {}: {}. Última posición válida: {}. "
+                + "Contrastar contra el archivo inmutable ANTES de tocar la base de datos.",
+            result.failureSequence(),
+            result.failureReason(),
+            result.lastVerifiedSequence());
+        return ScheduledJobTelemetry.Outcome.FAILURE;
+      }
+
+      expectedSequence = result.lastVerifiedSequence() + 1;
+      expectedPreviousHash = result.lastVerifiedHash();
+      batch = repository.linksAfter(result.lastVerifiedSequence(), batchSize);
     }
 
-    ScheduledJobTelemetry.Outcome verifySweep() {
-        List<AuditChainRepository.Link> batch = repository.linksAfter(0, batchSize);
-        if (batch.isEmpty()) {
-            return ScheduledJobTelemetry.Outcome.NO_WORK;
-        }
-
-        // Los eslabones anteriores al primero retenido ya fueron anclados en el archivo inmutable:
-        // no se pueden recalcular aquí, así que su enlace se toma como punto de partida.
-        long expectedSequence = batch.getFirst().sequence();
-        String expectedPreviousHash = batch.getFirst().previousHash();
-        int totalChecked = 0;
-
-        while (!batch.isEmpty()) {
-            AuditChainVerifier.Result result =
-                    AuditChainVerifier.verify(batch, expectedSequence, expectedPreviousHash);
-            totalChecked += result.checkedCount();
-
-            if (!result.intact()) {
-                metrics.verified(result);
-                log.error("CADENA DE AUDITORÍA ROTA en la posición {}: {}. Última posición válida: {}. "
-                                + "Contrastar contra el archivo inmutable ANTES de tocar la base de datos.",
-                        result.failureSequence(), result.failureReason(), result.lastVerifiedSequence());
-                return ScheduledJobTelemetry.Outcome.FAILURE;
-            }
-
-            expectedSequence = result.lastVerifiedSequence() + 1;
-            expectedPreviousHash = result.lastVerifiedHash();
-            batch = repository.linksAfter(result.lastVerifiedSequence(), batchSize);
-        }
-
-        metrics.verified(new AuditChainVerifier.Result(
-                true, totalChecked, expectedSequence - 1, expectedPreviousHash, 0, null));
-        return ScheduledJobTelemetry.Outcome.SUCCESS;
-    }
+    metrics.verified(
+        new AuditChainVerifier.Result(
+            true, totalChecked, expectedSequence - 1, expectedPreviousHash, 0, null));
+    return ScheduledJobTelemetry.Outcome.SUCCESS;
+  }
 }

@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("laboratoryTestJpaLaboratoryTestTypeQueryPort")
 public class JpaLaboratoryTestTypeQueryPort implements LaboratoryTestTypeQueryPort {
-    private final LaboratoryTestTypeJpaRepository testTypeJpaRepository;
+  private final LaboratoryTestTypeJpaRepository testTypeJpaRepository;
 
-    public JpaLaboratoryTestTypeQueryPort(LaboratoryTestTypeJpaRepository testTypeJpaRepository) {
-        this.testTypeJpaRepository = testTypeJpaRepository;
-    }
+  public JpaLaboratoryTestTypeQueryPort(LaboratoryTestTypeJpaRepository testTypeJpaRepository) {
+    this.testTypeJpaRepository = testTypeJpaRepository;
+  }
 
-    @Override
-    public Optional<LaboratoryTestTypeRef> findById(Long testTypeId) {
-        return testTypeJpaRepository.findById(testTypeId)
-            .map(e -> new LaboratoryTestTypeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<LaboratoryTestTypeRef> findById(Long testTypeId) {
+    return testTypeJpaRepository
+        .findById(testTypeId)
+        .map(e -> new LaboratoryTestTypeRef(e.getId(), e.getName()));
+  }
 }

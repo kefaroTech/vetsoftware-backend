@@ -17,69 +17,73 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class OpenAccountMovementTenantGuardTest {
 
-    private static final long OPEN_ACCOUNT_ID = 10L;
-    private static final long COMPANY_ID = 20L;
+  private static final long OPEN_ACCOUNT_ID = 10L;
+  private static final long COMPANY_ID = 20L;
 
-    @Mock
-    private com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository
-        productChargeRepository;
+  @Mock
+  private com.vetsoftware.app.productchargeopenaccount.application.port.out
+          .ProductChargeOpenAccountRepository
+      productChargeRepository;
 
-    @Mock
-    private com.vetsoftware.app.servicechargeopenaccount.application.port.out.ServiceChargeOpenAccountRepository
-        serviceChargeRepository;
+  @Mock
+  private com.vetsoftware.app.servicechargeopenaccount.application.port.out
+          .ServiceChargeOpenAccountRepository
+      serviceChargeRepository;
 
-    @Mock
-    private com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository
-        generalChargeRepository;
+  @Mock
+  private com.vetsoftware.app.generalchargeopenaccount.application.port.out
+          .GeneralChargeOpenAccountRepository
+      generalChargeRepository;
 
-    @Mock
-    private com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository debtRepository;
+  @Mock
+  private com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository
+      debtRepository;
 
-    @Test
-    void productChargesByOpenAccountUseCompanyScope() {
-        when(productChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
-            .thenReturn(List.of());
+  @Test
+  void productChargesByOpenAccountUseCompanyScope() {
+    when(productChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+        .thenReturn(List.of());
 
-        ListProductChargeOpenAccountsByOpenAccountService service =
-            new ListProductChargeOpenAccountsByOpenAccountService(productChargeRepository);
+    ListProductChargeOpenAccountsByOpenAccountService service =
+        new ListProductChargeOpenAccountsByOpenAccountService(productChargeRepository);
 
-        assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
-        verify(productChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
-    }
+    assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
+    verify(productChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
+  }
 
-    @Test
-    void serviceChargesByOpenAccountUseCompanyScope() {
-        when(serviceChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
-            .thenReturn(List.of());
+  @Test
+  void serviceChargesByOpenAccountUseCompanyScope() {
+    when(serviceChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+        .thenReturn(List.of());
 
-        ListServiceChargeOpenAccountsByOpenAccountService service =
-            new ListServiceChargeOpenAccountsByOpenAccountService(serviceChargeRepository);
+    ListServiceChargeOpenAccountsByOpenAccountService service =
+        new ListServiceChargeOpenAccountsByOpenAccountService(serviceChargeRepository);
 
-        assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
-        verify(serviceChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
-    }
+    assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
+    verify(serviceChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
+  }
 
-    @Test
-    void generalChargesByOpenAccountUseCompanyScope() {
-        when(generalChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
-            .thenReturn(List.of());
+  @Test
+  void generalChargesByOpenAccountUseCompanyScope() {
+    when(generalChargeRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+        .thenReturn(List.of());
 
-        ListGeneralChargeOpenAccountsByOpenAccountService service =
-            new ListGeneralChargeOpenAccountsByOpenAccountService(generalChargeRepository);
+    ListGeneralChargeOpenAccountsByOpenAccountService service =
+        new ListGeneralChargeOpenAccountsByOpenAccountService(generalChargeRepository);
 
-        assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
-        verify(generalChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
-    }
+    assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
+    verify(generalChargeRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
+  }
 
-    @Test
-    void debtPaymentsByOpenAccountUseCompanyScope() {
-        when(debtRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
-            .thenReturn(List.of());
+  @Test
+  void debtPaymentsByOpenAccountUseCompanyScope() {
+    when(debtRepository.findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+        .thenReturn(List.of());
 
-        ListDebtOpenAccountsByOpenAccountService service =
-            new ListDebtOpenAccountsByOpenAccountService(debtRepository);
+    ListDebtOpenAccountsByOpenAccountService service =
+        new ListDebtOpenAccountsByOpenAccountService(debtRepository);
 
-        assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
-        verify(debtRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
-    }
+    assertThat(service.listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID)).isEmpty();
+    verify(debtRepository).findByOpenAccountIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
+  }
 }

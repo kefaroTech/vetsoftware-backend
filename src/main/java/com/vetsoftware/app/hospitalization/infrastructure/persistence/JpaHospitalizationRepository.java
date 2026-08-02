@@ -14,63 +14,70 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaHospitalizationRepository implements HospitalizationRepository {
-    private final HospitalizationJpaRepository jpaRepository;
-    private final HospitalizationJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final ConsultationJpaRepository consultationJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final HospitalizationJpaRepository jpaRepository;
+  private final HospitalizationJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final ConsultationJpaRepository consultationJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaHospitalizationRepository(HospitalizationJpaRepository jpaRepository,
-                                        HospitalizationJpaMapper mapper,
-                                        AnimalJpaRepository animalJpaRepository,
-                                        ConsultationJpaRepository consultationJpaRepository,
-                                        CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.consultationJpaRepository = consultationJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaHospitalizationRepository(
+      HospitalizationJpaRepository jpaRepository,
+      HospitalizationJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      ConsultationJpaRepository consultationJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.consultationJpaRepository = consultationJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public Hospitalization save(Hospitalization hospitalization) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(hospitalization.getAnimal().id());
-        ConsultationJpaEntity consultation = hospitalization.getConsultation() == null ? null
+  @Override
+  public Hospitalization save(Hospitalization hospitalization) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(hospitalization.getAnimal().id());
+    ConsultationJpaEntity consultation =
+        hospitalization.getConsultation() == null
+            ? null
             : consultationJpaRepository.getReferenceById(hospitalization.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(hospitalization.getCompany().id());
-        HospitalizationJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(hospitalization, animal, consultation, company));
-        return mapper.toDomain(saved, hospitalization.getAnimal(),
-            hospitalization.getConsultation(), hospitalization.getCompany());
-    }
+    CompanyJpaEntity company =
+        companyJpaRepository.getReferenceById(hospitalization.getCompany().id());
+    HospitalizationJpaEntity saved =
+        jpaRepository.save(mapper.toJpa(hospitalization, animal, consultation, company));
+    return mapper.toDomain(
+        saved,
+        hospitalization.getAnimal(),
+        hospitalization.getConsultation(),
+        hospitalization.getCompany());
+  }
 
-    @Override
-    public Optional<Hospitalization> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Hospitalization> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<Hospitalization> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Hospitalization> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Hospitalization> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Hospitalization> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<Hospitalization> findAllByAnimalId(Long animalId) {
-        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Hospitalization> findAllByAnimalId(Long animalId) {
+    return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

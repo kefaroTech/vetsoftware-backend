@@ -4,5 +4,5 @@ import com.vetsoftware.app.state.application.dto.StateDto;
 import java.util.List;
 
 public interface ListStatesByCountryUseCase {
-    List<StateDto> listByCountry(Long countryId);
+  List<StateDto> listByCountry(Long countryId);
 }

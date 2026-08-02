@@ -19,38 +19,60 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "hospitalization.update")
 @Service
 public class UpdateHospitalizationService implements UpdateHospitalizationUseCase {
-    private final HospitalizationRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final ConsultationQueryPort consultationQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final HospitalizationRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final ConsultationQueryPort consultationQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateHospitalizationService(HospitalizationRepository repository,
-                                        AnimalQueryPort animalQueryPort,
-                                        ConsultationQueryPort consultationQueryPort,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.consultationQueryPort = consultationQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateHospitalizationService(
+      HospitalizationRepository repository,
+      AnimalQueryPort animalQueryPort,
+      ConsultationQueryPort consultationQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.consultationQueryPort = consultationQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public HospitalizationDto execute(UpdateHospitalizationCommand command) {
-        Hospitalization hospitalization = repository.findById(command.id())
+  @Override
+  @Transactional
+  public HospitalizationDto execute(UpdateHospitalizationCommand command) {
+    Hospitalization hospitalization =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new HospitalizationNotFoundException(command.id()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    AnimalRef animal =
+        animalQueryPort
+            .findById(command.animalId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    ConsultationRef consultation =
+        command.consultationId() == null
+            ? null
+            : consultationQueryPort
+                .findById(command.consultationId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Consultation not found: " + command.consultationId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        hospitalization.update(command.date(), command.startDate(), command.endDate(),
-            command.type(), command.reasonLeaving(),
-            command.reason(), command.observations(),
-            animal, consultation, company);
-        return HospitalizationDto.from(repository.save(hospitalization));
-    }
+    hospitalization.update(
+        command.date(),
+        command.startDate(),
+        command.endDate(),
+        command.type(),
+        command.reasonLeaving(),
+        command.reason(),
+        command.observations(),
+        animal,
+        consultation,
+        company);
+    return HospitalizationDto.from(repository.save(hospitalization));
+  }
 }

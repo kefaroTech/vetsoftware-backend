@@ -9,27 +9,27 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaPasswordResetTokenRepository implements PasswordResetTokenRepository {
 
-    private final PasswordResetTokenJpaRepository jpaRepository;
-    private final PasswordResetTokenJpaMapper mapper;
+  private final PasswordResetTokenJpaRepository jpaRepository;
+  private final PasswordResetTokenJpaMapper mapper;
 
-    public JpaPasswordResetTokenRepository(PasswordResetTokenJpaRepository jpaRepository,
-                                           PasswordResetTokenJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaPasswordResetTokenRepository(
+      PasswordResetTokenJpaRepository jpaRepository, PasswordResetTokenJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public PasswordResetToken save(PasswordResetToken token) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(token)));
-    }
+  @Override
+  public PasswordResetToken save(PasswordResetToken token) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(token)));
+  }
 
-    @Override
-    public Optional<PasswordResetToken> findByTokenHash(String tokenHash) {
-        return jpaRepository.findByTokenHash(tokenHash).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<PasswordResetToken> findByTokenHash(String tokenHash) {
+    return jpaRepository.findByTokenHash(tokenHash).map(mapper::toDomain);
+  }
 
-    @Override
-    public void consumeActiveForEmployee(Long employeeId, LocalDateTime now) {
-        jpaRepository.consumeActiveForEmployee(employeeId, now);
-    }
+  @Override
+  public void consumeActiveForEmployee(Long employeeId, LocalDateTime now) {
+    jpaRepository.consumeActiveForEmployee(employeeId, now);
+  }
 }

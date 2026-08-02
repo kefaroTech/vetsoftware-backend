@@ -14,44 +14,46 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class JpaAnimalAlertsQueryPort implements AnimalAlertsQueryPort {
 
-    private final AnimalAlertJpaRepository animalAlertJpaRepository;
+  private final AnimalAlertJpaRepository animalAlertJpaRepository;
 
-    public JpaAnimalAlertsQueryPort(AnimalAlertJpaRepository animalAlertJpaRepository) {
-        this.animalAlertJpaRepository = animalAlertJpaRepository;
-    }
+  public JpaAnimalAlertsQueryPort(AnimalAlertJpaRepository animalAlertJpaRepository) {
+    this.animalAlertJpaRepository = animalAlertJpaRepository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ReportAlert> findByAnimal(Long animalId, Long companyId) {
-        return animalAlertJpaRepository
-                .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-                .stream()
-                .map(e -> new ReportAlert(
-                        typeLabel(e.getType() == null ? null : e.getType().name()),
-                        e.getDescription(),
-                        severityLabel(e.getSeverity() == null ? null : e.getSeverity().name())))
-                .toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ReportAlert> findByAnimal(Long animalId, Long companyId) {
+    return animalAlertJpaRepository
+        .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
+        .stream()
+        .map(
+            e ->
+                new ReportAlert(
+                    typeLabel(e.getType() == null ? null : e.getType().name()),
+                    e.getDescription(),
+                    severityLabel(e.getSeverity() == null ? null : e.getSeverity().name())))
+        .toList();
+  }
 
-    private static String typeLabel(String type) {
-        if (type == null) return "";
-        return switch (type) {
-            case "ALLERGY" -> "Alergia";
-            case "DRUG_REACTION" -> "Reacción a fármaco";
-            case "CHRONIC_CONDITION" -> "Condición crónica";
-            case "BEHAVIOR" -> "Comportamiento";
-            case "OTHER" -> "Otra";
-            default -> type;
-        };
-    }
+  private static String typeLabel(String type) {
+    if (type == null) return "";
+    return switch (type) {
+      case "ALLERGY" -> "Alergia";
+      case "DRUG_REACTION" -> "Reacción a fármaco";
+      case "CHRONIC_CONDITION" -> "Condición crónica";
+      case "BEHAVIOR" -> "Comportamiento";
+      case "OTHER" -> "Otra";
+      default -> type;
+    };
+  }
 
-    private static String severityLabel(String severity) {
-        if (severity == null) return null;
-        return switch (severity) {
-            case "LOW" -> "Baja";
-            case "MEDIUM" -> "Media";
-            case "HIGH" -> "Alta";
-            default -> severity;
-        };
-    }
+  private static String severityLabel(String severity) {
+    if (severity == null) return null;
+    return switch (severity) {
+      case "LOW" -> "Baja";
+      case "MEDIUM" -> "Media";
+      case "HIGH" -> "Alta";
+      default -> severity;
+    };
+  }
 }

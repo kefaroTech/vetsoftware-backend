@@ -11,22 +11,21 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UpdateConsultationRequest(
-        @NotNull LocalDate date,
-        @NotNull Long consultationTypeId,
-        @NotBlank @Size(max = 2000) String anamnesis,
-        @Size(max = 2000) String diagnosis,
-        @Size(max = 500) String prognosis,
-        LocalDate nextControl,
-        @NotNull Long animalId,
-        // Examen físico / constantes vitales (Fase 3) — todos opcionales.
-        @DecimalMin("0") @DecimalMax("60") BigDecimal temperature,
-        @Min(0) @Max(1000) Integer heartRate,
-        @Min(0) @Max(1000) Integer respiratoryRate,
-        @Size(max = 40) String mucousMembranes,
-        @Size(max = 20) String capillaryRefill,
-        @Size(max = 20) String hydration,
-        @Min(1) @Max(9) Integer bodyConditionScore,
-        @Min(0) @Max(10) Integer painScore,
-        @Size(max = 40) String attitude,
-        @Size(max = 2000) String examFindings
-) {}
+    @NotNull LocalDate date,
+    @NotNull Long consultationTypeId,
+    @NotBlank @Size(max = 2000) String anamnesis,
+    @Size(max = 2000) String diagnosis,
+    @Size(max = 500) String prognosis,
+    LocalDate nextControl,
+    @NotNull Long animalId,
+    // Examen físico / constantes vitales (Fase 3) — todos opcionales.
+    @DecimalMin("0") @DecimalMax("60") BigDecimal temperature,
+    @Min(0) @Max(1000) Integer heartRate,
+    @Min(0) @Max(1000) Integer respiratoryRate,
+    @Size(max = 40) String mucousMembranes,
+    @Size(max = 20) String capillaryRefill,
+    @Size(max = 20) String hydration,
+    @Min(1) @Max(9) Integer bodyConditionScore,
+    @Min(0) @Max(10) Integer painScore,
+    @Size(max = 40) String attitude,
+    @Size(max = 2000) String examFindings) {}

@@ -3,10 +3,10 @@ package com.vetsoftware.app.auth.application.dto;
 import java.util.Set;
 
 public enum SystemContext implements AuthContext {
-    INSTANCE;
+  INSTANCE;
 
-    @Override
-    public Set<String> permissions() {
-        return Set.of();
-    }
+  @Override
+  public Set<String> permissions() {
+    return Set.of();
+  }
 }

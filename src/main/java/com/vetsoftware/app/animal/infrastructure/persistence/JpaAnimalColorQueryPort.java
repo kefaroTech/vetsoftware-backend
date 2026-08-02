@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("animalJpaAnimalColorQueryPort")
 public class JpaAnimalColorQueryPort implements AnimalColorQueryPort {
-    private final AnimalColorJpaRepository animalColorJpaRepository;
+  private final AnimalColorJpaRepository animalColorJpaRepository;
 
-    public JpaAnimalColorQueryPort(AnimalColorJpaRepository animalColorJpaRepository) {
-        this.animalColorJpaRepository = animalColorJpaRepository;
-    }
+  public JpaAnimalColorQueryPort(AnimalColorJpaRepository animalColorJpaRepository) {
+    this.animalColorJpaRepository = animalColorJpaRepository;
+  }
 
-    @Override
-    public Optional<AnimalColorRef> findById(Long colorId) {
-        return animalColorJpaRepository.findById(colorId)
-            .map(e -> new AnimalColorRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<AnimalColorRef> findById(Long colorId) {
+    return animalColorJpaRepository
+        .findById(colorId)
+        .map(e -> new AnimalColorRef(e.getId(), e.getName()));
+  }
 }

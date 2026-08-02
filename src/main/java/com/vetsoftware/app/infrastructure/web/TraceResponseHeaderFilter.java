@@ -16,25 +16,26 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
 public final class TraceResponseHeaderFilter extends OncePerRequestFilter {
 
-    public static final String TRACE_HEADER = "X-Trace-Id";
-    public static final String LEGACY_REQUEST_HEADER = "X-Request-Id";
+  public static final String TRACE_HEADER = "X-Trace-Id";
+  public static final String LEGACY_REQUEST_HEADER = "X-Request-Id";
 
-    private final Tracer tracer;
+  private final Tracer tracer;
 
-    public TraceResponseHeaderFilter(Tracer tracer) {
-        this.tracer = tracer;
+  public TraceResponseHeaderFilter(Tracer tracer) {
+    this.tracer = tracer;
+  }
+
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+      throws ServletException, IOException {
+    Span span = tracer.currentSpan();
+    if (span != null) {
+      String traceId = span.context().traceId();
+      response.setHeader(TRACE_HEADER, traceId);
+      // Compatibilidad temporal con clientes existentes. X-Trace-Id es el contrato nuevo.
+      response.setHeader(LEGACY_REQUEST_HEADER, traceId);
     }
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        Span span = tracer.currentSpan();
-        if (span != null) {
-            String traceId = span.context().traceId();
-            response.setHeader(TRACE_HEADER, traceId);
-            // Compatibilidad temporal con clientes existentes. X-Trace-Id es el contrato nuevo.
-            response.setHeader(LEGACY_REQUEST_HEADER, traceId);
-        }
-        chain.doFilter(request, response);
-    }
+    chain.doFilter(request, response);
+  }
 }

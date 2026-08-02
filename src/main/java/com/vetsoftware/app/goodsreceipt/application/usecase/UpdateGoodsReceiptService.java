@@ -22,48 +22,79 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "goods.receipt.update")
 @Service
 public class UpdateGoodsReceiptService implements UpdateGoodsReceiptUseCase {
-    private final GoodsReceiptRepository repository;
-    private final BranchQueryPort branchQueryPort;
-    private final SupplierQueryPort supplierQueryPort;
-    private final ProductQueryPort productQueryPort;
+  private final GoodsReceiptRepository repository;
+  private final BranchQueryPort branchQueryPort;
+  private final SupplierQueryPort supplierQueryPort;
+  private final ProductQueryPort productQueryPort;
 
-    public UpdateGoodsReceiptService(GoodsReceiptRepository repository,
-                                     BranchQueryPort branchQueryPort,
-                                     SupplierQueryPort supplierQueryPort,
-                                     ProductQueryPort productQueryPort) {
-        this.repository = repository;
-        this.branchQueryPort = branchQueryPort;
-        this.supplierQueryPort = supplierQueryPort;
-        this.productQueryPort = productQueryPort;
-    }
+  public UpdateGoodsReceiptService(
+      GoodsReceiptRepository repository,
+      BranchQueryPort branchQueryPort,
+      SupplierQueryPort supplierQueryPort,
+      ProductQueryPort productQueryPort) {
+    this.repository = repository;
+    this.branchQueryPort = branchQueryPort;
+    this.supplierQueryPort = supplierQueryPort;
+    this.productQueryPort = productQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public GoodsReceiptDto execute(UpdateGoodsReceiptCommand command) {
-        Long companyId = command.companyId();
-        GoodsReceipt receipt = repository.findByIdAndCompanyId(command.id(), companyId)
+  @Override
+  @Transactional
+  public GoodsReceiptDto execute(UpdateGoodsReceiptCommand command) {
+    Long companyId = command.companyId();
+    GoodsReceipt receipt =
+        repository
+            .findByIdAndCompanyId(command.id(), companyId)
             .orElseThrow(() -> new GoodsReceiptNotFoundException(command.id()));
-        BranchRef branch = branchQueryPort.findById(command.branchId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Branch not found: " + command.branchId()));
-        SupplierRef supplier = supplierQueryPort.findById(command.supplierId(), companyId)
-            .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
-        List<GoodsReceiptLine> lines = buildLines(command.lines(), companyId);
+    BranchRef branch =
+        branchQueryPort
+            .findById(command.branchId(), companyId)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Branch not found: " + command.branchId()));
+    SupplierRef supplier =
+        supplierQueryPort
+            .findById(command.supplierId(), companyId)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
+    List<GoodsReceiptLine> lines = buildLines(command.lines(), companyId);
 
-        // La guarda de "solo editable en DRAFT" vive en el agregado (lanza InvalidGoodsReceiptStatusTransitionException).
-        receipt.update(branch, supplier, command.purchaseOrderId(), command.receiptDate(),
-            command.supplierInvoiceNumber(), command.notes(), lines, command.updatedBy(), command.version());
-        return GoodsReceiptDto.from(repository.save(receipt));
-    }
+    // La guarda de "solo editable en DRAFT" vive en el agregado (lanza
+    // InvalidGoodsReceiptStatusTransitionException).
+    receipt.update(
+        branch,
+        supplier,
+        command.purchaseOrderId(),
+        command.receiptDate(),
+        command.supplierInvoiceNumber(),
+        command.notes(),
+        lines,
+        command.updatedBy(),
+        command.version());
+    return GoodsReceiptDto.from(repository.save(receipt));
+  }
 
-    private List<GoodsReceiptLine> buildLines(List<GoodsReceiptLineCommand> lineCommands, Long companyId) {
-        if (lineCommands == null || lineCommands.isEmpty()) {
-            throw new IllegalArgumentException("at least one line is required");
-        }
-        return lineCommands.stream().map(lc -> {
-            ProductRef product = productQueryPort.findById(lc.productId(), companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + lc.productId()));
-            return GoodsReceiptLine.create(product, lc.purchaseOrderLineId(), lc.lotNumber(),
-                lc.expireDate(), lc.quantityReceived(), lc.unitCost());
-        }).toList();
+  private List<GoodsReceiptLine> buildLines(
+      List<GoodsReceiptLineCommand> lineCommands, Long companyId) {
+    if (lineCommands == null || lineCommands.isEmpty()) {
+      throw new IllegalArgumentException("at least one line is required");
     }
+    return lineCommands.stream()
+        .map(
+            lc -> {
+              ProductRef product =
+                  productQueryPort
+                      .findById(lc.productId(), companyId)
+                      .orElseThrow(
+                          () ->
+                              new IllegalArgumentException("Product not found: " + lc.productId()));
+              return GoodsReceiptLine.create(
+                  product,
+                  lc.purchaseOrderLineId(),
+                  lc.lotNumber(),
+                  lc.expireDate(),
+                  lc.quantityReceived(),
+                  lc.unitCost());
+            })
+        .toList();
+  }
 }

@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "deworming.find")
 @Service
 public class FindDewormingService implements FindDewormingUseCase {
-    private final DewormingRepository repository;
+  private final DewormingRepository repository;
 
-    public FindDewormingService(DewormingRepository repository) {
-        this.repository = repository;
-    }
+  public FindDewormingService(DewormingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public DewormingDto findById(Long id, Long companyId) {
-        return DewormingDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public DewormingDto findById(Long id, Long companyId) {
+    return DewormingDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DewormingNotFoundException(id)));
-    }
+  }
 }

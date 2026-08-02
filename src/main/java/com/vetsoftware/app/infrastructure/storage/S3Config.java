@@ -18,28 +18,32 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 @EnableConfigurationProperties(S3Properties.class)
 public class S3Config {
 
-    @Bean
-    public S3Client s3Client(S3Properties properties) {
-        S3ClientBuilder builder = S3Client.builder()
-                .region(Region.of(properties.region()))
-                .credentialsProvider(credentialsProvider(properties));
+  @Bean
+  public S3Client s3Client(S3Properties properties) {
+    S3ClientBuilder builder =
+        S3Client.builder()
+            .region(Region.of(properties.region()))
+            .credentialsProvider(credentialsProvider(properties));
 
-        // endpoint personalizado (LocalStack / MinIO); en AWS real se deja vacío
-        if (StringUtils.hasText(properties.endpoint())) {
-            builder.endpointOverride(URI.create(properties.endpoint()))
-                    .serviceConfiguration(S3Configuration.builder()
-                            .pathStyleAccessEnabled(properties.pathStyleAccess())
-                            .build());
-        }
-        return builder.build();
+    // endpoint personalizado (LocalStack / MinIO); en AWS real se deja vacío
+    if (StringUtils.hasText(properties.endpoint())) {
+      builder
+          .endpointOverride(URI.create(properties.endpoint()))
+          .serviceConfiguration(
+              S3Configuration.builder()
+                  .pathStyleAccessEnabled(properties.pathStyleAccess())
+                  .build());
     }
+    return builder.build();
+  }
 
-    private AwsCredentialsProvider credentialsProvider(S3Properties properties) {
-        // si hay credenciales explícitas se usan; si no, cadena por defecto (env vars, IAM role…)
-        if (StringUtils.hasText(properties.accessKey()) && StringUtils.hasText(properties.secretKey())) {
-            return StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(properties.accessKey(), properties.secretKey()));
-        }
-        return DefaultCredentialsProvider.builder().build();
+  private AwsCredentialsProvider credentialsProvider(S3Properties properties) {
+    // si hay credenciales explícitas se usan; si no, cadena por defecto (env vars, IAM role…)
+    if (StringUtils.hasText(properties.accessKey())
+        && StringUtils.hasText(properties.secretKey())) {
+      return StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(properties.accessKey(), properties.secretKey()));
     }
+    return DefaultCredentialsProvider.builder().build();
+  }
 }

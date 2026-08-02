@@ -13,21 +13,28 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.type.create")
 @Service
 public class CreateLaboratoryTestTypeService implements CreateLaboratoryTestTypeUseCase {
-    private final LaboratoryTestTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final LaboratoryTestTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateLaboratoryTestTypeService(LaboratoryTestTypeRepository repository,
-                                 CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateLaboratoryTestTypeService(
+      LaboratoryTestTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public LaboratoryTestTypeDto execute(CreateLaboratoryTestTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return LaboratoryTestTypeDto.from(
-                repository.save(LaboratoryTestType.create(command.name(), command.description(), company, command.general())));
-    }
+  @Override
+  public LaboratoryTestTypeDto execute(CreateLaboratoryTestTypeCommand command) {
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    return LaboratoryTestTypeDto.from(
+        repository.save(
+            LaboratoryTestType.create(
+                command.name(), command.description(), company, command.general())));
+  }
 }

@@ -20,58 +20,62 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/species")
 public class SpecieController {
-    private final CreateSpecieUseCase createUseCase;
-    private final UpdateSpecieUseCase updateUseCase;
-    private final FindSpecieUseCase findUseCase;
-    private final ListSpeciesUseCase listUseCase;
-    private final DeleteSpecieUseCase deleteUseCase;
-    private final ReactivateSpecieUseCase reactivateUseCase;
+  private final CreateSpecieUseCase createUseCase;
+  private final UpdateSpecieUseCase updateUseCase;
+  private final FindSpecieUseCase findUseCase;
+  private final ListSpeciesUseCase listUseCase;
+  private final DeleteSpecieUseCase deleteUseCase;
+  private final ReactivateSpecieUseCase reactivateUseCase;
 
-    public SpecieController(CreateSpecieUseCase createUseCase, UpdateSpecieUseCase updateUseCase,
-                            FindSpecieUseCase findUseCase, ListSpeciesUseCase listUseCase,
-                            DeleteSpecieUseCase deleteUseCase,
-                            ReactivateSpecieUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public SpecieController(
+      CreateSpecieUseCase createUseCase,
+      UpdateSpecieUseCase updateUseCase,
+      FindSpecieUseCase findUseCase,
+      ListSpeciesUseCase listUseCase,
+      DeleteSpecieUseCase deleteUseCase,
+      ReactivateSpecieUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SpecieResponse create(@Valid @RequestBody CreateSpecieRequest request) {
-        return toResponse(createUseCase.execute(new CreateSpecieCommand(request.name())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public SpecieResponse create(@Valid @RequestBody CreateSpecieRequest request) {
+    return toResponse(createUseCase.execute(new CreateSpecieCommand(request.name())));
+  }
 
-    @GetMapping
-    public List<SpecieResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<SpecieResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public SpecieResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public SpecieResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public SpecieResponse update(@PathVariable Long id, @Valid @RequestBody UpdateSpecieRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateSpecieCommand(id, request.name())));
-    }
+  @PutMapping("/{id}")
+  public SpecieResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateSpecieRequest request) {
+    return toResponse(updateUseCase.execute(new UpdateSpecieCommand(id, request.name())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public SpecieResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public SpecieResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private SpecieResponse toResponse(SpecieDto dto) {
-        return new SpecieResponse(dto.id(), dto.name(), dto.createdDate(), dto.enabled());
-    }
+  private SpecieResponse toResponse(SpecieDto dto) {
+    return new SpecieResponse(dto.id(), dto.name(), dto.createdDate(), dto.enabled());
+  }
 }

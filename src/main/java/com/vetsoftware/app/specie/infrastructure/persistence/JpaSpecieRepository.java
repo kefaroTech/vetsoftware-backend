@@ -8,36 +8,36 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaSpecieRepository implements SpecieRepository {
-    private final SpecieJpaRepository jpaRepository;
-    private final SpecieJpaMapper mapper;
+  private final SpecieJpaRepository jpaRepository;
+  private final SpecieJpaMapper mapper;
 
-    public JpaSpecieRepository(SpecieJpaRepository jpaRepository, SpecieJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaSpecieRepository(SpecieJpaRepository jpaRepository, SpecieJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public Specie save(Specie specie) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(specie)));
-    }
+  @Override
+  public Specie save(Specie specie) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(specie)));
+  }
 
-    @Override
-    public Optional<Specie> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Specie> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Specie> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Specie> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

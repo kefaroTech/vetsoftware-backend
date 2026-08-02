@@ -17,28 +17,38 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "permission.update")
 @Service
 public class UpdatePermissionService implements UpdatePermissionUseCase {
-    private final PermissionRepository repository;
-    private final CompanyQueryPort companyQueryPort;
-    private final SubModuleQueryPort subModuleQueryPort;
+  private final PermissionRepository repository;
+  private final CompanyQueryPort companyQueryPort;
+  private final SubModuleQueryPort subModuleQueryPort;
 
-    public UpdatePermissionService(PermissionRepository repository,
-                                    CompanyQueryPort companyQueryPort,
-                                    SubModuleQueryPort subModuleQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-        this.subModuleQueryPort = subModuleQueryPort;
-    }
+  public UpdatePermissionService(
+      PermissionRepository repository,
+      CompanyQueryPort companyQueryPort,
+      SubModuleQueryPort subModuleQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+    this.subModuleQueryPort = subModuleQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public PermissionDto execute(UpdatePermissionCommand command) {
-        Permission permission = repository.findById(command.id())
+  @Override
+  @Transactional
+  public PermissionDto execute(UpdatePermissionCommand command) {
+    Permission permission =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new PermissionNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
-        permission.update(command.name(), command.code(), company, subModule);
-        return PermissionDto.from(repository.save(permission));
-    }
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    SubModuleRef subModule =
+        subModuleQueryPort
+            .findById(command.subModuleId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+    permission.update(command.name(), command.code(), company, subModule);
+    return PermissionDto.from(repository.save(permission));
+  }
 }

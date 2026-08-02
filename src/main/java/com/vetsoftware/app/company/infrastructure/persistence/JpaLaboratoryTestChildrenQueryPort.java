@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaLaboratoryTestChildrenQueryPort implements LaboratoryTestChildrenQueryPort {
-    private final LaboratoryTestJpaRepository jpaRepository;
+  private final LaboratoryTestJpaRepository jpaRepository;
 
-    public JpaLaboratoryTestChildrenQueryPort(LaboratoryTestJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaLaboratoryTestChildrenQueryPort(LaboratoryTestJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByCompanyId(Long parentId) {
-        return jpaRepository.existsByCompany_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByCompanyId(Long parentId) {
+    return jpaRepository.existsByCompany_Id(parentId);
+  }
 }

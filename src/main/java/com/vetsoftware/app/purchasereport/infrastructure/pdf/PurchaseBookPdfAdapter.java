@@ -11,16 +11,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class PurchaseBookPdfAdapter implements PurchaseBookPdfPort {
 
-    private final HtmlPdfRenderer renderer;
+  private final HtmlPdfRenderer renderer;
 
-    public PurchaseBookPdfAdapter(HtmlPdfRenderer renderer) {
-        this.renderer = renderer;
-    }
+  public PurchaseBookPdfAdapter(HtmlPdfRenderer renderer) {
+    this.renderer = renderer;
+  }
 
-    @Override
-    public byte[] renderPurchaseBook(PurchaseBookDto book) {
-        Map<String, Object> ctx = new HashMap<>();
-        ctx.put("b", book);
-        return renderer.render("purchase-book", ctx);
-    }
+  @Override
+  public byte[] renderPurchaseBook(PurchaseBookDto book) {
+    Map<String, Object> ctx = new HashMap<>();
+    ctx.put("b", book);
+    return renderer.render("purchase-book", ctx);
+  }
 }

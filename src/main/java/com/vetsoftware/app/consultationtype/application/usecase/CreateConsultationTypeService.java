@@ -11,15 +11,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "consultation.type.create")
 @Service
 public class CreateConsultationTypeService implements CreateConsultationTypeUseCase {
-    private final ConsultationTypeRepository repository;
+  private final ConsultationTypeRepository repository;
 
-    public CreateConsultationTypeService(ConsultationTypeRepository repository) {
-        this.repository = repository;
-    }
+  public CreateConsultationTypeService(ConsultationTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ConsultationTypeDto execute(CreateConsultationTypeCommand command) {
-        return ConsultationTypeDto.from(
-                repository.save(ConsultationType.create(command.name(), command.description())));
-    }
+  @Override
+  public ConsultationTypeDto execute(CreateConsultationTypeCommand command) {
+    return ConsultationTypeDto.from(
+        repository.save(ConsultationType.create(command.name(), command.description())));
+  }
 }

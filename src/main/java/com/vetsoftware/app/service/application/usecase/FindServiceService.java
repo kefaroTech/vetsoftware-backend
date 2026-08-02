@@ -9,16 +9,17 @@ import io.micrometer.observation.annotation.Observed;
 @Observed(name = "service.find")
 @org.springframework.stereotype.Service
 public class FindServiceService implements FindServiceUseCase {
-    private final ServiceRepository repository;
+  private final ServiceRepository repository;
 
-    public FindServiceService(ServiceRepository repository) {
-        this.repository = repository;
-    }
+  public FindServiceService(ServiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ServiceDto findById(Long id, Long companyId) {
-        return repository.findByIdAndCompanyId(id, companyId)
-            .map(ServiceDto::from)
-            .orElseThrow(() -> new ServiceNotFoundException(id));
-    }
+  @Override
+  public ServiceDto findById(Long id, Long companyId) {
+    return repository
+        .findByIdAndCompanyId(id, companyId)
+        .map(ServiceDto::from)
+        .orElseThrow(() -> new ServiceNotFoundException(id));
+  }
 }

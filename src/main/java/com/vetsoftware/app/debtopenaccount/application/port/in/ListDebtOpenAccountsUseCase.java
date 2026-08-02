@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDebtOpenAccountsUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    List<DebtOpenAccountDto> listAll(Long companyId);
+  @PreAuthorize("hasRole('SYSTEM')")
+  List<DebtOpenAccountDto> listAll(Long companyId);
 }

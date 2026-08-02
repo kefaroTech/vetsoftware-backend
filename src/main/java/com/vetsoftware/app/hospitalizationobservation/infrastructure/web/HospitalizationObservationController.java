@@ -25,73 +25,83 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/hospitalization-observations")
 public class HospitalizationObservationController {
-    private final CreateHospitalizationObservationUseCase createUseCase;
-    private final UpdateHospitalizationObservationUseCase updateUseCase;
-    private final FindHospitalizationObservationUseCase findUseCase;
-    private final ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase;
-    private final DeleteHospitalizationObservationUseCase deleteUseCase;
-    private final ReactivateHospitalizationObservationUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateHospitalizationObservationUseCase createUseCase;
+  private final UpdateHospitalizationObservationUseCase updateUseCase;
+  private final FindHospitalizationObservationUseCase findUseCase;
+  private final ListHospitalizationObservationsByHospitalizationUseCase
+      listByHospitalizationUseCase;
+  private final DeleteHospitalizationObservationUseCase deleteUseCase;
+  private final ReactivateHospitalizationObservationUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public HospitalizationObservationController(CreateHospitalizationObservationUseCase createUseCase,
-                                                UpdateHospitalizationObservationUseCase updateUseCase,
-                                                FindHospitalizationObservationUseCase findUseCase,
-                                                ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase,
-                                                DeleteHospitalizationObservationUseCase deleteUseCase,
-                                                ReactivateHospitalizationObservationUseCase reactivateUseCase,
-                                                Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listByHospitalizationUseCase = listByHospitalizationUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public HospitalizationObservationController(
+      CreateHospitalizationObservationUseCase createUseCase,
+      UpdateHospitalizationObservationUseCase updateUseCase,
+      FindHospitalizationObservationUseCase findUseCase,
+      ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase,
+      DeleteHospitalizationObservationUseCase deleteUseCase,
+      ReactivateHospitalizationObservationUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listByHospitalizationUseCase = listByHospitalizationUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationObservationResponse create(@Valid @RequestBody CreateHospitalizationObservationRequest request) {
-        return toResponse(createUseCase.execute(new CreateHospitalizationObservationCommand(
-            request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public HospitalizationObservationResponse create(
+      @Valid @RequestBody CreateHospitalizationObservationRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateHospitalizationObservationCommand(
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+  }
 
-    @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationObservationResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
-    }
+  @GetMapping("/by-hospitalization/{hospitalizationId}")
+  public List<HospitalizationObservationResponse> listByHospitalization(
+      @PathVariable Long hospitalizationId) {
+    return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public HospitalizationObservationResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public HospitalizationObservationResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public HospitalizationObservationResponse update(@PathVariable Long id,
-                                                     @Valid @RequestBody UpdateHospitalizationObservationRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public HospitalizationObservationResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateHospitalizationObservationRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateHospitalizationObservationCommand(id, request.description())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public HospitalizationObservationResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public HospitalizationObservationResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private HospitalizationObservationResponse toResponse(HospitalizationObservationDto dto) {
-        HospitalizationSummaryDto h = dto.hospitalization();
-        EmployeeSummaryDto c = dto.createdBy();
-        return new HospitalizationObservationResponse(
-            dto.id(), dto.description(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled());
-    }
+  private HospitalizationObservationResponse toResponse(HospitalizationObservationDto dto) {
+    HospitalizationSummaryDto h = dto.hospitalization();
+    EmployeeSummaryDto c = dto.createdBy();
+    return new HospitalizationObservationResponse(
+        dto.id(),
+        dto.description(),
+        new HospitalizationSummary(h.id(), h.date()),
+        new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

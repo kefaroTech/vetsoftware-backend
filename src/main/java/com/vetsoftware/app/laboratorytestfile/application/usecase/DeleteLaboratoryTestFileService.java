@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "laboratory.test.file.delete")
 @Service
 public class DeleteLaboratoryTestFileService implements DeleteLaboratoryTestFileUseCase {
-    private final LaboratoryTestFileRepository repository;
-    private final FileStoragePort fileStoragePort;
+  private final LaboratoryTestFileRepository repository;
+  private final FileStoragePort fileStoragePort;
 
-    public DeleteLaboratoryTestFileService(LaboratoryTestFileRepository repository,
-                                           FileStoragePort fileStoragePort) {
-        this.repository = repository;
-        this.fileStoragePort = fileStoragePort;
-    }
+  public DeleteLaboratoryTestFileService(
+      LaboratoryTestFileRepository repository, FileStoragePort fileStoragePort) {
+    this.repository = repository;
+    this.fileStoragePort = fileStoragePort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        LaboratoryTestFile file = repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
-        // se borra primero la fila (dentro de la tx) y luego el objeto en S3:
-        // si S3 falla, la tx hace rollback y la metadata se conserva.
-        repository.delete(id);
-        fileStoragePort.delete(file.getStorageKey());
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    LaboratoryTestFile file =
+        repository.findById(id).orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
+    // se borra primero la fila (dentro de la tx) y luego el objeto en S3:
+    // si S3 falla, la tx hace rollback y la metadata se conserva.
+    repository.delete(id);
+    fileStoragePort.delete(file.getStorageKey());
+  }
 }

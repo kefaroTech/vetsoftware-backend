@@ -14,23 +14,26 @@ import org.springframework.stereotype.Service;
 @Observed(name = "service.category.create")
 @Service
 public class CreateServiceCategoryService implements CreateServiceCategoryUseCase {
-    private final ServiceCategoryRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final ServiceCategoryRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateServiceCategoryService(ServiceCategoryRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateServiceCategoryService(
+      ServiceCategoryRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public ServiceCategoryDto execute(CreateServiceCategoryCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
-            throw new ServiceCategoryNameAlreadyExistsException(command.name());
-        }
-        return ServiceCategoryDto.from(
-                repository.save(ServiceCategory.create(command.name(), command.description(), company)));
+  @Override
+  public ServiceCategoryDto execute(CreateServiceCategoryCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+      throw new ServiceCategoryNameAlreadyExistsException(command.name());
     }
+    return ServiceCategoryDto.from(
+        repository.save(ServiceCategory.create(command.name(), command.description(), company)));
+  }
 }

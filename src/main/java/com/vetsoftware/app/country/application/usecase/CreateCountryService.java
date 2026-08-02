@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "country.create")
 @Service
 public class CreateCountryService implements CreateCountryUseCase {
-    private final CountryRepository repository;
+  private final CountryRepository repository;
 
-    public CreateCountryService(CountryRepository repository) {
-        this.repository = repository;
-    }
+  public CreateCountryService(CountryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public CountryDto execute(CreateCountryCommand command) {
-        return CountryDto.from(repository.save(Country.create(command.name())));
-    }
+  @Override
+  public CountryDto execute(CreateCountryCommand command) {
+    return CountryDto.from(repository.save(Country.create(command.name())));
+  }
 }

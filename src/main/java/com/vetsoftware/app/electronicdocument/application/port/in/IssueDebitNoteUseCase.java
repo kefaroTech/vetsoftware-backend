@@ -5,6 +5,8 @@ import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocument
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface IssueDebitNoteUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.create') and @authz.isMyCompany(#command.companyId))")
-    ElectronicDocumentDto execute(IssueDebitNoteCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('pos.create') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  ElectronicDocumentDto execute(IssueDebitNoteCommand command);
 }

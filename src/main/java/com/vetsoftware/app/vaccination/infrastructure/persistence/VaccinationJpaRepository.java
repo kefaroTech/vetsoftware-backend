@@ -7,32 +7,34 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEntity, Long> {
 
-    @Override
-    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
-    List<VaccinationJpaEntity> findAll();
+  @Override
+  @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+  List<VaccinationJpaEntity> findAll();
 
-    @Override
-    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
-    Optional<VaccinationJpaEntity> findById(Long id);
+  @Override
+  @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+  Optional<VaccinationJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
-    Optional<VaccinationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+  @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+  Optional<VaccinationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
-    List<VaccinationJpaEntity> findAllByAnimalId(Long animalId);
+  @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
+  List<VaccinationJpaEntity> findAllByAnimalId(Long animalId);
 
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE vaccinations SET enabled = true WHERE id = :id",
-        nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+  @org.springframework.data.jpa.repository.Modifying(
+      flushAutomatically = true,
+      clearAutomatically = true)
+  @org.springframework.transaction.annotation.Transactional
+  @org.springframework.data.jpa.repository.Query(
+      value = "UPDATE vaccinations SET enabled = true WHERE id = :id",
+      nativeQuery = true)
+  int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
-    boolean existsByVaccinationType_Id(Long vaccinationTypeId);
+  boolean existsByVaccinationType_Id(Long vaccinationTypeId);
 
-    boolean existsByAnimal_Id(Long animalId);
+  boolean existsByAnimal_Id(Long animalId);
 
-    boolean existsByConsultation_Id(Long consultationId);
+  boolean existsByConsultation_Id(Long consultationId);
 
-    boolean existsByCompany_Id(Long companyId);
+  boolean existsByCompany_Id(Long companyId);
 }

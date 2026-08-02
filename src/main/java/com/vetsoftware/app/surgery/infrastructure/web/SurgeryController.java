@@ -33,103 +33,124 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/surgeries")
 public class SurgeryController {
-    private final CreateSurgeryUseCase createUseCase;
-    private final UpdateSurgeryUseCase updateUseCase;
-    private final ChangeSurgeryStatusUseCase changeStatusUseCase;
-    private final FindSurgeryUseCase findUseCase;
-    private final ListSurgeriesUseCase listUseCase;
-    private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
-    private final DeleteSurgeryUseCase deleteUseCase;
-    private final ReactivateSurgeryUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateSurgeryUseCase createUseCase;
+  private final UpdateSurgeryUseCase updateUseCase;
+  private final ChangeSurgeryStatusUseCase changeStatusUseCase;
+  private final FindSurgeryUseCase findUseCase;
+  private final ListSurgeriesUseCase listUseCase;
+  private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
+  private final DeleteSurgeryUseCase deleteUseCase;
+  private final ReactivateSurgeryUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public SurgeryController(CreateSurgeryUseCase createUseCase,
-                             UpdateSurgeryUseCase updateUseCase,
-                             ChangeSurgeryStatusUseCase changeStatusUseCase,
-                             FindSurgeryUseCase findUseCase,
-                             ListSurgeriesUseCase listUseCase,
-                             ListSurgeriesByAnimalUseCase listByAnimalUseCase,
-                             DeleteSurgeryUseCase deleteUseCase,
-                             ReactivateSurgeryUseCase reactivateUseCase,
-                             Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.changeStatusUseCase = changeStatusUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listByAnimalUseCase = listByAnimalUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public SurgeryController(
+      CreateSurgeryUseCase createUseCase,
+      UpdateSurgeryUseCase updateUseCase,
+      ChangeSurgeryStatusUseCase changeStatusUseCase,
+      FindSurgeryUseCase findUseCase,
+      ListSurgeriesUseCase listUseCase,
+      ListSurgeriesByAnimalUseCase listByAnimalUseCase,
+      DeleteSurgeryUseCase deleteUseCase,
+      ReactivateSurgeryUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.changeStatusUseCase = changeStatusUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listByAnimalUseCase = listByAnimalUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SurgeryResponse create(@Valid @RequestBody CreateSurgeryRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public SurgeryResponse create(@Valid @RequestBody CreateSurgeryRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateSurgeryCommand(
-                request.date(), request.surgeryTypeId(), request.description(),
-                request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                request.date(),
+                request.surgeryTypeId(),
+                request.description(),
+                request.medicament(),
+                request.observations(),
+                request.complications(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @GetMapping
-    public List<SurgeryResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<SurgeryResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/by-animal/{animalId}")
-    public List<SurgeryResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-animal/{animalId}")
+  public List<SurgeryResponse> listByAnimal(@PathVariable Long animalId) {
+    return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public SurgeryResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public SurgeryResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public SurgeryResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateSurgeryRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public SurgeryResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateSurgeryRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateSurgeryCommand(
-                id, request.date(), request.surgeryTypeId(), request.description(),
-                request.medicament(), request.observations(), request.complications(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                id,
+                request.date(),
+                request.surgeryTypeId(),
+                request.description(),
+                request.medicament(),
+                request.observations(),
+                request.complications(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @PatchMapping("/{id}/status")
-    public SurgeryResponse changeStatus(@PathVariable Long id,
-                                        @Valid @RequestBody ChangeSurgeryStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(
+  @PatchMapping("/{id}/status")
+  public SurgeryResponse changeStatus(
+      @PathVariable Long id, @Valid @RequestBody ChangeSurgeryStatusRequest request) {
+    return toResponse(
+        changeStatusUseCase.execute(
             new ChangeSurgeryStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public SurgeryResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public SurgeryResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private SurgeryResponse toResponse(SurgeryDto dto) {
-        SurgeryTypeSummaryDto st = dto.surgeryType();
-        AnimalSummaryDto a = dto.animal();
-        ConsultationSummaryDto co = dto.consultation();
-        CompanySummaryDto c = dto.company();
-        return new SurgeryResponse(
-            dto.id(), dto.date(),
-            new SurgeryTypeSummary(st.id(), st.name()),
-            dto.description(), dto.medicament(), dto.observations(), dto.complications(),
-            dto.status(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled());
-    }
+  private SurgeryResponse toResponse(SurgeryDto dto) {
+    SurgeryTypeSummaryDto st = dto.surgeryType();
+    AnimalSummaryDto a = dto.animal();
+    ConsultationSummaryDto co = dto.consultation();
+    CompanySummaryDto c = dto.company();
+    return new SurgeryResponse(
+        dto.id(),
+        dto.date(),
+        new SurgeryTypeSummary(st.id(), st.name()),
+        dto.description(),
+        dto.medicament(),
+        dto.observations(),
+        dto.complications(),
+        dto.status(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        co == null ? null : new ConsultationSummary(co.id(), co.date()),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

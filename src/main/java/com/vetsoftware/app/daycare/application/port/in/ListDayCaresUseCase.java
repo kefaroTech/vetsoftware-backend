@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDayCaresUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('dayCare.read')")
-    List<DayCareDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('dayCare.read')")
+  List<DayCareDto> listAll();
 }

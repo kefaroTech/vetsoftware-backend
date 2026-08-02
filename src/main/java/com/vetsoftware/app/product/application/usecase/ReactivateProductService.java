@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "product.reactivate")
 @Service
 public class ReactivateProductService implements ReactivateProductUseCase {
-    private final ProductRepository repository;
+  private final ProductRepository repository;
 
-    public ReactivateProductService(ProductRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateProductService(ProductRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public ProductDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ProductNotFoundException(id);
-        return ProductDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public ProductDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new ProductNotFoundException(id);
+    return ProductDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ProductNotFoundException(id)));
-    }
+  }
 }

@@ -12,18 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "branch.activate")
 @Service
 public class ActivateBranchService implements ActivateBranchUseCase {
-    private final BranchRepository repository;
+  private final BranchRepository repository;
 
-    public ActivateBranchService(BranchRepository repository) {
-        this.repository = repository;
-    }
+  public ActivateBranchService(BranchRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public BranchDto execute(Long id, Long companyId) {
-        Branch branch = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public BranchDto execute(Long id, Long companyId) {
+    Branch branch =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new BranchNotFoundException(id));
-        branch.activate();
-        return BranchDto.from(repository.save(branch));
-    }
+    branch.activate();
+    return BranchDto.from(repository.save(branch));
+  }
 }

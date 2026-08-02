@@ -37,114 +37,151 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AnimalConsultationTenantGuardTest {
 
-    private static final long RESOURCE_ID = 10L;
-    private static final long COMPANY_ID = 20L;
+  private static final long RESOURCE_ID = 10L;
+  private static final long COMPANY_ID = 20L;
 
-    @Mock
-    private AnimalRepository animalRepository;
+  @Mock private AnimalRepository animalRepository;
 
-    @Mock
-    private SpecieQueryPort specieQueryPort;
+  @Mock private SpecieQueryPort specieQueryPort;
 
-    @Mock
-    private BreedQueryPort breedQueryPort;
+  @Mock private BreedQueryPort breedQueryPort;
 
-    @Mock
-    private OwnerQueryPort ownerQueryPort;
+  @Mock private OwnerQueryPort ownerQueryPort;
 
-    @Mock
-    private CompanyQueryPort companyQueryPort;
+  @Mock private CompanyQueryPort companyQueryPort;
 
-    @Mock
-    private AnimalColorQueryPort animalColorQueryPort;
+  @Mock private AnimalColorQueryPort animalColorQueryPort;
 
-    @Mock
-    private VaccinationChildrenQueryPort vaccinationChildrenQueryPort;
+  @Mock private VaccinationChildrenQueryPort vaccinationChildrenQueryPort;
 
-    @Mock
-    private DewormingChildrenQueryPort dewormingChildrenQueryPort;
+  @Mock private DewormingChildrenQueryPort dewormingChildrenQueryPort;
 
-    @Mock
-    private SurgeryChildrenQueryPort surgeryChildrenQueryPort;
+  @Mock private SurgeryChildrenQueryPort surgeryChildrenQueryPort;
 
-    @Mock
-    private HospitalizationChildrenQueryPort hospitalizationChildrenQueryPort;
+  @Mock private HospitalizationChildrenQueryPort hospitalizationChildrenQueryPort;
 
-    @Mock
-    private DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort;
+  @Mock private DiagnosticImagingChildrenQueryPort diagnosticImagingChildrenQueryPort;
 
-    @Mock
-    private LaboratoryTestChildrenQueryPort laboratoryTestChildrenQueryPort;
+  @Mock private LaboratoryTestChildrenQueryPort laboratoryTestChildrenQueryPort;
 
-    @Mock
-    private SpaChildrenQueryPort spaChildrenQueryPort;
+  @Mock private SpaChildrenQueryPort spaChildrenQueryPort;
 
-    @Mock
-    private DayCareChildrenQueryPort dayCareChildrenQueryPort;
+  @Mock private DayCareChildrenQueryPort dayCareChildrenQueryPort;
 
-    @Mock
-    private ConsultationChildrenQueryPort consultationChildrenQueryPort;
+  @Mock private ConsultationChildrenQueryPort consultationChildrenQueryPort;
 
-    @Mock
-    private ConsultationRepository consultationRepository;
+  @Mock private ConsultationRepository consultationRepository;
 
-    @Mock
-    private ConsultationTypeQueryPort consultationTypeQueryPort;
+  @Mock private ConsultationTypeQueryPort consultationTypeQueryPort;
 
-    @Mock
-    private com.vetsoftware.app.consultation.application.port.out.AnimalQueryPort consultationAnimalQueryPort;
+  @Mock
+  private com.vetsoftware.app.consultation.application.port.out.AnimalQueryPort
+      consultationAnimalQueryPort;
 
-    @Mock
-    private com.vetsoftware.app.consultation.application.port.out.CompanyQueryPort consultationCompanyQueryPort;
+  @Mock
+  private com.vetsoftware.app.consultation.application.port.out.CompanyQueryPort
+      consultationCompanyQueryPort;
 
-    @Test
-    void updateAnimalDoesNotLoadReferencesWhenAnimalIsOutsideCurrentCompany() {
-        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
-        UpdateAnimalCommand command = new UpdateAnimalCommand(
-            RESOURCE_ID, null, null, 1L, 2L, 3L, null, null, null, null, 4L,
-            null, null, null, false, null, COMPANY_ID);
+  @Test
+  void updateAnimalDoesNotLoadReferencesWhenAnimalIsOutsideCurrentCompany() {
+    when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+        .thenReturn(Optional.empty());
+    UpdateAnimalCommand command =
+        new UpdateAnimalCommand(
+            RESOURCE_ID,
+            null,
+            null,
+            1L,
+            2L,
+            3L,
+            null,
+            null,
+            null,
+            null,
+            4L,
+            null,
+            null,
+            null,
+            false,
+            null,
+            COMPANY_ID);
 
-        UpdateAnimalService service = new UpdateAnimalService(
-            animalRepository, specieQueryPort, breedQueryPort, ownerQueryPort,
-            companyQueryPort, animalColorQueryPort);
+    UpdateAnimalService service =
+        new UpdateAnimalService(
+            animalRepository,
+            specieQueryPort,
+            breedQueryPort,
+            ownerQueryPort,
+            companyQueryPort,
+            animalColorQueryPort);
 
-        assertThatThrownBy(() -> service.execute(command)).isInstanceOf(AnimalNotFoundException.class);
-        verify(specieQueryPort, never()).findById(1L);
-        verify(ownerQueryPort, never()).findByIdAndCompanyId(3L, COMPANY_ID);
-        verify(animalRepository, never()).save(any());
-    }
+    assertThatThrownBy(() -> service.execute(command)).isInstanceOf(AnimalNotFoundException.class);
+    verify(specieQueryPort, never()).findById(1L);
+    verify(ownerQueryPort, never()).findByIdAndCompanyId(3L, COMPANY_ID);
+    verify(animalRepository, never()).save(any());
+  }
 
-    @Test
-    void deleteAnimalDoesNotCheckChildrenWhenAnimalIsOutsideCurrentCompany() {
-        when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
+  @Test
+  void deleteAnimalDoesNotCheckChildrenWhenAnimalIsOutsideCurrentCompany() {
+    when(animalRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+        .thenReturn(Optional.empty());
 
-        DeleteAnimalService service = new DeleteAnimalService(
-            animalRepository, vaccinationChildrenQueryPort, dewormingChildrenQueryPort,
-            surgeryChildrenQueryPort, hospitalizationChildrenQueryPort, diagnosticImagingChildrenQueryPort,
-            laboratoryTestChildrenQueryPort, spaChildrenQueryPort, dayCareChildrenQueryPort,
+    DeleteAnimalService service =
+        new DeleteAnimalService(
+            animalRepository,
+            vaccinationChildrenQueryPort,
+            dewormingChildrenQueryPort,
+            surgeryChildrenQueryPort,
+            hospitalizationChildrenQueryPort,
+            diagnosticImagingChildrenQueryPort,
+            laboratoryTestChildrenQueryPort,
+            spaChildrenQueryPort,
+            dayCareChildrenQueryPort,
             consultationChildrenQueryPort);
 
-        assertThatThrownBy(() -> service.execute(RESOURCE_ID, COMPANY_ID))
-            .isInstanceOf(AnimalNotFoundException.class);
-        verify(vaccinationChildrenQueryPort, never()).existsActiveByAnimalId(RESOURCE_ID);
-        verify(animalRepository, never()).delete(RESOURCE_ID, COMPANY_ID);
-    }
+    assertThatThrownBy(() -> service.execute(RESOURCE_ID, COMPANY_ID))
+        .isInstanceOf(AnimalNotFoundException.class);
+    verify(vaccinationChildrenQueryPort, never()).existsActiveByAnimalId(RESOURCE_ID);
+    verify(animalRepository, never()).delete(RESOURCE_ID, COMPANY_ID);
+  }
 
-    @Test
-    void updateConsultationDoesNotLoadReferencesWhenConsultationIsOutsideCurrentCompany() {
-        when(consultationRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID)).thenReturn(Optional.empty());
-        UpdateConsultationCommand command = new UpdateConsultationCommand(
-            RESOURCE_ID, LocalDate.now(), 1L, null, null, null, null, 2L, COMPANY_ID,
-            null, null, null, null, null, null, null, null, null, null);
+  @Test
+  void updateConsultationDoesNotLoadReferencesWhenConsultationIsOutsideCurrentCompany() {
+    when(consultationRepository.findByIdAndCompanyId(RESOURCE_ID, COMPANY_ID))
+        .thenReturn(Optional.empty());
+    UpdateConsultationCommand command =
+        new UpdateConsultationCommand(
+            RESOURCE_ID,
+            LocalDate.now(),
+            1L,
+            null,
+            null,
+            null,
+            null,
+            2L,
+            COMPANY_ID,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
-        com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService service =
-            new com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService(
-                consultationRepository, consultationTypeQueryPort, consultationAnimalQueryPort,
-                consultationCompanyQueryPort);
+    com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService service =
+        new com.vetsoftware.app.consultation.application.usecase.UpdateConsultationService(
+            consultationRepository,
+            consultationTypeQueryPort,
+            consultationAnimalQueryPort,
+            consultationCompanyQueryPort);
 
-        assertThatThrownBy(() -> service.execute(command)).isInstanceOf(ConsultationNotFoundException.class);
-        verify(consultationTypeQueryPort, never()).findById(1L);
-        verify(consultationAnimalQueryPort, never()).findByIdAndCompanyId(2L, COMPANY_ID);
-        verify(consultationRepository, never()).save(any());
-    }
+    assertThatThrownBy(() -> service.execute(command))
+        .isInstanceOf(ConsultationNotFoundException.class);
+    verify(consultationTypeQueryPort, never()).findById(1L);
+    verify(consultationAnimalQueryPort, never()).findByIdAndCompanyId(2L, COMPANY_ID);
+    verify(consultationRepository, never()).save(any());
+  }
 }

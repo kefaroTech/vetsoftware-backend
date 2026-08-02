@@ -1,1 +1,1 @@
-# pre-commit hook — agregar validaciones aquí si se necesitan (ej: mvn test)
+./mvnw --batch-mode --no-transfer-progress -DskipTests spotless:check checkstyle:check

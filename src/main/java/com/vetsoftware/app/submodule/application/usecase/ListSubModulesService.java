@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "submodule.list")
 @Service
 public class ListSubModulesService implements ListSubModulesUseCase {
-    private final SubModuleRepository repository;
+  private final SubModuleRepository repository;
 
-    public ListSubModulesService(SubModuleRepository repository) {
-        this.repository = repository;
-    }
+  public ListSubModulesService(SubModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SubModuleDto> listAll() {
-        return repository.findAll().stream().map(SubModuleDto::from).toList();
-    }
+  @Override
+  public List<SubModuleDto> listAll() {
+    return repository.findAll().stream().map(SubModuleDto::from).toList();
+  }
 }

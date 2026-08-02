@@ -11,18 +11,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "spa.reactivate")
 @Service
 public class ReactivateSpaService implements ReactivateSpaUseCase {
-    private final SpaRepository repository;
+  private final SpaRepository repository;
 
-    public ReactivateSpaService(SpaRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSpaService(SpaRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SpaDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new SpaNotFoundException(id);
-        return SpaDto.from(repository.findById(id)
-            .orElseThrow(() -> new SpaNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public SpaDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new SpaNotFoundException(id);
+    return SpaDto.from(repository.findById(id).orElseThrow(() -> new SpaNotFoundException(id)));
+  }
 }

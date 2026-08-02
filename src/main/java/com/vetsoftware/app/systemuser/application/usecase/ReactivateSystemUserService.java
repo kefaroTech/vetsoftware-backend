@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "system.user.reactivate")
 @Service
 public class ReactivateSystemUserService implements ReactivateSystemUserUseCase {
-    private final SystemUserRepository repository;
+  private final SystemUserRepository repository;
 
-    public ReactivateSystemUserService(SystemUserRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSystemUserService(SystemUserRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SystemUserDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new SystemUserNotFoundException(id);
-        return SystemUserDto.from(repository.findById(id)
-            .orElseThrow(() -> new SystemUserNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public SystemUserDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new SystemUserNotFoundException(id);
+    return SystemUserDto.from(
+        repository.findById(id).orElseThrow(() -> new SystemUserNotFoundException(id)));
+  }
 }

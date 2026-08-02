@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaSurgeryChildrenQueryPort implements SurgeryChildrenQueryPort {
-    private final SurgeryJpaRepository jpaRepository;
+  private final SurgeryJpaRepository jpaRepository;
 
-    public JpaSurgeryChildrenQueryPort(SurgeryJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaSurgeryChildrenQueryPort(SurgeryJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByCompanyId(Long parentId) {
-        return jpaRepository.existsByCompany_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByCompanyId(Long parentId) {
+    return jpaRepository.existsByCompany_Id(parentId);
+  }
 }

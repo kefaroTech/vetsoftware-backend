@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("baserolepermissionJpaBasePermissionQueryPort")
 public class JpaBasePermissionQueryPort implements BasePermissionQueryPort {
-    private final BasePermissionJpaRepository basePermissionJpaRepository;
+  private final BasePermissionJpaRepository basePermissionJpaRepository;
 
-    public JpaBasePermissionQueryPort(BasePermissionJpaRepository basePermissionJpaRepository) {
-        this.basePermissionJpaRepository = basePermissionJpaRepository;
-    }
+  public JpaBasePermissionQueryPort(BasePermissionJpaRepository basePermissionJpaRepository) {
+    this.basePermissionJpaRepository = basePermissionJpaRepository;
+  }
 
-    @Override
-    public Optional<BasePermissionRef> findById(Long basePermissionId) {
-        return basePermissionJpaRepository.findById(basePermissionId)
-            .map(e -> new BasePermissionRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<BasePermissionRef> findById(Long basePermissionId) {
+    return basePermissionJpaRepository
+        .findById(basePermissionId)
+        .map(e -> new BasePermissionRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

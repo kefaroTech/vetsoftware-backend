@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "product.find")
 @Service
 public class FindProductService implements FindProductUseCase {
-    private final ProductRepository repository;
+  private final ProductRepository repository;
 
-    public FindProductService(ProductRepository repository) {
-        this.repository = repository;
-    }
+  public FindProductService(ProductRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ProductDto findById(Long id, Long companyId) {
-        return ProductDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public ProductDto findById(Long id, Long companyId) {
+    return ProductDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ProductNotFoundException(id)));
-    }
+  }
 }

@@ -9,15 +9,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.user.permission.delete")
 @Service
 public class DeleteSystemUserPermissionService implements DeleteSystemUserPermissionUseCase {
-    private final SystemUserPermissionRepository repository;
+  private final SystemUserPermissionRepository repository;
 
-    public DeleteSystemUserPermissionService(SystemUserPermissionRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteSystemUserPermissionService(SystemUserPermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
+    repository.delete(id);
+  }
 }

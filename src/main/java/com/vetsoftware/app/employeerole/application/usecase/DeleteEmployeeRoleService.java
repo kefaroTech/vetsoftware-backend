@@ -12,21 +12,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "employee.role.delete")
 @Service
 public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
-    private final EmployeeRoleRepository repository;
-    private final PermissionCachePort permissionCachePort;
+  private final EmployeeRoleRepository repository;
+  private final PermissionCachePort permissionCachePort;
 
-    public DeleteEmployeeRoleService(EmployeeRoleRepository repository,
-                                     PermissionCachePort permissionCachePort) {
-        this.repository = repository;
-        this.permissionCachePort = permissionCachePort;
-    }
+  public DeleteEmployeeRoleService(
+      EmployeeRoleRepository repository, PermissionCachePort permissionCachePort) {
+    this.repository = repository;
+    this.permissionCachePort = permissionCachePort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        EmployeeRole employeeRole = repository.findById(id)
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
-        repository.delete(id);
-        permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    EmployeeRole employeeRole =
+        repository.findById(id).orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+    repository.delete(id);
+    permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
+  }
 }

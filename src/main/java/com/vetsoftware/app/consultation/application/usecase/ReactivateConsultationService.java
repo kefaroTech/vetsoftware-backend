@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "consultation.reactivate")
 @Service
 public class ReactivateConsultationService implements ReactivateConsultationUseCase {
-    private final ConsultationRepository repository;
+  private final ConsultationRepository repository;
 
-    public ReactivateConsultationService(ConsultationRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateConsultationService(ConsultationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public ConsultationDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ConsultationNotFoundException(id);
-        return ConsultationDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public ConsultationDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new ConsultationNotFoundException(id);
+    return ConsultationDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ConsultationNotFoundException(id)));
-    }
+  }
 }

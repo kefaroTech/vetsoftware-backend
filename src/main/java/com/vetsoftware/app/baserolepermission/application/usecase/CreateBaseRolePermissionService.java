@@ -18,37 +18,47 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.role.permission.create")
 @Service
 public class CreateBaseRolePermissionService implements CreateBaseRolePermissionUseCase {
-    private final BaseRolePermissionRepository repository;
-    private final BaseRoleQueryPort baseRoleQueryPort;
-    private final BasePermissionQueryPort basePermissionQueryPort;
+  private final BaseRolePermissionRepository repository;
+  private final BaseRoleQueryPort baseRoleQueryPort;
+  private final BasePermissionQueryPort basePermissionQueryPort;
 
-    public CreateBaseRolePermissionService(BaseRolePermissionRepository repository,
-                                            BaseRoleQueryPort baseRoleQueryPort,
-                                            BasePermissionQueryPort basePermissionQueryPort) {
-        this.repository = repository;
-        this.baseRoleQueryPort = baseRoleQueryPort;
-        this.basePermissionQueryPort = basePermissionQueryPort;
+  public CreateBaseRolePermissionService(
+      BaseRolePermissionRepository repository,
+      BaseRoleQueryPort baseRoleQueryPort,
+      BasePermissionQueryPort basePermissionQueryPort) {
+    this.repository = repository;
+    this.baseRoleQueryPort = baseRoleQueryPort;
+    this.basePermissionQueryPort = basePermissionQueryPort;
+  }
+
+  @Override
+  @Transactional
+  public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command) {
+    BaseRoleRef baseRole =
+        baseRoleQueryPort
+            .findById(command.baseRoleId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
+    BasePermissionRef basePermission =
+        basePermissionQueryPort
+            .findById(command.basePermissionId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "BasePermission not found: " + command.basePermissionId()));
+
+    Optional<Long> disabledId =
+        repository.findDisabledIdByBaseRoleAndBasePermission(
+            command.baseRoleId(), command.basePermissionId());
+    if (disabledId.isPresent()) {
+      Long id = disabledId.get();
+      repository.reactivate(id);
+      BaseRolePermission refreshed =
+          repository.findById(id).orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+      return BaseRolePermissionDto.from(refreshed);
     }
 
-    @Override
-    @Transactional
-    public BaseRolePermissionDto execute(CreateBaseRolePermissionCommand command) {
-        BaseRoleRef baseRole = baseRoleQueryPort.findById(command.baseRoleId())
-            .orElseThrow(() -> new IllegalArgumentException("BaseRole not found: " + command.baseRoleId()));
-        BasePermissionRef basePermission = basePermissionQueryPort.findById(command.basePermissionId())
-            .orElseThrow(() -> new IllegalArgumentException("BasePermission not found: " + command.basePermissionId()));
-
-        Optional<Long> disabledId = repository
-            .findDisabledIdByBaseRoleAndBasePermission(command.baseRoleId(), command.basePermissionId());
-        if (disabledId.isPresent()) {
-            Long id = disabledId.get();
-            repository.reactivate(id);
-            BaseRolePermission refreshed = repository.findById(id)
-                .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
-            return BaseRolePermissionDto.from(refreshed);
-        }
-
-        BaseRolePermission baseRolePermission = BaseRolePermission.create(baseRole, basePermission);
-        return BaseRolePermissionDto.from(repository.save(baseRolePermission));
-    }
+    BaseRolePermission baseRolePermission = BaseRolePermission.create(baseRole, basePermission);
+    return BaseRolePermissionDto.from(repository.save(baseRolePermission));
+  }
 }

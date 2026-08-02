@@ -5,35 +5,35 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record SurgeryDto(
-        Long id,
-        LocalDate date,
-        SurgeryTypeSummaryDto surgeryType,
-        String description,
-        String medicament,
-        String observations,
-        String complications,
-        String status,
-        AnimalSummaryDto animal,
-        ConsultationSummaryDto consultation,
-        CompanySummaryDto company,
-        LocalDateTime createdDate,
-        boolean enabled
-) {
-    public static SurgeryDto from(Surgery surgery) {
-        return new SurgeryDto(
-            surgery.getId(),
-            surgery.getDate(),
-            SurgeryTypeSummaryDto.from(surgery.getSurgeryType()),
-            surgery.getDescription(),
-            surgery.getMedicament(),
-            surgery.getObservations(),
-            surgery.getComplications(),
-            surgery.getStatus().name(),
-            AnimalSummaryDto.from(surgery.getAnimal()),
-            surgery.getConsultation() == null ? null : ConsultationSummaryDto.from(surgery.getConsultation()),
-            CompanySummaryDto.from(surgery.getCompany()),
-            surgery.getCreatedDate(),
-            surgery.isEnabled()
-        );
-    }
+    Long id,
+    LocalDate date,
+    SurgeryTypeSummaryDto surgeryType,
+    String description,
+    String medicament,
+    String observations,
+    String complications,
+    String status,
+    AnimalSummaryDto animal,
+    ConsultationSummaryDto consultation,
+    CompanySummaryDto company,
+    LocalDateTime createdDate,
+    boolean enabled) {
+  public static SurgeryDto from(Surgery surgery) {
+    return new SurgeryDto(
+        surgery.getId(),
+        surgery.getDate(),
+        SurgeryTypeSummaryDto.from(surgery.getSurgeryType()),
+        surgery.getDescription(),
+        surgery.getMedicament(),
+        surgery.getObservations(),
+        surgery.getComplications(),
+        surgery.getStatus().name(),
+        AnimalSummaryDto.from(surgery.getAnimal()),
+        surgery.getConsultation() == null
+            ? null
+            : ConsultationSummaryDto.from(surgery.getConsultation()),
+        CompanySummaryDto.from(surgery.getCompany()),
+        surgery.getCreatedDate(),
+        surgery.isEnabled());
+  }
 }

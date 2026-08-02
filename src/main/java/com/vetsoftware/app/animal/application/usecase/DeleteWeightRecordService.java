@@ -9,16 +9,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "weight.record.delete")
 @Service
 public class DeleteWeightRecordService implements DeleteWeightRecordUseCase {
-    private final WeightRecordRepository repository;
+  private final WeightRecordRepository repository;
 
-    public DeleteWeightRecordService(WeightRecordRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteWeightRecordService(WeightRecordRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public void execute(Long id, Long animalId, Long companyId) {
-        repository.findByIdAndAnimalIdAndCompanyId(id, animalId, companyId)
-            .orElseThrow(() -> new WeightRecordNotFoundException(id));
-        repository.delete(id, companyId);
-    }
+  @Override
+  public void execute(Long id, Long animalId, Long companyId) {
+    repository
+        .findByIdAndAnimalIdAndCompanyId(id, animalId, companyId)
+        .orElseThrow(() -> new WeightRecordNotFoundException(id));
+    repository.delete(id, companyId);
+  }
 }

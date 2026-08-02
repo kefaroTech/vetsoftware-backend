@@ -11,43 +11,84 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLDelete(sql = "UPDATE medicaments SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class MedicamentJpaEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false, length = 200, unique = true)
-    private String name;
+  @Column(nullable = false, length = 200, unique = true)
+  private String name;
 
-    @Column(length = 500)
-    private String description;
+  @Column(length = 500)
+  private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id")
-    private CompanyJpaEntity company;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id")
+  private CompanyJpaEntity company;
 
-    @Column(nullable = false)
-    private Boolean general;
+  @Column(nullable = false)
+  private Boolean general;
 
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
+  @Column(name = "created_date", nullable = false)
+  private LocalDateTime createdDate;
 
-    @Column(name = "enabled", nullable = false)
-    private boolean enabled = true;
+  @Column(name = "enabled", nullable = false)
+  private boolean enabled = true;
 
-    protected MedicamentJpaEntity() {}
+  protected MedicamentJpaEntity() {}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public Boolean getGeneral() { return general; }
-    public void setGeneral(Boolean general) { this.general = general; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public CompanyJpaEntity getCompany() {
+    return company;
+  }
+
+  public void setCompany(CompanyJpaEntity company) {
+    this.company = company;
+  }
+
+  public Boolean getGeneral() {
+    return general;
+  }
+
+  public void setGeneral(Boolean general) {
+    this.general = general;
+  }
+
+  public LocalDateTime getCreatedDate() {
+    return createdDate;
+  }
+
+  public void setCreatedDate(LocalDateTime createdDate) {
+    this.createdDate = createdDate;
+  }
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
 }

@@ -4,5 +4,5 @@ import com.vetsoftware.app.basepermission.domain.SubModuleRef;
 import java.util.Optional;
 
 public interface SubModuleQueryPort {
-    Optional<SubModuleRef> findById(Long subModuleId);
+  Optional<SubModuleRef> findById(Long subModuleId);
 }

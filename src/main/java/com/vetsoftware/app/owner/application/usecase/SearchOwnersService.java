@@ -10,15 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "owner.search")
 @Service
 public class SearchOwnersService implements SearchOwnersUseCase {
-    private final OwnerRepository repository;
+  private final OwnerRepository repository;
 
-    public SearchOwnersService(OwnerRepository repository) {
-        this.repository = repository;
-    }
+  public SearchOwnersService(OwnerRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<OwnerDto> search(Long companyId, String query) {
-        return repository.searchByCompanyAndTerm(companyId, query)
-            .stream().map(OwnerDto::from).toList();
-    }
+  @Override
+  public List<OwnerDto> search(Long companyId, String query) {
+    return repository.searchByCompanyAndTerm(companyId, query).stream()
+        .map(OwnerDto::from)
+        .toList();
+  }
 }

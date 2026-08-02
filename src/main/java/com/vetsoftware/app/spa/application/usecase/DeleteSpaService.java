@@ -10,17 +10,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "spa.delete")
 @Service
 public class DeleteSpaService implements DeleteSpaUseCase {
-    private final SpaRepository repository;
+  private final SpaRepository repository;
 
-    public DeleteSpaService(SpaRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteSpaService(SpaRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
-            .orElseThrow(() -> new SpaNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
+        .orElseThrow(() -> new SpaNotFoundException(id));
+    repository.delete(id);
+  }
 }

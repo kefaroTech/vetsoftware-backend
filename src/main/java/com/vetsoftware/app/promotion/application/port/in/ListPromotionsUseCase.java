@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListPromotionsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or @authz.isMyCompany(#companyId)")
-    List<PromotionDto> listByCompany(Long companyId);
+  @PreAuthorize("hasRole('SYSTEM') or @authz.isMyCompany(#companyId)")
+  List<PromotionDto> listByCompany(Long companyId);
 }

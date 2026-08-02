@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateStateRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotNull Long countryId,
-        @Size(max = 2) String daneCode
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @NotNull Long countryId,
+    @Size(max = 2) String daneCode) {}

@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "animal.color.delete")
 @Service
 public class DeleteAnimalColorService implements DeleteAnimalColorUseCase {
-    private final AnimalColorRepository repository;
-    private final AnimalChildrenQueryPort animalChildrenQueryPort;
+  private final AnimalColorRepository repository;
+  private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteAnimalColorService(
-            AnimalColorRepository repository,
-            AnimalChildrenQueryPort animalChildrenQueryPort) {
-        this.repository = repository;
-        this.animalChildrenQueryPort = animalChildrenQueryPort;
-    }
+  public DeleteAnimalColorService(
+      AnimalColorRepository repository, AnimalChildrenQueryPort animalChildrenQueryPort) {
+    this.repository = repository;
+    this.animalChildrenQueryPort = animalChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id));
-        if (animalChildrenQueryPort.existsActiveByAnimalColorId(id)) {
-            throw new AnimalColorHasActiveChildrenException(id, "animal");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id));
+    if (animalChildrenQueryPort.existsActiveByAnimalColorId(id)) {
+      throw new AnimalColorHasActiveChildrenException(id, "animal");
     }
+    repository.delete(id);
+  }
 }

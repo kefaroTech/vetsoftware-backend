@@ -12,24 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "service.category.delete")
 @Service
 public class DeleteServiceCategoryService implements DeleteServiceCategoryUseCase {
-    private final ServiceCategoryRepository repository;
-    private final ServiceChildrenQueryPort serviceChildrenQueryPort;
+  private final ServiceCategoryRepository repository;
+  private final ServiceChildrenQueryPort serviceChildrenQueryPort;
 
-    public DeleteServiceCategoryService(
-            ServiceCategoryRepository repository,
-            ServiceChildrenQueryPort serviceChildrenQueryPort) {
-        this.repository = repository;
-        this.serviceChildrenQueryPort = serviceChildrenQueryPort;
-    }
+  public DeleteServiceCategoryService(
+      ServiceCategoryRepository repository, ServiceChildrenQueryPort serviceChildrenQueryPort) {
+    this.repository = repository;
+    this.serviceChildrenQueryPort = serviceChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new ServiceCategoryNotFoundException(id));
-        if (serviceChildrenQueryPort.existsActiveByServiceCategoryId(id)) {
-            throw new ServiceCategoryHasActiveChildrenException(id, "service");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new ServiceCategoryNotFoundException(id));
+    if (serviceChildrenQueryPort.existsActiveByServiceCategoryId(id)) {
+      throw new ServiceCategoryHasActiveChildrenException(id, "service");
     }
+    repository.delete(id);
+  }
 }

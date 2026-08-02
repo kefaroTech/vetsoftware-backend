@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaRolePermissionChildrenCascadePort implements RolePermissionChildrenCascadePort {
-    private final RolePermissionJpaRepository jpaRepository;
+  private final RolePermissionJpaRepository jpaRepository;
 
-    public JpaRolePermissionChildrenCascadePort(RolePermissionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaRolePermissionChildrenCascadePort(RolePermissionJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public int deactivateAllByRoleId(Long roleId) {
-        return jpaRepository.disableAllByRoleId(roleId);
-    }
+  @Override
+  public int deactivateAllByRoleId(Long roleId) {
+    return jpaRepository.disableAllByRoleId(roleId);
+  }
 }

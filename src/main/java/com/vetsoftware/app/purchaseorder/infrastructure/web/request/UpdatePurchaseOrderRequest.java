@@ -8,11 +8,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record UpdatePurchaseOrderRequest(
-        @NotNull Long branchId,
-        @NotNull Long supplierId,
-        @NotNull LocalDate orderDate,
-        LocalDate expectedDate,
-        @Size(max = 500) String notes,
-        @NotEmpty @Valid List<PurchaseOrderLineRequest> lines,
-        @NotNull Long version
-) {}
+    @NotNull Long branchId,
+    @NotNull Long supplierId,
+    @NotNull LocalDate orderDate,
+    LocalDate expectedDate,
+    @Size(max = 500) String notes,
+    @NotEmpty @Valid List<PurchaseOrderLineRequest> lines,
+    @NotNull Long version) {}

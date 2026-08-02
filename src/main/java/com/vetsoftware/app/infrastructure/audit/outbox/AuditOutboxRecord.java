@@ -5,11 +5,11 @@ package com.vetsoftware.app.infrastructure.audit.outbox;
  * el evento hasta el archivo inmutable.
  */
 record AuditOutboxRecord(
-        long id,
-        String eventId,
-        String payload,
-        int attempts,
-        long chainSequence,
-        String previousHash,
-        String payloadHash,
-        String chainHash) {}
+    long id,
+    String eventId,
+    String payload,
+    int attempts,
+    long chainSequence,
+    String previousHash,
+    String payloadHash,
+    String chainHash) {}

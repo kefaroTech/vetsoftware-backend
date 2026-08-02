@@ -11,20 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "open.account.delete")
 @Service
 public class DeleteOpenAccountService implements DeleteOpenAccountUseCase {
-    private final OpenAccountRepository repository;
+  private final OpenAccountRepository repository;
 
-    public DeleteOpenAccountService(OpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteOpenAccountService(OpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        OpenAccount openAccount = repository.findById(id)
-            .orElseThrow(() -> new OpenAccountNotFoundException(id));
-        if (!openAccount.getCompany().id().equals(companyId)) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    OpenAccount openAccount =
+        repository.findById(id).orElseThrow(() -> new OpenAccountNotFoundException(id));
+    if (!openAccount.getCompany().id().equals(companyId)) {
+      throw new IllegalArgumentException("open account does not belong to company");
     }
+    repository.delete(id);
+  }
 }

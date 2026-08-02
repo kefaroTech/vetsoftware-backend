@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "economic.activity.find")
 @Service
 public class FindEconomicActivityService implements FindEconomicActivityUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public FindEconomicActivityService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public FindEconomicActivityService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public EconomicActivityDto findById(Long id) {
-        return EconomicActivityDto.from(repository.findById(id)
-                .orElseThrow(() -> new EconomicActivityNotFoundException(id)));
-    }
+  @Override
+  public EconomicActivityDto findById(Long id) {
+    return EconomicActivityDto.from(
+        repository.findById(id).orElseThrow(() -> new EconomicActivityNotFoundException(id)));
+  }
 }

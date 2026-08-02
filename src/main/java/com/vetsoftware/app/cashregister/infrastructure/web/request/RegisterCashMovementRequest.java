@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 /** Movimiento manual de caja: solo MANUAL_IN/WITHDRAWAL/EXPENSE (el service rechaza los demás). */
 public record RegisterCashMovementRequest(
-        @NotNull CashMovementType type,
-        @NotNull CashPaymentMethod method,
-        @NotNull @Positive BigDecimal amount,
-        String note) {}
+    @NotNull CashMovementType type,
+    @NotNull CashPaymentMethod method,
+    @NotNull @Positive BigDecimal amount,
+    String note) {}

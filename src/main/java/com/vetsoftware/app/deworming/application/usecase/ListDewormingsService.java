@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "deworming.list")
 @Service
 public class ListDewormingsService implements ListDewormingsUseCase {
-    private final DewormingRepository repository;
+  private final DewormingRepository repository;
 
-    public ListDewormingsService(DewormingRepository repository) {
-        this.repository = repository;
-    }
+  public ListDewormingsService(DewormingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<DewormingDto> listAll() {
-        return repository.findAll().stream().map(DewormingDto::from).toList();
-    }
+  @Override
+  public List<DewormingDto> listAll() {
+    return repository.findAll().stream().map(DewormingDto::from).toList();
+  }
 }

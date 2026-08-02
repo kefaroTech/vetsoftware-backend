@@ -7,32 +7,32 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SurgeryTypeJpaMapper {
-    public SurgeryTypeJpaEntity toJpa(SurgeryType surgeryType, CompanyJpaEntity company) {
-        SurgeryTypeJpaEntity entity = new SurgeryTypeJpaEntity();
-        entity.setId(surgeryType.getId());
-        entity.setName(surgeryType.getName());
-        entity.setDescription(surgeryType.getDescription());
-        entity.setCompany(company);
-        entity.setGeneral(surgeryType.isGeneral());
-        entity.setCreatedDate(surgeryType.getCreatedDate());
-        entity.setEnabled(surgeryType.isEnabled());
-        return entity;
-    }
+  public SurgeryTypeJpaEntity toJpa(SurgeryType surgeryType, CompanyJpaEntity company) {
+    SurgeryTypeJpaEntity entity = new SurgeryTypeJpaEntity();
+    entity.setId(surgeryType.getId());
+    entity.setName(surgeryType.getName());
+    entity.setDescription(surgeryType.getDescription());
+    entity.setCompany(company);
+    entity.setGeneral(surgeryType.isGeneral());
+    entity.setCreatedDate(surgeryType.getCreatedDate());
+    entity.setEnabled(surgeryType.isEnabled());
+    return entity;
+  }
 
-    public SurgeryType toDomain(SurgeryTypeJpaEntity entity) {
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-                c == null ? null : new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public SurgeryType toDomain(SurgeryTypeJpaEntity entity) {
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(
+        entity, c == null ? null : new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public SurgeryType toDomain(SurgeryTypeJpaEntity entity, CompanyRef companyRef) {
-        return new SurgeryType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                companyRef,
-                Boolean.TRUE.equals(entity.getGeneral()),
-                entity.getCreatedDate(),
-                entity.isEnabled());
-    }
+  public SurgeryType toDomain(SurgeryTypeJpaEntity entity, CompanyRef companyRef) {
+    return new SurgeryType(
+        entity.getId(),
+        entity.getName(),
+        entity.getDescription(),
+        companyRef,
+        Boolean.TRUE.equals(entity.getGeneral()),
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

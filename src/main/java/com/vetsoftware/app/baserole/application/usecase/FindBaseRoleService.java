@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "base.role.find")
 @Service
 public class FindBaseRoleService implements FindBaseRoleUseCase {
-    private final BaseRoleRepository repository;
+  private final BaseRoleRepository repository;
 
-    public FindBaseRoleService(BaseRoleRepository repository) {
-        this.repository = repository;
-    }
+  public FindBaseRoleService(BaseRoleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public BaseRoleDto findById(Long id) {
-        return repository.findById(id)
-            .map(BaseRoleDto::from)
-            .orElseThrow(() -> new BaseRoleNotFoundException(id));
-    }
+  @Override
+  public BaseRoleDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(BaseRoleDto::from)
+        .orElseThrow(() -> new BaseRoleNotFoundException(id));
+  }
 }

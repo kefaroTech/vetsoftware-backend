@@ -8,21 +8,23 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaMedicamentQueryPort implements MedicamentQueryPort {
-    private final MedicamentJpaRepository medicamentJpaRepository;
+  private final MedicamentJpaRepository medicamentJpaRepository;
 
-    public JpaMedicamentQueryPort(MedicamentJpaRepository medicamentJpaRepository) {
-        this.medicamentJpaRepository = medicamentJpaRepository;
-    }
+  public JpaMedicamentQueryPort(MedicamentJpaRepository medicamentJpaRepository) {
+    this.medicamentJpaRepository = medicamentJpaRepository;
+  }
 
-    @Override
-    public Optional<MedicamentRef> findById(Long medicamentId) {
-        return medicamentJpaRepository.findById(medicamentId)
-                .map(e -> new MedicamentRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<MedicamentRef> findById(Long medicamentId) {
+    return medicamentJpaRepository
+        .findById(medicamentId)
+        .map(e -> new MedicamentRef(e.getId(), e.getName()));
+  }
 
-    @Override
-    public Optional<MedicamentRef> findAvailableById(Long medicamentId, Long companyId) {
-        return medicamentJpaRepository.findAvailableById(medicamentId, companyId)
-            .map(e -> new MedicamentRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<MedicamentRef> findAvailableById(Long medicamentId, Long companyId) {
+    return medicamentJpaRepository
+        .findAvailableById(medicamentId, companyId)
+        .map(e -> new MedicamentRef(e.getId(), e.getName()));
+  }
 }

@@ -12,18 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.invoice.cancel")
 @Service
 public class CancelSupplierInvoiceService implements CancelSupplierInvoiceUseCase {
-    private final SupplierInvoiceRepository repository;
+  private final SupplierInvoiceRepository repository;
 
-    public CancelSupplierInvoiceService(SupplierInvoiceRepository repository) {
-        this.repository = repository;
-    }
+  public CancelSupplierInvoiceService(SupplierInvoiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SupplierInvoiceDto execute(Long id, Long companyId, Long actorId) {
-        SupplierInvoice invoice = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public SupplierInvoiceDto execute(Long id, Long companyId, Long actorId) {
+    SupplierInvoice invoice =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
-        invoice.cancel(actorId, invoice.getVersion());
-        return SupplierInvoiceDto.from(repository.save(invoice));
-    }
+    invoice.cancel(actorId, invoice.getVersion());
+    return SupplierInvoiceDto.from(repository.save(invoice));
+  }
 }

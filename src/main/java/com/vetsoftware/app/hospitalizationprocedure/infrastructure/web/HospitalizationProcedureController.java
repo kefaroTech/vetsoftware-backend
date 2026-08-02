@@ -27,91 +27,126 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/hospitalization-procedures")
 public class HospitalizationProcedureController {
-    private final CreateHospitalizationProcedureUseCase createUseCase;
-    private final UpdateHospitalizationProcedureUseCase updateUseCase;
-    private final FindHospitalizationProcedureUseCase findUseCase;
-    private final ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase;
-    private final DeleteHospitalizationProcedureUseCase deleteUseCase;
-    private final ReactivateHospitalizationProcedureUseCase reactivateUseCase;
-    private final SuspendHospitalizationProcedureUseCase suspendUseCase;
-    private final Authz authz;
+  private final CreateHospitalizationProcedureUseCase createUseCase;
+  private final UpdateHospitalizationProcedureUseCase updateUseCase;
+  private final FindHospitalizationProcedureUseCase findUseCase;
+  private final ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase;
+  private final DeleteHospitalizationProcedureUseCase deleteUseCase;
+  private final ReactivateHospitalizationProcedureUseCase reactivateUseCase;
+  private final SuspendHospitalizationProcedureUseCase suspendUseCase;
+  private final Authz authz;
 
-    public HospitalizationProcedureController(CreateHospitalizationProcedureUseCase createUseCase,
-                                              UpdateHospitalizationProcedureUseCase updateUseCase,
-                                              FindHospitalizationProcedureUseCase findUseCase,
-                                              ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase,
-                                              DeleteHospitalizationProcedureUseCase deleteUseCase,
-                                              ReactivateHospitalizationProcedureUseCase reactivateUseCase,
-                                              SuspendHospitalizationProcedureUseCase suspendUseCase,
-                                              Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listByHospitalizationUseCase = listByHospitalizationUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.suspendUseCase = suspendUseCase;
-        this.authz = authz;
-    }
+  public HospitalizationProcedureController(
+      CreateHospitalizationProcedureUseCase createUseCase,
+      UpdateHospitalizationProcedureUseCase updateUseCase,
+      FindHospitalizationProcedureUseCase findUseCase,
+      ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase,
+      DeleteHospitalizationProcedureUseCase deleteUseCase,
+      ReactivateHospitalizationProcedureUseCase reactivateUseCase,
+      SuspendHospitalizationProcedureUseCase suspendUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listByHospitalizationUseCase = listByHospitalizationUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.suspendUseCase = suspendUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationProcedureResponse create(@Valid @RequestBody CreateHospitalizationProcedureRequest request) {
-        return toResponse(createUseCase.execute(new CreateHospitalizationProcedureCommand(
-            request.name(), request.dose(), request.frequency(), request.guidelineType(),
-            request.durationMeasure(), request.durationQuantity(), request.startDate(),
-            request.startTime(), request.notes(), request.hospitalizationId(), authz.currentEmployeeId())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public HospitalizationProcedureResponse create(
+      @Valid @RequestBody CreateHospitalizationProcedureRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateHospitalizationProcedureCommand(
+                request.name(),
+                request.dose(),
+                request.frequency(),
+                request.guidelineType(),
+                request.durationMeasure(),
+                request.durationQuantity(),
+                request.startDate(),
+                request.startTime(),
+                request.notes(),
+                request.hospitalizationId(),
+                authz.currentEmployeeId())));
+  }
 
-    @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationProcedureResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
-    }
+  @GetMapping("/by-hospitalization/{hospitalizationId}")
+  public List<HospitalizationProcedureResponse> listByHospitalization(
+      @PathVariable Long hospitalizationId) {
+    return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public HospitalizationProcedureResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public HospitalizationProcedureResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public HospitalizationProcedureResponse update(@PathVariable Long id,
-                                                   @Valid @RequestBody UpdateHospitalizationProcedureRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateHospitalizationProcedureCommand(
-            id, request.name(), request.dose(), request.frequency(), request.guidelineType(),
-            request.durationMeasure(), request.durationQuantity(), request.startDate(),
-            request.startTime(), request.notes())));
-    }
+  @PutMapping("/{id}")
+  public HospitalizationProcedureResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateHospitalizationProcedureRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateHospitalizationProcedureCommand(
+                id,
+                request.name(),
+                request.dose(),
+                request.frequency(),
+                request.guidelineType(),
+                request.durationMeasure(),
+                request.durationQuantity(),
+                request.startDate(),
+                request.startTime(),
+                request.notes())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public HospitalizationProcedureResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public HospitalizationProcedureResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    /** Suspende la orden (registra quién/cuándo). El plan de ejecuciones pendientes se limpia aparte. */
-    @PatchMapping("/{id}/suspend")
-    public HospitalizationProcedureResponse suspend(@PathVariable Long id) {
-        return toResponse(suspendUseCase.execute(
+  /**
+   * Suspende la orden (registra quién/cuándo). El plan de ejecuciones pendientes se limpia aparte.
+   */
+  @PatchMapping("/{id}/suspend")
+  public HospitalizationProcedureResponse suspend(@PathVariable Long id) {
+    return toResponse(
+        suspendUseCase.execute(
             new SuspendHospitalizationProcedureCommand(id, authz.currentEmployeeId())));
-    }
+  }
 
-    private HospitalizationProcedureResponse toResponse(HospitalizationProcedureDto dto) {
-        HospitalizationSummaryDto h = dto.hospitalization();
-        EmployeeSummaryDto c = dto.createdBy();
-        EmployeeSummaryDto s = dto.suspensionBy();
-        return new HospitalizationProcedureResponse(
-            dto.id(), dto.name(), dto.dose(), dto.frequency(), dto.guidelineType(),
-            dto.durationMeasure(), dto.durationQuantity(), dto.startDate(), dto.startTime(), dto.notes(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled(),
-            dto.suspensionDate(),
-            s == null ? null : new EmployeeSummary(s.id(), s.employeeCode(), s.name()));
-    }
+  private HospitalizationProcedureResponse toResponse(HospitalizationProcedureDto dto) {
+    HospitalizationSummaryDto h = dto.hospitalization();
+    EmployeeSummaryDto c = dto.createdBy();
+    EmployeeSummaryDto s = dto.suspensionBy();
+    return new HospitalizationProcedureResponse(
+        dto.id(),
+        dto.name(),
+        dto.dose(),
+        dto.frequency(),
+        dto.guidelineType(),
+        dto.durationMeasure(),
+        dto.durationQuantity(),
+        dto.startDate(),
+        dto.startTime(),
+        dto.notes(),
+        new HospitalizationSummary(h.id(), h.date()),
+        new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
+        dto.createdDate(),
+        dto.enabled(),
+        dto.suspensionDate(),
+        s == null ? null : new EmployeeSummary(s.id(), s.employeeCode(), s.name()));
+  }
 }

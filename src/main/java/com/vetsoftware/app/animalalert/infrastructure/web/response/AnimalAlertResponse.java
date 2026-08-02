@@ -5,12 +5,11 @@ import com.vetsoftware.app.animalalert.domain.AlertType;
 import java.time.LocalDateTime;
 
 public record AnimalAlertResponse(
-        Long id,
-        Long animalId,
-        String animalName,
-        AlertType type,
-        String description,
-        AlertSeverity severity,
-        LocalDateTime createdDate,
-        boolean enabled
-) {}
+    Long id,
+    Long animalId,
+    String animalName,
+    AlertType type,
+    String description,
+    AlertSeverity severity,
+    LocalDateTime createdDate,
+    boolean enabled) {}

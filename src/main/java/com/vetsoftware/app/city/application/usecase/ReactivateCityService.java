@@ -11,17 +11,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "city.reactivate")
 @Service
 public class ReactivateCityService implements ReactivateCityUseCase {
-    private final CityRepository repository;
+  private final CityRepository repository;
 
-    public ReactivateCityService(CityRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateCityService(CityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public CityDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new CityNotFoundException(id);
-        return CityDto.from(repository.findById(id).orElseThrow(() -> new CityNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public CityDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new CityNotFoundException(id);
+    return CityDto.from(repository.findById(id).orElseThrow(() -> new CityNotFoundException(id)));
+  }
 }

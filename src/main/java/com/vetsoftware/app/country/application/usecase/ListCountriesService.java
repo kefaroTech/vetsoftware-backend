@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "country.list")
 @Service
 public class ListCountriesService implements ListCountriesUseCase {
-    private final CountryRepository repository;
+  private final CountryRepository repository;
 
-    public ListCountriesService(CountryRepository repository) {
-        this.repository = repository;
-    }
+  public ListCountriesService(CountryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<CountryDto> listAll() {
-        return repository.findAll().stream().map(CountryDto::from).toList();
-    }
+  @Override
+  public List<CountryDto> listAll() {
+    return repository.findAll().stream().map(CountryDto::from).toList();
+  }
 }

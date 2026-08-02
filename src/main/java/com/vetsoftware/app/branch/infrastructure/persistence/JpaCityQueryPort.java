@@ -8,15 +8,14 @@ import org.springframework.stereotype.Component;
 
 @Component("branchJpaCityQueryPort")
 public class JpaCityQueryPort implements CityQueryPort {
-    private final CityJpaRepository cityJpaRepository;
+  private final CityJpaRepository cityJpaRepository;
 
-    public JpaCityQueryPort(CityJpaRepository cityJpaRepository) {
-        this.cityJpaRepository = cityJpaRepository;
-    }
+  public JpaCityQueryPort(CityJpaRepository cityJpaRepository) {
+    this.cityJpaRepository = cityJpaRepository;
+  }
 
-    @Override
-    public Optional<CityRef> findById(Long cityId) {
-        return cityJpaRepository.findById(cityId)
-            .map(e -> new CityRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<CityRef> findById(Long cityId) {
+    return cityJpaRepository.findById(cityId).map(e -> new CityRef(e.getId(), e.getName()));
+  }
 }

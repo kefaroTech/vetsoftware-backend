@@ -8,15 +8,14 @@ import org.springframework.stereotype.Component;
 
 @Component("animalJpaBreedQueryPort")
 public class JpaBreedQueryPort implements BreedQueryPort {
-    private final BreedJpaRepository breedJpaRepository;
+  private final BreedJpaRepository breedJpaRepository;
 
-    public JpaBreedQueryPort(BreedJpaRepository breedJpaRepository) {
-        this.breedJpaRepository = breedJpaRepository;
-    }
+  public JpaBreedQueryPort(BreedJpaRepository breedJpaRepository) {
+    this.breedJpaRepository = breedJpaRepository;
+  }
 
-    @Override
-    public Optional<BreedRef> findById(Long breedId) {
-        return breedJpaRepository.findById(breedId)
-            .map(e -> new BreedRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<BreedRef> findById(Long breedId) {
+    return breedJpaRepository.findById(breedId).map(e -> new BreedRef(e.getId(), e.getName()));
+  }
 }

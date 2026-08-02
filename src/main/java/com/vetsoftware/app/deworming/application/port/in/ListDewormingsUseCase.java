@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDewormingsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('deworming.read')")
-    List<DewormingDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('deworming.read')")
+  List<DewormingDto> listAll();
 }

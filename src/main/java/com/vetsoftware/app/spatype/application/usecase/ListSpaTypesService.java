@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "spa.type.list")
 @Service
 public class ListSpaTypesService implements ListSpaTypesUseCase {
-    private final SpaTypeRepository repository;
+  private final SpaTypeRepository repository;
 
-    public ListSpaTypesService(SpaTypeRepository repository) {
-        this.repository = repository;
-    }
+  public ListSpaTypesService(SpaTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SpaTypeDto> listAll() {
-        return repository.findAll().stream().map(SpaTypeDto::from).toList();
-    }
+  @Override
+  public List<SpaTypeDto> listAll() {
+    return repository.findAll().stream().map(SpaTypeDto::from).toList();
+  }
 }

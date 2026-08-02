@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "owner.list")
 @Service
 public class ListOwnersService implements ListOwnersUseCase {
-    private final OwnerRepository repository;
+  private final OwnerRepository repository;
 
-    public ListOwnersService(OwnerRepository repository) {
-        this.repository = repository;
-    }
+  public ListOwnersService(OwnerRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<OwnerDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(OwnerDto::from).toList();
-    }
+  @Override
+  public List<OwnerDto> listAll(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(OwnerDto::from).toList();
+  }
 }

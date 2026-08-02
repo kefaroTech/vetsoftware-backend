@@ -13,20 +13,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medicament.update")
 @Service
 public class UpdateMedicamentService implements UpdateMedicamentUseCase {
-    private final MedicamentRepository repository;
+  private final MedicamentRepository repository;
 
-    public UpdateMedicamentService(MedicamentRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateMedicamentService(MedicamentRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public MedicamentDto execute(UpdateMedicamentCommand command) {
-        Medicament medicament = repository.findById(command.id())
-                .orElseThrow(() -> new MedicamentNotFoundException(command.id()));
-        // Solo nombre/descripción; se conserva el scope (general/empresa) del medicamento.
-        medicament.update(command.name(), command.description(),
-                medicament.getCompany(), medicament.isGeneral());
-        return MedicamentDto.from(repository.save(medicament));
-    }
+  @Override
+  @Transactional
+  public MedicamentDto execute(UpdateMedicamentCommand command) {
+    Medicament medicament =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new MedicamentNotFoundException(command.id()));
+    // Solo nombre/descripción; se conserva el scope (general/empresa) del medicamento.
+    medicament.update(
+        command.name(), command.description(), medicament.getCompany(), medicament.isGeneral());
+    return MedicamentDto.from(repository.save(medicament));
+  }
 }

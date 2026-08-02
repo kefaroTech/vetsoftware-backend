@@ -12,22 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "open.account.reactivate")
 @Service
 public class ReactivateOpenAccountService implements ReactivateOpenAccountUseCase {
-    private final OpenAccountRepository repository;
+  private final OpenAccountRepository repository;
 
-    public ReactivateOpenAccountService(OpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateOpenAccountService(OpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public OpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new OpenAccountNotFoundException(id);
-        OpenAccount openAccount = repository.findById(id)
-            .orElseThrow(() -> new OpenAccountNotFoundException(id));
-        if (!openAccount.getCompany().id().equals(companyId)) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
-        return OpenAccountDto.from(openAccount);
+  @Override
+  @Transactional
+  public OpenAccountDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new OpenAccountNotFoundException(id);
+    OpenAccount openAccount =
+        repository.findById(id).orElseThrow(() -> new OpenAccountNotFoundException(id));
+    if (!openAccount.getCompany().id().equals(companyId)) {
+      throw new IllegalArgumentException("open account does not belong to company");
     }
+    return OpenAccountDto.from(openAccount);
+  }
 }

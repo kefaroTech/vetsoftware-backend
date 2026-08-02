@@ -11,15 +11,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "problem.list.by.animal")
 @Service
 public class ListProblemsByAnimalService implements ListProblemsByAnimalUseCase {
-    private final ProblemRepository repository;
+  private final ProblemRepository repository;
 
-    public ListProblemsByAnimalService(ProblemRepository repository) {
-        this.repository = repository;
-    }
+  public ListProblemsByAnimalService(ProblemRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ProblemDto> execute(ListProblemsByAnimalQuery query) {
-        return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId())
-            .stream().map(ProblemDto::from).toList();
-    }
+  @Override
+  public List<ProblemDto> execute(ListProblemsByAnimalQuery query) {
+    return repository.findByAnimalIdAndCompanyId(query.animalId(), query.companyId()).stream()
+        .map(ProblemDto::from)
+        .toList();
+  }
 }

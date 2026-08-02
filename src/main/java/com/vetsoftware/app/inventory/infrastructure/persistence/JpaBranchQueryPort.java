@@ -8,17 +8,18 @@ import org.springframework.stereotype.Component;
 @Component("inventoryBranchQueryPort")
 public class JpaBranchQueryPort implements BranchQueryPort {
 
-    private final BranchJpaRepository branchJpaRepository;
+  private final BranchJpaRepository branchJpaRepository;
 
-    public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
-        this.branchJpaRepository = branchJpaRepository;
-    }
+  public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
+    this.branchJpaRepository = branchJpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveInCompany(Long branchId, Long companyId) {
-        if (branchId == null || companyId == null) return false;
-        return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
-            .filter(BranchJpaEntity::isActive)
-            .isPresent();
-    }
+  @Override
+  public boolean existsActiveInCompany(Long branchId, Long companyId) {
+    if (branchId == null || companyId == null) return false;
+    return branchJpaRepository
+        .findByIdAndCompanyId(branchId, companyId)
+        .filter(BranchJpaEntity::isActive)
+        .isPresent();
+  }
 }

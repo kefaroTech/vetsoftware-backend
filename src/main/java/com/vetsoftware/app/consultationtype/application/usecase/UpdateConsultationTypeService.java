@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "consultation.type.update")
 @Service
 public class UpdateConsultationTypeService implements UpdateConsultationTypeUseCase {
-    private final ConsultationTypeRepository repository;
+  private final ConsultationTypeRepository repository;
 
-    public UpdateConsultationTypeService(ConsultationTypeRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateConsultationTypeService(ConsultationTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public ConsultationTypeDto execute(UpdateConsultationTypeCommand command) {
-        ConsultationType consultationType = repository.findById(command.id())
-                .orElseThrow(() -> new ConsultationTypeNotFoundException(command.id()));
-        consultationType.update(command.name(), command.description());
-        return ConsultationTypeDto.from(repository.save(consultationType));
-    }
+  @Override
+  @Transactional
+  public ConsultationTypeDto execute(UpdateConsultationTypeCommand command) {
+    ConsultationType consultationType =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new ConsultationTypeNotFoundException(command.id()));
+    consultationType.update(command.name(), command.description());
+    return ConsultationTypeDto.from(repository.save(consultationType));
+  }
 }

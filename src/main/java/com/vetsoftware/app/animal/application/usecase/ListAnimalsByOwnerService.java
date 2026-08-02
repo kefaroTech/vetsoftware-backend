@@ -10,15 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "animal.list.by.owner")
 @Service
 public class ListAnimalsByOwnerService implements ListAnimalsByOwnerUseCase {
-    private final AnimalRepository repository;
+  private final AnimalRepository repository;
 
-    public ListAnimalsByOwnerService(AnimalRepository repository) {
-        this.repository = repository;
-    }
+  public ListAnimalsByOwnerService(AnimalRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<AnimalDto> listByOwner(Long ownerId, Long companyId) {
-        return repository.findByOwnerIdAndCompanyId(ownerId, companyId)
-            .stream().map(AnimalDto::from).toList();
-    }
+  @Override
+  public List<AnimalDto> listByOwner(Long ownerId, Long companyId) {
+    return repository.findByOwnerIdAndCompanyId(ownerId, companyId).stream()
+        .map(AnimalDto::from)
+        .toList();
+  }
 }

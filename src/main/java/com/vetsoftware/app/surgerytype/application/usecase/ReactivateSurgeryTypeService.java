@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "surgery.type.reactivate")
 @Service
 public class ReactivateSurgeryTypeService implements ReactivateSurgeryTypeUseCase {
-    private final SurgeryTypeRepository repository;
+  private final SurgeryTypeRepository repository;
 
-    public ReactivateSurgeryTypeService(SurgeryTypeRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSurgeryTypeService(SurgeryTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SurgeryTypeDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new SurgeryTypeNotFoundException(id);
-        return SurgeryTypeDto.from(repository.findById(id)
-            .orElseThrow(() -> new SurgeryTypeNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public SurgeryTypeDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new SurgeryTypeNotFoundException(id);
+    return SurgeryTypeDto.from(
+        repository.findById(id).orElseThrow(() -> new SurgeryTypeNotFoundException(id)));
+  }
 }

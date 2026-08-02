@@ -15,29 +15,42 @@ import org.springframework.stereotype.Service;
 @Observed(name = "day.care.create")
 @Service
 public class CreateDayCareService implements CreateDayCareUseCase {
-    private final DayCareRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final DayCareRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateDayCareService(DayCareRepository repository,
-                                AnimalQueryPort animalQueryPort,
-                                CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateDayCareService(
+      DayCareRepository repository,
+      AnimalQueryPort animalQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public DayCareDto execute(CreateDayCareCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+  @Override
+  public DayCareDto execute(CreateDayCareCommand command) {
+    AnimalRef animal =
+        animalQueryPort
+            .findById(command.animalId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        DayCare dayCare = DayCare.create(
-            command.date(), command.startDate(), command.endDate(),
-            command.type(), command.objects(), command.observations(),
-            animal, company);
-        return DayCareDto.from(repository.save(dayCare));
-    }
+    DayCare dayCare =
+        DayCare.create(
+            command.date(),
+            command.startDate(),
+            command.endDate(),
+            command.type(),
+            command.objects(),
+            command.observations(),
+            animal,
+            company);
+    return DayCareDto.from(repository.save(dayCare));
+  }
 }

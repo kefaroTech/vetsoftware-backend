@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "employee.update")
 @Service
 public class UpdateEmployeeService implements UpdateEmployeeUseCase {
-    private final EmployeeRepository repository;
+  private final EmployeeRepository repository;
 
-    public UpdateEmployeeService(EmployeeRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateEmployeeService(EmployeeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public EmployeeDto execute(UpdateEmployeeCommand command) {
-        Employee employee = repository.findById(command.id())
+  @Override
+  @Transactional
+  public EmployeeDto execute(UpdateEmployeeCommand command) {
+    Employee employee =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new EmployeeNotFoundException(command.id()));
-        employee.update(command.employeeCode(), command.name(), command.email());
-        return EmployeeDto.from(repository.save(employee));
-    }
+    employee.update(command.employeeCode(), command.name(), command.email());
+    return EmployeeDto.from(repository.save(employee));
+  }
 }

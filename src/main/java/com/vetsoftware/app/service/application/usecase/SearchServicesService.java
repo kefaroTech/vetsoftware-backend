@@ -10,14 +10,14 @@ import io.micrometer.observation.annotation.Observed;
 @Observed(name = "service.search")
 @org.springframework.stereotype.Service
 public class SearchServicesService implements SearchServicesUseCase {
-    private final ServiceRepository repository;
+  private final ServiceRepository repository;
 
-    public SearchServicesService(ServiceRepository repository) {
-        this.repository = repository;
-    }
+  public SearchServicesService(ServiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public PageResult<ServiceDto> execute(SearchServicesCommand command) {
-        return repository.search(command).map(ServiceDto::from);
-    }
+  @Override
+  public PageResult<ServiceDto> execute(SearchServicesCommand command) {
+    return repository.search(command).map(ServiceDto::from);
+  }
 }

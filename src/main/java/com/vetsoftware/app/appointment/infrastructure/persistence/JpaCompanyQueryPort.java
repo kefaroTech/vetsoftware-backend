@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 
 @Component("appointmentJpaCompanyQueryPort")
 public class JpaCompanyQueryPort implements CompanyQueryPort {
-    private final CompanyJpaRepository companyJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaCompanyQueryPort(CompanyJpaRepository companyJpaRepository) {
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaCompanyQueryPort(CompanyJpaRepository companyJpaRepository) {
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public Optional<String> findNameById(Long companyId) {
-        return companyJpaRepository.findById(companyId).map(e -> e.getName());
-    }
+  @Override
+  public Optional<String> findNameById(Long companyId) {
+    return companyJpaRepository.findById(companyId).map(e -> e.getName());
+  }
 }

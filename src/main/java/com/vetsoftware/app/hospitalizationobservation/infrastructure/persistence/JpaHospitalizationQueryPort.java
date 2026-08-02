@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("hospitalizationObservationJpaHospitalizationQueryPort")
 public class JpaHospitalizationQueryPort implements HospitalizationQueryPort {
-    private final HospitalizationJpaRepository hospitalizationJpaRepository;
+  private final HospitalizationJpaRepository hospitalizationJpaRepository;
 
-    public JpaHospitalizationQueryPort(HospitalizationJpaRepository hospitalizationJpaRepository) {
-        this.hospitalizationJpaRepository = hospitalizationJpaRepository;
-    }
+  public JpaHospitalizationQueryPort(HospitalizationJpaRepository hospitalizationJpaRepository) {
+    this.hospitalizationJpaRepository = hospitalizationJpaRepository;
+  }
 
-    @Override
-    public Optional<HospitalizationRef> findById(Long hospitalizationId) {
-        return hospitalizationJpaRepository.findById(hospitalizationId)
-            .map(e -> new HospitalizationRef(e.getId(), e.getDate()));
-    }
+  @Override
+  public Optional<HospitalizationRef> findById(Long hospitalizationId) {
+    return hospitalizationJpaRepository
+        .findById(hospitalizationId)
+        .map(e -> new HospitalizationRef(e.getId(), e.getDate()));
+  }
 }

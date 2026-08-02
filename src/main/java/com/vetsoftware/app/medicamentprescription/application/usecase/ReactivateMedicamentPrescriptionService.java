@@ -10,19 +10,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "medicament.prescription.reactivate")
 @Service
-public class ReactivateMedicamentPrescriptionService implements ReactivateMedicamentPrescriptionUseCase {
-    private final MedicamentPrescriptionRepository repository;
+public class ReactivateMedicamentPrescriptionService
+    implements ReactivateMedicamentPrescriptionUseCase {
+  private final MedicamentPrescriptionRepository repository;
 
-    public ReactivateMedicamentPrescriptionService(MedicamentPrescriptionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateMedicamentPrescriptionService(MedicamentPrescriptionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public MedicamentPrescriptionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new MedicamentPrescriptionNotFoundException(id);
-        return MedicamentPrescriptionDto.from(repository.findById(id)
-            .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public MedicamentPrescriptionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new MedicamentPrescriptionNotFoundException(id);
+    return MedicamentPrescriptionDto.from(
+        repository.findById(id).orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id)));
+  }
 }

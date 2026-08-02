@@ -5,6 +5,8 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CancelAppointmentUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('appointment.cancel') and @authz.isMyCompany(#command.companyId))")
-    AppointmentDto execute(CancelAppointmentCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('appointment.cancel') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  AppointmentDto execute(CancelAppointmentCommand command);
 }

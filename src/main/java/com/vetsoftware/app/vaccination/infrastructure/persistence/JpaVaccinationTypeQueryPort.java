@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("vaccinationJpaVaccinationTypeQueryPort")
 public class JpaVaccinationTypeQueryPort implements VaccinationTypeQueryPort {
-    private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
+  private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
 
-    public JpaVaccinationTypeQueryPort(VaccinationTypeJpaRepository vaccinationTypeJpaRepository) {
-        this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
-    }
+  public JpaVaccinationTypeQueryPort(VaccinationTypeJpaRepository vaccinationTypeJpaRepository) {
+    this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
+  }
 
-    @Override
-    public Optional<VaccinationTypeRef> findById(Long vaccinationTypeId) {
-        return vaccinationTypeJpaRepository.findById(vaccinationTypeId)
-            .map(e -> new VaccinationTypeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<VaccinationTypeRef> findById(Long vaccinationTypeId) {
+    return vaccinationTypeJpaRepository
+        .findById(vaccinationTypeId)
+        .map(e -> new VaccinationTypeRef(e.getId(), e.getName()));
+  }
 }

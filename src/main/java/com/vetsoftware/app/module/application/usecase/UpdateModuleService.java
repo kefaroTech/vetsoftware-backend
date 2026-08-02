@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "module.update")
 @Service
 public class UpdateModuleService implements UpdateModuleUseCase {
-    private final ModuleRepository repository;
+  private final ModuleRepository repository;
 
-    public UpdateModuleService(ModuleRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateModuleService(ModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public ModuleDto execute(UpdateModuleCommand command) {
-        Module module = repository.findById(command.id())
-                .orElseThrow(() -> new ModuleNotFoundException(command.id()));
-        module.update(command.name(), command.code());
-        return ModuleDto.from(repository.save(module));
-    }
+  @Override
+  @Transactional
+  public ModuleDto execute(UpdateModuleCommand command) {
+    Module module =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new ModuleNotFoundException(command.id()));
+    module.update(command.name(), command.code());
+    return ModuleDto.from(repository.save(module));
+  }
 }

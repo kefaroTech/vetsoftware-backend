@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "general.charge.open.account.find")
 @Service
 public class FindGeneralChargeOpenAccountService implements FindGeneralChargeOpenAccountUseCase {
-    private final GeneralChargeOpenAccountRepository repository;
+  private final GeneralChargeOpenAccountRepository repository;
 
-    public FindGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public FindGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public GeneralChargeOpenAccountDto findById(Long id, Long companyId) {
-        return GeneralChargeOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public GeneralChargeOpenAccountDto findById(Long id, Long companyId) {
+    return GeneralChargeOpenAccountDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(id)));
-    }
+  }
 }

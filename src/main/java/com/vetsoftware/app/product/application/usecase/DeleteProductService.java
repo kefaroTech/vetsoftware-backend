@@ -10,16 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "product.delete")
 @Service
 public class DeleteProductService implements DeleteProductUseCase {
-    private final ProductRepository repository;
+  private final ProductRepository repository;
 
-    public DeleteProductService(ProductRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteProductService(ProductRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new ProductNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new ProductNotFoundException(id));
+    repository.delete(id);
+  }
 }

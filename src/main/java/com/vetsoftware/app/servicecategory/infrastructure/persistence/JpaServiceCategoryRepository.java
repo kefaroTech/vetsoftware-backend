@@ -10,57 +10,60 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaServiceCategoryRepository implements ServiceCategoryRepository {
-    private final ServiceCategoryJpaRepository jpaRepository;
-    private final ServiceCategoryJpaMapper mapper;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final ServiceCategoryJpaRepository jpaRepository;
+  private final ServiceCategoryJpaMapper mapper;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaServiceCategoryRepository(ServiceCategoryJpaRepository jpaRepository,
-                                        ServiceCategoryJpaMapper mapper,
-                                        CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaServiceCategoryRepository(
+      ServiceCategoryJpaRepository jpaRepository,
+      ServiceCategoryJpaMapper mapper,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public ServiceCategory save(ServiceCategory serviceCategory) {
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(serviceCategory.getCompany().id());
-        ServiceCategoryJpaEntity saved = jpaRepository.saveAndFlush(mapper.toJpa(serviceCategory, company));
-        return mapper.toDomain(saved, serviceCategory.getCompany());
-    }
+  @Override
+  public ServiceCategory save(ServiceCategory serviceCategory) {
+    CompanyJpaEntity company =
+        companyJpaRepository.getReferenceById(serviceCategory.getCompany().id());
+    ServiceCategoryJpaEntity saved =
+        jpaRepository.saveAndFlush(mapper.toJpa(serviceCategory, company));
+    return mapper.toDomain(saved, serviceCategory.getCompany());
+  }
 
-    @Override
-    public Optional<ServiceCategory> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ServiceCategory> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<ServiceCategory> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ServiceCategory> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndName(Long companyId, String name) {
-        return jpaRepository.existsByCompany_IdAndName(companyId, name);
-    }
+  @Override
+  public boolean existsByCompanyIdAndName(Long companyId, String name) {
+    return jpaRepository.existsByCompany_IdAndName(companyId, name);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id) {
-        return jpaRepository.existsByCompany_IdAndNameAndIdNot(companyId, name, id);
-    }
+  @Override
+  public boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id) {
+    return jpaRepository.existsByCompany_IdAndNameAndIdNot(companyId, name, id);
+  }
 
-    @Override
-    public List<ServiceCategory> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<ServiceCategory> findAllByCompanyId(Long companyId) {
+    return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
+  @Override
+  public int reactivate(Long id, Long companyId) {
+    return jpaRepository.reactivate(id, companyId);
+  }
 }

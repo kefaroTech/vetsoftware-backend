@@ -7,30 +7,33 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RoleJpaRepository extends JpaRepository<RoleJpaEntity, Long> {
 
-    @Override
-    @EntityGraph(attributePaths = "company")
-    List<RoleJpaEntity> findAll();
+  @Override
+  @EntityGraph(attributePaths = "company")
+  List<RoleJpaEntity> findAll();
 
-    @Override
-    @EntityGraph(attributePaths = "company")
-    Optional<RoleJpaEntity> findById(Long id);
+  @Override
+  @EntityGraph(attributePaths = "company")
+  Optional<RoleJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = "company")
-    Optional<RoleJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+  @EntityGraph(attributePaths = "company")
+  Optional<RoleJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    @EntityGraph(attributePaths = {"company", "company.membership"})
-    List<RoleJpaEntity> findAllByCode(String code);
+  @EntityGraph(attributePaths = {"company", "company.membership"})
+  List<RoleJpaEntity> findAllByCode(String code);
 
-    @EntityGraph(attributePaths = "company")
-    List<RoleJpaEntity> findAllByCompanyId(Long companyId);
+  @EntityGraph(attributePaths = "company")
+  List<RoleJpaEntity> findAllByCompanyId(Long companyId);
 
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(
-        value = "UPDATE roles SET enabled = true WHERE id = :id AND company_id = :companyId",
-        nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-                   @org.springframework.data.repository.query.Param("companyId") Long companyId);
+  @org.springframework.data.jpa.repository.Modifying(
+      flushAutomatically = true,
+      clearAutomatically = true)
+  @org.springframework.transaction.annotation.Transactional
+  @org.springframework.data.jpa.repository.Query(
+      value = "UPDATE roles SET enabled = true WHERE id = :id AND company_id = :companyId",
+      nativeQuery = true)
+  int reactivate(
+      @org.springframework.data.repository.query.Param("id") Long id,
+      @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
-    boolean existsByCompany_Id(Long companyId);
+  boolean existsByCompany_Id(Long companyId);
 }

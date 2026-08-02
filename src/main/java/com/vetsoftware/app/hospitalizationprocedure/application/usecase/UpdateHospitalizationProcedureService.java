@@ -15,40 +15,43 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.procedure.update")
 @Service
-public class UpdateHospitalizationProcedureService implements UpdateHospitalizationProcedureUseCase {
-    private final HospitalizationProcedureRepository repository;
+public class UpdateHospitalizationProcedureService
+    implements UpdateHospitalizationProcedureUseCase {
+  private final HospitalizationProcedureRepository repository;
 
-    public UpdateHospitalizationProcedureService(HospitalizationProcedureRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateHospitalizationProcedureService(HospitalizationProcedureRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public HospitalizationProcedureDto execute(UpdateHospitalizationProcedureCommand command) {
-        HospitalizationProcedure procedure = repository.findById(command.id())
+  @Override
+  @Transactional
+  public HospitalizationProcedureDto execute(UpdateHospitalizationProcedureCommand command) {
+    HospitalizationProcedure procedure =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new HospitalizationProcedureNotFoundException(command.id()));
-        procedure.update(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes());
-        return HospitalizationProcedureDto.from(repository.save(procedure));
-    }
+    procedure.update(
+        command.name(),
+        command.dose(),
+        parseFrequency(command.frequency()),
+        parseGuidelineType(command.guidelineType()),
+        parseDurationMeasure(command.durationMeasure()),
+        command.durationQuantity(),
+        command.startDate(),
+        command.startTime(),
+        command.notes());
+    return HospitalizationProcedureDto.from(repository.save(procedure));
+  }
 
-    private Frequency parseFrequency(String s) {
-        return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
-    }
+  private Frequency parseFrequency(String s) {
+    return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
+  }
 
-    private GuidelineType parseGuidelineType(String s) {
-        return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
-    }
+  private GuidelineType parseGuidelineType(String s) {
+    return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
+  }
 
-    private DurationMeasure parseDurationMeasure(String s) {
-        return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
-    }
+  private DurationMeasure parseDurationMeasure(String s) {
+    return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
+  }
 }

@@ -4,14 +4,13 @@ import java.time.LocalDate;
 
 /** Lote próximo a vencer (o vencido), para alertas. {@code daysToExpire} negativo = ya vencido. */
 public record ExpiringLotView(
-        Long productId,
-        String productName,
-        String productCode,
-        Long branchId,
-        String branchName,
-        Long lotId,
-        String lotNumber,
-        LocalDate expireDate,
-        int quantityAvailable,
-        long daysToExpire
-) {}
+    Long productId,
+    String productName,
+    String productCode,
+    Long branchId,
+    String branchName,
+    Long lotId,
+    String lotNumber,
+    LocalDate expireDate,
+    int quantityAvailable,
+    long daysToExpire) {}

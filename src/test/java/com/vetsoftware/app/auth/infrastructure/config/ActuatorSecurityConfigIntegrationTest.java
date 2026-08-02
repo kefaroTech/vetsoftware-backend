@@ -24,69 +24,78 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest(
     classes = ActuatorSecurityConfigIntegrationTest.TestApplication.class,
     properties = {
-        "server.servlet.context-path=/api/v1",
-        "management.endpoints.web.exposure.include=health,metrics,prometheus",
-        "management.endpoint.health.show-details=when-authorized",
-        "management.endpoint.health.roles=OBSERVABILITY",
-        "vetsoftware.observability.actuator.authentication.enabled=true",
-        "vetsoftware.observability.actuator.authentication.username=prometheus",
-        "vetsoftware.observability.actuator.authentication.password=test-secret-with-at-least-32-characters"
+      "server.servlet.context-path=/api/v1",
+      "management.endpoints.web.exposure.include=health,metrics,prometheus",
+      "management.endpoint.health.show-details=when-authorized",
+      "management.endpoint.health.roles=OBSERVABILITY",
+      "management.health.redis.enabled=false",
+      "vetsoftware.observability.actuator.authentication.enabled=true",
+      "vetsoftware.observability.actuator.authentication.username=prometheus",
+      "vetsoftware.observability.actuator.authentication.password=test-secret-with-at-least-32-characters"
     })
 @AutoConfigureMockMvc
 class ActuatorSecurityConfigIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @Test
-    void publicHealthIsAvailableWithoutInternalDetails() throws Exception {
-        mockMvc.perform(get("/api/v1/actuator/health").contextPath("/api/v1"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").exists())
-            .andExpect(jsonPath("$.components").doesNotExist());
-    }
+  @Test
+  void publicHealthIsAvailableWithoutInternalDetails() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/actuator/health").contextPath("/api/v1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").exists())
+        .andExpect(jsonPath("$.components").doesNotExist());
+  }
 
-    @Test
-    void prometheusRejectsAnonymousRequests() throws Exception {
-        mockMvc.perform(get("/api/v1/actuator/prometheus").contextPath("/api/v1"))
-            .andExpect(status().isUnauthorized());
-    }
+  @Test
+  void prometheusRejectsAnonymousRequests() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/actuator/prometheus").contextPath("/api/v1"))
+        .andExpect(status().isUnauthorized());
+  }
 
-    @Test
-    void prometheusAcceptsOnlyTheDedicatedTechnicalAccount() throws Exception {
-        mockMvc.perform(get("/api/v1/actuator/prometheus")
+  @Test
+  void prometheusAcceptsOnlyTheDedicatedTechnicalAccount() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/actuator/prometheus")
                 .contextPath("/api/v1")
-                .header(HttpHeaders.AUTHORIZATION,
+                .header(
+                    HttpHeaders.AUTHORIZATION,
                     basicAuthorization("prometheus", "test-secret-with-at-least-32-characters")))
-            .andExpect(status().isOk());
+        .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/v1/actuator/prometheus")
+    mockMvc
+        .perform(
+            get("/api/v1/actuator/prometheus")
                 .contextPath("/api/v1")
-                .header(HttpHeaders.AUTHORIZATION,
+                .header(
+                    HttpHeaders.AUTHORIZATION,
                     basicAuthorization("prometheus", "incorrect-password")))
-            .andExpect(status().isUnauthorized());
-    }
+        .andExpect(status().isUnauthorized());
+  }
 
-    @Test
-    void metricsRejectsAnonymousRequests() throws Exception {
-        mockMvc.perform(get("/api/v1/actuator/metrics").contextPath("/api/v1"))
-            .andExpect(status().isUnauthorized());
-    }
+  @Test
+  void metricsRejectsAnonymousRequests() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/actuator/metrics").contextPath("/api/v1"))
+        .andExpect(status().isUnauthorized());
+  }
 
-    private static String basicAuthorization(String username, String password) {
-        String credentials = username + ":" + password;
-        return "Basic " + Base64.getEncoder()
-            .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-    }
+  private static String basicAuthorization(String username, String password) {
+    String credentials = username + ":" + password;
+    return "Basic "
+        + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+  }
 
-    @SpringBootConfiguration
-    @EnableAutoConfiguration(exclude = {
+  @SpringBootConfiguration
+  @EnableAutoConfiguration(
+      exclude = {
         DataSourceAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class,
         DataJpaRepositoriesAutoConfiguration.class,
         LiquibaseAutoConfiguration.class
-    })
-    @Import({SecurityAutoConfiguration.class, ActuatorSecurityConfig.class})
-    static class TestApplication {
-    }
+      })
+  @Import({SecurityAutoConfiguration.class, ActuatorSecurityConfig.class})
+  static class TestApplication {}
 }

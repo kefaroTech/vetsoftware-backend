@@ -11,17 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.invoice.find")
 @Service
 public class FindSupplierInvoiceService implements FindSupplierInvoiceUseCase {
-    private final SupplierInvoiceRepository repository;
+  private final SupplierInvoiceRepository repository;
 
-    public FindSupplierInvoiceService(SupplierInvoiceRepository repository) {
-        this.repository = repository;
-    }
+  public FindSupplierInvoiceService(SupplierInvoiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public SupplierInvoiceDto findById(Long id, Long companyId) {
-        return repository.findByIdAndCompanyId(id, companyId)
-            .map(SupplierInvoiceDto::from)
-            .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public SupplierInvoiceDto findById(Long id, Long companyId) {
+    return repository
+        .findByIdAndCompanyId(id, companyId)
+        .map(SupplierInvoiceDto::from)
+        .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
+  }
 }

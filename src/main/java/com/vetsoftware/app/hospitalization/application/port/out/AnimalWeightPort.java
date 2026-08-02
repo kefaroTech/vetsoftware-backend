@@ -9,6 +9,11 @@ import java.time.LocalDate;
  * enum, respetando el vertical slicing.
  */
 public interface AnimalWeightPort {
-    void recordHospitalizationWeight(Long animalId, Long companyId, BigDecimal value, String unit,
-                                     LocalDate measuredAt, Long hospitalizationId);
+  void recordHospitalizationWeight(
+      Long animalId,
+      Long companyId,
+      BigDecimal value,
+      String unit,
+      LocalDate measuredAt,
+      Long hospitalizationId);
 }

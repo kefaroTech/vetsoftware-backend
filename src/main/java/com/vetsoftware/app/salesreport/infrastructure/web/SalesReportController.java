@@ -16,31 +16,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/sales-reports")
 public class SalesReportController {
-    private final GetSalesBookUseCase salesBookUseCase;
-    private final GetReconciliationUseCase reconciliationUseCase;
-    private final Authz authz;
+  private final GetSalesBookUseCase salesBookUseCase;
+  private final GetReconciliationUseCase reconciliationUseCase;
+  private final Authz authz;
 
-    public SalesReportController(GetSalesBookUseCase salesBookUseCase,
-                                 GetReconciliationUseCase reconciliationUseCase,
-                                 Authz authz) {
-        this.salesBookUseCase = salesBookUseCase;
-        this.reconciliationUseCase = reconciliationUseCase;
-        this.authz = authz;
-    }
+  public SalesReportController(
+      GetSalesBookUseCase salesBookUseCase,
+      GetReconciliationUseCase reconciliationUseCase,
+      Authz authz) {
+    this.salesBookUseCase = salesBookUseCase;
+    this.reconciliationUseCase = reconciliationUseCase;
+    this.authz = authz;
+  }
 
-    @GetMapping("/sales-book")
-    public SalesBookDto salesBook(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(name = "branchId", required = false) Long branchId) {
-        return salesBookUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
-    }
+  @GetMapping("/sales-book")
+  public SalesBookDto salesBook(
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(name = "branchId", required = false) Long branchId) {
+    return salesBookUseCase.get(
+        authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+  }
 
-    @GetMapping("/reconciliation")
-    public ReconciliationDto reconciliation(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(name = "branchId", required = false) Long branchId) {
-        return reconciliationUseCase.get(authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
-    }
+  @GetMapping("/reconciliation")
+  public ReconciliationDto reconciliation(
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      @RequestParam(name = "branchId", required = false) Long branchId) {
+    return reconciliationUseCase.get(
+        authz.currentCompanyId(), from, to, authz.resolveAccessibleBranch(branchId));
+  }
 }

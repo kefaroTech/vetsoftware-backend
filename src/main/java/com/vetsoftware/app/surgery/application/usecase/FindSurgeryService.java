@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "surgery.find")
 @Service
 public class FindSurgeryService implements FindSurgeryUseCase {
-    private final SurgeryRepository repository;
+  private final SurgeryRepository repository;
 
-    public FindSurgeryService(SurgeryRepository repository) {
-        this.repository = repository;
-    }
+  public FindSurgeryService(SurgeryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SurgeryDto findById(Long id, Long companyId) {
-        return SurgeryDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public SurgeryDto findById(Long id, Long companyId) {
+    return SurgeryDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new SurgeryNotFoundException(id)));
-    }
+  }
 }

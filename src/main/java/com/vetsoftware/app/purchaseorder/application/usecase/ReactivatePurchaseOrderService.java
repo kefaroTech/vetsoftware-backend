@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.reactivate")
 @Service
 public class ReactivatePurchaseOrderService implements ReactivatePurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public ReactivatePurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivatePurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public PurchaseOrderDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new PurchaseOrderNotFoundException(id);
-        return PurchaseOrderDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public PurchaseOrderDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new PurchaseOrderNotFoundException(id);
+    return PurchaseOrderDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
-    }
+  }
 }

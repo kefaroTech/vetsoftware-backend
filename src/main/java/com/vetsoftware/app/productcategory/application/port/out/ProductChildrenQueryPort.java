@@ -1,5 +1,5 @@
 package com.vetsoftware.app.productcategory.application.port.out;
 
 public interface ProductChildrenQueryPort {
-    boolean existsActiveByProductCategoryId(Long categoryId);
+  boolean existsActiveByProductCategoryId(Long categoryId);
 }

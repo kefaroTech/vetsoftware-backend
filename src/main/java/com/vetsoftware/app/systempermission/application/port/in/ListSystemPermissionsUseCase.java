@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSystemPermissionsUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    List<SystemPermissionDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM')")
+  List<SystemPermissionDto> listAll();
 }

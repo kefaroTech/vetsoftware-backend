@@ -15,24 +15,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "problem.update")
 @Service
 public class UpdateProblemService implements UpdateProblemUseCase {
-    private final ProblemRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final ProblemRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateProblemService(ProblemRepository repository,
-                                CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateProblemService(ProblemRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public ProblemDto execute(UpdateProblemCommand command) {
-        Problem problem = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public ProblemDto execute(UpdateProblemCommand command) {
+    Problem problem =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProblemNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        problem.update(command.description(), command.status(), command.onsetDate(),
-            command.resolvedDate(), command.notes(), company);
-        return ProblemDto.from(repository.save(problem));
-    }
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    problem.update(
+        command.description(),
+        command.status(),
+        command.onsetDate(),
+        command.resolvedDate(),
+        command.notes(),
+        company);
+    return ProblemDto.from(repository.save(problem));
+  }
 }

@@ -13,20 +13,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "dian.provider.config.update")
 @Service
 public class UpdateDianProviderConfigService implements UpdateDianProviderConfigUseCase {
-    private final DianProviderConfigRepository repository;
+  private final DianProviderConfigRepository repository;
 
-    public UpdateDianProviderConfigService(DianProviderConfigRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateDianProviderConfigService(DianProviderConfigRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public DianProviderConfigDto execute(UpdateDianProviderConfigCommand command) {
-        DianProviderConfig config = repository.findByCompanyId(command.companyId())
-                .orElseThrow(() -> new DianProviderConfigNotFoundException(command.companyId()));
-        config.update(command.provider(), command.baseUrl(), command.clientId(),
-                command.clientSecret(), command.username(), command.password(), command.apiToken(),
-                command.webhookSecret(), command.numberingProviderRef());
-        return DianProviderConfigDto.from(repository.save(config));
-    }
+  @Override
+  @Transactional
+  public DianProviderConfigDto execute(UpdateDianProviderConfigCommand command) {
+    DianProviderConfig config =
+        repository
+            .findByCompanyId(command.companyId())
+            .orElseThrow(() -> new DianProviderConfigNotFoundException(command.companyId()));
+    config.update(
+        command.provider(),
+        command.baseUrl(),
+        command.clientId(),
+        command.clientSecret(),
+        command.username(),
+        command.password(),
+        command.apiToken(),
+        command.webhookSecret(),
+        command.numberingProviderRef());
+    return DianProviderConfigDto.from(repository.save(config));
+  }
 }

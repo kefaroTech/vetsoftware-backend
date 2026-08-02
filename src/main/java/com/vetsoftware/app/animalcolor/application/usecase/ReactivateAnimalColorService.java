@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "animalcolor.reactivate")
 @Service
 public class ReactivateAnimalColorService implements ReactivateAnimalColorUseCase {
-    private final AnimalColorRepository repository;
+  private final AnimalColorRepository repository;
 
-    public ReactivateAnimalColorService(AnimalColorRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateAnimalColorService(AnimalColorRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public AnimalColorDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new AnimalColorNotFoundException(id);
-        return AnimalColorDto.from(repository.findById(id)
-            .orElseThrow(() -> new AnimalColorNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public AnimalColorDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new AnimalColorNotFoundException(id);
+    return AnimalColorDto.from(
+        repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id)));
+  }
 }

@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("animalAlertJpaAnimalQueryPort")
 public class JpaAnimalQueryPort implements AnimalQueryPort {
-    private final AnimalJpaRepository animalJpaRepository;
+  private final AnimalJpaRepository animalJpaRepository;
 
-    public JpaAnimalQueryPort(AnimalJpaRepository animalJpaRepository) {
-        this.animalJpaRepository = animalJpaRepository;
-    }
+  public JpaAnimalQueryPort(AnimalJpaRepository animalJpaRepository) {
+    this.animalJpaRepository = animalJpaRepository;
+  }
 
-    @Override
-    public Optional<AnimalRef> findByIdAndCompanyId(Long animalId, Long companyId) {
-        return animalJpaRepository.findByIdAndCompany_Id(animalId, companyId)
-            .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<AnimalRef> findByIdAndCompanyId(Long animalId, Long companyId) {
+    return animalJpaRepository
+        .findByIdAndCompany_Id(animalId, companyId)
+        .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

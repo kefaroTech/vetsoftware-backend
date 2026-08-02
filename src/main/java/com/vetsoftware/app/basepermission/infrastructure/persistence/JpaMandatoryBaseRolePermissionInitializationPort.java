@@ -8,32 +8,39 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMandatoryBaseRolePermissionInitializationPort implements MandatoryBaseRolePermissionInitializationPort {
-    private final BaseRoleJpaRepository baseRoleJpaRepository;
-    private final BasePermissionJpaRepository basePermissionJpaRepository;
-    private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
+public class JpaMandatoryBaseRolePermissionInitializationPort
+    implements MandatoryBaseRolePermissionInitializationPort {
+  private final BaseRoleJpaRepository baseRoleJpaRepository;
+  private final BasePermissionJpaRepository basePermissionJpaRepository;
+  private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
 
-    public JpaMandatoryBaseRolePermissionInitializationPort(BaseRoleJpaRepository baseRoleJpaRepository,
-                                                             BasePermissionJpaRepository basePermissionJpaRepository,
-                                                             BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
-        this.baseRoleJpaRepository = baseRoleJpaRepository;
-        this.basePermissionJpaRepository = basePermissionJpaRepository;
-        this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
-    }
+  public JpaMandatoryBaseRolePermissionInitializationPort(
+      BaseRoleJpaRepository baseRoleJpaRepository,
+      BasePermissionJpaRepository basePermissionJpaRepository,
+      BaseRolePermissionJpaRepository baseRolePermissionJpaRepository) {
+    this.baseRoleJpaRepository = baseRoleJpaRepository;
+    this.basePermissionJpaRepository = basePermissionJpaRepository;
+    this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
+  }
 
-    @Override
-    public void initializeForMandatoryBaseRoles(Long basePermissionId) {
-        var basePermission = basePermissionJpaRepository.getReferenceById(basePermissionId);
-        var entities = baseRoleJpaRepository.findByMandatoryTrue().stream()
-            .filter(br -> !baseRolePermissionJpaRepository.existsByBaseRoleIdAndBasePermissionId(br.getId(), basePermissionId))
-            .map(br -> {
-                var entity = new BaseRolePermissionJpaEntity();
-                entity.setBaseRole(br);
-                entity.setBasePermission(basePermission);
-                entity.setCreatedDate(LocalDateTime.now());
-                return entity;
-            })
+  @Override
+  public void initializeForMandatoryBaseRoles(Long basePermissionId) {
+    var basePermission = basePermissionJpaRepository.getReferenceById(basePermissionId);
+    var entities =
+        baseRoleJpaRepository.findByMandatoryTrue().stream()
+            .filter(
+                br ->
+                    !baseRolePermissionJpaRepository.existsByBaseRoleIdAndBasePermissionId(
+                        br.getId(), basePermissionId))
+            .map(
+                br -> {
+                  var entity = new BaseRolePermissionJpaEntity();
+                  entity.setBaseRole(br);
+                  entity.setBasePermission(basePermission);
+                  entity.setCreatedDate(LocalDateTime.now());
+                  return entity;
+                })
             .toList();
-        baseRolePermissionJpaRepository.saveAll(entities);
-    }
+    baseRolePermissionJpaRepository.saveAll(entities);
+  }
 }

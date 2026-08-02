@@ -13,29 +13,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "specie.delete")
 @Service
 public class DeleteSpecieService implements DeleteSpecieUseCase {
-    private final SpecieRepository repository;
-    private final BreedChildrenQueryPort breedChildrenQueryPort;
-    private final AnimalChildrenQueryPort animalChildrenQueryPort;
+  private final SpecieRepository repository;
+  private final BreedChildrenQueryPort breedChildrenQueryPort;
+  private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
-    public DeleteSpecieService(
-            SpecieRepository repository,
-            BreedChildrenQueryPort breedChildrenQueryPort,
-            AnimalChildrenQueryPort animalChildrenQueryPort) {
-        this.repository = repository;
-        this.breedChildrenQueryPort = breedChildrenQueryPort;
-        this.animalChildrenQueryPort = animalChildrenQueryPort;
-    }
+  public DeleteSpecieService(
+      SpecieRepository repository,
+      BreedChildrenQueryPort breedChildrenQueryPort,
+      AnimalChildrenQueryPort animalChildrenQueryPort) {
+    this.repository = repository;
+    this.breedChildrenQueryPort = breedChildrenQueryPort;
+    this.animalChildrenQueryPort = animalChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id));
-        if (breedChildrenQueryPort.existsActiveBySpecieId(id)) {
-            throw new SpecieHasActiveChildrenException(id, "breed");
-        }
-        if (animalChildrenQueryPort.existsActiveBySpecieId(id)) {
-            throw new SpecieHasActiveChildrenException(id, "animal");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id));
+    if (breedChildrenQueryPort.existsActiveBySpecieId(id)) {
+      throw new SpecieHasActiveChildrenException(id, "breed");
     }
+    if (animalChildrenQueryPort.existsActiveBySpecieId(id)) {
+      throw new SpecieHasActiveChildrenException(id, "animal");
+    }
+    repository.delete(id);
+  }
 }

@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaPermissionChildrenQueryPort implements PermissionChildrenQueryPort {
-    private final PermissionJpaRepository jpaRepository;
+  private final PermissionJpaRepository jpaRepository;
 
-    public JpaPermissionChildrenQueryPort(PermissionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaPermissionChildrenQueryPort(PermissionJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByCompanyId(Long parentId) {
-        return jpaRepository.existsByCompany_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByCompanyId(Long parentId) {
+    return jpaRepository.existsByCompany_Id(parentId);
+  }
 }

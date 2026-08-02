@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaOwnerChildrenQueryPort implements OwnerChildrenQueryPort {
-    private final OwnerJpaRepository jpaRepository;
+  private final OwnerJpaRepository jpaRepository;
 
-    public JpaOwnerChildrenQueryPort(OwnerJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaOwnerChildrenQueryPort(OwnerJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByCompanyId(Long parentId) {
-        return jpaRepository.existsByCompany_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByCompanyId(Long parentId) {
+    return jpaRepository.existsByCompany_Id(parentId);
+  }
 }

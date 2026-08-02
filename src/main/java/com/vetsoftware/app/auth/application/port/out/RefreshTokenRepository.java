@@ -5,17 +5,26 @@ import java.util.Optional;
 
 public interface RefreshTokenRepository {
 
-    void save(NewRefreshToken token);
+  void save(NewRefreshToken token);
 
-    Optional<StoredRefreshToken> findByHash(String tokenHash);
+  Optional<StoredRefreshToken> findByHash(String tokenHash);
 
-    void revokeById(Long id);
+  void revokeById(Long id);
 
-    void revokeAllForSubject(Long subjectId, String subjectType);
+  void revokeAllForSubject(Long subjectId, String subjectType);
 
-    record NewRefreshToken(String tokenHash, Long subjectId, String subjectType, Long authVersion,
-                           LocalDateTime expiresAt) {}
+  record NewRefreshToken(
+      String tokenHash,
+      Long subjectId,
+      String subjectType,
+      Long authVersion,
+      LocalDateTime expiresAt) {}
 
-    record StoredRefreshToken(Long id, Long subjectId, String subjectType,
-                              Long authVersion, LocalDateTime expiresAt, boolean revoked) {}
+  record StoredRefreshToken(
+      Long id,
+      Long subjectId,
+      String subjectType,
+      Long authVersion,
+      LocalDateTime expiresAt,
+      boolean revoked) {}
 }

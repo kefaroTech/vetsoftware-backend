@@ -5,6 +5,6 @@ import com.vetsoftware.app.membership.application.dto.MembershipDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateMembershipUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    MembershipDto execute(UpdateMembershipCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  MembershipDto execute(UpdateMembershipCommand command);
 }

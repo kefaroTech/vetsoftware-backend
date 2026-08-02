@@ -9,13 +9,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record UpdatePromotionRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank String promotionType,
-        @NotBlank String applicationType,
-        @NotNull @Positive Long applicationItem,
-        @NotBlank String valueType,
-        @NotNull @DecimalMin("0.0") BigDecimal value,
-        @NotNull LocalDateTime startDate,
-        @NotNull LocalDateTime endDate,
-        @NotBlank String promotionStatus
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @NotBlank String promotionType,
+    @NotBlank String applicationType,
+    @NotNull @Positive Long applicationItem,
+    @NotBlank String valueType,
+    @NotNull @DecimalMin("0.0") BigDecimal value,
+    @NotNull LocalDateTime startDate,
+    @NotNull LocalDateTime endDate,
+    @NotBlank String promotionStatus) {}

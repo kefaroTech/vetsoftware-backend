@@ -6,10 +6,9 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record UpdateSpaRequest(
-        @NotNull LocalDate date,
-        @NotNull Long spaTypeId,
-        @NotBlank @Size(max = 2000) String reason,
-        @NotBlank @Size(max = 2000) String details,
-        @NotBlank @Size(max = 2000) String observations,
-        @NotNull Long animalId
-) {}
+    @NotNull LocalDate date,
+    @NotNull Long spaTypeId,
+    @NotBlank @Size(max = 2000) String reason,
+    @NotBlank @Size(max = 2000) String details,
+    @NotBlank @Size(max = 2000) String observations,
+    @NotNull Long animalId) {}

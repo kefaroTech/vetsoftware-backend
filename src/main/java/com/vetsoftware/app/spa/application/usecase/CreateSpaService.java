@@ -17,33 +17,49 @@ import org.springframework.stereotype.Service;
 @Observed(name = "spa.create")
 @Service
 public class CreateSpaService implements CreateSpaUseCase {
-    private final SpaRepository repository;
-    private final SpaTypeQueryPort spaTypeQueryPort;
-    private final AnimalQueryPort animalQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final SpaRepository repository;
+  private final SpaTypeQueryPort spaTypeQueryPort;
+  private final AnimalQueryPort animalQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateSpaService(SpaRepository repository,
-                            SpaTypeQueryPort spaTypeQueryPort,
-                            AnimalQueryPort animalQueryPort,
-                            CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.spaTypeQueryPort = spaTypeQueryPort;
-        this.animalQueryPort = animalQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateSpaService(
+      SpaRepository repository,
+      SpaTypeQueryPort spaTypeQueryPort,
+      AnimalQueryPort animalQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.spaTypeQueryPort = spaTypeQueryPort;
+    this.animalQueryPort = animalQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public SpaDto execute(CreateSpaCommand command) {
-        SpaTypeRef spaType = spaTypeQueryPort.findById(command.spaTypeId())
-            .orElseThrow(() -> new IllegalArgumentException("SpaType not found: " + command.spaTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+  @Override
+  public SpaDto execute(CreateSpaCommand command) {
+    SpaTypeRef spaType =
+        spaTypeQueryPort
+            .findById(command.spaTypeId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("SpaType not found: " + command.spaTypeId()));
+    AnimalRef animal =
+        animalQueryPort
+            .findById(command.animalId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        Spa spa = Spa.create(
-            command.date(), spaType, command.reason(), command.details(),
-            command.observations(), animal, company);
-        return SpaDto.from(repository.save(spa));
-    }
+    Spa spa =
+        Spa.create(
+            command.date(),
+            spaType,
+            command.reason(),
+            command.details(),
+            command.observations(),
+            animal,
+            company);
+    return SpaDto.from(repository.save(spa));
+  }
 }

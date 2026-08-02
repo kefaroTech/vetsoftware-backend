@@ -10,48 +10,56 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaWeightRecordRepository implements WeightRecordRepository {
-    private final WeightRecordJpaRepository jpaRepository;
-    private final WeightRecordJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final WeightRecordJpaRepository jpaRepository;
+  private final WeightRecordJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaWeightRecordRepository(WeightRecordJpaRepository jpaRepository,
-                                     WeightRecordJpaMapper mapper,
-                                     AnimalJpaRepository animalJpaRepository,
-                                     CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaWeightRecordRepository(
+      WeightRecordJpaRepository jpaRepository,
+      WeightRecordJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public WeightRecord save(WeightRecord record) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(record.getAnimal().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(record.getCompany().id());
-        WeightRecordJpaEntity saved = jpaRepository.save(mapper.toJpa(record, animal, company));
-        return mapper.toDomain(saved, record.getAnimal(), record.getCompany());
-    }
+  @Override
+  public WeightRecord save(WeightRecord record) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(record.getAnimal().id());
+    CompanyJpaEntity company = companyJpaRepository.getReferenceById(record.getCompany().id());
+    WeightRecordJpaEntity saved = jpaRepository.save(mapper.toJpa(record, animal, company));
+    return mapper.toDomain(saved, record.getAnimal(), record.getCompany());
+  }
 
-    @Override
-    public List<WeightRecord> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
-            .stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<WeightRecord> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
+    return jpaRepository
+        .findByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 
-    @Override
-    public Optional<WeightRecord> findLatestByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findTopByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
-            .map(mapper::toDomain);
-    }
+  @Override
+  public Optional<WeightRecord> findLatestByAnimalIdAndCompanyId(Long animalId, Long companyId) {
+    return jpaRepository
+        .findTopByAnimal_IdAndCompany_IdOrderByMeasuredAtDescIdDesc(animalId, companyId)
+        .map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<WeightRecord> findByIdAndAnimalIdAndCompanyId(Long id, Long animalId, Long companyId) {
-        return jpaRepository.findByIdAndAnimal_IdAndCompany_Id(id, animalId, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<WeightRecord> findByIdAndAnimalIdAndCompanyId(
+      Long id, Long animalId, Long companyId) {
+    return jpaRepository
+        .findByIdAndAnimal_IdAndCompany_Id(id, animalId, companyId)
+        .map(mapper::toDomain);
+  }
 
-    @Override
-    public void delete(Long id, Long companyId) {
-        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
-    }
+  @Override
+  public void delete(Long id, Long companyId) {
+    jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
+  }
 }

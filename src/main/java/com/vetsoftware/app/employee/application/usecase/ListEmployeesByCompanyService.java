@@ -17,32 +17,39 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "employee.list.by.company")
 @Service
 public class ListEmployeesByCompanyService implements ListEmployeesByCompanyUseCase {
-    private final EmployeeRepository repository;
-    private final EmployeeRolesQueryPort rolesQueryPort;
-    private final EmployeeBranchesQueryPort branchesQueryPort;
+  private final EmployeeRepository repository;
+  private final EmployeeRolesQueryPort rolesQueryPort;
+  private final EmployeeBranchesQueryPort branchesQueryPort;
 
-    public ListEmployeesByCompanyService(EmployeeRepository repository,
-                                          EmployeeRolesQueryPort rolesQueryPort,
-                                          EmployeeBranchesQueryPort branchesQueryPort) {
-        this.repository = repository;
-        this.rolesQueryPort = rolesQueryPort;
-        this.branchesQueryPort = branchesQueryPort;
-    }
+  public ListEmployeesByCompanyService(
+      EmployeeRepository repository,
+      EmployeeRolesQueryPort rolesQueryPort,
+      EmployeeBranchesQueryPort branchesQueryPort) {
+    this.repository = repository;
+    this.rolesQueryPort = rolesQueryPort;
+    this.branchesQueryPort = branchesQueryPort;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<EmployeeDto> listByCompany(Long companyId) {
-        // Incluye desactivados: la pantalla muestra el estado (Activo/Inactivo/Invitado).
-        List<Employee> employees = repository.findAllByCompanyIdIncludingDisabled(companyId);
-        List<Long> ids = employees.stream().map(Employee::getId).toList();
-        // Para el listado: los desactivados muestran el rol que tenían (asignaciones aunque deshabilitadas).
-        Map<Long, List<RoleSnapshot>> rolesByEmployee = rolesQueryPort.findRolesForListing(ids);
-        // Sedes asignadas (batch por ids) para poder filtrar p.ej. los veterinarios por sede en la agenda.
-        Map<Long, List<BranchRef>> branchesByEmployee = branchesQueryPort.findBranchesByEmployeeIds(ids);
-        return employees.stream()
-            .map(e -> EmployeeDto.from(e,
-                rolesByEmployee.getOrDefault(e.getId(), List.of()),
-                branchesByEmployee.getOrDefault(e.getId(), List.of())))
-            .toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<EmployeeDto> listByCompany(Long companyId) {
+    // Incluye desactivados: la pantalla muestra el estado (Activo/Inactivo/Invitado).
+    List<Employee> employees = repository.findAllByCompanyIdIncludingDisabled(companyId);
+    List<Long> ids = employees.stream().map(Employee::getId).toList();
+    // Para el listado: los desactivados muestran el rol que tenían (asignaciones aunque
+    // deshabilitadas).
+    Map<Long, List<RoleSnapshot>> rolesByEmployee = rolesQueryPort.findRolesForListing(ids);
+    // Sedes asignadas (batch por ids) para poder filtrar p.ej. los veterinarios por sede en la
+    // agenda.
+    Map<Long, List<BranchRef>> branchesByEmployee =
+        branchesQueryPort.findBranchesByEmployeeIds(ids);
+    return employees.stream()
+        .map(
+            e ->
+                EmployeeDto.from(
+                    e,
+                    rolesByEmployee.getOrDefault(e.getId(), List.of()),
+                    branchesByEmployee.getOrDefault(e.getId(), List.of())))
+        .toList();
+  }
 }

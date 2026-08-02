@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.search")
 @Service
 public class SearchLaboratoryTestsService implements SearchLaboratoryTestsUseCase {
-    private final LaboratoryTestRepository repository;
+  private final LaboratoryTestRepository repository;
 
-    public SearchLaboratoryTestsService(LaboratoryTestRepository repository) {
-        this.repository = repository;
-    }
+  public SearchLaboratoryTestsService(LaboratoryTestRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public PageResult<LaboratoryTestDto> execute(SearchLaboratoryTestsCommand command) {
-        return repository.search(command).map(LaboratoryTestDto::from);
-    }
+  @Override
+  public PageResult<LaboratoryTestDto> execute(SearchLaboratoryTestsCommand command) {
+    return repository.search(command).map(LaboratoryTestDto::from);
+  }
 }

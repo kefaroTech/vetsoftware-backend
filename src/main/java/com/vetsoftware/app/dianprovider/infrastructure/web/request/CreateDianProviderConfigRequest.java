@@ -5,13 +5,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CreateDianProviderConfigRequest(
-        @NotNull ProviderType provider,
-        @NotBlank String baseUrl,
-        String clientId,
-        String clientSecret,
-        String username,
-        String password,
-        String apiToken,
-        String webhookSecret,
-        String numberingProviderRef
-) {}
+    @NotNull ProviderType provider,
+    @NotBlank String baseUrl,
+    String clientId,
+    String clientSecret,
+    String username,
+    String password,
+    String apiToken,
+    String webhookSecret,
+    String numberingProviderRef) {}

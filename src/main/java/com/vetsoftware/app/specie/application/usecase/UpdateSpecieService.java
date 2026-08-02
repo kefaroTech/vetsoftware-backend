@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "specie.update")
 @Service
 public class UpdateSpecieService implements UpdateSpecieUseCase {
-    private final SpecieRepository repository;
+  private final SpecieRepository repository;
 
-    public UpdateSpecieService(SpecieRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateSpecieService(SpecieRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SpecieDto execute(UpdateSpecieCommand command) {
-        Specie specie = repository.findById(command.id())
-                .orElseThrow(() -> new SpecieNotFoundException(command.id()));
-        specie.update(command.name());
-        return SpecieDto.from(repository.save(specie));
-    }
+  @Override
+  @Transactional
+  public SpecieDto execute(UpdateSpecieCommand command) {
+    Specie specie =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new SpecieNotFoundException(command.id()));
+    specie.update(command.name());
+    return SpecieDto.from(repository.save(specie));
+  }
 }

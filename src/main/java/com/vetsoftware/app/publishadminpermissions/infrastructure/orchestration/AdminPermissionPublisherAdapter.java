@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class AdminPermissionPublisherAdapter implements AdminPermissionPublisher {
 
-    private final PublishAdminPermissionsUseCase publishUseCase;
+  private final PublishAdminPermissionsUseCase publishUseCase;
 
-    public AdminPermissionPublisherAdapter(PublishAdminPermissionsUseCase publishUseCase) {
-        this.publishUseCase = publishUseCase;
-    }
+  public AdminPermissionPublisherAdapter(PublishAdminPermissionsUseCase publishUseCase) {
+    this.publishUseCase = publishUseCase;
+  }
 
-    @Override
-    public void publish() {
-        publishUseCase.execute();
-    }
+  @Override
+  public void publish() {
+    publishUseCase.execute();
+  }
 }

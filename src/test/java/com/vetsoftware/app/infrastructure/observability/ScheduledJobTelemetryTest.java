@@ -13,106 +13,114 @@ import org.junit.jupiter.api.Test;
 
 class ScheduledJobTelemetryTest {
 
-    @Test
-    void createsRootObservationWhenThereIsNoSchedulerContext() {
-        CapturingHandler handler = new CapturingHandler();
-        ObservationRegistry registry = registryWith(handler);
-        ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
+  @Test
+  void createsRootObservationWhenThereIsNoSchedulerContext() {
+    CapturingHandler handler = new CapturingHandler();
+    ObservationRegistry registry = registryWith(handler);
+    ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
 
-        telemetry.observe("dian.test", () -> Outcome.SUCCESS);
+    telemetry.observe("dian.test", () -> Outcome.SUCCESS);
 
-        assertThat(handler.stopped).hasSize(1);
-        Observation.Context context = handler.stopped.getFirst();
-        assertThat(context.getName()).isEqualTo(ScheduledJobTelemetry.OBSERVATION_NAME);
-        assertThat(context.getContextualName()).isEqualTo("run dian test");
-        assertThat(context.getParentObservation()).isNull();
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY)).isEqualTo("dian.test");
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY)).isEqualTo("success");
-        assertThat(context.getError()).isNull();
+    assertThat(handler.stopped).hasSize(1);
+    Observation.Context context = handler.stopped.getFirst();
+    assertThat(context.getName()).isEqualTo(ScheduledJobTelemetry.OBSERVATION_NAME);
+    assertThat(context.getContextualName()).isEqualTo("run dian test");
+    assertThat(context.getParentObservation()).isNull();
+    assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY))
+        .isEqualTo("dian.test");
+    assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
+        .isEqualTo("success");
+    assertThat(context.getError()).isNull();
+  }
+
+  @Test
+  void enrichesSpringObservationWithoutCreatingNestedObservation() {
+    CapturingHandler handler = new CapturingHandler();
+    ObservationRegistry registry = registryWith(handler);
+    ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
+    Observation scheduledRoot = Observation.start(ScheduledJobTelemetry.OBSERVATION_NAME, registry);
+
+    try (Observation.Scope ignored = scheduledRoot.openScope()) {
+      telemetry.observe("dian.test", () -> Outcome.PARTIAL_FAILURE);
+      assertThat(registry.getCurrentObservation()).isSameAs(scheduledRoot);
+    } finally {
+      scheduledRoot.stop();
     }
 
-    @Test
-    void enrichesSpringObservationWithoutCreatingNestedObservation() {
-        CapturingHandler handler = new CapturingHandler();
-        ObservationRegistry registry = registryWith(handler);
-        ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
-        Observation scheduledRoot = Observation.start(ScheduledJobTelemetry.OBSERVATION_NAME, registry);
+    assertThat(handler.stopped).hasSize(1);
+    Observation.Context context = handler.stopped.getFirst();
+    assertThat(context.getParentObservation()).isNull();
+    assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY))
+        .isEqualTo("dian.test");
+    assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
+        .isEqualTo("partial_failure");
+  }
 
-        try (Observation.Scope ignored = scheduledRoot.openScope()) {
-            telemetry.observe("dian.test", () -> Outcome.PARTIAL_FAILURE);
-            assertThat(registry.getCurrentObservation()).isSameAs(scheduledRoot);
-        } finally {
-            scheduledRoot.stop();
-        }
+  @Test
+  void recordsUncontrolledErrorAndAlwaysStopsFallbackObservation() {
+    CapturingHandler handler = new CapturingHandler();
+    ObservationRegistry registry = registryWith(handler);
+    ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
+    IllegalStateException failure = new IllegalStateException("database unavailable");
 
-        assertThat(handler.stopped).hasSize(1);
-        Observation.Context context = handler.stopped.getFirst();
-        assertThat(context.getParentObservation()).isNull();
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_NAME_KEY)).isEqualTo("dian.test");
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
-                .isEqualTo("partial_failure");
+    assertThatThrownBy(
+            () ->
+                telemetry.observe(
+                    "dian.test",
+                    () -> {
+                      throw failure;
+                    }))
+        .isSameAs(failure);
+
+    assertThat(handler.stopped).hasSize(1);
+    Observation.Context context = handler.stopped.getFirst();
+    assertThat(context.getError()).isSameAs(failure);
+    assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY))
+        .isEqualTo("error");
+    assertThat(registry.getCurrentObservation()).isNull();
+  }
+
+  @Test
+  void mapsBoundedBusinessOutcomes() {
+    assertThat(Outcome.from(0, 0)).isEqualTo(Outcome.NO_WORK);
+    assertThat(Outcome.from(2, 0)).isEqualTo(Outcome.SUCCESS);
+    assertThat(Outcome.from(2, 1)).isEqualTo(Outcome.PARTIAL_FAILURE);
+    assertThat(Outcome.from(2, 2)).isEqualTo(Outcome.FAILURE);
+  }
+
+  @Test
+  void rejectsJobNamesOutsideLowercaseDotNotation() {
+    ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(ObservationRegistry.create());
+
+    assertThatThrownBy(() -> telemetry.observe("audit_outbox.publish", () -> Outcome.SUCCESS))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("lowercase.dot.notation");
+    assertThatThrownBy(() -> telemetry.observe("auditOutbox.publish", () -> Outcome.SUCCESS))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("lowercase.dot.notation");
+  }
+
+  private static ObservationRegistry registryWith(CapturingHandler handler) {
+    ObservationRegistry registry = ObservationRegistry.create();
+    registry.observationConfig().observationHandler(handler);
+    return registry;
+  }
+
+  private static String lowCardinalityValue(Observation.Context context, String key) {
+    return context.getLowCardinalityKeyValue(key).getValue();
+  }
+
+  private static final class CapturingHandler implements ObservationHandler<Observation.Context> {
+    private final List<Observation.Context> stopped = new ArrayList<>();
+
+    @Override
+    public void onStop(Observation.Context context) {
+      stopped.add(context);
     }
 
-    @Test
-    void recordsUncontrolledErrorAndAlwaysStopsFallbackObservation() {
-        CapturingHandler handler = new CapturingHandler();
-        ObservationRegistry registry = registryWith(handler);
-        ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(registry);
-        IllegalStateException failure = new IllegalStateException("database unavailable");
-
-        assertThatThrownBy(() -> telemetry.observe("dian.test", () -> {
-            throw failure;
-        })).isSameAs(failure);
-
-        assertThat(handler.stopped).hasSize(1);
-        Observation.Context context = handler.stopped.getFirst();
-        assertThat(context.getError()).isSameAs(failure);
-        assertThat(lowCardinalityValue(context, ScheduledJobTelemetry.JOB_OUTCOME_KEY)).isEqualTo("error");
-        assertThat(registry.getCurrentObservation()).isNull();
+    @Override
+    public boolean supportsContext(Observation.Context context) {
+      return true;
     }
-
-    @Test
-    void mapsBoundedBusinessOutcomes() {
-        assertThat(Outcome.from(0, 0)).isEqualTo(Outcome.NO_WORK);
-        assertThat(Outcome.from(2, 0)).isEqualTo(Outcome.SUCCESS);
-        assertThat(Outcome.from(2, 1)).isEqualTo(Outcome.PARTIAL_FAILURE);
-        assertThat(Outcome.from(2, 2)).isEqualTo(Outcome.FAILURE);
-    }
-
-    @Test
-    void rejectsJobNamesOutsideLowercaseDotNotation() {
-        ScheduledJobTelemetry telemetry =
-                new ScheduledJobTelemetry(ObservationRegistry.create());
-
-        assertThatThrownBy(() -> telemetry.observe("audit_outbox.publish", () -> Outcome.SUCCESS))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("lowercase.dot.notation");
-        assertThatThrownBy(() -> telemetry.observe("auditOutbox.publish", () -> Outcome.SUCCESS))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("lowercase.dot.notation");
-    }
-
-    private static ObservationRegistry registryWith(CapturingHandler handler) {
-        ObservationRegistry registry = ObservationRegistry.create();
-        registry.observationConfig().observationHandler(handler);
-        return registry;
-    }
-
-    private static String lowCardinalityValue(Observation.Context context, String key) {
-        return context.getLowCardinalityKeyValue(key).getValue();
-    }
-
-    private static final class CapturingHandler implements ObservationHandler<Observation.Context> {
-        private final List<Observation.Context> stopped = new ArrayList<>();
-
-        @Override
-        public void onStop(Observation.Context context) {
-            stopped.add(context);
-        }
-
-        @Override
-        public boolean supportsContext(Observation.Context context) {
-            return true;
-        }
-    }
+  }
 }

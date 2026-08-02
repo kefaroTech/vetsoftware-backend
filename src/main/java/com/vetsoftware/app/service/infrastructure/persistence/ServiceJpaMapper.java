@@ -12,52 +12,57 @@ import org.springframework.stereotype.Component;
 @Component
 public class ServiceJpaMapper {
 
-    public ServiceJpaEntity toJpa(Service service,
-                                  ServiceCategoryJpaEntity serviceCategory,
-                                  TaxJpaEntity tax,
-                                  CompanyJpaEntity company) {
-        ServiceJpaEntity entity = new ServiceJpaEntity();
-        entity.setId(service.getId());
-        entity.setName(service.getName());
-        entity.setPrice(service.getPrice());
-        entity.setTaxTreatment(service.getTaxTreatment());
-        entity.setNotes(service.getNotes());
-        entity.setServiceCategory(serviceCategory);
-        entity.setTax(tax);
-        entity.setCompany(company);
-        entity.setCreatedDate(service.getCreatedDate());
-        entity.setUpdatedDate(service.getUpdatedDate());
-        entity.setUpdatedBy(service.getUpdatedBy());
-        entity.setVersion(service.getVersion());
-        entity.setEnabled(service.isEnabled());
-        return entity;
-    }
+  public ServiceJpaEntity toJpa(
+      Service service,
+      ServiceCategoryJpaEntity serviceCategory,
+      TaxJpaEntity tax,
+      CompanyJpaEntity company) {
+    ServiceJpaEntity entity = new ServiceJpaEntity();
+    entity.setId(service.getId());
+    entity.setName(service.getName());
+    entity.setPrice(service.getPrice());
+    entity.setTaxTreatment(service.getTaxTreatment());
+    entity.setNotes(service.getNotes());
+    entity.setServiceCategory(serviceCategory);
+    entity.setTax(tax);
+    entity.setCompany(company);
+    entity.setCreatedDate(service.getCreatedDate());
+    entity.setUpdatedDate(service.getUpdatedDate());
+    entity.setUpdatedBy(service.getUpdatedBy());
+    entity.setVersion(service.getVersion());
+    entity.setEnabled(service.isEnabled());
+    return entity;
+  }
 
-    public Service toDomain(ServiceJpaEntity entity) {
-        ServiceCategoryJpaEntity sc = entity.getServiceCategory();
-        TaxJpaEntity t = entity.getTax();
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new ServiceCategoryRef(sc.getId(), sc.getName()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public Service toDomain(ServiceJpaEntity entity) {
+    ServiceCategoryJpaEntity sc = entity.getServiceCategory();
+    TaxJpaEntity t = entity.getTax();
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(
+        entity,
+        new ServiceCategoryRef(sc.getId(), sc.getName()),
+        t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
+        new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public Service toDomain(ServiceJpaEntity entity, ServiceCategoryRef serviceCategoryRef,
-                            TaxRef taxRef, CompanyRef companyRef) {
-        return new Service(
-            entity.getId(),
-            entity.getName(),
-            entity.getPrice(),
-            entity.getTaxTreatment(),
-            entity.getNotes(),
-            serviceCategoryRef,
-            taxRef,
-            companyRef,
-            entity.getCreatedDate(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
-    }
+  public Service toDomain(
+      ServiceJpaEntity entity,
+      ServiceCategoryRef serviceCategoryRef,
+      TaxRef taxRef,
+      CompanyRef companyRef) {
+    return new Service(
+        entity.getId(),
+        entity.getName(),
+        entity.getPrice(),
+        entity.getTaxTreatment(),
+        entity.getNotes(),
+        serviceCategoryRef,
+        taxRef,
+        companyRef,
+        entity.getCreatedDate(),
+        entity.getUpdatedDate(),
+        entity.getUpdatedBy(),
+        entity.getVersion(),
+        entity.isEnabled());
+  }
 }

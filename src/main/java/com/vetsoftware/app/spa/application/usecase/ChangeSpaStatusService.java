@@ -14,21 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "spa.change.status")
 @Service
 public class ChangeSpaStatusService implements ChangeSpaStatusUseCase {
-    private final SpaRepository repository;
+  private final SpaRepository repository;
 
-    public ChangeSpaStatusService(SpaRepository repository) {
-        this.repository = repository;
-    }
+  public ChangeSpaStatusService(SpaRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SpaDto execute(ChangeSpaStatusCommand command) {
-        Spa spa = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+  @Override
+  @Transactional
+  public SpaDto execute(ChangeSpaStatusCommand command) {
+    Spa spa =
+        (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new SpaNotFoundException(command.id()));
-        SpaStatus newStatus = SpaStatus.valueOf(command.status().toUpperCase());
-        spa.changeStatus(newStatus);
-        return SpaDto.from(repository.save(spa));
-    }
+    SpaStatus newStatus = SpaStatus.valueOf(command.status().toUpperCase());
+    spa.changeStatus(newStatus);
+    return SpaDto.from(repository.save(spa));
+  }
 }

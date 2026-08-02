@@ -13,23 +13,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "employee.role.reactivate")
 @Service
 public class ReactivateEmployeeRoleService implements ReactivateEmployeeRoleUseCase {
-    private final EmployeeRoleRepository repository;
-    private final PermissionCachePort permissionCachePort;
+  private final EmployeeRoleRepository repository;
+  private final PermissionCachePort permissionCachePort;
 
-    public ReactivateEmployeeRoleService(EmployeeRoleRepository repository,
-                                         PermissionCachePort permissionCachePort) {
-        this.repository = repository;
-        this.permissionCachePort = permissionCachePort;
-    }
+  public ReactivateEmployeeRoleService(
+      EmployeeRoleRepository repository, PermissionCachePort permissionCachePort) {
+    this.repository = repository;
+    this.permissionCachePort = permissionCachePort;
+  }
 
-    @Override
-    @Transactional
-    public EmployeeRoleDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new EmployeeRoleNotFoundException(id);
-        EmployeeRole employeeRole = repository.findById(id)
-            .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
-        permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
-        return EmployeeRoleDto.from(employeeRole);
-    }
+  @Override
+  @Transactional
+  public EmployeeRoleDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new EmployeeRoleNotFoundException(id);
+    EmployeeRole employeeRole =
+        repository.findById(id).orElseThrow(() -> new EmployeeRoleNotFoundException(id));
+    permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
+    return EmployeeRoleDto.from(employeeRole);
+  }
 }

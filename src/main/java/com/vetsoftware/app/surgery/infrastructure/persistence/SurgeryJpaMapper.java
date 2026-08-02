@@ -15,47 +15,61 @@ import org.springframework.stereotype.Component;
 @Component
 public class SurgeryJpaMapper {
 
-    public SurgeryJpaEntity toJpa(Surgery surgery,
-                                  SurgeryTypeJpaEntity surgeryType,
-                                  AnimalJpaEntity animal,
-                                  ConsultationJpaEntity consultation,
-                                  CompanyJpaEntity company) {
-        SurgeryJpaEntity entity = new SurgeryJpaEntity();
-        entity.setId(surgery.getId());
-        entity.setDate(surgery.getDate());
-        entity.setSurgeryType(surgeryType);
-        entity.setDescription(surgery.getDescription());
-        entity.setMedicament(surgery.getMedicament());
-        entity.setObservations(surgery.getObservations());
-        entity.setComplications(surgery.getComplications());
-        entity.setStatus(surgery.getStatus().name());
-        entity.setAnimal(animal);
-        entity.setConsultation(consultation);
-        entity.setCompany(company);
-        entity.setCreatedDate(surgery.getCreatedDate());
-        entity.setEnabled(surgery.isEnabled());
-        return entity;
-    }
+  public SurgeryJpaEntity toJpa(
+      Surgery surgery,
+      SurgeryTypeJpaEntity surgeryType,
+      AnimalJpaEntity animal,
+      ConsultationJpaEntity consultation,
+      CompanyJpaEntity company) {
+    SurgeryJpaEntity entity = new SurgeryJpaEntity();
+    entity.setId(surgery.getId());
+    entity.setDate(surgery.getDate());
+    entity.setSurgeryType(surgeryType);
+    entity.setDescription(surgery.getDescription());
+    entity.setMedicament(surgery.getMedicament());
+    entity.setObservations(surgery.getObservations());
+    entity.setComplications(surgery.getComplications());
+    entity.setStatus(surgery.getStatus().name());
+    entity.setAnimal(animal);
+    entity.setConsultation(consultation);
+    entity.setCompany(company);
+    entity.setCreatedDate(surgery.getCreatedDate());
+    entity.setEnabled(surgery.isEnabled());
+    return entity;
+  }
 
-    public Surgery toDomain(SurgeryJpaEntity entity) {
-        SurgeryTypeJpaEntity st = entity.getSurgeryType();
-        AnimalJpaEntity a = entity.getAnimal();
-        ConsultationJpaEntity co = entity.getConsultation();
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new SurgeryTypeRef(st.getId(), st.getName()),
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public Surgery toDomain(SurgeryJpaEntity entity) {
+    SurgeryTypeJpaEntity st = entity.getSurgeryType();
+    AnimalJpaEntity a = entity.getAnimal();
+    ConsultationJpaEntity co = entity.getConsultation();
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(
+        entity,
+        new SurgeryTypeRef(st.getId(), st.getName()),
+        new AnimalRef(a.getId(), a.getName(), a.getCode()),
+        co == null ? null : new ConsultationRef(co.getId(), co.getDate()),
+        new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public Surgery toDomain(SurgeryJpaEntity entity, SurgeryTypeRef surgeryTypeRef,
-                            AnimalRef animalRef, ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Surgery(
-            entity.getId(), entity.getDate(), surgeryTypeRef,
-            entity.getDescription(), entity.getMedicament(), entity.getObservations(),
-            entity.getComplications(),
-            SurgeryStatus.valueOf(entity.getStatus()),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
-    }
+  public Surgery toDomain(
+      SurgeryJpaEntity entity,
+      SurgeryTypeRef surgeryTypeRef,
+      AnimalRef animalRef,
+      ConsultationRef consultationRef,
+      CompanyRef companyRef) {
+    return new Surgery(
+        entity.getId(),
+        entity.getDate(),
+        surgeryTypeRef,
+        entity.getDescription(),
+        entity.getMedicament(),
+        entity.getObservations(),
+        entity.getComplications(),
+        SurgeryStatus.valueOf(entity.getStatus()),
+        animalRef,
+        consultationRef,
+        companyRef,
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

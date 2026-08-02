@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "prescription.list")
 @Service
 public class ListPrescriptionsService implements ListPrescriptionsUseCase {
-    private final PrescriptionRepository repository;
+  private final PrescriptionRepository repository;
 
-    public ListPrescriptionsService(PrescriptionRepository repository) {
-        this.repository = repository;
-    }
+  public ListPrescriptionsService(PrescriptionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<PrescriptionDto> listAll() {
-        return repository.findAll().stream().map(PrescriptionDto::from).toList();
-    }
+  @Override
+  public List<PrescriptionDto> listAll() {
+    return repository.findAll().stream().map(PrescriptionDto::from).toList();
+  }
 }

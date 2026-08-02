@@ -27,56 +27,55 @@ import org.springframework.stereotype.Component;
  * es la cabeza <em>anterior</em> a él.
  */
 @Component
-@ConditionalOnProperty(
-        prefix = "vetsoftware.audit.outbox",
-        name = "enabled",
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "vetsoftware.audit.outbox", name = "enabled", havingValue = "true")
 final class AuditChainCheckpointJob {
 
-    private static final Logger log = LoggerFactory.getLogger(AuditChainCheckpointJob.class);
+  private static final Logger log = LoggerFactory.getLogger(AuditChainCheckpointJob.class);
 
-    private final AuditChainRepository repository;
-    private final AuditEventStore eventStore;
-    private final AuditChainMetrics metrics;
-    private final ScheduledJobTelemetry telemetry;
+  private final AuditChainRepository repository;
+  private final AuditEventStore eventStore;
+  private final AuditChainMetrics metrics;
+  private final ScheduledJobTelemetry telemetry;
 
-    AuditChainCheckpointJob(
-            AuditChainRepository repository,
-            AuditEventStore eventStore,
-            AuditChainMetrics metrics,
-            ScheduledJobTelemetry telemetry) {
-        this.repository = repository;
-        this.eventStore = eventStore;
-        this.metrics = metrics;
-        this.telemetry = telemetry;
+  AuditChainCheckpointJob(
+      AuditChainRepository repository,
+      AuditEventStore eventStore,
+      AuditChainMetrics metrics,
+      ScheduledJobTelemetry telemetry) {
+    this.repository = repository;
+    this.eventStore = eventStore;
+    this.metrics = metrics;
+    this.telemetry = telemetry;
+  }
+
+  @Scheduled(
+      fixedDelayString = "${vetsoftware.audit.outbox.checkpoint-interval:PT1H}",
+      initialDelayString = "${vetsoftware.audit.outbox.checkpoint-initial-delay:PT2M}")
+  void checkpoint() {
+    telemetry.observe("audit.chain.checkpoint", this::emitCheckpoint);
+  }
+
+  ScheduledJobTelemetry.Outcome emitCheckpoint() {
+    AuditChainRepository.Head head = repository.head();
+
+    // Sin eventos nuevos, un checkpoint repetido solo añadiría ruido al archivo.
+    if (head.lastSequence() == 0 || head.lastSequence() == head.lastCheckpointSequence()) {
+      return ScheduledJobTelemetry.Outcome.NO_WORK;
     }
 
-    @Scheduled(
-            fixedDelayString = "${vetsoftware.audit.outbox.checkpoint-interval:PT1H}",
-            initialDelayString = "${vetsoftware.audit.outbox.checkpoint-initial-delay:PT2M}")
-    void checkpoint() {
-        telemetry.observe("audit.chain.checkpoint", this::emitCheckpoint);
-    }
+    Map<String, Object> attributes = new LinkedHashMap<>();
+    attributes.put("chain.sequence", head.lastSequence());
+    attributes.put("chain.hash", head.lastChainHash());
+    attributes.put("chain.previousCheckpointSequence", head.lastCheckpointSequence());
 
-    ScheduledJobTelemetry.Outcome emitCheckpoint() {
-        AuditChainRepository.Head head = repository.head();
+    eventStore.append("audit_chain_checkpoint", "SUCCESS", attributes);
+    repository.markCheckpoint(head.lastSequence(), Instant.now());
+    metrics.checkpointed(head.lastSequence());
 
-        // Sin eventos nuevos, un checkpoint repetido solo añadiría ruido al archivo.
-        if (head.lastSequence() == 0 || head.lastSequence() == head.lastCheckpointSequence()) {
-            return ScheduledJobTelemetry.Outcome.NO_WORK;
-        }
-
-        Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("chain.sequence", head.lastSequence());
-        attributes.put("chain.hash", head.lastChainHash());
-        attributes.put("chain.previousCheckpointSequence", head.lastCheckpointSequence());
-
-        eventStore.append("audit_chain_checkpoint", "SUCCESS", attributes);
-        repository.markCheckpoint(head.lastSequence(), Instant.now());
-        metrics.checkpointed(head.lastSequence());
-
-        log.info("Checkpoint de la cadena de auditoría emitido; posición={} hash={}",
-                head.lastSequence(), head.lastChainHash());
-        return ScheduledJobTelemetry.Outcome.SUCCESS;
-    }
+    log.info(
+        "Checkpoint de la cadena de auditoría emitido; posición={} hash={}",
+        head.lastSequence(),
+        head.lastChainHash());
+    return ScheduledJobTelemetry.Outcome.SUCCESS;
+  }
 }

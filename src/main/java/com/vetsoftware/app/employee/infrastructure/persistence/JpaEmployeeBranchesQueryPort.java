@@ -12,25 +12,27 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaEmployeeBranchesQueryPort implements EmployeeBranchesQueryPort {
-    private final EmployeeBranchJpaRepository employeeBranchJpaRepository;
+  private final EmployeeBranchJpaRepository employeeBranchJpaRepository;
 
-    public JpaEmployeeBranchesQueryPort(EmployeeBranchJpaRepository employeeBranchJpaRepository) {
-        this.employeeBranchJpaRepository = employeeBranchJpaRepository;
-    }
+  public JpaEmployeeBranchesQueryPort(EmployeeBranchJpaRepository employeeBranchJpaRepository) {
+    this.employeeBranchJpaRepository = employeeBranchJpaRepository;
+  }
 
-    @Override
-    public Map<Long, List<BranchRef>> findBranchesByEmployeeIds(List<Long> employeeIds) {
-        if (employeeIds.isEmpty()) return Map.of();
-        return employeeBranchJpaRepository.findAssignmentsByEmployeeIds(employeeIds).stream()
-            .collect(Collectors.groupingBy(
+  @Override
+  public Map<Long, List<BranchRef>> findBranchesByEmployeeIds(List<Long> employeeIds) {
+    if (employeeIds.isEmpty()) return Map.of();
+    return employeeBranchJpaRepository.findAssignmentsByEmployeeIds(employeeIds).stream()
+        .collect(
+            Collectors.groupingBy(
                 EmployeeBranchAssignmentView::getEmployeeId,
                 Collectors.mapping(
                     v -> new BranchRef(v.getBranchId(), v.getBranchName()),
-                    Collectors.collectingAndThen(Collectors.toList(), list -> {
-                        list.sort(Comparator.comparing(BranchRef::name, String.CASE_INSENSITIVE_ORDER));
-                        return list;
-                    })
-                )
-            ));
-    }
+                    Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        list -> {
+                          list.sort(
+                              Comparator.comparing(BranchRef::name, String.CASE_INSENSITIVE_ORDER));
+                          return list;
+                        }))));
+  }
 }

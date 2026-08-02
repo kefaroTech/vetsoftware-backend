@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("membershipsubmoduleJpaMembershipQueryPort")
 public class JpaMembershipQueryPort implements MembershipQueryPort {
-    private final MembershipJpaRepository membershipJpaRepository;
+  private final MembershipJpaRepository membershipJpaRepository;
 
-    public JpaMembershipQueryPort(MembershipJpaRepository membershipJpaRepository) {
-        this.membershipJpaRepository = membershipJpaRepository;
-    }
+  public JpaMembershipQueryPort(MembershipJpaRepository membershipJpaRepository) {
+    this.membershipJpaRepository = membershipJpaRepository;
+  }
 
-    @Override
-    public Optional<MembershipRef> findById(Long membershipId) {
-        return membershipJpaRepository.findById(membershipId)
-            .map(e -> new MembershipRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<MembershipRef> findById(Long membershipId) {
+    return membershipJpaRepository
+        .findById(membershipId)
+        .map(e -> new MembershipRef(e.getId(), e.getName()));
+  }
 }

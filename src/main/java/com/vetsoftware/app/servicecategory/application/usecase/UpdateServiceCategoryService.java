@@ -16,26 +16,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "service.category.update")
 @Service
 public class UpdateServiceCategoryService implements UpdateServiceCategoryUseCase {
-    private final ServiceCategoryRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final ServiceCategoryRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateServiceCategoryService(ServiceCategoryRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateServiceCategoryService(
+      ServiceCategoryRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public ServiceCategoryDto execute(UpdateServiceCategoryCommand command) {
-        ServiceCategory serviceCategory = repository.findByIdAndCompanyId(command.id(), command.companyId())
-                .orElseThrow(() -> new ServiceCategoryNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
-            throw new ServiceCategoryNameAlreadyExistsException(command.name());
-        }
-        serviceCategory.update(command.name(), command.description(), company, command.updatedBy(), command.version());
-        return ServiceCategoryDto.from(repository.save(serviceCategory));
+  @Override
+  @Transactional
+  public ServiceCategoryDto execute(UpdateServiceCategoryCommand command) {
+    ServiceCategory serviceCategory =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
+            .orElseThrow(() -> new ServiceCategoryNotFoundException(command.id()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndNameExcludingId(
+        command.companyId(), command.name(), command.id())) {
+      throw new ServiceCategoryNameAlreadyExistsException(command.name());
     }
+    serviceCategory.update(
+        command.name(), command.description(), company, command.updatedBy(), command.version());
+    return ServiceCategoryDto.from(repository.save(serviceCategory));
+  }
 }

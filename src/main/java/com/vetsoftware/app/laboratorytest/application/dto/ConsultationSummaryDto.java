@@ -4,7 +4,7 @@ import com.vetsoftware.app.laboratorytest.domain.ConsultationRef;
 import java.time.LocalDate;
 
 public record ConsultationSummaryDto(Long id, LocalDate date) {
-    public static ConsultationSummaryDto from(ConsultationRef ref) {
-        return new ConsultationSummaryDto(ref.id(), ref.date());
-    }
+  public static ConsultationSummaryDto from(ConsultationRef ref) {
+    return new ConsultationSummaryDto(ref.id(), ref.date());
+  }
 }

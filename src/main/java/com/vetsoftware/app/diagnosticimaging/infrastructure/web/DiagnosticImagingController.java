@@ -33,102 +33,126 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/diagnostic-imagings")
 public class DiagnosticImagingController {
-    private final CreateDiagnosticImagingUseCase createUseCase;
-    private final UpdateDiagnosticImagingUseCase updateUseCase;
-    private final ChangeDiagnosticImagingStatusUseCase changeStatusUseCase;
-    private final FindDiagnosticImagingUseCase findUseCase;
-    private final ListDiagnosticImagingsUseCase listUseCase;
-    private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
-    private final DeleteDiagnosticImagingUseCase deleteUseCase;
-    private final ReactivateDiagnosticImagingUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateDiagnosticImagingUseCase createUseCase;
+  private final UpdateDiagnosticImagingUseCase updateUseCase;
+  private final ChangeDiagnosticImagingStatusUseCase changeStatusUseCase;
+  private final FindDiagnosticImagingUseCase findUseCase;
+  private final ListDiagnosticImagingsUseCase listUseCase;
+  private final ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
+  private final DeleteDiagnosticImagingUseCase deleteUseCase;
+  private final ReactivateDiagnosticImagingUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public DiagnosticImagingController(CreateDiagnosticImagingUseCase createUseCase,
-                                       UpdateDiagnosticImagingUseCase updateUseCase,
-                                       ChangeDiagnosticImagingStatusUseCase changeStatusUseCase,
-                                       FindDiagnosticImagingUseCase findUseCase,
-                                       ListDiagnosticImagingsUseCase listUseCase,
-                                       ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
-                                       DeleteDiagnosticImagingUseCase deleteUseCase,
-                                       ReactivateDiagnosticImagingUseCase reactivateUseCase,
-                                       Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.changeStatusUseCase = changeStatusUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listByAnimalUseCase = listByAnimalUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public DiagnosticImagingController(
+      CreateDiagnosticImagingUseCase createUseCase,
+      UpdateDiagnosticImagingUseCase updateUseCase,
+      ChangeDiagnosticImagingStatusUseCase changeStatusUseCase,
+      FindDiagnosticImagingUseCase findUseCase,
+      ListDiagnosticImagingsUseCase listUseCase,
+      ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase,
+      DeleteDiagnosticImagingUseCase deleteUseCase,
+      ReactivateDiagnosticImagingUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.changeStatusUseCase = changeStatusUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listByAnimalUseCase = listByAnimalUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public DiagnosticImagingResponse create(@Valid @RequestBody CreateDiagnosticImagingRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public DiagnosticImagingResponse create(
+      @Valid @RequestBody CreateDiagnosticImagingRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateDiagnosticImagingCommand(
-                request.date(), request.diagnosticImagingTypeId(), request.clinicalSigns(),
-                request.studyType(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                request.date(),
+                request.diagnosticImagingTypeId(),
+                request.clinicalSigns(),
+                request.studyType(),
+                request.diagnosis(),
+                request.observations(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @GetMapping
-    public List<DiagnosticImagingResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<DiagnosticImagingResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/by-animal/{animalId}")
-    public List<DiagnosticImagingResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-animal/{animalId}")
+  public List<DiagnosticImagingResponse> listByAnimal(@PathVariable Long animalId) {
+    return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public DiagnosticImagingResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public DiagnosticImagingResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public DiagnosticImagingResponse update(@PathVariable Long id,
-                                            @Valid @RequestBody UpdateDiagnosticImagingRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public DiagnosticImagingResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateDiagnosticImagingRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateDiagnosticImagingCommand(
-                id, request.date(), request.diagnosticImagingTypeId(), request.clinicalSigns(),
-                request.studyType(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                id,
+                request.date(),
+                request.diagnosticImagingTypeId(),
+                request.clinicalSigns(),
+                request.studyType(),
+                request.diagnosis(),
+                request.observations(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @PatchMapping("/{id}/status")
-    public DiagnosticImagingResponse changeStatus(@PathVariable Long id,
-                                                  @Valid @RequestBody ChangeDiagnosticImagingStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(
-            new ChangeDiagnosticImagingStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
-    }
+  @PatchMapping("/{id}/status")
+  public DiagnosticImagingResponse changeStatus(
+      @PathVariable Long id, @Valid @RequestBody ChangeDiagnosticImagingStatusRequest request) {
+    return toResponse(
+        changeStatusUseCase.execute(
+            new ChangeDiagnosticImagingStatusCommand(
+                id, request.status(), authz.currentCompanyIdOrNull())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public DiagnosticImagingResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public DiagnosticImagingResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private DiagnosticImagingResponse toResponse(DiagnosticImagingDto dto) {
-        DiagnosticImagingTypeSummaryDto t = dto.diagnosticImagingType();
-        AnimalSummaryDto a = dto.animal();
-        ConsultationSummaryDto co = dto.consultation();
-        CompanySummaryDto c = dto.company();
-        return new DiagnosticImagingResponse(
-            dto.id(), dto.date(),
-            new DiagnosticImagingTypeSummary(t.id(), t.name()),
-            dto.clinicalSigns(), dto.studyType(), dto.diagnosis(), dto.observations(),
-            dto.status(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(), dto.enabled());
-    }
+  private DiagnosticImagingResponse toResponse(DiagnosticImagingDto dto) {
+    DiagnosticImagingTypeSummaryDto t = dto.diagnosticImagingType();
+    AnimalSummaryDto a = dto.animal();
+    ConsultationSummaryDto co = dto.consultation();
+    CompanySummaryDto c = dto.company();
+    return new DiagnosticImagingResponse(
+        dto.id(),
+        dto.date(),
+        new DiagnosticImagingTypeSummary(t.id(), t.name()),
+        dto.clinicalSigns(),
+        dto.studyType(),
+        dto.diagnosis(),
+        dto.observations(),
+        dto.status(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        co == null ? null : new ConsultationSummary(co.id(), co.date()),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "economic.activity.delete")
 @Service
 public class DeleteEconomicActivityService implements DeleteEconomicActivityUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public DeleteEconomicActivityService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteEconomicActivityService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new EconomicActivityNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new EconomicActivityNotFoundException(id));
+    repository.delete(id);
+  }
 }

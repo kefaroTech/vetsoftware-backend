@@ -5,5 +5,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(TokenCleanupProperties.class)
-class TokenCleanupConfig {
-}
+class TokenCleanupConfig {}

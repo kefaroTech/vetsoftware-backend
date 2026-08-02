@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "diagnostic.imaging.type.find")
 @Service
 public class FindDiagnosticImagingTypeService implements FindDiagnosticImagingTypeUseCase {
-    private final DiagnosticImagingTypeRepository repository;
+  private final DiagnosticImagingTypeRepository repository;
 
-    public FindDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository) {
-        this.repository = repository;
-    }
+  public FindDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public DiagnosticImagingTypeDto findById(Long id, Long companyId) {
-        return DiagnosticImagingTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
-    }
+  @Override
+  public DiagnosticImagingTypeDto findById(Long id, Long companyId) {
+    return DiagnosticImagingTypeDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
+  }
 }

@@ -13,18 +13,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class ZxingQrGenerator implements QrGeneratorPort {
 
-    private static final int SIZE = 220;
+  private static final int SIZE = 220;
 
-    @Override
-    public String generatePngBase64(String content) {
-        try {
-            QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(content, BarcodeFormat.QR_CODE, SIZE, SIZE);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return Base64.getEncoder().encodeToString(out.toByteArray());
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to generate QR code", e);
-        }
+  @Override
+  public String generatePngBase64(String content) {
+    try {
+      QRCodeWriter writer = new QRCodeWriter();
+      BitMatrix matrix = writer.encode(content, BarcodeFormat.QR_CODE, SIZE, SIZE);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      MatrixToImageWriter.writeToStream(matrix, "PNG", out);
+      return Base64.getEncoder().encodeToString(out.toByteArray());
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to generate QR code", e);
     }
+  }
 }

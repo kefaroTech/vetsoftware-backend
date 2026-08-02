@@ -24,71 +24,75 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/membership-sub-modules")
 public class MembershipSubModuleController {
-    private final CreateMembershipSubModuleUseCase createUseCase;
-    private final UpdateMembershipSubModuleUseCase updateUseCase;
-    private final FindMembershipSubModuleUseCase findUseCase;
-    private final ListMembershipSubModulesUseCase listUseCase;
-    private final DeleteMembershipSubModuleUseCase deleteUseCase;
-    private final ReactivateMembershipSubModuleUseCase reactivateUseCase;
+  private final CreateMembershipSubModuleUseCase createUseCase;
+  private final UpdateMembershipSubModuleUseCase updateUseCase;
+  private final FindMembershipSubModuleUseCase findUseCase;
+  private final ListMembershipSubModulesUseCase listUseCase;
+  private final DeleteMembershipSubModuleUseCase deleteUseCase;
+  private final ReactivateMembershipSubModuleUseCase reactivateUseCase;
 
-    public MembershipSubModuleController(CreateMembershipSubModuleUseCase createUseCase,
-                                          UpdateMembershipSubModuleUseCase updateUseCase,
-                                          FindMembershipSubModuleUseCase findUseCase,
-                                          ListMembershipSubModulesUseCase listUseCase,
-                                          DeleteMembershipSubModuleUseCase deleteUseCase,
-                                          ReactivateMembershipSubModuleUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public MembershipSubModuleController(
+      CreateMembershipSubModuleUseCase createUseCase,
+      UpdateMembershipSubModuleUseCase updateUseCase,
+      FindMembershipSubModuleUseCase findUseCase,
+      ListMembershipSubModulesUseCase listUseCase,
+      DeleteMembershipSubModuleUseCase deleteUseCase,
+      ReactivateMembershipSubModuleUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public MembershipSubModuleResponse create(@Valid @RequestBody CreateMembershipSubModuleRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public MembershipSubModuleResponse create(
+      @Valid @RequestBody CreateMembershipSubModuleRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateMembershipSubModuleCommand(request.membershipId(), request.subModuleId())));
-    }
+  }
 
-    @GetMapping
-    public List<MembershipSubModuleResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<MembershipSubModuleResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public MembershipSubModuleResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public MembershipSubModuleResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public MembershipSubModuleResponse update(@PathVariable Long id,
-                                               @Valid @RequestBody UpdateMembershipSubModuleRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateMembershipSubModuleCommand(id, request.membershipId(), request.subModuleId())));
-    }
+  @PutMapping("/{id}")
+  public MembershipSubModuleResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateMembershipSubModuleRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateMembershipSubModuleCommand(
+                id, request.membershipId(), request.subModuleId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public MembershipSubModuleResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public MembershipSubModuleResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {
-        MembershipSummaryDto m = dto.membership();
-        SubModuleSummaryDto sm = dto.subModule();
-        return new MembershipSubModuleResponse(
-            dto.id(),
-            new MembershipSummary(m.id(), m.name()),
-            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
-    }
+  private MembershipSubModuleResponse toResponse(MembershipSubModuleDto dto) {
+    MembershipSummaryDto m = dto.membership();
+    SubModuleSummaryDto sm = dto.subModule();
+    return new MembershipSubModuleResponse(
+        dto.id(),
+        new MembershipSummary(m.id(), m.name()),
+        new SubModuleSummary(sm.id(), sm.name(), sm.code()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

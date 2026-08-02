@@ -22,55 +22,60 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LoginEmployeeService implements LoginEmployeeUseCase {
 
-    private final EmployeeCredentialsRepository credentialsRepository;
-    private final TokenGenerator tokenGenerator;
-    private final RefreshTokenIssuer refreshTokenIssuer;
-    private final PasswordHasher passwordHasher;
-    private final EmployeeActivationPort employeeActivationPort;
-    private final AuthEmployeeRepository authEmployeeRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+  private final EmployeeCredentialsRepository credentialsRepository;
+  private final TokenGenerator tokenGenerator;
+  private final RefreshTokenIssuer refreshTokenIssuer;
+  private final PasswordHasher passwordHasher;
+  private final EmployeeActivationPort employeeActivationPort;
+  private final AuthEmployeeRepository authEmployeeRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
-    public LoginEmployeeService(EmployeeCredentialsRepository credentialsRepository,
-                                TokenGenerator tokenGenerator,
-                                RefreshTokenIssuer refreshTokenIssuer,
-                                PasswordHasher passwordHasher,
-                                EmployeeActivationPort employeeActivationPort,
-                                AuthEmployeeRepository authEmployeeRepository,
-                                RefreshTokenRepository refreshTokenRepository) {
-        this.credentialsRepository = credentialsRepository;
-        this.tokenGenerator = tokenGenerator;
-        this.refreshTokenIssuer = refreshTokenIssuer;
-        this.passwordHasher = passwordHasher;
-        this.employeeActivationPort = employeeActivationPort;
-        this.authEmployeeRepository = authEmployeeRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
+  public LoginEmployeeService(
+      EmployeeCredentialsRepository credentialsRepository,
+      TokenGenerator tokenGenerator,
+      RefreshTokenIssuer refreshTokenIssuer,
+      PasswordHasher passwordHasher,
+      EmployeeActivationPort employeeActivationPort,
+      AuthEmployeeRepository authEmployeeRepository,
+      RefreshTokenRepository refreshTokenRepository) {
+    this.credentialsRepository = credentialsRepository;
+    this.tokenGenerator = tokenGenerator;
+    this.refreshTokenIssuer = refreshTokenIssuer;
+    this.passwordHasher = passwordHasher;
+    this.employeeActivationPort = employeeActivationPort;
+    this.authEmployeeRepository = authEmployeeRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
+  }
 
-    @Override
-    @Transactional
-    public TokenDto execute(LoginEmployeeCommand command) {
-        EmployeeCredentials credentials = credentialsRepository.findByCode(command.employeeCode())
-                .orElseThrow(InvalidCredentialsException::new);
+  @Override
+  @Transactional
+  public TokenDto execute(LoginEmployeeCommand command) {
+    EmployeeCredentials credentials =
+        credentialsRepository
+            .findByCode(command.employeeCode())
+            .orElseThrow(InvalidCredentialsException::new);
 
-        if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
-            throw new InvalidCredentialsException();
+    if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
+      throw new InvalidCredentialsException();
 
-        // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
-        if (!credentials.emailVerified())
-            throw new EmailNotVerifiedException(command.employeeCode());
+    // Auto-registro Opción B: hasta no verificar el correo, el dueño no puede iniciar sesión.
+    if (!credentials.emailVerified()) throw new EmailNotVerifiedException(command.employeeCode());
 
-        // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba activo).
-        employeeActivationPort.activateOnLogin(credentials.id());
+    // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba activo).
+    employeeActivationPort.activateOnLogin(credentials.id());
 
-        // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la misma cuenta.
-        AuthEmployee activeSession = authEmployeeRepository.rotateAuthVersion(credentials.id())
-                .orElseThrow(InvalidCredentialsException::new);
-        refreshTokenRepository.revokeAllForSubject(credentials.id(), "EMPLOYEE");
+    // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la misma cuenta.
+    AuthEmployee activeSession =
+        authEmployeeRepository
+            .rotateAuthVersion(credentials.id())
+            .orElseThrow(InvalidCredentialsException::new);
+    refreshTokenRepository.revokeAllForSubject(credentials.id(), "EMPLOYEE");
 
-        String accessToken = tokenGenerator.generate(
-                activeSession.id(), "EMPLOYEE", activeSession.companyId(), activeSession.authVersion());
-        String refreshToken = refreshTokenIssuer.issue(
-                activeSession.id(), "EMPLOYEE", activeSession.authVersion());
-        return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
-    }
+    String accessToken =
+        tokenGenerator.generate(
+            activeSession.id(), "EMPLOYEE", activeSession.companyId(), activeSession.authVersion());
+    String refreshToken =
+        refreshTokenIssuer.issue(activeSession.id(), "EMPLOYEE", activeSession.authVersion());
+    return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
+  }
 }

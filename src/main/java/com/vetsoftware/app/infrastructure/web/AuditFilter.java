@@ -20,39 +20,46 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class AuditFilter extends OncePerRequestFilter {
 
-    private static final Set<String> MUTATING = Set.of("POST", "PUT", "PATCH", "DELETE");
+  private static final Set<String> MUTATING = Set.of("POST", "PUT", "PATCH", "DELETE");
 
-    private final AuditLogger auditLogger;
+  private final AuditLogger auditLogger;
 
-    public AuditFilter(AuditLogger auditLogger) {
-        this.auditLogger = auditLogger;
+  public AuditFilter(AuditLogger auditLogger) {
+    this.auditLogger = auditLogger;
+  }
+
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+      throws ServletException, IOException {
+    long start = System.currentTimeMillis();
+    try {
+      chain.doFilter(request, response);
+    } finally {
+      if (MUTATING.contains(request.getMethod().toUpperCase())) {
+        int status = response.getStatus();
+        auditLogger.mutation(
+            request.getMethod(),
+            request.getRequestURI(),
+            status,
+            outcome(status),
+            System.currentTimeMillis() - start);
+      }
     }
+  }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        long start = System.currentTimeMillis();
-        try {
-            chain.doFilter(request, response);
-        } finally {
-            if (MUTATING.contains(request.getMethod().toUpperCase())) {
-                int status = response.getStatus();
-                auditLogger.mutation(request.getMethod(), request.getRequestURI(), status,
-                        outcome(status), System.currentTimeMillis() - start);
-            }
-        }
-    }
+  private static String outcome(int status) {
+    if (status >= 500) return "ERROR";
+    if (status == 401 || status == 403) return "DENIED";
+    if (status >= 400) return "REJECTED";
+    return "SUCCESS";
+  }
 
-    private static String outcome(int status) {
-        if (status >= 500)                  return "ERROR";
-        if (status == 401 || status == 403) return "DENIED";
-        if (status >= 400)                  return "REJECTED";
-        return "SUCCESS";
-    }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        return uri.startsWith("/actuator") || uri.startsWith("/swagger") || uri.startsWith("/v3/api-docs");
-    }
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String uri = request.getRequestURI();
+    return uri.startsWith("/actuator")
+        || uri.startsWith("/swagger")
+        || uri.startsWith("/v3/api-docs");
+  }
 }

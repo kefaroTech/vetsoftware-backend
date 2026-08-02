@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "supplier.search")
 @Service
 public class SearchSuppliersService implements SearchSuppliersUseCase {
-    private final SupplierRepository repository;
+  private final SupplierRepository repository;
 
-    public SearchSuppliersService(SupplierRepository repository) {
-        this.repository = repository;
-    }
+  public SearchSuppliersService(SupplierRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public PageResult<SupplierDto> execute(SearchSuppliersCommand command) {
-        return repository.search(command).map(SupplierDto::from);
-    }
+  @Override
+  public PageResult<SupplierDto> execute(SearchSuppliersCommand command) {
+    return repository.search(command).map(SupplierDto::from);
+  }
 }

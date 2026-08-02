@@ -7,5 +7,5 @@ import com.vetsoftware.app.electronicdocument.application.command.ProcessProvide
  * autenticidad se valida por HMAC dentro del servicio (no por JWT).
  */
 public interface ProcessProviderWebhookUseCase {
-    void execute(ProcessProviderWebhookCommand command);
+  void execute(ProcessProviderWebhookCommand command);
 }

@@ -4,11 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record GoodsReceiptLineResponse(
-        Long id,
-        ProductSummary product,
-        Long purchaseOrderLineId,
-        String lotNumber,
-        LocalDate expireDate,
-        int quantityReceived,
-        BigDecimal unitCost
-) {}
+    Long id,
+    ProductSummary product,
+    Long purchaseOrderLineId,
+    String lotNumber,
+    LocalDate expireDate,
+    int quantityReceived,
+    BigDecimal unitCost) {}

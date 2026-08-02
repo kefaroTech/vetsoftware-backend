@@ -15,24 +15,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "vaccination.type.update")
 @Service
 public class UpdateVaccinationTypeService implements UpdateVaccinationTypeUseCase {
-    private final VaccinationTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final VaccinationTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateVaccinationTypeService(VaccinationTypeRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateVaccinationTypeService(
+      VaccinationTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public VaccinationTypeDto execute(UpdateVaccinationTypeCommand command) {
-        VaccinationType vaccinationType = repository.findById(command.id())
-                .orElseThrow(() -> new VaccinationTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        vaccinationType.update(command.name(), command.description(), company, command.general());
-        return VaccinationTypeDto.from(repository.save(vaccinationType));
-    }
+  @Override
+  @Transactional
+  public VaccinationTypeDto execute(UpdateVaccinationTypeCommand command) {
+    VaccinationType vaccinationType =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new VaccinationTypeNotFoundException(command.id()));
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    vaccinationType.update(command.name(), command.description(), company, command.general());
+    return VaccinationTypeDto.from(repository.save(vaccinationType));
+  }
 }

@@ -25,44 +25,44 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ActivateBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @InjectMocks private ActivateBranchService service;
+  @Mock private BranchRepository repository;
+  @InjectMocks private ActivateBranchService service;
 
-    private final CityRef city = new CityRef(5L, "Bogotá");
-    private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
+  private final CityRef city = new CityRef(5L, "Bogotá");
+  private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
 
-    private Branch branch(boolean active) {
-        return new Branch(3L, "Sede", "S", null, null, city, company,
-            LocalDateTime.of(2020, 1, 1, 10, 0), active);
-    }
+  private Branch branch(boolean active) {
+    return new Branch(
+        3L, "Sede", "S", null, null, city, company, LocalDateTime.of(2020, 1, 1, 10, 0), active);
+  }
 
-    @Test
-    void activa_una_sucursal_inactiva_y_persiste() {
-        Branch inactiva = branch(false);
-        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(inactiva));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+  @Test
+  void activa_una_sucursal_inactiva_y_persiste() {
+    Branch inactiva = branch(false);
+    when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(inactiva));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        BranchDto dto = service.execute(3L, 9L);
+    BranchDto dto = service.execute(3L, 9L);
 
-        assertThat(inactiva.isActive()).isTrue();
-        assertThat(dto.active()).isTrue();
-        verify(repository).save(inactiva);
-    }
+    assertThat(inactiva.isActive()).isTrue();
+    assertThat(dto.active()).isTrue();
+    verify(repository).save(inactiva);
+  }
 
-    @Test
-    void es_idempotente_si_ya_estaba_activa() {
-        Branch activa = branch(true);
-        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(activa));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+  @Test
+  void es_idempotente_si_ya_estaba_activa() {
+    Branch activa = branch(true);
+    when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(activa));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(service.execute(3L, 9L).active()).isTrue();
-    }
+    assertThat(service.execute(3L, 9L).active()).isTrue();
+  }
 
-    @Test
-    void lanza_y_no_escribe_si_no_pertenece_a_la_empresa() {
-        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
+  @Test
+  void lanza_y_no_escribe_si_no_pertenece_a_la_empresa() {
+    when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(3L, 9L)).isInstanceOf(BranchNotFoundException.class);
-        verify(repository, never()).save(any());
-    }
+    assertThatThrownBy(() -> service.execute(3L, 9L)).isInstanceOf(BranchNotFoundException.class);
+    verify(repository, never()).save(any());
+  }
 }

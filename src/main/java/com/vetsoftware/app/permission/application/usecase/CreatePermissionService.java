@@ -15,25 +15,33 @@ import org.springframework.stereotype.Service;
 @Observed(name = "permission.create")
 @Service
 public class CreatePermissionService implements CreatePermissionUseCase {
-    private final PermissionRepository repository;
-    private final CompanyQueryPort companyQueryPort;
-    private final SubModuleQueryPort subModuleQueryPort;
+  private final PermissionRepository repository;
+  private final CompanyQueryPort companyQueryPort;
+  private final SubModuleQueryPort subModuleQueryPort;
 
-    public CreatePermissionService(PermissionRepository repository,
-                                    CompanyQueryPort companyQueryPort,
-                                    SubModuleQueryPort subModuleQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-        this.subModuleQueryPort = subModuleQueryPort;
-    }
+  public CreatePermissionService(
+      PermissionRepository repository,
+      CompanyQueryPort companyQueryPort,
+      SubModuleQueryPort subModuleQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+    this.subModuleQueryPort = subModuleQueryPort;
+  }
 
-    @Override
-    public PermissionDto execute(CreatePermissionCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
-        Permission permission = Permission.create(command.name(), command.code(), company, subModule);
-        return PermissionDto.from(repository.save(permission));
-    }
+  @Override
+  public PermissionDto execute(CreatePermissionCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    SubModuleRef subModule =
+        subModuleQueryPort
+            .findById(command.subModuleId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+    Permission permission = Permission.create(command.name(), command.code(), company, subModule);
+    return PermissionDto.from(repository.save(permission));
+  }
 }

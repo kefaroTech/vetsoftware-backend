@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "animal.color.find")
 @Service
 public class FindAnimalColorService implements FindAnimalColorUseCase {
-    private final AnimalColorRepository repository;
+  private final AnimalColorRepository repository;
 
-    public FindAnimalColorService(AnimalColorRepository repository) {
-        this.repository = repository;
-    }
+  public FindAnimalColorService(AnimalColorRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public AnimalColorDto findById(Long id) {
-        return AnimalColorDto.from(repository.findById(id)
-                .orElseThrow(() -> new AnimalColorNotFoundException(id)));
-    }
+  @Override
+  public AnimalColorDto findById(Long id) {
+    return AnimalColorDto.from(
+        repository.findById(id).orElseThrow(() -> new AnimalColorNotFoundException(id)));
+  }
 }

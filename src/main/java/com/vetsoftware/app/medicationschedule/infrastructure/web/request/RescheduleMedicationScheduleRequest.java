@@ -4,6 +4,4 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 public record RescheduleMedicationScheduleRequest(
-        @NotNull LocalDateTime newDateTime,
-        String mode
-) {}
+    @NotNull LocalDateTime newDateTime, String mode) {}

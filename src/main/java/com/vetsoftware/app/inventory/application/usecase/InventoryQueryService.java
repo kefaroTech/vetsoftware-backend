@@ -24,50 +24,58 @@ import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-/** Lecturas del inventario. El gate {@code inventory.read} vive en los @PreAuthorize de los puertos de entrada. */
+/**
+ * Lecturas del inventario. El gate {@code inventory.read} vive en los @PreAuthorize de los puertos
+ * de entrada.
+ */
 @Service
-public class InventoryQueryService implements ListStockUseCase, ListProductLotsUseCase, ListKardexUseCase,
-        GetInventoryAlertsUseCase, GetInventoryValuationUseCase, ListPurchasesUseCase {
+public class InventoryQueryService
+    implements ListStockUseCase,
+        ListProductLotsUseCase,
+        ListKardexUseCase,
+        GetInventoryAlertsUseCase,
+        GetInventoryValuationUseCase,
+        ListPurchasesUseCase {
 
-    private final StockQueryPort stockQueryPort;
+  private final StockQueryPort stockQueryPort;
 
-    public InventoryQueryService(StockQueryPort stockQueryPort) {
-        this.stockQueryPort = stockQueryPort;
-    }
+  public InventoryQueryService(StockQueryPort stockQueryPort) {
+    this.stockQueryPort = stockQueryPort;
+  }
 
-    @Override
-    @Observed(name = "inventory.alerts")
-    public InventoryAlertsView alerts(InventoryAlertsQuery query) {
-        return stockQueryPort.alerts(query.companyId(), query.branchId(), query.expiringInDays());
-    }
+  @Override
+  @Observed(name = "inventory.alerts")
+  public InventoryAlertsView alerts(InventoryAlertsQuery query) {
+    return stockQueryPort.alerts(query.companyId(), query.branchId(), query.expiringInDays());
+  }
 
-    @Override
-    @Observed(name = "inventory.valuation")
-    public InventoryValuationView valuation(InventoryValuationQuery query) {
-        return stockQueryPort.valuation(query.companyId(), query.branchId());
-    }
+  @Override
+  @Observed(name = "inventory.valuation")
+  public InventoryValuationView valuation(InventoryValuationQuery query) {
+    return stockQueryPort.valuation(query.companyId(), query.branchId());
+  }
 
-    @Override
-    @Observed(name = "inventory.purchases")
-    public PageResult<PurchaseView> purchases(SearchPurchasesQuery query) {
-        return stockQueryPort.purchases(query);
-    }
+  @Override
+  @Observed(name = "inventory.purchases")
+  public PageResult<PurchaseView> purchases(SearchPurchasesQuery query) {
+    return stockQueryPort.purchases(query);
+  }
 
-    @Override
-    @Observed(name = "inventory.search.stock")
-    public PageResult<StockView> search(SearchStockCommand command) {
-        return stockQueryPort.searchStock(command);
-    }
+  @Override
+  @Observed(name = "inventory.search.stock")
+  public PageResult<StockView> search(SearchStockCommand command) {
+    return stockQueryPort.searchStock(command);
+  }
 
-    @Override
-    @Observed(name = "inventory.list.lots")
-    public List<StockLotView> listLots(ListLotsCommand command) {
-        return stockQueryPort.listLots(command.companyId(), command.branchId(), command.productId());
-    }
+  @Override
+  @Observed(name = "inventory.list.lots")
+  public List<StockLotView> listLots(ListLotsCommand command) {
+    return stockQueryPort.listLots(command.companyId(), command.branchId(), command.productId());
+  }
 
-    @Override
-    @Observed(name = "inventory.search.kardex")
-    public PageResult<StockMovementView> searchKardex(SearchKardexCommand command) {
-        return stockQueryPort.searchKardex(command);
-    }
+  @Override
+  @Observed(name = "inventory.search.kardex")
+  public PageResult<StockMovementView> searchKardex(SearchKardexCommand command) {
+    return stockQueryPort.searchKardex(command);
+  }
 }

@@ -4,12 +4,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record CreatePurchaseOrderCommand(
-        Long branchId,
-        Long supplierId,
-        LocalDate orderDate,
-        LocalDate expectedDate,
-        String notes,
-        List<PurchaseOrderLineCommand> lines,
-        Long companyId,
-        Long createdBy
-) {}
+    Long branchId,
+    Long supplierId,
+    LocalDate orderDate,
+    LocalDate expectedDate,
+    String notes,
+    List<PurchaseOrderLineCommand> lines,
+    Long companyId,
+    Long createdBy) {}

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "diagnostic.imaging.list")
 @Service
 public class ListDiagnosticImagingsService implements ListDiagnosticImagingsUseCase {
-    private final DiagnosticImagingRepository repository;
+  private final DiagnosticImagingRepository repository;
 
-    public ListDiagnosticImagingsService(DiagnosticImagingRepository repository) {
-        this.repository = repository;
-    }
+  public ListDiagnosticImagingsService(DiagnosticImagingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<DiagnosticImagingDto> listAll() {
-        return repository.findAll().stream().map(DiagnosticImagingDto::from).toList();
-    }
+  @Override
+  public List<DiagnosticImagingDto> listAll() {
+    return repository.findAll().stream().map(DiagnosticImagingDto::from).toList();
+  }
 }

@@ -15,22 +15,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "breed.update")
 @Service
 public class UpdateBreedService implements UpdateBreedUseCase {
-    private final BreedRepository repository;
-    private final SpecieQueryPort specieQueryPort;
+  private final BreedRepository repository;
+  private final SpecieQueryPort specieQueryPort;
 
-    public UpdateBreedService(BreedRepository repository, SpecieQueryPort specieQueryPort) {
-        this.repository = repository;
-        this.specieQueryPort = specieQueryPort;
-    }
+  public UpdateBreedService(BreedRepository repository, SpecieQueryPort specieQueryPort) {
+    this.repository = repository;
+    this.specieQueryPort = specieQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public BreedDto execute(UpdateBreedCommand command) {
-        Breed breed = repository.findById(command.id())
+  @Override
+  @Transactional
+  public BreedDto execute(UpdateBreedCommand command) {
+    Breed breed =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new BreedNotFoundException(command.id()));
-        SpecieRef specie = specieQueryPort.findById(command.specieId())
-            .orElseThrow(() -> new IllegalArgumentException("Specie not found: " + command.specieId()));
-        breed.update(command.name(), specie);
-        return BreedDto.from(repository.save(breed));
-    }
+    SpecieRef specie =
+        specieQueryPort
+            .findById(command.specieId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Specie not found: " + command.specieId()));
+    breed.update(command.name(), specie);
+    return BreedDto.from(repository.save(breed));
+  }
 }

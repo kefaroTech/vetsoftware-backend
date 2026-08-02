@@ -5,7 +5,7 @@ import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestStoragePathRe
 import java.util.Optional;
 
 public interface LaboratoryTestQueryPort {
-    Optional<LaboratoryTestRef> findById(Long laboratoryTestId);
+  Optional<LaboratoryTestRef> findById(Long laboratoryTestId);
 
-    Optional<LaboratoryTestStoragePathRef> findStoragePath(Long laboratoryTestId);
+  Optional<LaboratoryTestStoragePathRef> findStoragePath(Long laboratoryTestId);
 }

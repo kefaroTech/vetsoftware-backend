@@ -9,14 +9,16 @@ import org.springframework.stereotype.Component;
 @Component("employeeBranchJpaBranchQueryPort")
 public class JpaBranchQueryPort implements BranchQueryPort {
 
-    private final BranchJpaRepository branchJpaRepository;
+  private final BranchJpaRepository branchJpaRepository;
 
-    public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
-        this.branchJpaRepository = branchJpaRepository;
-    }
+  public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
+    this.branchJpaRepository = branchJpaRepository;
+  }
 
-    @Override
-    public List<Long> findBranchIdsByCompanyId(Long companyId) {
-        return branchJpaRepository.findAllByCompanyId(companyId).stream().map(BranchJpaEntity::getId).toList();
-    }
+  @Override
+  public List<Long> findBranchIdsByCompanyId(Long companyId) {
+    return branchJpaRepository.findAllByCompanyId(companyId).stream()
+        .map(BranchJpaEntity::getId)
+        .toList();
+  }
 }

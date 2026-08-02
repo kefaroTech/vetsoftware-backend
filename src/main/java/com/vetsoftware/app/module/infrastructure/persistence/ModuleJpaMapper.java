@@ -5,17 +5,22 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ModuleJpaMapper {
-    public ModuleJpaEntity toJpa(Module module) {
-        ModuleJpaEntity entity = new ModuleJpaEntity();
-        entity.setId(module.getId());
-        entity.setName(module.getName());
-        entity.setCode(module.getCode());
-        entity.setCreatedDate(module.getCreatedDate());
-        entity.setEnabled(module.isEnabled());
-        return entity;
-    }
+  public ModuleJpaEntity toJpa(Module module) {
+    ModuleJpaEntity entity = new ModuleJpaEntity();
+    entity.setId(module.getId());
+    entity.setName(module.getName());
+    entity.setCode(module.getCode());
+    entity.setCreatedDate(module.getCreatedDate());
+    entity.setEnabled(module.isEnabled());
+    return entity;
+  }
 
-    public Module toDomain(ModuleJpaEntity entity) {
-        return new Module(entity.getId(), entity.getName(), entity.getCode(), entity.getCreatedDate(), entity.isEnabled());
-    }
+  public Module toDomain(ModuleJpaEntity entity) {
+    return new Module(
+        entity.getId(),
+        entity.getName(),
+        entity.getCode(),
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

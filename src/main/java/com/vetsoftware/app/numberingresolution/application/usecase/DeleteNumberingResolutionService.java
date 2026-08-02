@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "numbering.resolution.delete")
 @Service
 public class DeleteNumberingResolutionService implements DeleteNumberingResolutionUseCase {
-    private final NumberingResolutionRepository repository;
+  private final NumberingResolutionRepository repository;
 
-    public DeleteNumberingResolutionService(NumberingResolutionRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteNumberingResolutionService(NumberingResolutionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new NumberingResolutionNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new NumberingResolutionNotFoundException(id));
+    repository.delete(id);
+  }
 }

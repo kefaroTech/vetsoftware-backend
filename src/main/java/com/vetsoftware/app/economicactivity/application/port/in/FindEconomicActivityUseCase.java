@@ -4,6 +4,6 @@ import com.vetsoftware.app.economicactivity.application.dto.EconomicActivityDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindEconomicActivityUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    EconomicActivityDto findById(Long id);
+  @PreAuthorize("hasRole('SYSTEM')")
+  EconomicActivityDto findById(Long id);
 }

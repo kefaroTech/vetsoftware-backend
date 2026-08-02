@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "system.permission.update")
 @Service
 public class UpdateSystemPermissionService implements UpdateSystemPermissionUseCase {
-    private final SystemPermissionRepository repository;
+  private final SystemPermissionRepository repository;
 
-    public UpdateSystemPermissionService(SystemPermissionRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateSystemPermissionService(SystemPermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SystemPermissionDto execute(UpdateSystemPermissionCommand command) {
-        SystemPermission systemPermission = repository.findById(command.id())
+  @Override
+  @Transactional
+  public SystemPermissionDto execute(UpdateSystemPermissionCommand command) {
+    SystemPermission systemPermission =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new SystemPermissionNotFoundException(command.id()));
-        systemPermission.update(command.name(), command.code());
-        return SystemPermissionDto.from(repository.save(systemPermission));
-    }
+    systemPermission.update(command.name(), command.code());
+    return SystemPermissionDto.from(repository.save(systemPermission));
+  }
 }

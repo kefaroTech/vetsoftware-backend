@@ -32,113 +32,131 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/product-charge-open-accounts")
 public class ProductChargeOpenAccountController {
-    private final CreateProductChargeOpenAccountUseCase createUseCase;
-    private final UpdateProductChargeOpenAccountUseCase updateUseCase;
-    private final FindProductChargeOpenAccountUseCase findUseCase;
-    private final ListProductChargeOpenAccountsUseCase listUseCase;
-    private final ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    private final ReactivateProductChargeOpenAccountUseCase reactivateUseCase;
-    private final VoidProductChargeOpenAccountUseCase voidUseCase;
-    private final Authz authz;
+  private final CreateProductChargeOpenAccountUseCase createUseCase;
+  private final UpdateProductChargeOpenAccountUseCase updateUseCase;
+  private final FindProductChargeOpenAccountUseCase findUseCase;
+  private final ListProductChargeOpenAccountsUseCase listUseCase;
+  private final ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
+  private final ReactivateProductChargeOpenAccountUseCase reactivateUseCase;
+  private final VoidProductChargeOpenAccountUseCase voidUseCase;
+  private final Authz authz;
 
-    public ProductChargeOpenAccountController(CreateProductChargeOpenAccountUseCase createUseCase,
-                                              UpdateProductChargeOpenAccountUseCase updateUseCase,
-                                              FindProductChargeOpenAccountUseCase findUseCase,
-                                              ListProductChargeOpenAccountsUseCase listUseCase,
-                                              ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-                                              ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
-                                              VoidProductChargeOpenAccountUseCase voidUseCase,
-                                              Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listByOpenAccountUseCase = listByOpenAccountUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.voidUseCase = voidUseCase;
-        this.authz = authz;
-    }
+  public ProductChargeOpenAccountController(
+      CreateProductChargeOpenAccountUseCase createUseCase,
+      UpdateProductChargeOpenAccountUseCase updateUseCase,
+      FindProductChargeOpenAccountUseCase findUseCase,
+      ListProductChargeOpenAccountsUseCase listUseCase,
+      ListProductChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
+      ReactivateProductChargeOpenAccountUseCase reactivateUseCase,
+      VoidProductChargeOpenAccountUseCase voidUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listByOpenAccountUseCase = listByOpenAccountUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.voidUseCase = voidUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ProductChargeOpenAccountResponse create(
-            @Valid @RequestBody CreateProductChargeOpenAccountRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ProductChargeOpenAccountResponse create(
+      @Valid @RequestBody CreateProductChargeOpenAccountRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateProductChargeOpenAccountCommand(
-                request.animalId(), request.productId(),
+                request.animalId(),
+                request.productId(),
                 request.quantity() == null ? 1 : request.quantity(),
                 request.openAccountId(),
-                authz.currentCompanyId(), authz.currentEmployeeId(),
-                // Alcance por empleado: no-admin acotado a sus sedes; admin usa la pedida o null → Principal.
+                authz.currentCompanyId(),
+                authz.currentEmployeeId(),
+                // Alcance por empleado: no-admin acotado a sus sedes; admin usa la pedida o null →
+                // Principal.
                 authz.resolveAccessibleBranch(request.branchId()),
                 request.clientRequestId(),
                 request.expectedVersion())));
-    }
+  }
 
-    @GetMapping
-    public List<ProductChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<ProductChargeOpenAccountResponse> listAll() {
+    return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/by-open-account/{openAccountId}")
-    public List<ProductChargeOpenAccountResponse> listByOpenAccount(@PathVariable Long openAccountId) {
-        return listByOpenAccountUseCase.listByOpenAccount(openAccountId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-open-account/{openAccountId}")
+  public List<ProductChargeOpenAccountResponse> listByOpenAccount(
+      @PathVariable Long openAccountId) {
+    return listByOpenAccountUseCase
+        .listByOpenAccount(openAccountId, authz.currentCompanyId())
+        .stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public ProductChargeOpenAccountResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public ProductChargeOpenAccountResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public ProductChargeOpenAccountResponse update(
-            @PathVariable Long id, @Valid @RequestBody UpdateProductChargeOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public ProductChargeOpenAccountResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateProductChargeOpenAccountRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateProductChargeOpenAccountCommand(
-                id, request.animalId(), request.productId(), request.openAccountId(),
-                authz.currentCompanyId(), request.expectedVersion())));
-    }
-
-    @PatchMapping("/{id}/enable")
-    public ProductChargeOpenAccountResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
-    }
-
-    @PatchMapping("/{id}/void")
-    public ProductChargeOpenAccountResponse voidCharge(
-            @PathVariable Long id, @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
-        return toResponse(voidUseCase.execute(
-            new VoidProductChargeOpenAccountCommand(
-                id, authz.currentCompanyId(), authz.currentEmployeeId(), request.reason(),
+                id,
+                request.animalId(),
+                request.productId(),
+                request.openAccountId(),
+                authz.currentCompanyId(),
                 request.expectedVersion())));
-    }
+  }
 
-    private ProductChargeOpenAccountResponse toResponse(ProductChargeOpenAccountDto dto) {
-        AnimalSummaryDto a = dto.animal();
-        ProductSummaryDto p = dto.product();
-        OpenAccountSummaryDto o = dto.openAccount();
-        EmployeeSummaryDto e = dto.createdBy();
-        EmployeeSummaryDto v = dto.voidedBy();
-        return new ProductChargeOpenAccountResponse(
-            dto.id(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()),
-            dto.unitPrice(),
-            dto.quantity(),
-            dto.hasTax(),
-            dto.taxPercentage(),
-            dto.taxName(),
-            dto.baseAmount(),
-            dto.taxAmount(),
-            dto.totalAmount(),
-            new OpenAccountSummary(o.id(), o.companyId()),
-            e == null ? null : new EmployeeSummary(e.id(), e.name()),
-            dto.createdDate(),
-            dto.enabled(),
-            dto.voided(),
-            v == null ? null : new EmployeeSummary(v.id(), v.name()),
-            dto.voidedAt(),
-            dto.voidReason());
-    }
+  @PatchMapping("/{id}/enable")
+  public ProductChargeOpenAccountResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
+  }
+
+  @PatchMapping("/{id}/void")
+  public ProductChargeOpenAccountResponse voidCharge(
+      @PathVariable Long id, @Valid @RequestBody VoidProductChargeOpenAccountRequest request) {
+    return toResponse(
+        voidUseCase.execute(
+            new VoidProductChargeOpenAccountCommand(
+                id,
+                authz.currentCompanyId(),
+                authz.currentEmployeeId(),
+                request.reason(),
+                request.expectedVersion())));
+  }
+
+  private ProductChargeOpenAccountResponse toResponse(ProductChargeOpenAccountDto dto) {
+    AnimalSummaryDto a = dto.animal();
+    ProductSummaryDto p = dto.product();
+    OpenAccountSummaryDto o = dto.openAccount();
+    EmployeeSummaryDto e = dto.createdBy();
+    EmployeeSummaryDto v = dto.voidedBy();
+    return new ProductChargeOpenAccountResponse(
+        dto.id(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        new ProductSummary(p.id(), p.name(), p.code(), p.salePrice()),
+        dto.unitPrice(),
+        dto.quantity(),
+        dto.hasTax(),
+        dto.taxPercentage(),
+        dto.taxName(),
+        dto.baseAmount(),
+        dto.taxAmount(),
+        dto.totalAmount(),
+        new OpenAccountSummary(o.id(), o.companyId()),
+        e == null ? null : new EmployeeSummary(e.id(), e.name()),
+        dto.createdDate(),
+        dto.enabled(),
+        dto.voided(),
+        v == null ? null : new EmployeeSummary(v.id(), v.name()),
+        dto.voidedAt(),
+        dto.voidReason());
+  }
 }

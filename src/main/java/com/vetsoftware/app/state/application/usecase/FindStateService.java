@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "state.find")
 @Service
 public class FindStateService implements FindStateUseCase {
-    private final StateRepository repository;
+  private final StateRepository repository;
 
-    public FindStateService(StateRepository repository) {
-        this.repository = repository;
-    }
+  public FindStateService(StateRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public StateDto findById(Long id) {
-        return repository.findById(id)
-                .map(StateDto::from)
-                .orElseThrow(() -> new StateNotFoundException(id));
-    }
+  @Override
+  public StateDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(StateDto::from)
+        .orElseThrow(() -> new StateNotFoundException(id));
+  }
 }

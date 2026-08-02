@@ -22,69 +22,77 @@ import org.springframework.web.servlet.ModelAndView;
 
 class CorrelatedExceptionBridgeFilterTest {
 
-    private final HandlerExceptionResolver resolver = mock(HandlerExceptionResolver.class);
-    private final CorrelatedExceptionBridgeFilter filter =
-            new CorrelatedExceptionBridgeFilter(resolver);
+  private final HandlerExceptionResolver resolver = mock(HandlerExceptionResolver.class);
+  private final CorrelatedExceptionBridgeFilter filter =
+      new CorrelatedExceptionBridgeFilter(resolver);
 
-    @Test
-    void marksObservationAndDelegatesPreControllerException() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        ServerRequestObservationContext observation =
-                new ServerRequestObservationContext(request, response);
-        request.setAttribute(
-                ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
-        ClassCastException failure = new ClassCastException("cached collection type mismatch");
-        when(resolver.resolveException(request, response, null, failure))
-                .thenReturn(new ModelAndView());
+  @Test
+  void marksObservationAndDelegatesPreControllerException() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    ServerRequestObservationContext observation =
+        new ServerRequestObservationContext(request, response);
+    request.setAttribute(
+        ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
+    ClassCastException failure = new ClassCastException("cached collection type mismatch");
+    when(resolver.resolveException(request, response, null, failure))
+        .thenReturn(new ModelAndView());
 
-        filter.doFilter(request, response, (ignoredRequest, ignoredResponse) -> {
-            throw failure;
+    filter.doFilter(
+        request,
+        response,
+        (ignoredRequest, ignoredResponse) -> {
+          throw failure;
         });
 
-        assertThat(observation.getError()).isSameAs(failure);
-        verify(resolver).resolveException(request, response, null, failure);
-    }
+    assertThat(observation.getError()).isSameAs(failure);
+    verify(resolver).resolveException(request, response, null, failure);
+  }
 
-    @Test
-    void rethrowsWhenNoResolverCanHandleTheException() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        IllegalStateException failure = new IllegalStateException("unresolved");
-        when(resolver.resolveException(request, response, null, failure)).thenReturn(null);
+  @Test
+  void rethrowsWhenNoResolverCanHandleTheException() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    IllegalStateException failure = new IllegalStateException("unresolved");
+    when(resolver.resolveException(request, response, null, failure)).thenReturn(null);
 
-        assertThatThrownBy(() -> filter.doFilter(
-                request, response, (ignoredRequest, ignoredResponse) -> {
-                    throw failure;
-                }))
-                .isSameAs(failure);
-    }
+    assertThatThrownBy(
+            () ->
+                filter.doFilter(
+                    request,
+                    response,
+                    (ignoredRequest, ignoredResponse) -> {
+                      throw failure;
+                    }))
+        .isSameAs(failure);
+  }
 
-    @Test
-    void leavesSuccessfulRequestsUntouched() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        AtomicBoolean reachedApplication = new AtomicBoolean();
+  @Test
+  void leavesSuccessfulRequestsUntouched() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    AtomicBoolean reachedApplication = new AtomicBoolean();
 
-        filter.doFilter(request, response,
-                (ignoredRequest, ignoredResponse) -> reachedApplication.set(true));
+    filter.doFilter(
+        request, response, (ignoredRequest, ignoredResponse) -> reachedApplication.set(true));
 
-        assertThat(reachedApplication).isTrue();
-        verify(resolver, never()).resolveException(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                isNull(),
-                org.mockito.ArgumentMatchers.any());
-    }
+    assertThat(reachedApplication).isTrue();
+    verify(resolver, never())
+        .resolveException(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            isNull(),
+            org.mockito.ArgumentMatchers.any());
+  }
 
-    @Test
-    void runsImmediatelyInsideTheSpringHttpObservationFilter() {
-        FilterRegistration registration =
-                CorrelatedExceptionBridgeFilter.class.getAnnotation(FilterRegistration.class);
+  @Test
+  void runsImmediatelyInsideTheSpringHttpObservationFilter() {
+    FilterRegistration registration =
+        CorrelatedExceptionBridgeFilter.class.getAnnotation(FilterRegistration.class);
 
-        assertThat(registration).isNotNull();
-        assertThat(registration.order()).isEqualTo(Ordered.HIGHEST_PRECEDENCE + 2);
-        assertThat(registration.dispatcherTypes()).containsExactly(DispatcherType.REQUEST);
-        assertThat(registration.asyncSupported()).isTrue();
-    }
+    assertThat(registration).isNotNull();
+    assertThat(registration.order()).isEqualTo(Ordered.HIGHEST_PRECEDENCE + 2);
+    assertThat(registration.dispatcherTypes()).containsExactly(DispatcherType.REQUEST);
+    assertThat(registration.asyncSupported()).isTrue();
+  }
 }

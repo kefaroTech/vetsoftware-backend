@@ -14,28 +14,38 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.observation.create")
 @Service
-public class CreateHospitalizationObservationService implements CreateHospitalizationObservationUseCase {
-    private final HospitalizationObservationRepository repository;
-    private final HospitalizationQueryPort hospitalizationQueryPort;
-    private final EmployeeQueryPort employeeQueryPort;
+public class CreateHospitalizationObservationService
+    implements CreateHospitalizationObservationUseCase {
+  private final HospitalizationObservationRepository repository;
+  private final HospitalizationQueryPort hospitalizationQueryPort;
+  private final EmployeeQueryPort employeeQueryPort;
 
-    public CreateHospitalizationObservationService(HospitalizationObservationRepository repository,
-                                                   HospitalizationQueryPort hospitalizationQueryPort,
-                                                   EmployeeQueryPort employeeQueryPort) {
-        this.repository = repository;
-        this.hospitalizationQueryPort = hospitalizationQueryPort;
-        this.employeeQueryPort = employeeQueryPort;
-    }
+  public CreateHospitalizationObservationService(
+      HospitalizationObservationRepository repository,
+      HospitalizationQueryPort hospitalizationQueryPort,
+      EmployeeQueryPort employeeQueryPort) {
+    this.repository = repository;
+    this.hospitalizationQueryPort = hospitalizationQueryPort;
+    this.employeeQueryPort = employeeQueryPort;
+  }
 
-    @Override
-    public HospitalizationObservationDto execute(CreateHospitalizationObservationCommand command) {
-        HospitalizationRef hospitalization = hospitalizationQueryPort.findById(command.hospitalizationId())
-            .orElseThrow(() -> new IllegalArgumentException("Hospitalization not found: " + command.hospitalizationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+  @Override
+  public HospitalizationObservationDto execute(CreateHospitalizationObservationCommand command) {
+    HospitalizationRef hospitalization =
+        hospitalizationQueryPort
+            .findById(command.hospitalizationId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Hospitalization not found: " + command.hospitalizationId()));
+    EmployeeRef createdBy =
+        employeeQueryPort
+            .findById(command.createdById())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        HospitalizationObservation observation = HospitalizationObservation.create(
-            command.description(), hospitalization, createdBy);
-        return HospitalizationObservationDto.from(repository.save(observation));
-    }
+    HospitalizationObservation observation =
+        HospitalizationObservation.create(command.description(), hospitalization, createdBy);
+    return HospitalizationObservationDto.from(repository.save(observation));
+  }
 }

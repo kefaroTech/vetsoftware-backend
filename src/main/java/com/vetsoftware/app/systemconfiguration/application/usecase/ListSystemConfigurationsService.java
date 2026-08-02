@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.configuration.list")
 @Service
 public class ListSystemConfigurationsService implements ListSystemConfigurationsUseCase {
-    private final SystemConfigurationRepository repository;
+  private final SystemConfigurationRepository repository;
 
-    public ListSystemConfigurationsService(SystemConfigurationRepository repository) {
-        this.repository = repository;
-    }
+  public ListSystemConfigurationsService(SystemConfigurationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SystemConfigurationDto> listAll() {
-        return repository.findAll().stream().map(SystemConfigurationDto::from).toList();
-    }
+  @Override
+  public List<SystemConfigurationDto> listAll() {
+    return repository.findAll().stream().map(SystemConfigurationDto::from).toList();
+  }
 }

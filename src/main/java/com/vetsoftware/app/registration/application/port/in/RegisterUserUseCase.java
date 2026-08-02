@@ -4,5 +4,5 @@ import com.vetsoftware.app.registration.application.command.RegisterUserCommand;
 import com.vetsoftware.app.registration.application.dto.RegistrationDto;
 
 public interface RegisterUserUseCase {
-    RegistrationDto execute(RegisterUserCommand command);
+  RegistrationDto execute(RegisterUserCommand command);
 }

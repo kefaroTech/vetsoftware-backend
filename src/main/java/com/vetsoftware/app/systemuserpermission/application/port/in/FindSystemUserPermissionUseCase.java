@@ -4,6 +4,6 @@ import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermis
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindSystemUserPermissionUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    SystemUserPermissionDto findById(Long id);
+  @PreAuthorize("hasRole('SYSTEM')")
+  SystemUserPermissionDto findById(Long id);
 }

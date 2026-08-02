@@ -17,38 +17,55 @@ import org.springframework.stereotype.Service;
 @Observed(name = "owner.create")
 @Service
 public class CreateOwnerService implements CreateOwnerUseCase {
-    private final OwnerRepository repository;
-    private final CityQueryPort cityQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final OwnerRepository repository;
+  private final CityQueryPort cityQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateOwnerService(OwnerRepository repository,
-                              CityQueryPort cityQueryPort,
-                              CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.cityQueryPort = cityQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateOwnerService(
+      OwnerRepository repository, CityQueryPort cityQueryPort, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.cityQueryPort = cityQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public OwnerDto execute(CreateOwnerCommand command) {
-        CityRef city = cityQueryPort.findById(command.cityId())
+  @Override
+  public OwnerDto execute(CreateOwnerCommand command) {
+    CityRef city =
+        cityQueryPort
+            .findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        // Si el request no trae régimen, se infiere (jurídica/NIT → Responsable de IVA).
-        TaxRegime taxRegime = command.taxRegime() != null
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    // Si el request no trae régimen, se infiere (jurídica/NIT → Responsable de IVA).
+    TaxRegime taxRegime =
+        command.taxRegime() != null
             ? command.taxRegime()
             : TaxRegime.defaultFor(command.personType(), command.documentType());
-        // Si el request no trae responsabilidad fiscal, se usa NO_APLICA (R-99-PN), el caso por defecto.
-        FiscalResponsibility fiscalResponsibility = command.fiscalResponsibility() != null
+    // Si el request no trae responsabilidad fiscal, se usa NO_APLICA (R-99-PN), el caso por
+    // defecto.
+    FiscalResponsibility fiscalResponsibility =
+        command.fiscalResponsibility() != null
             ? command.fiscalResponsibility()
             : FiscalResponsibility.defaultValue();
-        Owner owner = Owner.create(
-            command.name(), command.email(), command.document(), command.documentType(),
-            command.personType(), command.verificationDigit(), command.legalName(),
-            command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime,
-            fiscalResponsibility
-        );
-        return OwnerDto.from(repository.save(owner));
-    }
+    Owner owner =
+        Owner.create(
+            command.name(),
+            command.email(),
+            command.document(),
+            command.documentType(),
+            command.personType(),
+            command.verificationDigit(),
+            command.legalName(),
+            command.address(),
+            command.phone(),
+            city,
+            company,
+            command.withholdingAgent(),
+            taxRegime,
+            fiscalResponsibility);
+    return OwnerDto.from(repository.save(owner));
+  }
 }

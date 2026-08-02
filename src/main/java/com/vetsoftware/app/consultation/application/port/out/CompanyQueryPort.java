@@ -4,5 +4,5 @@ import com.vetsoftware.app.consultation.domain.CompanyRef;
 import java.util.Optional;
 
 public interface CompanyQueryPort {
-    Optional<CompanyRef> findById(Long companyId);
+  Optional<CompanyRef> findById(Long companyId);
 }

@@ -17,29 +17,44 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "company.update")
 @Service
 public class UpdateCompanyService implements UpdateCompanyUseCase {
-    private final CompanyRepository repository;
-    private final CityQueryPort cityQueryPort;
-    private final MembershipQueryPort membershipQueryPort;
+  private final CompanyRepository repository;
+  private final CityQueryPort cityQueryPort;
+  private final MembershipQueryPort membershipQueryPort;
 
-    public UpdateCompanyService(CompanyRepository repository,
-                                CityQueryPort cityQueryPort,
-                                MembershipQueryPort membershipQueryPort) {
-        this.repository = repository;
-        this.cityQueryPort = cityQueryPort;
-        this.membershipQueryPort = membershipQueryPort;
-    }
+  public UpdateCompanyService(
+      CompanyRepository repository,
+      CityQueryPort cityQueryPort,
+      MembershipQueryPort membershipQueryPort) {
+    this.repository = repository;
+    this.cityQueryPort = cityQueryPort;
+    this.membershipQueryPort = membershipQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public CompanyDto execute(UpdateCompanyCommand command) {
-        Company company = repository.findById(command.id())
+  @Override
+  @Transactional
+  public CompanyDto execute(UpdateCompanyCommand command) {
+    Company company =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new CompanyNotFoundException(command.id()));
-        CityRef city = cityQueryPort.findById(command.cityId())
+    CityRef city =
+        cityQueryPort
+            .findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
-        MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
-        company.update(command.name(), command.identifier(), command.address(),
-            command.contactNumber(), city, membership);
-        return CompanyDto.from(repository.save(company));
-    }
+    MembershipRef membership =
+        membershipQueryPort
+            .findById(command.membershipId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Membership not found: " + command.membershipId()));
+    company.update(
+        command.name(),
+        command.identifier(),
+        command.address(),
+        command.contactNumber(),
+        city,
+        membership);
+    return CompanyDto.from(repository.save(company));
+  }
 }

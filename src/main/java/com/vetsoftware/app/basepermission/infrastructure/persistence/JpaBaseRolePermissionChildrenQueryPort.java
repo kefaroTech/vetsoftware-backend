@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaBaseRolePermissionChildrenQueryPort implements BaseRolePermissionChildrenQueryPort {
-    private final BaseRolePermissionJpaRepository jpaRepository;
+  private final BaseRolePermissionJpaRepository jpaRepository;
 
-    public JpaBaseRolePermissionChildrenQueryPort(BaseRolePermissionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaBaseRolePermissionChildrenQueryPort(BaseRolePermissionJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByBasePermissionId(Long parentId) {
-        return jpaRepository.existsByBasePermission_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByBasePermissionId(Long parentId) {
+    return jpaRepository.existsByBasePermission_Id(parentId);
+  }
 }

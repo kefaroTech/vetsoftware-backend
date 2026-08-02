@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "laboratory.test.reactivate")
 @Service
 public class ReactivateLaboratoryTestService implements ReactivateLaboratoryTestUseCase {
-    private final LaboratoryTestRepository repository;
+  private final LaboratoryTestRepository repository;
 
-    public ReactivateLaboratoryTestService(LaboratoryTestRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateLaboratoryTestService(LaboratoryTestRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public LaboratoryTestDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new LaboratoryTestNotFoundException(id);
-        return LaboratoryTestDto.from(repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public LaboratoryTestDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new LaboratoryTestNotFoundException(id);
+    return LaboratoryTestDto.from(
+        repository.findById(id).orElseThrow(() -> new LaboratoryTestNotFoundException(id)));
+  }
 }

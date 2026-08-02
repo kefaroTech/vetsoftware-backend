@@ -15,44 +15,70 @@ import org.hibernate.annotations.Immutable;
 @Table(name = "v_clinical_event")
 public class ClinicalEventViewJpaEntity {
 
-    @Id
-    @Column(name = "composite_key", nullable = false, length = 64)
-    private String compositeKey;
+  @Id
+  @Column(name = "composite_key", nullable = false, length = 64)
+  private String compositeKey;
 
-    @Column(name = "source_id", nullable = false)
-    private Long sourceId;
+  @Column(name = "source_id", nullable = false)
+  private Long sourceId;
 
-    @Column(name = "animal_id", nullable = false)
-    private Long animalId;
+  @Column(name = "animal_id", nullable = false)
+  private Long animalId;
 
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+  @Column(name = "company_id", nullable = false)
+  private Long companyId;
 
-    @Column(name = "consultation_id")
-    private Long consultationId;
+  @Column(name = "consultation_id")
+  private Long consultationId;
 
-    @Column(name = "event_date", nullable = false)
-    private LocalDate eventDate;
+  @Column(name = "event_date", nullable = false)
+  private LocalDate eventDate;
 
-    @Column(name = "end_date")
-    private LocalDate endDate;
+  @Column(name = "end_date")
+  private LocalDate endDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false, length = 32)
-    private ClinicalEventType eventType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "event_type", nullable = false, length = 32)
+  private ClinicalEventType eventType;
 
-    @Column(name = "summary", length = 255)
-    private String summary;
+  @Column(name = "summary", length = 255)
+  private String summary;
 
-    protected ClinicalEventViewJpaEntity() {}
+  protected ClinicalEventViewJpaEntity() {}
 
-    public String getCompositeKey() { return compositeKey; }
-    public Long getSourceId() { return sourceId; }
-    public Long getAnimalId() { return animalId; }
-    public Long getCompanyId() { return companyId; }
-    public Long getConsultationId() { return consultationId; }
-    public LocalDate getEventDate() { return eventDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public ClinicalEventType getEventType() { return eventType; }
-    public String getSummary() { return summary; }
+  public String getCompositeKey() {
+    return compositeKey;
+  }
+
+  public Long getSourceId() {
+    return sourceId;
+  }
+
+  public Long getAnimalId() {
+    return animalId;
+  }
+
+  public Long getCompanyId() {
+    return companyId;
+  }
+
+  public Long getConsultationId() {
+    return consultationId;
+  }
+
+  public LocalDate getEventDate() {
+    return eventDate;
+  }
+
+  public LocalDate getEndDate() {
+    return endDate;
+  }
+
+  public ClinicalEventType getEventType() {
+    return eventType;
+  }
+
+  public String getSummary() {
+    return summary;
+  }
 }

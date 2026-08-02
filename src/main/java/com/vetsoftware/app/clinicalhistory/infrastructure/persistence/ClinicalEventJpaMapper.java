@@ -6,16 +6,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClinicalEventJpaMapper {
 
-    public ClinicalEvent toDomain(ClinicalEventViewJpaEntity entity) {
-        return new ClinicalEvent(
-                entity.getSourceId(),
-                entity.getAnimalId(),
-                entity.getCompanyId(),
-                entity.getConsultationId(),
-                entity.getEventDate(),
-                entity.getEndDate(),
-                entity.getEventType(),
-                entity.getSummary()
-        );
-    }
+  public ClinicalEvent toDomain(ClinicalEventViewJpaEntity entity) {
+    return new ClinicalEvent(
+        entity.getSourceId(),
+        entity.getAnimalId(),
+        entity.getCompanyId(),
+        entity.getConsultationId(),
+        entity.getEventDate(),
+        entity.getEndDate(),
+        entity.getEventType(),
+        entity.getSummary());
+  }
 }

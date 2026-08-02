@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "submodule.find")
 @Service
 public class FindSubModuleService implements FindSubModuleUseCase {
-    private final SubModuleRepository repository;
+  private final SubModuleRepository repository;
 
-    public FindSubModuleService(SubModuleRepository repository) {
-        this.repository = repository;
-    }
+  public FindSubModuleService(SubModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SubModuleDto findById(Long id) {
-        return SubModuleDto.from(repository.findById(id)
-            .orElseThrow(() -> new SubModuleNotFoundException(id)));
-    }
+  @Override
+  public SubModuleDto findById(Long id) {
+    return SubModuleDto.from(
+        repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
+  }
 }

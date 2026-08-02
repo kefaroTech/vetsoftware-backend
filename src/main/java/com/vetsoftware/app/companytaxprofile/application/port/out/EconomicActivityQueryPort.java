@@ -4,5 +4,5 @@ import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
 import java.util.Optional;
 
 public interface EconomicActivityQueryPort {
-    Optional<EconomicActivityRef> findById(Long economicActivityId);
+  Optional<EconomicActivityRef> findById(Long economicActivityId);
 }

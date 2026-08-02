@@ -12,24 +12,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "general.charge.open.account.reactivate")
 @Service
-public class ReactivateGeneralChargeOpenAccountService implements ReactivateGeneralChargeOpenAccountUseCase {
-    private final GeneralChargeOpenAccountRepository repository;
-    private final OpenAccountRefresher refresher;
+public class ReactivateGeneralChargeOpenAccountService
+    implements ReactivateGeneralChargeOpenAccountUseCase {
+  private final GeneralChargeOpenAccountRepository repository;
+  private final OpenAccountRefresher refresher;
 
-    public ReactivateGeneralChargeOpenAccountService(GeneralChargeOpenAccountRepository repository,
-                                                     OpenAccountRefresher refresher) {
-        this.repository = repository;
-        this.refresher = refresher;
-    }
+  public ReactivateGeneralChargeOpenAccountService(
+      GeneralChargeOpenAccountRepository repository, OpenAccountRefresher refresher) {
+    this.repository = repository;
+    this.refresher = refresher;
+  }
 
-    @Override
-    @Transactional
-    public GeneralChargeOpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new GeneralChargeOpenAccountNotFoundException(id);
-        GeneralChargeOpenAccount charge = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public GeneralChargeOpenAccountDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new GeneralChargeOpenAccountNotFoundException(id);
+    GeneralChargeOpenAccount charge =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new GeneralChargeOpenAccountNotFoundException(id));
-        refresher.refresh(companyId, charge.getOpenAccount().id());
-        return GeneralChargeOpenAccountDto.from(charge);
-    }
+    refresher.refresh(companyId, charge.getOpenAccount().id());
+    return GeneralChargeOpenAccountDto.from(charge);
+  }
 }

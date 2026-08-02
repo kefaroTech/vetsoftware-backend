@@ -15,26 +15,40 @@ import org.springframework.stereotype.Service;
 @Observed(name = "problem.create")
 @Service
 public class CreateProblemService implements CreateProblemUseCase {
-    private final ProblemRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final ProblemRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateProblemService(ProblemRepository repository,
-                                AnimalQueryPort animalQueryPort,
-                                CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateProblemService(
+      ProblemRepository repository,
+      AnimalQueryPort animalQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public ProblemDto execute(CreateProblemCommand command) {
-        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        Problem problem = Problem.create(animal, company, command.description(), command.status(),
-            command.onsetDate(), command.resolvedDate(), command.notes());
-        return ProblemDto.from(repository.save(problem));
-    }
+  @Override
+  public ProblemDto execute(CreateProblemCommand command) {
+    AnimalRef animal =
+        animalQueryPort
+            .findByIdAndCompanyId(command.animalId(), command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    Problem problem =
+        Problem.create(
+            animal,
+            company,
+            command.description(),
+            command.status(),
+            command.onsetDate(),
+            command.resolvedDate(),
+            command.notes());
+    return ProblemDto.from(repository.save(problem));
+  }
 }

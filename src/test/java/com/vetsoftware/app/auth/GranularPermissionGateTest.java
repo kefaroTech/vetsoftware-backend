@@ -35,30 +35,32 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 class GranularPermissionGateTest {
 
-    @Test
-    void activeAuthorizationCodeDoesNotUseTheLegacyWildcard() throws Exception {
-        Path sourceRoot = Path.of("src", "main", "java");
-        List<Path> offenders;
-        try (Stream<Path> sources = Files.walk(sourceRoot)) {
-            offenders = sources
-                .filter(path -> path.toString().endsWith(".java"))
-                .filter(path -> {
+  @Test
+  void activeAuthorizationCodeDoesNotUseTheLegacyWildcard() throws Exception {
+    Path sourceRoot = Path.of("src", "main", "java");
+    List<Path> offenders;
+    try (Stream<Path> sources = Files.walk(sourceRoot)) {
+      offenders =
+          sources
+              .filter(path -> path.toString().endsWith(".java"))
+              .filter(
+                  path -> {
                     try {
-                        return Files.readString(path).contains("admin.all");
+                      return Files.readString(path).contains("admin.all");
                     } catch (java.io.IOException exception) {
-                        throw new java.io.UncheckedIOException(exception);
+                      throw new java.io.UncheckedIOException(exception);
                     }
-                })
-                .toList();
-        }
-        assertTrue(offenders.isEmpty(), "Legacy wildcard remains in: " + offenders);
+                  })
+              .toList();
     }
+    assertTrue(offenders.isEmpty(), "Legacy wildcard remains in: " + offenders);
+  }
 
-    private record Gate(Class<?> type, String permission) {}
+  private record Gate(Class<?> type, String permission) {}
 
-    @TestFactory
-    Stream<DynamicTest> tenantMutationsHonorPublishedPermissionAndCompanyScope() {
-        return Stream.of(
+  @TestFactory
+  Stream<DynamicTest> tenantMutationsHonorPublishedPermissionAndCompanyScope() {
+    return Stream.of(
             new Gate(UpdateConsultationUseCase.class, "consultation.update"),
             new Gate(DeleteConsultationUseCase.class, "consultation.delete"),
             new Gate(UpdatePrescriptionUseCase.class, "prescription.update"),
@@ -77,19 +79,25 @@ class GranularPermissionGateTest {
             new Gate(CreateRolePermissionUseCase.class, "rolePermissions.create"),
             new Gate(UpdateRolePermissionUseCase.class, "rolePermissions.update"),
             new Gate(DeleteRolePermissionUseCase.class, "rolePermissions.delete"),
-            new Gate(ReactivateRolePermissionUseCase.class, "rolePermissions.update")
-        ).map(gate -> DynamicTest.dynamicTest(gate.type().getSimpleName(), () -> {
-            Method method = Stream.of(gate.type().getDeclaredMethods())
-                .filter(candidate -> candidate.getName().equals("execute"))
-                .findFirst()
-                .orElseThrow();
-            PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
-            assertNotNull(annotation);
-            assertTrue(annotation.value().contains("hasRole('SYSTEM')"));
-            assertFalse(annotation.value().contains("admin.all"));
-            assertTrue(annotation.value().contains("hasAuthority('" + gate.permission() + "')"));
-            assertTrue(annotation.value().contains("@authz.isMyCompany"));
-            assertFalse(annotation.value().contains("role_permission.update"));
-        }));
-    }
+            new Gate(ReactivateRolePermissionUseCase.class, "rolePermissions.update"))
+        .map(
+            gate ->
+                DynamicTest.dynamicTest(
+                    gate.type().getSimpleName(),
+                    () -> {
+                      Method method =
+                          Stream.of(gate.type().getDeclaredMethods())
+                              .filter(candidate -> candidate.getName().equals("execute"))
+                              .findFirst()
+                              .orElseThrow();
+                      PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+                      assertNotNull(annotation);
+                      assertTrue(annotation.value().contains("hasRole('SYSTEM')"));
+                      assertFalse(annotation.value().contains("admin.all"));
+                      assertTrue(
+                          annotation.value().contains("hasAuthority('" + gate.permission() + "')"));
+                      assertTrue(annotation.value().contains("@authz.isMyCompany"));
+                      assertFalse(annotation.value().contains("role_permission.update"));
+                    }));
+  }
 }

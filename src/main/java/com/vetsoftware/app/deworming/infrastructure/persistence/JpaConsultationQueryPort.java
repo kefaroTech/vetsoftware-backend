@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("dewormingJpaConsultationQueryPort")
 public class JpaConsultationQueryPort implements ConsultationQueryPort {
-    private final ConsultationJpaRepository consultationJpaRepository;
+  private final ConsultationJpaRepository consultationJpaRepository;
 
-    public JpaConsultationQueryPort(ConsultationJpaRepository consultationJpaRepository) {
-        this.consultationJpaRepository = consultationJpaRepository;
-    }
+  public JpaConsultationQueryPort(ConsultationJpaRepository consultationJpaRepository) {
+    this.consultationJpaRepository = consultationJpaRepository;
+  }
 
-    @Override
-    public Optional<ConsultationRef> findById(Long consultationId) {
-        return consultationJpaRepository.findById(consultationId)
-            .map(e -> new ConsultationRef(e.getId(), e.getDate()));
-    }
+  @Override
+  public Optional<ConsultationRef> findById(Long consultationId) {
+    return consultationJpaRepository
+        .findById(consultationId)
+        .map(e -> new ConsultationRef(e.getId(), e.getDate()));
+  }
 }

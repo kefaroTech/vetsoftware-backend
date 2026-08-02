@@ -9,15 +9,18 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "laboratory.test.type.list.available")
 @Service
-public class ListAvailableLaboratoryTestTypesService implements ListAvailableLaboratoryTestTypesUseCase {
-    private final LaboratoryTestTypeRepository repository;
+public class ListAvailableLaboratoryTestTypesService
+    implements ListAvailableLaboratoryTestTypesUseCase {
+  private final LaboratoryTestTypeRepository repository;
 
-    public ListAvailableLaboratoryTestTypesService(LaboratoryTestTypeRepository repository) {
-        this.repository = repository;
-    }
+  public ListAvailableLaboratoryTestTypesService(LaboratoryTestTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<LaboratoryTestTypeDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(LaboratoryTestTypeDto::from).toList();
-    }
+  @Override
+  public List<LaboratoryTestTypeDto> listAvailable(Long companyId) {
+    return repository.findAllAvailableForCompany(companyId).stream()
+        .map(LaboratoryTestTypeDto::from)
+        .toList();
+  }
 }

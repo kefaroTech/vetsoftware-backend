@@ -9,21 +9,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class CreateCompanyAdapter implements CompanyCreator {
 
-    private final CreateCompanyUseCase createCompanyUseCase;
-    private final SystemAuthRunner systemAuthRunner;
+  private final CreateCompanyUseCase createCompanyUseCase;
+  private final SystemAuthRunner systemAuthRunner;
 
-    public CreateCompanyAdapter(CreateCompanyUseCase createCompanyUseCase,
-                                SystemAuthRunner systemAuthRunner) {
-        this.createCompanyUseCase = createCompanyUseCase;
-        this.systemAuthRunner = systemAuthRunner;
-    }
+  public CreateCompanyAdapter(
+      CreateCompanyUseCase createCompanyUseCase, SystemAuthRunner systemAuthRunner) {
+    this.createCompanyUseCase = createCompanyUseCase;
+    this.systemAuthRunner = systemAuthRunner;
+  }
 
-    @Override
-    public CompanyResult create(String name, String identifier, String address,
-                                String contactNumber, Long cityId, Long membershipId) {
-        var dto = systemAuthRunner.call(() -> createCompanyUseCase.execute(
-            new CreateCompanyCommand(name, identifier, address, contactNumber, cityId, membershipId)
-        ));
-        return new CompanyResult(dto.id(), dto.name(), dto.identifier());
-    }
+  @Override
+  public CompanyResult create(
+      String name,
+      String identifier,
+      String address,
+      String contactNumber,
+      Long cityId,
+      Long membershipId) {
+    var dto =
+        systemAuthRunner.call(
+            () ->
+                createCompanyUseCase.execute(
+                    new CreateCompanyCommand(
+                        name, identifier, address, contactNumber, cityId, membershipId)));
+    return new CompanyResult(dto.id(), dto.name(), dto.identifier());
+  }
 }

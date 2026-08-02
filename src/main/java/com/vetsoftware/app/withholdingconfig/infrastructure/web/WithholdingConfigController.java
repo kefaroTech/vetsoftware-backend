@@ -12,27 +12,31 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/withholding-configs")
 public class WithholdingConfigController {
-    private final SetWithholdingConfigUseCase setUseCase;
-    private final FindWithholdingConfigUseCase findUseCase;
-    private final Authz authz;
+  private final SetWithholdingConfigUseCase setUseCase;
+  private final FindWithholdingConfigUseCase findUseCase;
+  private final Authz authz;
 
-    public WithholdingConfigController(SetWithholdingConfigUseCase setUseCase,
-                                       FindWithholdingConfigUseCase findUseCase,
-                                       Authz authz) {
-        this.setUseCase = setUseCase;
-        this.findUseCase = findUseCase;
-        this.authz = authz;
-    }
+  public WithholdingConfigController(
+      SetWithholdingConfigUseCase setUseCase,
+      FindWithholdingConfigUseCase findUseCase,
+      Authz authz) {
+    this.setUseCase = setUseCase;
+    this.findUseCase = findUseCase;
+    this.authz = authz;
+  }
 
-    @PutMapping
-    public WithholdingConfigDto set(@Valid @RequestBody SetWithholdingConfigRequest request) {
-        return setUseCase.execute(new SetWithholdingConfigCommand(
-                request.reteFuenteRate(), request.reteIvaRate(), request.reteIcaRate(),
-                authz.currentCompanyId()));
-    }
+  @PutMapping
+  public WithholdingConfigDto set(@Valid @RequestBody SetWithholdingConfigRequest request) {
+    return setUseCase.execute(
+        new SetWithholdingConfigCommand(
+            request.reteFuenteRate(),
+            request.reteIvaRate(),
+            request.reteIcaRate(),
+            authz.currentCompanyId()));
+  }
 
-    @GetMapping
-    public WithholdingConfigDto find() {
-        return findUseCase.findByCompany(authz.currentCompanyId());
-    }
+  @GetMapping
+  public WithholdingConfigDto find() {
+    return findUseCase.findByCompany(authz.currentCompanyId());
+  }
 }

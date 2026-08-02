@@ -10,17 +10,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medicament.prescription.delete")
 @Service
 public class DeleteMedicamentPrescriptionService implements DeleteMedicamentPrescriptionUseCase {
-    private final MedicamentPrescriptionRepository repository;
+  private final MedicamentPrescriptionRepository repository;
 
-    public DeleteMedicamentPrescriptionService(MedicamentPrescriptionRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteMedicamentPrescriptionService(MedicamentPrescriptionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
-            .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    (companyId == null ? repository.findById(id) : repository.findByIdAndCompanyId(id, companyId))
+        .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(id));
+    repository.delete(id);
+  }
 }

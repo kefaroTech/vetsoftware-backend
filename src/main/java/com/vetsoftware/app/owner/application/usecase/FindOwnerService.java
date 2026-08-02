@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "owner.find")
 @Service
 public class FindOwnerService implements FindOwnerUseCase {
-    private final OwnerRepository repository;
+  private final OwnerRepository repository;
 
-    public FindOwnerService(OwnerRepository repository) {
-        this.repository = repository;
-    }
+  public FindOwnerService(OwnerRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public OwnerDto findById(Long id, Long companyId) {
-        return OwnerDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public OwnerDto findById(Long id, Long companyId) {
+    return OwnerDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new OwnerNotFoundException(id)));
-    }
+  }
 }

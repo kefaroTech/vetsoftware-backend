@@ -4,5 +4,5 @@ import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestTypeRef;
 import java.util.Optional;
 
 public interface LaboratoryTestTypeQueryPort {
-    Optional<LaboratoryTestTypeRef> findById(Long testTypeId);
+  Optional<LaboratoryTestTypeRef> findById(Long testTypeId);
 }

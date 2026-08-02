@@ -21,50 +21,58 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExportPrescriptionService implements ExportPrescriptionUseCase {
 
-    private final PrescriptionRepository repository;
-    private final PrescriptionReportQueryPort reportQueryPort;
-    private final MedicamentQueryPort medicamentQueryPort;
-    private final PrescriberQueryPort prescriberQueryPort;
-    private final PrescriptionPdfPort pdfPort;
+  private final PrescriptionRepository repository;
+  private final PrescriptionReportQueryPort reportQueryPort;
+  private final MedicamentQueryPort medicamentQueryPort;
+  private final PrescriberQueryPort prescriberQueryPort;
+  private final PrescriptionPdfPort pdfPort;
 
-    public ExportPrescriptionService(PrescriptionRepository repository,
-                                     PrescriptionReportQueryPort reportQueryPort,
-                                     MedicamentQueryPort medicamentQueryPort,
-                                     PrescriberQueryPort prescriberQueryPort,
-                                     PrescriptionPdfPort pdfPort) {
-        this.repository = repository;
-        this.reportQueryPort = reportQueryPort;
-        this.medicamentQueryPort = medicamentQueryPort;
-        this.prescriberQueryPort = prescriberQueryPort;
-        this.pdfPort = pdfPort;
-    }
+  public ExportPrescriptionService(
+      PrescriptionRepository repository,
+      PrescriptionReportQueryPort reportQueryPort,
+      MedicamentQueryPort medicamentQueryPort,
+      PrescriberQueryPort prescriberQueryPort,
+      PrescriptionPdfPort pdfPort) {
+    this.repository = repository;
+    this.reportQueryPort = reportQueryPort;
+    this.medicamentQueryPort = medicamentQueryPort;
+    this.prescriberQueryPort = prescriberQueryPort;
+    this.pdfPort = pdfPort;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public byte[] execute(Long prescriptionId, Long companyId, Long employeeId) {
-        Prescription prescription = repository.findById(prescriptionId)
-                .filter(p -> p.getCompany() != null && companyId.equals(p.getCompany().id()))
-                .orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+  @Override
+  @Transactional(readOnly = true)
+  public byte[] execute(Long prescriptionId, Long companyId, Long employeeId) {
+    Prescription prescription =
+        repository
+            .findById(prescriptionId)
+            .filter(p -> p.getCompany() != null && companyId.equals(p.getCompany().id()))
+            .orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 
-        PrescriptionSignalment signalment = reportQueryPort
-                .loadByAnimal(prescription.getAnimal().id(), companyId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Animal " + prescription.getAnimal().id() + " not found for current company"));
+    PrescriptionSignalment signalment =
+        reportQueryPort
+            .loadByAnimal(prescription.getAnimal().id(), companyId)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Animal "
+                            + prescription.getAnimal().id()
+                            + " not found for current company"));
 
-        List<MedicamentRef> medicaments = medicamentQueryPort.findByPrescriptionId(prescriptionId);
+    List<MedicamentRef> medicaments = medicamentQueryPort.findByPrescriptionId(prescriptionId);
 
-        String prescriberName = employeeId == null ? null
-                : prescriberQueryPort.findName(employeeId).orElse(null);
+    String prescriberName =
+        employeeId == null ? null : prescriberQueryPort.findName(employeeId).orElse(null);
 
-        PrescriptionReportModel model = new PrescriptionReportModel(
-                signalment,
-                prescriberName,
-                prescription.getDate(),
-                prescription.getDiagnosis(),
-                prescription.getObservations(),
-                medicaments,
-                LocalDateTime.now()
-        );
-        return pdfPort.render(model);
-    }
+    PrescriptionReportModel model =
+        new PrescriptionReportModel(
+            signalment,
+            prescriberName,
+            prescription.getDate(),
+            prescription.getDiagnosis(),
+            prescription.getObservations(),
+            medicaments,
+            LocalDateTime.now());
+    return pdfPort.render(model);
+  }
 }

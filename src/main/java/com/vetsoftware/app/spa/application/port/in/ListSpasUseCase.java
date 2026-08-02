@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSpasUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    List<SpaDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM')")
+  List<SpaDto> listAll();
 }

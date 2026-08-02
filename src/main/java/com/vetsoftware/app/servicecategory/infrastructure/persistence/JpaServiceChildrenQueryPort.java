@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaServiceChildrenQueryPort implements ServiceChildrenQueryPort {
-    private final ServiceJpaRepository serviceJpaRepository;
+  private final ServiceJpaRepository serviceJpaRepository;
 
-    public JpaServiceChildrenQueryPort(ServiceJpaRepository serviceJpaRepository) {
-        this.serviceJpaRepository = serviceJpaRepository;
-    }
+  public JpaServiceChildrenQueryPort(ServiceJpaRepository serviceJpaRepository) {
+    this.serviceJpaRepository = serviceJpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByServiceCategoryId(Long categoryId) {
-        return serviceJpaRepository.existsByServiceCategory_Id(categoryId);
-    }
+  @Override
+  public boolean existsActiveByServiceCategoryId(Long categoryId) {
+    return serviceJpaRepository.existsByServiceCategory_Id(categoryId);
+  }
 }

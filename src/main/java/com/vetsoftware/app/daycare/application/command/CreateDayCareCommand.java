@@ -4,12 +4,11 @@ import com.vetsoftware.app.daycare.domain.DayCareType;
 import java.time.LocalDate;
 
 public record CreateDayCareCommand(
-        LocalDate date,
-        LocalDate startDate,
-        LocalDate endDate,
-        DayCareType type,
-        String objects,
-        String observations,
-        Long animalId,
-        Long companyId
-) {}
+    LocalDate date,
+    LocalDate startDate,
+    LocalDate endDate,
+    DayCareType type,
+    String objects,
+    String observations,
+    Long animalId,
+    Long companyId) {}

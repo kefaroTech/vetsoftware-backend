@@ -12,20 +12,21 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.file.download")
 @Service
 public class DownloadLaboratoryTestFileService implements DownloadLaboratoryTestFileUseCase {
-    private final LaboratoryTestFileRepository repository;
-    private final FileStoragePort fileStoragePort;
+  private final LaboratoryTestFileRepository repository;
+  private final FileStoragePort fileStoragePort;
 
-    public DownloadLaboratoryTestFileService(LaboratoryTestFileRepository repository,
-                                             FileStoragePort fileStoragePort) {
-        this.repository = repository;
-        this.fileStoragePort = fileStoragePort;
-    }
+  public DownloadLaboratoryTestFileService(
+      LaboratoryTestFileRepository repository, FileStoragePort fileStoragePort) {
+    this.repository = repository;
+    this.fileStoragePort = fileStoragePort;
+  }
 
-    @Override
-    public LaboratoryTestFileDownloadDto download(Long id) {
-        LaboratoryTestFile file = repository.findById(id)
-            .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
-        byte[] content = fileStoragePort.retrieve(file.getStorageKey());
-        return new LaboratoryTestFileDownloadDto(file.getOriginalFileName(), file.getContentType(), content);
-    }
+  @Override
+  public LaboratoryTestFileDownloadDto download(Long id) {
+    LaboratoryTestFile file =
+        repository.findById(id).orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
+    byte[] content = fileStoragePort.retrieve(file.getStorageKey());
+    return new LaboratoryTestFileDownloadDto(
+        file.getOriginalFileName(), file.getContentType(), content);
+  }
 }

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "spa.list.by.animal")
 @Service
 public class ListSpasByAnimalService implements ListSpasByAnimalUseCase {
-    private final SpaRepository repository;
+  private final SpaRepository repository;
 
-    public ListSpasByAnimalService(SpaRepository repository) {
-        this.repository = repository;
-    }
+  public ListSpasByAnimalService(SpaRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SpaDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(SpaDto::from).toList();
-    }
+  @Override
+  public List<SpaDto> listByAnimal(Long animalId) {
+    return repository.findAllByAnimalId(animalId).stream().map(SpaDto::from).toList();
+  }
 }

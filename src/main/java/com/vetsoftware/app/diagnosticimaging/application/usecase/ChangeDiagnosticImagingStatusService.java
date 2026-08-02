@@ -14,21 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "diagnostic.imaging.change.status")
 @Service
 public class ChangeDiagnosticImagingStatusService implements ChangeDiagnosticImagingStatusUseCase {
-    private final DiagnosticImagingRepository repository;
+  private final DiagnosticImagingRepository repository;
 
-    public ChangeDiagnosticImagingStatusService(DiagnosticImagingRepository repository) {
-        this.repository = repository;
-    }
+  public ChangeDiagnosticImagingStatusService(DiagnosticImagingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public DiagnosticImagingDto execute(ChangeDiagnosticImagingStatusCommand command) {
-        DiagnosticImaging imaging = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+  @Override
+  @Transactional
+  public DiagnosticImagingDto execute(ChangeDiagnosticImagingStatusCommand command) {
+    DiagnosticImaging imaging =
+        (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new DiagnosticImagingNotFoundException(command.id()));
-        DiagnosticImagingStatus newStatus = DiagnosticImagingStatus.valueOf(command.status().toUpperCase());
-        imaging.changeStatus(newStatus);
-        return DiagnosticImagingDto.from(repository.save(imaging));
-    }
+    DiagnosticImagingStatus newStatus =
+        DiagnosticImagingStatus.valueOf(command.status().toUpperCase());
+    imaging.changeStatus(newStatus);
+    return DiagnosticImagingDto.from(repository.save(imaging));
+  }
 }

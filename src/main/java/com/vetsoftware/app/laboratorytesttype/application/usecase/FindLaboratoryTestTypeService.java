@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.type.find")
 @Service
 public class FindLaboratoryTestTypeService implements FindLaboratoryTestTypeUseCase {
-    private final LaboratoryTestTypeRepository repository;
+  private final LaboratoryTestTypeRepository repository;
 
-    public FindLaboratoryTestTypeService(LaboratoryTestTypeRepository repository) {
-        this.repository = repository;
-    }
+  public FindLaboratoryTestTypeService(LaboratoryTestTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public LaboratoryTestTypeDto findById(Long id, Long companyId) {
-        return LaboratoryTestTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id)));
-    }
+  @Override
+  public LaboratoryTestTypeDto findById(Long id, Long companyId) {
+    return LaboratoryTestTypeDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id)));
+  }
 }

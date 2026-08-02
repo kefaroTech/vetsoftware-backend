@@ -4,5 +4,5 @@ import com.vetsoftware.app.spa.domain.SpaTypeRef;
 import java.util.Optional;
 
 public interface SpaTypeQueryPort {
-    Optional<SpaTypeRef> findById(Long spaTypeId);
+  Optional<SpaTypeRef> findById(Long spaTypeId);
 }

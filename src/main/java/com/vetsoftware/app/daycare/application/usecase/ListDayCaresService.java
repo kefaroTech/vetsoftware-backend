@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "day.care.list")
 @Service
 public class ListDayCaresService implements ListDayCaresUseCase {
-    private final DayCareRepository repository;
+  private final DayCareRepository repository;
 
-    public ListDayCaresService(DayCareRepository repository) {
-        this.repository = repository;
-    }
+  public ListDayCaresService(DayCareRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<DayCareDto> listAll() {
-        return repository.findAll().stream().map(DayCareDto::from).toList();
-    }
+  @Override
+  public List<DayCareDto> listAll() {
+    return repository.findAll().stream().map(DayCareDto::from).toList();
+  }
 }

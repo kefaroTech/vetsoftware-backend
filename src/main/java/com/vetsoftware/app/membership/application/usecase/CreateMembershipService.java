@@ -12,16 +12,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "membership.create")
 @Service
 public class CreateMembershipService implements CreateMembershipUseCase {
-    private final MembershipRepository repository;
+  private final MembershipRepository repository;
 
-    public CreateMembershipService(MembershipRepository repository) {
-        this.repository = repository;
-    }
+  public CreateMembershipService(MembershipRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public MembershipDto execute(CreateMembershipCommand command) {
-        MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
-        Membership membership = Membership.create(command.name(), status, command.mandatory());
-        return MembershipDto.from(repository.save(membership));
-    }
+  @Override
+  public MembershipDto execute(CreateMembershipCommand command) {
+    MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
+    Membership membership = Membership.create(command.name(), status, command.mandatory());
+    return MembershipDto.from(repository.save(membership));
+  }
 }

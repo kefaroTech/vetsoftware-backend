@@ -16,99 +16,200 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLDelete(sql = "UPDATE open_accounts SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class OpenAccountJpaEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
-    private OwnerJpaEntity owner;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "owner_id", nullable = false)
+  private OwnerJpaEntity owner;
 
-    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal totalAmount;
+  @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
+  private BigDecimal totalAmount;
 
-    @Column(name = "paid_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal paidAmount;
+  @Column(name = "paid_amount", nullable = false, precision = 12, scale = 2)
+  private BigDecimal paidAmount;
 
-    @Column(name = "outstanding_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal outstandingAmount;
+  @Column(name = "outstanding_amount", nullable = false, precision = 12, scale = 2)
+  private BigDecimal outstandingAmount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private CompanyJpaEntity company;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id", nullable = false)
+  private CompanyJpaEntity company;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "branch_id", nullable = false)
-    private BranchJpaEntity branch;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "branch_id", nullable = false)
+  private BranchJpaEntity branch;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private OpenAccountStatus status = OpenAccountStatus.OPEN;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  private OpenAccountStatus status = OpenAccountStatus.OPEN;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_id", nullable = false)
-    private EmployeeJpaEntity createdBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by_id", nullable = false)
+  private EmployeeJpaEntity createdBy;
 
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
+  @Column(name = "created_date", nullable = false)
+  private LocalDateTime createdDate;
 
-    @Column(name = "enabled", nullable = false)
-    private boolean enabled = true;
+  @Column(name = "enabled", nullable = false)
+  private boolean enabled = true;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "closed_by_id")
-    private EmployeeJpaEntity closedBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "closed_by_id")
+  private EmployeeJpaEntity closedBy;
 
-    @Column(name = "closed_at")
-    private LocalDateTime closedAt;
+  @Column(name = "closed_at")
+  private LocalDateTime closedAt;
 
-    @Column(name = "close_reason", length = 255)
-    private String closeReason;
+  @Column(name = "close_reason", length = 255)
+  private String closeReason;
 
-    @Column(name = "reversed", nullable = false)
-    private boolean reversed = false;
+  @Column(name = "reversed", nullable = false)
+  private boolean reversed = false;
 
-    @Column(name = "reversed_at")
-    private LocalDateTime reversedAt;
+  @Column(name = "reversed_at")
+  private LocalDateTime reversedAt;
 
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version;
 
-    protected OpenAccountJpaEntity() {}
+  protected OpenAccountJpaEntity() {}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public OwnerJpaEntity getOwner() { return owner; }
-    public void setOwner(OwnerJpaEntity owner) { this.owner = owner; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    public BigDecimal getPaidAmount() { return paidAmount; }
-    public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
-    public BigDecimal getOutstandingAmount() { return outstandingAmount; }
-    public void setOutstandingAmount(BigDecimal outstandingAmount) { this.outstandingAmount = outstandingAmount; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public BranchJpaEntity getBranch() { return branch; }
-    public void setBranch(BranchJpaEntity branch) { this.branch = branch; }
-    public OpenAccountStatus getStatus() { return status; }
-    public void setStatus(OpenAccountStatus status) { this.status = status; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public EmployeeJpaEntity getClosedBy() { return closedBy; }
-    public void setClosedBy(EmployeeJpaEntity closedBy) { this.closedBy = closedBy; }
-    public LocalDateTime getClosedAt() { return closedAt; }
-    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
-    public String getCloseReason() { return closeReason; }
-    public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
-    public boolean isReversed() { return reversed; }
-    public void setReversed(boolean reversed) { this.reversed = reversed; }
-    public LocalDateTime getReversedAt() { return reversedAt; }
-    public void setReversedAt(LocalDateTime reversedAt) { this.reversedAt = reversedAt; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public OwnerJpaEntity getOwner() {
+    return owner;
+  }
+
+  public void setOwner(OwnerJpaEntity owner) {
+    this.owner = owner;
+  }
+
+  public BigDecimal getTotalAmount() {
+    return totalAmount;
+  }
+
+  public void setTotalAmount(BigDecimal totalAmount) {
+    this.totalAmount = totalAmount;
+  }
+
+  public BigDecimal getPaidAmount() {
+    return paidAmount;
+  }
+
+  public void setPaidAmount(BigDecimal paidAmount) {
+    this.paidAmount = paidAmount;
+  }
+
+  public BigDecimal getOutstandingAmount() {
+    return outstandingAmount;
+  }
+
+  public void setOutstandingAmount(BigDecimal outstandingAmount) {
+    this.outstandingAmount = outstandingAmount;
+  }
+
+  public CompanyJpaEntity getCompany() {
+    return company;
+  }
+
+  public void setCompany(CompanyJpaEntity company) {
+    this.company = company;
+  }
+
+  public BranchJpaEntity getBranch() {
+    return branch;
+  }
+
+  public void setBranch(BranchJpaEntity branch) {
+    this.branch = branch;
+  }
+
+  public OpenAccountStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(OpenAccountStatus status) {
+    this.status = status;
+  }
+
+  public EmployeeJpaEntity getCreatedBy() {
+    return createdBy;
+  }
+
+  public void setCreatedBy(EmployeeJpaEntity createdBy) {
+    this.createdBy = createdBy;
+  }
+
+  public LocalDateTime getCreatedDate() {
+    return createdDate;
+  }
+
+  public void setCreatedDate(LocalDateTime createdDate) {
+    this.createdDate = createdDate;
+  }
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public EmployeeJpaEntity getClosedBy() {
+    return closedBy;
+  }
+
+  public void setClosedBy(EmployeeJpaEntity closedBy) {
+    this.closedBy = closedBy;
+  }
+
+  public LocalDateTime getClosedAt() {
+    return closedAt;
+  }
+
+  public void setClosedAt(LocalDateTime closedAt) {
+    this.closedAt = closedAt;
+  }
+
+  public String getCloseReason() {
+    return closeReason;
+  }
+
+  public void setCloseReason(String closeReason) {
+    this.closeReason = closeReason;
+  }
+
+  public boolean isReversed() {
+    return reversed;
+  }
+
+  public void setReversed(boolean reversed) {
+    this.reversed = reversed;
+  }
+
+  public LocalDateTime getReversedAt() {
+    return reversedAt;
+  }
+
+  public void setReversedAt(LocalDateTime reversedAt) {
+    this.reversedAt = reversedAt;
+  }
+
+  public Long getVersion() {
+    return version;
+  }
+
+  public void setVersion(Long version) {
+    this.version = version;
+  }
 }

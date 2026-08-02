@@ -8,15 +8,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaSystemUserProfileQueryPort implements SystemUserProfileQueryPort {
 
-    private final SystemUserJpaRepository systemUserJpaRepository;
+  private final SystemUserJpaRepository systemUserJpaRepository;
 
-    public JpaSystemUserProfileQueryPort(SystemUserJpaRepository systemUserJpaRepository) {
-        this.systemUserJpaRepository = systemUserJpaRepository;
-    }
+  public JpaSystemUserProfileQueryPort(SystemUserJpaRepository systemUserJpaRepository) {
+    this.systemUserJpaRepository = systemUserJpaRepository;
+  }
 
-    @Override
-    public Optional<SystemUserProfile> findById(Long systemUserId) {
-        return systemUserJpaRepository.findById(systemUserId)
-                .map(u -> new SystemUserProfile(u.getId(), u.getCode()));
-    }
+  @Override
+  public Optional<SystemUserProfile> findById(Long systemUserId) {
+    return systemUserJpaRepository
+        .findById(systemUserId)
+        .map(u -> new SystemUserProfile(u.getId(), u.getCode()));
+  }
 }

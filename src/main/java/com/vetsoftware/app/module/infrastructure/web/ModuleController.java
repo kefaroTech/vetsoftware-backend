@@ -20,58 +20,64 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/modules")
 public class ModuleController {
-    private final CreateModuleUseCase createUseCase;
-    private final UpdateModuleUseCase updateUseCase;
-    private final FindModuleUseCase findUseCase;
-    private final ListModulesUseCase listUseCase;
-    private final DeleteModuleUseCase deleteUseCase;
-    private final ReactivateModuleUseCase reactivateUseCase;
+  private final CreateModuleUseCase createUseCase;
+  private final UpdateModuleUseCase updateUseCase;
+  private final FindModuleUseCase findUseCase;
+  private final ListModulesUseCase listUseCase;
+  private final DeleteModuleUseCase deleteUseCase;
+  private final ReactivateModuleUseCase reactivateUseCase;
 
-    public ModuleController(CreateModuleUseCase createUseCase, UpdateModuleUseCase updateUseCase,
-                            FindModuleUseCase findUseCase, ListModulesUseCase listUseCase,
-                            DeleteModuleUseCase deleteUseCase,
-                            ReactivateModuleUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public ModuleController(
+      CreateModuleUseCase createUseCase,
+      UpdateModuleUseCase updateUseCase,
+      FindModuleUseCase findUseCase,
+      ListModulesUseCase listUseCase,
+      DeleteModuleUseCase deleteUseCase,
+      ReactivateModuleUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ModuleResponse create(@Valid @RequestBody CreateModuleRequest request) {
-        return toResponse(createUseCase.execute(new CreateModuleCommand(request.name(), request.code())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ModuleResponse create(@Valid @RequestBody CreateModuleRequest request) {
+    return toResponse(
+        createUseCase.execute(new CreateModuleCommand(request.name(), request.code())));
+  }
 
-    @GetMapping
-    public List<ModuleResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<ModuleResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public ModuleResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public ModuleResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public ModuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateModuleRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code())));
-    }
+  @PutMapping("/{id}")
+  public ModuleResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateModuleRequest request) {
+    return toResponse(
+        updateUseCase.execute(new UpdateModuleCommand(id, request.name(), request.code())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public ModuleResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public ModuleResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private ModuleResponse toResponse(ModuleDto dto) {
-        return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
-    }
+  private ModuleResponse toResponse(ModuleDto dto) {
+    return new ModuleResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
+  }
 }

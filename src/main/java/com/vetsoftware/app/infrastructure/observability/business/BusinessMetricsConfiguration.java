@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class BusinessMetricsConfiguration {
 
-    @Bean
-    public MeterFilter businessMetricCardinalityFilter() {
-        return new BusinessMetricCardinalityFilter();
-    }
+  @Bean
+  public MeterFilter businessMetricCardinalityFilter() {
+    return new BusinessMetricCardinalityFilter();
+  }
 }

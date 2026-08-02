@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "role.permission.list")
 @Service
 public class ListRolePermissionsService implements ListRolePermissionsUseCase {
-    private final RolePermissionRepository repository;
+  private final RolePermissionRepository repository;
 
-    public ListRolePermissionsService(RolePermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ListRolePermissionsService(RolePermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<RolePermissionDto> listAll() {
-        return repository.findAll().stream().map(RolePermissionDto::from).toList();
-    }
+  @Override
+  public List<RolePermissionDto> listAll() {
+    return repository.findAll().stream().map(RolePermissionDto::from).toList();
+  }
 }

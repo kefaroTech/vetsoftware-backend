@@ -4,5 +4,5 @@ import com.vetsoftware.app.breed.application.dto.BreedDto;
 import java.util.List;
 
 public interface ListBreedsBySpecieUseCase {
-    List<BreedDto> listBySpecie(Long specieId);
+  List<BreedDto> listBySpecie(Long specieId);
 }

@@ -52,14 +52,15 @@ import org.mockito.ArgumentCaptor;
 
 class TenantRequestCompanyResolutionTest {
 
-    private static final long AUTHENTICATED_COMPANY_ID = 42L;
+  private static final long AUTHENTICATED_COMPANY_ID = 42L;
 
-    @Test
-    void employeeCreationUsesAuthenticatedCompany() {
-        Authz authz = authenticatedCompany();
-        InviteEmployeeUseCase inviteUseCase = mock(InviteEmployeeUseCase.class);
-        when(inviteUseCase.execute(any())).thenThrow(new TestFlowStopped());
-        EmployeeController controller = new EmployeeController(
+  @Test
+  void employeeCreationUsesAuthenticatedCompany() {
+    Authz authz = authenticatedCompany();
+    InviteEmployeeUseCase inviteUseCase = mock(InviteEmployeeUseCase.class);
+    when(inviteUseCase.execute(any())).thenThrow(new TestFlowStopped());
+    EmployeeController controller =
+        new EmployeeController(
             inviteUseCase,
             mock(ResendInvitationUseCase.class),
             mock(ChangeMyPasswordUseCase.class),
@@ -74,91 +75,130 @@ class TenantRequestCompanyResolutionTest {
             mock(CheckEmployeeCodeAvailabilityUseCase.class),
             authz,
             mock(AuditLogger.class));
-        List<Long> branches = List.of(3L);
+    List<Long> branches = List.of(3L);
 
-        assertThatThrownBy(() -> controller.create(
-            new CreateEmployeeRequest("EMP-1", "temporary-password", "Ana", "ana@example.com",
-                List.of(2L), branches)))
-            .isInstanceOf(TestFlowStopped.class);
+    assertThatThrownBy(
+            () ->
+                controller.create(
+                    new CreateEmployeeRequest(
+                        "EMP-1",
+                        "temporary-password",
+                        "Ana",
+                        "ana@example.com",
+                        List.of(2L),
+                        branches)))
+        .isInstanceOf(TestFlowStopped.class);
 
-        ArgumentCaptor<InviteEmployeeCommand> command = ArgumentCaptor.forClass(InviteEmployeeCommand.class);
-        verify(inviteUseCase).execute(command.capture());
-        verify(authz).requireAssignableBranches(branches);
-        assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
+    ArgumentCaptor<InviteEmployeeCommand> command =
+        ArgumentCaptor.forClass(InviteEmployeeCommand.class);
+    verify(inviteUseCase).execute(command.capture());
+    verify(authz).requireAssignableBranches(branches);
+    assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
+  }
+
+  @Test
+  void consultationUpdateUsesAuthenticatedCompany() {
+    Authz authz = authenticatedCompany();
+    UpdateConsultationUseCase updateUseCase = mock(UpdateConsultationUseCase.class);
+    when(updateUseCase.execute(any())).thenThrow(new TestFlowStopped());
+    ConsultationController controller =
+        new ConsultationController(
+            mock(CreateConsultationUseCase.class),
+            updateUseCase,
+            mock(FindConsultationUseCase.class),
+            mock(ListConsultationsUseCase.class),
+            mock(DeleteConsultationUseCase.class),
+            mock(ReactivateConsultationUseCase.class),
+            authz);
+
+    assertThatThrownBy(
+            () ->
+                controller.update(
+                    8L,
+                    new UpdateConsultationRequest(
+                        LocalDate.now(),
+                        1L,
+                        "Anamnesis",
+                        null,
+                        null,
+                        null,
+                        9L,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)))
+        .isInstanceOf(TestFlowStopped.class);
+
+    ArgumentCaptor<UpdateConsultationCommand> command =
+        ArgumentCaptor.forClass(UpdateConsultationCommand.class);
+    verify(updateUseCase).execute(command.capture());
+    assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
+  }
+
+  @Test
+  void permissionCreationUsesAuthenticatedCompanyScope() {
+    Authz authz = authenticatedCompany();
+    CreatePermissionUseCase createUseCase = mock(CreatePermissionUseCase.class);
+    when(createUseCase.execute(any())).thenThrow(new TestFlowStopped());
+    PermissionController controller =
+        permissionController(createUseCase, mock(UpdatePermissionUseCase.class), authz);
+
+    assertThatThrownBy(
+            () -> controller.create(new CreatePermissionRequest("Create", "x.create", 7L)))
+        .isInstanceOf(TestFlowStopped.class);
+
+    ArgumentCaptor<CreatePermissionCommand> command =
+        ArgumentCaptor.forClass(CreatePermissionCommand.class);
+    verify(createUseCase).execute(command.capture());
+    assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
+  }
+
+  @Test
+  void permissionUpdateUsesAuthenticatedCompanyScope() {
+    Authz authz = authenticatedCompany();
+    UpdatePermissionUseCase updateUseCase = mock(UpdatePermissionUseCase.class);
+    when(updateUseCase.execute(any())).thenThrow(new TestFlowStopped());
+    PermissionController controller =
+        permissionController(mock(CreatePermissionUseCase.class), updateUseCase, authz);
+
+    assertThatThrownBy(
+            () -> controller.update(5L, new UpdatePermissionRequest("Update", "x.update", 7L)))
+        .isInstanceOf(TestFlowStopped.class);
+
+    ArgumentCaptor<UpdatePermissionCommand> command =
+        ArgumentCaptor.forClass(UpdatePermissionCommand.class);
+    verify(updateUseCase).execute(command.capture());
+    assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
+  }
+
+  private static Authz authenticatedCompany() {
+    Authz authz = mock(Authz.class);
+    when(authz.currentCompanyId()).thenReturn(AUTHENTICATED_COMPANY_ID);
+    return authz;
+  }
+
+  private static PermissionController permissionController(
+      CreatePermissionUseCase createUseCase, UpdatePermissionUseCase updateUseCase, Authz authz) {
+    return new PermissionController(
+        createUseCase,
+        updateUseCase,
+        mock(FindPermissionUseCase.class),
+        mock(ListPermissionsUseCase.class),
+        mock(ListPermissionsByCompanyUseCase.class),
+        mock(DeletePermissionUseCase.class),
+        mock(ReactivatePermissionUseCase.class),
+        authz);
+  }
+
+  private static final class TestFlowStopped extends RuntimeException {
+    private TestFlowStopped() {
+      super(null, null, false, false);
     }
-
-    @Test
-    void consultationUpdateUsesAuthenticatedCompany() {
-        Authz authz = authenticatedCompany();
-        UpdateConsultationUseCase updateUseCase = mock(UpdateConsultationUseCase.class);
-        when(updateUseCase.execute(any())).thenThrow(new TestFlowStopped());
-        ConsultationController controller = new ConsultationController(
-            mock(CreateConsultationUseCase.class), updateUseCase,
-            mock(FindConsultationUseCase.class), mock(ListConsultationsUseCase.class),
-            mock(DeleteConsultationUseCase.class), mock(ReactivateConsultationUseCase.class), authz);
-
-        assertThatThrownBy(() -> controller.update(8L,
-            new UpdateConsultationRequest(LocalDate.now(), 1L, "Anamnesis", null, null,
-                null, 9L, null, null, null, null, null, null, null, null, null, null)))
-            .isInstanceOf(TestFlowStopped.class);
-
-        ArgumentCaptor<UpdateConsultationCommand> command =
-            ArgumentCaptor.forClass(UpdateConsultationCommand.class);
-        verify(updateUseCase).execute(command.capture());
-        assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
-    }
-
-    @Test
-    void permissionCreationUsesAuthenticatedCompanyScope() {
-        Authz authz = authenticatedCompany();
-        CreatePermissionUseCase createUseCase = mock(CreatePermissionUseCase.class);
-        when(createUseCase.execute(any())).thenThrow(new TestFlowStopped());
-        PermissionController controller = permissionController(createUseCase,
-            mock(UpdatePermissionUseCase.class), authz);
-
-        assertThatThrownBy(() -> controller.create(new CreatePermissionRequest("Create", "x.create", 7L)))
-            .isInstanceOf(TestFlowStopped.class);
-
-        ArgumentCaptor<CreatePermissionCommand> command = ArgumentCaptor.forClass(CreatePermissionCommand.class);
-        verify(createUseCase).execute(command.capture());
-        assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
-    }
-
-    @Test
-    void permissionUpdateUsesAuthenticatedCompanyScope() {
-        Authz authz = authenticatedCompany();
-        UpdatePermissionUseCase updateUseCase = mock(UpdatePermissionUseCase.class);
-        when(updateUseCase.execute(any())).thenThrow(new TestFlowStopped());
-        PermissionController controller = permissionController(mock(CreatePermissionUseCase.class),
-            updateUseCase, authz);
-
-        assertThatThrownBy(() -> controller.update(5L,
-            new UpdatePermissionRequest("Update", "x.update", 7L)))
-            .isInstanceOf(TestFlowStopped.class);
-
-        ArgumentCaptor<UpdatePermissionCommand> command = ArgumentCaptor.forClass(UpdatePermissionCommand.class);
-        verify(updateUseCase).execute(command.capture());
-        assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
-    }
-
-    private static Authz authenticatedCompany() {
-        Authz authz = mock(Authz.class);
-        when(authz.currentCompanyId()).thenReturn(AUTHENTICATED_COMPANY_ID);
-        return authz;
-    }
-
-    private static PermissionController permissionController(CreatePermissionUseCase createUseCase,
-                                                             UpdatePermissionUseCase updateUseCase,
-                                                             Authz authz) {
-        return new PermissionController(
-            createUseCase, updateUseCase, mock(FindPermissionUseCase.class),
-            mock(ListPermissionsUseCase.class), mock(ListPermissionsByCompanyUseCase.class),
-            mock(DeletePermissionUseCase.class), mock(ReactivatePermissionUseCase.class), authz);
-    }
-
-    private static final class TestFlowStopped extends RuntimeException {
-        private TestFlowStopped() {
-            super(null, null, false, false);
-        }
-    }
+  }
 }

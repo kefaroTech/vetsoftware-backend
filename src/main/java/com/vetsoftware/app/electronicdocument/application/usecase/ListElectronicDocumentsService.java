@@ -10,15 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "electronic.document.list")
 @Service
 public class ListElectronicDocumentsService implements ListElectronicDocumentsUseCase {
-    private final ElectronicDocumentRepository repository;
+  private final ElectronicDocumentRepository repository;
 
-    public ListElectronicDocumentsService(ElectronicDocumentRepository repository) {
-        this.repository = repository;
-    }
+  public ListElectronicDocumentsService(ElectronicDocumentRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId) {
-        return repository.findAllByCompanyId(companyId, branchId).stream()
-                .map(ElectronicDocumentDto::from).toList();
-    }
+  @Override
+  public List<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId) {
+    return repository.findAllByCompanyId(companyId, branchId).stream()
+        .map(ElectronicDocumentDto::from)
+        .toList();
+  }
 }

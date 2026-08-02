@@ -13,23 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "debt.open.account.reactivate")
 @Service
 public class ReactivateDebtOpenAccountService implements ReactivateDebtOpenAccountUseCase {
-    private final DebtOpenAccountRepository repository;
-    private final OpenAccountRefresher refresher;
+  private final DebtOpenAccountRepository repository;
+  private final OpenAccountRefresher refresher;
 
-    public ReactivateDebtOpenAccountService(DebtOpenAccountRepository repository,
-                                            OpenAccountRefresher refresher) {
-        this.repository = repository;
-        this.refresher = refresher;
-    }
+  public ReactivateDebtOpenAccountService(
+      DebtOpenAccountRepository repository, OpenAccountRefresher refresher) {
+    this.repository = repository;
+    this.refresher = refresher;
+  }
 
-    @Override
-    @Transactional
-    public DebtOpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new DebtOpenAccountNotFoundException(id);
-        DebtOpenAccount debtOpenAccount = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public DebtOpenAccountDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new DebtOpenAccountNotFoundException(id);
+    DebtOpenAccount debtOpenAccount =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id));
-        refresher.refresh(companyId, debtOpenAccount.getOpenAccount().id());
-        return DebtOpenAccountDto.from(debtOpenAccount);
-    }
+    refresher.refresh(companyId, debtOpenAccount.getOpenAccount().id());
+    return DebtOpenAccountDto.from(debtOpenAccount);
+  }
 }

@@ -12,18 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.cancel")
 @Service
 public class CancelPurchaseOrderService implements CancelPurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public CancelPurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public CancelPurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
-        PurchaseOrder order = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
+    PurchaseOrder order =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
-        order.cancel(actorId);
-        return PurchaseOrderDto.from(repository.save(order));
-    }
+    order.cancel(actorId);
+    return PurchaseOrderDto.from(repository.save(order));
+  }
 }

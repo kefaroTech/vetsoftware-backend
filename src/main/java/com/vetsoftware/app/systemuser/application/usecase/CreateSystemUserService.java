@@ -12,18 +12,18 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.user.create")
 @Service
 public class CreateSystemUserService implements CreateSystemUserUseCase {
-    private final SystemUserRepository repository;
-    private final PasswordHasher passwordHasher;
+  private final SystemUserRepository repository;
+  private final PasswordHasher passwordHasher;
 
-    public CreateSystemUserService(SystemUserRepository repository, PasswordHasher passwordHasher) {
-        this.repository = repository;
-        this.passwordHasher = passwordHasher;
-    }
+  public CreateSystemUserService(SystemUserRepository repository, PasswordHasher passwordHasher) {
+    this.repository = repository;
+    this.passwordHasher = passwordHasher;
+  }
 
-    @Override
-    public SystemUserDto execute(CreateSystemUserCommand command) {
-        String hashed = passwordHasher.hash(command.password());
-        SystemUser systemUser = SystemUser.create(command.code(), hashed);
-        return SystemUserDto.from(repository.save(systemUser));
-    }
+  @Override
+  public SystemUserDto execute(CreateSystemUserCommand command) {
+    String hashed = passwordHasher.hash(command.password());
+    SystemUser systemUser = SystemUser.create(command.code(), hashed);
+    return SystemUserDto.from(repository.save(systemUser));
+  }
 }

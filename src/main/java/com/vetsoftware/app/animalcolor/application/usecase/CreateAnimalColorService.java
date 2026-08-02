@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "animal.color.create")
 @Service
 public class CreateAnimalColorService implements CreateAnimalColorUseCase {
-    private final AnimalColorRepository repository;
+  private final AnimalColorRepository repository;
 
-    public CreateAnimalColorService(AnimalColorRepository repository) {
-        this.repository = repository;
-    }
+  public CreateAnimalColorService(AnimalColorRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public AnimalColorDto execute(CreateAnimalColorCommand command) {
-        return AnimalColorDto.from(repository.save(AnimalColor.create(command.name())));
-    }
+  @Override
+  public AnimalColorDto execute(CreateAnimalColorCommand command) {
+    return AnimalColorDto.from(repository.save(AnimalColor.create(command.name())));
+  }
 }

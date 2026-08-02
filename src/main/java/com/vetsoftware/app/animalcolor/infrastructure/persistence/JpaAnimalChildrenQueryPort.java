@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaAnimalChildrenQueryPort implements AnimalChildrenQueryPort {
-    private final AnimalJpaRepository jpaRepository;
+  private final AnimalJpaRepository jpaRepository;
 
-    public JpaAnimalChildrenQueryPort(AnimalJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaAnimalChildrenQueryPort(AnimalJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByAnimalColorId(Long parentId) {
-        return jpaRepository.existsByColor_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByAnimalColorId(Long parentId) {
+    return jpaRepository.existsByColor_Id(parentId);
+  }
 }

@@ -17,25 +17,26 @@ import software.amazon.awssdk.services.firehose.FirehoseClientBuilder;
 @EnableConfigurationProperties(AuditOutboxProperties.class)
 public class AuditOutboxConfig {
 
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "vetsoftware.audit.outbox",
-            name = "publisher-enabled",
-            havingValue = "true")
-    FirehoseClient auditFirehoseClient(AuditOutboxProperties properties) {
-        properties.validate();
-        FirehoseClientBuilder builder = FirehoseClient.builder()
-                .region(Region.of(properties.getRegion()));
-        if (StringUtils.hasText(properties.getEndpoint())) {
-            builder.endpointOverride(URI.create(properties.getEndpoint()));
-        }
-        if (StringUtils.hasText(properties.getAccessKey())
-                && StringUtils.hasText(properties.getSecretKey())) {
-            builder.credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
-        } else {
-            builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
-        }
-        return builder.build();
+  @Bean
+  @ConditionalOnProperty(
+      prefix = "vetsoftware.audit.outbox",
+      name = "publisher-enabled",
+      havingValue = "true")
+  FirehoseClient auditFirehoseClient(AuditOutboxProperties properties) {
+    properties.validate();
+    FirehoseClientBuilder builder =
+        FirehoseClient.builder().region(Region.of(properties.getRegion()));
+    if (StringUtils.hasText(properties.getEndpoint())) {
+      builder.endpointOverride(URI.create(properties.getEndpoint()));
     }
+    if (StringUtils.hasText(properties.getAccessKey())
+        && StringUtils.hasText(properties.getSecretKey())) {
+      builder.credentialsProvider(
+          StaticCredentialsProvider.create(
+              AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
+    } else {
+      builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
+    }
+    return builder.build();
+  }
 }

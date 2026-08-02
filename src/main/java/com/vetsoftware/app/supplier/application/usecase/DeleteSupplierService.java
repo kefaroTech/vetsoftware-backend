@@ -10,16 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.delete")
 @Service
 public class DeleteSupplierService implements DeleteSupplierUseCase {
-    private final SupplierRepository repository;
+  private final SupplierRepository repository;
 
-    public DeleteSupplierService(SupplierRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteSupplierService(SupplierRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new SupplierNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new SupplierNotFoundException(id));
+    repository.delete(id);
+  }
 }

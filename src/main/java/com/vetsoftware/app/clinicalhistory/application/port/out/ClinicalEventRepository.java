@@ -6,6 +6,7 @@ import com.vetsoftware.app.clinicalhistory.domain.ClinicalEvent;
 import java.util.List;
 
 public interface ClinicalEventRepository {
-    List<ClinicalEvent> findHistory(GetClinicalHistoryQuery query);
-    List<ClinicalEvent> findByCompany(ListCompanyClinicalEventsQuery query);
+  List<ClinicalEvent> findHistory(GetClinicalHistoryQuery query);
+
+  List<ClinicalEvent> findByCompany(ListCompanyClinicalEventsQuery query);
 }

@@ -10,19 +10,20 @@ import org.springframework.stereotype.Service;
 @Observed(name = "employee.branch.get")
 @Service
 public class GetEmployeeBranchesService implements GetEmployeeBranchesUseCase {
-    private final EmployeeBranchRepository repository;
-    private final EmployeeQueryPort employeeQueryPort;
+  private final EmployeeBranchRepository repository;
+  private final EmployeeQueryPort employeeQueryPort;
 
-    public GetEmployeeBranchesService(EmployeeBranchRepository repository, EmployeeQueryPort employeeQueryPort) {
-        this.repository = repository;
-        this.employeeQueryPort = employeeQueryPort;
-    }
+  public GetEmployeeBranchesService(
+      EmployeeBranchRepository repository, EmployeeQueryPort employeeQueryPort) {
+    this.repository = repository;
+    this.employeeQueryPort = employeeQueryPort;
+  }
 
-    @Override
-    public EmployeeBranchesDto execute(Long employeeId, Long companyId) {
-        if (!employeeQueryPort.existsByIdAndCompanyId(employeeId, companyId)) {
-            throw new IllegalArgumentException("Employee not found: " + employeeId);
-        }
-        return new EmployeeBranchesDto(employeeId, repository.findBranchIdsByEmployeeId(employeeId));
+  @Override
+  public EmployeeBranchesDto execute(Long employeeId, Long companyId) {
+    if (!employeeQueryPort.existsByIdAndCompanyId(employeeId, companyId)) {
+      throw new IllegalArgumentException("Employee not found: " + employeeId);
     }
+    return new EmployeeBranchesDto(employeeId, repository.findBranchIdsByEmployeeId(employeeId));
+  }
 }

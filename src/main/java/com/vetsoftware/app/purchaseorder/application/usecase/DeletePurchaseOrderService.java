@@ -10,16 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.delete")
 @Service
 public class DeletePurchaseOrderService implements DeletePurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public DeletePurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public DeletePurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new PurchaseOrderNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
+    repository.delete(id);
+  }
 }

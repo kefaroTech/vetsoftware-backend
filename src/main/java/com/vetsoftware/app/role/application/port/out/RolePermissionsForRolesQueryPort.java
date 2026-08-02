@@ -5,5 +5,5 @@ import java.util.List;
 import java.util.Map;
 
 public interface RolePermissionsForRolesQueryPort {
-    Map<Long, List<PermissionSummaryDto>> findByRoleIds(List<Long> roleIds);
+  Map<Long, List<PermissionSummaryDto>> findByRoleIds(List<Long> roleIds);
 }

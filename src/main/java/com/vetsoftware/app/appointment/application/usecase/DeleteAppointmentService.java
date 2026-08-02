@@ -10,17 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "appointment.delete")
 @Service
 public class DeleteAppointmentService implements DeleteAppointmentUseCase {
-    private final AppointmentRepository repository;
+  private final AppointmentRepository repository;
 
-    public DeleteAppointmentService(AppointmentRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteAppointmentService(AppointmentRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AppointmentNotFoundException(id));
-        repository.delete(id, companyId);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new AppointmentNotFoundException(id));
+    repository.delete(id, companyId);
+  }
 }

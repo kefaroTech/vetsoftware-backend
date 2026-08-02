@@ -5,6 +5,8 @@ import com.vetsoftware.app.numberingresolution.application.dto.NumberingResoluti
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateNumberingResolutionUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('electronicbilling.update') and @authz.isMyCompany(#command.companyId))")
-    NumberingResolutionDto execute(UpdateNumberingResolutionCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('electronicbilling.update') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  NumberingResolutionDto execute(UpdateNumberingResolutionCommand command);
 }

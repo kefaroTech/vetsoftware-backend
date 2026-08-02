@@ -5,6 +5,6 @@ import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateSpecieUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    SpecieDto execute(UpdateSpecieCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  SpecieDto execute(UpdateSpecieCommand command);
 }

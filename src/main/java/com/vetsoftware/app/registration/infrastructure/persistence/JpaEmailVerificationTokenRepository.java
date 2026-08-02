@@ -8,22 +8,22 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaEmailVerificationTokenRepository implements EmailVerificationTokenRepository {
 
-    private final EmailVerificationTokenJpaRepository jpaRepository;
-    private final EmailVerificationTokenJpaMapper mapper;
+  private final EmailVerificationTokenJpaRepository jpaRepository;
+  private final EmailVerificationTokenJpaMapper mapper;
 
-    public JpaEmailVerificationTokenRepository(EmailVerificationTokenJpaRepository jpaRepository,
-                                               EmailVerificationTokenJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaEmailVerificationTokenRepository(
+      EmailVerificationTokenJpaRepository jpaRepository, EmailVerificationTokenJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public EmailVerificationToken save(EmailVerificationToken token) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(token)));
-    }
+  @Override
+  public EmailVerificationToken save(EmailVerificationToken token) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(token)));
+  }
 
-    @Override
-    public Optional<EmailVerificationToken> findByTokenHash(String tokenHash) {
-        return jpaRepository.findByTokenHash(tokenHash).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<EmailVerificationToken> findByTokenHash(String tokenHash) {
+    return jpaRepository.findByTokenHash(tokenHash).map(mapper::toDomain);
+  }
 }

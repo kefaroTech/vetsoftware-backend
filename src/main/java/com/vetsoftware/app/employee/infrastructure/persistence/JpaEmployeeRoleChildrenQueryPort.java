@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaEmployeeRoleChildrenQueryPort implements EmployeeRoleChildrenQueryPort {
-    private final EmployeeRoleJpaRepository jpaRepository;
+  private final EmployeeRoleJpaRepository jpaRepository;
 
-    public JpaEmployeeRoleChildrenQueryPort(EmployeeRoleJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaEmployeeRoleChildrenQueryPort(EmployeeRoleJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByEmployeeId(Long parentId) {
-        return jpaRepository.existsByEmployee_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByEmployeeId(Long parentId) {
+    return jpaRepository.existsByEmployee_Id(parentId);
+  }
 }

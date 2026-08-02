@@ -5,6 +5,6 @@ import com.vetsoftware.app.module.application.dto.ModuleDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateModuleUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    ModuleDto execute(CreateModuleCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  ModuleDto execute(CreateModuleCommand command);
 }

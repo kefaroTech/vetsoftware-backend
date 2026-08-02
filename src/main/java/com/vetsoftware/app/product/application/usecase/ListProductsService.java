@@ -11,21 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "product.list.by.company")
 @Service
 public class ListProductsService implements ListProductsUseCase {
-    private final ProductRepository repository;
+  private final ProductRepository repository;
 
-    public ListProductsService(ProductRepository repository) {
-        this.repository = repository;
-    }
+  public ListProductsService(ProductRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ProductDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ProductDto::from).toList();
-    }
+  @Override
+  public List<ProductDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(ProductDto::from).toList();
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(ProductDto::from).toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ProductDto> listDisabledByCompany(Long companyId) {
+    // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí
+    // dentro.
+    return repository.findAllDisabledByCompanyId(companyId).stream().map(ProductDto::from).toList();
+  }
 }

@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "debt.open.account.find")
 @Service
 public class FindDebtOpenAccountService implements FindDebtOpenAccountUseCase {
-    private final DebtOpenAccountRepository repository;
+  private final DebtOpenAccountRepository repository;
 
-    public FindDebtOpenAccountService(DebtOpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public FindDebtOpenAccountService(DebtOpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public DebtOpenAccountDto findById(Long id, Long companyId) {
-        return DebtOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public DebtOpenAccountDto findById(Long id, Long companyId) {
+    return DebtOpenAccountDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DebtOpenAccountNotFoundException(id)));
-    }
+  }
 }

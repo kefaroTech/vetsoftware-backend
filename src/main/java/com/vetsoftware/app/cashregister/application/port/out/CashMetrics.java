@@ -6,7 +6,7 @@ import java.util.List;
 /** Telemetría agregada de aperturas, cierres y diferencias de caja. */
 public interface CashMetrics {
 
-    void opened();
+  void opened();
 
-    void closed(List<BigDecimal> differences);
+  void closed(List<BigDecimal> differences);
 }

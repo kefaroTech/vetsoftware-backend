@@ -4,5 +4,5 @@ import com.vetsoftware.app.procedureschedule.domain.EmployeeRef;
 import java.util.Optional;
 
 public interface EmployeeQueryPort {
-    Optional<EmployeeRef> findById(Long employeeId);
+  Optional<EmployeeRef> findById(Long employeeId);
 }

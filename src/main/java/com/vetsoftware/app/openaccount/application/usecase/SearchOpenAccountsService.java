@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "open.account.search")
 @Service
 public class SearchOpenAccountsService implements SearchOpenAccountsUseCase {
-    private final OpenAccountRepository repository;
+  private final OpenAccountRepository repository;
 
-    public SearchOpenAccountsService(OpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public SearchOpenAccountsService(OpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public PageResult<OpenAccountDto> execute(SearchOpenAccountsCommand command) {
-        return repository.search(command).map(OpenAccountDto::from);
-    }
+  @Override
+  public PageResult<OpenAccountDto> execute(SearchOpenAccountsCommand command) {
+    return repository.search(command).map(OpenAccountDto::from);
+  }
 }

@@ -6,9 +6,9 @@ package com.vetsoftware.app.purchaseorder.domain;
  * terminal y solo alcanzable desde DRAFT o PLACED (nunca si ya se recibió algo).
  */
 public enum PurchaseOrderStatus {
-    DRAFT,
-    PLACED,
-    PARTIALLY_RECEIVED,
-    RECEIVED,
-    CANCELLED
+  DRAFT,
+  PLACED,
+  PARTIALLY_RECEIVED,
+  RECEIVED,
+  CANCELLED
 }

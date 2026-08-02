@@ -8,22 +8,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class BreedJpaMapper {
 
-    public BreedJpaEntity toJpa(Breed breed, SpecieJpaEntity specie) {
-        BreedJpaEntity entity = new BreedJpaEntity();
-        entity.setId(breed.getId());
-        entity.setName(breed.getName());
-        entity.setSpecie(specie);
-        entity.setCreatedDate(breed.getCreatedDate());
-        entity.setEnabled(breed.isEnabled());
-        return entity;
-    }
+  public BreedJpaEntity toJpa(Breed breed, SpecieJpaEntity specie) {
+    BreedJpaEntity entity = new BreedJpaEntity();
+    entity.setId(breed.getId());
+    entity.setName(breed.getName());
+    entity.setSpecie(specie);
+    entity.setCreatedDate(breed.getCreatedDate());
+    entity.setEnabled(breed.isEnabled());
+    return entity;
+  }
 
-    public Breed toDomain(BreedJpaEntity entity) {
-        SpecieJpaEntity s = entity.getSpecie();
-        return toDomain(entity, new SpecieRef(s.getId(), s.getName()));
-    }
+  public Breed toDomain(BreedJpaEntity entity) {
+    SpecieJpaEntity s = entity.getSpecie();
+    return toDomain(entity, new SpecieRef(s.getId(), s.getName()));
+  }
 
-    public Breed toDomain(BreedJpaEntity entity, SpecieRef ref) {
-        return new Breed(entity.getId(), entity.getName(), ref, entity.getCreatedDate(), entity.isEnabled());
-    }
+  public Breed toDomain(BreedJpaEntity entity, SpecieRef ref) {
+    return new Breed(
+        entity.getId(), entity.getName(), ref, entity.getCreatedDate(), entity.isEnabled());
+  }
 }

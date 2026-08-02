@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "vaccination.type.find")
 @Service
 public class FindVaccinationTypeService implements FindVaccinationTypeUseCase {
-    private final VaccinationTypeRepository repository;
+  private final VaccinationTypeRepository repository;
 
-    public FindVaccinationTypeService(VaccinationTypeRepository repository) {
-        this.repository = repository;
-    }
+  public FindVaccinationTypeService(VaccinationTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public VaccinationTypeDto findById(Long id, Long companyId) {
-        return VaccinationTypeDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new VaccinationTypeNotFoundException(id)));
-    }
+  @Override
+  public VaccinationTypeDto findById(Long id, Long companyId) {
+    return VaccinationTypeDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new VaccinationTypeNotFoundException(id)));
+  }
 }

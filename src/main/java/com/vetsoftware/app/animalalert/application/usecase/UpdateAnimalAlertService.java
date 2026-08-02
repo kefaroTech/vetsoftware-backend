@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "animal.alert.update")
 @Service
 public class UpdateAnimalAlertService implements UpdateAnimalAlertUseCase {
-    private final AnimalAlertRepository repository;
+  private final AnimalAlertRepository repository;
 
-    public UpdateAnimalAlertService(AnimalAlertRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateAnimalAlertService(AnimalAlertRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public AnimalAlertDto execute(UpdateAnimalAlertCommand command) {
-        AnimalAlert alert = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public AnimalAlertDto execute(UpdateAnimalAlertCommand command) {
+    AnimalAlert alert =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new AnimalAlertNotFoundException(command.id()));
-        alert.update(command.type(), command.description(), command.severity());
-        return AnimalAlertDto.from(repository.save(alert));
-    }
+    alert.update(command.type(), command.description(), command.severity());
+    return AnimalAlertDto.from(repository.save(alert));
+  }
 }

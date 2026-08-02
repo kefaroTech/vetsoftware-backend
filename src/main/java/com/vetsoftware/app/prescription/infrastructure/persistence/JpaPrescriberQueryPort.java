@@ -9,14 +9,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaPrescriberQueryPort implements PrescriberQueryPort {
 
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaPrescriberQueryPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaPrescriberQueryPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public Optional<String> findName(Long employeeId) {
-        return employeeJpaRepository.findById(employeeId).map(e -> e.getName());
-    }
+  @Override
+  public Optional<String> findName(Long employeeId) {
+    return employeeJpaRepository.findById(employeeId).map(e -> e.getName());
+  }
 }

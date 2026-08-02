@@ -11,22 +11,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.permission.delete")
 @Service
 public class DeleteSystemPermissionService implements DeleteSystemPermissionUseCase {
-    private final SystemPermissionRepository repository;
-    private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
+  private final SystemPermissionRepository repository;
+  private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
 
-    public DeleteSystemPermissionService(
-            SystemPermissionRepository repository,
-            SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
-        this.repository = repository;
-        this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;
-    }
+  public DeleteSystemPermissionService(
+      SystemPermissionRepository repository,
+      SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
+    this.repository = repository;
+    this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SystemPermissionNotFoundException(id));
-        if (systemUserPermissionChildrenQueryPort.existsActiveBySystemPermissionId(id)) {
-            throw new SystemPermissionHasActiveChildrenException(id, "systemUserPermission");
-        }
-        repository.delete(id);
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SystemPermissionNotFoundException(id));
+    if (systemUserPermissionChildrenQueryPort.existsActiveBySystemPermissionId(id)) {
+      throw new SystemPermissionHasActiveChildrenException(id, "systemUserPermission");
     }
+    repository.delete(id);
+  }
 }

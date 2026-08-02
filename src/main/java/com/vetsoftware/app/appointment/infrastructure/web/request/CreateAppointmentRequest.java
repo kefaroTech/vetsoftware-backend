@@ -7,16 +7,15 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 public record CreateAppointmentRequest(
-        @NotNull LocalDateTime startAt,
-        @NotNull AppointmentType type,
-        @NotNull Long employeeId,
-        Long animalId,
-        Long ownerId,
-        @Size(max = 120) String clientName,
-        @Size(max = 30) String clientPhone,
-        // Opcional: correo del contacto libre para enviarle la confirmación.
-        @Email @Size(max = 150) String clientEmail,
-        @Size(max = 1000) String notes,
-        // Opcional: sede de la cita. Si no se envía, se usa la sede "Principal" de la empresa.
-        Long branchId
-) {}
+    @NotNull LocalDateTime startAt,
+    @NotNull AppointmentType type,
+    @NotNull Long employeeId,
+    Long animalId,
+    Long ownerId,
+    @Size(max = 120) String clientName,
+    @Size(max = 30) String clientPhone,
+    // Opcional: correo del contacto libre para enviarle la confirmación.
+    @Email @Size(max = 150) String clientEmail,
+    @Size(max = 1000) String notes,
+    // Opcional: sede de la cita. Si no se envía, se usa la sede "Principal" de la empresa.
+    Long branchId) {}

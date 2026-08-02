@@ -10,34 +10,39 @@ import org.springframework.stereotype.Component;
 
 @Component("productChargeOpenAccountJpaOpenAccountQueryPort")
 public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
-    private final OpenAccountJpaRepository openAccountJpaRepository;
+  private final OpenAccountJpaRepository openAccountJpaRepository;
 
-    public JpaOpenAccountQueryPort(OpenAccountJpaRepository openAccountJpaRepository) {
-        this.openAccountJpaRepository = openAccountJpaRepository;
-    }
+  public JpaOpenAccountQueryPort(OpenAccountJpaRepository openAccountJpaRepository) {
+    this.openAccountJpaRepository = openAccountJpaRepository;
+  }
 
-    @Override
-    public Optional<OpenAccountRef> findById(Long openAccountId) {
-        return openAccountJpaRepository.findById(openAccountId)
-            .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
-    }
+  @Override
+  public Optional<OpenAccountRef> findById(Long openAccountId) {
+    return openAccountJpaRepository
+        .findById(openAccountId)
+        .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
+  }
 
-    @Override
-    public void lockForUpdate(Long openAccountId) {
-        openAccountJpaRepository.findByIdForUpdate(openAccountId);
-    }
+  @Override
+  public void lockForUpdate(Long openAccountId) {
+    openAccountJpaRepository.findByIdForUpdate(openAccountId);
+  }
 
-    @Override
-    public boolean isOpen(Long openAccountId) {
-        return openAccountJpaRepository.findById(openAccountId)
-            .map(e -> e.getStatus() == OpenAccountStatus.OPEN)
-            .orElse(false);
-    }
+  @Override
+  public boolean isOpen(Long openAccountId) {
+    return openAccountJpaRepository
+        .findById(openAccountId)
+        .map(e -> e.getStatus() == OpenAccountStatus.OPEN)
+        .orElse(false);
+  }
 
-    @Override
-    public BigDecimal outstandingAmount(Long openAccountId) {
-        return openAccountJpaRepository.findById(openAccountId)
-            .map(com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpaEntity::getOutstandingAmount)
-            .orElse(BigDecimal.ZERO);
-    }
+  @Override
+  public BigDecimal outstandingAmount(Long openAccountId) {
+    return openAccountJpaRepository
+        .findById(openAccountId)
+        .map(
+            com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpaEntity
+                ::getOutstandingAmount)
+        .orElse(BigDecimal.ZERO);
+  }
 }

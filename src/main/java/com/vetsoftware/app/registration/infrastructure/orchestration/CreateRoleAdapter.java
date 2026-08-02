@@ -9,20 +9,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class CreateRoleAdapter implements RoleCreator {
 
-    private final CreateRoleUseCase createRoleUseCase;
-    private final SystemAuthRunner systemAuthRunner;
+  private final CreateRoleUseCase createRoleUseCase;
+  private final SystemAuthRunner systemAuthRunner;
 
-    public CreateRoleAdapter(CreateRoleUseCase createRoleUseCase,
-                             SystemAuthRunner systemAuthRunner) {
-        this.createRoleUseCase = createRoleUseCase;
-        this.systemAuthRunner = systemAuthRunner;
-    }
+  public CreateRoleAdapter(CreateRoleUseCase createRoleUseCase, SystemAuthRunner systemAuthRunner) {
+    this.createRoleUseCase = createRoleUseCase;
+    this.systemAuthRunner = systemAuthRunner;
+  }
 
-    @Override
-    public RoleResult create(String name, String code, Long companyId) {
-        var dto = systemAuthRunner.call(() -> createRoleUseCase.execute(
-            new CreateRoleCommand(name, code, companyId)
-        ));
-        return new RoleResult(dto.id());
-    }
+  @Override
+  public RoleResult create(String name, String code, Long companyId) {
+    var dto =
+        systemAuthRunner.call(
+            () -> createRoleUseCase.execute(new CreateRoleCommand(name, code, companyId)));
+    return new RoleResult(dto.id());
+  }
 }

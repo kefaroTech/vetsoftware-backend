@@ -12,36 +12,49 @@ import org.springframework.stereotype.Component;
 @Component
 public class PrescriptionJpaMapper {
 
-    public PrescriptionJpaEntity toJpa(Prescription prescription, AnimalJpaEntity animal,
-                                       ConsultationJpaEntity consultation, CompanyJpaEntity company) {
-        PrescriptionJpaEntity entity = new PrescriptionJpaEntity();
-        entity.setId(prescription.getId());
-        entity.setDate(prescription.getDate());
-        entity.setDiagnosis(prescription.getDiagnosis());
-        entity.setObservations(prescription.getObservations());
-        entity.setAnimal(animal);
-        entity.setConsultation(consultation);
-        entity.setCompany(company);
-        entity.setCreatedDate(prescription.getCreatedDate());
-        entity.setEnabled(prescription.isEnabled());
-        return entity;
-    }
+  public PrescriptionJpaEntity toJpa(
+      Prescription prescription,
+      AnimalJpaEntity animal,
+      ConsultationJpaEntity consultation,
+      CompanyJpaEntity company) {
+    PrescriptionJpaEntity entity = new PrescriptionJpaEntity();
+    entity.setId(prescription.getId());
+    entity.setDate(prescription.getDate());
+    entity.setDiagnosis(prescription.getDiagnosis());
+    entity.setObservations(prescription.getObservations());
+    entity.setAnimal(animal);
+    entity.setConsultation(consultation);
+    entity.setCompany(company);
+    entity.setCreatedDate(prescription.getCreatedDate());
+    entity.setEnabled(prescription.isEnabled());
+    return entity;
+  }
 
-    public Prescription toDomain(PrescriptionJpaEntity entity) {
-        AnimalJpaEntity a = entity.getAnimal();
-        ConsultationJpaEntity co = entity.getConsultation();
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new ConsultationRef(co.getId(), co.getDate()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public Prescription toDomain(PrescriptionJpaEntity entity) {
+    AnimalJpaEntity a = entity.getAnimal();
+    ConsultationJpaEntity co = entity.getConsultation();
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(
+        entity,
+        new AnimalRef(a.getId(), a.getName(), a.getCode()),
+        new ConsultationRef(co.getId(), co.getDate()),
+        new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public Prescription toDomain(PrescriptionJpaEntity entity, AnimalRef animalRef,
-                                 ConsultationRef consultationRef, CompanyRef companyRef) {
-        return new Prescription(
-            entity.getId(), entity.getDate(),
-            entity.getDiagnosis(), entity.getObservations(),
-            animalRef, consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
-    }
+  public Prescription toDomain(
+      PrescriptionJpaEntity entity,
+      AnimalRef animalRef,
+      ConsultationRef consultationRef,
+      CompanyRef companyRef) {
+    return new Prescription(
+        entity.getId(),
+        entity.getDate(),
+        entity.getDiagnosis(),
+        entity.getObservations(),
+        animalRef,
+        consultationRef,
+        companyRef,
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

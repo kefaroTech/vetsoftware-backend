@@ -11,15 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "spa.type.create")
 @Service
 public class CreateSpaTypeService implements CreateSpaTypeUseCase {
-    private final SpaTypeRepository repository;
+  private final SpaTypeRepository repository;
 
-    public CreateSpaTypeService(SpaTypeRepository repository) {
-        this.repository = repository;
-    }
+  public CreateSpaTypeService(SpaTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SpaTypeDto execute(CreateSpaTypeCommand command) {
-        return SpaTypeDto.from(
-                repository.save(SpaType.create(command.name(), command.description())));
-    }
+  @Override
+  public SpaTypeDto execute(CreateSpaTypeCommand command) {
+    return SpaTypeDto.from(repository.save(SpaType.create(command.name(), command.description())));
+  }
 }

@@ -5,9 +5,8 @@ import java.time.LocalDate;
 
 /** Lote disponible de un producto en una sede (para trazabilidad/FEFO/UI). */
 public record StockLotView(
-        Long lotId,
-        String lotNumber,
-        LocalDate expireDate,
-        int quantityAvailable,
-        BigDecimal unitCost
-) {}
+    Long lotId,
+    String lotNumber,
+    LocalDate expireDate,
+    int quantityAvailable,
+    BigDecimal unitCost) {}

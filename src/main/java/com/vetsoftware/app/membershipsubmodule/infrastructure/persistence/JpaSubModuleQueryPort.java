@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("membershipsubmoduleJpaSubModuleQueryPort")
 public class JpaSubModuleQueryPort implements SubModuleQueryPort {
-    private final SubModuleJpaRepository subModuleJpaRepository;
+  private final SubModuleJpaRepository subModuleJpaRepository;
 
-    public JpaSubModuleQueryPort(SubModuleJpaRepository subModuleJpaRepository) {
-        this.subModuleJpaRepository = subModuleJpaRepository;
-    }
+  public JpaSubModuleQueryPort(SubModuleJpaRepository subModuleJpaRepository) {
+    this.subModuleJpaRepository = subModuleJpaRepository;
+  }
 
-    @Override
-    public Optional<SubModuleRef> findById(Long subModuleId) {
-        return subModuleJpaRepository.findById(subModuleId)
-            .map(e -> new SubModuleRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<SubModuleRef> findById(Long subModuleId) {
+    return subModuleJpaRepository
+        .findById(subModuleId)
+        .map(e -> new SubModuleRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

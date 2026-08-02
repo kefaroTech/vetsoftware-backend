@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "vaccination.reactivate")
 @Service
 public class ReactivateVaccinationService implements ReactivateVaccinationUseCase {
-    private final VaccinationRepository repository;
+  private final VaccinationRepository repository;
 
-    public ReactivateVaccinationService(VaccinationRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateVaccinationService(VaccinationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public VaccinationDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new VaccinationNotFoundException(id);
-        return VaccinationDto.from(repository.findById(id)
-            .orElseThrow(() -> new VaccinationNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public VaccinationDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new VaccinationNotFoundException(id);
+    return VaccinationDto.from(
+        repository.findById(id).orElseThrow(() -> new VaccinationNotFoundException(id)));
+  }
 }

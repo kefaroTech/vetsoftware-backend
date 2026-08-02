@@ -8,21 +8,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaBaseRoleProvider implements BaseRoleProvider {
 
-    private final BaseRoleJpaRepository baseRoleJpaRepository;
+  private final BaseRoleJpaRepository baseRoleJpaRepository;
 
-    public JpaBaseRoleProvider(BaseRoleJpaRepository baseRoleJpaRepository) {
-        this.baseRoleJpaRepository = baseRoleJpaRepository;
-    }
+  public JpaBaseRoleProvider(BaseRoleJpaRepository baseRoleJpaRepository) {
+    this.baseRoleJpaRepository = baseRoleJpaRepository;
+  }
 
-    @Override
-    public List<BaseRoleData> findAll() {
-        // @SQLRestriction("enabled = true") en la entidad ya filtra los deshabilitados.
-        return baseRoleJpaRepository.findAll().stream()
-                .map(e -> new BaseRoleData(
-                        e.getId(),
-                        e.getName(),
-                        e.getCode(),
-                        Boolean.TRUE.equals(e.getMandatory())))
-                .toList();
-    }
+  @Override
+  public List<BaseRoleData> findAll() {
+    // @SQLRestriction("enabled = true") en la entidad ya filtra los deshabilitados.
+    return baseRoleJpaRepository.findAll().stream()
+        .map(
+            e ->
+                new BaseRoleData(
+                    e.getId(), e.getName(), e.getCode(), Boolean.TRUE.equals(e.getMandatory())))
+        .toList();
+  }
 }

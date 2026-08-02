@@ -18,25 +18,34 @@ import org.springframework.stereotype.Service;
 @Observed(name = "weight.record.create")
 @Service
 public class CreateWeightRecordService implements CreateWeightRecordUseCase {
-    private final AnimalRepository animalRepository;
-    private final WeightRecordRepository weightRecordRepository;
+  private final AnimalRepository animalRepository;
+  private final WeightRecordRepository weightRecordRepository;
 
-    public CreateWeightRecordService(AnimalRepository animalRepository,
-                                     WeightRecordRepository weightRecordRepository) {
-        this.animalRepository = animalRepository;
-        this.weightRecordRepository = weightRecordRepository;
-    }
+  public CreateWeightRecordService(
+      AnimalRepository animalRepository, WeightRecordRepository weightRecordRepository) {
+    this.animalRepository = animalRepository;
+    this.weightRecordRepository = weightRecordRepository;
+  }
 
-    @Override
-    public WeightRecordDto execute(CreateWeightRecordCommand command) {
-        Animal animal = animalRepository.findByIdAndCompanyId(command.animalId(), command.companyId())
+  @Override
+  public WeightRecordDto execute(CreateWeightRecordCommand command) {
+    Animal animal =
+        animalRepository
+            .findByIdAndCompanyId(command.animalId(), command.companyId())
             .orElseThrow(() -> new AnimalNotFoundException(command.animalId()));
-        WeightType unit = command.unit() != null ? command.unit() : animal.getWeightType();
-        LocalDate measuredAt = command.measuredAt() != null ? command.measuredAt() : LocalDate.now();
-        AnimalRef animalRef = new AnimalRef(animal.getId(), animal.getName(), animal.getCode());
-        WeightRecord record = WeightRecord.create(
-            animalRef, command.value(), unit, measuredAt,
-            WeightSource.MANUAL, null, command.note(), animal.getCompany());
-        return WeightRecordDto.from(weightRecordRepository.save(record));
-    }
+    WeightType unit = command.unit() != null ? command.unit() : animal.getWeightType();
+    LocalDate measuredAt = command.measuredAt() != null ? command.measuredAt() : LocalDate.now();
+    AnimalRef animalRef = new AnimalRef(animal.getId(), animal.getName(), animal.getCode());
+    WeightRecord record =
+        WeightRecord.create(
+            animalRef,
+            command.value(),
+            unit,
+            measuredAt,
+            WeightSource.MANUAL,
+            null,
+            command.note(),
+            animal.getCompany());
+    return WeightRecordDto.from(weightRecordRepository.save(record));
+  }
 }

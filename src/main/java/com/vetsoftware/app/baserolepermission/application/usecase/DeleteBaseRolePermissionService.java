@@ -9,15 +9,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "base.role.permission.delete")
 @Service
 public class DeleteBaseRolePermissionService implements DeleteBaseRolePermissionUseCase {
-    private final BaseRolePermissionRepository repository;
+  private final BaseRolePermissionRepository repository;
 
-    public DeleteBaseRolePermissionService(BaseRolePermissionRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteBaseRolePermissionService(BaseRolePermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+    repository.delete(id);
+  }
 }

@@ -25,73 +25,83 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/hospitalization-progress-notes")
 public class HospitalizationProgressNoteController {
-    private final CreateHospitalizationProgressNoteUseCase createUseCase;
-    private final UpdateHospitalizationProgressNoteUseCase updateUseCase;
-    private final FindHospitalizationProgressNoteUseCase findUseCase;
-    private final ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase;
-    private final DeleteHospitalizationProgressNoteUseCase deleteUseCase;
-    private final ReactivateHospitalizationProgressNoteUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateHospitalizationProgressNoteUseCase createUseCase;
+  private final UpdateHospitalizationProgressNoteUseCase updateUseCase;
+  private final FindHospitalizationProgressNoteUseCase findUseCase;
+  private final ListHospitalizationProgressNotesByHospitalizationUseCase
+      listByHospitalizationUseCase;
+  private final DeleteHospitalizationProgressNoteUseCase deleteUseCase;
+  private final ReactivateHospitalizationProgressNoteUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public HospitalizationProgressNoteController(CreateHospitalizationProgressNoteUseCase createUseCase,
-                                                UpdateHospitalizationProgressNoteUseCase updateUseCase,
-                                                FindHospitalizationProgressNoteUseCase findUseCase,
-                                                ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase,
-                                                DeleteHospitalizationProgressNoteUseCase deleteUseCase,
-                                                ReactivateHospitalizationProgressNoteUseCase reactivateUseCase,
-                                                Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listByHospitalizationUseCase = listByHospitalizationUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public HospitalizationProgressNoteController(
+      CreateHospitalizationProgressNoteUseCase createUseCase,
+      UpdateHospitalizationProgressNoteUseCase updateUseCase,
+      FindHospitalizationProgressNoteUseCase findUseCase,
+      ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase,
+      DeleteHospitalizationProgressNoteUseCase deleteUseCase,
+      ReactivateHospitalizationProgressNoteUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listByHospitalizationUseCase = listByHospitalizationUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public HospitalizationProgressNoteResponse create(@Valid @RequestBody CreateHospitalizationProgressNoteRequest request) {
-        return toResponse(createUseCase.execute(new CreateHospitalizationProgressNoteCommand(
-            request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public HospitalizationProgressNoteResponse create(
+      @Valid @RequestBody CreateHospitalizationProgressNoteRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateHospitalizationProgressNoteCommand(
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+  }
 
-    @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationProgressNoteResponse> listByHospitalization(@PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-            .map(this::toResponse).toList();
-    }
+  @GetMapping("/by-hospitalization/{hospitalizationId}")
+  public List<HospitalizationProgressNoteResponse> listByHospitalization(
+      @PathVariable Long hospitalizationId) {
+    return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public HospitalizationProgressNoteResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public HospitalizationProgressNoteResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public HospitalizationProgressNoteResponse update(@PathVariable Long id,
-                                                     @Valid @RequestBody UpdateHospitalizationProgressNoteRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public HospitalizationProgressNoteResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateHospitalizationProgressNoteRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateHospitalizationProgressNoteCommand(id, request.description())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public HospitalizationProgressNoteResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public HospitalizationProgressNoteResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private HospitalizationProgressNoteResponse toResponse(HospitalizationProgressNoteDto dto) {
-        HospitalizationSummaryDto h = dto.hospitalization();
-        EmployeeSummaryDto c = dto.createdBy();
-        return new HospitalizationProgressNoteResponse(
-            dto.id(), dto.description(),
-            new HospitalizationSummary(h.id(), h.date()),
-            new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
-            dto.createdDate(), dto.enabled());
-    }
+  private HospitalizationProgressNoteResponse toResponse(HospitalizationProgressNoteDto dto) {
+    HospitalizationSummaryDto h = dto.hospitalization();
+    EmployeeSummaryDto c = dto.createdBy();
+    return new HospitalizationProgressNoteResponse(
+        dto.id(),
+        dto.description(),
+        new HospitalizationSummary(h.id(), h.date()),
+        new EmployeeSummary(c.id(), c.employeeCode(), c.name()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

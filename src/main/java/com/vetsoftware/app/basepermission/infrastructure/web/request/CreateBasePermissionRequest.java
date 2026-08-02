@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateBasePermissionRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 50) String code,
-        @NotNull Long subModuleId
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @NotBlank @Size(max = 50) String code,
+    @NotNull Long subModuleId) {}

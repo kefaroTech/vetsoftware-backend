@@ -17,38 +17,63 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medicament.prescription.update")
 @Service
 public class UpdateMedicamentPrescriptionService implements UpdateMedicamentPrescriptionUseCase {
-    private final MedicamentPrescriptionRepository repository;
-    private final PrescriptionQueryPort prescriptionQueryPort;
-    private final MedicamentQueryPort medicamentQueryPort;
+  private final MedicamentPrescriptionRepository repository;
+  private final PrescriptionQueryPort prescriptionQueryPort;
+  private final MedicamentQueryPort medicamentQueryPort;
 
-    public UpdateMedicamentPrescriptionService(MedicamentPrescriptionRepository repository,
-                                               PrescriptionQueryPort prescriptionQueryPort,
-                                               MedicamentQueryPort medicamentQueryPort) {
-        this.repository = repository;
-        this.prescriptionQueryPort = prescriptionQueryPort;
-        this.medicamentQueryPort = medicamentQueryPort;
-    }
+  public UpdateMedicamentPrescriptionService(
+      MedicamentPrescriptionRepository repository,
+      PrescriptionQueryPort prescriptionQueryPort,
+      MedicamentQueryPort medicamentQueryPort) {
+    this.repository = repository;
+    this.prescriptionQueryPort = prescriptionQueryPort;
+    this.medicamentQueryPort = medicamentQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public MedicamentPrescriptionDto execute(UpdateMedicamentPrescriptionCommand command) {
-        MedicamentPrescription medicament = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+  @Override
+  @Transactional
+  public MedicamentPrescriptionDto execute(UpdateMedicamentPrescriptionCommand command) {
+    MedicamentPrescription medicament =
+        (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new MedicamentPrescriptionNotFoundException(command.id()));
-        PrescriptionRef prescription = command.companyId() == null
-            ? prescriptionQueryPort.findById(command.prescriptionId())
-                .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()))
-            : prescriptionQueryPort.findByIdAndCompanyId(command.prescriptionId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()));
-        MedicamentRef medicamentRef = command.companyId() == null
-            ? medicamentQueryPort.findById(command.medicamentId())
-                .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()))
-            : medicamentQueryPort.findAvailableById(command.medicamentId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()));
+    PrescriptionRef prescription =
+        command.companyId() == null
+            ? prescriptionQueryPort
+                .findById(command.prescriptionId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Prescription not found: " + command.prescriptionId()))
+            : prescriptionQueryPort
+                .findByIdAndCompanyId(command.prescriptionId(), command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Prescription not found: " + command.prescriptionId()));
+    MedicamentRef medicamentRef =
+        command.companyId() == null
+            ? medicamentQueryPort
+                .findById(command.medicamentId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Medicament not found: " + command.medicamentId()))
+            : medicamentQueryPort
+                .findAvailableById(command.medicamentId(), command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Medicament not found: " + command.medicamentId()));
 
-        medicament.update(medicamentRef, command.presentation(), command.quantity(),
-            command.posology(), command.observation(), prescription);
-        return MedicamentPrescriptionDto.from(repository.save(medicament));
-    }
+    medicament.update(
+        medicamentRef,
+        command.presentation(),
+        command.quantity(),
+        command.posology(),
+        command.observation(),
+        prescription);
+    return MedicamentPrescriptionDto.from(repository.save(medicament));
+  }
 }

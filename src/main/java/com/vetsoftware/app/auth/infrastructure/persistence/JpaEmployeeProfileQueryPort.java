@@ -8,20 +8,23 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaEmployeeProfileQueryPort implements EmployeeProfileQueryPort {
 
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeProfileQueryPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeProfileQueryPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public Optional<EmployeeProfile> findById(Long employeeId) {
-        return employeeJpaRepository.findById(employeeId)
-                .map(e -> new EmployeeProfile(
-                        e.getId(),
-                        e.getCompany().getId(),
-                        e.getName(),
-                        e.getEmployeeCode(),
-                        e.isMustChangePassword()));
-    }
+  @Override
+  public Optional<EmployeeProfile> findById(Long employeeId) {
+    return employeeJpaRepository
+        .findById(employeeId)
+        .map(
+            e ->
+                new EmployeeProfile(
+                    e.getId(),
+                    e.getCompany().getId(),
+                    e.getName(),
+                    e.getEmployeeCode(),
+                    e.isMustChangePassword()));
+  }
 }

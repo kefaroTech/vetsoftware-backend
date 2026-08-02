@@ -10,14 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "numbering.resolution.list")
 @Service
 public class ListNumberingResolutionsService implements ListNumberingResolutionsUseCase {
-    private final NumberingResolutionRepository repository;
+  private final NumberingResolutionRepository repository;
 
-    public ListNumberingResolutionsService(NumberingResolutionRepository repository) {
-        this.repository = repository;
-    }
+  public ListNumberingResolutionsService(NumberingResolutionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<NumberingResolutionDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(NumberingResolutionDto::from).toList();
-    }
+  @Override
+  public List<NumberingResolutionDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream()
+        .map(NumberingResolutionDto::from)
+        .toList();
+  }
 }

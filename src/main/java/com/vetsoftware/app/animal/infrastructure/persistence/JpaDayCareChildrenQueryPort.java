@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaDayCareChildrenQueryPort implements DayCareChildrenQueryPort {
-    private final DayCareJpaRepository jpaRepository;
+  private final DayCareJpaRepository jpaRepository;
 
-    public JpaDayCareChildrenQueryPort(DayCareJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaDayCareChildrenQueryPort(DayCareJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByAnimalId(Long parentId) {
-        return jpaRepository.existsByAnimal_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByAnimalId(Long parentId) {
+    return jpaRepository.existsByAnimal_Id(parentId);
+  }
 }

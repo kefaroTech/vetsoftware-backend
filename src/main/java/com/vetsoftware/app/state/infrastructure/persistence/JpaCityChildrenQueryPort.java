@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaCityChildrenQueryPort implements CityChildrenQueryPort {
-    private final CityJpaRepository jpaRepository;
+  private final CityJpaRepository jpaRepository;
 
-    public JpaCityChildrenQueryPort(CityJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaCityChildrenQueryPort(CityJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByStateId(Long parentId) {
-        return jpaRepository.existsByState_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByStateId(Long parentId) {
+    return jpaRepository.existsByState_Id(parentId);
+  }
 }

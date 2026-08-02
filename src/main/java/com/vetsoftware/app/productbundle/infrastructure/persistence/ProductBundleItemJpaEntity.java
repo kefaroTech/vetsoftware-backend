@@ -17,58 +17,102 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "product_bundle_items")
 public class ProductBundleItemJpaEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private CompanyJpaEntity company;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id", nullable = false)
+  private CompanyJpaEntity company;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bundle_id", nullable = false)
-    private ProductBundleJpaEntity bundle;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "bundle_id", nullable = false)
+  private ProductBundleJpaEntity bundle;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "presentation_id", nullable = false)
-    private ProductPresentationJpaEntity presentation;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "presentation_id", nullable = false)
+  private ProductPresentationJpaEntity presentation;
 
-    @Column(nullable = false)
-    private int quantity;
+  @Column(nullable = false)
+  private int quantity;
 
-    @Column(name = "display_order", nullable = false)
-    private int displayOrder;
+  @Column(name = "display_order", nullable = false)
+  private int displayOrder;
 
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
+  @Column(name = "created_date", nullable = false)
+  private LocalDateTime createdDate;
 
-    protected ProductBundleItemJpaEntity() {}
+  protected ProductBundleItemJpaEntity() {}
 
-    public static ProductBundleItemJpaEntity create(
-            CompanyJpaEntity company, ProductBundleJpaEntity bundle,
-            ProductPresentationJpaEntity presentation, int quantity, int displayOrder) {
-        ProductBundleItemJpaEntity entity = new ProductBundleItemJpaEntity();
-        entity.company = company;
-        entity.bundle = bundle;
-        entity.presentation = presentation;
-        entity.quantity = quantity;
-        entity.displayOrder = displayOrder;
-        entity.createdDate = LocalDateTime.now();
-        return entity;
-    }
+  public static ProductBundleItemJpaEntity create(
+      CompanyJpaEntity company,
+      ProductBundleJpaEntity bundle,
+      ProductPresentationJpaEntity presentation,
+      int quantity,
+      int displayOrder) {
+    ProductBundleItemJpaEntity entity = new ProductBundleItemJpaEntity();
+    entity.company = company;
+    entity.bundle = bundle;
+    entity.presentation = presentation;
+    entity.quantity = quantity;
+    entity.displayOrder = displayOrder;
+    entity.createdDate = LocalDateTime.now();
+    return entity;
+  }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public ProductBundleJpaEntity getBundle() { return bundle; }
-    public void setBundle(ProductBundleJpaEntity bundle) { this.bundle = bundle; }
-    public ProductPresentationJpaEntity getPresentation() { return presentation; }
-    public void setPresentation(ProductPresentationJpaEntity presentation) { this.presentation = presentation; }
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
-    public int getDisplayOrder() { return displayOrder; }
-    public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public CompanyJpaEntity getCompany() {
+    return company;
+  }
+
+  public void setCompany(CompanyJpaEntity company) {
+    this.company = company;
+  }
+
+  public ProductBundleJpaEntity getBundle() {
+    return bundle;
+  }
+
+  public void setBundle(ProductBundleJpaEntity bundle) {
+    this.bundle = bundle;
+  }
+
+  public ProductPresentationJpaEntity getPresentation() {
+    return presentation;
+  }
+
+  public void setPresentation(ProductPresentationJpaEntity presentation) {
+    this.presentation = presentation;
+  }
+
+  public int getQuantity() {
+    return quantity;
+  }
+
+  public void setQuantity(int quantity) {
+    this.quantity = quantity;
+  }
+
+  public int getDisplayOrder() {
+    return displayOrder;
+  }
+
+  public void setDisplayOrder(int displayOrder) {
+    this.displayOrder = displayOrder;
+  }
+
+  public LocalDateTime getCreatedDate() {
+    return createdDate;
+  }
+
+  public void setCreatedDate(LocalDateTime createdDate) {
+    this.createdDate = createdDate;
+  }
 }

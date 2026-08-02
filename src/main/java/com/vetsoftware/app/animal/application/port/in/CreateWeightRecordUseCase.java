@@ -5,6 +5,8 @@ import com.vetsoftware.app.animal.application.dto.WeightRecordDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateWeightRecordUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.create') and @authz.isMyCompany(#command.companyId))")
-    WeightRecordDto execute(CreateWeightRecordCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('animal.create') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  WeightRecordDto execute(CreateWeightRecordCommand command);
 }

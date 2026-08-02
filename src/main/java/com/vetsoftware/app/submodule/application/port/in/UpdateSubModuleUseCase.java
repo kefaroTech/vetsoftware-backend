@@ -5,6 +5,6 @@ import com.vetsoftware.app.submodule.application.dto.SubModuleDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateSubModuleUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    SubModuleDto execute(UpdateSubModuleCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  SubModuleDto execute(UpdateSubModuleCommand command);
 }

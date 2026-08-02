@@ -8,36 +8,37 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaAnimalColorRepository implements AnimalColorRepository {
-    private final AnimalColorJpaRepository jpaRepository;
-    private final AnimalColorJpaMapper mapper;
+  private final AnimalColorJpaRepository jpaRepository;
+  private final AnimalColorJpaMapper mapper;
 
-    public JpaAnimalColorRepository(AnimalColorJpaRepository jpaRepository, AnimalColorJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaAnimalColorRepository(
+      AnimalColorJpaRepository jpaRepository, AnimalColorJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public AnimalColor save(AnimalColor color) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(color)));
-    }
+  @Override
+  public AnimalColor save(AnimalColor color) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(color)));
+  }
 
-    @Override
-    public Optional<AnimalColor> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<AnimalColor> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<AnimalColor> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<AnimalColor> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

@@ -11,16 +11,18 @@ import org.springframework.stereotype.Service;
 @Observed(name = "appointment.find")
 @Service
 public class GetAppointmentService implements GetAppointmentUseCase {
-    private final AppointmentRepository repository;
+  private final AppointmentRepository repository;
 
-    public GetAppointmentService(AppointmentRepository repository) {
-        this.repository = repository;
-    }
+  public GetAppointmentService(AppointmentRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public AppointmentDto findById(Long id, Long companyId) {
-        Appointment appointment = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public AppointmentDto findById(Long id, Long companyId) {
+    Appointment appointment =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new AppointmentNotFoundException(id));
-        return AppointmentDto.from(appointment);
-    }
+    return AppointmentDto.from(appointment);
+  }
 }

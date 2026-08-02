@@ -8,15 +8,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaSystemUserCredentialsRepository implements SystemUserCredentialsRepository {
 
-    private final SystemUserJpaRepository systemUserJpaRepository;
+  private final SystemUserJpaRepository systemUserJpaRepository;
 
-    public JpaSystemUserCredentialsRepository(SystemUserJpaRepository systemUserJpaRepository) {
-        this.systemUserJpaRepository = systemUserJpaRepository;
-    }
+  public JpaSystemUserCredentialsRepository(SystemUserJpaRepository systemUserJpaRepository) {
+    this.systemUserJpaRepository = systemUserJpaRepository;
+  }
 
-    @Override
-    public Optional<SystemUserCredentials> findByCode(String code) {
-        return systemUserJpaRepository.findByCode(code)
-                .map(u -> new SystemUserCredentials(u.getId(), u.getHashPassword()));
-    }
+  @Override
+  public Optional<SystemUserCredentials> findByCode(String code) {
+    return systemUserJpaRepository
+        .findByCode(code)
+        .map(u -> new SystemUserCredentials(u.getId(), u.getHashPassword()));
+  }
 }

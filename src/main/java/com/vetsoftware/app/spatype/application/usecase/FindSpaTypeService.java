@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "spa.type.find")
 @Service
 public class FindSpaTypeService implements FindSpaTypeUseCase {
-    private final SpaTypeRepository repository;
+  private final SpaTypeRepository repository;
 
-    public FindSpaTypeService(SpaTypeRepository repository) {
-        this.repository = repository;
-    }
+  public FindSpaTypeService(SpaTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SpaTypeDto findById(Long id) {
-        return SpaTypeDto.from(repository.findById(id)
-                .orElseThrow(() -> new SpaTypeNotFoundException(id)));
-    }
+  @Override
+  public SpaTypeDto findById(Long id) {
+    return SpaTypeDto.from(
+        repository.findById(id).orElseThrow(() -> new SpaTypeNotFoundException(id)));
+  }
 }

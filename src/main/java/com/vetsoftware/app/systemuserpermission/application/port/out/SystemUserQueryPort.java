@@ -4,5 +4,5 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemUserRef;
 import java.util.Optional;
 
 public interface SystemUserQueryPort {
-    Optional<SystemUserRef> findById(Long systemUserId);
+  Optional<SystemUserRef> findById(Long systemUserId);
 }

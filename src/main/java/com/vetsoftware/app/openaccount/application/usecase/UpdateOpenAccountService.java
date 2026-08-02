@@ -16,32 +16,36 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "open.account.update")
 @Service
 public class UpdateOpenAccountService implements UpdateOpenAccountUseCase {
-    private final OpenAccountRepository repository;
-    private final OwnerQueryPort ownerQueryPort;
+  private final OpenAccountRepository repository;
+  private final OwnerQueryPort ownerQueryPort;
 
-    public UpdateOpenAccountService(OpenAccountRepository repository,
-                                    OwnerQueryPort ownerQueryPort) {
-        this.repository = repository;
-        this.ownerQueryPort = ownerQueryPort;
-    }
+  public UpdateOpenAccountService(OpenAccountRepository repository, OwnerQueryPort ownerQueryPort) {
+    this.repository = repository;
+    this.ownerQueryPort = ownerQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public OpenAccountDto execute(UpdateOpenAccountCommand command) {
-        OpenAccount openAccount = repository.findById(command.id())
+  @Override
+  @Transactional
+  public OpenAccountDto execute(UpdateOpenAccountCommand command) {
+    OpenAccount openAccount =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
-        if (!openAccount.getCompany().id().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
-        if (command.expectedVersion() != null
-                && !command.expectedVersion().equals(openAccount.getVersion())) {
-            throw new OpenAccountVersionConflictException(
-                command.id(), command.expectedVersion(), openAccount.getVersion());
-        }
-        OwnerRef owner = ownerQueryPort.findById(command.ownerId())
-            .orElseThrow(() -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
-
-        openAccount.update(owner);
-        return OpenAccountDto.from(repository.save(openAccount));
+    if (!openAccount.getCompany().id().equals(command.companyId())) {
+      throw new IllegalArgumentException("open account does not belong to company");
     }
+    if (command.expectedVersion() != null
+        && !command.expectedVersion().equals(openAccount.getVersion())) {
+      throw new OpenAccountVersionConflictException(
+          command.id(), command.expectedVersion(), openAccount.getVersion());
+    }
+    OwnerRef owner =
+        ownerQueryPort
+            .findById(command.ownerId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
+
+    openAccount.update(owner);
+    return OpenAccountDto.from(repository.save(openAccount));
+  }
 }

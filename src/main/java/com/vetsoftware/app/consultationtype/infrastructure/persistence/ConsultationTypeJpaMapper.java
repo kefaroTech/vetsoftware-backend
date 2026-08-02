@@ -5,22 +5,22 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ConsultationTypeJpaMapper {
-    public ConsultationTypeJpaEntity toJpa(ConsultationType consultationType) {
-        ConsultationTypeJpaEntity entity = new ConsultationTypeJpaEntity();
-        entity.setId(consultationType.getId());
-        entity.setName(consultationType.getName());
-        entity.setDescription(consultationType.getDescription());
-        entity.setCreatedDate(consultationType.getCreatedDate());
-        entity.setEnabled(consultationType.isEnabled());
-        return entity;
-    }
+  public ConsultationTypeJpaEntity toJpa(ConsultationType consultationType) {
+    ConsultationTypeJpaEntity entity = new ConsultationTypeJpaEntity();
+    entity.setId(consultationType.getId());
+    entity.setName(consultationType.getName());
+    entity.setDescription(consultationType.getDescription());
+    entity.setCreatedDate(consultationType.getCreatedDate());
+    entity.setEnabled(consultationType.isEnabled());
+    return entity;
+  }
 
-    public ConsultationType toDomain(ConsultationTypeJpaEntity entity) {
-        return new ConsultationType(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                entity.getCreatedDate(),
-                entity.isEnabled());
-    }
+  public ConsultationType toDomain(ConsultationTypeJpaEntity entity) {
+    return new ConsultationType(
+        entity.getId(),
+        entity.getName(),
+        entity.getDescription(),
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

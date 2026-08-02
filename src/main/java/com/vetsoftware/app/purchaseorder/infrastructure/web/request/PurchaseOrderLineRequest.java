@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public record PurchaseOrderLineRequest(
-        @NotNull Long productId,
-        @Positive int quantityOrdered,
-        @NotNull @DecimalMin("0.0") BigDecimal unitCost
-) {}
+    @NotNull Long productId,
+    @Positive int quantityOrdered,
+    @NotNull @DecimalMin("0.0") BigDecimal unitCost) {}

@@ -7,22 +7,23 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter del {@link EmployeeNameQueryPort}: lee el nombre del empleado de la feature employee. Único cruce
- * permitido de vertical slicing (persistence → persistence de otra feature).
+ * Adapter del {@link EmployeeNameQueryPort}: lee el nombre del empleado de la feature employee.
+ * Único cruce permitido de vertical slicing (persistence → persistence de otra feature).
  */
 @Component
 public class JpaEmployeeNameQueryPort implements EmployeeNameQueryPort {
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeNameQueryPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeNameQueryPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public Optional<String> findName(Long employeeId) {
-        if (employeeId == null) return Optional.empty();
-        return employeeJpaRepository.findById(employeeId)
-                .map(EmployeeJpaEntity::getName)
-                .filter(name -> name != null && !name.isBlank());
-    }
+  @Override
+  public Optional<String> findName(Long employeeId) {
+    if (employeeId == null) return Optional.empty();
+    return employeeJpaRepository
+        .findById(employeeId)
+        .map(EmployeeJpaEntity::getName)
+        .filter(name -> name != null && !name.isBlank());
+  }
 }

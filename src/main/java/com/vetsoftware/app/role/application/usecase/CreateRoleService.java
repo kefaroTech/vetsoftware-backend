@@ -13,19 +13,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "role.create")
 @Service
 public class CreateRoleService implements CreateRoleUseCase {
-    private final RoleRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final RoleRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateRoleService(RoleRepository repository, CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateRoleService(RoleRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public RoleDto execute(CreateRoleCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        Role role = Role.create(command.name(), command.code(), company);
-        return RoleDto.from(repository.save(role));
-    }
+  @Override
+  public RoleDto execute(CreateRoleCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    Role role = Role.create(command.name(), command.code(), company);
+    return RoleDto.from(repository.save(role));
+  }
 }

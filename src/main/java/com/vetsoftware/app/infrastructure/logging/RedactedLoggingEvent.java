@@ -18,162 +18,167 @@ import org.slf4j.event.KeyValuePair;
  *
  * <p>Se sustituye el evento en lugar de intentar mutarlo porque {@code LoggingEvent} es
  * efectivamente inmutable en lo que importa, y porque así el appender destino recibe exactamente lo
- * que se va a emitir, sin poder recomponer el mensaje desde los argumentos originales:
- * {@link #getMessage()} devuelve ya el texto formateado y redactado y {@link #getArgumentArray()}
- * devuelve {@code null}. Eso es deliberado — un encoder que reformatee obtiene el mismo texto
- * redactado, y no una versión limpia reconstruida a partir de los argumentos.
+ * que se va a emitir, sin poder recomponer el mensaje desde los argumentos originales: {@link
+ * #getMessage()} devuelve ya el texto formateado y redactado y {@link #getArgumentArray()} devuelve
+ * {@code null}. Eso es deliberado — un encoder que reformatee obtiene el mismo texto redactado, y
+ * no una versión limpia reconstruida a partir de los argumentos.
  *
- * <p>Redactar sobre el mensaje <em>ya formateado</em> (y no argumento a argumento) es lo que permite
- * detectar secretos que solo existen al unir plantilla y argumento: en
- * {@code log.info("password={}", secret)} el argumento aislado es un texto anodino; el mensaje
- * formateado es {@code password=hunter2}.
+ * <p>Redactar sobre el mensaje <em>ya formateado</em> (y no argumento a argumento) es lo que
+ * permite detectar secretos que solo existen al unir plantilla y argumento: en {@code
+ * log.info("password={}", secret)} el argumento aislado es un texto anodino; el mensaje formateado
+ * es {@code password=hunter2}.
  *
  * @see RedactingAppender
  * @see LogRedactor
  */
 final class RedactedLoggingEvent implements ILoggingEvent {
 
-    private final ILoggingEvent delegate;
-    private final String message;
-    private final Map<String, String> mdc;
-    private final List<KeyValuePair> keyValuePairs;
-    private final IThrowableProxy throwableProxy;
+  private final ILoggingEvent delegate;
+  private final String message;
+  private final Map<String, String> mdc;
+  private final List<KeyValuePair> keyValuePairs;
+  private final IThrowableProxy throwableProxy;
 
-    private RedactedLoggingEvent(ILoggingEvent delegate, String message, Map<String, String> mdc,
-                                 List<KeyValuePair> keyValuePairs, IThrowableProxy throwableProxy) {
-        this.delegate = delegate;
-        this.message = message;
-        this.mdc = mdc;
-        this.keyValuePairs = keyValuePairs;
-        this.throwableProxy = throwableProxy;
+  private RedactedLoggingEvent(
+      ILoggingEvent delegate,
+      String message,
+      Map<String, String> mdc,
+      List<KeyValuePair> keyValuePairs,
+      IThrowableProxy throwableProxy) {
+    this.delegate = delegate;
+    this.message = message;
+    this.mdc = mdc;
+    this.keyValuePairs = keyValuePairs;
+    this.throwableProxy = throwableProxy;
+  }
+
+  /**
+   * Redacta el evento, devolviendo el <b>original</b> si no hubo nada que cambiar. El caso normal
+   * es que no haya cambios, así que no se paga ninguna copia.
+   */
+  static ILoggingEvent of(ILoggingEvent event) {
+    String originalMessage = event.getFormattedMessage();
+    String redactedMessage = LogRedactor.redact(originalMessage);
+
+    Map<String, String> originalMdc = event.getMDCPropertyMap();
+    Map<String, String> redactedMdc = LogRedactor.redactMdc(originalMdc);
+
+    List<KeyValuePair> originalPairs = event.getKeyValuePairs();
+    List<KeyValuePair> redactedPairs = LogRedactor.redactKeyValuePairs(originalPairs);
+
+    IThrowableProxy originalThrowable = event.getThrowableProxy();
+    IThrowableProxy redactedThrowable = RedactedThrowable.redact(originalThrowable);
+
+    boolean unchanged =
+        Objects.equals(originalMessage, redactedMessage)
+            && redactedMdc == originalMdc
+            && redactedPairs == originalPairs
+            && redactedThrowable == originalThrowable;
+    if (unchanged) {
+      return event;
     }
+    return new RedactedLoggingEvent(
+        event, redactedMessage, redactedMdc, redactedPairs, redactedThrowable);
+  }
 
-    /**
-     * Redacta el evento, devolviendo el <b>original</b> si no hubo nada que cambiar. El caso normal
-     * es que no haya cambios, así que no se paga ninguna copia.
-     */
-    static ILoggingEvent of(ILoggingEvent event) {
-        String originalMessage = event.getFormattedMessage();
-        String redactedMessage = LogRedactor.redact(originalMessage);
+  // --- superficies redactadas ---
 
-        Map<String, String> originalMdc = event.getMDCPropertyMap();
-        Map<String, String> redactedMdc = LogRedactor.redactMdc(originalMdc);
+  @Override
+  public String getMessage() {
+    return message;
+  }
 
-        List<KeyValuePair> originalPairs = event.getKeyValuePairs();
-        List<KeyValuePair> redactedPairs = LogRedactor.redactKeyValuePairs(originalPairs);
+  @Override
+  public String getFormattedMessage() {
+    return message;
+  }
 
-        IThrowableProxy originalThrowable = event.getThrowableProxy();
-        IThrowableProxy redactedThrowable = RedactedThrowable.redact(originalThrowable);
+  /** {@code null} a propósito: el mensaje ya viene formateado y redactado. */
+  @Override
+  public Object[] getArgumentArray() {
+    return null;
+  }
 
-        boolean unchanged = Objects.equals(originalMessage, redactedMessage)
-                && redactedMdc == originalMdc
-                && redactedPairs == originalPairs
-                && redactedThrowable == originalThrowable;
-        if (unchanged) {
-            return event;
-        }
-        return new RedactedLoggingEvent(
-                event, redactedMessage, redactedMdc, redactedPairs, redactedThrowable);
-    }
+  @Override
+  public Map<String, String> getMDCPropertyMap() {
+    return mdc;
+  }
 
-    // --- superficies redactadas ---
+  @Override
+  @SuppressWarnings("deprecation")
+  public Map<String, String> getMdc() {
+    return mdc;
+  }
 
-    @Override
-    public String getMessage() {
-        return message;
-    }
+  @Override
+  public List<KeyValuePair> getKeyValuePairs() {
+    return keyValuePairs;
+  }
 
-    @Override
-    public String getFormattedMessage() {
-        return message;
-    }
+  @Override
+  public IThrowableProxy getThrowableProxy() {
+    return throwableProxy;
+  }
 
-    /** {@code null} a propósito: el mensaje ya viene formateado y redactado. */
-    @Override
-    public Object[] getArgumentArray() {
-        return null;
-    }
+  // --- delegación pura ---
 
-    @Override
-    public Map<String, String> getMDCPropertyMap() {
-        return mdc;
-    }
+  @Override
+  public String getThreadName() {
+    return delegate.getThreadName();
+  }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public Map<String, String> getMdc() {
-        return mdc;
-    }
+  @Override
+  public Level getLevel() {
+    return delegate.getLevel();
+  }
 
-    @Override
-    public List<KeyValuePair> getKeyValuePairs() {
-        return keyValuePairs;
-    }
+  @Override
+  public String getLoggerName() {
+    return delegate.getLoggerName();
+  }
 
-    @Override
-    public IThrowableProxy getThrowableProxy() {
-        return throwableProxy;
-    }
+  @Override
+  public LoggerContextVO getLoggerContextVO() {
+    return delegate.getLoggerContextVO();
+  }
 
-    // --- delegación pura ---
+  @Override
+  public StackTraceElement[] getCallerData() {
+    return delegate.getCallerData();
+  }
 
-    @Override
-    public String getThreadName() {
-        return delegate.getThreadName();
-    }
+  @Override
+  public boolean hasCallerData() {
+    return delegate.hasCallerData();
+  }
 
-    @Override
-    public Level getLevel() {
-        return delegate.getLevel();
-    }
+  @Override
+  public List<Marker> getMarkerList() {
+    return delegate.getMarkerList();
+  }
 
-    @Override
-    public String getLoggerName() {
-        return delegate.getLoggerName();
-    }
+  @Override
+  public long getTimeStamp() {
+    return delegate.getTimeStamp();
+  }
 
-    @Override
-    public LoggerContextVO getLoggerContextVO() {
-        return delegate.getLoggerContextVO();
-    }
+  @Override
+  public int getNanoseconds() {
+    return delegate.getNanoseconds();
+  }
 
-    @Override
-    public StackTraceElement[] getCallerData() {
-        return delegate.getCallerData();
-    }
+  @Override
+  public Instant getInstant() {
+    return delegate.getInstant();
+  }
 
-    @Override
-    public boolean hasCallerData() {
-        return delegate.hasCallerData();
-    }
+  @Override
+  public long getSequenceNumber() {
+    return delegate.getSequenceNumber();
+  }
 
-    @Override
-    public List<Marker> getMarkerList() {
-        return delegate.getMarkerList();
-    }
-
-    @Override
-    public long getTimeStamp() {
-        return delegate.getTimeStamp();
-    }
-
-    @Override
-    public int getNanoseconds() {
-        return delegate.getNanoseconds();
-    }
-
-    @Override
-    public Instant getInstant() {
-        return delegate.getInstant();
-    }
-
-    @Override
-    public long getSequenceNumber() {
-        return delegate.getSequenceNumber();
-    }
-
-    @Override
-    public void prepareForDeferredProcessing() {
-        delegate.prepareForDeferredProcessing();
-    }
+  @Override
+  public void prepareForDeferredProcessing() {
+    delegate.prepareForDeferredProcessing();
+  }
 }

@@ -4,8 +4,9 @@ import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateDebtOpenAccountUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or "
-        + "(hasAuthority('debtOpenAccount.delete') and @authz.isMyCompany(#companyId)) or "
-        + "hasRole('SYSTEM')")
-    DebtOpenAccountDto execute(Long id, Long companyId);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or "
+          + "(hasAuthority('debtOpenAccount.delete') and @authz.isMyCompany(#companyId)) or "
+          + "hasRole('SYSTEM')")
+  DebtOpenAccountDto execute(Long id, Long companyId);
 }

@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "base.role.permission.find")
 @Service
 public class FindBaseRolePermissionService implements FindBaseRolePermissionUseCase {
-    private final BaseRolePermissionRepository repository;
+  private final BaseRolePermissionRepository repository;
 
-    public FindBaseRolePermissionService(BaseRolePermissionRepository repository) {
-        this.repository = repository;
-    }
+  public FindBaseRolePermissionService(BaseRolePermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public BaseRolePermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(BaseRolePermissionDto::from)
-            .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
-    }
+  @Override
+  public BaseRolePermissionDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(BaseRolePermissionDto::from)
+        .orElseThrow(() -> new BaseRolePermissionNotFoundException(id));
+  }
 }

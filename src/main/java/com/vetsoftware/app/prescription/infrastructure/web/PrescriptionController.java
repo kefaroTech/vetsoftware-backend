@@ -32,98 +32,121 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/prescriptions")
 public class PrescriptionController {
-    private final CreatePrescriptionUseCase createUseCase;
-    private final UpdatePrescriptionUseCase updateUseCase;
-    private final FindPrescriptionUseCase findUseCase;
-    private final ListPrescriptionsUseCase listUseCase;
-    private final DeletePrescriptionUseCase deleteUseCase;
-    private final ReactivatePrescriptionUseCase reactivateUseCase;
-    private final ExportPrescriptionUseCase exportUseCase;
-    private final Authz authz;
+  private final CreatePrescriptionUseCase createUseCase;
+  private final UpdatePrescriptionUseCase updateUseCase;
+  private final FindPrescriptionUseCase findUseCase;
+  private final ListPrescriptionsUseCase listUseCase;
+  private final DeletePrescriptionUseCase deleteUseCase;
+  private final ReactivatePrescriptionUseCase reactivateUseCase;
+  private final ExportPrescriptionUseCase exportUseCase;
+  private final Authz authz;
 
-    public PrescriptionController(CreatePrescriptionUseCase createUseCase,
-                                  UpdatePrescriptionUseCase updateUseCase,
-                                  FindPrescriptionUseCase findUseCase,
-                                  ListPrescriptionsUseCase listUseCase,
-                                  DeletePrescriptionUseCase deleteUseCase,
-                                  ReactivatePrescriptionUseCase reactivateUseCase,
-                                  ExportPrescriptionUseCase exportUseCase,
-                                  Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.exportUseCase = exportUseCase;
-        this.authz = authz;
-    }
+  public PrescriptionController(
+      CreatePrescriptionUseCase createUseCase,
+      UpdatePrescriptionUseCase updateUseCase,
+      FindPrescriptionUseCase findUseCase,
+      ListPrescriptionsUseCase listUseCase,
+      DeletePrescriptionUseCase deleteUseCase,
+      ReactivatePrescriptionUseCase reactivateUseCase,
+      ExportPrescriptionUseCase exportUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.exportUseCase = exportUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public PrescriptionResponse create(@Valid @RequestBody CreatePrescriptionRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public PrescriptionResponse create(@Valid @RequestBody CreatePrescriptionRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreatePrescriptionCommand(
-                request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                request.date(),
+                request.diagnosis(),
+                request.observations(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @GetMapping
-    public List<PrescriptionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<PrescriptionResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public PrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public PrescriptionResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public PrescriptionResponse update(@PathVariable Long id,
-                                       @Valid @RequestBody UpdatePrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public PrescriptionResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdatePrescriptionRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdatePrescriptionCommand(
-                id, request.date(), request.diagnosis(), request.observations(),
-                request.animalId(), request.consultationId(), authz.currentCompanyIdOrNull())));
-    }
+                id,
+                request.date(),
+                request.diagnosis(),
+                request.observations(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyIdOrNull())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
+  }
 
-    @PatchMapping("/{id}/enable")
-    public PrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public PrescriptionResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    @GetMapping("/{id}/export.pdf")
-    public ResponseEntity<byte[]> export(@PathVariable Long id) {
-        byte[] pdf = exportUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull());
-        String filename = "receta-" + id + ".pdf";
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filename + "\"")
-                .body(pdf);
-    }
+  @GetMapping("/{id}/export.pdf")
+  public ResponseEntity<byte[]> export(@PathVariable Long id) {
+    byte[] pdf =
+        exportUseCase.execute(id, authz.currentCompanyId(), authz.currentEmployeeIdOrNull());
+    String filename = "receta-" + id + ".pdf";
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_PDF)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .body(pdf);
+  }
 
-    private PrescriptionResponse toResponse(PrescriptionDto dto) {
-        AnimalSummaryDto a = dto.animal();
-        ConsultationSummaryDto co = dto.consultation();
-        CompanySummaryDto c = dto.company();
-        List<MedicamentSummary> medicaments = dto.medicaments().stream()
-            .map(m -> new MedicamentSummary(
-                m.id(), m.name(), m.presentation(), m.quantity(), m.posology(), m.observation()))
+  private PrescriptionResponse toResponse(PrescriptionDto dto) {
+    AnimalSummaryDto a = dto.animal();
+    ConsultationSummaryDto co = dto.consultation();
+    CompanySummaryDto c = dto.company();
+    List<MedicamentSummary> medicaments =
+        dto.medicaments().stream()
+            .map(
+                m ->
+                    new MedicamentSummary(
+                        m.id(),
+                        m.name(),
+                        m.presentation(),
+                        m.quantity(),
+                        m.posology(),
+                        m.observation()))
             .toList();
-        return new PrescriptionResponse(
-            dto.id(), dto.date(), dto.diagnosis(), dto.observations(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            medicaments,
-            dto.createdDate(),
-            dto.enabled());
-    }
+    return new PrescriptionResponse(
+        dto.id(),
+        dto.date(),
+        dto.diagnosis(),
+        dto.observations(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        new ConsultationSummary(co.id(), co.date()),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        medicaments,
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

@@ -10,47 +10,48 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaBreedRepository implements BreedRepository {
-    private final BreedJpaRepository jpaRepository;
-    private final BreedJpaMapper mapper;
-    private final SpecieJpaRepository specieJpaRepository;
+  private final BreedJpaRepository jpaRepository;
+  private final BreedJpaMapper mapper;
+  private final SpecieJpaRepository specieJpaRepository;
 
-    public JpaBreedRepository(BreedJpaRepository jpaRepository,
-                              BreedJpaMapper mapper,
-                              SpecieJpaRepository specieJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.specieJpaRepository = specieJpaRepository;
-    }
+  public JpaBreedRepository(
+      BreedJpaRepository jpaRepository,
+      BreedJpaMapper mapper,
+      SpecieJpaRepository specieJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.specieJpaRepository = specieJpaRepository;
+  }
 
-    @Override
-    public Breed save(Breed breed) {
-        SpecieJpaEntity specie = specieJpaRepository.getReferenceById(breed.getSpecie().id());
-        BreedJpaEntity saved = jpaRepository.save(mapper.toJpa(breed, specie));
-        return mapper.toDomain(saved, breed.getSpecie());
-    }
+  @Override
+  public Breed save(Breed breed) {
+    SpecieJpaEntity specie = specieJpaRepository.getReferenceById(breed.getSpecie().id());
+    BreedJpaEntity saved = jpaRepository.save(mapper.toJpa(breed, specie));
+    return mapper.toDomain(saved, breed.getSpecie());
+  }
 
-    @Override
-    public Optional<Breed> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Breed> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Breed> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Breed> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<Breed> findBySpecieId(Long specieId) {
-        return jpaRepository.findAllBySpecie_Id(specieId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Breed> findBySpecieId(Long specieId) {
+    return jpaRepository.findAllBySpecie_Id(specieId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

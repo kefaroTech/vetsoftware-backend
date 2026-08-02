@@ -4,5 +4,5 @@ import com.vetsoftware.app.service.domain.ServiceCategoryRef;
 import java.util.Optional;
 
 public interface ServiceCategoryQueryPort {
-    Optional<ServiceCategoryRef> findById(Long serviceCategoryId, Long companyId);
+  Optional<ServiceCategoryRef> findById(Long serviceCategoryId, Long companyId);
 }

@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListLaboratoryTestTypesUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.read')")
-    List<LaboratoryTestTypeDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.read')")
+  List<LaboratoryTestTypeDto> listAll();
 }

@@ -12,21 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "system.configuration.set")
 @Service
 public class SetSystemConfigurationService implements SetSystemConfigurationUseCase {
-    private final SystemConfigurationRepository repository;
+  private final SystemConfigurationRepository repository;
 
-    public SetSystemConfigurationService(SystemConfigurationRepository repository) {
-        this.repository = repository;
-    }
+  public SetSystemConfigurationService(SystemConfigurationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SystemConfigurationDto execute(SetSystemConfigurationCommand command) {
-        SystemConfiguration config = repository.findByPropertyName(command.propertyName())
-                .map(existing -> {
-                    existing.update(command.value());
-                    return existing;
+  @Override
+  @Transactional
+  public SystemConfigurationDto execute(SetSystemConfigurationCommand command) {
+    SystemConfiguration config =
+        repository
+            .findByPropertyName(command.propertyName())
+            .map(
+                existing -> {
+                  existing.update(command.value());
+                  return existing;
                 })
-                .orElseGet(() -> SystemConfiguration.create(command.propertyName(), command.value()));
-        return SystemConfigurationDto.from(repository.save(config));
-    }
+            .orElseGet(() -> SystemConfiguration.create(command.propertyName(), command.value()));
+    return SystemConfigurationDto.from(repository.save(config));
+  }
 }

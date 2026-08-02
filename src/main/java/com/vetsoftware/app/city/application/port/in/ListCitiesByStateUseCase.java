@@ -4,5 +4,5 @@ import com.vetsoftware.app.city.application.dto.CityDto;
 import java.util.List;
 
 public interface ListCitiesByStateUseCase {
-    List<CityDto> listByState(Long stateId);
+  List<CityDto> listByState(Long stateId);
 }

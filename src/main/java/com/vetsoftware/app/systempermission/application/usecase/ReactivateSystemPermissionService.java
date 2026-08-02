@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "system.permission.reactivate")
 @Service
 public class ReactivateSystemPermissionService implements ReactivateSystemPermissionUseCase {
-    private final SystemPermissionRepository repository;
+  private final SystemPermissionRepository repository;
 
-    public ReactivateSystemPermissionService(SystemPermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSystemPermissionService(SystemPermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SystemPermissionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new SystemPermissionNotFoundException(id);
-        return SystemPermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new SystemPermissionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public SystemPermissionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new SystemPermissionNotFoundException(id);
+    return SystemPermissionDto.from(
+        repository.findById(id).orElseThrow(() -> new SystemPermissionNotFoundException(id)));
+  }
 }

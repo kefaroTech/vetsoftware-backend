@@ -9,25 +9,27 @@ import org.springframework.stereotype.Component;
 @Component("laboratoryTestJpaBranchQueryPort")
 public class JpaBranchQueryPort implements BranchQueryPort {
 
-    private static final String PRINCIPAL_CODE = "PRINCIPAL";
+  private static final String PRINCIPAL_CODE = "PRINCIPAL";
 
-    private final BranchJpaRepository branchJpaRepository;
+  private final BranchJpaRepository branchJpaRepository;
 
-    public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
-        this.branchJpaRepository = branchJpaRepository;
-    }
+  public JpaBranchQueryPort(BranchJpaRepository branchJpaRepository) {
+    this.branchJpaRepository = branchJpaRepository;
+  }
 
-    @Override
-    public Optional<Long> findActiveIdByIdAndCompanyId(Long branchId, Long companyId) {
-        return branchJpaRepository.findByIdAndCompanyId(branchId, companyId)
-            .filter(BranchJpaEntity::isActive)
-            .map(BranchJpaEntity::getId);
-    }
+  @Override
+  public Optional<Long> findActiveIdByIdAndCompanyId(Long branchId, Long companyId) {
+    return branchJpaRepository
+        .findByIdAndCompanyId(branchId, companyId)
+        .filter(BranchJpaEntity::isActive)
+        .map(BranchJpaEntity::getId);
+  }
 
-    @Override
-    public Optional<Long> findDefaultActiveIdByCompanyId(Long companyId) {
-        return branchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
-            .or(() -> branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
-            .map(BranchJpaEntity::getId);
-    }
+  @Override
+  public Optional<Long> findDefaultActiveIdByCompanyId(Long companyId) {
+    return branchJpaRepository
+        .findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue(companyId, PRINCIPAL_CODE)
+        .or(() -> branchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc(companyId))
+        .map(BranchJpaEntity::getId);
+  }
 }

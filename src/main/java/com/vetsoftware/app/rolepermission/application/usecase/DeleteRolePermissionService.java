@@ -12,23 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "role.permission.delete")
 @Service
 public class DeleteRolePermissionService implements DeleteRolePermissionUseCase {
-    private final RolePermissionRepository repository;
-    private final PermissionCachePort permissionCachePort;
+  private final RolePermissionRepository repository;
+  private final PermissionCachePort permissionCachePort;
 
-    public DeleteRolePermissionService(RolePermissionRepository repository,
-                                       PermissionCachePort permissionCachePort) {
-        this.repository = repository;
-        this.permissionCachePort = permissionCachePort;
-    }
+  public DeleteRolePermissionService(
+      RolePermissionRepository repository, PermissionCachePort permissionCachePort) {
+    this.repository = repository;
+    this.permissionCachePort = permissionCachePort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        RolePermission rolePermission = (companyId == null
-            ? repository.findById(id)
-            : repository.findByIdAndCompanyId(id, companyId))
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    RolePermission rolePermission =
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
             .orElseThrow(() -> new RolePermissionNotFoundException(id));
-        repository.delete(id);
-        permissionCachePort.evictByRoleId(rolePermission.getRole().id());
-    }
+    repository.delete(id);
+    permissionCachePort.evictByRoleId(rolePermission.getRole().id());
+  }
 }

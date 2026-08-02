@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaCountryQueryPort implements CountryQueryPort {
-    private final CountryJpaRepository countryJpaRepository;
+  private final CountryJpaRepository countryJpaRepository;
 
-    public JpaCountryQueryPort(CountryJpaRepository countryJpaRepository) {
-        this.countryJpaRepository = countryJpaRepository;
-    }
+  public JpaCountryQueryPort(CountryJpaRepository countryJpaRepository) {
+    this.countryJpaRepository = countryJpaRepository;
+  }
 
-    @Override
-    public Optional<CountryRef> findById(Long countryId) {
-        return countryJpaRepository.findById(countryId)
-            .map(e -> new CountryRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<CountryRef> findById(Long countryId) {
+    return countryJpaRepository
+        .findById(countryId)
+        .map(e -> new CountryRef(e.getId(), e.getName()));
+  }
 }

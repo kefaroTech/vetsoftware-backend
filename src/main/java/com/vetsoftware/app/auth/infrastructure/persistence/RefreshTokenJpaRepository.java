@@ -11,19 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenJpaEntity, Long> {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT r FROM RefreshTokenJpaEntity r WHERE r.tokenHash = :tokenHash")
-    Optional<RefreshTokenJpaEntity> findByTokenHash(@Param("tokenHash") String tokenHash);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT r FROM RefreshTokenJpaEntity r WHERE r.tokenHash = :tokenHash")
+  Optional<RefreshTokenJpaEntity> findByTokenHash(@Param("tokenHash") String tokenHash);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
-            + "WHERE r.id = :id AND r.revoked = false")
-    int revokeById(@Param("id") Long id);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      "UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
+          + "WHERE r.id = :id AND r.revoked = false")
+  int revokeById(@Param("id") Long id);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query("UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
-            + "WHERE r.subjectId = :subjectId AND r.subjectType = :subjectType AND r.revoked = false")
-    int revokeAllForSubject(@Param("subjectId") Long subjectId, @Param("subjectType") String subjectType);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      "UPDATE RefreshTokenJpaEntity r SET r.revoked = true, r.revokedAt = CURRENT_TIMESTAMP "
+          + "WHERE r.subjectId = :subjectId AND r.subjectType = :subjectType AND r.revoked = false")
+  int revokeAllForSubject(
+      @Param("subjectId") Long subjectId, @Param("subjectType") String subjectType);
 }

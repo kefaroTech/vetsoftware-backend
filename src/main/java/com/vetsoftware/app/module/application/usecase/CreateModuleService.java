@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "module.create")
 @Service
 public class CreateModuleService implements CreateModuleUseCase {
-    private final ModuleRepository repository;
+  private final ModuleRepository repository;
 
-    public CreateModuleService(ModuleRepository repository) {
-        this.repository = repository;
-    }
+  public CreateModuleService(ModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ModuleDto execute(CreateModuleCommand command) {
-        return ModuleDto.from(repository.save(Module.create(command.name(), command.code())));
-    }
+  @Override
+  public ModuleDto execute(CreateModuleCommand command) {
+    return ModuleDto.from(repository.save(Module.create(command.name(), command.code())));
+  }
 }

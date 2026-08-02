@@ -19,37 +19,56 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "owner.update")
 @Service
 public class UpdateOwnerService implements UpdateOwnerUseCase {
-    private final OwnerRepository repository;
-    private final CityQueryPort cityQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final OwnerRepository repository;
+  private final CityQueryPort cityQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateOwnerService(OwnerRepository repository,
-                              CityQueryPort cityQueryPort,
-                              CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.cityQueryPort = cityQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateOwnerService(
+      OwnerRepository repository, CityQueryPort cityQueryPort, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.cityQueryPort = cityQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public OwnerDto execute(UpdateOwnerCommand command) {
-        Owner owner = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public OwnerDto execute(UpdateOwnerCommand command) {
+    Owner owner =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new OwnerNotFoundException(command.id()));
-        CityRef city = cityQueryPort.findById(command.cityId())
+    CityRef city =
+        cityQueryPort
+            .findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        TaxRegime taxRegime = command.taxRegime() != null
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    TaxRegime taxRegime =
+        command.taxRegime() != null
             ? command.taxRegime()
             : TaxRegime.defaultFor(command.personType(), command.documentType());
-        FiscalResponsibility fiscalResponsibility = command.fiscalResponsibility() != null
+    FiscalResponsibility fiscalResponsibility =
+        command.fiscalResponsibility() != null
             ? command.fiscalResponsibility()
             : FiscalResponsibility.defaultValue();
-        owner.update(command.name(), command.email(), command.document(), command.documentType(),
-                     command.personType(), command.verificationDigit(), command.legalName(),
-                     command.address(), command.phone(), city, company, command.withholdingAgent(), taxRegime,
-                     fiscalResponsibility);
-        return OwnerDto.from(repository.save(owner));
-    }
+    owner.update(
+        command.name(),
+        command.email(),
+        command.document(),
+        command.documentType(),
+        command.personType(),
+        command.verificationDigit(),
+        command.legalName(),
+        command.address(),
+        command.phone(),
+        city,
+        company,
+        command.withholdingAgent(),
+        taxRegime,
+        fiscalResponsibility);
+    return OwnerDto.from(repository.save(owner));
+  }
 }

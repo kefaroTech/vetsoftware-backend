@@ -10,19 +10,19 @@ import org.thymeleaf.context.Context;
 @Component
 public class HtmlPdfRenderer {
 
-    private final TemplateEngine templateEngine;
-    private final HtmlToPdfEngine pdfEngine;
+  private final TemplateEngine templateEngine;
+  private final HtmlToPdfEngine pdfEngine;
 
-    public HtmlPdfRenderer(TemplateEngine templateEngine, HtmlToPdfEngine pdfEngine) {
-        this.templateEngine = templateEngine;
-        this.pdfEngine = pdfEngine;
-    }
+  public HtmlPdfRenderer(TemplateEngine templateEngine, HtmlToPdfEngine pdfEngine) {
+    this.templateEngine = templateEngine;
+    this.pdfEngine = pdfEngine;
+  }
 
-    @Observed(name = "pdf.render", contextualName = "render pdf")
-    public byte[] render(String templateName, Map<String, Object> model) {
-        Context ctx = new Context(Locale.forLanguageTag("es"));
-        ctx.setVariables(model);
-        String html = templateEngine.process("pdf/" + templateName, ctx);
-        return pdfEngine.render(html);
-    }
+  @Observed(name = "pdf.render", contextualName = "render pdf")
+  public byte[] render(String templateName, Map<String, Object> model) {
+    Context ctx = new Context(Locale.forLanguageTag("es"));
+    ctx.setVariables(model);
+    String html = templateEngine.process("pdf/" + templateName, ctx);
+    return pdfEngine.render(html);
+  }
 }

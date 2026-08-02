@@ -5,15 +5,17 @@ import com.vetsoftware.app.medicamentprescription.infrastructure.persistence.Med
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMedicamentPrescriptionChildrenQueryPort implements MedicamentPrescriptionChildrenQueryPort {
-    private final MedicamentPrescriptionJpaRepository jpaRepository;
+public class JpaMedicamentPrescriptionChildrenQueryPort
+    implements MedicamentPrescriptionChildrenQueryPort {
+  private final MedicamentPrescriptionJpaRepository jpaRepository;
 
-    public JpaMedicamentPrescriptionChildrenQueryPort(MedicamentPrescriptionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaMedicamentPrescriptionChildrenQueryPort(
+      MedicamentPrescriptionJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByMedicamentId(Long medicamentId) {
-        return jpaRepository.existsByMedicament_Id(medicamentId);
-    }
+  @Override
+  public boolean existsActiveByMedicamentId(Long medicamentId) {
+    return jpaRepository.existsByMedicament_Id(medicamentId);
+  }
 }

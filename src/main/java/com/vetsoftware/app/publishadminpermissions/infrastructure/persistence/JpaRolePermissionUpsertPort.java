@@ -13,30 +13,31 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaRolePermissionUpsertPort implements RolePermissionUpsertPort {
 
-    private final RolePermissionJpaRepository rolePermissionJpaRepository;
-    private final RoleJpaRepository roleJpaRepository;
-    private final PermissionJpaRepository permissionJpaRepository;
+  private final RolePermissionJpaRepository rolePermissionJpaRepository;
+  private final RoleJpaRepository roleJpaRepository;
+  private final PermissionJpaRepository permissionJpaRepository;
 
-    public JpaRolePermissionUpsertPort(RolePermissionJpaRepository rolePermissionJpaRepository,
-                                       RoleJpaRepository roleJpaRepository,
-                                       PermissionJpaRepository permissionJpaRepository) {
-        this.rolePermissionJpaRepository = rolePermissionJpaRepository;
-        this.roleJpaRepository = roleJpaRepository;
-        this.permissionJpaRepository = permissionJpaRepository;
-    }
+  public JpaRolePermissionUpsertPort(
+      RolePermissionJpaRepository rolePermissionJpaRepository,
+      RoleJpaRepository roleJpaRepository,
+      PermissionJpaRepository permissionJpaRepository) {
+    this.rolePermissionJpaRepository = rolePermissionJpaRepository;
+    this.roleJpaRepository = roleJpaRepository;
+    this.permissionJpaRepository = permissionJpaRepository;
+  }
 
-    @Override
-    public boolean linkIfAbsent(Long roleId, Long permissionId) {
-        if (rolePermissionJpaRepository.existsByRoleIdAndPermissionId(roleId, permissionId)) {
-            return false;
-        }
-        RoleJpaEntity roleRef = roleJpaRepository.getReferenceById(roleId);
-        PermissionJpaEntity permissionRef = permissionJpaRepository.getReferenceById(permissionId);
-        RolePermissionJpaEntity entity = new RolePermissionJpaEntity();
-        entity.setRole(roleRef);
-        entity.setPermission(permissionRef);
-        entity.setCreatedDate(LocalDateTime.now());
-        rolePermissionJpaRepository.save(entity);
-        return true;
+  @Override
+  public boolean linkIfAbsent(Long roleId, Long permissionId) {
+    if (rolePermissionJpaRepository.existsByRoleIdAndPermissionId(roleId, permissionId)) {
+      return false;
     }
+    RoleJpaEntity roleRef = roleJpaRepository.getReferenceById(roleId);
+    PermissionJpaEntity permissionRef = permissionJpaRepository.getReferenceById(permissionId);
+    RolePermissionJpaEntity entity = new RolePermissionJpaEntity();
+    entity.setRole(roleRef);
+    entity.setPermission(permissionRef);
+    entity.setCreatedDate(LocalDateTime.now());
+    rolePermissionJpaRepository.save(entity);
+    return true;
+  }
 }

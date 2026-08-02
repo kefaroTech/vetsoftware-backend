@@ -20,44 +20,50 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LoginSystemUserService implements LoginSystemUserUseCase {
 
-    private final SystemUserCredentialsRepository credentialsRepository;
-    private final TokenGenerator tokenGenerator;
-    private final RefreshTokenIssuer refreshTokenIssuer;
-    private final PasswordHasher passwordHasher;
-    private final AuthSystemUserRepository authSystemUserRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+  private final SystemUserCredentialsRepository credentialsRepository;
+  private final TokenGenerator tokenGenerator;
+  private final RefreshTokenIssuer refreshTokenIssuer;
+  private final PasswordHasher passwordHasher;
+  private final AuthSystemUserRepository authSystemUserRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
-    public LoginSystemUserService(SystemUserCredentialsRepository credentialsRepository,
-                                  TokenGenerator tokenGenerator,
-                                  RefreshTokenIssuer refreshTokenIssuer,
-                                  PasswordHasher passwordHasher,
-                                  AuthSystemUserRepository authSystemUserRepository,
-                                  RefreshTokenRepository refreshTokenRepository) {
-        this.credentialsRepository = credentialsRepository;
-        this.tokenGenerator = tokenGenerator;
-        this.refreshTokenIssuer = refreshTokenIssuer;
-        this.passwordHasher = passwordHasher;
-        this.authSystemUserRepository = authSystemUserRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
+  public LoginSystemUserService(
+      SystemUserCredentialsRepository credentialsRepository,
+      TokenGenerator tokenGenerator,
+      RefreshTokenIssuer refreshTokenIssuer,
+      PasswordHasher passwordHasher,
+      AuthSystemUserRepository authSystemUserRepository,
+      RefreshTokenRepository refreshTokenRepository) {
+    this.credentialsRepository = credentialsRepository;
+    this.tokenGenerator = tokenGenerator;
+    this.refreshTokenIssuer = refreshTokenIssuer;
+    this.passwordHasher = passwordHasher;
+    this.authSystemUserRepository = authSystemUserRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
+  }
 
-    @Override
-    @Transactional
-    public TokenDto execute(LoginSystemUserCommand command) {
-        SystemUserCredentials credentials = credentialsRepository.findByCode(command.code())
-                .orElseThrow(InvalidCredentialsException::new);
+  @Override
+  @Transactional
+  public TokenDto execute(LoginSystemUserCommand command) {
+    SystemUserCredentials credentials =
+        credentialsRepository
+            .findByCode(command.code())
+            .orElseThrow(InvalidCredentialsException::new);
 
-        if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
-            throw new InvalidCredentialsException();
+    if (!passwordHasher.matches(command.password(), credentials.hashPassword()))
+      throw new InvalidCredentialsException();
 
-        AuthSystemUser activeSession = authSystemUserRepository.rotateAuthVersion(credentials.id())
-                .orElseThrow(InvalidCredentialsException::new);
-        refreshTokenRepository.revokeAllForSubject(credentials.id(), "SYSTEM_USER");
+    AuthSystemUser activeSession =
+        authSystemUserRepository
+            .rotateAuthVersion(credentials.id())
+            .orElseThrow(InvalidCredentialsException::new);
+    refreshTokenRepository.revokeAllForSubject(credentials.id(), "SYSTEM_USER");
 
-        String accessToken = tokenGenerator.generate(
-                activeSession.id(), "SYSTEM_USER", null, activeSession.authVersion());
-        String refreshToken = refreshTokenIssuer.issue(
-                activeSession.id(), "SYSTEM_USER", activeSession.authVersion());
-        return new TokenDto(accessToken, "SYSTEM_USER", refreshToken);
-    }
+    String accessToken =
+        tokenGenerator.generate(
+            activeSession.id(), "SYSTEM_USER", null, activeSession.authVersion());
+    String refreshToken =
+        refreshTokenIssuer.issue(activeSession.id(), "SYSTEM_USER", activeSession.authVersion());
+    return new TokenDto(accessToken, "SYSTEM_USER", refreshToken);
+  }
 }

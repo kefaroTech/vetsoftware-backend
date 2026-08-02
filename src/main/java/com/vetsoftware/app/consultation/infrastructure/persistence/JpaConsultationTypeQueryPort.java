@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("consultationJpaConsultationTypeQueryPort")
 public class JpaConsultationTypeQueryPort implements ConsultationTypeQueryPort {
-    private final ConsultationTypeJpaRepository consultationTypeJpaRepository;
+  private final ConsultationTypeJpaRepository consultationTypeJpaRepository;
 
-    public JpaConsultationTypeQueryPort(ConsultationTypeJpaRepository consultationTypeJpaRepository) {
-        this.consultationTypeJpaRepository = consultationTypeJpaRepository;
-    }
+  public JpaConsultationTypeQueryPort(ConsultationTypeJpaRepository consultationTypeJpaRepository) {
+    this.consultationTypeJpaRepository = consultationTypeJpaRepository;
+  }
 
-    @Override
-    public Optional<ConsultationTypeRef> findById(Long consultationTypeId) {
-        return consultationTypeJpaRepository.findById(consultationTypeId)
-            .map(e -> new ConsultationTypeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<ConsultationTypeRef> findById(Long consultationTypeId) {
+    return consultationTypeJpaRepository
+        .findById(consultationTypeId)
+        .map(e -> new ConsultationTypeRef(e.getId(), e.getName()));
+  }
 }

@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "vaccination.delete")
 @Service
 public class DeleteVaccinationService implements DeleteVaccinationUseCase {
-    private final VaccinationRepository repository;
+  private final VaccinationRepository repository;
 
-    public DeleteVaccinationService(VaccinationRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteVaccinationService(VaccinationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new VaccinationNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new VaccinationNotFoundException(id));
+    repository.delete(id);
+  }
 }

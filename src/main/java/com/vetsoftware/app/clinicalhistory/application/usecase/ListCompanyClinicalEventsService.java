@@ -12,17 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "clinical.history.list.by.company")
 @Service
 public class ListCompanyClinicalEventsService implements ListCompanyClinicalEventsUseCase {
-    private final ClinicalEventRepository repository;
+  private final ClinicalEventRepository repository;
 
-    public ListCompanyClinicalEventsService(ClinicalEventRepository repository) {
-        this.repository = repository;
-    }
+  public ListCompanyClinicalEventsService(ClinicalEventRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ClinicalEventDto> execute(ListCompanyClinicalEventsQuery query) {
-        return repository.findByCompany(query).stream()
-                .map(ClinicalEventDto::from)
-                .toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<ClinicalEventDto> execute(ListCompanyClinicalEventsQuery query) {
+    return repository.findByCompany(query).stream().map(ClinicalEventDto::from).toList();
+  }
 }

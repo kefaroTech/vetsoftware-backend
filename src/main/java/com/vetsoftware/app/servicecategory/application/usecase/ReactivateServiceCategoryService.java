@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "service.category.reactivate")
 @Service
 public class ReactivateServiceCategoryService implements ReactivateServiceCategoryUseCase {
-    private final ServiceCategoryRepository repository;
+  private final ServiceCategoryRepository repository;
 
-    public ReactivateServiceCategoryService(ServiceCategoryRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateServiceCategoryService(ServiceCategoryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public ServiceCategoryDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new ServiceCategoryNotFoundException(id);
-        return ServiceCategoryDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public ServiceCategoryDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new ServiceCategoryNotFoundException(id);
+    return ServiceCategoryDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ServiceCategoryNotFoundException(id)));
-    }
+  }
 }

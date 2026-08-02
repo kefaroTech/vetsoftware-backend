@@ -4,6 +4,7 @@ import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindOwnerUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('owner.read') and @authz.isMyCompany(#companyId))")
-    OwnerDto findById(Long id, Long companyId);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('owner.read') and @authz.isMyCompany(#companyId))")
+  OwnerDto findById(Long id, Long companyId);
 }

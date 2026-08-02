@@ -23,71 +23,60 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/animals/{animalId}/clinical-history")
 public class ClinicalHistoryController {
 
-    private final GetClinicalHistoryUseCase getUseCase;
-    private final ExportClinicalHistoryUseCase exportUseCase;
-    private final Authz authz;
+  private final GetClinicalHistoryUseCase getUseCase;
+  private final ExportClinicalHistoryUseCase exportUseCase;
+  private final Authz authz;
 
-    public ClinicalHistoryController(GetClinicalHistoryUseCase getUseCase,
-                                     ExportClinicalHistoryUseCase exportUseCase,
-                                     Authz authz) {
-        this.getUseCase = getUseCase;
-        this.exportUseCase = exportUseCase;
-        this.authz = authz;
-    }
+  public ClinicalHistoryController(
+      GetClinicalHistoryUseCase getUseCase,
+      ExportClinicalHistoryUseCase exportUseCase,
+      Authz authz) {
+    this.getUseCase = getUseCase;
+    this.exportUseCase = exportUseCase;
+    this.authz = authz;
+  }
 
-    @GetMapping
-    public List<ClinicalEventResponse> get(
-            @PathVariable Long animalId,
-            @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
-            @RequestParam(name = "from", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(name = "to", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
-        GetClinicalHistoryQuery query = new GetClinicalHistoryQuery(
-                animalId,
-                authz.currentCompanyId(),
-                types == null ? List.of() : types,
-                from,
-                to
-        );
-        return getUseCase.execute(query).stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<ClinicalEventResponse> get(
+      @PathVariable Long animalId,
+      @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
+      @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate from,
+      @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate to) {
+    GetClinicalHistoryQuery query =
+        new GetClinicalHistoryQuery(
+            animalId, authz.currentCompanyId(), types == null ? List.of() : types, from, to);
+    return getUseCase.execute(query).stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/export.pdf")
-    public ResponseEntity<byte[]> export(
-            @PathVariable Long animalId,
-            @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
-            @RequestParam(name = "from", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(name = "to", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
-        GetClinicalHistoryQuery query = new GetClinicalHistoryQuery(
-                animalId,
-                authz.currentCompanyId(),
-                types == null ? List.of() : types,
-                from,
-                to
-        );
-        byte[] pdf = exportUseCase.execute(query);
-        String filename = "historia-clinica-" + animalId + ".pdf";
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filename + "\"")
-                .body(pdf);
-    }
+  @GetMapping("/export.pdf")
+  public ResponseEntity<byte[]> export(
+      @PathVariable Long animalId,
+      @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
+      @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate from,
+      @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate to) {
+    GetClinicalHistoryQuery query =
+        new GetClinicalHistoryQuery(
+            animalId, authz.currentCompanyId(), types == null ? List.of() : types, from, to);
+    byte[] pdf = exportUseCase.execute(query);
+    String filename = "historia-clinica-" + animalId + ".pdf";
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_PDF)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .body(pdf);
+  }
 
-    private ClinicalEventResponse toResponse(ClinicalEventDto dto) {
-        return new ClinicalEventResponse(
-                dto.sourceId(),
-                dto.animalId(),
-                dto.eventType(),
-                dto.eventDate(),
-                dto.endDate(),
-                dto.consultationId(),
-                dto.summary()
-        );
-    }
+  private ClinicalEventResponse toResponse(ClinicalEventDto dto) {
+    return new ClinicalEventResponse(
+        dto.sourceId(),
+        dto.animalId(),
+        dto.eventType(),
+        dto.eventDate(),
+        dto.endDate(),
+        dto.consultationId(),
+        dto.summary());
+  }
 }

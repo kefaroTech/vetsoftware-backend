@@ -30,92 +30,115 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/vaccinations")
 public class VaccinationController {
-    private final CreateVaccinationUseCase createUseCase;
-    private final UpdateVaccinationUseCase updateUseCase;
-    private final FindVaccinationUseCase findUseCase;
-    private final ListVaccinationsUseCase listUseCase;
-    private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
-    private final DeleteVaccinationUseCase deleteUseCase;
-    private final ReactivateVaccinationUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateVaccinationUseCase createUseCase;
+  private final UpdateVaccinationUseCase updateUseCase;
+  private final FindVaccinationUseCase findUseCase;
+  private final ListVaccinationsUseCase listUseCase;
+  private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
+  private final DeleteVaccinationUseCase deleteUseCase;
+  private final ReactivateVaccinationUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public VaccinationController(CreateVaccinationUseCase createUseCase,
-                                 UpdateVaccinationUseCase updateUseCase,
-                                 FindVaccinationUseCase findUseCase,
-                                 ListVaccinationsUseCase listUseCase,
-                                 ListVaccinationsByAnimalUseCase listByAnimalUseCase,
-                                 DeleteVaccinationUseCase deleteUseCase,
-                                 ReactivateVaccinationUseCase reactivateUseCase,
-                                 Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listByAnimalUseCase = listByAnimalUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public VaccinationController(
+      CreateVaccinationUseCase createUseCase,
+      UpdateVaccinationUseCase updateUseCase,
+      FindVaccinationUseCase findUseCase,
+      ListVaccinationsUseCase listUseCase,
+      ListVaccinationsByAnimalUseCase listByAnimalUseCase,
+      DeleteVaccinationUseCase deleteUseCase,
+      ReactivateVaccinationUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listByAnimalUseCase = listByAnimalUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public VaccinationResponse create(@Valid @RequestBody CreateVaccinationRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public VaccinationResponse create(@Valid @RequestBody CreateVaccinationRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateVaccinationCommand(
-                request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                request.date(),
+                request.vaccinationTypeId(),
+                request.lot(),
+                request.notes(),
+                request.route(),
+                request.applicationSite(),
+                request.nextVaccination(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @GetMapping
-    public List<VaccinationResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<VaccinationResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/by-animal/{animalId}")
-    public List<VaccinationResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-animal/{animalId}")
+  public List<VaccinationResponse> listByAnimal(@PathVariable Long animalId) {
+    return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public VaccinationResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public VaccinationResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public VaccinationResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdateVaccinationRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public VaccinationResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateVaccinationRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateVaccinationCommand(
-                id, request.date(), request.vaccinationTypeId(), request.lot(),
-                request.notes(), request.route(), request.applicationSite(), request.nextVaccination(),
-                request.animalId(), request.consultationId(), authz.currentCompanyId())));
-    }
+                id,
+                request.date(),
+                request.vaccinationTypeId(),
+                request.lot(),
+                request.notes(),
+                request.route(),
+                request.applicationSite(),
+                request.nextVaccination(),
+                request.animalId(),
+                request.consultationId(),
+                authz.currentCompanyId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public VaccinationResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public VaccinationResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private VaccinationResponse toResponse(VaccinationDto dto) {
-        VaccinationTypeSummaryDto vt = dto.vaccinationType();
-        AnimalSummaryDto a = dto.animal();
-        ConsultationSummaryDto co = dto.consultation();
-        CompanySummaryDto c = dto.company();
-        return new VaccinationResponse(
-            dto.id(), dto.date(),
-            new VaccinationTypeSummary(vt.id(), vt.name()),
-            dto.lot(), dto.notes(), dto.route(), dto.applicationSite(), dto.nextVaccination(),
-            new AnimalSummary(a.id(), a.name(), a.code()),
-            co == null ? null : new ConsultationSummary(co.id(), co.date()),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            dto.createdDate(),
-            dto.enabled());
-    }
+  private VaccinationResponse toResponse(VaccinationDto dto) {
+    VaccinationTypeSummaryDto vt = dto.vaccinationType();
+    AnimalSummaryDto a = dto.animal();
+    ConsultationSummaryDto co = dto.consultation();
+    CompanySummaryDto c = dto.company();
+    return new VaccinationResponse(
+        dto.id(),
+        dto.date(),
+        new VaccinationTypeSummary(vt.id(), vt.name()),
+        dto.lot(),
+        dto.notes(),
+        dto.route(),
+        dto.applicationSite(),
+        dto.nextVaccination(),
+        new AnimalSummary(a.id(), a.name(), a.code()),
+        co == null ? null : new ConsultationSummary(co.id(), co.date()),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

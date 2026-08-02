@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "state.delete")
 @Service
 public class DeleteStateService implements DeleteStateUseCase {
-    private final StateRepository repository;
-    private final CityChildrenQueryPort cityChildrenQueryPort;
+  private final StateRepository repository;
+  private final CityChildrenQueryPort cityChildrenQueryPort;
 
-    public DeleteStateService(
-            StateRepository repository,
-            CityChildrenQueryPort cityChildrenQueryPort) {
-        this.repository = repository;
-        this.cityChildrenQueryPort = cityChildrenQueryPort;
-    }
+  public DeleteStateService(
+      StateRepository repository, CityChildrenQueryPort cityChildrenQueryPort) {
+    this.repository = repository;
+    this.cityChildrenQueryPort = cityChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new StateNotFoundException(id));
-        if (cityChildrenQueryPort.existsActiveByStateId(id)) {
-            throw new StateHasActiveChildrenException(id, "city");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new StateNotFoundException(id));
+    if (cityChildrenQueryPort.existsActiveByStateId(id)) {
+      throw new StateHasActiveChildrenException(id, "city");
     }
+    repository.delete(id);
+  }
 }

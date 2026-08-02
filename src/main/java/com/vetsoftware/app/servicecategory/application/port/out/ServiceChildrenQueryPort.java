@@ -1,5 +1,5 @@
 package com.vetsoftware.app.servicecategory.application.port.out;
 
 public interface ServiceChildrenQueryPort {
-    boolean existsActiveByServiceCategoryId(Long categoryId);
+  boolean existsActiveByServiceCategoryId(Long categoryId);
 }

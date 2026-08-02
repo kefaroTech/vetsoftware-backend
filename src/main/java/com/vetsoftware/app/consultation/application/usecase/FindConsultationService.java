@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "consultation.find")
 @Service
 public class FindConsultationService implements FindConsultationUseCase {
-    private final ConsultationRepository repository;
+  private final ConsultationRepository repository;
 
-    public FindConsultationService(ConsultationRepository repository) {
-        this.repository = repository;
-    }
+  public FindConsultationService(ConsultationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ConsultationDto findById(Long id, Long companyId) {
-        return ConsultationDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public ConsultationDto findById(Long id, Long companyId) {
+    return ConsultationDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ConsultationNotFoundException(id)));
-    }
+  }
 }

@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "laboratory.test.delete")
 @Service
 public class DeleteLaboratoryTestService implements DeleteLaboratoryTestUseCase {
-    private final LaboratoryTestRepository repository;
+  private final LaboratoryTestRepository repository;
 
-    public DeleteLaboratoryTestService(LaboratoryTestRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteLaboratoryTestService(LaboratoryTestRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new LaboratoryTestNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new LaboratoryTestNotFoundException(id));
+    repository.delete(id);
+  }
 }

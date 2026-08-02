@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.user.permission.find")
 @Service
 public class FindSystemUserPermissionService implements FindSystemUserPermissionUseCase {
-    private final SystemUserPermissionRepository repository;
+  private final SystemUserPermissionRepository repository;
 
-    public FindSystemUserPermissionService(SystemUserPermissionRepository repository) {
-        this.repository = repository;
-    }
+  public FindSystemUserPermissionService(SystemUserPermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SystemUserPermissionDto findById(Long id) {
-        return repository.findById(id)
-            .map(SystemUserPermissionDto::from)
-            .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
-    }
+  @Override
+  public SystemUserPermissionDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(SystemUserPermissionDto::from)
+        .orElseThrow(() -> new SystemUserPermissionNotFoundException(id));
+  }
 }

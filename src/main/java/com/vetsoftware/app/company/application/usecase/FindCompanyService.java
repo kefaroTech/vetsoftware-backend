@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "company.find")
 @Service
 public class FindCompanyService implements FindCompanyUseCase {
-    private final CompanyRepository repository;
+  private final CompanyRepository repository;
 
-    public FindCompanyService(CompanyRepository repository) {
-        this.repository = repository;
-    }
+  public FindCompanyService(CompanyRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public CompanyDto findById(Long id) {
-        return repository.findById(id)
-            .map(CompanyDto::from)
-            .orElseThrow(() -> new CompanyNotFoundException(id));
-    }
+  @Override
+  public CompanyDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(CompanyDto::from)
+        .orElseThrow(() -> new CompanyNotFoundException(id));
+  }
 }

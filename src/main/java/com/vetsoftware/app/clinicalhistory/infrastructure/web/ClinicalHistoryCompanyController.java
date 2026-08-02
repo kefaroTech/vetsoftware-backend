@@ -18,41 +18,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/clinical-history")
 public class ClinicalHistoryCompanyController {
 
-    private final ListCompanyClinicalEventsUseCase listByCompanyUseCase;
-    private final Authz authz;
+  private final ListCompanyClinicalEventsUseCase listByCompanyUseCase;
+  private final Authz authz;
 
-    public ClinicalHistoryCompanyController(ListCompanyClinicalEventsUseCase listByCompanyUseCase,
-                                             Authz authz) {
-        this.listByCompanyUseCase = listByCompanyUseCase;
-        this.authz = authz;
-    }
+  public ClinicalHistoryCompanyController(
+      ListCompanyClinicalEventsUseCase listByCompanyUseCase, Authz authz) {
+    this.listByCompanyUseCase = listByCompanyUseCase;
+    this.authz = authz;
+  }
 
-    @GetMapping
-    public List<ClinicalEventResponse> listByCompany(
-            @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
-            @RequestParam(name = "from", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(name = "to", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
-        ListCompanyClinicalEventsQuery query = new ListCompanyClinicalEventsQuery(
-                authz.currentCompanyId(),
-                types == null ? List.of() : types,
-                from,
-                to
-        );
-        return listByCompanyUseCase.execute(query).stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<ClinicalEventResponse> listByCompany(
+      @RequestParam(name = "types", required = false) List<ClinicalEventType> types,
+      @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate from,
+      @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate to) {
+    ListCompanyClinicalEventsQuery query =
+        new ListCompanyClinicalEventsQuery(
+            authz.currentCompanyId(), types == null ? List.of() : types, from, to);
+    return listByCompanyUseCase.execute(query).stream().map(this::toResponse).toList();
+  }
 
-    private ClinicalEventResponse toResponse(ClinicalEventDto dto) {
-        return new ClinicalEventResponse(
-                dto.sourceId(),
-                dto.animalId(),
-                dto.eventType(),
-                dto.eventDate(),
-                dto.endDate(),
-                dto.consultationId(),
-                dto.summary()
-        );
-    }
+  private ClinicalEventResponse toResponse(ClinicalEventDto dto) {
+    return new ClinicalEventResponse(
+        dto.sourceId(),
+        dto.animalId(),
+        dto.eventType(),
+        dto.eventDate(),
+        dto.endDate(),
+        dto.consultationId(),
+        dto.summary());
+  }
 }

@@ -16,69 +16,76 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaVaccinationRepository implements VaccinationRepository {
-    private final VaccinationJpaRepository jpaRepository;
-    private final VaccinationJpaMapper mapper;
-    private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final ConsultationJpaRepository consultationJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final VaccinationJpaRepository jpaRepository;
+  private final VaccinationJpaMapper mapper;
+  private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final ConsultationJpaRepository consultationJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaVaccinationRepository(VaccinationJpaRepository jpaRepository,
-                                    VaccinationJpaMapper mapper,
-                                    VaccinationTypeJpaRepository vaccinationTypeJpaRepository,
-                                    AnimalJpaRepository animalJpaRepository,
-                                    ConsultationJpaRepository consultationJpaRepository,
-                                    CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
-        this.animalJpaRepository = animalJpaRepository;
-        this.consultationJpaRepository = consultationJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaVaccinationRepository(
+      VaccinationJpaRepository jpaRepository,
+      VaccinationJpaMapper mapper,
+      VaccinationTypeJpaRepository vaccinationTypeJpaRepository,
+      AnimalJpaRepository animalJpaRepository,
+      ConsultationJpaRepository consultationJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.vaccinationTypeJpaRepository = vaccinationTypeJpaRepository;
+    this.animalJpaRepository = animalJpaRepository;
+    this.consultationJpaRepository = consultationJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public Vaccination save(Vaccination vaccination) {
-        VaccinationTypeJpaEntity vaccinationType =
-            vaccinationTypeJpaRepository.getReferenceById(vaccination.getVaccinationType().id());
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(vaccination.getAnimal().id());
-        ConsultationJpaEntity consultation = vaccination.getConsultation() == null ? null
+  @Override
+  public Vaccination save(Vaccination vaccination) {
+    VaccinationTypeJpaEntity vaccinationType =
+        vaccinationTypeJpaRepository.getReferenceById(vaccination.getVaccinationType().id());
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(vaccination.getAnimal().id());
+    ConsultationJpaEntity consultation =
+        vaccination.getConsultation() == null
+            ? null
             : consultationJpaRepository.getReferenceById(vaccination.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(vaccination.getCompany().id());
-        VaccinationJpaEntity saved = jpaRepository.save(
+    CompanyJpaEntity company = companyJpaRepository.getReferenceById(vaccination.getCompany().id());
+    VaccinationJpaEntity saved =
+        jpaRepository.save(
             mapper.toJpa(vaccination, vaccinationType, animal, consultation, company));
-        return mapper.toDomain(saved, vaccination.getVaccinationType(),
-                                vaccination.getAnimal(), vaccination.getConsultation(),
-                                vaccination.getCompany());
-    }
+    return mapper.toDomain(
+        saved,
+        vaccination.getVaccinationType(),
+        vaccination.getAnimal(),
+        vaccination.getConsultation(),
+        vaccination.getCompany());
+  }
 
-    @Override
-    public Optional<Vaccination> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Vaccination> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<Vaccination> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Vaccination> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Vaccination> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Vaccination> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<Vaccination> findAllByAnimalId(Long animalId) {
-        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Vaccination> findAllByAnimalId(Long animalId) {
+    return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

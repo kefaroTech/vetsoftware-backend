@@ -15,23 +15,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "submodule.update")
 @Service
 public class UpdateSubModuleService implements UpdateSubModuleUseCase {
-    private final SubModuleRepository repository;
-    private final ModuleQueryPort moduleQueryPort;
+  private final SubModuleRepository repository;
+  private final ModuleQueryPort moduleQueryPort;
 
-    public UpdateSubModuleService(SubModuleRepository repository,
-                                  ModuleQueryPort moduleQueryPort) {
-        this.repository = repository;
-        this.moduleQueryPort = moduleQueryPort;
-    }
+  public UpdateSubModuleService(SubModuleRepository repository, ModuleQueryPort moduleQueryPort) {
+    this.repository = repository;
+    this.moduleQueryPort = moduleQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public SubModuleDto execute(UpdateSubModuleCommand command) {
-        SubModule subModule = repository.findById(command.id())
+  @Override
+  @Transactional
+  public SubModuleDto execute(UpdateSubModuleCommand command) {
+    SubModule subModule =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new SubModuleNotFoundException(command.id()));
-        ModuleRef module = moduleQueryPort.findById(command.moduleId())
-            .orElseThrow(() -> new IllegalArgumentException("Module not found: " + command.moduleId()));
-        subModule.update(command.name(), command.code(), module);
-        return SubModuleDto.from(repository.save(subModule));
-    }
+    ModuleRef module =
+        moduleQueryPort
+            .findById(command.moduleId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Module not found: " + command.moduleId()));
+    subModule.update(command.name(), command.code(), module);
+    return SubModuleDto.from(repository.save(subModule));
+  }
 }

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "promotion.list")
 @Service
 public class ListPromotionsService implements ListPromotionsUseCase {
-    private final PromotionRepository repository;
+  private final PromotionRepository repository;
 
-    public ListPromotionsService(PromotionRepository repository) {
-        this.repository = repository;
-    }
+  public ListPromotionsService(PromotionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<PromotionDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(PromotionDto::from).toList();
-    }
+  @Override
+  public List<PromotionDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(PromotionDto::from).toList();
+  }
 }

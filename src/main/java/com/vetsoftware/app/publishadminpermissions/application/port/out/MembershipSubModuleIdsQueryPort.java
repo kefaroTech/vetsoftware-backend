@@ -4,5 +4,5 @@ import java.util.Map;
 import java.util.Set;
 
 public interface MembershipSubModuleIdsQueryPort {
-    Map<Long, Set<Long>> findSubModuleIdsByMembershipIds(Set<Long> membershipIds);
+  Map<Long, Set<Long>> findSubModuleIdsByMembershipIds(Set<Long> membershipIds);
 }

@@ -20,63 +20,65 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/spa-types")
 public class SpaTypeController {
-    private final CreateSpaTypeUseCase createUseCase;
-    private final UpdateSpaTypeUseCase updateUseCase;
-    private final FindSpaTypeUseCase findUseCase;
-    private final ListSpaTypesUseCase listUseCase;
-    private final DeleteSpaTypeUseCase deleteUseCase;
-    private final ReactivateSpaTypeUseCase reactivateUseCase;
+  private final CreateSpaTypeUseCase createUseCase;
+  private final UpdateSpaTypeUseCase updateUseCase;
+  private final FindSpaTypeUseCase findUseCase;
+  private final ListSpaTypesUseCase listUseCase;
+  private final DeleteSpaTypeUseCase deleteUseCase;
+  private final ReactivateSpaTypeUseCase reactivateUseCase;
 
-    public SpaTypeController(CreateSpaTypeUseCase createUseCase,
-                             UpdateSpaTypeUseCase updateUseCase,
-                             FindSpaTypeUseCase findUseCase,
-                             ListSpaTypesUseCase listUseCase,
-                             DeleteSpaTypeUseCase deleteUseCase,
-                             ReactivateSpaTypeUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public SpaTypeController(
+      CreateSpaTypeUseCase createUseCase,
+      UpdateSpaTypeUseCase updateUseCase,
+      FindSpaTypeUseCase findUseCase,
+      ListSpaTypesUseCase listUseCase,
+      DeleteSpaTypeUseCase deleteUseCase,
+      ReactivateSpaTypeUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SpaTypeResponse create(@Valid @RequestBody CreateSpaTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateSpaTypeCommand(request.name(), request.description())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public SpaTypeResponse create(@Valid @RequestBody CreateSpaTypeRequest request) {
+    return toResponse(
+        createUseCase.execute(new CreateSpaTypeCommand(request.name(), request.description())));
+  }
 
-    @GetMapping
-    public List<SpaTypeResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<SpaTypeResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public SpaTypeResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public SpaTypeResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public SpaTypeResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdateSpaTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateSpaTypeCommand(id, request.name(), request.description())));
-    }
+  @PutMapping("/{id}")
+  public SpaTypeResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateSpaTypeRequest request) {
+    return toResponse(
+        updateUseCase.execute(new UpdateSpaTypeCommand(id, request.name(), request.description())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public SpaTypeResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public SpaTypeResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private SpaTypeResponse toResponse(SpaTypeDto dto) {
-        return new SpaTypeResponse(dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
-    }
+  private SpaTypeResponse toResponse(SpaTypeDto dto) {
+    return new SpaTypeResponse(
+        dto.id(), dto.name(), dto.description(), dto.createdDate(), dto.enabled());
+  }
 }

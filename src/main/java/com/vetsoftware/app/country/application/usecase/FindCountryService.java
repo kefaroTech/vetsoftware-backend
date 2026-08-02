@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "country.find")
 @Service
 public class FindCountryService implements FindCountryUseCase {
-    private final CountryRepository repository;
+  private final CountryRepository repository;
 
-    public FindCountryService(CountryRepository repository) {
-        this.repository = repository;
-    }
+  public FindCountryService(CountryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public CountryDto findById(Long id) {
-        return repository.findById(id)
-                .map(CountryDto::from)
-                .orElseThrow(() -> new CountryNotFoundException(id));
-    }
+  @Override
+  public CountryDto findById(Long id) {
+    return repository
+        .findById(id)
+        .map(CountryDto::from)
+        .orElseThrow(() -> new CountryNotFoundException(id));
+  }
 }

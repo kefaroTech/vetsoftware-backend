@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "module.delete")
 @Service
 public class DeleteModuleService implements DeleteModuleUseCase {
-    private final ModuleRepository repository;
-    private final SubModuleChildrenQueryPort subModuleChildrenQueryPort;
+  private final ModuleRepository repository;
+  private final SubModuleChildrenQueryPort subModuleChildrenQueryPort;
 
-    public DeleteModuleService(
-            ModuleRepository repository,
-            SubModuleChildrenQueryPort subModuleChildrenQueryPort) {
-        this.repository = repository;
-        this.subModuleChildrenQueryPort = subModuleChildrenQueryPort;
-    }
+  public DeleteModuleService(
+      ModuleRepository repository, SubModuleChildrenQueryPort subModuleChildrenQueryPort) {
+    this.repository = repository;
+    this.subModuleChildrenQueryPort = subModuleChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new ModuleNotFoundException(id));
-        if (subModuleChildrenQueryPort.existsActiveByModuleId(id)) {
-            throw new ModuleHasActiveChildrenException(id, "subModule");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new ModuleNotFoundException(id));
+    if (subModuleChildrenQueryPort.existsActiveByModuleId(id)) {
+      throw new ModuleHasActiveChildrenException(id, "subModule");
     }
+    repository.delete(id);
+  }
 }

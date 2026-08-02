@@ -4,5 +4,5 @@ import com.vetsoftware.app.auth.application.command.LoginEmployeeCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 
 public interface LoginEmployeeUseCase {
-    TokenDto execute(LoginEmployeeCommand command);
+  TokenDto execute(LoginEmployeeCommand command);
 }

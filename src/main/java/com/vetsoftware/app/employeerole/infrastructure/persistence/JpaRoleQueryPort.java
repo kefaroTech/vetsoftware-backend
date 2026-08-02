@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("employeeroleJpaRoleQueryPort")
 public class JpaRoleQueryPort implements RoleQueryPort {
-    private final RoleJpaRepository roleJpaRepository;
+  private final RoleJpaRepository roleJpaRepository;
 
-    public JpaRoleQueryPort(RoleJpaRepository roleJpaRepository) {
-        this.roleJpaRepository = roleJpaRepository;
-    }
+  public JpaRoleQueryPort(RoleJpaRepository roleJpaRepository) {
+    this.roleJpaRepository = roleJpaRepository;
+  }
 
-    @Override
-    public Optional<RoleRef> findById(Long roleId) {
-        return roleJpaRepository.findById(roleId)
-            .map(e -> new RoleRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<RoleRef> findById(Long roleId) {
+    return roleJpaRepository
+        .findById(roleId)
+        .map(e -> new RoleRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

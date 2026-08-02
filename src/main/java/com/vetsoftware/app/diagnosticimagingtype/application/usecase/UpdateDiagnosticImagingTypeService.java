@@ -15,24 +15,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "diagnostic.imaging.type.update")
 @Service
 public class UpdateDiagnosticImagingTypeService implements UpdateDiagnosticImagingTypeUseCase {
-    private final DiagnosticImagingTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final DiagnosticImagingTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository,
-                                              CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateDiagnosticImagingTypeService(
+      DiagnosticImagingTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public DiagnosticImagingTypeDto execute(UpdateDiagnosticImagingTypeCommand command) {
-        DiagnosticImagingType type = repository.findById(command.id())
-                .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(command.id()));
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        type.update(command.name(), command.description(), company, command.general());
-        return DiagnosticImagingTypeDto.from(repository.save(type));
-    }
+  @Override
+  @Transactional
+  public DiagnosticImagingTypeDto execute(UpdateDiagnosticImagingTypeCommand command) {
+    DiagnosticImagingType type =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(command.id()));
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    type.update(command.name(), command.description(), company, command.general());
+    return DiagnosticImagingTypeDto.from(repository.save(type));
+  }
 }

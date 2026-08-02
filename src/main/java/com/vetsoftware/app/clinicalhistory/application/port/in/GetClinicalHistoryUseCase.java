@@ -6,7 +6,8 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface GetClinicalHistoryUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or "
-            + "(hasAuthority('clinicalHistory.read') and @authz.isMyCompany(#query.companyId))")
-    List<ClinicalEventDto> execute(GetClinicalHistoryQuery query);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or "
+          + "(hasAuthority('clinicalHistory.read') and @authz.isMyCompany(#query.companyId))")
+  List<ClinicalEventDto> execute(GetClinicalHistoryQuery query);
 }

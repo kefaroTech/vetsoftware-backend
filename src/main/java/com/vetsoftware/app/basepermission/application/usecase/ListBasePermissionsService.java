@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "base.permission.list")
 @Service
 public class ListBasePermissionsService implements ListBasePermissionsUseCase {
-    private final BasePermissionRepository repository;
+  private final BasePermissionRepository repository;
 
-    public ListBasePermissionsService(BasePermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ListBasePermissionsService(BasePermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<BasePermissionDto> listAll() {
-        return repository.findAll().stream().map(BasePermissionDto::from).toList();
-    }
+  @Override
+  public List<BasePermissionDto> listAll() {
+    return repository.findAll().stream().map(BasePermissionDto::from).toList();
+  }
 }

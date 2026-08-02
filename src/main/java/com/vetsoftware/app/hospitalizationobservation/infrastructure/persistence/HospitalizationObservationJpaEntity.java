@@ -12,39 +12,74 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLDelete(sql = "UPDATE hospitalization_observations SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class HospitalizationObservationJpaEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false, length = 2000)
-    private String description;
+  @Column(nullable = false, length = 2000)
+  private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hospitalization_id", nullable = false)
-    private HospitalizationJpaEntity hospitalization;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "hospitalization_id", nullable = false)
+  private HospitalizationJpaEntity hospitalization;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_id", nullable = false)
-    private EmployeeJpaEntity createdBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by_id", nullable = false)
+  private EmployeeJpaEntity createdBy;
 
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
+  @Column(name = "created_date", nullable = false)
+  private LocalDateTime createdDate;
 
-    @Column(name = "enabled", nullable = false)
-    private boolean enabled = true;
+  @Column(name = "enabled", nullable = false)
+  private boolean enabled = true;
 
-    protected HospitalizationObservationJpaEntity() {}
+  protected HospitalizationObservationJpaEntity() {}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public HospitalizationJpaEntity getHospitalization() { return hospitalization; }
-    public void setHospitalization(HospitalizationJpaEntity hospitalization) { this.hospitalization = hospitalization; }
-    public EmployeeJpaEntity getCreatedBy() { return createdBy; }
-    public void setCreatedBy(EmployeeJpaEntity createdBy) { this.createdBy = createdBy; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public HospitalizationJpaEntity getHospitalization() {
+    return hospitalization;
+  }
+
+  public void setHospitalization(HospitalizationJpaEntity hospitalization) {
+    this.hospitalization = hospitalization;
+  }
+
+  public EmployeeJpaEntity getCreatedBy() {
+    return createdBy;
+  }
+
+  public void setCreatedBy(EmployeeJpaEntity createdBy) {
+    this.createdBy = createdBy;
+  }
+
+  public LocalDateTime getCreatedDate() {
+    return createdDate;
+  }
+
+  public void setCreatedDate(LocalDateTime createdDate) {
+    this.createdDate = createdDate;
+  }
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
 }

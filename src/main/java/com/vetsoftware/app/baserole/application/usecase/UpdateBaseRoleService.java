@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.role.update")
 @Service
 public class UpdateBaseRoleService implements UpdateBaseRoleUseCase {
-    private final BaseRoleRepository repository;
+  private final BaseRoleRepository repository;
 
-    public UpdateBaseRoleService(BaseRoleRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateBaseRoleService(BaseRoleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public BaseRoleDto execute(UpdateBaseRoleCommand command) {
-        BaseRole baseRole = repository.findById(command.id())
+  @Override
+  @Transactional
+  public BaseRoleDto execute(UpdateBaseRoleCommand command) {
+    BaseRole baseRole =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new BaseRoleNotFoundException(command.id()));
-        baseRole.update(command.name(), command.code(), command.mandatory());
-        return BaseRoleDto.from(repository.save(baseRole));
-    }
+    baseRole.update(command.name(), command.code(), command.mandatory());
+    return BaseRoleDto.from(repository.save(baseRole));
+  }
 }

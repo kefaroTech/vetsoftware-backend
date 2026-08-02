@@ -5,15 +5,16 @@ import com.vetsoftware.app.membershipsubmodule.infrastructure.persistence.Member
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMembershipSubModuleChildrenQueryPort implements MembershipSubModuleChildrenQueryPort {
-    private final MembershipSubModuleJpaRepository jpaRepository;
+public class JpaMembershipSubModuleChildrenQueryPort
+    implements MembershipSubModuleChildrenQueryPort {
+  private final MembershipSubModuleJpaRepository jpaRepository;
 
-    public JpaMembershipSubModuleChildrenQueryPort(MembershipSubModuleJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaMembershipSubModuleChildrenQueryPort(MembershipSubModuleJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByMembershipId(Long parentId) {
-        return jpaRepository.existsByMembership_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByMembershipId(Long parentId) {
+    return jpaRepository.existsByMembership_Id(parentId);
+  }
 }

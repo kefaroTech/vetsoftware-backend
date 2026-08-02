@@ -10,33 +10,35 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class EmployeeRoleCacheAdapter implements PermissionCachePort {
 
-    private static final String CACHE_NAME = "employee-permissions";
+  private static final String CACHE_NAME = "employee-permissions";
 
-    private final CacheManager cacheManager;
+  private final CacheManager cacheManager;
 
-    public EmployeeRoleCacheAdapter(CacheManager cacheManager) {
-        this.cacheManager = cacheManager;
-    }
+  public EmployeeRoleCacheAdapter(CacheManager cacheManager) {
+    this.cacheManager = cacheManager;
+  }
 
-    @Override
-    public void evictByEmployeeId(Long employeeId) {
-        if (employeeId == null) return;
-        runAfterCommit(() -> {
-            Cache cache = cacheManager.getCache(CACHE_NAME);
-            if (cache != null) cache.evict(employeeId);
+  @Override
+  public void evictByEmployeeId(Long employeeId) {
+    if (employeeId == null) return;
+    runAfterCommit(
+        () -> {
+          Cache cache = cacheManager.getCache(CACHE_NAME);
+          if (cache != null) cache.evict(employeeId);
         });
-    }
+  }
 
-    private void runAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
-        } else {
-            action.run();
-        }
+  private void runAfterCommit(Runnable action) {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              action.run();
+            }
+          });
+    } else {
+      action.run();
     }
+  }
 }

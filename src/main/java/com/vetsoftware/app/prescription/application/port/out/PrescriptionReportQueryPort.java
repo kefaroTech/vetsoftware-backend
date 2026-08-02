@@ -5,5 +5,5 @@ import java.util.Optional;
 
 /** Carga los datos de clínica, paciente y propietario para la fórmula, scoped a la empresa. */
 public interface PrescriptionReportQueryPort {
-    Optional<PrescriptionSignalment> loadByAnimal(Long animalId, Long companyId);
+  Optional<PrescriptionSignalment> loadByAnimal(Long animalId, Long companyId);
 }

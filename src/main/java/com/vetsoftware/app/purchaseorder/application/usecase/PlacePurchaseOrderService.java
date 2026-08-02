@@ -12,18 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.place")
 @Service
 public class PlacePurchaseOrderService implements PlacePurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public PlacePurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public PlacePurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
-        PurchaseOrder order = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public PurchaseOrderDto execute(Long id, Long companyId, Long actorId) {
+    PurchaseOrder order =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new PurchaseOrderNotFoundException(id));
-        order.place(actorId);
-        return PurchaseOrderDto.from(repository.save(order));
-    }
+    order.place(actorId);
+    return PurchaseOrderDto.from(repository.save(order));
+  }
 }

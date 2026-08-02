@@ -5,6 +5,6 @@ import com.vetsoftware.app.city.application.dto.CityDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateCityUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    CityDto execute(UpdateCityCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  CityDto execute(UpdateCityCommand command);
 }

@@ -12,23 +12,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "tax.delete")
 @Service
 public class DeleteTaxService implements DeleteTaxUseCase {
-    private final TaxRepository repository;
-    private final TaxChildrenQueryPort taxChildrenQueryPort;
+  private final TaxRepository repository;
+  private final TaxChildrenQueryPort taxChildrenQueryPort;
 
-    public DeleteTaxService(
-            TaxRepository repository,
-            TaxChildrenQueryPort taxChildrenQueryPort) {
-        this.repository = repository;
-        this.taxChildrenQueryPort = taxChildrenQueryPort;
-    }
+  public DeleteTaxService(TaxRepository repository, TaxChildrenQueryPort taxChildrenQueryPort) {
+    this.repository = repository;
+    this.taxChildrenQueryPort = taxChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new TaxNotFoundException(id));
-        if (taxChildrenQueryPort.existsActiveByTaxId(id)) {
-            throw new TaxHasActiveChildrenException(id, "product/service");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new TaxNotFoundException(id));
+    if (taxChildrenQueryPort.existsActiveByTaxId(id)) {
+      throw new TaxHasActiveChildrenException(id, "product/service");
     }
+    repository.delete(id);
+  }
 }

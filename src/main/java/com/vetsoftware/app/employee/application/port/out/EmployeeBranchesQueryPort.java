@@ -5,6 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface EmployeeBranchesQueryPort {
-    /** Sedes vigentes asignadas a cada empleado (para el listado/detalle). */
-    Map<Long, List<BranchRef>> findBranchesByEmployeeIds(List<Long> employeeIds);
+  /** Sedes vigentes asignadas a cada empleado (para el listado/detalle). */
+  Map<Long, List<BranchRef>> findBranchesByEmployeeIds(List<Long> employeeIds);
 }

@@ -10,16 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "weight.record.find.latest")
 @Service
 public class FindLatestWeightRecordService implements FindLatestWeightRecordUseCase {
-    private final WeightRecordRepository repository;
+  private final WeightRecordRepository repository;
 
-    public FindLatestWeightRecordService(WeightRecordRepository repository) {
-        this.repository = repository;
-    }
+  public FindLatestWeightRecordService(WeightRecordRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public WeightRecordDto findLatest(Long animalId, Long companyId) {
-        return repository.findLatestByAnimalIdAndCompanyId(animalId, companyId)
-            .map(WeightRecordDto::from)
-            .orElseThrow(() -> new WeightRecordNotFoundException(animalId));
-    }
+  @Override
+  public WeightRecordDto findLatest(Long animalId, Long companyId) {
+    return repository
+        .findLatestByAnimalIdAndCompanyId(animalId, companyId)
+        .map(WeightRecordDto::from)
+        .orElseThrow(() -> new WeightRecordNotFoundException(animalId));
+  }
 }

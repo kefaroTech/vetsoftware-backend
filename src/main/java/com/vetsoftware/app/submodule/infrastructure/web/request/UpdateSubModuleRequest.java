@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateSubModuleRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 50) String code,
-        @NotNull Long moduleId
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @NotBlank @Size(max = 50) String code,
+    @NotNull Long moduleId) {}

@@ -8,25 +8,28 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaHospitalizationMedicationQueryPort implements HospitalizationMedicationQueryPort {
-    private final HospitalizationMedicationJpaRepository medicationJpaRepository;
+  private final HospitalizationMedicationJpaRepository medicationJpaRepository;
 
-    public JpaHospitalizationMedicationQueryPort(
-            HospitalizationMedicationJpaRepository medicationJpaRepository) {
-        this.medicationJpaRepository = medicationJpaRepository;
-    }
+  public JpaHospitalizationMedicationQueryPort(
+      HospitalizationMedicationJpaRepository medicationJpaRepository) {
+    this.medicationJpaRepository = medicationJpaRepository;
+  }
 
-    @Override
-    public Optional<MedicationOrderParams> findById(Long hospitalizationMedicationId) {
-        return medicationJpaRepository.findById(hospitalizationMedicationId)
-            .map(m -> new MedicationOrderParams(
-                m.getId(),
-                m.getName(),
-                m.getHospitalization().getId(),
-                m.getFrequency(),
-                m.getGuidelineType(),
-                m.getDurationMeasure(),
-                m.getDurationQuantity(),
-                m.getStartDate(),
-                m.getStartTime()));
-    }
+  @Override
+  public Optional<MedicationOrderParams> findById(Long hospitalizationMedicationId) {
+    return medicationJpaRepository
+        .findById(hospitalizationMedicationId)
+        .map(
+            m ->
+                new MedicationOrderParams(
+                    m.getId(),
+                    m.getName(),
+                    m.getHospitalization().getId(),
+                    m.getFrequency(),
+                    m.getGuidelineType(),
+                    m.getDurationMeasure(),
+                    m.getDurationQuantity(),
+                    m.getStartDate(),
+                    m.getStartTime()));
+  }
 }

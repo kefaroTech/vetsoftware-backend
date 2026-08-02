@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "specie.create")
 @Service
 public class CreateSpecieService implements CreateSpecieUseCase {
-    private final SpecieRepository repository;
+  private final SpecieRepository repository;
 
-    public CreateSpecieService(SpecieRepository repository) {
-        this.repository = repository;
-    }
+  public CreateSpecieService(SpecieRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SpecieDto execute(CreateSpecieCommand command) {
-        return SpecieDto.from(repository.save(Specie.create(command.name())));
-    }
+  @Override
+  public SpecieDto execute(CreateSpecieCommand command) {
+    return SpecieDto.from(repository.save(Specie.create(command.name())));
+  }
 }

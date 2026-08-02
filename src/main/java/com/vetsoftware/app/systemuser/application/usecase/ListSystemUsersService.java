@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.user.list")
 @Service
 public class ListSystemUsersService implements ListSystemUsersUseCase {
-    private final SystemUserRepository repository;
+  private final SystemUserRepository repository;
 
-    public ListSystemUsersService(SystemUserRepository repository) {
-        this.repository = repository;
-    }
+  public ListSystemUsersService(SystemUserRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SystemUserDto> listAll() {
-        return repository.findAll().stream().map(SystemUserDto::from).toList();
-    }
+  @Override
+  public List<SystemUserDto> listAll() {
+    return repository.findAll().stream().map(SystemUserDto::from).toList();
+  }
 }

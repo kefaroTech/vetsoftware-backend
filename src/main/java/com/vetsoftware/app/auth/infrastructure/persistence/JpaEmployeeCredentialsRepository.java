@@ -8,20 +8,23 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaEmployeeCredentialsRepository implements EmployeeCredentialsRepository {
 
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeCredentialsRepository(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeCredentialsRepository(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public Optional<EmployeeCredentials> findByCode(String employeeCode) {
-        return employeeJpaRepository.findByEmployeeCode(employeeCode)
-                .map(e -> new EmployeeCredentials(
+  @Override
+  public Optional<EmployeeCredentials> findByCode(String employeeCode) {
+    return employeeJpaRepository
+        .findByEmployeeCode(employeeCode)
+        .map(
+            e ->
+                new EmployeeCredentials(
                     e.getId(),
                     e.getCompany().getId(),
                     e.getAuthVersion(),
                     e.getHashPassword(),
                     e.isEmailVerified()));
-    }
+  }
 }

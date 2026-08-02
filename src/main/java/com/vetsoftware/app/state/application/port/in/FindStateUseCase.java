@@ -4,6 +4,6 @@ import com.vetsoftware.app.state.application.dto.StateDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindStateUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    StateDto findById(Long id);
+  @PreAuthorize("hasRole('SYSTEM')")
+  StateDto findById(Long id);
 }

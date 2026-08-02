@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "country.delete")
 @Service
 public class DeleteCountryService implements DeleteCountryUseCase {
-    private final CountryRepository repository;
-    private final StateChildrenQueryPort stateChildrenQueryPort;
+  private final CountryRepository repository;
+  private final StateChildrenQueryPort stateChildrenQueryPort;
 
-    public DeleteCountryService(
-            CountryRepository repository,
-            StateChildrenQueryPort stateChildrenQueryPort) {
-        this.repository = repository;
-        this.stateChildrenQueryPort = stateChildrenQueryPort;
-    }
+  public DeleteCountryService(
+      CountryRepository repository, StateChildrenQueryPort stateChildrenQueryPort) {
+    this.repository = repository;
+    this.stateChildrenQueryPort = stateChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new CountryNotFoundException(id));
-        if (stateChildrenQueryPort.existsActiveByCountryId(id)) {
-            throw new CountryHasActiveChildrenException(id, "state");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new CountryNotFoundException(id));
+    if (stateChildrenQueryPort.existsActiveByCountryId(id)) {
+      throw new CountryHasActiveChildrenException(id, "state");
     }
+    repository.delete(id);
+  }
 }

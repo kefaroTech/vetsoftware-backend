@@ -10,14 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "surgery.type.list.available")
 @Service
 public class ListAvailableSurgeryTypesService implements ListAvailableSurgeryTypesUseCase {
-    private final SurgeryTypeRepository repository;
+  private final SurgeryTypeRepository repository;
 
-    public ListAvailableSurgeryTypesService(SurgeryTypeRepository repository) {
-        this.repository = repository;
-    }
+  public ListAvailableSurgeryTypesService(SurgeryTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SurgeryTypeDto> listAvailable(Long companyId) {
-        return repository.findAllAvailableForCompany(companyId).stream().map(SurgeryTypeDto::from).toList();
-    }
+  @Override
+  public List<SurgeryTypeDto> listAvailable(Long companyId) {
+    return repository.findAllAvailableForCompany(companyId).stream()
+        .map(SurgeryTypeDto::from)
+        .toList();
+  }
 }

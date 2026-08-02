@@ -4,6 +4,7 @@ import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfig;
 import java.util.Optional;
 
 public interface WithholdingConfigRepository {
-    WithholdingConfig save(WithholdingConfig config);
-    Optional<WithholdingConfig> findByCompanyId(Long companyId);
+  WithholdingConfig save(WithholdingConfig config);
+
+  Optional<WithholdingConfig> findByCompanyId(Long companyId);
 }

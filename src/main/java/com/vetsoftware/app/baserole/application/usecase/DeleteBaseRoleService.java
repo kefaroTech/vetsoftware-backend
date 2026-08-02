@@ -11,22 +11,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "base.role.delete")
 @Service
 public class DeleteBaseRoleService implements DeleteBaseRoleUseCase {
-    private final BaseRoleRepository repository;
-    private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
+  private final BaseRoleRepository repository;
+  private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
 
-    public DeleteBaseRoleService(
-            BaseRoleRepository repository,
-            BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
-        this.repository = repository;
-        this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;
-    }
+  public DeleteBaseRoleService(
+      BaseRoleRepository repository,
+      BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
+    this.repository = repository;
+    this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new BaseRoleNotFoundException(id));
-        if (baseRolePermissionChildrenQueryPort.existsActiveByBaseRoleId(id)) {
-            throw new BaseRoleHasActiveChildrenException(id, "baseRolePermission");
-        }
-        repository.delete(id);
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new BaseRoleNotFoundException(id));
+    if (baseRolePermissionChildrenQueryPort.existsActiveByBaseRoleId(id)) {
+      throw new BaseRoleHasActiveChildrenException(id, "baseRolePermission");
     }
+    repository.delete(id);
+  }
 }

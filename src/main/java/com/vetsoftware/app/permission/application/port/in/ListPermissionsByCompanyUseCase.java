@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListPermissionsByCompanyUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or " +
-                  "(hasAuthority('rolePermissions.read') and @authz.isMyCompany(#companyId))")
-    List<PermissionDto> listByCompany(Long companyId);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or "
+          + "(hasAuthority('rolePermissions.read') and @authz.isMyCompany(#companyId))")
+  List<PermissionDto> listByCompany(Long companyId);
 }

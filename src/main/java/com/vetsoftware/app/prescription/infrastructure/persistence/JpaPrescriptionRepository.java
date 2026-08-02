@@ -14,58 +14,60 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaPrescriptionRepository implements PrescriptionRepository {
-    private final PrescriptionJpaRepository jpaRepository;
-    private final PrescriptionJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final ConsultationJpaRepository consultationJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final PrescriptionJpaRepository jpaRepository;
+  private final PrescriptionJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final ConsultationJpaRepository consultationJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaPrescriptionRepository(PrescriptionJpaRepository jpaRepository,
-                                     PrescriptionJpaMapper mapper,
-                                     AnimalJpaRepository animalJpaRepository,
-                                     ConsultationJpaRepository consultationJpaRepository,
-                                     CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.consultationJpaRepository = consultationJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaPrescriptionRepository(
+      PrescriptionJpaRepository jpaRepository,
+      PrescriptionJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      ConsultationJpaRepository consultationJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.consultationJpaRepository = consultationJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public Prescription save(Prescription prescription) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(prescription.getAnimal().id());
-        ConsultationJpaEntity consultation =
-            consultationJpaRepository.getReferenceById(prescription.getConsultation().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(prescription.getCompany().id());
-        PrescriptionJpaEntity saved = jpaRepository.save(
-            mapper.toJpa(prescription, animal, consultation, company));
-        return mapper.toDomain(saved, prescription.getAnimal(),
-            prescription.getConsultation(), prescription.getCompany());
-    }
+  @Override
+  public Prescription save(Prescription prescription) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(prescription.getAnimal().id());
+    ConsultationJpaEntity consultation =
+        consultationJpaRepository.getReferenceById(prescription.getConsultation().id());
+    CompanyJpaEntity company =
+        companyJpaRepository.getReferenceById(prescription.getCompany().id());
+    PrescriptionJpaEntity saved =
+        jpaRepository.save(mapper.toJpa(prescription, animal, consultation, company));
+    return mapper.toDomain(
+        saved, prescription.getAnimal(), prescription.getConsultation(), prescription.getCompany());
+  }
 
-    @Override
-    public Optional<Prescription> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Prescription> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<Prescription> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Prescription> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<Prescription> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Prescription> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

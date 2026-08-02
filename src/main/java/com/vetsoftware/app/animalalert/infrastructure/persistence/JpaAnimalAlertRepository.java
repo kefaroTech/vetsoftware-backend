@@ -12,42 +12,46 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaAnimalAlertRepository implements AnimalAlertRepository {
-    private final AnimalAlertJpaRepository jpaRepository;
-    private final AnimalAlertJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final AnimalAlertJpaRepository jpaRepository;
+  private final AnimalAlertJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaAnimalAlertRepository(AnimalAlertJpaRepository jpaRepository,
-                                    AnimalAlertJpaMapper mapper,
-                                    AnimalJpaRepository animalJpaRepository,
-                                    CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaAnimalAlertRepository(
+      AnimalAlertJpaRepository jpaRepository,
+      AnimalAlertJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public AnimalAlert save(AnimalAlert alert) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(alert.getAnimal().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(alert.getCompany().id());
-        AnimalAlertJpaEntity saved = jpaRepository.save(mapper.toJpa(alert, animal, company));
-        return mapper.toDomain(saved, alert.getAnimal(), alert.getCompany());
-    }
+  @Override
+  public AnimalAlert save(AnimalAlert alert) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(alert.getAnimal().id());
+    CompanyJpaEntity company = companyJpaRepository.getReferenceById(alert.getCompany().id());
+    AnimalAlertJpaEntity saved = jpaRepository.save(mapper.toJpa(alert, animal, company));
+    return mapper.toDomain(saved, alert.getAnimal(), alert.getCompany());
+  }
 
-    @Override
-    public Optional<AnimalAlert> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<AnimalAlert> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<AnimalAlert> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-            .stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<AnimalAlert> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
+    return jpaRepository
+        .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 
-    @Override
-    public void delete(Long id, Long companyId) {
-        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
-    }
+  @Override
+  public void delete(Long id, Long companyId) {
+    jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
+  }
 }

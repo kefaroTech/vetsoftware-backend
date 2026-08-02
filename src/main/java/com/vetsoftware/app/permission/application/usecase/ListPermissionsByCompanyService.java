@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "permission.list.by.company")
 @Service
 public class ListPermissionsByCompanyService implements ListPermissionsByCompanyUseCase {
-    private final PermissionRepository repository;
+  private final PermissionRepository repository;
 
-    public ListPermissionsByCompanyService(PermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ListPermissionsByCompanyService(PermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<PermissionDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(PermissionDto::from).toList();
-    }
+  @Override
+  public List<PermissionDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(PermissionDto::from).toList();
+  }
 }

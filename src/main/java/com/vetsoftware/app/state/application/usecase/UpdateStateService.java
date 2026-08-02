@@ -15,22 +15,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "state.update")
 @Service
 public class UpdateStateService implements UpdateStateUseCase {
-    private final StateRepository repository;
-    private final CountryQueryPort countryQueryPort;
+  private final StateRepository repository;
+  private final CountryQueryPort countryQueryPort;
 
-    public UpdateStateService(StateRepository repository, CountryQueryPort countryQueryPort) {
-        this.repository = repository;
-        this.countryQueryPort = countryQueryPort;
-    }
+  public UpdateStateService(StateRepository repository, CountryQueryPort countryQueryPort) {
+    this.repository = repository;
+    this.countryQueryPort = countryQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public StateDto execute(UpdateStateCommand command) {
-        State state = repository.findById(command.id())
+  @Override
+  @Transactional
+  public StateDto execute(UpdateStateCommand command) {
+    State state =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new StateNotFoundException(command.id()));
-        CountryRef country = countryQueryPort.findById(command.countryId())
-            .orElseThrow(() -> new IllegalArgumentException("Country not found: " + command.countryId()));
-        state.update(command.name(), country, command.daneCode());
-        return StateDto.from(repository.save(state));
-    }
+    CountryRef country =
+        countryQueryPort
+            .findById(command.countryId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Country not found: " + command.countryId()));
+    state.update(command.name(), country, command.daneCode());
+    return StateDto.from(repository.save(state));
+  }
 }

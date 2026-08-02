@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.read')")
-    List<HospitalizationDto> listAll();
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.read')")
+  List<HospitalizationDto> listAll();
 }

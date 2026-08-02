@@ -6,11 +6,10 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record UpdateMedicamentPrescriptionRequest(
-        @NotNull Long medicamentId,
-        @NotBlank @Size(max = 200) String presentation,
-        @NotNull @Positive Double quantity,
-        @NotBlank @Size(max = 1000) String posology,
-        // Observación por medicamento (opcional).
-        @Size(max = 1000) String observation,
-        @NotNull Long prescriptionId
-) {}
+    @NotNull Long medicamentId,
+    @NotBlank @Size(max = 200) String presentation,
+    @NotNull @Positive Double quantity,
+    @NotBlank @Size(max = 1000) String posology,
+    // Observación por medicamento (opcional).
+    @Size(max = 1000) String observation,
+    @NotNull Long prescriptionId) {}

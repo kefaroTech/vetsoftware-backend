@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "vaccination.list.by.animal")
 @Service
 public class ListVaccinationsByAnimalService implements ListVaccinationsByAnimalUseCase {
-    private final VaccinationRepository repository;
+  private final VaccinationRepository repository;
 
-    public ListVaccinationsByAnimalService(VaccinationRepository repository) {
-        this.repository = repository;
-    }
+  public ListVaccinationsByAnimalService(VaccinationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<VaccinationDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(VaccinationDto::from).toList();
-    }
+  @Override
+  public List<VaccinationDto> listByAnimal(Long animalId) {
+    return repository.findAllByAnimalId(animalId).stream().map(VaccinationDto::from).toList();
+  }
 }

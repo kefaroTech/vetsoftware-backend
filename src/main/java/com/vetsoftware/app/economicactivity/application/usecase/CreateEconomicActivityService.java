@@ -11,18 +11,18 @@ import org.springframework.stereotype.Service;
 @Observed(name = "economic.activity.create")
 @Service
 public class CreateEconomicActivityService implements CreateEconomicActivityUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public CreateEconomicActivityService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public CreateEconomicActivityService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public EconomicActivityDto execute(CreateEconomicActivityCommand command) {
-        if (repository.existsByCode(command.code())) {
-            throw new IllegalArgumentException("EconomicActivity code already exists: " + command.code());
-        }
-        return EconomicActivityDto.from(
-            repository.save(EconomicActivity.create(command.code(), command.name())));
+  @Override
+  public EconomicActivityDto execute(CreateEconomicActivityCommand command) {
+    if (repository.existsByCode(command.code())) {
+      throw new IllegalArgumentException("EconomicActivity code already exists: " + command.code());
     }
+    return EconomicActivityDto.from(
+        repository.save(EconomicActivity.create(command.code(), command.name())));
+  }
 }

@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("animalJpaOwnerQueryPort")
 public class JpaOwnerQueryPort implements OwnerQueryPort {
-    private final OwnerJpaRepository ownerJpaRepository;
+  private final OwnerJpaRepository ownerJpaRepository;
 
-    public JpaOwnerQueryPort(OwnerJpaRepository ownerJpaRepository) {
-        this.ownerJpaRepository = ownerJpaRepository;
-    }
+  public JpaOwnerQueryPort(OwnerJpaRepository ownerJpaRepository) {
+    this.ownerJpaRepository = ownerJpaRepository;
+  }
 
-    @Override
-    public Optional<OwnerRef> findByIdAndCompanyId(Long ownerId, Long companyId) {
-        return ownerJpaRepository.findByIdAndCompanyId(ownerId, companyId)
-            .map(e -> new OwnerRef(e.getId(), e.getName(), e.getDocument()));
-    }
+  @Override
+  public Optional<OwnerRef> findByIdAndCompanyId(Long ownerId, Long companyId) {
+    return ownerJpaRepository
+        .findByIdAndCompanyId(ownerId, companyId)
+        .map(e -> new OwnerRef(e.getId(), e.getName(), e.getDocument()));
+  }
 }

@@ -20,63 +20,67 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/economic-activities")
 public class EconomicActivityController {
-    private final CreateEconomicActivityUseCase createUseCase;
-    private final UpdateEconomicActivityUseCase updateUseCase;
-    private final FindEconomicActivityUseCase findUseCase;
-    private final ListEconomicActivitiesUseCase listUseCase;
-    private final DeleteEconomicActivityUseCase deleteUseCase;
-    private final ReactivateEconomicActivityUseCase reactivateUseCase;
+  private final CreateEconomicActivityUseCase createUseCase;
+  private final UpdateEconomicActivityUseCase updateUseCase;
+  private final FindEconomicActivityUseCase findUseCase;
+  private final ListEconomicActivitiesUseCase listUseCase;
+  private final DeleteEconomicActivityUseCase deleteUseCase;
+  private final ReactivateEconomicActivityUseCase reactivateUseCase;
 
-    public EconomicActivityController(CreateEconomicActivityUseCase createUseCase,
-                                      UpdateEconomicActivityUseCase updateUseCase,
-                                      FindEconomicActivityUseCase findUseCase,
-                                      ListEconomicActivitiesUseCase listUseCase,
-                                      DeleteEconomicActivityUseCase deleteUseCase,
-                                      ReactivateEconomicActivityUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public EconomicActivityController(
+      CreateEconomicActivityUseCase createUseCase,
+      UpdateEconomicActivityUseCase updateUseCase,
+      FindEconomicActivityUseCase findUseCase,
+      ListEconomicActivitiesUseCase listUseCase,
+      DeleteEconomicActivityUseCase deleteUseCase,
+      ReactivateEconomicActivityUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public EconomicActivityResponse create(@Valid @RequestBody CreateEconomicActivityRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateEconomicActivityCommand(request.code(), request.name())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public EconomicActivityResponse create(
+      @Valid @RequestBody CreateEconomicActivityRequest request) {
+    return toResponse(
+        createUseCase.execute(new CreateEconomicActivityCommand(request.code(), request.name())));
+  }
 
-    @GetMapping
-    public List<EconomicActivityResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<EconomicActivityResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public EconomicActivityResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public EconomicActivityResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public EconomicActivityResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateEconomicActivityRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public EconomicActivityResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateEconomicActivityRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateEconomicActivityCommand(id, request.code(), request.name())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public EconomicActivityResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public EconomicActivityResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private EconomicActivityResponse toResponse(EconomicActivityDto dto) {
-        return new EconomicActivityResponse(dto.id(), dto.code(), dto.name(), dto.createdDate(), dto.enabled());
-    }
+  private EconomicActivityResponse toResponse(EconomicActivityDto dto) {
+    return new EconomicActivityResponse(
+        dto.id(), dto.code(), dto.name(), dto.createdDate(), dto.enabled());
+  }
 }

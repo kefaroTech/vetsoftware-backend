@@ -11,22 +11,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "system.user.delete")
 @Service
 public class DeleteSystemUserService implements DeleteSystemUserUseCase {
-    private final SystemUserRepository repository;
-    private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
+  private final SystemUserRepository repository;
+  private final SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort;
 
-    public DeleteSystemUserService(
-            SystemUserRepository repository,
-            SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
-        this.repository = repository;
-        this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;
-    }
+  public DeleteSystemUserService(
+      SystemUserRepository repository,
+      SystemUserPermissionChildrenQueryPort systemUserPermissionChildrenQueryPort) {
+    this.repository = repository;
+    this.systemUserPermissionChildrenQueryPort = systemUserPermissionChildrenQueryPort;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SystemUserNotFoundException(id));
-        if (systemUserPermissionChildrenQueryPort.existsActiveBySystemUserId(id)) {
-            throw new SystemUserHasActiveChildrenException(id, "systemUserPermission");
-        }
-        repository.delete(id);
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SystemUserNotFoundException(id));
+    if (systemUserPermissionChildrenQueryPort.existsActiveBySystemUserId(id)) {
+      throw new SystemUserHasActiveChildrenException(id, "systemUserPermission");
     }
+    repository.delete(id);
+  }
 }

@@ -8,40 +8,47 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaRefreshTokenRepository implements RefreshTokenRepository {
 
-    private final RefreshTokenJpaRepository jpaRepository;
+  private final RefreshTokenJpaRepository jpaRepository;
 
-    public JpaRefreshTokenRepository(RefreshTokenJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaRefreshTokenRepository(RefreshTokenJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public void save(NewRefreshToken token) {
-        RefreshTokenJpaEntity entity = new RefreshTokenJpaEntity();
-        entity.setTokenHash(token.tokenHash());
-        entity.setSubjectId(token.subjectId());
-        entity.setSubjectType(token.subjectType());
-        entity.setAuthVersion(token.authVersion());
-        entity.setExpiresAt(token.expiresAt());
-        entity.setRevoked(false);
-        entity.setCreatedDate(LocalDateTime.now());
-        jpaRepository.save(entity);
-    }
+  @Override
+  public void save(NewRefreshToken token) {
+    RefreshTokenJpaEntity entity = new RefreshTokenJpaEntity();
+    entity.setTokenHash(token.tokenHash());
+    entity.setSubjectId(token.subjectId());
+    entity.setSubjectType(token.subjectType());
+    entity.setAuthVersion(token.authVersion());
+    entity.setExpiresAt(token.expiresAt());
+    entity.setRevoked(false);
+    entity.setCreatedDate(LocalDateTime.now());
+    jpaRepository.save(entity);
+  }
 
-    @Override
-    public Optional<StoredRefreshToken> findByHash(String tokenHash) {
-        return jpaRepository.findByTokenHash(tokenHash)
-                .map(e -> new StoredRefreshToken(
-                        e.getId(), e.getSubjectId(), e.getSubjectType(), e.getAuthVersion(),
-                        e.getExpiresAt(), e.isRevoked()));
-    }
+  @Override
+  public Optional<StoredRefreshToken> findByHash(String tokenHash) {
+    return jpaRepository
+        .findByTokenHash(tokenHash)
+        .map(
+            e ->
+                new StoredRefreshToken(
+                    e.getId(),
+                    e.getSubjectId(),
+                    e.getSubjectType(),
+                    e.getAuthVersion(),
+                    e.getExpiresAt(),
+                    e.isRevoked()));
+  }
 
-    @Override
-    public void revokeById(Long id) {
-        jpaRepository.revokeById(id);
-    }
+  @Override
+  public void revokeById(Long id) {
+    jpaRepository.revokeById(id);
+  }
 
-    @Override
-    public void revokeAllForSubject(Long subjectId, String subjectType) {
-        jpaRepository.revokeAllForSubject(subjectId, subjectType);
-    }
+  @Override
+  public void revokeAllForSubject(Long subjectId, String subjectType) {
+    jpaRepository.revokeAllForSubject(subjectId, subjectType);
+  }
 }

@@ -5,5 +5,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PdfProperties.class)
-public class PdfConfig {
-}
+public class PdfConfig {}

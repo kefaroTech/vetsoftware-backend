@@ -9,18 +9,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "electronic.document.build")
 @Service
-public class BuildElectronicDocumentFromAccountService implements BuildElectronicDocumentFromAccountUseCase {
-    private final DocumentBuilder documentBuilder;
+public class BuildElectronicDocumentFromAccountService
+    implements BuildElectronicDocumentFromAccountUseCase {
+  private final DocumentBuilder documentBuilder;
 
-    public BuildElectronicDocumentFromAccountService(DocumentBuilder documentBuilder) {
-        this.documentBuilder = documentBuilder;
-    }
+  public BuildElectronicDocumentFromAccountService(DocumentBuilder documentBuilder) {
+    this.documentBuilder = documentBuilder;
+  }
 
-    @Override
-    @Transactional
-    public ElectronicDocumentDto execute(BuildElectronicDocumentCommand command) {
-        return ElectronicDocumentDto.from(documentBuilder.build(
-                command.openAccountId(), command.documentType(), command.companyId(),
-                command.finalConsumer()));
-    }
+  @Override
+  @Transactional
+  public ElectronicDocumentDto execute(BuildElectronicDocumentCommand command) {
+    return ElectronicDocumentDto.from(
+        documentBuilder.build(
+            command.openAccountId(),
+            command.documentType(),
+            command.companyId(),
+            command.finalConsumer()));
+  }
 }

@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("surgeryJpaSurgeryTypeQueryPort")
 public class JpaSurgeryTypeQueryPort implements SurgeryTypeQueryPort {
-    private final SurgeryTypeJpaRepository surgeryTypeJpaRepository;
+  private final SurgeryTypeJpaRepository surgeryTypeJpaRepository;
 
-    public JpaSurgeryTypeQueryPort(SurgeryTypeJpaRepository surgeryTypeJpaRepository) {
-        this.surgeryTypeJpaRepository = surgeryTypeJpaRepository;
-    }
+  public JpaSurgeryTypeQueryPort(SurgeryTypeJpaRepository surgeryTypeJpaRepository) {
+    this.surgeryTypeJpaRepository = surgeryTypeJpaRepository;
+  }
 
-    @Override
-    public Optional<SurgeryTypeRef> findById(Long surgeryTypeId) {
-        return surgeryTypeJpaRepository.findById(surgeryTypeId)
-            .map(e -> new SurgeryTypeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<SurgeryTypeRef> findById(Long surgeryTypeId) {
+    return surgeryTypeJpaRepository
+        .findById(surgeryTypeId)
+        .map(e -> new SurgeryTypeRef(e.getId(), e.getName()));
+  }
 }

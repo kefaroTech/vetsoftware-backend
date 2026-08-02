@@ -3,10 +3,9 @@ package com.vetsoftware.app.hospitalizationprogressnote.infrastructure.web.respo
 import java.time.LocalDateTime;
 
 public record HospitalizationProgressNoteResponse(
-        Long id,
-        String description,
-        HospitalizationSummary hospitalization,
-        EmployeeSummary createdBy,
-        LocalDateTime createdDate,
-        boolean enabled
-) {}
+    Long id,
+    String description,
+    HospitalizationSummary hospitalization,
+    EmployeeSummary createdBy,
+    LocalDateTime createdDate,
+    boolean enabled) {}

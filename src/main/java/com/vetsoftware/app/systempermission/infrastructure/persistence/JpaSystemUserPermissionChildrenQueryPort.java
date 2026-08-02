@@ -5,15 +5,16 @@ import com.vetsoftware.app.systemuserpermission.infrastructure.persistence.Syste
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaSystemUserPermissionChildrenQueryPort implements SystemUserPermissionChildrenQueryPort {
-    private final SystemUserPermissionJpaRepository jpaRepository;
+public class JpaSystemUserPermissionChildrenQueryPort
+    implements SystemUserPermissionChildrenQueryPort {
+  private final SystemUserPermissionJpaRepository jpaRepository;
 
-    public JpaSystemUserPermissionChildrenQueryPort(SystemUserPermissionJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaSystemUserPermissionChildrenQueryPort(SystemUserPermissionJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveBySystemPermissionId(Long parentId) {
-        return jpaRepository.existsBySystemPermission_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveBySystemPermissionId(Long parentId) {
+    return jpaRepository.existsBySystemPermission_Id(parentId);
+  }
 }

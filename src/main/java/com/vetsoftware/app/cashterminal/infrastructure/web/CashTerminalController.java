@@ -15,50 +15,56 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/cash-terminals")
 public class CashTerminalController {
-    private final CashTerminalService service;
-    private final Authz authz;
+  private final CashTerminalService service;
+  private final Authz authz;
 
-    public CashTerminalController(CashTerminalService service, Authz authz) {
-        this.service = service;
-        this.authz = authz;
-    }
+  public CashTerminalController(CashTerminalService service, Authz authz) {
+    this.service = service;
+    this.authz = authz;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('cashregister.read') or hasAuthority('cashregister.operate')")
-    public List<CashTerminalDto> list(@RequestParam Long branchId,
-                                      @RequestParam(defaultValue = "false") boolean activeOnly) {
-        Long resolvedBranchId = authz.resolveAccessibleBranch(branchId);
-        return service.list(authz.currentCompanyId(), resolvedBranchId, activeOnly);
-    }
+  @GetMapping
+  @PreAuthorize(
+      "hasRole('SYSTEM') or hasAuthority('cashregister.read') or"
+          + " hasAuthority('cashregister.operate')")
+  public List<CashTerminalDto> list(
+      @RequestParam Long branchId, @RequestParam(defaultValue = "false") boolean activeOnly) {
+    Long resolvedBranchId = authz.resolveAccessibleBranch(branchId);
+    return service.list(authz.currentCompanyId(), resolvedBranchId, activeOnly);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
-    public CashTerminalDto create(@Valid @RequestBody SaveTerminalRequest request) {
-        Long branchId = authz.resolveAccessibleBranch(request.branchId());
-        return service.create(authz.currentCompanyId(), branchId, request.name(), request.code());
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
+  public CashTerminalDto create(@Valid @RequestBody SaveTerminalRequest request) {
+    Long branchId = authz.resolveAccessibleBranch(request.branchId());
+    return service.create(authz.currentCompanyId(), branchId, request.name(), request.code());
+  }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
-    public CashTerminalDto update(@PathVariable Long id, @Valid @RequestBody UpdateTerminalRequest request) {
-        return service.update(authz.currentCompanyId(), id, request.name(), request.code());
-    }
+  @PutMapping("/{id}")
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
+  public CashTerminalDto update(
+      @PathVariable Long id, @Valid @RequestBody UpdateTerminalRequest request) {
+    return service.update(authz.currentCompanyId(), id, request.name(), request.code());
+  }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
-    public CashTerminalDto deactivate(@PathVariable Long id) {
-        return service.setActive(authz.currentCompanyId(), id, false);
-    }
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
+  public CashTerminalDto deactivate(@PathVariable Long id) {
+    return service.setActive(authz.currentCompanyId(), id, false);
+  }
 
-    @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
-    public CashTerminalDto activate(@PathVariable Long id) {
-        return service.setActive(authz.currentCompanyId(), id, true);
-    }
+  @PatchMapping("/{id}/activate")
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('branch.update')")
+  public CashTerminalDto activate(@PathVariable Long id) {
+    return service.setActive(authz.currentCompanyId(), id, true);
+  }
 
-    public record SaveTerminalRequest(@NotNull Long branchId, @NotBlank @Size(max = 120) String name,
-                                      @NotBlank @Size(max = 60) String code) {}
-    public record UpdateTerminalRequest(@NotBlank @Size(max = 120) String name,
-                                        @NotBlank @Size(max = 60) String code) {}
+  public record SaveTerminalRequest(
+      @NotNull Long branchId,
+      @NotBlank @Size(max = 120) String name,
+      @NotBlank @Size(max = 60) String code) {}
+
+  public record UpdateTerminalRequest(
+      @NotBlank @Size(max = 120) String name, @NotBlank @Size(max = 60) String code) {}
 }

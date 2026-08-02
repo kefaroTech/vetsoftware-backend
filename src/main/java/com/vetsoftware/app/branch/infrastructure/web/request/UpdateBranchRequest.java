@@ -5,9 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateBranchRequest(
-        @NotBlank @Size(max = 120) String name,
-        @NotBlank @Size(max = 30) String code,
-        @Size(max = 255) String address,
-        @Size(max = 30) String phone,
-        @NotNull Long cityId
-) {}
+    @NotBlank @Size(max = 120) String name,
+    @NotBlank @Size(max = 30) String code,
+    @Size(max = 255) String address,
+    @Size(max = 30) String phone,
+    @NotNull Long cityId) {}

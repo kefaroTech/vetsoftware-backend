@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "company.tax.profile.find")
 @Service
 public class FindCompanyTaxProfileService implements FindCompanyTaxProfileUseCase {
-    private final CompanyTaxProfileRepository repository;
+  private final CompanyTaxProfileRepository repository;
 
-    public FindCompanyTaxProfileService(CompanyTaxProfileRepository repository) {
-        this.repository = repository;
-    }
+  public FindCompanyTaxProfileService(CompanyTaxProfileRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public CompanyTaxProfileDto findByCompanyId(Long companyId) {
-        return CompanyTaxProfileDto.from(repository.findByCompanyId(companyId)
-                .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId)));
-    }
+  @Override
+  public CompanyTaxProfileDto findByCompanyId(Long companyId) {
+    return CompanyTaxProfileDto.from(
+        repository
+            .findByCompanyId(companyId)
+            .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId)));
+  }
 }

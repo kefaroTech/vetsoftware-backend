@@ -8,22 +8,25 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-public interface CompanyTaxProfileJpaRepository extends JpaRepository<CompanyTaxProfileJpaEntity, Long> {
+public interface CompanyTaxProfileJpaRepository
+    extends JpaRepository<CompanyTaxProfileJpaEntity, Long> {
 
-    @EntityGraph(attributePaths = {"company", "economicActivity", "responsibilities"})
-    Optional<CompanyTaxProfileJpaEntity> findByCompany_Id(Long companyId);
+  @EntityGraph(attributePaths = {"company", "economicActivity", "responsibilities"})
+  Optional<CompanyTaxProfileJpaEntity> findByCompany_Id(Long companyId);
 
-    boolean existsByCompany_Id(Long companyId);
+  boolean existsByCompany_Id(Long companyId);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = "UPDATE company_tax_profiles SET enabled = false WHERE company_id = :companyId",
-            nativeQuery = true)
-    int deleteByCompanyId(@Param("companyId") Long companyId);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      value = "UPDATE company_tax_profiles SET enabled = false WHERE company_id = :companyId",
+      nativeQuery = true)
+  int deleteByCompanyId(@Param("companyId") Long companyId);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = "UPDATE company_tax_profiles SET enabled = true WHERE company_id = :companyId",
-            nativeQuery = true)
-    int reactivate(@Param("companyId") Long companyId);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      value = "UPDATE company_tax_profiles SET enabled = true WHERE company_id = :companyId",
+      nativeQuery = true)
+  int reactivate(@Param("companyId") Long companyId);
 }

@@ -11,31 +11,34 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Transmite un documento a la DIAN a través del proveedor configurado para la empresa. Valida ownership
- * y delega el envío en {@link DocumentTransmitter}. Con MATIAS (async) el documento queda PENDIENTE
- * tras transmitir; lo cierra el webhook o el polling de estado. (Un proveedor síncrono cerraría aquí.)
+ * Transmite un documento a la DIAN a través del proveedor configurado para la empresa. Valida
+ * ownership y delega el envío en {@link DocumentTransmitter}. Con MATIAS (async) el documento queda
+ * PENDIENTE tras transmitir; lo cierra el webhook o el polling de estado. (Un proveedor síncrono
+ * cerraría aquí.)
  */
 @Observed(name = "electronic.document.transmit")
 @Service
 public class TransmitElectronicDocumentService implements TransmitElectronicDocumentUseCase {
-    private final ElectronicDocumentRepository repository;
-    private final DocumentTransmitter transmitter;
+  private final ElectronicDocumentRepository repository;
+  private final DocumentTransmitter transmitter;
 
-    public TransmitElectronicDocumentService(ElectronicDocumentRepository repository,
-                                             DocumentTransmitter transmitter) {
-        this.repository = repository;
-        this.transmitter = transmitter;
-    }
+  public TransmitElectronicDocumentService(
+      ElectronicDocumentRepository repository, DocumentTransmitter transmitter) {
+    this.repository = repository;
+    this.transmitter = transmitter;
+  }
 
-    @Override
-    @Transactional
-    public ElectronicDocumentDto execute(TransmitElectronicDocumentCommand command) {
-        ElectronicDocument document = repository.findById(command.documentId())
-                .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));
-        if (!command.companyId().equals(document.getCompanyId())) {
-            // No filtrar documentos de otra empresa.
-            throw new ElectronicDocumentNotFoundException(command.documentId());
-        }
-        return ElectronicDocumentDto.from(transmitter.transmit(document));
+  @Override
+  @Transactional
+  public ElectronicDocumentDto execute(TransmitElectronicDocumentCommand command) {
+    ElectronicDocument document =
+        repository
+            .findById(command.documentId())
+            .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));
+    if (!command.companyId().equals(document.getCompanyId())) {
+      // No filtrar documentos de otra empresa.
+      throw new ElectronicDocumentNotFoundException(command.documentId());
     }
+    return ElectronicDocumentDto.from(transmitter.transmit(document));
+  }
 }

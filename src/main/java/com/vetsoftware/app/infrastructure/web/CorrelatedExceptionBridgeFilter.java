@@ -1,7 +1,7 @@
 package com.vetsoftware.app.infrastructure.web;
 
-import jakarta.servlet.FilterChain;
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,32 +25,33 @@ import org.springframework.web.servlet.ModelAndView;
  */
 @Component
 @FilterRegistration(
-        order = Ordered.HIGHEST_PRECEDENCE + 2,
-        dispatcherTypes = DispatcherType.REQUEST,
-        asyncSupported = true)
+    order = Ordered.HIGHEST_PRECEDENCE + 2,
+    dispatcherTypes = DispatcherType.REQUEST,
+    asyncSupported = true)
 public final class CorrelatedExceptionBridgeFilter extends OncePerRequestFilter {
 
-    private final HandlerExceptionResolver exceptionResolver;
+  private final HandlerExceptionResolver exceptionResolver;
 
-    public CorrelatedExceptionBridgeFilter(
-            @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
-        this.exceptionResolver = exceptionResolver;
+  public CorrelatedExceptionBridgeFilter(
+      @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+    this.exceptionResolver = exceptionResolver;
+  }
+
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
+    try {
+      filterChain.doFilter(request, response);
+    } catch (IOException | ServletException | RuntimeException exception) {
+      ServerHttpObservationFilter.findObservationContext(request)
+          .ifPresent(context -> context.setError(exception));
+
+      ModelAndView resolution =
+          exceptionResolver.resolveException(request, response, null, exception);
+      if (resolution == null) {
+        throw exception;
+      }
     }
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        try {
-            filterChain.doFilter(request, response);
-        } catch (IOException | ServletException | RuntimeException exception) {
-            ServerHttpObservationFilter.findObservationContext(request)
-                    .ifPresent(context -> context.setError(exception));
-
-            ModelAndView resolution =
-                    exceptionResolver.resolveException(request, response, null, exception);
-            if (resolution == null) {
-                throw exception;
-            }
-        }
-    }
+  }
 }

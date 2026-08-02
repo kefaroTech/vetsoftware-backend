@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "submodule.delete")
 @Service
 public class DeleteSubModuleService implements DeleteSubModuleUseCase {
-    private final SubModuleRepository repository;
-    private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
+  private final SubModuleRepository repository;
+  private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
 
-    public DeleteSubModuleService(
-            SubModuleRepository repository,
-            MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
-        this.repository = repository;
-        this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;
-    }
+  public DeleteSubModuleService(
+      SubModuleRepository repository,
+      MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
+    this.repository = repository;
+    this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id));
-        if (membershipSubModuleChildrenQueryPort.existsActiveBySubModuleId(id)) {
-            throw new SubModuleHasActiveChildrenException(id, "membershipSubModule");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id));
+    if (membershipSubModuleChildrenQueryPort.existsActiveBySubModuleId(id)) {
+      throw new SubModuleHasActiveChildrenException(id, "membershipSubModule");
     }
+    repository.delete(id);
+  }
 }

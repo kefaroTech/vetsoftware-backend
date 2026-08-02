@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaSpaChildrenQueryPort implements SpaChildrenQueryPort {
-    private final SpaJpaRepository jpaRepository;
+  private final SpaJpaRepository jpaRepository;
 
-    public JpaSpaChildrenQueryPort(SpaJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaSpaChildrenQueryPort(SpaJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByAnimalId(Long parentId) {
-        return jpaRepository.existsByAnimal_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByAnimalId(Long parentId) {
+    return jpaRepository.existsByAnimal_Id(parentId);
+  }
 }

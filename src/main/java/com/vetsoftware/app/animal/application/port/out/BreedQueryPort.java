@@ -4,5 +4,5 @@ import com.vetsoftware.app.animal.domain.BreedRef;
 import java.util.Optional;
 
 public interface BreedQueryPort {
-    Optional<BreedRef> findById(Long breedId);
+  Optional<BreedRef> findById(Long breedId);
 }

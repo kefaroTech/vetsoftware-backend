@@ -9,19 +9,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class CreateEmployeeRoleAdapter implements EmployeeRoleAssigner {
 
-    private final CreateEmployeeRoleUseCase createEmployeeRoleUseCase;
-    private final SystemAuthRunner systemAuthRunner;
+  private final CreateEmployeeRoleUseCase createEmployeeRoleUseCase;
+  private final SystemAuthRunner systemAuthRunner;
 
-    public CreateEmployeeRoleAdapter(CreateEmployeeRoleUseCase createEmployeeRoleUseCase,
-                                     SystemAuthRunner systemAuthRunner) {
-        this.createEmployeeRoleUseCase = createEmployeeRoleUseCase;
-        this.systemAuthRunner = systemAuthRunner;
-    }
+  public CreateEmployeeRoleAdapter(
+      CreateEmployeeRoleUseCase createEmployeeRoleUseCase, SystemAuthRunner systemAuthRunner) {
+    this.createEmployeeRoleUseCase = createEmployeeRoleUseCase;
+    this.systemAuthRunner = systemAuthRunner;
+  }
 
-    @Override
-    public void assign(Long employeeId, Long roleId) {
-        systemAuthRunner.run(() -> createEmployeeRoleUseCase.execute(
-            new CreateEmployeeRoleCommand(employeeId, roleId)
-        ));
-    }
+  @Override
+  public void assign(Long employeeId, Long roleId) {
+    systemAuthRunner.run(
+        () -> createEmployeeRoleUseCase.execute(new CreateEmployeeRoleCommand(employeeId, roleId)));
+  }
 }

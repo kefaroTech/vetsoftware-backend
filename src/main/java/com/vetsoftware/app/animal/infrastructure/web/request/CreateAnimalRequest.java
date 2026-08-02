@@ -13,21 +13,20 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateAnimalRequest(
-        @NotBlank @Size(max = 100) String name,
-        @Size(max = 50) String code,
-        @NotNull Long specieId,
-        @NotNull Long breedId,
-        @NotNull Long ownerId,
-        @NotNull Gender gender,
-        @NotNull WeightType weightType,
-        @NotNull AnimalType animalType,
-        @NotNull ReproductiveState reproductiveState,
-        @NotNull Long colorId,
-        LocalDate bod,
-        // Peso inicial opcional: si viene, se registra como primer WeightRecord (source=MANUAL) en la
-        // unidad weightType. El peso posterior se gestiona vía /animals/{id}/weight-records.
-        @Positive BigDecimal weight,
-        @PositiveOrZero Integer size,
-        boolean deceased,
-        LocalDate deceasedDate
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @Size(max = 50) String code,
+    @NotNull Long specieId,
+    @NotNull Long breedId,
+    @NotNull Long ownerId,
+    @NotNull Gender gender,
+    @NotNull WeightType weightType,
+    @NotNull AnimalType animalType,
+    @NotNull ReproductiveState reproductiveState,
+    @NotNull Long colorId,
+    LocalDate bod,
+    // Peso inicial opcional: si viene, se registra como primer WeightRecord (source=MANUAL) en la
+    // unidad weightType. El peso posterior se gestiona vía /animals/{id}/weight-records.
+    @Positive BigDecimal weight,
+    @PositiveOrZero Integer size,
+    boolean deceased,
+    LocalDate deceasedDate) {}

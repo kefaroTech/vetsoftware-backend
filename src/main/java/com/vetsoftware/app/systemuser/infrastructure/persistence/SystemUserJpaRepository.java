@@ -11,19 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface SystemUserJpaRepository extends JpaRepository<SystemUserJpaEntity, Long> {
 
-    Optional<SystemUserJpaEntity> findByCode(String code);
+  Optional<SystemUserJpaEntity> findByCode(String code);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT u FROM SystemUserJpaEntity u WHERE u.id = :id")
-    Optional<SystemUserJpaEntity> findByIdForUpdate(@Param("id") Long id);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT u FROM SystemUserJpaEntity u WHERE u.id = :id")
+  Optional<SystemUserJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = "UPDATE system_users SET auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
-    int bumpAuthVersion(@Param("id") Long id);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      value = "UPDATE system_users SET auth_version = auth_version + 1 WHERE id = :id",
+      nativeQuery = true)
+  int bumpAuthVersion(@Param("id") Long id);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = "UPDATE system_users SET enabled = true, auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
-    int reactivate(@Param("id") Long id);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Transactional
+  @Query(
+      value =
+          "UPDATE system_users SET enabled = true, auth_version = auth_version + 1 WHERE id = :id",
+      nativeQuery = true)
+  int reactivate(@Param("id") Long id);
 }

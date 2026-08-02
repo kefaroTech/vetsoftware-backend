@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "spa.type.delete")
 @Service
 public class DeleteSpaTypeService implements DeleteSpaTypeUseCase {
-    private final SpaTypeRepository repository;
-    private final SpaChildrenQueryPort spaChildrenQueryPort;
+  private final SpaTypeRepository repository;
+  private final SpaChildrenQueryPort spaChildrenQueryPort;
 
-    public DeleteSpaTypeService(
-            SpaTypeRepository repository,
-            SpaChildrenQueryPort spaChildrenQueryPort) {
-        this.repository = repository;
-        this.spaChildrenQueryPort = spaChildrenQueryPort;
-    }
+  public DeleteSpaTypeService(
+      SpaTypeRepository repository, SpaChildrenQueryPort spaChildrenQueryPort) {
+    this.repository = repository;
+    this.spaChildrenQueryPort = spaChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SpaTypeNotFoundException(id));
-        if (spaChildrenQueryPort.existsActiveBySpaTypeId(id)) {
-            throw new SpaTypeHasActiveChildrenException(id, "spa");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new SpaTypeNotFoundException(id));
+    if (spaChildrenQueryPort.existsActiveBySpaTypeId(id)) {
+      throw new SpaTypeHasActiveChildrenException(id, "spa");
     }
+    repository.delete(id);
+  }
 }

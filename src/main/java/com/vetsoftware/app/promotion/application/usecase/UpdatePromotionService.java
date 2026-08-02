@@ -16,31 +16,46 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "promotion.update")
 @Service
 public class UpdatePromotionService implements UpdatePromotionUseCase {
-    private final PromotionRepository repository;
-    private final CompanyQueryPort companyQueryPort;
-    private final PromotionTargetQueryPort promotionTargetQueryPort;
+  private final PromotionRepository repository;
+  private final CompanyQueryPort companyQueryPort;
+  private final PromotionTargetQueryPort promotionTargetQueryPort;
 
-    public UpdatePromotionService(PromotionRepository repository,
-                                  CompanyQueryPort companyQueryPort,
-                                  PromotionTargetQueryPort promotionTargetQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-        this.promotionTargetQueryPort = promotionTargetQueryPort;
-    }
+  public UpdatePromotionService(
+      PromotionRepository repository,
+      CompanyQueryPort companyQueryPort,
+      PromotionTargetQueryPort promotionTargetQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+    this.promotionTargetQueryPort = promotionTargetQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public PromotionDto execute(UpdatePromotionCommand command) {
-        Promotion promotion = repository.findById(command.id())
-                .orElseThrow(() -> new PromotionNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (!promotionTargetQueryPort.exists(command.applicationType(), command.applicationItem(), command.companyId())) {
-            throw new IllegalArgumentException("applicationItem not found: " + command.applicationItem());
-        }
-        promotion.update(command.name(), command.promotionType(), command.applicationType(), command.applicationItem(),
-                command.valueType(), command.value(), command.startDate(), command.endDate(),
-                command.promotionStatus(), company);
-        return PromotionDto.from(repository.save(promotion));
+  @Override
+  @Transactional
+  public PromotionDto execute(UpdatePromotionCommand command) {
+    Promotion promotion =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new PromotionNotFoundException(command.id()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (!promotionTargetQueryPort.exists(
+        command.applicationType(), command.applicationItem(), command.companyId())) {
+      throw new IllegalArgumentException("applicationItem not found: " + command.applicationItem());
     }
+    promotion.update(
+        command.name(),
+        command.promotionType(),
+        command.applicationType(),
+        command.applicationItem(),
+        command.valueType(),
+        command.value(),
+        command.startDate(),
+        command.endDate(),
+        command.promotionStatus(),
+        company);
+    return PromotionDto.from(repository.save(promotion));
+  }
 }

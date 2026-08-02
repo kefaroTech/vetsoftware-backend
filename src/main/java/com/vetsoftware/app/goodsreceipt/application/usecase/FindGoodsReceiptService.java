@@ -11,16 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "goods.receipt.find")
 @Service
 public class FindGoodsReceiptService implements FindGoodsReceiptUseCase {
-    private final GoodsReceiptRepository repository;
+  private final GoodsReceiptRepository repository;
 
-    public FindGoodsReceiptService(GoodsReceiptRepository repository) {
-        this.repository = repository;
-    }
+  public FindGoodsReceiptService(GoodsReceiptRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public GoodsReceiptDto findById(Long id, Long companyId) {
-        return GoodsReceiptDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional(readOnly = true)
+  public GoodsReceiptDto findById(Long id, Long companyId) {
+    return GoodsReceiptDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new GoodsReceiptNotFoundException(id)));
-    }
+  }
 }

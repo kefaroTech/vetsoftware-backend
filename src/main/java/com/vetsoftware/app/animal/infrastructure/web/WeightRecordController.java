@@ -14,58 +14,76 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** Serie temporal del peso del animal. El peso "actual" del animal se deriva del último registro. */
+/**
+ * Serie temporal del peso del animal. El peso "actual" del animal se deriva del último registro.
+ */
 @RestController
 @RequestMapping("/animals/{animalId}/weight-records")
 public class WeightRecordController {
-    private final CreateWeightRecordUseCase createUseCase;
-    private final ListWeightRecordsByAnimalUseCase listUseCase;
-    private final FindLatestWeightRecordUseCase findLatestUseCase;
-    private final DeleteWeightRecordUseCase deleteUseCase;
-    private final Authz authz;
+  private final CreateWeightRecordUseCase createUseCase;
+  private final ListWeightRecordsByAnimalUseCase listUseCase;
+  private final FindLatestWeightRecordUseCase findLatestUseCase;
+  private final DeleteWeightRecordUseCase deleteUseCase;
+  private final Authz authz;
 
-    public WeightRecordController(CreateWeightRecordUseCase createUseCase,
-                                  ListWeightRecordsByAnimalUseCase listUseCase,
-                                  FindLatestWeightRecordUseCase findLatestUseCase,
-                                  DeleteWeightRecordUseCase deleteUseCase,
-                                  Authz authz) {
-        this.createUseCase = createUseCase;
-        this.listUseCase = listUseCase;
-        this.findLatestUseCase = findLatestUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.authz = authz;
-    }
+  public WeightRecordController(
+      CreateWeightRecordUseCase createUseCase,
+      ListWeightRecordsByAnimalUseCase listUseCase,
+      FindLatestWeightRecordUseCase findLatestUseCase,
+      DeleteWeightRecordUseCase deleteUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.listUseCase = listUseCase;
+    this.findLatestUseCase = findLatestUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public WeightRecordResponse create(@PathVariable Long animalId,
-                                       @Valid @RequestBody CreateWeightRecordRequest request) {
-        return toResponse(createUseCase.execute(new CreateWeightRecordCommand(
-            animalId, request.value(), request.unit(), request.measuredAt(), request.note(),
-            authz.currentCompanyId())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public WeightRecordResponse create(
+      @PathVariable Long animalId, @Valid @RequestBody CreateWeightRecordRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateWeightRecordCommand(
+                animalId,
+                request.value(),
+                request.unit(),
+                request.measuredAt(),
+                request.note(),
+                authz.currentCompanyId())));
+  }
 
-    @GetMapping
-    public List<WeightRecordResponse> listByAnimal(@PathVariable Long animalId) {
-        return listUseCase.listByAnimal(animalId, authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<WeightRecordResponse> listByAnimal(@PathVariable Long animalId) {
+    return listUseCase.listByAnimal(animalId, authz.currentCompanyId()).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/latest")
-    public WeightRecordResponse findLatest(@PathVariable Long animalId) {
-        return toResponse(findLatestUseCase.findLatest(animalId, authz.currentCompanyId()));
-    }
+  @GetMapping("/latest")
+  public WeightRecordResponse findLatest(@PathVariable Long animalId) {
+    return toResponse(findLatestUseCase.findLatest(animalId, authz.currentCompanyId()));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long animalId, @PathVariable Long id) {
-        deleteUseCase.execute(id, animalId, authz.currentCompanyId());
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long animalId, @PathVariable Long id) {
+    deleteUseCase.execute(id, animalId, authz.currentCompanyId());
+  }
 
-    private WeightRecordResponse toResponse(WeightRecordDto dto) {
-        return new WeightRecordResponse(
-            dto.id(), dto.animalId(), dto.animalName(), dto.animalCode(),
-            dto.value(), dto.unit(), dto.measuredAt(), dto.source(), dto.sourceId(),
-            dto.note(), dto.createdDate());
-    }
+  private WeightRecordResponse toResponse(WeightRecordDto dto) {
+    return new WeightRecordResponse(
+        dto.id(),
+        dto.animalId(),
+        dto.animalName(),
+        dto.animalCode(),
+        dto.value(),
+        dto.unit(),
+        dto.measuredAt(),
+        dto.source(),
+        dto.sourceId(),
+        dto.note(),
+        dto.createdDate());
+  }
 }

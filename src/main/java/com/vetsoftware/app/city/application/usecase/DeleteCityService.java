@@ -12,23 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "city.delete")
 @Service
 public class DeleteCityService implements DeleteCityUseCase {
-    private final CityRepository repository;
-    private final OwnerChildrenQueryPort ownerChildrenQueryPort;
+  private final CityRepository repository;
+  private final OwnerChildrenQueryPort ownerChildrenQueryPort;
 
-    public DeleteCityService(
-            CityRepository repository,
-            OwnerChildrenQueryPort ownerChildrenQueryPort) {
-        this.repository = repository;
-        this.ownerChildrenQueryPort = ownerChildrenQueryPort;
-    }
+  public DeleteCityService(
+      CityRepository repository, OwnerChildrenQueryPort ownerChildrenQueryPort) {
+    this.repository = repository;
+    this.ownerChildrenQueryPort = ownerChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new CityNotFoundException(id));
-        if (ownerChildrenQueryPort.existsActiveByCityId(id)) {
-            throw new CityHasActiveChildrenException(id, "owner");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new CityNotFoundException(id));
+    if (ownerChildrenQueryPort.existsActiveByCityId(id)) {
+      throw new CityHasActiveChildrenException(id, "owner");
     }
+    repository.delete(id);
+  }
 }

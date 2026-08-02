@@ -8,15 +8,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaStateQueryPort implements StateQueryPort {
-    private final StateJpaRepository stateJpaRepository;
+  private final StateJpaRepository stateJpaRepository;
 
-    public JpaStateQueryPort(StateJpaRepository stateJpaRepository) {
-        this.stateJpaRepository = stateJpaRepository;
-    }
+  public JpaStateQueryPort(StateJpaRepository stateJpaRepository) {
+    this.stateJpaRepository = stateJpaRepository;
+  }
 
-    @Override
-    public Optional<StateRef> findById(Long stateId) {
-        return stateJpaRepository.findById(stateId)
-            .map(e -> new StateRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<StateRef> findById(Long stateId) {
+    return stateJpaRepository.findById(stateId).map(e -> new StateRef(e.getId(), e.getName()));
+  }
 }

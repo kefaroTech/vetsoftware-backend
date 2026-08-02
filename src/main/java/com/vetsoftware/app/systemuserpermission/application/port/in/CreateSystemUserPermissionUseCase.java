@@ -5,6 +5,6 @@ import com.vetsoftware.app.systemuserpermission.application.dto.SystemUserPermis
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateSystemUserPermissionUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  SystemUserPermissionDto execute(CreateSystemUserPermissionCommand command);
 }

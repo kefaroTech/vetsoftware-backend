@@ -11,16 +11,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class CashReportPdfAdapter implements CashReportPdfPort {
 
-    private final HtmlPdfRenderer renderer;
+  private final HtmlPdfRenderer renderer;
 
-    public CashReportPdfAdapter(HtmlPdfRenderer renderer) {
-        this.renderer = renderer;
-    }
+  public CashReportPdfAdapter(HtmlPdfRenderer renderer) {
+    this.renderer = renderer;
+  }
 
-    @Override
-    public byte[] renderArqueo(CashArqueoReport report) {
-        Map<String, Object> ctx = new HashMap<>();
-        ctx.put("r", report);
-        return renderer.render("cash-arqueo", ctx);
-    }
+  @Override
+  public byte[] renderArqueo(CashArqueoReport report) {
+    Map<String, Object> ctx = new HashMap<>();
+    ctx.put("r", report);
+    return renderer.render("cash-arqueo", ctx);
+  }
 }

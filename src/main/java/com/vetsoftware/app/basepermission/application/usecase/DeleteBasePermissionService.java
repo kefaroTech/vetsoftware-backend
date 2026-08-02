@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.permission.delete")
 @Service
 public class DeleteBasePermissionService implements DeleteBasePermissionUseCase {
-    private final BasePermissionRepository repository;
-    private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
+  private final BasePermissionRepository repository;
+  private final BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort;
 
-    public DeleteBasePermissionService(
-            BasePermissionRepository repository,
-            BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
-        this.repository = repository;
-        this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;
-    }
+  public DeleteBasePermissionService(
+      BasePermissionRepository repository,
+      BaseRolePermissionChildrenQueryPort baseRolePermissionChildrenQueryPort) {
+    this.repository = repository;
+    this.baseRolePermissionChildrenQueryPort = baseRolePermissionChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new BasePermissionNotFoundException(id));
-        if (baseRolePermissionChildrenQueryPort.existsActiveByBasePermissionId(id)) {
-            throw new BasePermissionHasActiveChildrenException(id, "baseRolePermission");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new BasePermissionNotFoundException(id));
+    if (baseRolePermissionChildrenQueryPort.existsActiveByBasePermissionId(id)) {
+      throw new BasePermissionHasActiveChildrenException(id, "baseRolePermission");
     }
+    repository.delete(id);
+  }
 }

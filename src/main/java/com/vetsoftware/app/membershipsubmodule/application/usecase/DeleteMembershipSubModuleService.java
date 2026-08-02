@@ -9,15 +9,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "membership.submodule.delete")
 @Service
 public class DeleteMembershipSubModuleService implements DeleteMembershipSubModuleUseCase {
-    private final MembershipSubModuleRepository repository;
+  private final MembershipSubModuleRepository repository;
 
-    public DeleteMembershipSubModuleService(MembershipSubModuleRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteMembershipSubModuleService(MembershipSubModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new MembershipSubModuleNotFoundException(id));
+    repository.delete(id);
+  }
 }

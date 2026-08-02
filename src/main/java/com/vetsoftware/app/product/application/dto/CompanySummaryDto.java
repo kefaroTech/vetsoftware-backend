@@ -3,7 +3,7 @@ package com.vetsoftware.app.product.application.dto;
 import com.vetsoftware.app.product.domain.CompanyRef;
 
 public record CompanySummaryDto(Long id, String name, String identifier) {
-    public static CompanySummaryDto from(CompanyRef company) {
-        return new CompanySummaryDto(company.id(), company.name(), company.identifier());
-    }
+  public static CompanySummaryDto from(CompanyRef company) {
+    return new CompanySummaryDto(company.id(), company.name(), company.identifier());
+  }
 }

@@ -5,10 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateCompanyRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 50) String identifier,
-        @Size(max = 255) String address,
-        @Size(max = 30) String contactNumber,
-        @NotNull Long cityId,
-        @NotNull Long membershipId
-) {}
+    @NotBlank @Size(max = 100) String name,
+    @NotBlank @Size(max = 50) String identifier,
+    @Size(max = 255) String address,
+    @Size(max = 30) String contactNumber,
+    @NotNull Long cityId,
+    @NotNull Long membershipId) {}

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "service.category.list")
 @Service
 public class ListServiceCategoriesService implements ListServiceCategoriesUseCase {
-    private final ServiceCategoryRepository repository;
+  private final ServiceCategoryRepository repository;
 
-    public ListServiceCategoriesService(ServiceCategoryRepository repository) {
-        this.repository = repository;
-    }
+  public ListServiceCategoriesService(ServiceCategoryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ServiceCategoryDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ServiceCategoryDto::from).toList();
-    }
+  @Override
+  public List<ServiceCategoryDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(ServiceCategoryDto::from).toList();
+  }
 }

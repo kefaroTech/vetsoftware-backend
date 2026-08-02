@@ -25,65 +25,100 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "product.update")
 @Service
 public class UpdateProductService implements UpdateProductUseCase {
-    private final ProductRepository repository;
-    private final CompanyQueryPort companyQueryPort;
-    private final ProductCategoryQueryPort productCategoryQueryPort;
-    private final TaxQueryPort taxQueryPort;
-    private final SupplierQueryPort supplierQueryPort;
-    private final UnitMeasureQueryPort unitMeasureQueryPort;
-    private final DefaultProductPresentationPort defaultPresentationPort;
+  private final ProductRepository repository;
+  private final CompanyQueryPort companyQueryPort;
+  private final ProductCategoryQueryPort productCategoryQueryPort;
+  private final TaxQueryPort taxQueryPort;
+  private final SupplierQueryPort supplierQueryPort;
+  private final UnitMeasureQueryPort unitMeasureQueryPort;
+  private final DefaultProductPresentationPort defaultPresentationPort;
 
-    public UpdateProductService(ProductRepository repository,
-                                CompanyQueryPort companyQueryPort,
-                                ProductCategoryQueryPort productCategoryQueryPort,
-                                TaxQueryPort taxQueryPort,
-                                SupplierQueryPort supplierQueryPort,
-                                UnitMeasureQueryPort unitMeasureQueryPort,
-                                DefaultProductPresentationPort defaultPresentationPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-        this.productCategoryQueryPort = productCategoryQueryPort;
-        this.taxQueryPort = taxQueryPort;
-        this.supplierQueryPort = supplierQueryPort;
-        this.unitMeasureQueryPort = unitMeasureQueryPort;
-        this.defaultPresentationPort = defaultPresentationPort;
-    }
+  public UpdateProductService(
+      ProductRepository repository,
+      CompanyQueryPort companyQueryPort,
+      ProductCategoryQueryPort productCategoryQueryPort,
+      TaxQueryPort taxQueryPort,
+      SupplierQueryPort supplierQueryPort,
+      UnitMeasureQueryPort unitMeasureQueryPort,
+      DefaultProductPresentationPort defaultPresentationPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+    this.productCategoryQueryPort = productCategoryQueryPort;
+    this.taxQueryPort = taxQueryPort;
+    this.supplierQueryPort = supplierQueryPort;
+    this.unitMeasureQueryPort = unitMeasureQueryPort;
+    this.defaultPresentationPort = defaultPresentationPort;
+  }
 
-    @Override
-    @Transactional
-    public ProductDto execute(UpdateProductCommand command) {
-        Product product = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public ProductDto execute(UpdateProductCommand command) {
+    Product product =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProductNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndCodeExcludingId(command.companyId(), command.code(), command.id())) {
-            throw new ProductCodeAlreadyExistsException(command.code());
-        }
-        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
-            throw new ProductNameAlreadyExistsException(command.name());
-        }
-        ProductCategoryRef productCategory = productCategoryQueryPort.findById(command.productCategoryId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("ProductCategory not found: " + command.productCategoryId()));
-        TaxRef tax = command.taxId() == null ? null
-            : taxQueryPort.findById(command.taxId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Tax not found: " + command.taxId()));
-        SupplierRef supplier = command.supplierId() == null ? null
-            : supplierQueryPort.findById(command.supplierId(), command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Supplier not found: " + command.supplierId()));
-        if (!unitMeasureQueryPort.exists(command.baseUnitMeasureCode())) {
-            throw new IllegalArgumentException(
-                "Unit measure not found: " + command.baseUnitMeasureCode());
-        }
-
-        product.update(
-            command.name(), command.code(), command.salePrice(), command.baseUnitMeasureCode(),
-            command.provider(), supplier,
-            command.taxTreatment(), command.notes(),
-            productCategory, tax, company, command.updatedBy(), command.version());
-        Product saved = repository.save(product);
-        defaultPresentationPort.synchronizeDefault(
-            saved.getId(), command.companyId(), command.baseUnitMeasureCode(),
-            command.salePrice(), command.updatedBy());
-        return ProductDto.from(saved);
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndCodeExcludingId(
+        command.companyId(), command.code(), command.id())) {
+      throw new ProductCodeAlreadyExistsException(command.code());
     }
+    if (repository.existsByCompanyIdAndNameExcludingId(
+        command.companyId(), command.name(), command.id())) {
+      throw new ProductNameAlreadyExistsException(command.name());
+    }
+    ProductCategoryRef productCategory =
+        productCategoryQueryPort
+            .findById(command.productCategoryId(), command.companyId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "ProductCategory not found: " + command.productCategoryId()));
+    TaxRef tax =
+        command.taxId() == null
+            ? null
+            : taxQueryPort
+                .findById(command.taxId(), command.companyId())
+                .orElseThrow(
+                    () -> new IllegalArgumentException("Tax not found: " + command.taxId()));
+    SupplierRef supplier =
+        command.supplierId() == null
+            ? null
+            : supplierQueryPort
+                .findById(command.supplierId(), command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Supplier not found: " + command.supplierId()));
+    if (!unitMeasureQueryPort.exists(command.baseUnitMeasureCode())) {
+      throw new IllegalArgumentException(
+          "Unit measure not found: " + command.baseUnitMeasureCode());
+    }
+
+    product.update(
+        command.name(),
+        command.code(),
+        command.salePrice(),
+        command.baseUnitMeasureCode(),
+        command.provider(),
+        supplier,
+        command.taxTreatment(),
+        command.notes(),
+        productCategory,
+        tax,
+        company,
+        command.updatedBy(),
+        command.version());
+    Product saved = repository.save(product);
+    defaultPresentationPort.synchronizeDefault(
+        saved.getId(),
+        command.companyId(),
+        command.baseUnitMeasureCode(),
+        command.salePrice(),
+        command.updatedBy());
+    return ProductDto.from(saved);
+  }
 }

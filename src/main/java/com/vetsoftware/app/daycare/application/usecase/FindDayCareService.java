@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "day.care.find")
 @Service
 public class FindDayCareService implements FindDayCareUseCase {
-    private final DayCareRepository repository;
+  private final DayCareRepository repository;
 
-    public FindDayCareService(DayCareRepository repository) {
-        this.repository = repository;
-    }
+  public FindDayCareService(DayCareRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public DayCareDto findById(Long id, Long companyId) {
-        return DayCareDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public DayCareDto findById(Long id, Long companyId) {
+    return DayCareDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new DayCareNotFoundException(id)));
-    }
+  }
 }

@@ -14,23 +14,23 @@ import org.springframework.stereotype.Service;
 @Observed(name = "role.list.by.company")
 @Service
 public class ListRolesByCompanyService implements ListRolesByCompanyUseCase {
-    private final RoleRepository repository;
-    private final RolePermissionsForRolesQueryPort permissionsPort;
+  private final RoleRepository repository;
+  private final RolePermissionsForRolesQueryPort permissionsPort;
 
-    public ListRolesByCompanyService(RoleRepository repository,
-                                     RolePermissionsForRolesQueryPort permissionsPort) {
-        this.repository = repository;
-        this.permissionsPort = permissionsPort;
-    }
+  public ListRolesByCompanyService(
+      RoleRepository repository, RolePermissionsForRolesQueryPort permissionsPort) {
+    this.repository = repository;
+    this.permissionsPort = permissionsPort;
+  }
 
-    @Override
-    public List<RoleDto> listByCompany(Long companyId) {
-        List<Role> roles = repository.findAllByCompanyId(companyId);
-        if (roles.isEmpty()) return List.of();
-        Map<Long, List<PermissionSummaryDto>> permsByRole =
-            permissionsPort.findByRoleIds(roles.stream().map(Role::getId).toList());
-        return roles.stream()
-            .map(r -> RoleDto.from(r, permsByRole.getOrDefault(r.getId(), List.of())))
-            .toList();
-    }
+  @Override
+  public List<RoleDto> listByCompany(Long companyId) {
+    List<Role> roles = repository.findAllByCompanyId(companyId);
+    if (roles.isEmpty()) return List.of();
+    Map<Long, List<PermissionSummaryDto>> permsByRole =
+        permissionsPort.findByRoleIds(roles.stream().map(Role::getId).toList());
+    return roles.stream()
+        .map(r -> RoleDto.from(r, permsByRole.getOrDefault(r.getId(), List.of())))
+        .toList();
+  }
 }

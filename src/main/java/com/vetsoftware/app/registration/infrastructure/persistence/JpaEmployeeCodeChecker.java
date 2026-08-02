@@ -6,16 +6,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaEmployeeCodeChecker implements EmployeeCodeChecker {
-    private final EmployeeJpaRepository jpaRepository;
+  private final EmployeeJpaRepository jpaRepository;
 
-    public JpaEmployeeCodeChecker(EmployeeJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaEmployeeCodeChecker(EmployeeJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean exists(String employeeCode) {
-        // Cuenta todas las filas (incluidas las de empleados desactivados) para que la disponibilidad
-        // coincida con la constraint unique de la BD y no falle el INSERT posterior.
-        return jpaRepository.countByEmployeeCodeAllRows(employeeCode) > 0;
-    }
+  @Override
+  public boolean exists(String employeeCode) {
+    // Cuenta todas las filas (incluidas las de empleados desactivados) para que la disponibilidad
+    // coincida con la constraint unique de la BD y no falle el INSERT posterior.
+    return jpaRepository.countByEmployeeCodeAllRows(employeeCode) > 0;
+  }
 }

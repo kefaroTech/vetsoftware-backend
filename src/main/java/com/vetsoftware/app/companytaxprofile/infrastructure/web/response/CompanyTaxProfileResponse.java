@@ -6,17 +6,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record CompanyTaxProfileResponse(
-        Long id,
-        CompanySummary company,
-        CompanyDocumentType companyDocumentType,
-        String companyDocumentId,
-        String companyDocumentVerificationDigit,
-        String legalName,
-        TaxRegime taxRegime,
-        String fiscalEmail,
-        String commercialName,
-        EconomicActivitySummary economicActivity,
-        List<String> responsibilities,
-        LocalDateTime createdDate,
-        boolean enabled
-) {}
+    Long id,
+    CompanySummary company,
+    CompanyDocumentType companyDocumentType,
+    String companyDocumentId,
+    String companyDocumentVerificationDigit,
+    String legalName,
+    TaxRegime taxRegime,
+    String fiscalEmail,
+    String commercialName,
+    EconomicActivitySummary economicActivity,
+    List<String> responsibilities,
+    LocalDateTime createdDate,
+    boolean enabled) {}

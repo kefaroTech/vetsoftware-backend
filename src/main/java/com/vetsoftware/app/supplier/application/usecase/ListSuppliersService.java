@@ -11,21 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.list.by.company")
 @Service
 public class ListSuppliersService implements ListSuppliersUseCase {
-    private final SupplierRepository repository;
+  private final SupplierRepository repository;
 
-    public ListSuppliersService(SupplierRepository repository) {
-        this.repository = repository;
-    }
+  public ListSuppliersService(SupplierRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<SupplierDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(SupplierDto::from).toList();
-    }
+  @Override
+  public List<SupplierDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(SupplierDto::from).toList();
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<SupplierDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí dentro.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(SupplierDto::from).toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<SupplierDto> listDisabledByCompany(Long companyId) {
+    // readOnly tx: la query nativa trae los pausados y el mapper hidrata sus asociaciones LAZY aquí
+    // dentro.
+    return repository.findAllDisabledByCompanyId(companyId).stream()
+        .map(SupplierDto::from)
+        .toList();
+  }
 }

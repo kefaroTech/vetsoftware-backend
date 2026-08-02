@@ -11,21 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "tax.list")
 @Service
 public class ListTaxesService implements ListTaxesUseCase {
-    private final TaxRepository repository;
+  private final TaxRepository repository;
 
-    public ListTaxesService(TaxRepository repository) {
-        this.repository = repository;
-    }
+  public ListTaxesService(TaxRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<TaxDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(TaxDto::from).toList();
-    }
+  @Override
+  public List<TaxDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(TaxDto::from).toList();
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaxDto> listDisabledByCompany(Long companyId) {
-        // readOnly tx: la query nativa trae los pausados y el mapper hidrata la asociación company LAZY aquí.
-        return repository.findAllDisabledByCompanyId(companyId).stream().map(TaxDto::from).toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<TaxDto> listDisabledByCompany(Long companyId) {
+    // readOnly tx: la query nativa trae los pausados y el mapper hidrata la asociación company LAZY
+    // aquí.
+    return repository.findAllDisabledByCompanyId(companyId).stream().map(TaxDto::from).toList();
+  }
 }

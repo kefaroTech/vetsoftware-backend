@@ -7,42 +7,41 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EmployeeJpaMapper {
-    public EmployeeJpaEntity toJpa(Employee employee, CompanyJpaEntity company) {
-        EmployeeJpaEntity entity = new EmployeeJpaEntity();
-        entity.setId(employee.getId());
-        entity.setEmployeeCode(employee.getEmployeeCode());
-        entity.setHashPassword(employee.getHashPassword());
-        entity.setName(employee.getName());
-        entity.setEmail(employee.getEmail());
-        entity.setCompany(company);
-        entity.setCreatedDate(employee.getCreatedDate());
-        entity.setEnabled(employee.isEnabled());
-        entity.setEmailVerified(employee.isEmailVerified());
-        entity.setMustChangePassword(employee.isMustChangePassword());
-        entity.setStatus(employee.getStatus());
-        entity.setAuthVersion(employee.getAuthVersion());
-        return entity;
-    }
+  public EmployeeJpaEntity toJpa(Employee employee, CompanyJpaEntity company) {
+    EmployeeJpaEntity entity = new EmployeeJpaEntity();
+    entity.setId(employee.getId());
+    entity.setEmployeeCode(employee.getEmployeeCode());
+    entity.setHashPassword(employee.getHashPassword());
+    entity.setName(employee.getName());
+    entity.setEmail(employee.getEmail());
+    entity.setCompany(company);
+    entity.setCreatedDate(employee.getCreatedDate());
+    entity.setEnabled(employee.isEnabled());
+    entity.setEmailVerified(employee.isEmailVerified());
+    entity.setMustChangePassword(employee.isMustChangePassword());
+    entity.setStatus(employee.getStatus());
+    entity.setAuthVersion(employee.getAuthVersion());
+    return entity;
+  }
 
-    public Employee toDomain(EmployeeJpaEntity entity) {
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity, new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public Employee toDomain(EmployeeJpaEntity entity) {
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(entity, new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public Employee toDomain(EmployeeJpaEntity entity, CompanyRef companyRef) {
-        return new Employee(
-            entity.getId(),
-            entity.getEmployeeCode(),
-            entity.getHashPassword(),
-            entity.getName(),
-            entity.getEmail(),
-            companyRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.isEmailVerified(),
-            entity.isMustChangePassword(),
-            entity.getStatus(),
-            entity.getAuthVersion()
-        );
-    }
+  public Employee toDomain(EmployeeJpaEntity entity, CompanyRef companyRef) {
+    return new Employee(
+        entity.getId(),
+        entity.getEmployeeCode(),
+        entity.getHashPassword(),
+        entity.getName(),
+        entity.getEmail(),
+        companyRef,
+        entity.getCreatedDate(),
+        entity.isEnabled(),
+        entity.isEmailVerified(),
+        entity.isMustChangePassword(),
+        entity.getStatus(),
+        entity.getAuthVersion());
+  }
 }

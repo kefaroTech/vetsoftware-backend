@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "animal.color.update")
 @Service
 public class UpdateAnimalColorService implements UpdateAnimalColorUseCase {
-    private final AnimalColorRepository repository;
+  private final AnimalColorRepository repository;
 
-    public UpdateAnimalColorService(AnimalColorRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateAnimalColorService(AnimalColorRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public AnimalColorDto execute(UpdateAnimalColorCommand command) {
-        AnimalColor color = repository.findById(command.id())
-                .orElseThrow(() -> new AnimalColorNotFoundException(command.id()));
-        color.update(command.name());
-        return AnimalColorDto.from(repository.save(color));
-    }
+  @Override
+  @Transactional
+  public AnimalColorDto execute(UpdateAnimalColorCommand command) {
+    AnimalColor color =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new AnimalColorNotFoundException(command.id()));
+    color.update(command.name());
+    return AnimalColorDto.from(repository.save(color));
+  }
 }

@@ -11,20 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medication.schedule.suspend.pending")
 @Service
 public class SuspendPendingMedicationSchedulesService
-        implements SuspendPendingMedicationSchedulesUseCase {
-    private final MedicationScheduleRepository repository;
+    implements SuspendPendingMedicationSchedulesUseCase {
+  private final MedicationScheduleRepository repository;
 
-    public SuspendPendingMedicationSchedulesService(MedicationScheduleRepository repository) {
-        this.repository = repository;
-    }
+  public SuspendPendingMedicationSchedulesService(MedicationScheduleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public List<MedicationScheduleDto> execute(Long hospitalizationMedicationId) {
-        repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId);
-        // Quedan solo las aplicadas (enabled=true).
-        return repository.findByHospitalizationMedicationId(hospitalizationMedicationId).stream()
-            .map(MedicationScheduleDto::from)
-            .toList();
-    }
+  @Override
+  @Transactional
+  public List<MedicationScheduleDto> execute(Long hospitalizationMedicationId) {
+    repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId);
+    // Quedan solo las aplicadas (enabled=true).
+    return repository.findByHospitalizationMedicationId(hospitalizationMedicationId).stream()
+        .map(MedicationScheduleDto::from)
+        .toList();
+  }
 }

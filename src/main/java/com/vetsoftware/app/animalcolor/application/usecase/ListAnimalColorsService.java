@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "animal.color.list")
 @Service
 public class ListAnimalColorsService implements ListAnimalColorsUseCase {
-    private final AnimalColorRepository repository;
+  private final AnimalColorRepository repository;
 
-    public ListAnimalColorsService(AnimalColorRepository repository) {
-        this.repository = repository;
-    }
+  public ListAnimalColorsService(AnimalColorRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<AnimalColorDto> listAll() {
-        return repository.findAll().stream().map(AnimalColorDto::from).toList();
-    }
+  @Override
+  public List<AnimalColorDto> listAll() {
+    return repository.findAll().stream().map(AnimalColorDto::from).toList();
+  }
 }

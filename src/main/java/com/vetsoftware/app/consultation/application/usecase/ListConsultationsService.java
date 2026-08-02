@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "consultation.list")
 @Service
 public class ListConsultationsService implements ListConsultationsUseCase {
-    private final ConsultationRepository repository;
+  private final ConsultationRepository repository;
 
-    public ListConsultationsService(ConsultationRepository repository) {
-        this.repository = repository;
-    }
+  public ListConsultationsService(ConsultationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<ConsultationDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ConsultationDto::from).toList();
-    }
+  @Override
+  public List<ConsultationDto> listAll(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(ConsultationDto::from).toList();
+  }
 }

@@ -5,6 +5,7 @@ import com.vetsoftware.app.inventory.application.dto.PurchasesReport;
 
 /** Renderiza los reportes de inventario a PDF. */
 public interface InventoryReportPdfPort {
-    byte[] renderKardex(KardexReport report);
-    byte[] renderPurchases(PurchasesReport report);
+  byte[] renderKardex(KardexReport report);
+
+  byte[] renderPurchases(PurchasesReport report);
 }

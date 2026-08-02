@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmployeeEmailVerifierAdapter implements EmployeeEmailVerifier {
 
-    private final VerifyEmployeeEmailUseCase verifyEmployeeEmailUseCase;
+  private final VerifyEmployeeEmailUseCase verifyEmployeeEmailUseCase;
 
-    public EmployeeEmailVerifierAdapter(VerifyEmployeeEmailUseCase verifyEmployeeEmailUseCase) {
-        this.verifyEmployeeEmailUseCase = verifyEmployeeEmailUseCase;
-    }
+  public EmployeeEmailVerifierAdapter(VerifyEmployeeEmailUseCase verifyEmployeeEmailUseCase) {
+    this.verifyEmployeeEmailUseCase = verifyEmployeeEmailUseCase;
+  }
 
-    @Override
-    public void verify(Long employeeId) {
-        verifyEmployeeEmailUseCase.execute(employeeId);
-    }
+  @Override
+  public void verify(Long employeeId) {
+    verifyEmployeeEmailUseCase.execute(employeeId);
+  }
 }

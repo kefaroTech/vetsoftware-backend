@@ -13,17 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExportArqueoService implements ExportArqueoUseCase {
 
-    private final CashSessionRepository repository;
+  private final CashSessionRepository repository;
 
-    public ExportArqueoService(CashSessionRepository repository) {
-        this.repository = repository;
-    }
+  public ExportArqueoService(CashSessionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CashArqueoReport arqueo(Long companyId, Long sessionId) {
-        return repository.findByIdAndCompany(sessionId, companyId)
-            .map(CashArqueoReport::from)
-            .orElseThrow(() -> new CashSessionNotFoundException(sessionId));
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public CashArqueoReport arqueo(Long companyId, Long sessionId) {
+    return repository
+        .findByIdAndCompany(sessionId, companyId)
+        .map(CashArqueoReport::from)
+        .orElseThrow(() -> new CashSessionNotFoundException(sessionId));
+  }
 }

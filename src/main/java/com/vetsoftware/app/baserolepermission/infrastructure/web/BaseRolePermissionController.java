@@ -24,71 +24,75 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/base-role-permissions")
 public class BaseRolePermissionController {
-    private final CreateBaseRolePermissionUseCase createUseCase;
-    private final UpdateBaseRolePermissionUseCase updateUseCase;
-    private final FindBaseRolePermissionUseCase findUseCase;
-    private final ListBaseRolePermissionsUseCase listUseCase;
-    private final DeleteBaseRolePermissionUseCase deleteUseCase;
-    private final ReactivateBaseRolePermissionUseCase reactivateUseCase;
+  private final CreateBaseRolePermissionUseCase createUseCase;
+  private final UpdateBaseRolePermissionUseCase updateUseCase;
+  private final FindBaseRolePermissionUseCase findUseCase;
+  private final ListBaseRolePermissionsUseCase listUseCase;
+  private final DeleteBaseRolePermissionUseCase deleteUseCase;
+  private final ReactivateBaseRolePermissionUseCase reactivateUseCase;
 
-    public BaseRolePermissionController(CreateBaseRolePermissionUseCase createUseCase,
-                                         UpdateBaseRolePermissionUseCase updateUseCase,
-                                         FindBaseRolePermissionUseCase findUseCase,
-                                         ListBaseRolePermissionsUseCase listUseCase,
-                                         DeleteBaseRolePermissionUseCase deleteUseCase,
-                                         ReactivateBaseRolePermissionUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public BaseRolePermissionController(
+      CreateBaseRolePermissionUseCase createUseCase,
+      UpdateBaseRolePermissionUseCase updateUseCase,
+      FindBaseRolePermissionUseCase findUseCase,
+      ListBaseRolePermissionsUseCase listUseCase,
+      DeleteBaseRolePermissionUseCase deleteUseCase,
+      ReactivateBaseRolePermissionUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public BaseRolePermissionResponse create(@Valid @RequestBody CreateBaseRolePermissionRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public BaseRolePermissionResponse create(
+      @Valid @RequestBody CreateBaseRolePermissionRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateBaseRolePermissionCommand(request.baseRoleId(), request.basePermissionId())));
-    }
+  }
 
-    @GetMapping
-    public List<BaseRolePermissionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<BaseRolePermissionResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public BaseRolePermissionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public BaseRolePermissionResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public BaseRolePermissionResponse update(@PathVariable Long id,
-                                              @Valid @RequestBody UpdateBaseRolePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateBaseRolePermissionCommand(id, request.baseRoleId(), request.basePermissionId())));
-    }
+  @PutMapping("/{id}")
+  public BaseRolePermissionResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateBaseRolePermissionRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateBaseRolePermissionCommand(
+                id, request.baseRoleId(), request.basePermissionId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public BaseRolePermissionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public BaseRolePermissionResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {
-        BaseRoleSummaryDto br = dto.baseRole();
-        BasePermissionSummaryDto bp = dto.basePermission();
-        return new BaseRolePermissionResponse(
-            dto.id(),
-            new BaseRoleSummary(br.id(), br.name(), br.code()),
-            new BasePermissionSummary(bp.id(), bp.name(), bp.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
-    }
+  private BaseRolePermissionResponse toResponse(BaseRolePermissionDto dto) {
+    BaseRoleSummaryDto br = dto.baseRole();
+    BasePermissionSummaryDto bp = dto.basePermission();
+    return new BaseRolePermissionResponse(
+        dto.id(),
+        new BaseRoleSummary(br.id(), br.name(), br.code()),
+        new BasePermissionSummary(bp.id(), bp.name(), bp.code()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

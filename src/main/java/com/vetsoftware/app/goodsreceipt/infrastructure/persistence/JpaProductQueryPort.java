@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("goodsReceiptJpaProductQueryPort")
 public class JpaProductQueryPort implements ProductQueryPort {
-    private final ProductJpaRepository productJpaRepository;
+  private final ProductJpaRepository productJpaRepository;
 
-    public JpaProductQueryPort(ProductJpaRepository productJpaRepository) {
-        this.productJpaRepository = productJpaRepository;
-    }
+  public JpaProductQueryPort(ProductJpaRepository productJpaRepository) {
+    this.productJpaRepository = productJpaRepository;
+  }
 
-    @Override
-    public Optional<ProductRef> findById(Long productId, Long companyId) {
-        return productJpaRepository.findByIdAndCompany_Id(productId, companyId)
-            .map(e -> new ProductRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<ProductRef> findById(Long productId, Long companyId) {
+    return productJpaRepository
+        .findByIdAndCompany_Id(productId, companyId)
+        .map(e -> new ProductRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

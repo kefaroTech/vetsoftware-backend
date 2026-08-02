@@ -22,30 +22,38 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class FindBranchServiceTest {
 
-    @Mock private BranchRepository repository;
-    @InjectMocks private FindBranchService service;
+  @Mock private BranchRepository repository;
+  @InjectMocks private FindBranchService service;
 
-    @Test
-    void devuelve_dto_cuando_pertenece_a_la_empresa() {
-        Branch branch = new Branch(3L, "Sede Norte", "NORTE", "addr", "phone",
-            new CityRef(5L, "Bogotá"), new CompanyRef(9L, "Vet SAS", "900123456"),
-            LocalDateTime.of(2020, 1, 1, 10, 0), true);
-        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(branch));
+  @Test
+  void devuelve_dto_cuando_pertenece_a_la_empresa() {
+    Branch branch =
+        new Branch(
+            3L,
+            "Sede Norte",
+            "NORTE",
+            "addr",
+            "phone",
+            new CityRef(5L, "Bogotá"),
+            new CompanyRef(9L, "Vet SAS", "900123456"),
+            LocalDateTime.of(2020, 1, 1, 10, 0),
+            true);
+    when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(branch));
 
-        BranchDto dto = service.findById(3L, 9L);
+    BranchDto dto = service.findById(3L, 9L);
 
-        assertThat(dto.id()).isEqualTo(3L);
-        assertThat(dto.code()).isEqualTo("NORTE");
-        assertThat(dto.city().name()).isEqualTo("Bogotá");
-        assertThat(dto.active()).isTrue();
-    }
+    assertThat(dto.id()).isEqualTo(3L);
+    assertThat(dto.code()).isEqualTo("NORTE");
+    assertThat(dto.city().name()).isEqualTo("Bogotá");
+    assertThat(dto.active()).isTrue();
+  }
 
-    @Test
-    void lanza_cuando_no_existe_o_es_de_otra_empresa() {
-        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
+  @Test
+  void lanza_cuando_no_existe_o_es_de_otra_empresa() {
+    when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findById(3L, 9L))
-            .isInstanceOf(BranchNotFoundException.class)
-            .hasMessageContaining("3");
-    }
+    assertThatThrownBy(() -> service.findById(3L, 9L))
+        .isInstanceOf(BranchNotFoundException.class)
+        .hasMessageContaining("3");
+  }
 }

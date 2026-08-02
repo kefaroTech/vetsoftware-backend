@@ -13,25 +13,37 @@ import org.springframework.stereotype.Service;
 @Observed(name = "dian.provider.config.create")
 @Service
 public class CreateDianProviderConfigService implements CreateDianProviderConfigUseCase {
-    private final DianProviderConfigRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final DianProviderConfigRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateDianProviderConfigService(DianProviderConfigRepository repository,
-                                           CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateDianProviderConfigService(
+      DianProviderConfigRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public DianProviderConfigDto execute(CreateDianProviderConfigCommand command) {
-        if (repository.findByCompanyId(command.companyId()).isPresent()) {
-            throw new IllegalStateException("La empresa ya tiene una configuracion de proveedor DIAN.");
-        }
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        DianProviderConfig config = DianProviderConfig.create(company, command.provider(),
-                command.baseUrl(), command.clientId(), command.clientSecret(), command.username(),
-                command.password(), command.apiToken(), command.webhookSecret(), command.numberingProviderRef());
-        return DianProviderConfigDto.from(repository.save(config));
+  @Override
+  public DianProviderConfigDto execute(CreateDianProviderConfigCommand command) {
+    if (repository.findByCompanyId(command.companyId()).isPresent()) {
+      throw new IllegalStateException("La empresa ya tiene una configuracion de proveedor DIAN.");
     }
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    DianProviderConfig config =
+        DianProviderConfig.create(
+            company,
+            command.provider(),
+            command.baseUrl(),
+            command.clientId(),
+            command.clientSecret(),
+            command.username(),
+            command.password(),
+            command.apiToken(),
+            command.webhookSecret(),
+            command.numberingProviderRef());
+    return DianProviderConfigDto.from(repository.save(config));
+  }
 }

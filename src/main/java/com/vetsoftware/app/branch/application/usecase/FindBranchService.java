@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "branch.find")
 @Service
 public class FindBranchService implements FindBranchUseCase {
-    private final BranchRepository repository;
+  private final BranchRepository repository;
 
-    public FindBranchService(BranchRepository repository) {
-        this.repository = repository;
-    }
+  public FindBranchService(BranchRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public BranchDto findById(Long id, Long companyId) {
-        return BranchDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public BranchDto findById(Long id, Long companyId) {
+    return BranchDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new BranchNotFoundException(id)));
-    }
+  }
 }

@@ -4,5 +4,5 @@ import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceRef;
 import java.util.Optional;
 
 public interface ServiceQueryPort {
-    Optional<ServiceRef> findByIdAndCompanyId(Long serviceId, Long companyId);
+  Optional<ServiceRef> findByIdAndCompanyId(Long serviceId, Long companyId);
 }

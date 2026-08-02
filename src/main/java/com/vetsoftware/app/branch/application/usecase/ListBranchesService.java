@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "branch.list")
 @Service
 public class ListBranchesService implements ListBranchesUseCase {
-    private final BranchRepository repository;
+  private final BranchRepository repository;
 
-    public ListBranchesService(BranchRepository repository) {
-        this.repository = repository;
-    }
+  public ListBranchesService(BranchRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<BranchDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(BranchDto::from).toList();
-    }
+  @Override
+  public List<BranchDto> listAll(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(BranchDto::from).toList();
+  }
 }

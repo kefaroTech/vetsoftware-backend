@@ -14,21 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "surgery.change.status")
 @Service
 public class ChangeSurgeryStatusService implements ChangeSurgeryStatusUseCase {
-    private final SurgeryRepository repository;
+  private final SurgeryRepository repository;
 
-    public ChangeSurgeryStatusService(SurgeryRepository repository) {
-        this.repository = repository;
-    }
+  public ChangeSurgeryStatusService(SurgeryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SurgeryDto execute(ChangeSurgeryStatusCommand command) {
-        Surgery surgery = (command.companyId() == null
-            ? repository.findById(command.id())
-            : repository.findByIdAndCompanyId(command.id(), command.companyId()))
+  @Override
+  @Transactional
+  public SurgeryDto execute(ChangeSurgeryStatusCommand command) {
+    Surgery surgery =
+        (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
             .orElseThrow(() -> new SurgeryNotFoundException(command.id()));
-        SurgeryStatus newStatus = SurgeryStatus.valueOf(command.status().toUpperCase());
-        surgery.changeStatus(newStatus);
-        return SurgeryDto.from(repository.save(surgery));
-    }
+    SurgeryStatus newStatus = SurgeryStatus.valueOf(command.status().toUpperCase());
+    surgery.changeStatus(newStatus);
+    return SurgeryDto.from(repository.save(surgery));
+  }
 }

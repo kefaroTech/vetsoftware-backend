@@ -5,6 +5,8 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ChangeAppointmentStatusUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('appointment.update') and @authz.isMyCompany(#command.companyId))")
-    AppointmentDto execute(ChangeAppointmentStatusCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('appointment.update') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  AppointmentDto execute(ChangeAppointmentStatusCommand command);
 }

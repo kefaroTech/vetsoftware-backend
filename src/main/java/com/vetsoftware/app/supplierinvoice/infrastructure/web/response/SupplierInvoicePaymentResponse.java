@@ -6,12 +6,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record SupplierInvoicePaymentResponse(
-        Long id,
-        BigDecimal amount,
-        LocalDate paymentDate,
-        SupplierInvoicePaymentMethod method,
-        String reference,
-        String note,
-        LocalDateTime createdDate,
-        Long createdBy
-) {}
+    Long id,
+    BigDecimal amount,
+    LocalDate paymentDate,
+    SupplierInvoicePaymentMethod method,
+    String reference,
+    String note,
+    LocalDateTime createdDate,
+    Long createdBy) {}

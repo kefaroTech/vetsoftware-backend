@@ -10,14 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "open.account.list.by.company")
 @Service
 public class ListOpenAccountsService implements ListOpenAccountsUseCase {
-    private final OpenAccountRepository repository;
+  private final OpenAccountRepository repository;
 
-    public ListOpenAccountsService(OpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public ListOpenAccountsService(OpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<OpenAccountDto> listByCompany(Long companyId, Long branchId) {
-        return repository.findAllByCompanyId(companyId, branchId).stream().map(OpenAccountDto::from).toList();
-    }
+  @Override
+  public List<OpenAccountDto> listByCompany(Long companyId, Long branchId) {
+    return repository.findAllByCompanyId(companyId, branchId).stream()
+        .map(OpenAccountDto::from)
+        .toList();
+  }
 }

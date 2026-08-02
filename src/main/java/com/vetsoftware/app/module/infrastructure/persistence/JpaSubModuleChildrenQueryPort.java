@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaSubModuleChildrenQueryPort implements SubModuleChildrenQueryPort {
-    private final SubModuleJpaRepository jpaRepository;
+  private final SubModuleJpaRepository jpaRepository;
 
-    public JpaSubModuleChildrenQueryPort(SubModuleJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaSubModuleChildrenQueryPort(SubModuleJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByModuleId(Long parentId) {
-        return jpaRepository.existsByModule_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByModuleId(Long parentId) {
+    return jpaRepository.existsByModule_Id(parentId);
+  }
 }

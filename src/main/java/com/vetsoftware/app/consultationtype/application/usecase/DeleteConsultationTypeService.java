@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "consultation.type.delete")
 @Service
 public class DeleteConsultationTypeService implements DeleteConsultationTypeUseCase {
-    private final ConsultationTypeRepository repository;
-    private final ConsultationChildrenQueryPort consultationChildrenQueryPort;
+  private final ConsultationTypeRepository repository;
+  private final ConsultationChildrenQueryPort consultationChildrenQueryPort;
 
-    public DeleteConsultationTypeService(
-            ConsultationTypeRepository repository,
-            ConsultationChildrenQueryPort consultationChildrenQueryPort) {
-        this.repository = repository;
-        this.consultationChildrenQueryPort = consultationChildrenQueryPort;
-    }
+  public DeleteConsultationTypeService(
+      ConsultationTypeRepository repository,
+      ConsultationChildrenQueryPort consultationChildrenQueryPort) {
+    this.repository = repository;
+    this.consultationChildrenQueryPort = consultationChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new ConsultationTypeNotFoundException(id));
-        if (consultationChildrenQueryPort.existsActiveByConsultationTypeId(id)) {
-            throw new ConsultationTypeHasActiveChildrenException(id, "consultation");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new ConsultationTypeNotFoundException(id));
+    if (consultationChildrenQueryPort.existsActiveByConsultationTypeId(id)) {
+      throw new ConsultationTypeHasActiveChildrenException(id, "consultation");
     }
+    repository.delete(id);
+  }
 }

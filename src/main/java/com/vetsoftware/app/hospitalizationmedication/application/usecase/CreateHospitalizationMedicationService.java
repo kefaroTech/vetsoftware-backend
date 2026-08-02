@@ -17,27 +17,38 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.medication.create")
 @Service
-public class CreateHospitalizationMedicationService implements CreateHospitalizationMedicationUseCase {
-    private final HospitalizationMedicationRepository repository;
-    private final HospitalizationQueryPort hospitalizationQueryPort;
-    private final EmployeeQueryPort employeeQueryPort;
+public class CreateHospitalizationMedicationService
+    implements CreateHospitalizationMedicationUseCase {
+  private final HospitalizationMedicationRepository repository;
+  private final HospitalizationQueryPort hospitalizationQueryPort;
+  private final EmployeeQueryPort employeeQueryPort;
 
-    public CreateHospitalizationMedicationService(HospitalizationMedicationRepository repository,
-                                                  HospitalizationQueryPort hospitalizationQueryPort,
-                                                  EmployeeQueryPort employeeQueryPort) {
-        this.repository = repository;
-        this.hospitalizationQueryPort = hospitalizationQueryPort;
-        this.employeeQueryPort = employeeQueryPort;
-    }
+  public CreateHospitalizationMedicationService(
+      HospitalizationMedicationRepository repository,
+      HospitalizationQueryPort hospitalizationQueryPort,
+      EmployeeQueryPort employeeQueryPort) {
+    this.repository = repository;
+    this.hospitalizationQueryPort = hospitalizationQueryPort;
+    this.employeeQueryPort = employeeQueryPort;
+  }
 
-    @Override
-    public HospitalizationMedicationDto execute(CreateHospitalizationMedicationCommand command) {
-        HospitalizationRef hospitalization = hospitalizationQueryPort.findById(command.hospitalizationId())
-            .orElseThrow(() -> new IllegalArgumentException("Hospitalization not found: " + command.hospitalizationId()));
-        EmployeeRef createdBy = employeeQueryPort.findById(command.createdById())
-            .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + command.createdById()));
+  @Override
+  public HospitalizationMedicationDto execute(CreateHospitalizationMedicationCommand command) {
+    HospitalizationRef hospitalization =
+        hospitalizationQueryPort
+            .findById(command.hospitalizationId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Hospitalization not found: " + command.hospitalizationId()));
+    EmployeeRef createdBy =
+        employeeQueryPort
+            .findById(command.createdById())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.createdById()));
 
-        HospitalizationMedication medication = HospitalizationMedication.create(
+    HospitalizationMedication medication =
+        HospitalizationMedication.create(
             command.name(),
             command.dose(),
             parseFrequency(command.frequency()),
@@ -49,18 +60,18 @@ public class CreateHospitalizationMedicationService implements CreateHospitaliza
             command.notes(),
             hospitalization,
             createdBy);
-        return HospitalizationMedicationDto.from(repository.save(medication));
-    }
+    return HospitalizationMedicationDto.from(repository.save(medication));
+  }
 
-    private static Frequency parseFrequency(String s) {
-        return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
-    }
+  private static Frequency parseFrequency(String s) {
+    return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
+  }
 
-    private static GuidelineType parseGuidelineType(String s) {
-        return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
-    }
+  private static GuidelineType parseGuidelineType(String s) {
+    return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
+  }
 
-    private static DurationMeasure parseDurationMeasure(String s) {
-        return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
-    }
+  private static DurationMeasure parseDurationMeasure(String s) {
+    return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
+  }
 }

@@ -13,27 +13,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "role.delete")
 @Service
 public class DeleteRoleService implements DeleteRoleUseCase {
-    private final RoleRepository repository;
-    private final EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort;
-    private final RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort;
+  private final RoleRepository repository;
+  private final EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort;
+  private final RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort;
 
-    public DeleteRoleService(
-            RoleRepository repository,
-            EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort,
-            RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort) {
-        this.repository = repository;
-        this.employeeRoleChildrenQueryPort = employeeRoleChildrenQueryPort;
-        this.rolePermissionChildrenCascadePort = rolePermissionChildrenCascadePort;
-    }
+  public DeleteRoleService(
+      RoleRepository repository,
+      EmployeeRoleChildrenQueryPort employeeRoleChildrenQueryPort,
+      RolePermissionChildrenCascadePort rolePermissionChildrenCascadePort) {
+    this.repository = repository;
+    this.employeeRoleChildrenQueryPort = employeeRoleChildrenQueryPort;
+    this.rolePermissionChildrenCascadePort = rolePermissionChildrenCascadePort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new RoleNotFoundException(id));
-        if (employeeRoleChildrenQueryPort.existsActiveByRoleId(id)) {
-            throw new RoleHasActiveChildrenException(id, "employeeRole");
-        }
-        rolePermissionChildrenCascadePort.deactivateAllByRoleId(id);
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository.findByIdAndCompanyId(id, companyId).orElseThrow(() -> new RoleNotFoundException(id));
+    if (employeeRoleChildrenQueryPort.existsActiveByRoleId(id)) {
+      throw new RoleHasActiveChildrenException(id, "employeeRole");
     }
+    rolePermissionChildrenCascadePort.deactivateAllByRoleId(id);
+    repository.delete(id);
+  }
 }

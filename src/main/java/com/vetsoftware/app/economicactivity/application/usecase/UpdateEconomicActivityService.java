@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "economic.activity.update")
 @Service
 public class UpdateEconomicActivityService implements UpdateEconomicActivityUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public UpdateEconomicActivityService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateEconomicActivityService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public EconomicActivityDto execute(UpdateEconomicActivityCommand command) {
-        EconomicActivity economicActivity = repository.findById(command.id())
-                .orElseThrow(() -> new EconomicActivityNotFoundException(command.id()));
-        economicActivity.update(command.code(), command.name());
-        return EconomicActivityDto.from(repository.save(economicActivity));
-    }
+  @Override
+  @Transactional
+  public EconomicActivityDto execute(UpdateEconomicActivityCommand command) {
+    EconomicActivity economicActivity =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new EconomicActivityNotFoundException(command.id()));
+    economicActivity.update(command.code(), command.name());
+    return EconomicActivityDto.from(repository.save(economicActivity));
+  }
 }

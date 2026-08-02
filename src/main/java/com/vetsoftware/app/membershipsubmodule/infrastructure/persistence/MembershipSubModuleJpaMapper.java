@@ -10,35 +10,31 @@ import org.springframework.stereotype.Component;
 @Component
 public class MembershipSubModuleJpaMapper {
 
-    public MembershipSubModuleJpaEntity toJpa(MembershipSubModule membershipSubModule,
-                                               MembershipJpaEntity membership,
-                                               SubModuleJpaEntity subModule) {
-        MembershipSubModuleJpaEntity entity = new MembershipSubModuleJpaEntity();
-        entity.setId(membershipSubModule.getId());
-        entity.setMembership(membership);
-        entity.setSubModule(subModule);
-        entity.setCreatedDate(membershipSubModule.getCreatedDate());
-        entity.setEnabled(membershipSubModule.isEnabled());
-        return entity;
-    }
+  public MembershipSubModuleJpaEntity toJpa(
+      MembershipSubModule membershipSubModule,
+      MembershipJpaEntity membership,
+      SubModuleJpaEntity subModule) {
+    MembershipSubModuleJpaEntity entity = new MembershipSubModuleJpaEntity();
+    entity.setId(membershipSubModule.getId());
+    entity.setMembership(membership);
+    entity.setSubModule(subModule);
+    entity.setCreatedDate(membershipSubModule.getCreatedDate());
+    entity.setEnabled(membershipSubModule.isEnabled());
+    return entity;
+  }
 
-    public MembershipSubModule toDomain(MembershipSubModuleJpaEntity entity) {
-        MembershipJpaEntity m = entity.getMembership();
-        SubModuleJpaEntity sm = entity.getSubModule();
-        return toDomain(entity,
-            new MembershipRef(m.getId(), m.getName()),
-            new SubModuleRef(sm.getId(), sm.getName(), sm.getCode()));
-    }
+  public MembershipSubModule toDomain(MembershipSubModuleJpaEntity entity) {
+    MembershipJpaEntity m = entity.getMembership();
+    SubModuleJpaEntity sm = entity.getSubModule();
+    return toDomain(
+        entity,
+        new MembershipRef(m.getId(), m.getName()),
+        new SubModuleRef(sm.getId(), sm.getName(), sm.getCode()));
+  }
 
-    public MembershipSubModule toDomain(MembershipSubModuleJpaEntity entity,
-                                         MembershipRef membershipRef,
-                                         SubModuleRef subModuleRef) {
-        return new MembershipSubModule(
-            entity.getId(),
-            membershipRef,
-            subModuleRef,
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
-    }
+  public MembershipSubModule toDomain(
+      MembershipSubModuleJpaEntity entity, MembershipRef membershipRef, SubModuleRef subModuleRef) {
+    return new MembershipSubModule(
+        entity.getId(), membershipRef, subModuleRef, entity.getCreatedDate(), entity.isEnabled());
+  }
 }

@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "dian.provider.config.find")
 @Service
 public class FindDianProviderConfigService implements FindDianProviderConfigUseCase {
-    private final DianProviderConfigRepository repository;
+  private final DianProviderConfigRepository repository;
 
-    public FindDianProviderConfigService(DianProviderConfigRepository repository) {
-        this.repository = repository;
-    }
+  public FindDianProviderConfigService(DianProviderConfigRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public DianProviderConfigDto findByCompany(Long companyId) {
-        return DianProviderConfigDto.from(repository.findByCompanyId(companyId)
-                .orElseThrow(() -> new DianProviderConfigNotFoundException(companyId)));
-    }
+  @Override
+  public DianProviderConfigDto findByCompany(Long companyId) {
+    return DianProviderConfigDto.from(
+        repository
+            .findByCompanyId(companyId)
+            .orElseThrow(() -> new DianProviderConfigNotFoundException(companyId)));
+  }
 }

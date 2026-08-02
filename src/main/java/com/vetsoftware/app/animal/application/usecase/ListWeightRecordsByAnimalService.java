@@ -10,15 +10,16 @@ import org.springframework.stereotype.Service;
 @Observed(name = "weight.record.list.by.animal")
 @Service
 public class ListWeightRecordsByAnimalService implements ListWeightRecordsByAnimalUseCase {
-    private final WeightRecordRepository repository;
+  private final WeightRecordRepository repository;
 
-    public ListWeightRecordsByAnimalService(WeightRecordRepository repository) {
-        this.repository = repository;
-    }
+  public ListWeightRecordsByAnimalService(WeightRecordRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<WeightRecordDto> listByAnimal(Long animalId, Long companyId) {
-        return repository.findByAnimalIdAndCompanyId(animalId, companyId)
-            .stream().map(WeightRecordDto::from).toList();
-    }
+  @Override
+  public List<WeightRecordDto> listByAnimal(Long animalId, Long companyId) {
+    return repository.findByAnimalIdAndCompanyId(animalId, companyId).stream()
+        .map(WeightRecordDto::from)
+        .toList();
+  }
 }

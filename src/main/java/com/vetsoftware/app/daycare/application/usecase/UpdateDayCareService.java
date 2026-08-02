@@ -17,31 +17,46 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "day.care.update")
 @Service
 public class UpdateDayCareService implements UpdateDayCareUseCase {
-    private final DayCareRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final DayCareRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateDayCareService(DayCareRepository repository,
-                                AnimalQueryPort animalQueryPort,
-                                CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateDayCareService(
+      DayCareRepository repository,
+      AnimalQueryPort animalQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public DayCareDto execute(UpdateDayCareCommand command) {
-        DayCare dayCare = repository.findById(command.id())
+  @Override
+  @Transactional
+  public DayCareDto execute(UpdateDayCareCommand command) {
+    DayCare dayCare =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new DayCareNotFoundException(command.id()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    AnimalRef animal =
+        animalQueryPort
+            .findById(command.animalId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        dayCare.update(command.date(), command.startDate(), command.endDate(),
-            command.type(), command.objects(), command.observations(),
-            animal, company);
-        return DayCareDto.from(repository.save(dayCare));
-    }
+    dayCare.update(
+        command.date(),
+        command.startDate(),
+        command.endDate(),
+        command.type(),
+        command.objects(),
+        command.observations(),
+        animal,
+        company);
+    return DayCareDto.from(repository.save(dayCare));
+  }
 }

@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "diagnostic.imaging.reactivate")
 @Service
 public class ReactivateDiagnosticImagingService implements ReactivateDiagnosticImagingUseCase {
-    private final DiagnosticImagingRepository repository;
+  private final DiagnosticImagingRepository repository;
 
-    public ReactivateDiagnosticImagingService(DiagnosticImagingRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateDiagnosticImagingService(DiagnosticImagingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public DiagnosticImagingDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new DiagnosticImagingNotFoundException(id);
-        return DiagnosticImagingDto.from(repository.findById(id)
-            .orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public DiagnosticImagingDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new DiagnosticImagingNotFoundException(id);
+    return DiagnosticImagingDto.from(
+        repository.findById(id).orElseThrow(() -> new DiagnosticImagingNotFoundException(id)));
+  }
 }

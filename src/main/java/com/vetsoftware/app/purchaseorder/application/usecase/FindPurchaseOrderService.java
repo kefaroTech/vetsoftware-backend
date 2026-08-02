@@ -11,16 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.find")
 @Service
 public class FindPurchaseOrderService implements FindPurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public FindPurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public FindPurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PurchaseOrderDto findById(Long id, Long companyId) {
-        return PurchaseOrderDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional(readOnly = true)
+  public PurchaseOrderDto findById(Long id, Long companyId) {
+    return PurchaseOrderDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new PurchaseOrderNotFoundException(id)));
-    }
+  }
 }

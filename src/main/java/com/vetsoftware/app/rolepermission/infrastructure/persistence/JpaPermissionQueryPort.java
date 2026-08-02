@@ -8,21 +8,23 @@ import org.springframework.stereotype.Component;
 
 @Component("rolepermissionJpaPermissionQueryPort")
 public class JpaPermissionQueryPort implements PermissionQueryPort {
-    private final PermissionJpaRepository permissionJpaRepository;
+  private final PermissionJpaRepository permissionJpaRepository;
 
-    public JpaPermissionQueryPort(PermissionJpaRepository permissionJpaRepository) {
-        this.permissionJpaRepository = permissionJpaRepository;
-    }
+  public JpaPermissionQueryPort(PermissionJpaRepository permissionJpaRepository) {
+    this.permissionJpaRepository = permissionJpaRepository;
+  }
 
-    @Override
-    public Optional<PermissionRef> findById(Long permissionId) {
-        return permissionJpaRepository.findById(permissionId)
-            .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<PermissionRef> findById(Long permissionId) {
+    return permissionJpaRepository
+        .findById(permissionId)
+        .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
+  }
 
-    @Override
-    public Optional<PermissionRef> findByIdAndCompanyId(Long permissionId, Long companyId) {
-        return permissionJpaRepository.findByIdAndCompany_Id(permissionId, companyId)
-            .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<PermissionRef> findByIdAndCompanyId(Long permissionId, Long companyId) {
+    return permissionJpaRepository
+        .findByIdAndCompany_Id(permissionId, companyId)
+        .map(e -> new PermissionRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

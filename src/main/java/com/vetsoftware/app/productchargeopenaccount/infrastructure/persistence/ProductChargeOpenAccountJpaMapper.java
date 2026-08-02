@@ -16,87 +16,95 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductChargeOpenAccountJpaMapper {
 
-    public ProductChargeOpenAccountJpaEntity toJpa(ProductChargeOpenAccount charge,
-                                                   AnimalJpaEntity animal,
-                                                   ProductJpaEntity product,
-                                                   TaxJpaEntity tax,
-                                                   OpenAccountJpaEntity openAccount,
-                                                   EmployeeJpaEntity createdBy,
-                                                   EmployeeJpaEntity voidedBy) {
-        ProductChargeOpenAccountJpaEntity entity = new ProductChargeOpenAccountJpaEntity();
-        entity.setId(charge.getId());
-        entity.setAnimal(animal);
-        entity.setProduct(product);
-        entity.setUnitPrice(charge.getUnitPrice());
-        entity.setQuantity(charge.getQuantity());
-        entity.setTax(tax);
-        entity.setHasTax(charge.isHasTax());
-        entity.setTaxPercentage(charge.getTaxPercentage());
-        entity.setTaxName(charge.getTaxName());
-        entity.setTaxScheme(charge.getTaxScheme());
-        entity.setTaxTreatment(charge.getTaxTreatment());
-        entity.setBaseAmount(charge.getBaseAmount());
-        entity.setTaxAmount(charge.getTaxAmount());
-        entity.setTotalAmount(charge.getTotalAmount());
-        entity.setOpenAccount(openAccount);
-        entity.setCreatedBy(createdBy);
-        entity.setCreatedDate(charge.getCreatedDate());
-        entity.setEnabled(charge.isEnabled());
-        entity.setVoided(charge.isVoided());
-        entity.setVoidedBy(voidedBy);
-        entity.setVoidedAt(charge.getVoidedAt());
-        entity.setVoidReason(charge.getVoidReason());
-        entity.setClientRequestId(charge.getClientRequestId());
-        return entity;
-    }
+  public ProductChargeOpenAccountJpaEntity toJpa(
+      ProductChargeOpenAccount charge,
+      AnimalJpaEntity animal,
+      ProductJpaEntity product,
+      TaxJpaEntity tax,
+      OpenAccountJpaEntity openAccount,
+      EmployeeJpaEntity createdBy,
+      EmployeeJpaEntity voidedBy) {
+    ProductChargeOpenAccountJpaEntity entity = new ProductChargeOpenAccountJpaEntity();
+    entity.setId(charge.getId());
+    entity.setAnimal(animal);
+    entity.setProduct(product);
+    entity.setUnitPrice(charge.getUnitPrice());
+    entity.setQuantity(charge.getQuantity());
+    entity.setTax(tax);
+    entity.setHasTax(charge.isHasTax());
+    entity.setTaxPercentage(charge.getTaxPercentage());
+    entity.setTaxName(charge.getTaxName());
+    entity.setTaxScheme(charge.getTaxScheme());
+    entity.setTaxTreatment(charge.getTaxTreatment());
+    entity.setBaseAmount(charge.getBaseAmount());
+    entity.setTaxAmount(charge.getTaxAmount());
+    entity.setTotalAmount(charge.getTotalAmount());
+    entity.setOpenAccount(openAccount);
+    entity.setCreatedBy(createdBy);
+    entity.setCreatedDate(charge.getCreatedDate());
+    entity.setEnabled(charge.isEnabled());
+    entity.setVoided(charge.isVoided());
+    entity.setVoidedBy(voidedBy);
+    entity.setVoidedAt(charge.getVoidedAt());
+    entity.setVoidReason(charge.getVoidReason());
+    entity.setClientRequestId(charge.getClientRequestId());
+    return entity;
+  }
 
-    public ProductChargeOpenAccount toDomain(ProductChargeOpenAccountJpaEntity entity) {
-        AnimalJpaEntity a = entity.getAnimal();
-        ProductJpaEntity p = entity.getProduct();
-        TaxJpaEntity t = entity.getTax();
-        OpenAccountJpaEntity o = entity.getOpenAccount();
-        EmployeeJpaEntity e = entity.getCreatedBy();
-        EmployeeJpaEntity v = entity.getVoidedBy();
-        return toDomain(entity,
-            new AnimalRef(a.getId(), a.getName(), a.getCode()),
-            new ProductRef(p.getId(), p.getName(), p.getCode(), p.getSalePrice()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage(),
+  public ProductChargeOpenAccount toDomain(ProductChargeOpenAccountJpaEntity entity) {
+    AnimalJpaEntity a = entity.getAnimal();
+    ProductJpaEntity p = entity.getProduct();
+    TaxJpaEntity t = entity.getTax();
+    OpenAccountJpaEntity o = entity.getOpenAccount();
+    EmployeeJpaEntity e = entity.getCreatedBy();
+    EmployeeJpaEntity v = entity.getVoidedBy();
+    return toDomain(
+        entity,
+        new AnimalRef(a.getId(), a.getName(), a.getCode()),
+        new ProductRef(p.getId(), p.getName(), p.getCode(), p.getSalePrice()),
+        t == null
+            ? null
+            : new TaxRef(
+                t.getId(),
+                t.getName(),
+                t.getPercentage(),
                 t.getTaxScheme() == null ? null : t.getTaxScheme().name()),
-            new OpenAccountRef(o.getId(), o.getCompany().getId()),
-            e == null ? null : new EmployeeRef(e.getId(), e.getName()),
-            v == null ? null : new EmployeeRef(v.getId(), v.getName()));
-    }
+        new OpenAccountRef(o.getId(), o.getCompany().getId()),
+        e == null ? null : new EmployeeRef(e.getId(), e.getName()),
+        v == null ? null : new EmployeeRef(v.getId(), v.getName()));
+  }
 
-    public ProductChargeOpenAccount toDomain(ProductChargeOpenAccountJpaEntity entity,
-                                             AnimalRef animalRef,
-                                             ProductRef productRef,
-                                             TaxRef taxRef,
-                                             OpenAccountRef openAccountRef,
-                                             EmployeeRef createdByRef,
-                                             EmployeeRef voidedByRef) {
-        return new ProductChargeOpenAccount(
-            entity.getId(),
-            animalRef,
-            productRef,
-            entity.getUnitPrice(),
-            entity.getQuantity(),
-            taxRef,
-            entity.isHasTax(),
-            entity.getTaxPercentage(),
-            entity.getTaxName(),
-            entity.getTaxScheme(),
-            entity.getTaxTreatment(),
-            entity.getBaseAmount(),
-            entity.getTaxAmount(),
-            entity.getTotalAmount(),
-            openAccountRef,
-            createdByRef,
-            entity.getCreatedDate(),
-            entity.isEnabled(),
-            entity.isVoided(),
-            voidedByRef,
-            entity.getVoidedAt(),
-            entity.getVoidReason(),
-            entity.getClientRequestId());
-    }
+  public ProductChargeOpenAccount toDomain(
+      ProductChargeOpenAccountJpaEntity entity,
+      AnimalRef animalRef,
+      ProductRef productRef,
+      TaxRef taxRef,
+      OpenAccountRef openAccountRef,
+      EmployeeRef createdByRef,
+      EmployeeRef voidedByRef) {
+    return new ProductChargeOpenAccount(
+        entity.getId(),
+        animalRef,
+        productRef,
+        entity.getUnitPrice(),
+        entity.getQuantity(),
+        taxRef,
+        entity.isHasTax(),
+        entity.getTaxPercentage(),
+        entity.getTaxName(),
+        entity.getTaxScheme(),
+        entity.getTaxTreatment(),
+        entity.getBaseAmount(),
+        entity.getTaxAmount(),
+        entity.getTotalAmount(),
+        openAccountRef,
+        createdByRef,
+        entity.getCreatedDate(),
+        entity.isEnabled(),
+        entity.isVoided(),
+        voidedByRef,
+        entity.getVoidedAt(),
+        entity.getVoidReason(),
+        entity.getClientRequestId());
+  }
 }

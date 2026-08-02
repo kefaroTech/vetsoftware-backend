@@ -8,10 +8,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record GoodsReceiptLineRequest(
-        @NotNull Long productId,
-        Long purchaseOrderLineId,
-        @Size(max = 60) String lotNumber,
-        LocalDate expireDate,
-        @Positive int quantityReceived,
-        @NotNull @DecimalMin("0.0") BigDecimal unitCost
-) {}
+    @NotNull Long productId,
+    Long purchaseOrderLineId,
+    @Size(max = 60) String lotNumber,
+    LocalDate expireDate,
+    @Positive int quantityReceived,
+    @NotNull @DecimalMin("0.0") BigDecimal unitCost) {}

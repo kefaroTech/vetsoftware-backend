@@ -15,28 +15,44 @@ import org.springframework.stereotype.Service;
 @Observed(name = "medicament.prescription.create")
 @Service
 public class CreateMedicamentPrescriptionService implements CreateMedicamentPrescriptionUseCase {
-    private final MedicamentPrescriptionRepository repository;
-    private final PrescriptionQueryPort prescriptionQueryPort;
-    private final MedicamentQueryPort medicamentQueryPort;
+  private final MedicamentPrescriptionRepository repository;
+  private final PrescriptionQueryPort prescriptionQueryPort;
+  private final MedicamentQueryPort medicamentQueryPort;
 
-    public CreateMedicamentPrescriptionService(MedicamentPrescriptionRepository repository,
-                                               PrescriptionQueryPort prescriptionQueryPort,
-                                               MedicamentQueryPort medicamentQueryPort) {
-        this.repository = repository;
-        this.prescriptionQueryPort = prescriptionQueryPort;
-        this.medicamentQueryPort = medicamentQueryPort;
-    }
+  public CreateMedicamentPrescriptionService(
+      MedicamentPrescriptionRepository repository,
+      PrescriptionQueryPort prescriptionQueryPort,
+      MedicamentQueryPort medicamentQueryPort) {
+    this.repository = repository;
+    this.prescriptionQueryPort = prescriptionQueryPort;
+    this.medicamentQueryPort = medicamentQueryPort;
+  }
 
-    @Override
-    public MedicamentPrescriptionDto execute(CreateMedicamentPrescriptionCommand command) {
-        PrescriptionRef prescription = prescriptionQueryPort.findById(command.prescriptionId())
-            .orElseThrow(() -> new IllegalArgumentException("Prescription not found: " + command.prescriptionId()));
-        MedicamentRef medicamentRef = medicamentQueryPort.findById(command.medicamentId())
-            .orElseThrow(() -> new IllegalArgumentException("Medicament not found: " + command.medicamentId()));
+  @Override
+  public MedicamentPrescriptionDto execute(CreateMedicamentPrescriptionCommand command) {
+    PrescriptionRef prescription =
+        prescriptionQueryPort
+            .findById(command.prescriptionId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Prescription not found: " + command.prescriptionId()));
+    MedicamentRef medicamentRef =
+        medicamentQueryPort
+            .findById(command.medicamentId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Medicament not found: " + command.medicamentId()));
 
-        MedicamentPrescription medicament = MedicamentPrescription.create(
-            medicamentRef, command.presentation(), command.quantity(),
-            command.posology(), command.observation(), prescription);
-        return MedicamentPrescriptionDto.from(repository.save(medicament));
-    }
+    MedicamentPrescription medicament =
+        MedicamentPrescription.create(
+            medicamentRef,
+            command.presentation(),
+            command.quantity(),
+            command.posology(),
+            command.observation(),
+            prescription);
+    return MedicamentPrescriptionDto.from(repository.save(medicament));
+  }
 }

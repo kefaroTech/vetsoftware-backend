@@ -17,28 +17,41 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "system.user.permission.update")
 @Service
 public class UpdateSystemUserPermissionService implements UpdateSystemUserPermissionUseCase {
-    private final SystemUserPermissionRepository repository;
-    private final SystemUserQueryPort systemUserQueryPort;
-    private final SystemPermissionQueryPort systemPermissionQueryPort;
+  private final SystemUserPermissionRepository repository;
+  private final SystemUserQueryPort systemUserQueryPort;
+  private final SystemPermissionQueryPort systemPermissionQueryPort;
 
-    public UpdateSystemUserPermissionService(SystemUserPermissionRepository repository,
-                                             SystemUserQueryPort systemUserQueryPort,
-                                             SystemPermissionQueryPort systemPermissionQueryPort) {
-        this.repository = repository;
-        this.systemUserQueryPort = systemUserQueryPort;
-        this.systemPermissionQueryPort = systemPermissionQueryPort;
-    }
+  public UpdateSystemUserPermissionService(
+      SystemUserPermissionRepository repository,
+      SystemUserQueryPort systemUserQueryPort,
+      SystemPermissionQueryPort systemPermissionQueryPort) {
+    this.repository = repository;
+    this.systemUserQueryPort = systemUserQueryPort;
+    this.systemPermissionQueryPort = systemPermissionQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public SystemUserPermissionDto execute(UpdateSystemUserPermissionCommand command) {
-        SystemUserPermission systemUserPermission = repository.findById(command.id())
+  @Override
+  @Transactional
+  public SystemUserPermissionDto execute(UpdateSystemUserPermissionCommand command) {
+    SystemUserPermission systemUserPermission =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new SystemUserPermissionNotFoundException(command.id()));
-        SystemUserRef systemUser = systemUserQueryPort.findById(command.systemUserId())
-            .orElseThrow(() -> new IllegalArgumentException("SystemUser not found: " + command.systemUserId()));
-        SystemPermissionRef systemPermission = systemPermissionQueryPort.findById(command.systemPermissionId())
-            .orElseThrow(() -> new IllegalArgumentException("SystemPermission not found: " + command.systemPermissionId()));
-        systemUserPermission.update(systemUser, systemPermission);
-        return SystemUserPermissionDto.from(repository.save(systemUserPermission));
-    }
+    SystemUserRef systemUser =
+        systemUserQueryPort
+            .findById(command.systemUserId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "SystemUser not found: " + command.systemUserId()));
+    SystemPermissionRef systemPermission =
+        systemPermissionQueryPort
+            .findById(command.systemPermissionId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "SystemPermission not found: " + command.systemPermissionId()));
+    systemUserPermission.update(systemUser, systemPermission);
+    return SystemUserPermissionDto.from(repository.save(systemUserPermission));
+  }
 }

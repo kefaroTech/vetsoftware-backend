@@ -14,63 +14,69 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductJpaMapper {
 
-    public ProductJpaEntity toJpa(Product product,
-                                  ProductCategoryJpaEntity productCategory,
-                                  TaxJpaEntity tax,
-                                  CompanyJpaEntity company,
-                                  SupplierJpaEntity supplier) {
-        ProductJpaEntity entity = new ProductJpaEntity();
-        entity.setId(product.getId());
-        entity.setName(product.getName());
-        entity.setCode(product.getCode());
-        entity.setSalePrice(product.getSalePrice());
-        entity.setBaseUnitMeasureCode(product.getBaseUnitMeasureCode());
-        entity.setProvider(product.getProvider());
-        entity.setSupplier(supplier);
-        entity.setTaxTreatment(product.getTaxTreatment());
-        entity.setNotes(product.getNotes());
-        entity.setProductCategory(productCategory);
-        entity.setTax(tax);
-        entity.setCompany(company);
-        entity.setCreatedDate(product.getCreatedDate());
-        entity.setUpdatedDate(product.getUpdatedDate());
-        entity.setUpdatedBy(product.getUpdatedBy());
-        entity.setVersion(product.getVersion());
-        entity.setEnabled(product.isEnabled());
-        return entity;
-    }
+  public ProductJpaEntity toJpa(
+      Product product,
+      ProductCategoryJpaEntity productCategory,
+      TaxJpaEntity tax,
+      CompanyJpaEntity company,
+      SupplierJpaEntity supplier) {
+    ProductJpaEntity entity = new ProductJpaEntity();
+    entity.setId(product.getId());
+    entity.setName(product.getName());
+    entity.setCode(product.getCode());
+    entity.setSalePrice(product.getSalePrice());
+    entity.setBaseUnitMeasureCode(product.getBaseUnitMeasureCode());
+    entity.setProvider(product.getProvider());
+    entity.setSupplier(supplier);
+    entity.setTaxTreatment(product.getTaxTreatment());
+    entity.setNotes(product.getNotes());
+    entity.setProductCategory(productCategory);
+    entity.setTax(tax);
+    entity.setCompany(company);
+    entity.setCreatedDate(product.getCreatedDate());
+    entity.setUpdatedDate(product.getUpdatedDate());
+    entity.setUpdatedBy(product.getUpdatedBy());
+    entity.setVersion(product.getVersion());
+    entity.setEnabled(product.isEnabled());
+    return entity;
+  }
 
-    public Product toDomain(ProductJpaEntity entity) {
-        ProductCategoryJpaEntity pc = entity.getProductCategory();
-        TaxJpaEntity t = entity.getTax();
-        CompanyJpaEntity c = entity.getCompany();
-        SupplierJpaEntity s = entity.getSupplier();
-        return toDomain(entity,
-            new ProductCategoryRef(pc.getId(), pc.getName()),
-            t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
-            new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
-            s == null ? null : new SupplierRef(s.getId(), s.getName()));
-    }
+  public Product toDomain(ProductJpaEntity entity) {
+    ProductCategoryJpaEntity pc = entity.getProductCategory();
+    TaxJpaEntity t = entity.getTax();
+    CompanyJpaEntity c = entity.getCompany();
+    SupplierJpaEntity s = entity.getSupplier();
+    return toDomain(
+        entity,
+        new ProductCategoryRef(pc.getId(), pc.getName()),
+        t == null ? null : new TaxRef(t.getId(), t.getName(), t.getPercentage()),
+        new CompanyRef(c.getId(), c.getName(), c.getIdentifier()),
+        s == null ? null : new SupplierRef(s.getId(), s.getName()));
+  }
 
-    public Product toDomain(ProductJpaEntity entity, ProductCategoryRef productCategoryRef,
-                            TaxRef taxRef, CompanyRef companyRef, SupplierRef supplierRef) {
-        return new Product(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            entity.getSalePrice(),
-            entity.getBaseUnitMeasureCode(),
-            entity.getProvider(),
-            supplierRef,
-            entity.getTaxTreatment(),
-            entity.getNotes(),
-            productCategoryRef,
-            taxRef,
-            companyRef,
-            entity.getCreatedDate(),
-            entity.getUpdatedDate(),
-            entity.getUpdatedBy(),
-            entity.getVersion(),
-            entity.isEnabled());
-    }
+  public Product toDomain(
+      ProductJpaEntity entity,
+      ProductCategoryRef productCategoryRef,
+      TaxRef taxRef,
+      CompanyRef companyRef,
+      SupplierRef supplierRef) {
+    return new Product(
+        entity.getId(),
+        entity.getName(),
+        entity.getCode(),
+        entity.getSalePrice(),
+        entity.getBaseUnitMeasureCode(),
+        entity.getProvider(),
+        supplierRef,
+        entity.getTaxTreatment(),
+        entity.getNotes(),
+        productCategoryRef,
+        taxRef,
+        companyRef,
+        entity.getCreatedDate(),
+        entity.getUpdatedDate(),
+        entity.getUpdatedBy(),
+        entity.getVersion(),
+        entity.isEnabled());
+  }
 }

@@ -13,21 +13,28 @@ import org.springframework.stereotype.Service;
 @Observed(name = "vaccination.type.create")
 @Service
 public class CreateVaccinationTypeService implements CreateVaccinationTypeUseCase {
-    private final VaccinationTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final VaccinationTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateVaccinationTypeService(VaccinationTypeRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateVaccinationTypeService(
+      VaccinationTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public VaccinationTypeDto execute(CreateVaccinationTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return VaccinationTypeDto.from(
-                repository.save(VaccinationType.create(command.name(), command.description(), company, command.general())));
-    }
+  @Override
+  public VaccinationTypeDto execute(CreateVaccinationTypeCommand command) {
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    return VaccinationTypeDto.from(
+        repository.save(
+            VaccinationType.create(
+                command.name(), command.description(), company, command.general())));
+  }
 }

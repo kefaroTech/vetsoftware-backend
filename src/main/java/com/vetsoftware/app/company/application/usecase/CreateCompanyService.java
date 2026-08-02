@@ -15,28 +15,40 @@ import org.springframework.stereotype.Service;
 @Observed(name = "company.create")
 @Service
 public class CreateCompanyService implements CreateCompanyUseCase {
-    private final CompanyRepository repository;
-    private final CityQueryPort cityQueryPort;
-    private final MembershipQueryPort membershipQueryPort;
+  private final CompanyRepository repository;
+  private final CityQueryPort cityQueryPort;
+  private final MembershipQueryPort membershipQueryPort;
 
-    public CreateCompanyService(CompanyRepository repository,
-                                CityQueryPort cityQueryPort,
-                                MembershipQueryPort membershipQueryPort) {
-        this.repository = repository;
-        this.cityQueryPort = cityQueryPort;
-        this.membershipQueryPort = membershipQueryPort;
-    }
+  public CreateCompanyService(
+      CompanyRepository repository,
+      CityQueryPort cityQueryPort,
+      MembershipQueryPort membershipQueryPort) {
+    this.repository = repository;
+    this.cityQueryPort = cityQueryPort;
+    this.membershipQueryPort = membershipQueryPort;
+  }
 
-    @Override
-    public CompanyDto execute(CreateCompanyCommand command) {
-        CityRef city = cityQueryPort.findById(command.cityId())
+  @Override
+  public CompanyDto execute(CreateCompanyCommand command) {
+    CityRef city =
+        cityQueryPort
+            .findById(command.cityId())
             .orElseThrow(() -> new IllegalArgumentException("City not found: " + command.cityId()));
-        MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-            .orElseThrow(() -> new IllegalArgumentException("Membership not found: " + command.membershipId()));
-        Company company = Company.create(
-            command.name(), command.identifier(), command.address(), command.contactNumber(),
-            city, membership
-        );
-        return CompanyDto.from(repository.save(company));
-    }
+    MembershipRef membership =
+        membershipQueryPort
+            .findById(command.membershipId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Membership not found: " + command.membershipId()));
+    Company company =
+        Company.create(
+            command.name(),
+            command.identifier(),
+            command.address(),
+            command.contactNumber(),
+            city,
+            membership);
+    return CompanyDto.from(repository.save(company));
+  }
 }

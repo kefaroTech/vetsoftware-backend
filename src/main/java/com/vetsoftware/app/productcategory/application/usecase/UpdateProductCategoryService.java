@@ -16,26 +16,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "product.category.update")
 @Service
 public class UpdateProductCategoryService implements UpdateProductCategoryUseCase {
-    private final ProductCategoryRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final ProductCategoryRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateProductCategoryService(ProductCategoryRepository repository,
-                                        CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateProductCategoryService(
+      ProductCategoryRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public ProductCategoryDto execute(UpdateProductCategoryCommand command) {
-        ProductCategory productCategory = repository.findByIdAndCompanyId(command.id(), command.companyId())
-                .orElseThrow(() -> new ProductCategoryNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
-            throw new ProductCategoryNameAlreadyExistsException(command.name());
-        }
-        productCategory.update(command.name(), command.description(), company, command.updatedBy(), command.version());
-        return ProductCategoryDto.from(repository.save(productCategory));
+  @Override
+  @Transactional
+  public ProductCategoryDto execute(UpdateProductCategoryCommand command) {
+    ProductCategory productCategory =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
+            .orElseThrow(() -> new ProductCategoryNotFoundException(command.id()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndNameExcludingId(
+        command.companyId(), command.name(), command.id())) {
+      throw new ProductCategoryNameAlreadyExistsException(command.name());
     }
+    productCategory.update(
+        command.name(), command.description(), company, command.updatedBy(), command.version());
+    return ProductCategoryDto.from(repository.save(productCategory));
+  }
 }

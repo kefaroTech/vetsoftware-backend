@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaCompanyIdentifierChecker implements CompanyIdentifierChecker {
-    private final CompanyJpaRepository jpaRepository;
+  private final CompanyJpaRepository jpaRepository;
 
-    public JpaCompanyIdentifierChecker(CompanyJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaCompanyIdentifierChecker(CompanyJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean exists(String identifier) {
-        return jpaRepository.existsByIdentifier(identifier);
-    }
+  @Override
+  public boolean exists(String identifier) {
+    return jpaRepository.existsByIdentifier(identifier);
+  }
 }

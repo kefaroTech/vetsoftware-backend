@@ -7,13 +7,12 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record UpdateDewormingRequest(
-        @NotNull LocalDate date,
-        LocalDate lastDeworming,
-        @NotNull DewormingType type,
-        @NotBlank @Size(max = 200) String product,
-        @NotBlank @Size(max = 200) String dosage,
-        LocalDate nextControl,
-        @Size(max = 2000) String observations,
-        @NotNull Long animalId,
-        Long consultationId
-) {}
+    @NotNull LocalDate date,
+    LocalDate lastDeworming,
+    @NotNull DewormingType type,
+    @NotBlank @Size(max = 200) String product,
+    @NotBlank @Size(max = 200) String dosage,
+    LocalDate nextControl,
+    @Size(max = 2000) String observations,
+    @NotNull Long animalId,
+    Long consultationId) {}

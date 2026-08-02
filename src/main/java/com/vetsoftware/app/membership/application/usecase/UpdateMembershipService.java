@@ -14,19 +14,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "membership.update")
 @Service
 public class UpdateMembershipService implements UpdateMembershipUseCase {
-    private final MembershipRepository repository;
+  private final MembershipRepository repository;
 
-    public UpdateMembershipService(MembershipRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateMembershipService(MembershipRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public MembershipDto execute(UpdateMembershipCommand command) {
-        Membership membership = repository.findById(command.id())
+  @Override
+  @Transactional
+  public MembershipDto execute(UpdateMembershipCommand command) {
+    Membership membership =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new MembershipNotFoundException(command.id()));
-        MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
-        membership.update(command.name(), status, command.mandatory());
-        return MembershipDto.from(repository.save(membership));
-    }
+    MembershipStatus status = MembershipStatus.valueOf(command.status().toUpperCase());
+    membership.update(command.name(), status, command.mandatory());
+    return MembershipDto.from(repository.save(membership));
+  }
 }

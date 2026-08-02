@@ -11,17 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "submodule.reactivate")
 @Service
 public class ReactivateSubModuleService implements ReactivateSubModuleUseCase {
-    private final SubModuleRepository repository;
+  private final SubModuleRepository repository;
 
-    public ReactivateSubModuleService(SubModuleRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateSubModuleService(SubModuleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public SubModuleDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new SubModuleNotFoundException(id);
-        return SubModuleDto.from(repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public SubModuleDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new SubModuleNotFoundException(id);
+    return SubModuleDto.from(
+        repository.findById(id).orElseThrow(() -> new SubModuleNotFoundException(id)));
+  }
 }

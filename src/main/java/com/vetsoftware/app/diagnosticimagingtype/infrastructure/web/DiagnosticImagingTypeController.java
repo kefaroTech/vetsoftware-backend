@@ -24,82 +24,97 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/diagnostic-imaging-types")
 public class DiagnosticImagingTypeController {
-    private final CreateDiagnosticImagingTypeUseCase createUseCase;
-    private final UpdateDiagnosticImagingTypeUseCase updateUseCase;
-    private final FindDiagnosticImagingTypeUseCase findUseCase;
-    private final ListDiagnosticImagingTypesUseCase listUseCase;
-    private final ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
-    private final DeleteDiagnosticImagingTypeUseCase deleteUseCase;
-    private final ReactivateDiagnosticImagingTypeUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateDiagnosticImagingTypeUseCase createUseCase;
+  private final UpdateDiagnosticImagingTypeUseCase updateUseCase;
+  private final FindDiagnosticImagingTypeUseCase findUseCase;
+  private final ListDiagnosticImagingTypesUseCase listUseCase;
+  private final ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
+  private final DeleteDiagnosticImagingTypeUseCase deleteUseCase;
+  private final ReactivateDiagnosticImagingTypeUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public DiagnosticImagingTypeController(CreateDiagnosticImagingTypeUseCase createUseCase,
-                                           UpdateDiagnosticImagingTypeUseCase updateUseCase,
-                                           FindDiagnosticImagingTypeUseCase findUseCase,
-                                           ListDiagnosticImagingTypesUseCase listUseCase,
-                                           ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
-                                           DeleteDiagnosticImagingTypeUseCase deleteUseCase,
-                                           ReactivateDiagnosticImagingTypeUseCase reactivateUseCase,
-                                           Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listAvailableUseCase = listAvailableUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public DiagnosticImagingTypeController(
+      CreateDiagnosticImagingTypeUseCase createUseCase,
+      UpdateDiagnosticImagingTypeUseCase updateUseCase,
+      FindDiagnosticImagingTypeUseCase findUseCase,
+      ListDiagnosticImagingTypesUseCase listUseCase,
+      ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
+      DeleteDiagnosticImagingTypeUseCase deleteUseCase,
+      ReactivateDiagnosticImagingTypeUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listAvailableUseCase = listAvailableUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public DiagnosticImagingTypeResponse create(@Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateDiagnosticImagingTypeCommand(request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public DiagnosticImagingTypeResponse create(
+      @Valid @RequestBody CreateDiagnosticImagingTypeRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateDiagnosticImagingTypeCommand(
+                request.name(),
+                request.description(),
+                authz.currentCompanyId(),
+                request.general())));
+  }
 
-    @GetMapping
-    public List<DiagnosticImagingTypeResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<DiagnosticImagingTypeResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/available")
-    public List<DiagnosticImagingTypeResponse> listAvailable() {
-        return listAvailableUseCase.listAvailable(authz.currentCompanyId())
-                .stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/available")
+  public List<DiagnosticImagingTypeResponse> listAvailable() {
+    return listAvailableUseCase.listAvailable(authz.currentCompanyId()).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public DiagnosticImagingTypeResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public DiagnosticImagingTypeResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public DiagnosticImagingTypeResponse update(@PathVariable Long id,
-                                                @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
-        return toResponse(updateUseCase.execute(
-                new UpdateDiagnosticImagingTypeCommand(id, request.name(), request.description(),
-                        authz.currentCompanyId(), request.general())));
-    }
+  @PutMapping("/{id}")
+  public DiagnosticImagingTypeResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateDiagnosticImagingTypeRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateDiagnosticImagingTypeCommand(
+                id,
+                request.name(),
+                request.description(),
+                authz.currentCompanyId(),
+                request.general())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public DiagnosticImagingTypeResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public DiagnosticImagingTypeResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {
-        CompanySummaryDto c = dto.company();
-        return new DiagnosticImagingTypeResponse(
-                dto.id(), dto.name(), dto.description(),
-                c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
-                dto.general(),
-                dto.createdDate(), dto.enabled());
-    }
+  private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {
+    CompanySummaryDto c = dto.company();
+    return new DiagnosticImagingTypeResponse(
+        dto.id(),
+        dto.name(),
+        dto.description(),
+        c == null ? null : new CompanySummary(c.id(), c.name(), c.identifier()),
+        dto.general(),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

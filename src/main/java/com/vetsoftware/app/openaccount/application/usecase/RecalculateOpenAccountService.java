@@ -13,26 +13,30 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "open.account.recalculate")
 @Service
 public class RecalculateOpenAccountService implements RecalculateOpenAccountUseCase {
-    private final OpenAccountRepository repository;
-    private final OpenAccountTotalsPort totalsPort;
+  private final OpenAccountRepository repository;
+  private final OpenAccountTotalsPort totalsPort;
 
-    public RecalculateOpenAccountService(OpenAccountRepository repository,
-                                         OpenAccountTotalsPort totalsPort) {
-        this.repository = repository;
-        this.totalsPort = totalsPort;
-    }
+  public RecalculateOpenAccountService(
+      OpenAccountRepository repository, OpenAccountTotalsPort totalsPort) {
+    this.repository = repository;
+    this.totalsPort = totalsPort;
+  }
 
-    @Override
-    @Transactional
-    public void recalculate(Long companyId, Long openAccountId) {
-        // Bloqueo pesimista scoped a la empresa: serializa recálculos concurrentes (cargos/abonos simultáneos)
-        // sobre la misma cuenta, y solo toma el lock si la cuenta pertenece a companyId (una cuenta ajena
-        // lanza NotFound sin bloquear su fila).
-        OpenAccount openAccount = repository.findByIdForUpdateAndCompanyId(openAccountId, companyId)
+  @Override
+  @Transactional
+  public void recalculate(Long companyId, Long openAccountId) {
+    // Bloqueo pesimista scoped a la empresa: serializa recálculos concurrentes (cargos/abonos
+    // simultáneos)
+    // sobre la misma cuenta, y solo toma el lock si la cuenta pertenece a companyId (una cuenta
+    // ajena
+    // lanza NotFound sin bloquear su fila).
+    OpenAccount openAccount =
+        repository
+            .findByIdForUpdateAndCompanyId(openAccountId, companyId)
             .orElseThrow(() -> new OpenAccountNotFoundException(openAccountId));
-        BigDecimal total = totalsPort.totalCharges(openAccountId);
-        BigDecimal paid = totalsPort.totalPayments(openAccountId);
-        openAccount.recalculate(total, paid);
-        repository.save(openAccount);
-    }
+    BigDecimal total = totalsPort.totalCharges(openAccountId);
+    BigDecimal paid = totalsPort.totalPayments(openAccountId);
+    openAccount.recalculate(total, paid);
+    repository.save(openAccount);
+  }
 }

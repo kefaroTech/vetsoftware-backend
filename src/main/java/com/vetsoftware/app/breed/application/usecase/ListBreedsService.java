@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "breed.list")
 @Service
 public class ListBreedsService implements ListBreedsUseCase {
-    private final BreedRepository repository;
+  private final BreedRepository repository;
 
-    public ListBreedsService(BreedRepository repository) {
-        this.repository = repository;
-    }
+  public ListBreedsService(BreedRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<BreedDto> listAll() {
-        return repository.findAll().stream().map(BreedDto::from).toList();
-    }
+  @Override
+  public List<BreedDto> listAll() {
+    return repository.findAll().stream().map(BreedDto::from).toList();
+  }
 }

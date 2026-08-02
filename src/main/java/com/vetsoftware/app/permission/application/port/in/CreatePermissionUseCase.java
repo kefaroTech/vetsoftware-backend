@@ -5,6 +5,6 @@ import com.vetsoftware.app.permission.application.dto.PermissionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreatePermissionUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    PermissionDto execute(CreatePermissionCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  PermissionDto execute(CreatePermissionCommand command);
 }

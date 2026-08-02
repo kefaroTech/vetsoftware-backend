@@ -6,38 +6,37 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record NumberingResolutionDto(
-        Long id,
-        CompanySummaryDto company,
-        Long branchId,
-        ElectronicDocumentType documentType,
-        String resolutionNumber,
-        LocalDate resolutionDate,
-        String prefix,
-        Long rangeFrom,
-        Long rangeTo,
-        LocalDate validFrom,
-        LocalDate validTo,
-        String technicalKey,
-        Long currentNumber,
-        LocalDateTime createdDate,
-        boolean enabled
-) {
-    public static NumberingResolutionDto from(NumberingResolution resolution) {
-        return new NumberingResolutionDto(
-                resolution.getId(),
-                resolution.getCompany() == null ? null : CompanySummaryDto.from(resolution.getCompany()),
-                resolution.getBranchId(),
-                resolution.getDocumentType(),
-                resolution.getResolutionNumber(),
-                resolution.getResolutionDate(),
-                resolution.getPrefix(),
-                resolution.getRangeFrom(),
-                resolution.getRangeTo(),
-                resolution.getValidFrom(),
-                resolution.getValidTo(),
-                resolution.getTechnicalKey(),
-                resolution.getCurrentNumber(),
-                resolution.getCreatedDate(),
-                resolution.isEnabled());
-    }
+    Long id,
+    CompanySummaryDto company,
+    Long branchId,
+    ElectronicDocumentType documentType,
+    String resolutionNumber,
+    LocalDate resolutionDate,
+    String prefix,
+    Long rangeFrom,
+    Long rangeTo,
+    LocalDate validFrom,
+    LocalDate validTo,
+    String technicalKey,
+    Long currentNumber,
+    LocalDateTime createdDate,
+    boolean enabled) {
+  public static NumberingResolutionDto from(NumberingResolution resolution) {
+    return new NumberingResolutionDto(
+        resolution.getId(),
+        resolution.getCompany() == null ? null : CompanySummaryDto.from(resolution.getCompany()),
+        resolution.getBranchId(),
+        resolution.getDocumentType(),
+        resolution.getResolutionNumber(),
+        resolution.getResolutionDate(),
+        resolution.getPrefix(),
+        resolution.getRangeFrom(),
+        resolution.getRangeTo(),
+        resolution.getValidFrom(),
+        resolution.getValidTo(),
+        resolution.getTechnicalKey(),
+        resolution.getCurrentNumber(),
+        resolution.getCreatedDate(),
+        resolution.isEnabled());
+  }
 }

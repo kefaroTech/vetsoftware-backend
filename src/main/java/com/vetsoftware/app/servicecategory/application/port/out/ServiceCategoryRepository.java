@@ -5,16 +5,24 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ServiceCategoryRepository {
-    ServiceCategory save(ServiceCategory serviceCategory);
-    Optional<ServiceCategory> findById(Long id);
-    Optional<ServiceCategory> findByIdAndCompanyId(Long id, Long companyId);
+  ServiceCategory save(ServiceCategory serviceCategory);
 
-    /** ¿Existe ya una categoría de servicio ACTIVA con este name en la empresa? (unicidad de nombre por empresa) */
-    boolean existsByCompanyIdAndName(Long companyId, String name);
+  Optional<ServiceCategory> findById(Long id);
 
-    /** Igual, excluyendo la propia categoría (para validar en actualización). */
-    boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
-    List<ServiceCategory> findAllByCompanyId(Long companyId);
-    void delete(Long id);
-    int reactivate(Long id, Long companyId);
+  Optional<ServiceCategory> findByIdAndCompanyId(Long id, Long companyId);
+
+  /**
+   * ¿Existe ya una categoría de servicio ACTIVA con este name en la empresa? (unicidad de nombre
+   * por empresa)
+   */
+  boolean existsByCompanyIdAndName(Long companyId, String name);
+
+  /** Igual, excluyendo la propia categoría (para validar en actualización). */
+  boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
+
+  List<ServiceCategory> findAllByCompanyId(Long companyId);
+
+  void delete(Long id);
+
+  int reactivate(Long id, Long companyId);
 }

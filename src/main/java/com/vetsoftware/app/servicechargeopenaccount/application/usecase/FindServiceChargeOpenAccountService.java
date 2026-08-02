@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "service.charge.open.account.find")
 @Service
 public class FindServiceChargeOpenAccountService implements FindServiceChargeOpenAccountUseCase {
-    private final ServiceChargeOpenAccountRepository repository;
+  private final ServiceChargeOpenAccountRepository repository;
 
-    public FindServiceChargeOpenAccountService(ServiceChargeOpenAccountRepository repository) {
-        this.repository = repository;
-    }
+  public FindServiceChargeOpenAccountService(ServiceChargeOpenAccountRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public ServiceChargeOpenAccountDto findById(Long id, Long companyId) {
-        return ServiceChargeOpenAccountDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public ServiceChargeOpenAccountDto findById(Long id, Long companyId) {
+    return ServiceChargeOpenAccountDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new ServiceChargeOpenAccountNotFoundException(id)));
-    }
+  }
 }

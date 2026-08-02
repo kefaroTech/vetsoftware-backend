@@ -4,6 +4,6 @@ import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductCharg
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindProductChargeOpenAccountUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('chargeOpenAccount.read')")
-    ProductChargeOpenAccountDto findById(Long id, Long companyId);
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('chargeOpenAccount.read')")
+  ProductChargeOpenAccountDto findById(Long id, Long companyId);
 }

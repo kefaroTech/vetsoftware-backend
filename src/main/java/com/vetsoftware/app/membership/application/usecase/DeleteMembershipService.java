@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "membership.delete")
 @Service
 public class DeleteMembershipService implements DeleteMembershipUseCase {
-    private final MembershipRepository repository;
-    private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
+  private final MembershipRepository repository;
+  private final MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
 
-    public DeleteMembershipService(
-            MembershipRepository repository,
-            MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
-        this.repository = repository;
-        this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;
-    }
+  public DeleteMembershipService(
+      MembershipRepository repository,
+      MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort) {
+    this.repository = repository;
+    this.membershipSubModuleChildrenQueryPort = membershipSubModuleChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new MembershipNotFoundException(id));
-        if (membershipSubModuleChildrenQueryPort.existsActiveByMembershipId(id)) {
-            throw new MembershipHasActiveChildrenException(id, "membershipSubModule");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new MembershipNotFoundException(id));
+    if (membershipSubModuleChildrenQueryPort.existsActiveByMembershipId(id)) {
+      throw new MembershipHasActiveChildrenException(id, "membershipSubModule");
     }
+    repository.delete(id);
+  }
 }

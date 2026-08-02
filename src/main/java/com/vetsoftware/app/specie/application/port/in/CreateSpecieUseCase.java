@@ -5,6 +5,6 @@ import com.vetsoftware.app.specie.application.dto.SpecieDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateSpecieUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    SpecieDto execute(CreateSpecieCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  SpecieDto execute(CreateSpecieCommand command);
 }

@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "permission.reactivate")
 @Service
 public class ReactivatePermissionService implements ReactivatePermissionUseCase {
-    private final PermissionRepository repository;
+  private final PermissionRepository repository;
 
-    public ReactivatePermissionService(PermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivatePermissionService(PermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public PermissionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new PermissionNotFoundException(id);
-        return PermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new PermissionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public PermissionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new PermissionNotFoundException(id);
+    return PermissionDto.from(
+        repository.findById(id).orElseThrow(() -> new PermissionNotFoundException(id)));
+  }
 }

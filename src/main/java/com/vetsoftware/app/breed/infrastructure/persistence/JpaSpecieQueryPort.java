@@ -8,15 +8,14 @@ import org.springframework.stereotype.Component;
 
 @Component("breedJpaSpecieQueryPort")
 public class JpaSpecieQueryPort implements SpecieQueryPort {
-    private final SpecieJpaRepository specieJpaRepository;
+  private final SpecieJpaRepository specieJpaRepository;
 
-    public JpaSpecieQueryPort(SpecieJpaRepository specieJpaRepository) {
-        this.specieJpaRepository = specieJpaRepository;
-    }
+  public JpaSpecieQueryPort(SpecieJpaRepository specieJpaRepository) {
+    this.specieJpaRepository = specieJpaRepository;
+  }
 
-    @Override
-    public Optional<SpecieRef> findById(Long specieId) {
-        return specieJpaRepository.findById(specieId)
-            .map(e -> new SpecieRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<SpecieRef> findById(Long specieId) {
+    return specieJpaRepository.findById(specieId).map(e -> new SpecieRef(e.getId(), e.getName()));
+  }
 }

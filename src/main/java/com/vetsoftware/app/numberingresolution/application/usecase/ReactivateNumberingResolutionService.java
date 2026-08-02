@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "numbering.resolution.reactivate")
 @Service
 public class ReactivateNumberingResolutionService implements ReactivateNumberingResolutionUseCase {
-    private final NumberingResolutionRepository repository;
+  private final NumberingResolutionRepository repository;
 
-    public ReactivateNumberingResolutionService(NumberingResolutionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateNumberingResolutionService(NumberingResolutionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public NumberingResolutionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new NumberingResolutionNotFoundException(id);
-        return NumberingResolutionDto.from(repository.findById(id)
-                .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public NumberingResolutionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new NumberingResolutionNotFoundException(id);
+    return NumberingResolutionDto.from(
+        repository.findById(id).orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
+  }
 }

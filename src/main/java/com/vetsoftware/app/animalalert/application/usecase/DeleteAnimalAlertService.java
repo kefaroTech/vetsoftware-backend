@@ -10,17 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "animal.alert.delete")
 @Service
 public class DeleteAnimalAlertService implements DeleteAnimalAlertUseCase {
-    private final AnimalAlertRepository repository;
+  private final AnimalAlertRepository repository;
 
-    public DeleteAnimalAlertService(AnimalAlertRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteAnimalAlertService(AnimalAlertRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id, Long companyId) {
-        repository.findByIdAndCompanyId(id, companyId)
-            .orElseThrow(() -> new AnimalAlertNotFoundException(id));
-        repository.delete(id, companyId);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id, Long companyId) {
+    repository
+        .findByIdAndCompanyId(id, companyId)
+        .orElseThrow(() -> new AnimalAlertNotFoundException(id));
+    repository.delete(id, companyId);
+  }
 }

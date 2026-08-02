@@ -5,6 +5,6 @@ import com.vetsoftware.app.economicactivity.application.dto.EconomicActivityDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateEconomicActivityUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    EconomicActivityDto execute(CreateEconomicActivityCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  EconomicActivityDto execute(CreateEconomicActivityCommand command);
 }

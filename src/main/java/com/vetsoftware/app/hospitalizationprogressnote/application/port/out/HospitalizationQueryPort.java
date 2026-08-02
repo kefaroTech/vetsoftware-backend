@@ -4,5 +4,5 @@ import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationRef
 import java.util.Optional;
 
 public interface HospitalizationQueryPort {
-    Optional<HospitalizationRef> findById(Long hospitalizationId);
+  Optional<HospitalizationRef> findById(Long hospitalizationId);
 }

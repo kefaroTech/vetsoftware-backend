@@ -26,94 +26,160 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLDelete(sql = "UPDATE catalog_barcodes SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class CatalogBarcodeJpaEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private CompanyJpaEntity company;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id", nullable = false)
+  private CompanyJpaEntity company;
 
-    @Column(nullable = false, length = 64)
-    private String barcode;
+  @Column(nullable = false, length = 64)
+  private String barcode;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 20)
-    private SellableItemType itemType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "item_type", nullable = false, length = 20)
+  private SellableItemType itemType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "presentation_id")
-    private ProductPresentationJpaEntity presentation;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "presentation_id")
+  private ProductPresentationJpaEntity presentation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bundle_id")
-    private ProductBundleJpaEntity bundle;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "bundle_id")
+  private ProductBundleJpaEntity bundle;
 
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
+  @Column(name = "created_date", nullable = false)
+  private LocalDateTime createdDate;
 
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
+  @Column(name = "updated_date")
+  private LocalDateTime updatedDate;
 
-    @Column(name = "updated_by")
-    private Long updatedBy;
+  @Column(name = "updated_by")
+  private Long updatedBy;
 
-    @Version
-    @Column(nullable = false)
-    private Long version;
+  @Version
+  @Column(nullable = false)
+  private Long version;
 
-    @Column(nullable = false)
-    private boolean enabled = true;
+  @Column(nullable = false)
+  private boolean enabled = true;
 
-    protected CatalogBarcodeJpaEntity() {}
+  protected CatalogBarcodeJpaEntity() {}
 
-    public static CatalogBarcodeJpaEntity forPresentation(
-            CompanyJpaEntity company, String barcode,
-            ProductPresentationJpaEntity presentation, Long actorId) {
-        CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.PRESENTATION, actorId);
-        entity.presentation = presentation;
-        return entity;
-    }
+  public static CatalogBarcodeJpaEntity forPresentation(
+      CompanyJpaEntity company,
+      String barcode,
+      ProductPresentationJpaEntity presentation,
+      Long actorId) {
+    CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.PRESENTATION, actorId);
+    entity.presentation = presentation;
+    return entity;
+  }
 
-    public static CatalogBarcodeJpaEntity forBundle(
-            CompanyJpaEntity company, String barcode,
-            ProductBundleJpaEntity bundle, Long actorId) {
-        CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.BUNDLE, actorId);
-        entity.bundle = bundle;
-        return entity;
-    }
+  public static CatalogBarcodeJpaEntity forBundle(
+      CompanyJpaEntity company, String barcode, ProductBundleJpaEntity bundle, Long actorId) {
+    CatalogBarcodeJpaEntity entity = base(company, barcode, SellableItemType.BUNDLE, actorId);
+    entity.bundle = bundle;
+    return entity;
+  }
 
-    private static CatalogBarcodeJpaEntity base(
-            CompanyJpaEntity company, String barcode, SellableItemType itemType, Long actorId) {
-        CatalogBarcodeJpaEntity entity = new CatalogBarcodeJpaEntity();
-        entity.company = company;
-        entity.barcode = barcode;
-        entity.itemType = itemType;
-        entity.createdDate = LocalDateTime.now();
-        entity.updatedBy = actorId;
-        return entity;
-    }
+  private static CatalogBarcodeJpaEntity base(
+      CompanyJpaEntity company, String barcode, SellableItemType itemType, Long actorId) {
+    CatalogBarcodeJpaEntity entity = new CatalogBarcodeJpaEntity();
+    entity.company = company;
+    entity.barcode = barcode;
+    entity.itemType = itemType;
+    entity.createdDate = LocalDateTime.now();
+    entity.updatedBy = actorId;
+    return entity;
+  }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public CompanyJpaEntity getCompany() { return company; }
-    public void setCompany(CompanyJpaEntity company) { this.company = company; }
-    public String getBarcode() { return barcode; }
-    public void setBarcode(String barcode) { this.barcode = barcode; }
-    public SellableItemType getItemType() { return itemType; }
-    public void setItemType(SellableItemType itemType) { this.itemType = itemType; }
-    public ProductPresentationJpaEntity getPresentation() { return presentation; }
-    public void setPresentation(ProductPresentationJpaEntity presentation) { this.presentation = presentation; }
-    public ProductBundleJpaEntity getBundle() { return bundle; }
-    public void setBundle(ProductBundleJpaEntity bundle) { this.bundle = bundle; }
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
-    public Long getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public CompanyJpaEntity getCompany() {
+    return company;
+  }
+
+  public void setCompany(CompanyJpaEntity company) {
+    this.company = company;
+  }
+
+  public String getBarcode() {
+    return barcode;
+  }
+
+  public void setBarcode(String barcode) {
+    this.barcode = barcode;
+  }
+
+  public SellableItemType getItemType() {
+    return itemType;
+  }
+
+  public void setItemType(SellableItemType itemType) {
+    this.itemType = itemType;
+  }
+
+  public ProductPresentationJpaEntity getPresentation() {
+    return presentation;
+  }
+
+  public void setPresentation(ProductPresentationJpaEntity presentation) {
+    this.presentation = presentation;
+  }
+
+  public ProductBundleJpaEntity getBundle() {
+    return bundle;
+  }
+
+  public void setBundle(ProductBundleJpaEntity bundle) {
+    this.bundle = bundle;
+  }
+
+  public LocalDateTime getCreatedDate() {
+    return createdDate;
+  }
+
+  public void setCreatedDate(LocalDateTime createdDate) {
+    this.createdDate = createdDate;
+  }
+
+  public LocalDateTime getUpdatedDate() {
+    return updatedDate;
+  }
+
+  public void setUpdatedDate(LocalDateTime updatedDate) {
+    this.updatedDate = updatedDate;
+  }
+
+  public Long getUpdatedBy() {
+    return updatedBy;
+  }
+
+  public void setUpdatedBy(Long updatedBy) {
+    this.updatedBy = updatedBy;
+  }
+
+  public Long getVersion() {
+    return version;
+  }
+
+  public void setVersion(Long version) {
+    this.version = version;
+  }
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
 }

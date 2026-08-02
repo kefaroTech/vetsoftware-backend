@@ -4,5 +4,5 @@ import java.util.Optional;
 
 /** Nombre del profesional que prescribe/imprime la fórmula (empleado autenticado). */
 public interface PrescriberQueryPort {
-    Optional<String> findName(Long employeeId);
+  Optional<String> findName(Long employeeId);
 }

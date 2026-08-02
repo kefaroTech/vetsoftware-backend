@@ -5,6 +5,8 @@ import com.vetsoftware.app.promotion.application.dto.PromotionDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdatePromotionUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('promotion.update') and @authz.isMyCompany(#command.companyId))")
-    PromotionDto execute(UpdatePromotionCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('promotion.update') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  PromotionDto execute(UpdatePromotionCommand command);
 }

@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaVaccinationChildrenQueryPort implements VaccinationChildrenQueryPort {
-    private final VaccinationJpaRepository jpaRepository;
+  private final VaccinationJpaRepository jpaRepository;
 
-    public JpaVaccinationChildrenQueryPort(VaccinationJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaVaccinationChildrenQueryPort(VaccinationJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByConsultationId(Long parentId) {
-        return jpaRepository.existsByConsultation_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByConsultationId(Long parentId) {
+    return jpaRepository.existsByConsultation_Id(parentId);
+  }
 }

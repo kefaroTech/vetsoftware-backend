@@ -4,5 +4,5 @@ import com.vetsoftware.app.baserolepermission.domain.BasePermissionRef;
 import java.util.Optional;
 
 public interface BasePermissionQueryPort {
-    Optional<BasePermissionRef> findById(Long basePermissionId);
+  Optional<BasePermissionRef> findById(Long basePermissionId);
 }

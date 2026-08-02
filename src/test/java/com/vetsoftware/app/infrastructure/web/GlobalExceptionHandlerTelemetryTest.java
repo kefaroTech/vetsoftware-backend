@@ -17,27 +17,26 @@ import org.springframework.web.filter.ServerHttpObservationFilter;
 
 class GlobalExceptionHandlerTelemetryTest {
 
-    @Test
-    void recordsHandledServerErrorBeforeReturningItsCorrelatedProblemDetail() {
-        String traceId = "21681c8c48fef44cf10671aec7948dfe";
-        Tracer tracer = mock(Tracer.class);
-        Span span = mock(Span.class);
-        TraceContext traceContext = mock(TraceContext.class);
-        when(tracer.currentSpan()).thenReturn(span);
-        when(span.context()).thenReturn(traceContext);
-        when(traceContext.traceId()).thenReturn(traceId);
-        GlobalExceptionHandler handler =
-                new GlobalExceptionHandler(mock(AuditLogger.class), tracer);
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        ServerRequestObservationContext observation =
-                new ServerRequestObservationContext(request, new MockHttpServletResponse());
-        request.setAttribute(
-                ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
-        IllegalStateException failure = new IllegalStateException("unexpected");
+  @Test
+  void recordsHandledServerErrorBeforeReturningItsCorrelatedProblemDetail() {
+    String traceId = "21681c8c48fef44cf10671aec7948dfe";
+    Tracer tracer = mock(Tracer.class);
+    Span span = mock(Span.class);
+    TraceContext traceContext = mock(TraceContext.class);
+    when(tracer.currentSpan()).thenReturn(span);
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn(traceId);
+    GlobalExceptionHandler handler = new GlobalExceptionHandler(mock(AuditLogger.class), tracer);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    ServerRequestObservationContext observation =
+        new ServerRequestObservationContext(request, new MockHttpServletResponse());
+    request.setAttribute(
+        ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observation);
+    IllegalStateException failure = new IllegalStateException("unexpected");
 
-        ProblemDetail problem = handler.handleUnexpected(failure, request);
+    ProblemDetail problem = handler.handleUnexpected(failure, request);
 
-        assertThat(observation.getError()).isSameAs(failure);
-        assertThat(problem.getProperties()).containsEntry("traceId", traceId);
-    }
+    assertThat(observation.getError()).isSameAs(failure);
+    assertThat(problem.getProperties()).containsEntry("traceId", traceId);
+  }
 }

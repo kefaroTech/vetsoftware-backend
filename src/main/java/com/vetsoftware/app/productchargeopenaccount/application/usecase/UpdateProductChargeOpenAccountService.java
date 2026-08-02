@@ -20,53 +20,69 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "product.charge.open.account.update")
 @Service
-public class UpdateProductChargeOpenAccountService implements UpdateProductChargeOpenAccountUseCase {
-    private final ProductChargeOpenAccountRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final ProductQueryPort productQueryPort;
-    private final OpenAccountQueryPort openAccountQueryPort;
-    private final OpenAccountRefresher refresher;
-    private final OpenAccountVersionGuard versionGuard;
+public class UpdateProductChargeOpenAccountService
+    implements UpdateProductChargeOpenAccountUseCase {
+  private final ProductChargeOpenAccountRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final ProductQueryPort productQueryPort;
+  private final OpenAccountQueryPort openAccountQueryPort;
+  private final OpenAccountRefresher refresher;
+  private final OpenAccountVersionGuard versionGuard;
 
-    public UpdateProductChargeOpenAccountService(ProductChargeOpenAccountRepository repository,
-                                                 AnimalQueryPort animalQueryPort,
-                                                 ProductQueryPort productQueryPort,
-                                                 OpenAccountQueryPort openAccountQueryPort,
-                                                 OpenAccountRefresher refresher,
-                                                 OpenAccountVersionGuard versionGuard) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.productQueryPort = productQueryPort;
-        this.openAccountQueryPort = openAccountQueryPort;
-        this.refresher = refresher;
-        this.versionGuard = versionGuard;
-    }
+  public UpdateProductChargeOpenAccountService(
+      ProductChargeOpenAccountRepository repository,
+      AnimalQueryPort animalQueryPort,
+      ProductQueryPort productQueryPort,
+      OpenAccountQueryPort openAccountQueryPort,
+      OpenAccountRefresher refresher,
+      OpenAccountVersionGuard versionGuard) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.productQueryPort = productQueryPort;
+    this.openAccountQueryPort = openAccountQueryPort;
+    this.refresher = refresher;
+    this.versionGuard = versionGuard;
+  }
 
-    @Override
-    @Transactional
-    public ProductChargeOpenAccountDto execute(UpdateProductChargeOpenAccountCommand command) {
-        ProductChargeOpenAccount charge = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public ProductChargeOpenAccountDto execute(UpdateProductChargeOpenAccountCommand command) {
+    ProductChargeOpenAccount charge =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new ProductChargeOpenAccountNotFoundException(command.id()));
-        Long previousOpenAccountId = charge.getOpenAccount().id();
+    Long previousOpenAccountId = charge.getOpenAccount().id();
 
-        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
-            .orElseThrow(() -> new IllegalArgumentException("OpenAccount not found: " + command.openAccountId()));
-        if (!openAccount.companyId().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
-        // Detección temprana de conflicto sobre la cuenta destino del cargo.
-        versionGuard.assertVersion(command.companyId(), command.openAccountId(), command.expectedVersion());
-        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ProductRef product = productQueryPort.findByIdAndCompanyId(command.productId(), command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Product not found: " + command.productId()));
-
-        charge.update(animal, product, openAccount);
-        ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
-        refresher.refresh(command.companyId(), command.openAccountId());
-        if (!command.openAccountId().equals(previousOpenAccountId)) {
-            refresher.refresh(command.companyId(), previousOpenAccountId);
-        }
-        return dto;
+    OpenAccountRef openAccount =
+        openAccountQueryPort
+            .findById(command.openAccountId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "OpenAccount not found: " + command.openAccountId()));
+    if (!openAccount.companyId().equals(command.companyId())) {
+      throw new IllegalArgumentException("open account does not belong to company");
     }
+    // Detección temprana de conflicto sobre la cuenta destino del cargo.
+    versionGuard.assertVersion(
+        command.companyId(), command.openAccountId(), command.expectedVersion());
+    AnimalRef animal =
+        animalQueryPort
+            .findByIdAndCompanyId(command.animalId(), command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    ProductRef product =
+        productQueryPort
+            .findByIdAndCompanyId(command.productId(), command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Product not found: " + command.productId()));
+
+    charge.update(animal, product, openAccount);
+    ProductChargeOpenAccountDto dto = ProductChargeOpenAccountDto.from(repository.save(charge));
+    refresher.refresh(command.companyId(), command.openAccountId());
+    if (!command.openAccountId().equals(previousOpenAccountId)) {
+      refresher.refresh(command.companyId(), previousOpenAccountId);
+    }
+    return dto;
+  }
 }

@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.type.list")
 @Service
 public class ListLaboratoryTestTypesService implements ListLaboratoryTestTypesUseCase {
-    private final LaboratoryTestTypeRepository repository;
+  private final LaboratoryTestTypeRepository repository;
 
-    public ListLaboratoryTestTypesService(LaboratoryTestTypeRepository repository) {
-        this.repository = repository;
-    }
+  public ListLaboratoryTestTypesService(LaboratoryTestTypeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<LaboratoryTestTypeDto> listAll() {
-        return repository.findAll().stream().map(LaboratoryTestTypeDto::from).toList();
-    }
+  @Override
+  public List<LaboratoryTestTypeDto> listAll() {
+    return repository.findAll().stream().map(LaboratoryTestTypeDto::from).toList();
+  }
 }

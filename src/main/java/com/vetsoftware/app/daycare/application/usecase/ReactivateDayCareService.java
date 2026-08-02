@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "daycare.reactivate")
 @Service
 public class ReactivateDayCareService implements ReactivateDayCareUseCase {
-    private final DayCareRepository repository;
+  private final DayCareRepository repository;
 
-    public ReactivateDayCareService(DayCareRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateDayCareService(DayCareRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public DayCareDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new DayCareNotFoundException(id);
-        return DayCareDto.from(repository.findById(id)
-            .orElseThrow(() -> new DayCareNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public DayCareDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new DayCareNotFoundException(id);
+    return DayCareDto.from(
+        repository.findById(id).orElseThrow(() -> new DayCareNotFoundException(id)));
+  }
 }

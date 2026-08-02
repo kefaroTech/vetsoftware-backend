@@ -5,6 +5,6 @@ import com.vetsoftware.app.vaccinationtype.application.dto.VaccinationTypeDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateVaccinationTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('vaccination.update')")
-    VaccinationTypeDto execute(UpdateVaccinationTypeCommand command);
+  @PreAuthorize("hasRole('SYSTEM') or hasAuthority('vaccination.update')")
+  VaccinationTypeDto execute(UpdateVaccinationTypeCommand command);
 }

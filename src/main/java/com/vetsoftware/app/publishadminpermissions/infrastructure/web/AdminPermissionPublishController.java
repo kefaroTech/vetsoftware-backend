@@ -10,14 +10,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/admin-permissions")
 public class AdminPermissionPublishController {
 
-    private final PublishAdminPermissionsUseCase publishAdminPermissionsUseCase;
+  private final PublishAdminPermissionsUseCase publishAdminPermissionsUseCase;
 
-    public AdminPermissionPublishController(PublishAdminPermissionsUseCase publishAdminPermissionsUseCase) {
-        this.publishAdminPermissionsUseCase = publishAdminPermissionsUseCase;
-    }
+  public AdminPermissionPublishController(
+      PublishAdminPermissionsUseCase publishAdminPermissionsUseCase) {
+    this.publishAdminPermissionsUseCase = publishAdminPermissionsUseCase;
+  }
 
-    @PostMapping("/publish")
-    public PublishAdminPermissionsResponse publish() {
-        return PublishAdminPermissionsResponse.from(publishAdminPermissionsUseCase.execute());
-    }
+  @PostMapping("/publish")
+  public PublishAdminPermissionsResponse publish() {
+    return PublishAdminPermissionsResponse.from(publishAdminPermissionsUseCase.execute());
+  }
 }

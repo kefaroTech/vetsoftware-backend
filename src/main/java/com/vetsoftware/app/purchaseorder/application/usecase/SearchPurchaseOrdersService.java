@@ -12,16 +12,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "purchase.order.search")
 @Service
 public class SearchPurchaseOrdersService implements SearchPurchaseOrdersUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public SearchPurchaseOrdersService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public SearchPurchaseOrdersService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PageResult<PurchaseOrderDto> execute(SearchPurchaseOrdersCommand command) {
-        // readOnly tx: la paginación trae las cabeceras y el mapper hidrata las líneas LAZY aquí dentro.
-        return repository.search(command).map(PurchaseOrderDto::from);
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public PageResult<PurchaseOrderDto> execute(SearchPurchaseOrdersCommand command) {
+    // readOnly tx: la paginación trae las cabeceras y el mapper hidrata las líneas LAZY aquí
+    // dentro.
+    return repository.search(command).map(PurchaseOrderDto::from);
+  }
 }

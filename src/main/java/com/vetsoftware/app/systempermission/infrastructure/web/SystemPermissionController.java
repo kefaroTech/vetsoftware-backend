@@ -20,63 +20,67 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/system-permissions")
 public class SystemPermissionController {
-    private final CreateSystemPermissionUseCase createUseCase;
-    private final UpdateSystemPermissionUseCase updateUseCase;
-    private final FindSystemPermissionUseCase findUseCase;
-    private final ListSystemPermissionsUseCase listUseCase;
-    private final DeleteSystemPermissionUseCase deleteUseCase;
-    private final ReactivateSystemPermissionUseCase reactivateUseCase;
+  private final CreateSystemPermissionUseCase createUseCase;
+  private final UpdateSystemPermissionUseCase updateUseCase;
+  private final FindSystemPermissionUseCase findUseCase;
+  private final ListSystemPermissionsUseCase listUseCase;
+  private final DeleteSystemPermissionUseCase deleteUseCase;
+  private final ReactivateSystemPermissionUseCase reactivateUseCase;
 
-    public SystemPermissionController(CreateSystemPermissionUseCase createUseCase,
-                                      UpdateSystemPermissionUseCase updateUseCase,
-                                      FindSystemPermissionUseCase findUseCase,
-                                      ListSystemPermissionsUseCase listUseCase,
-                                      DeleteSystemPermissionUseCase deleteUseCase,
-                                      ReactivateSystemPermissionUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public SystemPermissionController(
+      CreateSystemPermissionUseCase createUseCase,
+      UpdateSystemPermissionUseCase updateUseCase,
+      FindSystemPermissionUseCase findUseCase,
+      ListSystemPermissionsUseCase listUseCase,
+      DeleteSystemPermissionUseCase deleteUseCase,
+      ReactivateSystemPermissionUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SystemPermissionResponse create(@Valid @RequestBody CreateSystemPermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSystemPermissionCommand(request.name(), request.code())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public SystemPermissionResponse create(
+      @Valid @RequestBody CreateSystemPermissionRequest request) {
+    return toResponse(
+        createUseCase.execute(new CreateSystemPermissionCommand(request.name(), request.code())));
+  }
 
-    @GetMapping
-    public List<SystemPermissionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<SystemPermissionResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public SystemPermissionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public SystemPermissionResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public SystemPermissionResponse update(@PathVariable Long id,
-                                           @Valid @RequestBody UpdateSystemPermissionRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public SystemPermissionResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateSystemPermissionRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateSystemPermissionCommand(id, request.name(), request.code())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public SystemPermissionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public SystemPermissionResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private SystemPermissionResponse toResponse(SystemPermissionDto dto) {
-        return new SystemPermissionResponse(dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
-    }
+  private SystemPermissionResponse toResponse(SystemPermissionDto dto) {
+    return new SystemPermissionResponse(
+        dto.id(), dto.name(), dto.code(), dto.createdDate(), dto.enabled());
+  }
 }

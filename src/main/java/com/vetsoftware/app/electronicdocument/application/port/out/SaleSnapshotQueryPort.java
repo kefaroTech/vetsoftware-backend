@@ -15,23 +15,23 @@ import java.util.Optional;
  * deriva snapshots de emisor/adquiriente, mapea cargos no anulados a lineas y abonos a pagos DIAN.
  */
 public interface SaleSnapshotQueryPort {
-    Optional<SaleSnapshot> findByOpenAccount(Long openAccountId, Long companyId);
+  Optional<SaleSnapshot> findByOpenAccount(Long openAccountId, Long companyId);
 
-    record SaleSnapshot(
-            Long companyId,
-            Long openAccountId,
-            boolean accountClosed,
-            IssuerSnapshot issuer,
-            CustomerSnapshot customer,
-            List<ElectronicDocumentLine> lines,
-            List<ElectronicDocumentPayment> payments,
-            PaymentForm paymentForm,
-            // F6 - retenciones: si el adquiriente es agente retenedor y las tarifas del emisor (cero/null si no aplica).
-            boolean customerWithholdingAgent,
-            BigDecimal reteFuenteRate,
-            BigDecimal reteIvaRate,
-            BigDecimal reteIcaRate,
-            // Sede de la cuenta cerrada: el documento emitido hereda la sucursal de la cuenta.
-            Long branchId
-    ) {}
+  record SaleSnapshot(
+      Long companyId,
+      Long openAccountId,
+      boolean accountClosed,
+      IssuerSnapshot issuer,
+      CustomerSnapshot customer,
+      List<ElectronicDocumentLine> lines,
+      List<ElectronicDocumentPayment> payments,
+      PaymentForm paymentForm,
+      // F6 - retenciones: si el adquiriente es agente retenedor y las tarifas del emisor (cero/null
+      // si no aplica).
+      boolean customerWithholdingAgent,
+      BigDecimal reteFuenteRate,
+      BigDecimal reteIvaRate,
+      BigDecimal reteIcaRate,
+      // Sede de la cuenta cerrada: el documento emitido hereda la sucursal de la cuenta.
+      Long branchId) {}
 }

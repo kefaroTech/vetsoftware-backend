@@ -5,10 +5,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PromotionRepository {
-    Promotion save(Promotion promotion);
-    Optional<Promotion> findById(Long id);
-    Optional<Promotion> findByIdAndCompanyId(Long id, Long companyId);
-    List<Promotion> findAllByCompanyId(Long companyId);
-    void delete(Long id);
-    int reactivate(Long id);
+  Promotion save(Promotion promotion);
+
+  Optional<Promotion> findById(Long id);
+
+  Optional<Promotion> findByIdAndCompanyId(Long id, Long companyId);
+
+  List<Promotion> findAllByCompanyId(Long companyId);
+
+  void delete(Long id);
+
+  int reactivate(Long id);
 }

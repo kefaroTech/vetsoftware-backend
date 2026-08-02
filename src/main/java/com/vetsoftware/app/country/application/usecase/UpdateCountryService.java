@@ -13,18 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "country.update")
 @Service
 public class UpdateCountryService implements UpdateCountryUseCase {
-    private final CountryRepository repository;
+  private final CountryRepository repository;
 
-    public UpdateCountryService(CountryRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateCountryService(CountryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public CountryDto execute(UpdateCountryCommand command) {
-        Country country = repository.findById(command.id())
-                .orElseThrow(() -> new CountryNotFoundException(command.id()));
-        country.update(command.name());
-        return CountryDto.from(repository.save(country));
-    }
+  @Override
+  @Transactional
+  public CountryDto execute(UpdateCountryCommand command) {
+    Country country =
+        repository
+            .findById(command.id())
+            .orElseThrow(() -> new CountryNotFoundException(command.id()));
+    country.update(command.name());
+    return CountryDto.from(repository.save(country));
+  }
 }

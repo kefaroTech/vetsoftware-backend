@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaDewormingChildrenQueryPort implements DewormingChildrenQueryPort {
-    private final DewormingJpaRepository jpaRepository;
+  private final DewormingJpaRepository jpaRepository;
 
-    public JpaDewormingChildrenQueryPort(DewormingJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaDewormingChildrenQueryPort(DewormingJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByConsultationId(Long parentId) {
-        return jpaRepository.existsByConsultation_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByConsultationId(Long parentId) {
+    return jpaRepository.existsByConsultation_Id(parentId);
+  }
 }

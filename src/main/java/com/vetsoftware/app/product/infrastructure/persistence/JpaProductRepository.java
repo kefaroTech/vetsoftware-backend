@@ -25,135 +25,146 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaProductRepository implements ProductRepository {
-    private final ProductJpaRepository jpaRepository;
-    private final ProductJpaMapper mapper;
-    private final ProductCategoryJpaRepository productCategoryJpaRepository;
-    private final TaxJpaRepository taxJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
-    private final SupplierJpaRepository supplierJpaRepository;
+  private final ProductJpaRepository jpaRepository;
+  private final ProductJpaMapper mapper;
+  private final ProductCategoryJpaRepository productCategoryJpaRepository;
+  private final TaxJpaRepository taxJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
+  private final SupplierJpaRepository supplierJpaRepository;
 
-    public JpaProductRepository(ProductJpaRepository jpaRepository,
-                                ProductJpaMapper mapper,
-                                ProductCategoryJpaRepository productCategoryJpaRepository,
-                                TaxJpaRepository taxJpaRepository,
-                                CompanyJpaRepository companyJpaRepository,
-                                SupplierJpaRepository supplierJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.productCategoryJpaRepository = productCategoryJpaRepository;
-        this.taxJpaRepository = taxJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-        this.supplierJpaRepository = supplierJpaRepository;
-    }
+  public JpaProductRepository(
+      ProductJpaRepository jpaRepository,
+      ProductJpaMapper mapper,
+      ProductCategoryJpaRepository productCategoryJpaRepository,
+      TaxJpaRepository taxJpaRepository,
+      CompanyJpaRepository companyJpaRepository,
+      SupplierJpaRepository supplierJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.productCategoryJpaRepository = productCategoryJpaRepository;
+    this.taxJpaRepository = taxJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+    this.supplierJpaRepository = supplierJpaRepository;
+  }
 
-    @Override
-    public Product save(Product product) {
-        ProductCategoryJpaEntity productCategory =
-            productCategoryJpaRepository.getReferenceById(product.getProductCategory().id());
-        TaxJpaEntity tax = product.getTax() == null ? null
-            : taxJpaRepository.getReferenceById(product.getTax().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(product.getCompany().id());
-        SupplierJpaEntity supplier = product.getSupplier() == null ? null
+  @Override
+  public Product save(Product product) {
+    ProductCategoryJpaEntity productCategory =
+        productCategoryJpaRepository.getReferenceById(product.getProductCategory().id());
+    TaxJpaEntity tax =
+        product.getTax() == null ? null : taxJpaRepository.getReferenceById(product.getTax().id());
+    CompanyJpaEntity company = companyJpaRepository.getReferenceById(product.getCompany().id());
+    SupplierJpaEntity supplier =
+        product.getSupplier() == null
+            ? null
             : supplierJpaRepository.getReferenceById(product.getSupplier().id());
-        ProductJpaEntity saved =
-            jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company, supplier));
-        return mapper.toDomain(saved, product.getProductCategory(), product.getTax(), product.getCompany(),
-            product.getSupplier());
-    }
+    ProductJpaEntity saved =
+        jpaRepository.saveAndFlush(mapper.toJpa(product, productCategory, tax, company, supplier));
+    return mapper.toDomain(
+        saved,
+        product.getProductCategory(),
+        product.getTax(),
+        product.getCompany(),
+        product.getSupplier());
+  }
 
-    @Override
-    public Optional<Product> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Product> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<Product> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<Product> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndCode(Long companyId, String code) {
-        return jpaRepository.existsByCompany_IdAndCode(companyId, code);
-    }
+  @Override
+  public boolean existsByCompanyIdAndCode(Long companyId, String code) {
+    return jpaRepository.existsByCompany_IdAndCode(companyId, code);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndCodeExcludingId(Long companyId, String code, Long id) {
-        return jpaRepository.existsByCompany_IdAndCodeAndIdNot(companyId, code, id);
-    }
+  @Override
+  public boolean existsByCompanyIdAndCodeExcludingId(Long companyId, String code, Long id) {
+    return jpaRepository.existsByCompany_IdAndCodeAndIdNot(companyId, code, id);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndName(Long companyId, String name) {
-        return jpaRepository.existsByCompany_IdAndName(companyId, name);
-    }
+  @Override
+  public boolean existsByCompanyIdAndName(Long companyId, String name) {
+    return jpaRepository.existsByCompany_IdAndName(companyId, name);
+  }
 
-    @Override
-    public boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id) {
-        return jpaRepository.existsByCompany_IdAndNameAndIdNot(companyId, name, id);
-    }
+  @Override
+  public boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id) {
+    return jpaRepository.existsByCompany_IdAndNameAndIdNot(companyId, name, id);
+  }
 
-    @Override
-    public List<Product> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Product> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<Product> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Product> findAllByCompanyId(Long companyId) {
+    return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<Product> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<Product> findAllDisabledByCompanyId(Long companyId) {
+    return jpaRepository.findAllDisabledByCompany_Id(companyId).stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 
-    @Override
-    public PageResult<Product> search(SearchProductsCommand command) {
-        Specification<ProductJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(
+  @Override
+  public PageResult<Product> search(SearchProductsCommand command) {
+    Specification<ProductJpaEntity> spec = buildSpec(command);
+    PageRequest pageRequest =
+        PageRequest.of(
             Math.max(command.page(), 0),
             command.pageSize() <= 0 ? 20 : command.pageSize(),
             Sort.by(Sort.Direction.DESC, "createdDate"));
-        Page<ProductJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<Product> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
-    }
+    Page<ProductJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
+    List<Product> content = page.getContent().stream().map(mapper::toDomain).toList();
+    return new PageResult<>(
+        content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+  }
 
-    private Specification<ProductJpaEntity> buildSpec(SearchProductsCommand command) {
-        return (root, query, cb) -> {
-            // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
-            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                root.fetch("productCategory", JoinType.LEFT);
-                root.fetch("tax", JoinType.LEFT);
-                root.fetch("company", JoinType.LEFT);
-                root.fetch("supplier", JoinType.LEFT);
-                query.distinct(true);
-            }
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("company").get("id"), command.companyId()));
-            if (command.name() != null && !command.name().isBlank()) {
-                predicates.add(cb.like(root.get("name"), "%" + command.name() + "%"));
-            }
-            if (command.code() != null && !command.code().isBlank()) {
-                predicates.add(cb.like(root.get("code"), "%" + command.code() + "%"));
-            }
-            if (command.productCategoryId() != null) {
-                predicates.add(cb.equal(root.get("productCategory").get("id"), command.productCategoryId()));
-            }
-            if (command.taxId() != null) {
-                predicates.add(cb.equal(root.get("tax").get("id"), command.taxId()));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-    }
+  private Specification<ProductJpaEntity> buildSpec(SearchProductsCommand command) {
+    return (root, query, cb) -> {
+      // fetch-join de los @ManyToOne solo en la query de datos (no en la de count) para evitar N+1
+      if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+        root.fetch("productCategory", JoinType.LEFT);
+        root.fetch("tax", JoinType.LEFT);
+        root.fetch("company", JoinType.LEFT);
+        root.fetch("supplier", JoinType.LEFT);
+        query.distinct(true);
+      }
+      List<Predicate> predicates = new ArrayList<>();
+      predicates.add(cb.equal(root.get("company").get("id"), command.companyId()));
+      if (command.name() != null && !command.name().isBlank()) {
+        predicates.add(cb.like(root.get("name"), "%" + command.name() + "%"));
+      }
+      if (command.code() != null && !command.code().isBlank()) {
+        predicates.add(cb.like(root.get("code"), "%" + command.code() + "%"));
+      }
+      if (command.productCategoryId() != null) {
+        predicates.add(
+            cb.equal(root.get("productCategory").get("id"), command.productCategoryId()));
+      }
+      if (command.taxId() != null) {
+        predicates.add(cb.equal(root.get("tax").get("id"), command.taxId()));
+      }
+      return cb.and(predicates.toArray(new Predicate[0]));
+    };
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
+  @Override
+  public int reactivate(Long id, Long companyId) {
+    return jpaRepository.reactivate(id, companyId);
+  }
 }

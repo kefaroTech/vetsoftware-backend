@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "laboratory.test.file.find")
 @Service
 public class FindLaboratoryTestFileService implements FindLaboratoryTestFileUseCase {
-    private final LaboratoryTestFileRepository repository;
+  private final LaboratoryTestFileRepository repository;
 
-    public FindLaboratoryTestFileService(LaboratoryTestFileRepository repository) {
-        this.repository = repository;
-    }
+  public FindLaboratoryTestFileService(LaboratoryTestFileRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public LaboratoryTestFileDto findById(Long id, Long companyId) {
-        return LaboratoryTestFileDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public LaboratoryTestFileDto findById(Long id, Long companyId) {
+    return LaboratoryTestFileDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id)));
-    }
+  }
 }

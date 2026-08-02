@@ -13,19 +13,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "state.create")
 @Service
 public class CreateStateService implements CreateStateUseCase {
-    private final StateRepository repository;
-    private final CountryQueryPort countryQueryPort;
+  private final StateRepository repository;
+  private final CountryQueryPort countryQueryPort;
 
-    public CreateStateService(StateRepository repository, CountryQueryPort countryQueryPort) {
-        this.repository = repository;
-        this.countryQueryPort = countryQueryPort;
-    }
+  public CreateStateService(StateRepository repository, CountryQueryPort countryQueryPort) {
+    this.repository = repository;
+    this.countryQueryPort = countryQueryPort;
+  }
 
-    @Override
-    public StateDto execute(CreateStateCommand command) {
-        CountryRef country = countryQueryPort.findById(command.countryId())
-            .orElseThrow(() -> new IllegalArgumentException("Country not found: " + command.countryId()));
-        State state = State.create(command.name(), country, command.daneCode());
-        return StateDto.from(repository.save(state));
-    }
+  @Override
+  public StateDto execute(CreateStateCommand command) {
+    CountryRef country =
+        countryQueryPort
+            .findById(command.countryId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Country not found: " + command.countryId()));
+    State state = State.create(command.name(), country, command.daneCode());
+    return StateDto.from(repository.save(state));
+  }
 }

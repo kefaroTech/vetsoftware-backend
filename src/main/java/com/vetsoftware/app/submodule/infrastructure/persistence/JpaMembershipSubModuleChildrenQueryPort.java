@@ -5,15 +5,16 @@ import com.vetsoftware.app.submodule.application.port.out.MembershipSubModuleChi
 import org.springframework.stereotype.Component;
 
 @Component
-public class JpaMembershipSubModuleChildrenQueryPort implements MembershipSubModuleChildrenQueryPort {
-    private final MembershipSubModuleJpaRepository jpaRepository;
+public class JpaMembershipSubModuleChildrenQueryPort
+    implements MembershipSubModuleChildrenQueryPort {
+  private final MembershipSubModuleJpaRepository jpaRepository;
 
-    public JpaMembershipSubModuleChildrenQueryPort(MembershipSubModuleJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaMembershipSubModuleChildrenQueryPort(MembershipSubModuleJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveBySubModuleId(Long parentId) {
-        return jpaRepository.existsBySubModule_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveBySubModuleId(Long parentId) {
+    return jpaRepository.existsBySubModule_Id(parentId);
+  }
 }

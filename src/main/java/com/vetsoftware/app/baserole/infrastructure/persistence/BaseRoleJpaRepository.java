@@ -5,12 +5,16 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BaseRoleJpaRepository extends JpaRepository<BaseRoleJpaEntity, Long> {
-    List<BaseRoleJpaEntity> findByMandatoryTrue();
+  List<BaseRoleJpaEntity> findByMandatoryTrue();
 
-    Optional<BaseRoleJpaEntity> findByCode(String code);
+  Optional<BaseRoleJpaEntity> findByCode(String code);
 
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE base_roles SET enabled = true WHERE id = :id", nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+  @org.springframework.data.jpa.repository.Modifying(
+      flushAutomatically = true,
+      clearAutomatically = true)
+  @org.springframework.transaction.annotation.Transactional
+  @org.springframework.data.jpa.repository.Query(
+      value = "UPDATE base_roles SET enabled = true WHERE id = :id",
+      nativeQuery = true)
+  int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 }

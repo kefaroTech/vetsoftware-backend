@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("diagnosticImagingJpaAnimalQueryPort")
 public class JpaAnimalQueryPort implements AnimalQueryPort {
-    private final AnimalJpaRepository animalJpaRepository;
+  private final AnimalJpaRepository animalJpaRepository;
 
-    public JpaAnimalQueryPort(AnimalJpaRepository animalJpaRepository) {
-        this.animalJpaRepository = animalJpaRepository;
-    }
+  public JpaAnimalQueryPort(AnimalJpaRepository animalJpaRepository) {
+    this.animalJpaRepository = animalJpaRepository;
+  }
 
-    @Override
-    public Optional<AnimalRef> findById(Long animalId) {
-        return animalJpaRepository.findById(animalId)
-            .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<AnimalRef> findById(Long animalId) {
+    return animalJpaRepository
+        .findById(animalId)
+        .map(e -> new AnimalRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

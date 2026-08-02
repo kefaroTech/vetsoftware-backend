@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("serviceJpaServiceCategoryQueryPort")
 public class JpaServiceCategoryQueryPort implements ServiceCategoryQueryPort {
-    private final ServiceCategoryJpaRepository serviceCategoryJpaRepository;
+  private final ServiceCategoryJpaRepository serviceCategoryJpaRepository;
 
-    public JpaServiceCategoryQueryPort(ServiceCategoryJpaRepository serviceCategoryJpaRepository) {
-        this.serviceCategoryJpaRepository = serviceCategoryJpaRepository;
-    }
+  public JpaServiceCategoryQueryPort(ServiceCategoryJpaRepository serviceCategoryJpaRepository) {
+    this.serviceCategoryJpaRepository = serviceCategoryJpaRepository;
+  }
 
-    @Override
-    public Optional<ServiceCategoryRef> findById(Long serviceCategoryId, Long companyId) {
-        return serviceCategoryJpaRepository.findByIdAndCompany_Id(serviceCategoryId, companyId)
-            .map(e -> new ServiceCategoryRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<ServiceCategoryRef> findById(Long serviceCategoryId, Long companyId) {
+    return serviceCategoryJpaRepository
+        .findByIdAndCompany_Id(serviceCategoryId, companyId)
+        .map(e -> new ServiceCategoryRef(e.getId(), e.getName()));
+  }
 }

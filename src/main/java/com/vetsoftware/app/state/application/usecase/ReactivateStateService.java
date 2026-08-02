@@ -11,17 +11,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "state.reactivate")
 @Service
 public class ReactivateStateService implements ReactivateStateUseCase {
-    private final StateRepository repository;
+  private final StateRepository repository;
 
-    public ReactivateStateService(StateRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateStateService(StateRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public StateDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new StateNotFoundException(id);
-        return StateDto.from(repository.findById(id).orElseThrow(() -> new StateNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public StateDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new StateNotFoundException(id);
+    return StateDto.from(repository.findById(id).orElseThrow(() -> new StateNotFoundException(id)));
+  }
 }

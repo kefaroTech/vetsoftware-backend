@@ -8,23 +8,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class CityJpaMapper {
 
-    public CityJpaEntity toJpa(City city, StateJpaEntity state) {
-        CityJpaEntity entity = new CityJpaEntity();
-        entity.setId(city.getId());
-        entity.setName(city.getName());
-        entity.setState(state);
-        entity.setDaneCode(city.getDaneCode());
-        entity.setCreatedDate(city.getCreatedDate());
-        entity.setEnabled(city.isEnabled());
-        return entity;
-    }
+  public CityJpaEntity toJpa(City city, StateJpaEntity state) {
+    CityJpaEntity entity = new CityJpaEntity();
+    entity.setId(city.getId());
+    entity.setName(city.getName());
+    entity.setState(state);
+    entity.setDaneCode(city.getDaneCode());
+    entity.setCreatedDate(city.getCreatedDate());
+    entity.setEnabled(city.isEnabled());
+    return entity;
+  }
 
-    public City toDomain(CityJpaEntity entity) {
-        StateJpaEntity s = entity.getState();
-        return toDomain(entity, new StateRef(s.getId(), s.getName()));
-    }
+  public City toDomain(CityJpaEntity entity) {
+    StateJpaEntity s = entity.getState();
+    return toDomain(entity, new StateRef(s.getId(), s.getName()));
+  }
 
-    public City toDomain(CityJpaEntity entity, StateRef ref) {
-        return new City(entity.getId(), entity.getName(), ref, entity.getDaneCode(), entity.getCreatedDate(), entity.isEnabled());
-    }
+  public City toDomain(CityJpaEntity entity, StateRef ref) {
+    return new City(
+        entity.getId(),
+        entity.getName(),
+        ref,
+        entity.getDaneCode(),
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

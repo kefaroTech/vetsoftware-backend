@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.role.permission.reactivate")
 @Service
 public class ReactivateBaseRolePermissionService implements ReactivateBaseRolePermissionUseCase {
-    private final BaseRolePermissionRepository repository;
+  private final BaseRolePermissionRepository repository;
 
-    public ReactivateBaseRolePermissionService(BaseRolePermissionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateBaseRolePermissionService(BaseRolePermissionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public BaseRolePermissionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new BaseRolePermissionNotFoundException(id);
-        return BaseRolePermissionDto.from(repository.findById(id)
-            .orElseThrow(() -> new BaseRolePermissionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public BaseRolePermissionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new BaseRolePermissionNotFoundException(id);
+    return BaseRolePermissionDto.from(
+        repository.findById(id).orElseThrow(() -> new BaseRolePermissionNotFoundException(id)));
+  }
 }

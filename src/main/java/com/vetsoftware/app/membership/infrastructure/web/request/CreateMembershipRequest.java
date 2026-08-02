@@ -4,7 +4,4 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateMembershipRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank String status,
-        boolean mandatory
-) {}
+    @NotBlank @Size(max = 100) String name, @NotBlank String status, boolean mandatory) {}

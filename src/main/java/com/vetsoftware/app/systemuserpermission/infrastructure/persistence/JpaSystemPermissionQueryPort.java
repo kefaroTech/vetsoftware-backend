@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("systemuserpermissionJpaSystemPermissionQueryPort")
 public class JpaSystemPermissionQueryPort implements SystemPermissionQueryPort {
-    private final SystemPermissionJpaRepository systemPermissionJpaRepository;
+  private final SystemPermissionJpaRepository systemPermissionJpaRepository;
 
-    public JpaSystemPermissionQueryPort(SystemPermissionJpaRepository systemPermissionJpaRepository) {
-        this.systemPermissionJpaRepository = systemPermissionJpaRepository;
-    }
+  public JpaSystemPermissionQueryPort(SystemPermissionJpaRepository systemPermissionJpaRepository) {
+    this.systemPermissionJpaRepository = systemPermissionJpaRepository;
+  }
 
-    @Override
-    public Optional<SystemPermissionRef> findById(Long systemPermissionId) {
-        return systemPermissionJpaRepository.findById(systemPermissionId)
-            .map(e -> new SystemPermissionRef(e.getId(), e.getName(), e.getCode()));
-    }
+  @Override
+  public Optional<SystemPermissionRef> findById(Long systemPermissionId) {
+    return systemPermissionJpaRepository
+        .findById(systemPermissionId)
+        .map(e -> new SystemPermissionRef(e.getId(), e.getName(), e.getCode()));
+  }
 }

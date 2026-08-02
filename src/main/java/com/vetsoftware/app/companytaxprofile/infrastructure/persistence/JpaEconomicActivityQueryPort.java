@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("companyTaxProfileJpaEconomicActivityQueryPort")
 public class JpaEconomicActivityQueryPort implements EconomicActivityQueryPort {
-    private final EconomicActivityJpaRepository economicActivityJpaRepository;
+  private final EconomicActivityJpaRepository economicActivityJpaRepository;
 
-    public JpaEconomicActivityQueryPort(EconomicActivityJpaRepository economicActivityJpaRepository) {
-        this.economicActivityJpaRepository = economicActivityJpaRepository;
-    }
+  public JpaEconomicActivityQueryPort(EconomicActivityJpaRepository economicActivityJpaRepository) {
+    this.economicActivityJpaRepository = economicActivityJpaRepository;
+  }
 
-    @Override
-    public Optional<EconomicActivityRef> findById(Long economicActivityId) {
-        return economicActivityJpaRepository.findById(economicActivityId)
-                .map(e -> new EconomicActivityRef(e.getId(), e.getCode(), e.getName()));
-    }
+  @Override
+  public Optional<EconomicActivityRef> findById(Long economicActivityId) {
+    return economicActivityJpaRepository
+        .findById(economicActivityId)
+        .map(e -> new EconomicActivityRef(e.getId(), e.getCode(), e.getName()));
+  }
 }

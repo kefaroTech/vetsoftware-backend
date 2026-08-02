@@ -5,5 +5,5 @@ import java.util.Optional;
 
 /** Carga el companion VO de la empresa (feature {@code company}). */
 public interface CompanyQueryPort {
-    Optional<CompanyRef> findById(Long companyId);
+  Optional<CompanyRef> findById(Long companyId);
 }

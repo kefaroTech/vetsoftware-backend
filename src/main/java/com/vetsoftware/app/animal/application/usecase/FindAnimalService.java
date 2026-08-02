@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "animal.find")
 @Service
 public class FindAnimalService implements FindAnimalUseCase {
-    private final AnimalRepository repository;
+  private final AnimalRepository repository;
 
-    public FindAnimalService(AnimalRepository repository) {
-        this.repository = repository;
-    }
+  public FindAnimalService(AnimalRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public AnimalDto findById(Long id, Long companyId) {
-        return AnimalDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public AnimalDto findById(Long id, Long companyId) {
+    return AnimalDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new AnimalNotFoundException(id)));
-    }
+  }
 }

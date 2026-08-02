@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "economic.activity.reactivate")
 @Service
 public class ReactivateEconomicActivityService implements ReactivateEconomicActivityUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public ReactivateEconomicActivityService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateEconomicActivityService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public EconomicActivityDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new EconomicActivityNotFoundException(id);
-        return EconomicActivityDto.from(repository.findById(id)
-            .orElseThrow(() -> new EconomicActivityNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public EconomicActivityDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new EconomicActivityNotFoundException(id);
+    return EconomicActivityDto.from(
+        repository.findById(id).orElseThrow(() -> new EconomicActivityNotFoundException(id)));
+  }
 }

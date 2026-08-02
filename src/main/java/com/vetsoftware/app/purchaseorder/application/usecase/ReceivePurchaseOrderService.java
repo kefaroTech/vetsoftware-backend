@@ -11,40 +11,44 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Servicio INTERNO (sin {@code @PreAuthorize}) que aplica/revierte recepciones de mercancía sobre una orden de
- * compra. Lo invoca la feature {@code goodsreceipt} dentro de su transacción ya autorizada — igual que el ledger
- * de inventario. No se expone por REST.
+ * Servicio INTERNO (sin {@code @PreAuthorize}) que aplica/revierte recepciones de mercancía sobre
+ * una orden de compra. Lo invoca la feature {@code goodsreceipt} dentro de su transacción ya
+ * autorizada — igual que el ledger de inventario. No se expone por REST.
  */
 @Observed(name = "purchase.order.receive")
 @Service
 public class ReceivePurchaseOrderService implements ReceivePurchaseOrderUseCase {
-    private final PurchaseOrderRepository repository;
+  private final PurchaseOrderRepository repository;
 
-    public ReceivePurchaseOrderService(PurchaseOrderRepository repository) {
-        this.repository = repository;
-    }
+  public ReceivePurchaseOrderService(PurchaseOrderRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void applyReceipt(ApplyReceiptCommand command) {
-        PurchaseOrder order = repository.findByIdAndCompanyId(command.purchaseOrderId(), command.companyId())
+  @Override
+  @Transactional
+  public void applyReceipt(ApplyReceiptCommand command) {
+    PurchaseOrder order =
+        repository
+            .findByIdAndCompanyId(command.purchaseOrderId(), command.companyId())
             .orElseThrow(() -> new PurchaseOrderNotFoundException(command.purchaseOrderId()));
-        for (ReceivedPurchaseOrderLine line : command.lines()) {
-            order.receiveLine(line.purchaseOrderLineId(), line.quantity());
-        }
-        order.recalculateStatusAfterReceipt(command.actorId());
-        repository.save(order);
+    for (ReceivedPurchaseOrderLine line : command.lines()) {
+      order.receiveLine(line.purchaseOrderLineId(), line.quantity());
     }
+    order.recalculateStatusAfterReceipt(command.actorId());
+    repository.save(order);
+  }
 
-    @Override
-    @Transactional
-    public void revertReceipt(ApplyReceiptCommand command) {
-        PurchaseOrder order = repository.findByIdAndCompanyId(command.purchaseOrderId(), command.companyId())
+  @Override
+  @Transactional
+  public void revertReceipt(ApplyReceiptCommand command) {
+    PurchaseOrder order =
+        repository
+            .findByIdAndCompanyId(command.purchaseOrderId(), command.companyId())
             .orElseThrow(() -> new PurchaseOrderNotFoundException(command.purchaseOrderId()));
-        for (ReceivedPurchaseOrderLine line : command.lines()) {
-            order.revertLine(line.purchaseOrderLineId(), line.quantity());
-        }
-        order.recalculateStatusAfterRevert(command.actorId());
-        repository.save(order);
+    for (ReceivedPurchaseOrderLine line : command.lines()) {
+      order.revertLine(line.purchaseOrderLineId(), line.quantity());
     }
+    order.recalculateStatusAfterRevert(command.actorId());
+    repository.save(order);
+  }
 }

@@ -8,30 +8,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class RoleJpaMapper {
 
-    public RoleJpaEntity toJpa(Role role, CompanyJpaEntity company) {
-        RoleJpaEntity entity = new RoleJpaEntity();
-        entity.setId(role.getId());
-        entity.setName(role.getName());
-        entity.setCode(role.getCode());
-        entity.setCompany(company);
-        entity.setCreatedDate(role.getCreatedDate());
-        entity.setEnabled(role.isEnabled());
-        return entity;
-    }
+  public RoleJpaEntity toJpa(Role role, CompanyJpaEntity company) {
+    RoleJpaEntity entity = new RoleJpaEntity();
+    entity.setId(role.getId());
+    entity.setName(role.getName());
+    entity.setCode(role.getCode());
+    entity.setCompany(company);
+    entity.setCreatedDate(role.getCreatedDate());
+    entity.setEnabled(role.isEnabled());
+    return entity;
+  }
 
-    public Role toDomain(RoleJpaEntity entity) {
-        CompanyJpaEntity c = entity.getCompany();
-        return toDomain(entity, new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
-    }
+  public Role toDomain(RoleJpaEntity entity) {
+    CompanyJpaEntity c = entity.getCompany();
+    return toDomain(entity, new CompanyRef(c.getId(), c.getName(), c.getIdentifier()));
+  }
 
-    public Role toDomain(RoleJpaEntity entity, CompanyRef companyRef) {
-        return new Role(
-            entity.getId(),
-            entity.getName(),
-            entity.getCode(),
-            companyRef,
-            entity.getCreatedDate(),
-            entity.isEnabled()
-        );
-    }
+  public Role toDomain(RoleJpaEntity entity, CompanyRef companyRef) {
+    return new Role(
+        entity.getId(),
+        entity.getName(),
+        entity.getCode(),
+        companyRef,
+        entity.getCreatedDate(),
+        entity.isEnabled());
+  }
 }

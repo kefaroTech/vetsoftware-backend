@@ -15,40 +15,43 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "hospitalization.medication.update")
 @Service
-public class UpdateHospitalizationMedicationService implements UpdateHospitalizationMedicationUseCase {
-    private final HospitalizationMedicationRepository repository;
+public class UpdateHospitalizationMedicationService
+    implements UpdateHospitalizationMedicationUseCase {
+  private final HospitalizationMedicationRepository repository;
 
-    public UpdateHospitalizationMedicationService(HospitalizationMedicationRepository repository) {
-        this.repository = repository;
-    }
+  public UpdateHospitalizationMedicationService(HospitalizationMedicationRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public HospitalizationMedicationDto execute(UpdateHospitalizationMedicationCommand command) {
-        HospitalizationMedication medication = repository.findById(command.id())
+  @Override
+  @Transactional
+  public HospitalizationMedicationDto execute(UpdateHospitalizationMedicationCommand command) {
+    HospitalizationMedication medication =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
-        medication.update(
-            command.name(),
-            command.dose(),
-            parseFrequency(command.frequency()),
-            parseGuidelineType(command.guidelineType()),
-            parseDurationMeasure(command.durationMeasure()),
-            command.durationQuantity(),
-            command.startDate(),
-            command.startTime(),
-            command.notes());
-        return HospitalizationMedicationDto.from(repository.save(medication));
-    }
+    medication.update(
+        command.name(),
+        command.dose(),
+        parseFrequency(command.frequency()),
+        parseGuidelineType(command.guidelineType()),
+        parseDurationMeasure(command.durationMeasure()),
+        command.durationQuantity(),
+        command.startDate(),
+        command.startTime(),
+        command.notes());
+    return HospitalizationMedicationDto.from(repository.save(medication));
+  }
 
-    private static Frequency parseFrequency(String s) {
-        return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
-    }
+  private static Frequency parseFrequency(String s) {
+    return s == null || s.isBlank() ? null : Frequency.valueOf(s.trim().toUpperCase());
+  }
 
-    private static GuidelineType parseGuidelineType(String s) {
-        return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
-    }
+  private static GuidelineType parseGuidelineType(String s) {
+    return s == null || s.isBlank() ? null : GuidelineType.valueOf(s.trim().toUpperCase());
+  }
 
-    private static DurationMeasure parseDurationMeasure(String s) {
-        return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
-    }
+  private static DurationMeasure parseDurationMeasure(String s) {
+    return s == null || s.isBlank() ? null : DurationMeasure.valueOf(s.trim().toUpperCase());
+  }
 }

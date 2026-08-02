@@ -1,19 +1,19 @@
 package com.vetsoftware.app.generalchargeopenaccount.infrastructure.persistence;
 
-import com.vetsoftware.app.openaccount.application.port.in.AssertOpenAccountVersionUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.OpenAccountVersionGuard;
+import com.vetsoftware.app.openaccount.application.port.in.AssertOpenAccountVersionUseCase;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OpenAccountVersionGuardAdapter implements OpenAccountVersionGuard {
-    private final AssertOpenAccountVersionUseCase assertVersionUseCase;
+  private final AssertOpenAccountVersionUseCase assertVersionUseCase;
 
-    public OpenAccountVersionGuardAdapter(AssertOpenAccountVersionUseCase assertVersionUseCase) {
-        this.assertVersionUseCase = assertVersionUseCase;
-    }
+  public OpenAccountVersionGuardAdapter(AssertOpenAccountVersionUseCase assertVersionUseCase) {
+    this.assertVersionUseCase = assertVersionUseCase;
+  }
 
-    @Override
-    public void assertVersion(Long companyId, Long openAccountId, Long expectedVersion) {
-        assertVersionUseCase.assertVersion(companyId, openAccountId, expectedVersion);
-    }
+  @Override
+  public void assertVersion(Long companyId, Long openAccountId, Long expectedVersion) {
+    assertVersionUseCase.assertVersion(companyId, openAccountId, expectedVersion);
+  }
 }

@@ -20,63 +20,63 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/system-users")
 public class SystemUserController {
-    private final CreateSystemUserUseCase createUseCase;
-    private final UpdateSystemUserUseCase updateUseCase;
-    private final FindSystemUserUseCase findUseCase;
-    private final ListSystemUsersUseCase listUseCase;
-    private final DeleteSystemUserUseCase deleteUseCase;
-    private final ReactivateSystemUserUseCase reactivateUseCase;
+  private final CreateSystemUserUseCase createUseCase;
+  private final UpdateSystemUserUseCase updateUseCase;
+  private final FindSystemUserUseCase findUseCase;
+  private final ListSystemUsersUseCase listUseCase;
+  private final DeleteSystemUserUseCase deleteUseCase;
+  private final ReactivateSystemUserUseCase reactivateUseCase;
 
-    public SystemUserController(CreateSystemUserUseCase createUseCase,
-                                UpdateSystemUserUseCase updateUseCase,
-                                FindSystemUserUseCase findUseCase,
-                                ListSystemUsersUseCase listUseCase,
-                                DeleteSystemUserUseCase deleteUseCase,
-                                ReactivateSystemUserUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public SystemUserController(
+      CreateSystemUserUseCase createUseCase,
+      UpdateSystemUserUseCase updateUseCase,
+      FindSystemUserUseCase findUseCase,
+      ListSystemUsersUseCase listUseCase,
+      DeleteSystemUserUseCase deleteUseCase,
+      ReactivateSystemUserUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public SystemUserResponse create(@Valid @RequestBody CreateSystemUserRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateSystemUserCommand(request.code(), request.password())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public SystemUserResponse create(@Valid @RequestBody CreateSystemUserRequest request) {
+    return toResponse(
+        createUseCase.execute(new CreateSystemUserCommand(request.code(), request.password())));
+  }
 
-    @GetMapping
-    public List<SystemUserResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<SystemUserResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public SystemUserResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public SystemUserResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public SystemUserResponse update(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateSystemUserRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateSystemUserCommand(id, request.code())));
-    }
+  @PutMapping("/{id}")
+  public SystemUserResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateSystemUserRequest request) {
+    return toResponse(updateUseCase.execute(new UpdateSystemUserCommand(id, request.code())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public SystemUserResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public SystemUserResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private SystemUserResponse toResponse(SystemUserDto dto) {
-        return new SystemUserResponse(dto.id(), dto.code(), dto.createdDate(), dto.enabled());
-    }
+  private SystemUserResponse toResponse(SystemUserDto dto) {
+    return new SystemUserResponse(dto.id(), dto.code(), dto.createdDate(), dto.enabled());
+  }
 }

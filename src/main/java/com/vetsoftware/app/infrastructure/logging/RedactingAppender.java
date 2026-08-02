@@ -10,8 +10,8 @@ import java.util.Iterator;
 /**
  * Appender decorador: redacta cada evento y lo reenvía a los appenders anidados.
  *
- * <p>Es el punto único por el que pasa <b>todo</b> lo que sale del proceso. Se configura envolviendo
- * a los appenders reales en {@code logback-spring.xml}:
+ * <p>Es el punto único por el que pasa <b>todo</b> lo que sale del proceso. Se configura
+ * envolviendo a los appenders reales en {@code logback-spring.xml}:
  *
  * <pre>{@code
  * <appender name="REDACTED_OTEL" class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
@@ -24,12 +24,13 @@ import java.util.Iterator;
  * cualquier appender presente o futuro sin tocarlo, así que no hay forma de añadir un destino nuevo
  * y olvidarse de la redacción: si no se envuelve, no recibe eventos.
  *
- * <p><b>Compatibilidad con OpenTelemetry:</b> {@code OpenTelemetryAppender.install(...)} recorre los
- * appenders del contexto y desciende por los que implementan {@link AppenderAttachable}, así que el
- * appender de OTel anidado aquí se sigue conectando al {@code SdkLoggerProvider} con normalidad.
+ * <p><b>Compatibilidad con OpenTelemetry:</b> {@code OpenTelemetryAppender.install(...)} recorre
+ * los appenders del contexto y desciende por los que implementan {@link AppenderAttachable}, así
+ * que el appender de OTel anidado aquí se sigue conectando al {@code SdkLoggerProvider} con
+ * normalidad.
  *
- * <p>Los {@code <appender>} envueltos deben declararse antes de este en el XML y como hijos directos
- * de {@code <configuration>}: la regla de Joran para {@code appender-ref} anidado es
+ * <p>Los {@code <appender>} envueltos deben declararse antes de este en el XML y como hijos
+ * directos de {@code <configuration>}: la regla de Joran para {@code appender-ref} anidado es
  * {@code configuration/appender/appender-ref}, y no casa dentro de un {@code <springProfile>}. El
  * gating por perfil se hace en {@code <root>}, referenciando este appender.
  *
@@ -37,66 +38,66 @@ import java.util.Iterator;
  * @see RedactedLoggingEvent
  */
 public final class RedactingAppender extends AppenderBase<ILoggingEvent>
-        implements AppenderAttachable<ILoggingEvent> {
+    implements AppenderAttachable<ILoggingEvent> {
 
-    private final AppenderAttachableImpl<ILoggingEvent> nested = new AppenderAttachableImpl<>();
+  private final AppenderAttachableImpl<ILoggingEvent> nested = new AppenderAttachableImpl<>();
 
-    @Override
-    public void start() {
-        if (!nested.iteratorForAppenders().hasNext()) {
-            addWarn("No hay appenders anidados en [" + name + "]; sus eventos se descartan.");
-        }
-        super.start();
+  @Override
+  public void start() {
+    if (!nested.iteratorForAppenders().hasNext()) {
+      addWarn("No hay appenders anidados en [" + name + "]; sus eventos se descartan.");
     }
+    super.start();
+  }
 
-    @Override
-    protected void append(ILoggingEvent event) {
-        nested.appendLoopOnAppenders(RedactedLoggingEvent.of(event));
+  @Override
+  protected void append(ILoggingEvent event) {
+    nested.appendLoopOnAppenders(RedactedLoggingEvent.of(event));
+  }
+
+  @Override
+  public void stop() {
+    if (!isStarted()) {
+      return;
     }
+    super.stop();
+    nested.detachAndStopAllAppenders();
+  }
 
-    @Override
-    public void stop() {
-        if (!isStarted()) {
-            return;
-        }
-        super.stop();
-        nested.detachAndStopAllAppenders();
-    }
+  // --- AppenderAttachable ---
 
-    // --- AppenderAttachable ---
+  @Override
+  public void addAppender(Appender<ILoggingEvent> newAppender) {
+    nested.addAppender(newAppender);
+  }
 
-    @Override
-    public void addAppender(Appender<ILoggingEvent> newAppender) {
-        nested.addAppender(newAppender);
-    }
+  @Override
+  public Iterator<Appender<ILoggingEvent>> iteratorForAppenders() {
+    return nested.iteratorForAppenders();
+  }
 
-    @Override
-    public Iterator<Appender<ILoggingEvent>> iteratorForAppenders() {
-        return nested.iteratorForAppenders();
-    }
+  @Override
+  public Appender<ILoggingEvent> getAppender(String appenderName) {
+    return nested.getAppender(appenderName);
+  }
 
-    @Override
-    public Appender<ILoggingEvent> getAppender(String appenderName) {
-        return nested.getAppender(appenderName);
-    }
+  @Override
+  public boolean isAttached(Appender<ILoggingEvent> appender) {
+    return nested.isAttached(appender);
+  }
 
-    @Override
-    public boolean isAttached(Appender<ILoggingEvent> appender) {
-        return nested.isAttached(appender);
-    }
+  @Override
+  public void detachAndStopAllAppenders() {
+    nested.detachAndStopAllAppenders();
+  }
 
-    @Override
-    public void detachAndStopAllAppenders() {
-        nested.detachAndStopAllAppenders();
-    }
+  @Override
+  public boolean detachAppender(Appender<ILoggingEvent> appender) {
+    return nested.detachAppender(appender);
+  }
 
-    @Override
-    public boolean detachAppender(Appender<ILoggingEvent> appender) {
-        return nested.detachAppender(appender);
-    }
-
-    @Override
-    public boolean detachAppender(String appenderName) {
-        return nested.detachAppender(appenderName);
-    }
+  @Override
+  public boolean detachAppender(String appenderName) {
+    return nested.detachAppender(appenderName);
+  }
 }

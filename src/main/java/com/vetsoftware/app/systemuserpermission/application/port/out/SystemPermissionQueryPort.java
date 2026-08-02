@@ -4,5 +4,5 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemPermissionRef;
 import java.util.Optional;
 
 public interface SystemPermissionQueryPort {
-    Optional<SystemPermissionRef> findById(Long systemPermissionId);
+  Optional<SystemPermissionRef> findById(Long systemPermissionId);
 }

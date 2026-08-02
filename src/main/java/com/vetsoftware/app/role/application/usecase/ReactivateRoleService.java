@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "role.reactivate")
 @Service
 public class ReactivateRoleService implements ReactivateRoleUseCase {
-    private final RoleRepository repository;
+  private final RoleRepository repository;
 
-    public ReactivateRoleService(RoleRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateRoleService(RoleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public RoleDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new RoleNotFoundException(id);
-        return RoleDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public RoleDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new RoleNotFoundException(id);
+    return RoleDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new RoleNotFoundException(id)));
-    }
+  }
 }

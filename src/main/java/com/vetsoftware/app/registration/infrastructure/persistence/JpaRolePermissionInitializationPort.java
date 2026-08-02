@@ -23,75 +23,83 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaRolePermissionInitializationPort implements RolePermissionInitializationPort {
 
-    private final MembershipSubModuleJpaRepository membershipSubModuleJpaRepository;
-    private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
-    private final PermissionJpaRepository permissionJpaRepository;
-    private final RolePermissionJpaRepository rolePermissionJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
-    private final RoleJpaRepository roleJpaRepository;
+  private final MembershipSubModuleJpaRepository membershipSubModuleJpaRepository;
+  private final BaseRolePermissionJpaRepository baseRolePermissionJpaRepository;
+  private final PermissionJpaRepository permissionJpaRepository;
+  private final RolePermissionJpaRepository rolePermissionJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
+  private final RoleJpaRepository roleJpaRepository;
 
-    public JpaRolePermissionInitializationPort(MembershipSubModuleJpaRepository membershipSubModuleJpaRepository,
-                                               BaseRolePermissionJpaRepository baseRolePermissionJpaRepository,
-                                               PermissionJpaRepository permissionJpaRepository,
-                                               RolePermissionJpaRepository rolePermissionJpaRepository,
-                                               CompanyJpaRepository companyJpaRepository,
-                                               RoleJpaRepository roleJpaRepository) {
-        this.membershipSubModuleJpaRepository = membershipSubModuleJpaRepository;
-        this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
-        this.permissionJpaRepository = permissionJpaRepository;
-        this.rolePermissionJpaRepository = rolePermissionJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-        this.roleJpaRepository = roleJpaRepository;
+  public JpaRolePermissionInitializationPort(
+      MembershipSubModuleJpaRepository membershipSubModuleJpaRepository,
+      BaseRolePermissionJpaRepository baseRolePermissionJpaRepository,
+      PermissionJpaRepository permissionJpaRepository,
+      RolePermissionJpaRepository rolePermissionJpaRepository,
+      CompanyJpaRepository companyJpaRepository,
+      RoleJpaRepository roleJpaRepository) {
+    this.membershipSubModuleJpaRepository = membershipSubModuleJpaRepository;
+    this.baseRolePermissionJpaRepository = baseRolePermissionJpaRepository;
+    this.permissionJpaRepository = permissionJpaRepository;
+    this.rolePermissionJpaRepository = rolePermissionJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+    this.roleJpaRepository = roleJpaRepository;
+  }
+
+  @Override
+  public void initializeForRole(Long roleId, Long companyId, Long baseRoleId, Long membershipId) {
+    Set<Long> subModuleIds =
+        membershipSubModuleJpaRepository.findByMembershipId(membershipId).stream()
+            .map(msm -> msm.getSubModule().getId())
+            .collect(Collectors.toSet());
+    if (subModuleIds.isEmpty()) return;
+
+    List<BasePermissionJpaEntity> applicableBasePermissions =
+        baseRolePermissionJpaRepository.findByBaseRoleId(baseRoleId).stream()
+            .map(BaseRolePermissionJpaEntity::getBasePermission)
+            .filter(bp -> subModuleIds.contains(bp.getSubModule().getId()))
+            .toList();
+    if (applicableBasePermissions.isEmpty()) return;
+
+    CompanyJpaEntity companyRef = companyJpaRepository.getReferenceById(companyId);
+    List<PermissionJpaEntity> resolvedPermissions =
+        new ArrayList<>(applicableBasePermissions.size());
+    List<PermissionJpaEntity> permissionsToCreate = new ArrayList<>();
+    LocalDateTime now = LocalDateTime.now();
+
+    for (BasePermissionJpaEntity bp : applicableBasePermissions) {
+      PermissionJpaEntity permission =
+          permissionJpaRepository
+              .findByCompanyIdAndCode(companyId, bp.getCode())
+              .orElseGet(
+                  () -> {
+                    PermissionJpaEntity entity = new PermissionJpaEntity();
+                    entity.setName(bp.getName());
+                    entity.setCode(bp.getCode());
+                    entity.setCompany(companyRef);
+                    entity.setSubModule(bp.getSubModule());
+                    entity.setCreatedDate(now);
+                    permissionsToCreate.add(entity);
+                    return entity;
+                  });
+      resolvedPermissions.add(permission);
     }
 
-    @Override
-    public void initializeForRole(Long roleId, Long companyId, Long baseRoleId, Long membershipId) {
-        Set<Long> subModuleIds = membershipSubModuleJpaRepository.findByMembershipId(membershipId).stream()
-                .map(msm -> msm.getSubModule().getId())
-                .collect(Collectors.toSet());
-        if (subModuleIds.isEmpty()) return;
+    if (!permissionsToCreate.isEmpty()) {
+      permissionJpaRepository.saveAll(permissionsToCreate);
+    }
 
-        List<BasePermissionJpaEntity> applicableBasePermissions = baseRolePermissionJpaRepository.findByBaseRoleId(baseRoleId).stream()
-                .map(BaseRolePermissionJpaEntity::getBasePermission)
-                .filter(bp -> subModuleIds.contains(bp.getSubModule().getId()))
-                .toList();
-        if (applicableBasePermissions.isEmpty()) return;
-
-        CompanyJpaEntity companyRef = companyJpaRepository.getReferenceById(companyId);
-        List<PermissionJpaEntity> resolvedPermissions = new ArrayList<>(applicableBasePermissions.size());
-        List<PermissionJpaEntity> permissionsToCreate = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-
-        for (BasePermissionJpaEntity bp : applicableBasePermissions) {
-            PermissionJpaEntity permission = permissionJpaRepository
-                    .findByCompanyIdAndCode(companyId, bp.getCode())
-                    .orElseGet(() -> {
-                        PermissionJpaEntity entity = new PermissionJpaEntity();
-                        entity.setName(bp.getName());
-                        entity.setCode(bp.getCode());
-                        entity.setCompany(companyRef);
-                        entity.setSubModule(bp.getSubModule());
-                        entity.setCreatedDate(now);
-                        permissionsToCreate.add(entity);
-                        return entity;
-                    });
-            resolvedPermissions.add(permission);
-        }
-
-        if (!permissionsToCreate.isEmpty()) {
-            permissionJpaRepository.saveAll(permissionsToCreate);
-        }
-
-        RoleJpaEntity roleRef = roleJpaRepository.getReferenceById(roleId);
-        List<RolePermissionJpaEntity> rolePermissions = resolvedPermissions.stream()
-                .map(p -> {
-                    RolePermissionJpaEntity rp = new RolePermissionJpaEntity();
-                    rp.setRole(roleRef);
-                    rp.setPermission(p);
-                    rp.setCreatedDate(now);
-                    return rp;
+    RoleJpaEntity roleRef = roleJpaRepository.getReferenceById(roleId);
+    List<RolePermissionJpaEntity> rolePermissions =
+        resolvedPermissions.stream()
+            .map(
+                p -> {
+                  RolePermissionJpaEntity rp = new RolePermissionJpaEntity();
+                  rp.setRole(roleRef);
+                  rp.setPermission(p);
+                  rp.setCreatedDate(now);
+                  return rp;
                 })
-                .toList();
-        rolePermissionJpaRepository.saveAll(rolePermissions);
-    }
+            .toList();
+    rolePermissionJpaRepository.saveAll(rolePermissions);
+  }
 }

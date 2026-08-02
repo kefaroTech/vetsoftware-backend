@@ -4,5 +4,5 @@ import com.vetsoftware.app.city.domain.StateRef;
 import java.util.Optional;
 
 public interface StateQueryPort {
-    Optional<StateRef> findById(Long stateId);
+  Optional<StateRef> findById(Long stateId);
 }

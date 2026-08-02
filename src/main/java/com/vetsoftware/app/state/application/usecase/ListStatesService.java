@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "state.list")
 @Service
 public class ListStatesService implements ListStatesUseCase {
-    private final StateRepository repository;
+  private final StateRepository repository;
 
-    public ListStatesService(StateRepository repository) {
-        this.repository = repository;
-    }
+  public ListStatesService(StateRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<StateDto> listAll() {
-        return repository.findAll().stream().map(StateDto::from).toList();
-    }
+  @Override
+  public List<StateDto> listAll() {
+    return repository.findAll().stream().map(StateDto::from).toList();
+  }
 }

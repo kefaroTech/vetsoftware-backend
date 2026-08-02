@@ -12,23 +12,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class InventoryReportPdfAdapter implements InventoryReportPdfPort {
 
-    private final HtmlPdfRenderer renderer;
+  private final HtmlPdfRenderer renderer;
 
-    public InventoryReportPdfAdapter(HtmlPdfRenderer renderer) {
-        this.renderer = renderer;
-    }
+  public InventoryReportPdfAdapter(HtmlPdfRenderer renderer) {
+    this.renderer = renderer;
+  }
 
-    @Override
-    public byte[] renderKardex(KardexReport report) {
-        Map<String, Object> ctx = new HashMap<>();
-        ctx.put("r", report);
-        return renderer.render("inventory-kardex", ctx);
-    }
+  @Override
+  public byte[] renderKardex(KardexReport report) {
+    Map<String, Object> ctx = new HashMap<>();
+    ctx.put("r", report);
+    return renderer.render("inventory-kardex", ctx);
+  }
 
-    @Override
-    public byte[] renderPurchases(PurchasesReport report) {
-        Map<String, Object> ctx = new HashMap<>();
-        ctx.put("r", report);
-        return renderer.render("inventory-purchases", ctx);
-    }
+  @Override
+  public byte[] renderPurchases(PurchasesReport report) {
+    Map<String, Object> ctx = new HashMap<>();
+    ctx.put("r", report);
+    return renderer.render("inventory-purchases", ctx);
+  }
 }

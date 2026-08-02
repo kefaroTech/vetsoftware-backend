@@ -13,30 +13,41 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registra un movimiento manual (ingreso/retiro/gasto) en una sesión de caja abierta. Rechaza tipos no manuales
- * (venta/abono/reversa los inyecta la orquestación) y delega el guard de "solo con caja abierta" al agregado.
+ * Registra un movimiento manual (ingreso/retiro/gasto) en una sesión de caja abierta. Rechaza tipos
+ * no manuales (venta/abono/reversa los inyecta la orquestación) y delega el guard de "solo con caja
+ * abierta" al agregado.
  */
 @Observed(name = "cash.register.register.movement")
 @Service
 public class RegisterCashMovementService implements RegisterCashMovementUseCase {
 
-    private final CashSessionRepository repository;
+  private final CashSessionRepository repository;
 
-    public RegisterCashMovementService(CashSessionRepository repository) {
-        this.repository = repository;
+  public RegisterCashMovementService(CashSessionRepository repository) {
+    this.repository = repository;
+  }
+
+  @Override
+  @Transactional
+  public CashSessionView register(RegisterCashMovementCommand command) {
+    if (command.type() == null || !command.type().isManual()) {
+      throw new IllegalArgumentException(
+          "Solo se permiten movimientos manuales: ingreso, retiro o gasto.");
     }
-
-    @Override
-    @Transactional
-    public CashSessionView register(RegisterCashMovementCommand command) {
-        if (command.type() == null || !command.type().isManual()) {
-            throw new IllegalArgumentException("Solo se permiten movimientos manuales: ingreso, retiro o gasto.");
-        }
-        CashSession session = repository.findByIdAndCompany(command.sessionId(), command.companyId())
+    CashSession session =
+        repository
+            .findByIdAndCompany(command.sessionId(), command.companyId())
             .orElseThrow(() -> new CashSessionNotFoundException(command.sessionId()));
-        CashMovement movement = CashMovement.create(command.type(), command.method(), command.amount(),
-            CashReferenceType.MANUAL, null, command.createdByEmployeeId(), command.note());
-        session.addMovement(movement);
-        return CashSessionView.from(repository.save(session));
-    }
+    CashMovement movement =
+        CashMovement.create(
+            command.type(),
+            command.method(),
+            command.amount(),
+            CashReferenceType.MANUAL,
+            null,
+            command.createdByEmployeeId(),
+            command.note());
+    session.addMovement(movement);
+    return CashSessionView.from(repository.save(session));
+  }
 }

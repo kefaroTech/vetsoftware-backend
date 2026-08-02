@@ -12,18 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class VerifyEmployeeEmailService implements VerifyEmployeeEmailUseCase {
 
-    private final EmployeeRepository repository;
+  private final EmployeeRepository repository;
 
-    public VerifyEmployeeEmailService(EmployeeRepository repository) {
-        this.repository = repository;
-    }
+  public VerifyEmployeeEmailService(EmployeeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long employeeId) {
-        Employee employee = repository.findById(employeeId)
+  @Override
+  @Transactional
+  public void execute(Long employeeId) {
+    Employee employee =
+        repository
+            .findById(employeeId)
             .orElseThrow(() -> new EmployeeNotFoundException(employeeId));
-        employee.verifyEmail();
-        repository.save(employee);
-    }
+    employee.verifyEmail();
+    repository.save(employee);
+  }
 }

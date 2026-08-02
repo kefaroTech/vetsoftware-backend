@@ -23,39 +23,42 @@ import org.junit.jupiter.api.Test;
 
 class TenantScopedStatusMutationTest {
 
-    @Test
-    void spaStatusDoesNotFallBackToGlobalLookupForEmployee() {
-        SpaRepository repository = mock(SpaRepository.class);
-        when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
+  @Test
+  void spaStatusDoesNotFallBackToGlobalLookupForEmployee() {
+    SpaRepository repository = mock(SpaRepository.class);
+    when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
 
-        var service = new ChangeSpaStatusService(repository);
+    var service = new ChangeSpaStatusService(repository);
 
-        assertThrows(SpaNotFoundException.class,
-            () -> service.execute(new ChangeSpaStatusCommand(9L, "COMPLETED", 3L)));
-        verify(repository, never()).findById(9L);
-    }
+    assertThrows(
+        SpaNotFoundException.class,
+        () -> service.execute(new ChangeSpaStatusCommand(9L, "COMPLETED", 3L)));
+    verify(repository, never()).findById(9L);
+  }
 
-    @Test
-    void surgeryStatusDoesNotFallBackToGlobalLookupForEmployee() {
-        SurgeryRepository repository = mock(SurgeryRepository.class);
-        when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
+  @Test
+  void surgeryStatusDoesNotFallBackToGlobalLookupForEmployee() {
+    SurgeryRepository repository = mock(SurgeryRepository.class);
+    when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
 
-        var service = new ChangeSurgeryStatusService(repository);
+    var service = new ChangeSurgeryStatusService(repository);
 
-        assertThrows(SurgeryNotFoundException.class,
-            () -> service.execute(new ChangeSurgeryStatusCommand(9L, "COMPLETED", 3L)));
-        verify(repository, never()).findById(9L);
-    }
+    assertThrows(
+        SurgeryNotFoundException.class,
+        () -> service.execute(new ChangeSurgeryStatusCommand(9L, "COMPLETED", 3L)));
+    verify(repository, never()).findById(9L);
+  }
 
-    @Test
-    void diagnosticStatusDoesNotFallBackToGlobalLookupForEmployee() {
-        DiagnosticImagingRepository repository = mock(DiagnosticImagingRepository.class);
-        when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
+  @Test
+  void diagnosticStatusDoesNotFallBackToGlobalLookupForEmployee() {
+    DiagnosticImagingRepository repository = mock(DiagnosticImagingRepository.class);
+    when(repository.findByIdAndCompanyId(9L, 3L)).thenReturn(Optional.empty());
 
-        var service = new ChangeDiagnosticImagingStatusService(repository);
+    var service = new ChangeDiagnosticImagingStatusService(repository);
 
-        assertThrows(DiagnosticImagingNotFoundException.class,
-            () -> service.execute(new ChangeDiagnosticImagingStatusCommand(9L, "COMPLETED", 3L)));
-        verify(repository, never()).findById(9L);
-    }
+    assertThrows(
+        DiagnosticImagingNotFoundException.class,
+        () -> service.execute(new ChangeDiagnosticImagingStatusCommand(9L, "COMPLETED", 3L)));
+    verify(repository, never()).findById(9L);
+  }
 }

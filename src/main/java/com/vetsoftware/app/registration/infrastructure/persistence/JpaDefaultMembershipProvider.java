@@ -8,18 +8,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaDefaultMembershipProvider implements DefaultMembershipProvider {
 
-    private final MembershipJpaRepository membershipJpaRepository;
+  private final MembershipJpaRepository membershipJpaRepository;
 
-    public JpaDefaultMembershipProvider(MembershipJpaRepository membershipJpaRepository) {
-        this.membershipJpaRepository = membershipJpaRepository;
-    }
+  public JpaDefaultMembershipProvider(MembershipJpaRepository membershipJpaRepository) {
+    this.membershipJpaRepository = membershipJpaRepository;
+  }
 
-    @Override
-    public Long getDefaultMembershipId() {
-        return membershipJpaRepository
-            .findFirstByMandatoryTrue()
-            .map(MembershipJpaEntity::getId)
-            .orElseThrow(() -> new IllegalStateException(
-                "No mandatory membership found. Mark one membership with mandatory=true."));
-    }
+  @Override
+  public Long getDefaultMembershipId() {
+    return membershipJpaRepository
+        .findFirstByMandatoryTrue()
+        .map(MembershipJpaEntity::getId)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "No mandatory membership found. Mark one membership with mandatory=true."));
+  }
 }

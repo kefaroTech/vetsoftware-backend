@@ -7,14 +7,14 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaEmployeeActivationPort implements EmployeeActivationPort {
 
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeActivationPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeActivationPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public void activateOnLogin(Long employeeId) {
-        employeeJpaRepository.activateInvited(employeeId);
-    }
+  @Override
+  public void activateOnLogin(Long employeeId) {
+    employeeJpaRepository.activateInvited(employeeId);
+  }
 }

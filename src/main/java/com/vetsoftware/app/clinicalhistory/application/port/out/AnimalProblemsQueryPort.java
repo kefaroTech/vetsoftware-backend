@@ -5,5 +5,5 @@ import java.util.List;
 
 /** Lista de problemas (POMR) del animal para el reporte PDF; ya ordenada (activos primero). */
 public interface AnimalProblemsQueryPort {
-    List<ReportProblem> findByAnimal(Long animalId, Long companyId);
+  List<ReportProblem> findByAnimal(Long animalId, Long companyId);
 }

@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "withholding.config.find")
 @Service
 public class FindWithholdingConfigService implements FindWithholdingConfigUseCase {
-    private final WithholdingConfigRepository repository;
+  private final WithholdingConfigRepository repository;
 
-    public FindWithholdingConfigService(WithholdingConfigRepository repository) {
-        this.repository = repository;
-    }
+  public FindWithholdingConfigService(WithholdingConfigRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public WithholdingConfigDto findByCompany(Long companyId) {
-        return WithholdingConfigDto.from(repository.findByCompanyId(companyId)
-                .orElseThrow(() -> new WithholdingConfigNotFoundException(companyId)));
-    }
+  @Override
+  public WithholdingConfigDto findByCompany(Long companyId) {
+    return WithholdingConfigDto.from(
+        repository
+            .findByCompanyId(companyId)
+            .orElseThrow(() -> new WithholdingConfigNotFoundException(companyId)));
+  }
 }

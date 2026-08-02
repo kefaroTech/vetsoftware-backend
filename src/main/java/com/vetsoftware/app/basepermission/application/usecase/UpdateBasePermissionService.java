@@ -15,23 +15,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.permission.update")
 @Service
 public class UpdateBasePermissionService implements UpdateBasePermissionUseCase {
-    private final BasePermissionRepository repository;
-    private final SubModuleQueryPort subModuleQueryPort;
+  private final BasePermissionRepository repository;
+  private final SubModuleQueryPort subModuleQueryPort;
 
-    public UpdateBasePermissionService(BasePermissionRepository repository,
-                                       SubModuleQueryPort subModuleQueryPort) {
-        this.repository = repository;
-        this.subModuleQueryPort = subModuleQueryPort;
-    }
+  public UpdateBasePermissionService(
+      BasePermissionRepository repository, SubModuleQueryPort subModuleQueryPort) {
+    this.repository = repository;
+    this.subModuleQueryPort = subModuleQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public BasePermissionDto execute(UpdateBasePermissionCommand command) {
-        BasePermission basePermission = repository.findById(command.id())
+  @Override
+  @Transactional
+  public BasePermissionDto execute(UpdateBasePermissionCommand command) {
+    BasePermission basePermission =
+        repository
+            .findById(command.id())
             .orElseThrow(() -> new BasePermissionNotFoundException(command.id()));
-        SubModuleRef subModule = subModuleQueryPort.findById(command.subModuleId())
-            .orElseThrow(() -> new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
-        basePermission.update(command.name(), command.code(), subModule);
-        return BasePermissionDto.from(repository.save(basePermission));
-    }
+    SubModuleRef subModule =
+        subModuleQueryPort
+            .findById(command.subModuleId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException("SubModule not found: " + command.subModuleId()));
+    basePermission.update(command.name(), command.code(), subModule);
+    return BasePermissionDto.from(repository.save(basePermission));
+  }
 }

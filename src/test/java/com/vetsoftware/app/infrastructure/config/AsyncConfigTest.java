@@ -18,92 +18,92 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 class AsyncConfigTest {
 
-    private ThreadPoolTaskExecutor executor;
+  private ThreadPoolTaskExecutor executor;
 
-    @AfterEach
-    void cleanUp() {
-        MDC.clear();
-        if (executor != null) {
-            executor.shutdown();
-        }
+  @AfterEach
+  void cleanUp() {
+    MDC.clear();
+    if (executor != null) {
+      executor.shutdown();
+    }
+  }
+
+  @Test
+  void propagatesObservationAndSelectedMdcWithoutLeakingContext() throws Exception {
+    ObservationRegistry observationRegistry = ObservationRegistry.create();
+    ContextRegistry contextRegistry =
+        new ContextRegistry()
+            .registerThreadLocalAccessor(new ObservationThreadLocalAccessor(observationRegistry))
+            .registerThreadLocalAccessor(
+                new Slf4jThreadLocalAccessor(
+                    MdcKeys.ACTOR_TYPE,
+                    MdcKeys.ACTOR_EMPLOYEE_ID,
+                    MdcKeys.ACTOR_COMPANY_ID,
+                    MdcKeys.ACTOR_SYSTEM_USER_ID,
+                    MdcKeys.HTTP_METHOD,
+                    MdcKeys.HTTP_PATH));
+    ContextSnapshotFactory snapshotFactory =
+        ContextSnapshotFactory.builder().contextRegistry(contextRegistry).build();
+    ContextPropagatingTaskDecorator decorator =
+        new ContextPropagatingTaskDecorator(snapshotFactory);
+
+    executor = new AsyncConfig().emailTaskExecutor(decorator);
+    executor.initialize();
+
+    Observation parent = Observation.start("test.request", observationRegistry);
+    AsyncContext propagated;
+    try (Observation.Scope ignored = parent.openScope()) {
+      MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
+      MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, "42");
+      MDC.put(MdcKeys.HTTP_METHOD, "POST");
+      MDC.put(MdcKeys.HTTP_PATH, "/emails");
+      MDC.put(MdcKeys.CLIENT_IP, "192.0.2.10");
+
+      propagated =
+          executor.submit(() -> captureContext(observationRegistry)).get(5, TimeUnit.SECONDS);
+    } finally {
+      MDC.clear();
+      parent.stop();
     }
 
-    @Test
-    void propagatesObservationAndSelectedMdcWithoutLeakingContext() throws Exception {
-        ObservationRegistry observationRegistry = ObservationRegistry.create();
-        ContextRegistry contextRegistry = new ContextRegistry()
-                .registerThreadLocalAccessor(new ObservationThreadLocalAccessor(observationRegistry))
-                .registerThreadLocalAccessor(new Slf4jThreadLocalAccessor(
-                        MdcKeys.ACTOR_TYPE,
-                        MdcKeys.ACTOR_EMPLOYEE_ID,
-                        MdcKeys.ACTOR_COMPANY_ID,
-                        MdcKeys.ACTOR_SYSTEM_USER_ID,
-                        MdcKeys.HTTP_METHOD,
-                        MdcKeys.HTTP_PATH));
-        ContextSnapshotFactory snapshotFactory = ContextSnapshotFactory.builder()
-                .contextRegistry(contextRegistry)
-                .build();
-        ContextPropagatingTaskDecorator decorator =
-                new ContextPropagatingTaskDecorator(snapshotFactory);
+    assertThat(propagated.threadName()).startsWith("email-");
+    assertThat(propagated.observation()).isSameAs(parent);
+    assertThat(propagated.actorType()).isEqualTo("EMPLOYEE");
+    assertThat(propagated.actorEmployeeId()).isEqualTo("42");
+    assertThat(propagated.httpMethod()).isEqualTo("POST");
+    assertThat(propagated.httpPath()).isEqualTo("/emails");
+    assertThat(propagated.clientIp()).isNull();
 
-        executor = new AsyncConfig().emailTaskExecutor(decorator);
-        executor.initialize();
-
-        Observation parent = Observation.start("test.request", observationRegistry);
-        AsyncContext propagated;
-        try (Observation.Scope ignored = parent.openScope()) {
-            MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
-            MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, "42");
-            MDC.put(MdcKeys.HTTP_METHOD, "POST");
-            MDC.put(MdcKeys.HTTP_PATH, "/emails");
-            MDC.put(MdcKeys.CLIENT_IP, "192.0.2.10");
-
-            propagated = executor.submit(() -> captureContext(observationRegistry))
-                    .get(5, TimeUnit.SECONDS);
-        } finally {
-            MDC.clear();
-            parent.stop();
-        }
-
-        assertThat(propagated.threadName()).startsWith("email-");
-        assertThat(propagated.observation()).isSameAs(parent);
-        assertThat(propagated.actorType()).isEqualTo("EMPLOYEE");
-        assertThat(propagated.actorEmployeeId()).isEqualTo("42");
-        assertThat(propagated.httpMethod()).isEqualTo("POST");
-        assertThat(propagated.httpPath()).isEqualTo("/emails");
-        assertThat(propagated.clientIp()).isNull();
-
-        // El pool reutiliza hilos. Ninguna tarea posterior puede heredar el contexto anterior.
-        for (int i = 0; i < 4; i++) {
-            AsyncContext clean = executor.submit(() -> captureContext(observationRegistry))
-                    .get(5, TimeUnit.SECONDS);
-            assertThat(clean.observation()).isNull();
-            assertThat(clean.actorType()).isNull();
-            assertThat(clean.actorEmployeeId()).isNull();
-            assertThat(clean.httpMethod()).isNull();
-            assertThat(clean.httpPath()).isNull();
-            assertThat(clean.clientIp()).isNull();
-        }
+    // El pool reutiliza hilos. Ninguna tarea posterior puede heredar el contexto anterior.
+    for (int i = 0; i < 4; i++) {
+      AsyncContext clean =
+          executor.submit(() -> captureContext(observationRegistry)).get(5, TimeUnit.SECONDS);
+      assertThat(clean.observation()).isNull();
+      assertThat(clean.actorType()).isNull();
+      assertThat(clean.actorEmployeeId()).isNull();
+      assertThat(clean.httpMethod()).isNull();
+      assertThat(clean.httpPath()).isNull();
+      assertThat(clean.clientIp()).isNull();
     }
+  }
 
-    private static AsyncContext captureContext(ObservationRegistry observationRegistry) {
-        return new AsyncContext(
-                Thread.currentThread().getName(),
-                observationRegistry.getCurrentObservation(),
-                MDC.get(MdcKeys.ACTOR_TYPE),
-                MDC.get(MdcKeys.ACTOR_EMPLOYEE_ID),
-                MDC.get(MdcKeys.HTTP_METHOD),
-                MDC.get(MdcKeys.HTTP_PATH),
-                MDC.get(MdcKeys.CLIENT_IP));
-    }
+  private static AsyncContext captureContext(ObservationRegistry observationRegistry) {
+    return new AsyncContext(
+        Thread.currentThread().getName(),
+        observationRegistry.getCurrentObservation(),
+        MDC.get(MdcKeys.ACTOR_TYPE),
+        MDC.get(MdcKeys.ACTOR_EMPLOYEE_ID),
+        MDC.get(MdcKeys.HTTP_METHOD),
+        MDC.get(MdcKeys.HTTP_PATH),
+        MDC.get(MdcKeys.CLIENT_IP));
+  }
 
-    private record AsyncContext(
-            String threadName,
-            Observation observation,
-            String actorType,
-            String actorEmployeeId,
-            String httpMethod,
-            String httpPath,
-            String clientIp) {
-    }
+  private record AsyncContext(
+      String threadName,
+      Observation observation,
+      String actorType,
+      String actorEmployeeId,
+      String httpMethod,
+      String httpPath,
+      String clientIp) {}
 }

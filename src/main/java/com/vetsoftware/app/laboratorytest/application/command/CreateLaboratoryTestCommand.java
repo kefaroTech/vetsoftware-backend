@@ -4,16 +4,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record CreateLaboratoryTestCommand(
-        LocalDate date,
-        Long testTypeId,
-        Integer quantity,
-        String diagnosis,
-        String status,
-        String prioridad,
-        Long animalId,
-        Long consultationId,
-        Long companyId,
-        Long branchId,
-        Long processedById,
-        LocalDateTime processedDate
-) {}
+    LocalDate date,
+    Long testTypeId,
+    Integer quantity,
+    String diagnosis,
+    String status,
+    String prioridad,
+    Long animalId,
+    Long consultationId,
+    Long companyId,
+    Long branchId,
+    Long processedById,
+    LocalDateTime processedDate) {}

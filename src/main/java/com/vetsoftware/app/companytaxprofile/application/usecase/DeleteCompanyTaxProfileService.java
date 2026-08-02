@@ -10,18 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "company.tax.profile.delete")
 @Service
 public class DeleteCompanyTaxProfileService implements DeleteCompanyTaxProfileUseCase {
-    private final CompanyTaxProfileRepository repository;
+  private final CompanyTaxProfileRepository repository;
 
-    public DeleteCompanyTaxProfileService(CompanyTaxProfileRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteCompanyTaxProfileService(CompanyTaxProfileRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long companyId) {
-        if (!repository.existsByCompanyId(companyId)) {
-            throw new CompanyTaxProfileNotFoundException(companyId);
-        }
-        repository.delete(companyId);
+  @Override
+  @Transactional
+  public void execute(Long companyId) {
+    if (!repository.existsByCompanyId(companyId)) {
+      throw new CompanyTaxProfileNotFoundException(companyId);
     }
+    repository.delete(companyId);
+  }
 }

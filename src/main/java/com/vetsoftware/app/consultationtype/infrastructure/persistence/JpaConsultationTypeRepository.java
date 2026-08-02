@@ -8,36 +8,37 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaConsultationTypeRepository implements ConsultationTypeRepository {
-    private final ConsultationTypeJpaRepository jpaRepository;
-    private final ConsultationTypeJpaMapper mapper;
+  private final ConsultationTypeJpaRepository jpaRepository;
+  private final ConsultationTypeJpaMapper mapper;
 
-    public JpaConsultationTypeRepository(ConsultationTypeJpaRepository jpaRepository, ConsultationTypeJpaMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public JpaConsultationTypeRepository(
+      ConsultationTypeJpaRepository jpaRepository, ConsultationTypeJpaMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public ConsultationType save(ConsultationType consultationType) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpa(consultationType)));
-    }
+  @Override
+  public ConsultationType save(ConsultationType consultationType) {
+    return mapper.toDomain(jpaRepository.save(mapper.toJpa(consultationType)));
+  }
 
-    @Override
-    public Optional<ConsultationType> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<ConsultationType> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<ConsultationType> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<ConsultationType> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

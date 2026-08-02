@@ -12,56 +12,57 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaDayCareRepository implements DayCareRepository {
-    private final DayCareJpaRepository jpaRepository;
-    private final DayCareJpaMapper mapper;
-    private final AnimalJpaRepository animalJpaRepository;
-    private final CompanyJpaRepository companyJpaRepository;
+  private final DayCareJpaRepository jpaRepository;
+  private final DayCareJpaMapper mapper;
+  private final AnimalJpaRepository animalJpaRepository;
+  private final CompanyJpaRepository companyJpaRepository;
 
-    public JpaDayCareRepository(DayCareJpaRepository jpaRepository,
-                                DayCareJpaMapper mapper,
-                                AnimalJpaRepository animalJpaRepository,
-                                CompanyJpaRepository companyJpaRepository) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-        this.animalJpaRepository = animalJpaRepository;
-        this.companyJpaRepository = companyJpaRepository;
-    }
+  public JpaDayCareRepository(
+      DayCareJpaRepository jpaRepository,
+      DayCareJpaMapper mapper,
+      AnimalJpaRepository animalJpaRepository,
+      CompanyJpaRepository companyJpaRepository) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+    this.animalJpaRepository = animalJpaRepository;
+    this.companyJpaRepository = companyJpaRepository;
+  }
 
-    @Override
-    public DayCare save(DayCare dayCare) {
-        AnimalJpaEntity animal = animalJpaRepository.getReferenceById(dayCare.getAnimal().id());
-        CompanyJpaEntity company = companyJpaRepository.getReferenceById(dayCare.getCompany().id());
-        DayCareJpaEntity saved = jpaRepository.save(mapper.toJpa(dayCare, animal, company));
-        return mapper.toDomain(saved, dayCare.getAnimal(), dayCare.getCompany());
-    }
+  @Override
+  public DayCare save(DayCare dayCare) {
+    AnimalJpaEntity animal = animalJpaRepository.getReferenceById(dayCare.getAnimal().id());
+    CompanyJpaEntity company = companyJpaRepository.getReferenceById(dayCare.getCompany().id());
+    DayCareJpaEntity saved = jpaRepository.save(mapper.toJpa(dayCare, animal, company));
+    return mapper.toDomain(saved, dayCare.getAnimal(), dayCare.getCompany());
+  }
 
-    @Override
-    public Optional<DayCare> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<DayCare> findById(Long id) {
+    return jpaRepository.findById(id).map(mapper::toDomain);
+  }
 
-    @Override
-    public Optional<DayCare> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
-    }
+  @Override
+  public Optional<DayCare> findByIdAndCompanyId(Long id, Long companyId) {
+    return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+  }
 
-    @Override
-    public List<DayCare> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<DayCare> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public List<DayCare> findAllByAnimalId(Long animalId) {
-        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
-    }
+  @Override
+  public List<DayCare> findAllByAnimalId(Long animalId) {
+    return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+  }
 
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
+  @Override
+  public void delete(Long id) {
+    jpaRepository.deleteById(id);
+  }
 
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
+  @Override
+  public int reactivate(Long id) {
+    return jpaRepository.reactivate(id);
+  }
 }

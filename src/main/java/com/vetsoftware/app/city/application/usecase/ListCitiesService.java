@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "city.list")
 @Service
 public class ListCitiesService implements ListCitiesUseCase {
-    private final CityRepository repository;
+  private final CityRepository repository;
 
-    public ListCitiesService(CityRepository repository) {
-        this.repository = repository;
-    }
+  public ListCitiesService(CityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<CityDto> listAll() {
-        return repository.findAll().stream().map(CityDto::from).toList();
-    }
+  @Override
+  public List<CityDto> listAll() {
+    return repository.findAll().stream().map(CityDto::from).toList();
+  }
 }

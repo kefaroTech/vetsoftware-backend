@@ -24,71 +24,90 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/companies")
 public class CompanyController {
-    private final CreateCompanyUseCase createUseCase;
-    private final UpdateCompanyUseCase updateUseCase;
-    private final FindCompanyUseCase findUseCase;
-    private final ListCompaniesUseCase listUseCase;
-    private final DeleteCompanyUseCase deleteUseCase;
-    private final ReactivateCompanyUseCase reactivateUseCase;
+  private final CreateCompanyUseCase createUseCase;
+  private final UpdateCompanyUseCase updateUseCase;
+  private final FindCompanyUseCase findUseCase;
+  private final ListCompaniesUseCase listUseCase;
+  private final DeleteCompanyUseCase deleteUseCase;
+  private final ReactivateCompanyUseCase reactivateUseCase;
 
-    public CompanyController(CreateCompanyUseCase createUseCase, UpdateCompanyUseCase updateUseCase,
-                             FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
-                             DeleteCompanyUseCase deleteUseCase,
-                             ReactivateCompanyUseCase reactivateUseCase) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-    }
+  public CompanyController(
+      CreateCompanyUseCase createUseCase,
+      UpdateCompanyUseCase updateUseCase,
+      FindCompanyUseCase findUseCase,
+      ListCompaniesUseCase listUseCase,
+      DeleteCompanyUseCase deleteUseCase,
+      ReactivateCompanyUseCase reactivateUseCase) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CompanyResponse create(@Valid @RequestBody CreateCompanyRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreateCompanyCommand(request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId(), request.membershipId())
-        ));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public CompanyResponse create(@Valid @RequestBody CreateCompanyRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreateCompanyCommand(
+                request.name(),
+                request.identifier(),
+                request.address(),
+                request.contactNumber(),
+                request.cityId(),
+                request.membershipId())));
+  }
 
-    @GetMapping
-    public List<CompanyResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<CompanyResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public CompanyResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public CompanyResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateCompanyRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdateCompanyCommand(id, request.name(), request.identifier(), request.address(),
-                request.contactNumber(), request.cityId(), request.membershipId())
-        ));
-    }
+  @PutMapping("/{id}")
+  public CompanyResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateCompanyRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdateCompanyCommand(
+                id,
+                request.name(),
+                request.identifier(),
+                request.address(),
+                request.contactNumber(),
+                request.cityId(),
+                request.membershipId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public CompanyResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public CompanyResponse enable(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private CompanyResponse toResponse(CompanyDto dto) {
-        CitySummaryDto c = dto.city();
-        MembershipSummaryDto m = dto.membership();
-        return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
-            dto.contactNumber(),
-            new CitySummary(c.id(), c.name()),
-            new MembershipSummary(m.id(), m.name(), m.status()),
-            dto.createdDate(),
-            dto.enabled());
-    }
+  private CompanyResponse toResponse(CompanyDto dto) {
+    CitySummaryDto c = dto.city();
+    MembershipSummaryDto m = dto.membership();
+    return new CompanyResponse(
+        dto.id(),
+        dto.name(),
+        dto.identifier(),
+        dto.address(),
+        dto.contactNumber(),
+        new CitySummary(c.id(), c.name()),
+        new MembershipSummary(m.id(), m.name(), m.status()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

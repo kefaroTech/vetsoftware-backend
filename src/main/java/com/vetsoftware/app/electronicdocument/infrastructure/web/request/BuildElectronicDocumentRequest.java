@@ -4,7 +4,6 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import jakarta.validation.constraints.NotNull;
 
 public record BuildElectronicDocumentRequest(
-        @NotNull Long openAccountId,
-        @NotNull ElectronicDocumentType documentType,
-        boolean finalConsumer
-) {}
+    @NotNull Long openAccountId,
+    @NotNull ElectronicDocumentType documentType,
+    boolean finalConsumer) {}

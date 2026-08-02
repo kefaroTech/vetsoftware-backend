@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("spaJpaSpaTypeQueryPort")
 public class JpaSpaTypeQueryPort implements SpaTypeQueryPort {
-    private final SpaTypeJpaRepository spaTypeJpaRepository;
+  private final SpaTypeJpaRepository spaTypeJpaRepository;
 
-    public JpaSpaTypeQueryPort(SpaTypeJpaRepository spaTypeJpaRepository) {
-        this.spaTypeJpaRepository = spaTypeJpaRepository;
-    }
+  public JpaSpaTypeQueryPort(SpaTypeJpaRepository spaTypeJpaRepository) {
+    this.spaTypeJpaRepository = spaTypeJpaRepository;
+  }
 
-    @Override
-    public Optional<SpaTypeRef> findById(Long spaTypeId) {
-        return spaTypeJpaRepository.findById(spaTypeId)
-            .map(e -> new SpaTypeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<SpaTypeRef> findById(Long spaTypeId) {
+    return spaTypeJpaRepository
+        .findById(spaTypeId)
+        .map(e -> new SpaTypeRef(e.getId(), e.getName()));
+  }
 }

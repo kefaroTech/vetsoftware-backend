@@ -4,6 +4,6 @@ import com.vetsoftware.app.publishadminpermissions.application.dto.PublishAdminP
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface PublishAdminPermissionsUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    PublishAdminPermissionsDto execute();
+  @PreAuthorize("hasRole('SYSTEM')")
+  PublishAdminPermissionsDto execute();
 }

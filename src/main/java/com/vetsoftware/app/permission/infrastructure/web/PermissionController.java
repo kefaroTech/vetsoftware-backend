@@ -26,83 +26,94 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/permissions")
 public class PermissionController {
-    private final CreatePermissionUseCase createUseCase;
-    private final UpdatePermissionUseCase updateUseCase;
-    private final FindPermissionUseCase findUseCase;
-    private final ListPermissionsUseCase listUseCase;
-    private final ListPermissionsByCompanyUseCase listByCompanyUseCase;
-    private final DeletePermissionUseCase deleteUseCase;
-    private final ReactivatePermissionUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreatePermissionUseCase createUseCase;
+  private final UpdatePermissionUseCase updateUseCase;
+  private final FindPermissionUseCase findUseCase;
+  private final ListPermissionsUseCase listUseCase;
+  private final ListPermissionsByCompanyUseCase listByCompanyUseCase;
+  private final DeletePermissionUseCase deleteUseCase;
+  private final ReactivatePermissionUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public PermissionController(CreatePermissionUseCase createUseCase,
-                                 UpdatePermissionUseCase updateUseCase,
-                                 FindPermissionUseCase findUseCase,
-                                 ListPermissionsUseCase listUseCase,
-                                 ListPermissionsByCompanyUseCase listByCompanyUseCase,
-                                 DeletePermissionUseCase deleteUseCase,
-                                 ReactivatePermissionUseCase reactivateUseCase,
-                                 Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.listByCompanyUseCase = listByCompanyUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public PermissionController(
+      CreatePermissionUseCase createUseCase,
+      UpdatePermissionUseCase updateUseCase,
+      FindPermissionUseCase findUseCase,
+      ListPermissionsUseCase listUseCase,
+      ListPermissionsByCompanyUseCase listByCompanyUseCase,
+      DeletePermissionUseCase deleteUseCase,
+      ReactivatePermissionUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.listByCompanyUseCase = listByCompanyUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request) {
-        return toResponse(createUseCase.execute(
-            new CreatePermissionCommand(request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public PermissionResponse create(@Valid @RequestBody CreatePermissionRequest request) {
+    return toResponse(
+        createUseCase.execute(
+            new CreatePermissionCommand(
+                request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
+  }
 
-    @GetMapping
-    public List<PermissionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<PermissionResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/by-company")
-    public List<PermissionResponse> listByCompany() {
-        return listByCompanyUseCase.listByCompany(authz.currentCompanyId())
-            .stream().map(this::toResponse).toList();
-    }
+  @GetMapping("/by-company")
+  public List<PermissionResponse> listByCompany() {
+    return listByCompanyUseCase.listByCompany(authz.currentCompanyId()).stream()
+        .map(this::toResponse)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public PermissionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id));
-    }
+  @GetMapping("/{id}")
+  public PermissionResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public PermissionResponse update(@PathVariable Long id,
-                                      @Valid @RequestBody UpdatePermissionRequest request) {
-        return toResponse(updateUseCase.execute(
-            new UpdatePermissionCommand(id, request.name(), request.code(), authz.currentCompanyId(), request.subModuleId())));
-    }
+  @PutMapping("/{id}")
+  public PermissionResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdatePermissionRequest request) {
+    return toResponse(
+        updateUseCase.execute(
+            new UpdatePermissionCommand(
+                id,
+                request.name(),
+                request.code(),
+                authz.currentCompanyId(),
+                request.subModuleId())));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id);
+  }
 
-    @PatchMapping("/{id}/enable")
-    public PermissionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public PermissionResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private PermissionResponse toResponse(PermissionDto dto) {
-        CompanySummaryDto c = dto.company();
-        SubModuleSummaryDto sm = dto.subModule();
-        return new PermissionResponse(
-            dto.id(), dto.name(), dto.code(),
-            new CompanySummary(c.id(), c.name(), c.identifier()),
-            new SubModuleSummary(sm.id(), sm.name(), sm.code()),
-            dto.createdDate(),
-            dto.enabled()
-        );
-    }
+  private PermissionResponse toResponse(PermissionDto dto) {
+    CompanySummaryDto c = dto.company();
+    SubModuleSummaryDto sm = dto.subModule();
+    return new PermissionResponse(
+        dto.id(),
+        dto.name(),
+        dto.code(),
+        new CompanySummary(c.id(), c.name(), c.identifier()),
+        new SubModuleSummary(sm.id(), sm.name(), sm.code()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

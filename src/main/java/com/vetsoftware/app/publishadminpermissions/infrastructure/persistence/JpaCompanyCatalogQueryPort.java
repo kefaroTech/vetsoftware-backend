@@ -11,27 +11,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class JpaCompanyCatalogQueryPort implements CompanyCatalogQueryPort {
 
-    private static final String ADMIN_CODE = "ADMIN";
+  private static final String ADMIN_CODE = "ADMIN";
 
-    private final RoleJpaRepository roleJpaRepository;
+  private final RoleJpaRepository roleJpaRepository;
 
-    public JpaCompanyCatalogQueryPort(RoleJpaRepository roleJpaRepository) {
-        this.roleJpaRepository = roleJpaRepository;
-    }
+  public JpaCompanyCatalogQueryPort(RoleJpaRepository roleJpaRepository) {
+    this.roleJpaRepository = roleJpaRepository;
+  }
 
-    @Override
-    public List<CompanyAdminContext> findAllWithAdminRole() {
-        return roleJpaRepository.findAllByCode(ADMIN_CODE).stream()
-            .map(this::toContext)
-            .toList();
-    }
+  @Override
+  public List<CompanyAdminContext> findAllWithAdminRole() {
+    return roleJpaRepository.findAllByCode(ADMIN_CODE).stream().map(this::toContext).toList();
+  }
 
-    private CompanyAdminContext toContext(RoleJpaEntity role) {
-        CompanyJpaEntity company = role.getCompany();
-        return new CompanyAdminContext(
-            company.getId(),
-            company.getMembership().getId(),
-            role.getId()
-        );
-    }
+  private CompanyAdminContext toContext(RoleJpaEntity role) {
+    CompanyJpaEntity company = role.getCompany();
+    return new CompanyAdminContext(company.getId(), company.getMembership().getId(), role.getId());
+  }
 }

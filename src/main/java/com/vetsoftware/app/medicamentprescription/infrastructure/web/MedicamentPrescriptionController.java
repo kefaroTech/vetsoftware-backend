@@ -23,77 +23,95 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/medicament-prescriptions")
 public class MedicamentPrescriptionController {
-    private final CreateMedicamentPrescriptionUseCase createUseCase;
-    private final UpdateMedicamentPrescriptionUseCase updateUseCase;
-    private final FindMedicamentPrescriptionUseCase findUseCase;
-    private final ListMedicamentPrescriptionsUseCase listUseCase;
-    private final DeleteMedicamentPrescriptionUseCase deleteUseCase;
-    private final ReactivateMedicamentPrescriptionUseCase reactivateUseCase;
-    private final Authz authz;
+  private final CreateMedicamentPrescriptionUseCase createUseCase;
+  private final UpdateMedicamentPrescriptionUseCase updateUseCase;
+  private final FindMedicamentPrescriptionUseCase findUseCase;
+  private final ListMedicamentPrescriptionsUseCase listUseCase;
+  private final DeleteMedicamentPrescriptionUseCase deleteUseCase;
+  private final ReactivateMedicamentPrescriptionUseCase reactivateUseCase;
+  private final Authz authz;
 
-    public MedicamentPrescriptionController(CreateMedicamentPrescriptionUseCase createUseCase,
-                                            UpdateMedicamentPrescriptionUseCase updateUseCase,
-                                            FindMedicamentPrescriptionUseCase findUseCase,
-                                            ListMedicamentPrescriptionsUseCase listUseCase,
-                                            DeleteMedicamentPrescriptionUseCase deleteUseCase,
-                                            ReactivateMedicamentPrescriptionUseCase reactivateUseCase,
-                                            Authz authz) {
-        this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.authz = authz;
-    }
+  public MedicamentPrescriptionController(
+      CreateMedicamentPrescriptionUseCase createUseCase,
+      UpdateMedicamentPrescriptionUseCase updateUseCase,
+      FindMedicamentPrescriptionUseCase findUseCase,
+      ListMedicamentPrescriptionsUseCase listUseCase,
+      DeleteMedicamentPrescriptionUseCase deleteUseCase,
+      ReactivateMedicamentPrescriptionUseCase reactivateUseCase,
+      Authz authz) {
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
+    this.findUseCase = findUseCase;
+    this.listUseCase = listUseCase;
+    this.deleteUseCase = deleteUseCase;
+    this.reactivateUseCase = reactivateUseCase;
+    this.authz = authz;
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public MedicamentPrescriptionResponse create(@Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
-        return toResponse(createUseCase.execute(
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public MedicamentPrescriptionResponse create(
+      @Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
+    return toResponse(
+        createUseCase.execute(
             new CreateMedicamentPrescriptionCommand(
-                request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId())));
-    }
+                request.medicamentId(),
+                request.presentation(),
+                request.quantity(),
+                request.posology(),
+                request.observation(),
+                request.prescriptionId())));
+  }
 
-    @GetMapping
-    public List<MedicamentPrescriptionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
-    }
+  @GetMapping
+  public List<MedicamentPrescriptionResponse> listAll() {
+    return listUseCase.listAll().stream().map(this::toResponse).toList();
+  }
 
-    @GetMapping("/{id}")
-    public MedicamentPrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
+  @GetMapping("/{id}")
+  public MedicamentPrescriptionResponse findById(@PathVariable Long id) {
+    return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
+  }
 
-    @PutMapping("/{id}")
-    public MedicamentPrescriptionResponse update(@PathVariable Long id,
-                                                  @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(
+  @PutMapping("/{id}")
+  public MedicamentPrescriptionResponse update(
+      @PathVariable Long id, @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
+    return toResponse(
+        updateUseCase.execute(
             new UpdateMedicamentPrescriptionCommand(
-                id, request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId(),
+                id,
+                request.medicamentId(),
+                request.presentation(),
+                request.quantity(),
+                request.posology(),
+                request.observation(),
+                request.prescriptionId(),
                 authz.currentCompanyIdOrNull())));
-    }
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
+  }
 
-    @PatchMapping("/{id}/enable")
-    public MedicamentPrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
+  @PatchMapping("/{id}/enable")
+  public MedicamentPrescriptionResponse reactivate(@PathVariable Long id) {
+    return toResponse(reactivateUseCase.execute(id));
+  }
 
-    private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {
-        PrescriptionSummaryDto p = dto.prescription();
-        return new MedicamentPrescriptionResponse(
-            dto.id(), dto.medicamentId(), dto.name(), dto.presentation(), dto.quantity(), dto.posology(),
-            dto.observation(),
-            new PrescriptionSummary(p.id(), p.date()),
-            dto.createdDate(),
-            dto.enabled());
-    }
+  private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {
+    PrescriptionSummaryDto p = dto.prescription();
+    return new MedicamentPrescriptionResponse(
+        dto.id(),
+        dto.medicamentId(),
+        dto.name(),
+        dto.presentation(),
+        dto.quantity(),
+        dto.posology(),
+        dto.observation(),
+        new PrescriptionSummary(p.id(), p.date()),
+        dto.createdDate(),
+        dto.enabled());
+  }
 }

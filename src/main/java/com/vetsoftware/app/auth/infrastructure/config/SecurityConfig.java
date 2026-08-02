@@ -14,20 +14,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private final AuthFilter authFilter;
+  private final AuthFilter authFilter;
 
-    public SecurityConfig(AuthFilter authFilter) {
-        this.authFilter = authFilter;
-    }
+  public SecurityConfig(AuthFilter authFilter) {
+    this.authFilter = authFilter;
+  }
 
-    @Bean
-    @Order(2)
-    SecurityFilterChain applicationSecurityFilterChain(HttpSecurity http) throws Exception {
-        return http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
-    }
+  @Bean
+  @Order(2)
+  SecurityFilterChain applicationSecurityFilterChain(HttpSecurity http) throws Exception {
+    return http.csrf(csrf -> csrf.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class)
+        .build();
+  }
 }

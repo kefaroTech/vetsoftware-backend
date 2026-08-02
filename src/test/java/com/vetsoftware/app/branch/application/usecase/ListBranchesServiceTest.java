@@ -16,35 +16,56 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** READ lista scoped a la empresa: mapea todas las sucursales (activas e inactivas) preservando el orden. */
+/**
+ * READ lista scoped a la empresa: mapea todas las sucursales (activas e inactivas) preservando el
+ * orden.
+ */
 @ExtendWith(MockitoExtension.class)
 class ListBranchesServiceTest {
 
-    @Mock private BranchRepository repository;
-    @InjectMocks private ListBranchesService service;
+  @Mock private BranchRepository repository;
+  @InjectMocks private ListBranchesService service;
 
-    private final CityRef city = new CityRef(5L, "Bogotá");
-    private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
+  private final CityRef city = new CityRef(5L, "Bogotá");
+  private final CompanyRef company = new CompanyRef(9L, "Vet SAS", "900123456");
 
-    @Test
-    void mapea_todas_las_sucursales_incluyendo_inactivas_en_orden() {
-        Branch activa = new Branch(1L, "Principal", "PRINCIPAL", null, null, city, company,
-            LocalDateTime.of(2020, 1, 1, 10, 0), true);
-        Branch inactiva = new Branch(2L, "Sede Sur", "SUR", null, null, city, company,
-            LocalDateTime.of(2020, 1, 2, 10, 0), false);
-        when(repository.findAllByCompanyId(9L)).thenReturn(List.of(activa, inactiva));
+  @Test
+  void mapea_todas_las_sucursales_incluyendo_inactivas_en_orden() {
+    Branch activa =
+        new Branch(
+            1L,
+            "Principal",
+            "PRINCIPAL",
+            null,
+            null,
+            city,
+            company,
+            LocalDateTime.of(2020, 1, 1, 10, 0),
+            true);
+    Branch inactiva =
+        new Branch(
+            2L,
+            "Sede Sur",
+            "SUR",
+            null,
+            null,
+            city,
+            company,
+            LocalDateTime.of(2020, 1, 2, 10, 0),
+            false);
+    when(repository.findAllByCompanyId(9L)).thenReturn(List.of(activa, inactiva));
 
-        List<BranchDto> result = service.listAll(9L);
+    List<BranchDto> result = service.listAll(9L);
 
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(BranchDto::code).containsExactly("PRINCIPAL", "SUR");
-        assertThat(result).extracting(BranchDto::active).containsExactly(true, false);
-    }
+    assertThat(result).hasSize(2);
+    assertThat(result).extracting(BranchDto::code).containsExactly("PRINCIPAL", "SUR");
+    assertThat(result).extracting(BranchDto::active).containsExactly(true, false);
+  }
 
-    @Test
-    void devuelve_vacio_cuando_no_hay_sucursales() {
-        when(repository.findAllByCompanyId(9L)).thenReturn(List.of());
+  @Test
+  void devuelve_vacio_cuando_no_hay_sucursales() {
+    when(repository.findAllByCompanyId(9L)).thenReturn(List.of());
 
-        assertThat(service.listAll(9L)).isEmpty();
-    }
+    assertThat(service.listAll(9L)).isEmpty();
+  }
 }

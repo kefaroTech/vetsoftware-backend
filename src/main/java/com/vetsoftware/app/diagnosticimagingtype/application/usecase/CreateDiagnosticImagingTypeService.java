@@ -13,21 +13,28 @@ import org.springframework.stereotype.Service;
 @Observed(name = "diagnostic.imaging.type.create")
 @Service
 public class CreateDiagnosticImagingTypeService implements CreateDiagnosticImagingTypeUseCase {
-    private final DiagnosticImagingTypeRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final DiagnosticImagingTypeRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateDiagnosticImagingTypeService(DiagnosticImagingTypeRepository repository,
-                                              CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateDiagnosticImagingTypeService(
+      DiagnosticImagingTypeRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public DiagnosticImagingTypeDto execute(CreateDiagnosticImagingTypeCommand command) {
-        CompanyRef company = command.companyId() == null ? null
-                : companyQueryPort.findById(command.companyId())
-                        .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        return DiagnosticImagingTypeDto.from(
-                repository.save(DiagnosticImagingType.create(command.name(), command.description(), company, command.general())));
-    }
+  @Override
+  public DiagnosticImagingTypeDto execute(CreateDiagnosticImagingTypeCommand command) {
+    CompanyRef company =
+        command.companyId() == null
+            ? null
+            : companyQueryPort
+                .findById(command.companyId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException("Company not found: " + command.companyId()));
+    return DiagnosticImagingTypeDto.from(
+        repository.save(
+            DiagnosticImagingType.create(
+                command.name(), command.description(), company, command.general())));
+  }
 }

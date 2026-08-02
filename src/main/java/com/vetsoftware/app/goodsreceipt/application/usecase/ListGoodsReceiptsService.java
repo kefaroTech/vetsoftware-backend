@@ -11,15 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "goods.receipt.list.by.company")
 @Service
 public class ListGoodsReceiptsService implements ListGoodsReceiptsUseCase {
-    private final GoodsReceiptRepository repository;
+  private final GoodsReceiptRepository repository;
 
-    public ListGoodsReceiptsService(GoodsReceiptRepository repository) {
-        this.repository = repository;
-    }
+  public ListGoodsReceiptsService(GoodsReceiptRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<GoodsReceiptDto> listByCompany(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(GoodsReceiptDto::from).toList();
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public List<GoodsReceiptDto> listByCompany(Long companyId) {
+    return repository.findAllByCompanyId(companyId).stream().map(GoodsReceiptDto::from).toList();
+  }
 }

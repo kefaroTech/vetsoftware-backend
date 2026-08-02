@@ -8,16 +8,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaEmployeeAccountsByEmailPort implements EmployeeAccountsByEmailPort {
 
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeAccountsByEmailPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeAccountsByEmailPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public List<EmployeeAccount> findByEmail(String email) {
-        return employeeJpaRepository.findByEmailAndEmailVerified(email, true).stream()
-            .map(e -> new EmployeeAccount(e.getName(), e.getEmployeeCode(), e.getCompany().getName()))
-            .toList();
-    }
+  @Override
+  public List<EmployeeAccount> findByEmail(String email) {
+    return employeeJpaRepository.findByEmailAndEmailVerified(email, true).stream()
+        .map(e -> new EmployeeAccount(e.getName(), e.getEmployeeCode(), e.getCompany().getName()))
+        .toList();
+  }
 }

@@ -7,23 +7,23 @@ import org.junit.jupiter.api.Test;
 
 class TokenCleanupPropertiesTest {
 
-    @Test
-    void rejectsNonPositiveRetention() {
-        TokenCleanupProperties properties = new TokenCleanupProperties();
-        properties.setRetention(Duration.ZERO);
+  @Test
+  void rejectsNonPositiveRetention() {
+    TokenCleanupProperties properties = new TokenCleanupProperties();
+    properties.setRetention(Duration.ZERO);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("retention");
-    }
+    assertThatThrownBy(properties::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("retention");
+  }
 
-    @Test
-    void rejectsUnboundedBatchConfiguration() {
-        TokenCleanupProperties properties = new TokenCleanupProperties();
-        properties.setMaxBatchesPerRun(101);
+  @Test
+  void rejectsUnboundedBatchConfiguration() {
+    TokenCleanupProperties properties = new TokenCleanupProperties();
+    properties.setMaxBatchesPerRun(101);
 
-        assertThatThrownBy(properties::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("max-batches-per-run");
-    }
+    assertThatThrownBy(properties::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("max-batches-per-run");
+  }
 }

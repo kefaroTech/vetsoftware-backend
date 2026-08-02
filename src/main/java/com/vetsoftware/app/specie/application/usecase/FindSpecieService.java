@@ -10,15 +10,15 @@ import org.springframework.stereotype.Service;
 @Observed(name = "specie.find")
 @Service
 public class FindSpecieService implements FindSpecieUseCase {
-    private final SpecieRepository repository;
+  private final SpecieRepository repository;
 
-    public FindSpecieService(SpecieRepository repository) {
-        this.repository = repository;
-    }
+  public FindSpecieService(SpecieRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SpecieDto findById(Long id) {
-        return SpecieDto.from(repository.findById(id)
-                .orElseThrow(() -> new SpecieNotFoundException(id)));
-    }
+  @Override
+  public SpecieDto findById(Long id) {
+    return SpecieDto.from(
+        repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id)));
+  }
 }

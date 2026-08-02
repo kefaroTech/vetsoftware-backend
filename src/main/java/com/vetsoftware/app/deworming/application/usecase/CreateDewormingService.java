@@ -17,35 +17,56 @@ import org.springframework.stereotype.Service;
 @Observed(name = "deworming.create")
 @Service
 public class CreateDewormingService implements CreateDewormingUseCase {
-    private final DewormingRepository repository;
-    private final AnimalQueryPort animalQueryPort;
-    private final ConsultationQueryPort consultationQueryPort;
-    private final CompanyQueryPort companyQueryPort;
+  private final DewormingRepository repository;
+  private final AnimalQueryPort animalQueryPort;
+  private final ConsultationQueryPort consultationQueryPort;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateDewormingService(DewormingRepository repository,
-                                  AnimalQueryPort animalQueryPort,
-                                  ConsultationQueryPort consultationQueryPort,
-                                  CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.animalQueryPort = animalQueryPort;
-        this.consultationQueryPort = consultationQueryPort;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateDewormingService(
+      DewormingRepository repository,
+      AnimalQueryPort animalQueryPort,
+      ConsultationQueryPort consultationQueryPort,
+      CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.animalQueryPort = animalQueryPort;
+    this.consultationQueryPort = consultationQueryPort;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public DewormingDto execute(CreateDewormingCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId())
-            .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = command.consultationId() == null ? null
-            : consultationQueryPort.findById(command.consultationId())
-                .orElseThrow(() -> new IllegalArgumentException("Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
+  @Override
+  public DewormingDto execute(CreateDewormingCommand command) {
+    AnimalRef animal =
+        animalQueryPort
+            .findById(command.animalId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+    ConsultationRef consultation =
+        command.consultationId() == null
+            ? null
+            : consultationQueryPort
+                .findById(command.consultationId())
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Consultation not found: " + command.consultationId()));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 
-        Deworming deworming = Deworming.create(
-            command.date(), command.lastDeworming(), command.type(),
-            command.product(), command.dosage(), command.nextControl(),
-            command.observations(), animal, consultation, company);
-        return DewormingDto.from(repository.save(deworming));
-    }
+    Deworming deworming =
+        Deworming.create(
+            command.date(),
+            command.lastDeworming(),
+            command.type(),
+            command.product(),
+            command.dosage(),
+            command.nextControl(),
+            command.observations(),
+            animal,
+            consultation,
+            company);
+    return DewormingDto.from(repository.save(deworming));
+  }
 }

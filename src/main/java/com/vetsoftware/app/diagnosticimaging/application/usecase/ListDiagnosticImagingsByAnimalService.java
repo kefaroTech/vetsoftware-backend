@@ -9,15 +9,16 @@ import org.springframework.stereotype.Service;
 
 @Observed(name = "diagnostic.imaging.list.by.animal")
 @Service
-public class ListDiagnosticImagingsByAnimalService implements ListDiagnosticImagingsByAnimalUseCase {
-    private final DiagnosticImagingRepository repository;
+public class ListDiagnosticImagingsByAnimalService
+    implements ListDiagnosticImagingsByAnimalUseCase {
+  private final DiagnosticImagingRepository repository;
 
-    public ListDiagnosticImagingsByAnimalService(DiagnosticImagingRepository repository) {
-        this.repository = repository;
-    }
+  public ListDiagnosticImagingsByAnimalService(DiagnosticImagingRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<DiagnosticImagingDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(DiagnosticImagingDto::from).toList();
-    }
+  @Override
+  public List<DiagnosticImagingDto> listByAnimal(Long animalId) {
+    return repository.findAllByAnimalId(animalId).stream().map(DiagnosticImagingDto::from).toList();
+  }
 }

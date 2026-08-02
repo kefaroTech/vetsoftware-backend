@@ -5,6 +5,6 @@ import com.vetsoftware.app.breed.application.dto.BreedDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateBreedUseCase {
-    @PreAuthorize("hasRole('SYSTEM')")
-    BreedDto execute(CreateBreedCommand command);
+  @PreAuthorize("hasRole('SYSTEM')")
+  BreedDto execute(CreateBreedCommand command);
 }

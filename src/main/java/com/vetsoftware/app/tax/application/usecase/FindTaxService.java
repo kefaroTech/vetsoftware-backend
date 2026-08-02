@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "tax.find")
 @Service
 public class FindTaxService implements FindTaxUseCase {
-    private final TaxRepository repository;
+  private final TaxRepository repository;
 
-    public FindTaxService(TaxRepository repository) {
-        this.repository = repository;
-    }
+  public FindTaxService(TaxRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public TaxDto findById(Long id, Long companyId) {
-        return TaxDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new TaxNotFoundException(id)));
-    }
+  @Override
+  public TaxDto findById(Long id, Long companyId) {
+    return TaxDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new TaxNotFoundException(id)));
+  }
 }

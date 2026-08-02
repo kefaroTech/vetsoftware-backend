@@ -11,14 +11,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "product.search")
 @Service
 public class SearchProductsService implements SearchProductsUseCase {
-    private final ProductRepository repository;
+  private final ProductRepository repository;
 
-    public SearchProductsService(ProductRepository repository) {
-        this.repository = repository;
-    }
+  public SearchProductsService(ProductRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public PageResult<ProductDto> execute(SearchProductsCommand command) {
-        return repository.search(command).map(ProductDto::from);
-    }
+  @Override
+  public PageResult<ProductDto> execute(SearchProductsCommand command) {
+    return repository.search(command).map(ProductDto::from);
+  }
 }

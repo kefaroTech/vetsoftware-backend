@@ -10,17 +10,16 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CreateHospitalizationRequest(
-        @NotNull LocalDate date,
-        @NotNull LocalDate startDate,
-        LocalDate endDate,
-        @NotNull HospitalizationType type,
-        ReasonLeaving reasonLeaving,
-        @NotBlank @Size(max = 500) String reason,
-        @Size(max = 2000) String observations,
-        @NotNull Long animalId,
-        Long consultationId,
-        // Peso opcional al ingreso → se registra en el historial de peso del animal.
-        // weightUnit es GRAMS/POUNDS/KILOGRAMS; si es null se usa la unidad preferida del animal.
-        @Positive BigDecimal weight,
-        String weightUnit
-) {}
+    @NotNull LocalDate date,
+    @NotNull LocalDate startDate,
+    LocalDate endDate,
+    @NotNull HospitalizationType type,
+    ReasonLeaving reasonLeaving,
+    @NotBlank @Size(max = 500) String reason,
+    @Size(max = 2000) String observations,
+    @NotNull Long animalId,
+    Long consultationId,
+    // Peso opcional al ingreso → se registra en el historial de peso del animal.
+    // weightUnit es GRAMS/POUNDS/KILOGRAMS; si es null se usa la unidad preferida del animal.
+    @Positive BigDecimal weight,
+    String weightUnit) {}

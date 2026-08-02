@@ -14,28 +14,42 @@ import org.springframework.stereotype.Service;
 @Observed(name = "promotion.create")
 @Service
 public class CreatePromotionService implements CreatePromotionUseCase {
-    private final PromotionRepository repository;
-    private final CompanyQueryPort companyQueryPort;
-    private final PromotionTargetQueryPort promotionTargetQueryPort;
+  private final PromotionRepository repository;
+  private final CompanyQueryPort companyQueryPort;
+  private final PromotionTargetQueryPort promotionTargetQueryPort;
 
-    public CreatePromotionService(PromotionRepository repository,
-                                  CompanyQueryPort companyQueryPort,
-                                  PromotionTargetQueryPort promotionTargetQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-        this.promotionTargetQueryPort = promotionTargetQueryPort;
-    }
+  public CreatePromotionService(
+      PromotionRepository repository,
+      CompanyQueryPort companyQueryPort,
+      PromotionTargetQueryPort promotionTargetQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+    this.promotionTargetQueryPort = promotionTargetQueryPort;
+  }
 
-    @Override
-    public PromotionDto execute(CreatePromotionCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (!promotionTargetQueryPort.exists(command.applicationType(), command.applicationItem(), command.companyId())) {
-            throw new IllegalArgumentException("applicationItem not found: " + command.applicationItem());
-        }
-        return PromotionDto.from(repository.save(Promotion.create(
-                command.name(), command.promotionType(), command.applicationType(), command.applicationItem(),
-                command.valueType(), command.value(), command.startDate(), command.endDate(),
-                command.promotionStatus(), company)));
+  @Override
+  public PromotionDto execute(CreatePromotionCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (!promotionTargetQueryPort.exists(
+        command.applicationType(), command.applicationItem(), command.companyId())) {
+      throw new IllegalArgumentException("applicationItem not found: " + command.applicationItem());
     }
+    return PromotionDto.from(
+        repository.save(
+            Promotion.create(
+                command.name(),
+                command.promotionType(),
+                command.applicationType(),
+                command.applicationItem(),
+                command.valueType(),
+                command.value(),
+                command.startDate(),
+                command.endDate(),
+                command.promotionStatus(),
+                company)));
+  }
 }

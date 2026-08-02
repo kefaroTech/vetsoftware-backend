@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "day.care.delete")
 @Service
 public class DeleteDayCareService implements DeleteDayCareUseCase {
-    private final DayCareRepository repository;
+  private final DayCareRepository repository;
 
-    public DeleteDayCareService(DayCareRepository repository) {
-        this.repository = repository;
-    }
+  public DeleteDayCareService(DayCareRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new DayCareNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new DayCareNotFoundException(id));
+    repository.delete(id);
+  }
 }

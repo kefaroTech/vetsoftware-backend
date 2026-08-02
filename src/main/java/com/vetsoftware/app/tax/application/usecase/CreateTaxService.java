@@ -14,23 +14,26 @@ import org.springframework.stereotype.Service;
 @Observed(name = "tax.create")
 @Service
 public class CreateTaxService implements CreateTaxUseCase {
-    private final TaxRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final TaxRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public CreateTaxService(TaxRepository repository,
-                            CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public CreateTaxService(TaxRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    public TaxDto execute(CreateTaxCommand command) {
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
-            throw new TaxNameAlreadyExistsException(command.name());
-        }
-        return TaxDto.from(
-                repository.save(Tax.create(command.name(), command.percentage(), command.taxScheme(), company)));
+  @Override
+  public TaxDto execute(CreateTaxCommand command) {
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndName(command.companyId(), command.name())) {
+      throw new TaxNameAlreadyExistsException(command.name());
     }
+    return TaxDto.from(
+        repository.save(
+            Tax.create(command.name(), command.percentage(), command.taxScheme(), company)));
+  }
 }

@@ -10,53 +10,54 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 class AfterCommitMetricRecorderTest {
 
-    private final AfterCommitMetricRecorder recorder = new AfterCommitMetricRecorder();
+  private final AfterCommitMetricRecorder recorder = new AfterCommitMetricRecorder();
 
-    @AfterEach
-    void clearTransactionState() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
-        TransactionSynchronizationManager.setActualTransactionActive(false);
+  @AfterEach
+  void clearTransactionState() {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.clearSynchronization();
     }
+    TransactionSynchronizationManager.setActualTransactionActive(false);
+  }
 
-    @Test
-    void recordsOnlyAfterCommitWhenTransactionIsActive() {
-        AtomicInteger value = new AtomicInteger();
-        beginTransactionSynchronization();
+  @Test
+  void recordsOnlyAfterCommitWhenTransactionIsActive() {
+    AtomicInteger value = new AtomicInteger();
+    beginTransactionSynchronization();
 
-        recorder.recordAfterCommit(value::incrementAndGet);
+    recorder.recordAfterCommit(value::incrementAndGet);
 
-        assertThat(value).hasValue(0);
-        TransactionSynchronizationManager.getSynchronizations()
-                .forEach(TransactionSynchronization::afterCommit);
-        assertThat(value).hasValue(1);
-    }
+    assertThat(value).hasValue(0);
+    TransactionSynchronizationManager.getSynchronizations()
+        .forEach(TransactionSynchronization::afterCommit);
+    assertThat(value).hasValue(1);
+  }
 
-    @Test
-    void doesNotRecordSuccessAfterRollback() {
-        AtomicInteger value = new AtomicInteger();
-        beginTransactionSynchronization();
+  @Test
+  void doesNotRecordSuccessAfterRollback() {
+    AtomicInteger value = new AtomicInteger();
+    beginTransactionSynchronization();
 
-        recorder.recordAfterCommit(value::incrementAndGet);
-        TransactionSynchronizationManager.getSynchronizations()
-                .forEach(synchronization ->
-                        synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+    recorder.recordAfterCommit(value::incrementAndGet);
+    TransactionSynchronizationManager.getSynchronizations()
+        .forEach(
+            synchronization ->
+                synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
 
-        assertThat(value).hasValue(0);
-    }
+    assertThat(value).hasValue(0);
+  }
 
-    @Test
-    void recordsImmediatelyWithoutTransaction() {
-        AtomicInteger value = new AtomicInteger();
+  @Test
+  void recordsImmediatelyWithoutTransaction() {
+    AtomicInteger value = new AtomicInteger();
 
-        recorder.recordAfterCommit(value::incrementAndGet);
+    recorder.recordAfterCommit(value::incrementAndGet);
 
-        assertThat(value).hasValue(1);
-    }
+    assertThat(value).hasValue(1);
+  }
 
-    private static void beginTransactionSynchronization() {
-        TransactionSynchronizationManager.setActualTransactionActive(true);
-        TransactionSynchronizationManager.initSynchronization();
-    }
+  private static void beginTransactionSynchronization() {
+    TransactionSynchronizationManager.setActualTransactionActive(true);
+    TransactionSynchronizationManager.initSynchronization();
+  }
 }

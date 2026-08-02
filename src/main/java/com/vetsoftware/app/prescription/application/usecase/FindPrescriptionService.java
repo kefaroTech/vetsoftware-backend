@@ -14,20 +14,22 @@ import org.springframework.stereotype.Service;
 @Observed(name = "prescription.find")
 @Service
 public class FindPrescriptionService implements FindPrescriptionUseCase {
-    private final PrescriptionRepository repository;
-    private final MedicamentQueryPort medicamentQueryPort;
+  private final PrescriptionRepository repository;
+  private final MedicamentQueryPort medicamentQueryPort;
 
-    public FindPrescriptionService(PrescriptionRepository repository,
-                                   MedicamentQueryPort medicamentQueryPort) {
-        this.repository = repository;
-        this.medicamentQueryPort = medicamentQueryPort;
-    }
+  public FindPrescriptionService(
+      PrescriptionRepository repository, MedicamentQueryPort medicamentQueryPort) {
+    this.repository = repository;
+    this.medicamentQueryPort = medicamentQueryPort;
+  }
 
-    @Override
-    public PrescriptionDto findById(Long id, Long companyId) {
-        Prescription prescription = repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public PrescriptionDto findById(Long id, Long companyId) {
+    Prescription prescription =
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new PrescriptionNotFoundException(id));
-        List<MedicamentRef> medicaments = medicamentQueryPort.findByPrescriptionId(id);
-        return PrescriptionDto.from(prescription, medicaments);
-    }
+    List<MedicamentRef> medicaments = medicamentQueryPort.findByPrescriptionId(id);
+    return PrescriptionDto.from(prescription, medicaments);
+  }
 }

@@ -14,24 +14,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "medication.schedule.apply")
 @Service
 public class ApplyMedicationScheduleService implements ApplyMedicationScheduleUseCase {
-    private final MedicationScheduleRepository repository;
+  private final MedicationScheduleRepository repository;
 
-    public ApplyMedicationScheduleService(MedicationScheduleRepository repository) {
-        this.repository = repository;
-    }
+  public ApplyMedicationScheduleService(MedicationScheduleRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public List<MedicationScheduleDto> execute(ApplyMedicationScheduleCommand command) {
-        MedicationSchedule target = repository.findById(command.scheduleId())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Medication schedule not found: " + command.scheduleId()));
-        target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
-        repository.save(target);
+  @Override
+  @Transactional
+  public List<MedicationScheduleDto> execute(ApplyMedicationScheduleCommand command) {
+    MedicationSchedule target =
+        repository
+            .findById(command.scheduleId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Medication schedule not found: " + command.scheduleId()));
+    target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
+    repository.save(target);
 
-        // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre al
-        // reprogramar una toma (drag&drop → reschedule mode=cascade).
-        return repository.findByHospitalizationMedicationId(target.getHospitalizationMedication().id())
-            .stream().map(MedicationScheduleDto::from).toList();
-    }
+    // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre al
+    // reprogramar una toma (drag&drop → reschedule mode=cascade).
+    return repository
+        .findByHospitalizationMedicationId(target.getHospitalizationMedication().id())
+        .stream()
+        .map(MedicationScheduleDto::from)
+        .toList();
+  }
 }

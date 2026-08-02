@@ -6,14 +6,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JpaDiagnosticImagingChildrenQueryPort implements DiagnosticImagingChildrenQueryPort {
-    private final DiagnosticImagingJpaRepository jpaRepository;
+  private final DiagnosticImagingJpaRepository jpaRepository;
 
-    public JpaDiagnosticImagingChildrenQueryPort(DiagnosticImagingJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public JpaDiagnosticImagingChildrenQueryPort(DiagnosticImagingJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public boolean existsActiveByCompanyId(Long parentId) {
-        return jpaRepository.existsByCompany_Id(parentId);
-    }
+  @Override
+  public boolean existsActiveByCompanyId(Long parentId) {
+    return jpaRepository.existsByCompany_Id(parentId);
+  }
 }

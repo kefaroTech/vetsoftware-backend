@@ -10,16 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "promotion.delete")
 @Service
 public class DeletePromotionService implements DeletePromotionUseCase {
-    private final PromotionRepository repository;
+  private final PromotionRepository repository;
 
-    public DeletePromotionService(PromotionRepository repository) {
-        this.repository = repository;
-    }
+  public DeletePromotionService(PromotionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id));
-        repository.delete(id);
-    }
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id));
+    repository.delete(id);
+  }
 }

@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "supplier.find")
 @Service
 public class FindSupplierService implements FindSupplierUseCase {
-    private final SupplierRepository repository;
+  private final SupplierRepository repository;
 
-    public FindSupplierService(SupplierRepository repository) {
-        this.repository = repository;
-    }
+  public FindSupplierService(SupplierRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public SupplierDto findById(Long id, Long companyId) {
-        return SupplierDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  public SupplierDto findById(Long id, Long companyId) {
+    return SupplierDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new SupplierNotFoundException(id)));
-    }
+  }
 }

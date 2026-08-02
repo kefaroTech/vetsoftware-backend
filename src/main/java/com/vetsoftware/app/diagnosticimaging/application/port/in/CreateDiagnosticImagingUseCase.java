@@ -5,6 +5,8 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDt
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateDiagnosticImagingUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('diagnosticimaging.create') and @authz.isMyCompany(#command.companyId))")
-    DiagnosticImagingDto execute(CreateDiagnosticImagingCommand command);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('diagnosticimaging.create') and"
+          + " @authz.isMyCompany(#command.companyId))")
+  DiagnosticImagingDto execute(CreateDiagnosticImagingCommand command);
 }

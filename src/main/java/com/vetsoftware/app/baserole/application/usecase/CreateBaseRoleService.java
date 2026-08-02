@@ -13,22 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "base.role.create")
 @Service
 public class CreateBaseRoleService implements CreateBaseRoleUseCase {
-    private final BaseRoleRepository repository;
-    private final BaseRolePermissionInitializationPort baseRolePermissionInitializationPort;
+  private final BaseRoleRepository repository;
+  private final BaseRolePermissionInitializationPort baseRolePermissionInitializationPort;
 
-    public CreateBaseRoleService(BaseRoleRepository repository, BaseRolePermissionInitializationPort baseRolePermissionInitializationPort) {
-        this.repository = repository;
-        this.baseRolePermissionInitializationPort = baseRolePermissionInitializationPort;
-    }
+  public CreateBaseRoleService(
+      BaseRoleRepository repository,
+      BaseRolePermissionInitializationPort baseRolePermissionInitializationPort) {
+    this.repository = repository;
+    this.baseRolePermissionInitializationPort = baseRolePermissionInitializationPort;
+  }
 
-    @Override
-    @Transactional
-    public BaseRoleDto execute(CreateBaseRoleCommand command) {
-        BaseRole baseRole = BaseRole.create(command.name(), command.code(), command.mandatory());
-        BaseRoleDto baseRoleDtoResponse = BaseRoleDto.from(repository.save(baseRole));
-        if(baseRole.getMandatory()){
-            baseRolePermissionInitializationPort.initializeForAllBasePermissions(baseRoleDtoResponse.id());
-        }
-        return baseRoleDtoResponse;
+  @Override
+  @Transactional
+  public BaseRoleDto execute(CreateBaseRoleCommand command) {
+    BaseRole baseRole = BaseRole.create(command.name(), command.code(), command.mandatory());
+    BaseRoleDto baseRoleDtoResponse = BaseRoleDto.from(repository.save(baseRole));
+    if (baseRole.getMandatory()) {
+      baseRolePermissionInitializationPort.initializeForAllBasePermissions(
+          baseRoleDtoResponse.id());
     }
+    return baseRoleDtoResponse;
+  }
 }

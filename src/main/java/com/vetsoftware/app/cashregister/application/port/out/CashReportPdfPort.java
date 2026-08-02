@@ -4,5 +4,5 @@ import com.vetsoftware.app.cashregister.application.dto.CashArqueoReport;
 
 /** Renderiza el arqueo a PDF. */
 public interface CashReportPdfPort {
-    byte[] renderArqueo(CashArqueoReport report);
+  byte[] renderArqueo(CashArqueoReport report);
 }

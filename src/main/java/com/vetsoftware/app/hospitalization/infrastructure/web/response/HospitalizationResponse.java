@@ -6,17 +6,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record HospitalizationResponse(
-        Long id,
-        LocalDate date,
-        LocalDate startDate,
-        LocalDate endDate,
-        HospitalizationType type,
-        ReasonLeaving reasonLeaving,
-        String reason,
-        String observations,
-        AnimalSummary animal,
-        ConsultationSummary consultation,
-        CompanySummary company,
-        LocalDateTime createdDate,
-        boolean enabled
-) {}
+    Long id,
+    LocalDate date,
+    LocalDate startDate,
+    LocalDate endDate,
+    HospitalizationType type,
+    ReasonLeaving reasonLeaving,
+    String reason,
+    String observations,
+    AnimalSummary animal,
+    ConsultationSummary consultation,
+    CompanySummary company,
+    LocalDateTime createdDate,
+    boolean enabled) {}

@@ -12,35 +12,38 @@ import org.junit.jupiter.api.Test;
 
 class CashSessionQueryServiceTest {
 
-    private static final long COMPANY = 1L;
-    private static final long BRANCH_ONE = 10L;
-    private static final long BRANCH_TWO = 20L;
+  private static final long COMPANY = 1L;
+  private static final long BRANCH_ONE = 10L;
+  private static final long BRANCH_TWO = 20L;
 
-    private FakeCashSessionRepository repository;
-    private CashSessionQueryService service;
+  private FakeCashSessionRepository repository;
+  private CashSessionQueryService service;
 
-    @BeforeEach
-    void setUp() {
-        repository = new FakeCashSessionRepository();
-        service = new CashSessionQueryService(repository);
+  @BeforeEach
+  void setUp() {
+    repository = new FakeCashSessionRepository();
+    service = new CashSessionQueryService(repository);
 
-        repository.save(CashSession.open(COMPANY, BRANCH_ONE, 100L, "principal", 101L, BigDecimal.TEN, null));
-        repository.save(CashSession.open(COMPANY, BRANCH_TWO, 200L, "principal", 102L, BigDecimal.ONE, null));
-        repository.save(CashSession.open(2L, 30L, 300L, "principal", 103L, BigDecimal.ZERO, null));
-    }
+    repository.save(
+        CashSession.open(COMPANY, BRANCH_ONE, 100L, "principal", 101L, BigDecimal.TEN, null));
+    repository.save(
+        CashSession.open(COMPANY, BRANCH_TWO, 200L, "principal", 102L, BigDecimal.ONE, null));
+    repository.save(CashSession.open(2L, 30L, 300L, "principal", 103L, BigDecimal.ZERO, null));
+  }
 
-    @Test
-    void listOpen_limits_non_admin_to_assigned_branches() {
-        List<CashSessionView> result = service.listOpen(COMPANY, Set.of(BRANCH_ONE));
+  @Test
+  void listOpen_limits_non_admin_to_assigned_branches() {
+    List<CashSessionView> result = service.listOpen(COMPANY, Set.of(BRANCH_ONE));
 
-        assertThat(result).extracting(CashSessionView::branchId).containsExactly(BRANCH_ONE);
-    }
+    assertThat(result).extracting(CashSessionView::branchId).containsExactly(BRANCH_ONE);
+  }
 
-    @Test
-    void listOpen_returns_every_company_branch_for_admin_scope() {
-        List<CashSessionView> result = service.listOpen(COMPANY, null);
+  @Test
+  void listOpen_returns_every_company_branch_for_admin_scope() {
+    List<CashSessionView> result = service.listOpen(COMPANY, null);
 
-        assertThat(result).extracting(CashSessionView::branchId)
-            .containsExactlyInAnyOrder(BRANCH_ONE, BRANCH_TWO);
-    }
+    assertThat(result)
+        .extracting(CashSessionView::branchId)
+        .containsExactlyInAnyOrder(BRANCH_ONE, BRANCH_TWO);
+  }
 }

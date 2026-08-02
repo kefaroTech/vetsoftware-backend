@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 @Observed(name = "economic.activity.list")
 @Service
 public class ListEconomicActivitiesService implements ListEconomicActivitiesUseCase {
-    private final EconomicActivityRepository repository;
+  private final EconomicActivityRepository repository;
 
-    public ListEconomicActivitiesService(EconomicActivityRepository repository) {
-        this.repository = repository;
-    }
+  public ListEconomicActivitiesService(EconomicActivityRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public List<EconomicActivityDto> listAll() {
-        return repository.findAll().stream().map(EconomicActivityDto::from).toList();
-    }
+  @Override
+  public List<EconomicActivityDto> listAll() {
+    return repository.findAll().stream().map(EconomicActivityDto::from).toList();
+  }
 }

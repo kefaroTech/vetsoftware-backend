@@ -10,15 +10,17 @@ import org.springframework.stereotype.Service;
 @Observed(name = "numbering.resolution.find")
 @Service
 public class FindNumberingResolutionService implements FindNumberingResolutionUseCase {
-    private final NumberingResolutionRepository repository;
+  private final NumberingResolutionRepository repository;
 
-    public FindNumberingResolutionService(NumberingResolutionRepository repository) {
-        this.repository = repository;
-    }
+  public FindNumberingResolutionService(NumberingResolutionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public NumberingResolutionDto findById(Long id, Long companyId) {
-        return NumberingResolutionDto.from(repository.findByIdAndCompanyId(id, companyId)
-                .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
-    }
+  @Override
+  public NumberingResolutionDto findById(Long id, Long companyId) {
+    return NumberingResolutionDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
+            .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
+  }
 }

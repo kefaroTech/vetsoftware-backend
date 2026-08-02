@@ -12,15 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.invoice.search")
 @Service
 public class SearchSupplierInvoicesService implements SearchSupplierInvoicesUseCase {
-    private final SupplierInvoiceRepository repository;
+  private final SupplierInvoiceRepository repository;
 
-    public SearchSupplierInvoicesService(SupplierInvoiceRepository repository) {
-        this.repository = repository;
-    }
+  public SearchSupplierInvoicesService(SupplierInvoiceRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PageResult<SupplierInvoiceDto> execute(SearchSupplierInvoicesCommand command) {
-        return repository.search(command).map(SupplierInvoiceDto::from);
-    }
+  @Override
+  @Transactional(readOnly = true)
+  public PageResult<SupplierInvoiceDto> execute(SearchSupplierInvoicesCommand command) {
+    return repository.search(command).map(SupplierInvoiceDto::from);
+  }
 }

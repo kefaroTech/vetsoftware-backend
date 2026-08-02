@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 
 @Component("generalChargeOpenAccountJpaEmployeeQueryPort")
 public class JpaEmployeeQueryPort implements EmployeeQueryPort {
-    private final EmployeeJpaRepository employeeJpaRepository;
+  private final EmployeeJpaRepository employeeJpaRepository;
 
-    public JpaEmployeeQueryPort(EmployeeJpaRepository employeeJpaRepository) {
-        this.employeeJpaRepository = employeeJpaRepository;
-    }
+  public JpaEmployeeQueryPort(EmployeeJpaRepository employeeJpaRepository) {
+    this.employeeJpaRepository = employeeJpaRepository;
+  }
 
-    @Override
-    public Optional<EmployeeRef> findByIdAndCompanyId(Long employeeId, Long companyId) {
-        return employeeJpaRepository.findByIdAndCompany_Id(employeeId, companyId)
-            .map(e -> new EmployeeRef(e.getId(), e.getName()));
-    }
+  @Override
+  public Optional<EmployeeRef> findByIdAndCompanyId(Long employeeId, Long companyId) {
+    return employeeJpaRepository
+        .findByIdAndCompany_Id(employeeId, companyId)
+        .map(e -> new EmployeeRef(e.getId(), e.getName()));
+  }
 }

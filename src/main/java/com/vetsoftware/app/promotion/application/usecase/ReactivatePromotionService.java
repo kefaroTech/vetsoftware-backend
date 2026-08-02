@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "promotion.reactivate")
 @Service
 public class ReactivatePromotionService implements ReactivatePromotionUseCase {
-    private final PromotionRepository repository;
+  private final PromotionRepository repository;
 
-    public ReactivatePromotionService(PromotionRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivatePromotionService(PromotionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public PromotionDto execute(Long id) {
-        int rows = repository.reactivate(id);
-        if (rows == 0) throw new PromotionNotFoundException(id);
-        return PromotionDto.from(repository.findById(id)
-                .orElseThrow(() -> new PromotionNotFoundException(id)));
-    }
+  @Override
+  @Transactional
+  public PromotionDto execute(Long id) {
+    int rows = repository.reactivate(id);
+    if (rows == 0) throw new PromotionNotFoundException(id);
+    return PromotionDto.from(
+        repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id)));
+  }
 }

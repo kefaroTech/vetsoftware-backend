@@ -12,23 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "vaccination.type.delete")
 @Service
 public class DeleteVaccinationTypeService implements DeleteVaccinationTypeUseCase {
-    private final VaccinationTypeRepository repository;
-    private final VaccinationChildrenQueryPort vaccinationChildrenQueryPort;
+  private final VaccinationTypeRepository repository;
+  private final VaccinationChildrenQueryPort vaccinationChildrenQueryPort;
 
-    public DeleteVaccinationTypeService(
-            VaccinationTypeRepository repository,
-            VaccinationChildrenQueryPort vaccinationChildrenQueryPort) {
-        this.repository = repository;
-        this.vaccinationChildrenQueryPort = vaccinationChildrenQueryPort;
-    }
+  public DeleteVaccinationTypeService(
+      VaccinationTypeRepository repository,
+      VaccinationChildrenQueryPort vaccinationChildrenQueryPort) {
+    this.repository = repository;
+    this.vaccinationChildrenQueryPort = vaccinationChildrenQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new VaccinationTypeNotFoundException(id));
-        if (vaccinationChildrenQueryPort.existsActiveByVaccinationTypeId(id)) {
-            throw new VaccinationTypeHasActiveChildrenException(id, "vaccination");
-        }
-        repository.delete(id);
+  @Override
+  @Transactional
+  public void execute(Long id) {
+    repository.findById(id).orElseThrow(() -> new VaccinationTypeNotFoundException(id));
+    if (vaccinationChildrenQueryPort.existsActiveByVaccinationTypeId(id)) {
+      throw new VaccinationTypeHasActiveChildrenException(id, "vaccination");
     }
+    repository.delete(id);
+  }
 }

@@ -4,6 +4,7 @@ import com.vetsoftware.app.animal.application.dto.WeightRecordDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindLatestWeightRecordUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.read') and @authz.isMyCompany(#companyId))")
-    WeightRecordDto findLatest(Long animalId, Long companyId);
+  @PreAuthorize(
+      "hasRole('SYSTEM') or (hasAuthority('animal.read') and @authz.isMyCompany(#companyId))")
+  WeightRecordDto findLatest(Long animalId, Long companyId);
 }

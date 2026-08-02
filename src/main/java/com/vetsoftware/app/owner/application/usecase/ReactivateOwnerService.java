@@ -11,18 +11,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "owner.reactivate")
 @Service
 public class ReactivateOwnerService implements ReactivateOwnerUseCase {
-    private final OwnerRepository repository;
+  private final OwnerRepository repository;
 
-    public ReactivateOwnerService(OwnerRepository repository) {
-        this.repository = repository;
-    }
+  public ReactivateOwnerService(OwnerRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public OwnerDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id, companyId);
-        if (rows == 0) throw new OwnerNotFoundException(id);
-        return OwnerDto.from(repository.findByIdAndCompanyId(id, companyId)
+  @Override
+  @Transactional
+  public OwnerDto execute(Long id, Long companyId) {
+    int rows = repository.reactivate(id, companyId);
+    if (rows == 0) throw new OwnerNotFoundException(id);
+    return OwnerDto.from(
+        repository
+            .findByIdAndCompanyId(id, companyId)
             .orElseThrow(() -> new OwnerNotFoundException(id)));
-    }
+  }
 }

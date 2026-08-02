@@ -16,30 +16,43 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "supplier.update")
 @Service
 public class UpdateSupplierService implements UpdateSupplierUseCase {
-    private final SupplierRepository repository;
-    private final CompanyQueryPort companyQueryPort;
+  private final SupplierRepository repository;
+  private final CompanyQueryPort companyQueryPort;
 
-    public UpdateSupplierService(SupplierRepository repository,
-                                 CompanyQueryPort companyQueryPort) {
-        this.repository = repository;
-        this.companyQueryPort = companyQueryPort;
-    }
+  public UpdateSupplierService(SupplierRepository repository, CompanyQueryPort companyQueryPort) {
+    this.repository = repository;
+    this.companyQueryPort = companyQueryPort;
+  }
 
-    @Override
-    @Transactional
-    public SupplierDto execute(UpdateSupplierCommand command) {
-        Supplier supplier = repository.findByIdAndCompanyId(command.id(), command.companyId())
+  @Override
+  @Transactional
+  public SupplierDto execute(UpdateSupplierCommand command) {
+    Supplier supplier =
+        repository
+            .findByIdAndCompanyId(command.id(), command.companyId())
             .orElseThrow(() -> new SupplierNotFoundException(command.id()));
-        CompanyRef company = companyQueryPort.findById(command.companyId())
-            .orElseThrow(() -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyIdAndNameExcludingId(command.companyId(), command.name(), command.id())) {
-            throw new SupplierNameAlreadyExistsException(command.name());
-        }
-
-        supplier.update(
-            command.name(), command.taxId(), command.contactName(), command.phone(),
-            command.email(), command.address(), command.paymentTermsDays(), command.notes(),
-            company, command.updatedBy(), command.version());
-        return SupplierDto.from(repository.save(supplier));
+    CompanyRef company =
+        companyQueryPort
+            .findById(command.companyId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+    if (repository.existsByCompanyIdAndNameExcludingId(
+        command.companyId(), command.name(), command.id())) {
+      throw new SupplierNameAlreadyExistsException(command.name());
     }
+
+    supplier.update(
+        command.name(),
+        command.taxId(),
+        command.contactName(),
+        command.phone(),
+        command.email(),
+        command.address(),
+        command.paymentTermsDays(),
+        command.notes(),
+        company,
+        command.updatedBy(),
+        command.version());
+    return SupplierDto.from(repository.save(supplier));
+  }
 }

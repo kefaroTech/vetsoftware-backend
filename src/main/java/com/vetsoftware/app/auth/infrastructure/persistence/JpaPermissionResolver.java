@@ -13,27 +13,29 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaPermissionResolver implements PermissionResolver {
 
-    private final EmployeeRoleJpaRepository employeeRoleJpaRepository;
-    private final RolePermissionJpaRepository rolePermissionJpaRepository;
+  private final EmployeeRoleJpaRepository employeeRoleJpaRepository;
+  private final RolePermissionJpaRepository rolePermissionJpaRepository;
 
-    public JpaPermissionResolver(EmployeeRoleJpaRepository employeeRoleJpaRepository,
-                                 RolePermissionJpaRepository rolePermissionJpaRepository) {
-        this.employeeRoleJpaRepository = employeeRoleJpaRepository;
-        this.rolePermissionJpaRepository = rolePermissionJpaRepository;
-    }
+  public JpaPermissionResolver(
+      EmployeeRoleJpaRepository employeeRoleJpaRepository,
+      RolePermissionJpaRepository rolePermissionJpaRepository) {
+    this.employeeRoleJpaRepository = employeeRoleJpaRepository;
+    this.rolePermissionJpaRepository = rolePermissionJpaRepository;
+  }
 
-    @Cacheable(value = "employee-permissions", key = "#employeeId")
-    @Override
-    public Set<String> resolveFor(Long employeeId) {
-        List<Long> roleIds = employeeRoleJpaRepository.findByEmployeeId(employeeId).stream()
-                .map(e -> e.getRole().getId())
-                .toList();
-        if (roleIds.isEmpty()) return Set.of();
-        return rolePermissionJpaRepository.findByRoleIdIn(roleIds).stream()
-                .map(rp -> rp.getPermission().getCode())
-                .collect(Collectors.toSet());
-    }
+  @Cacheable(value = "employee-permissions", key = "#employeeId")
+  @Override
+  public Set<String> resolveFor(Long employeeId) {
+    List<Long> roleIds =
+        employeeRoleJpaRepository.findByEmployeeId(employeeId).stream()
+            .map(e -> e.getRole().getId())
+            .toList();
+    if (roleIds.isEmpty()) return Set.of();
+    return rolePermissionJpaRepository.findByRoleIdIn(roleIds).stream()
+        .map(rp -> rp.getPermission().getCode())
+        .collect(Collectors.toSet());
+  }
 
-    @CacheEvict(value = "employee-permissions", key = "#employeeId")
-    public void evict(Long employeeId) {}
+  @CacheEvict(value = "employee-permissions", key = "#employeeId")
+  public void evict(Long employeeId) {}
 }

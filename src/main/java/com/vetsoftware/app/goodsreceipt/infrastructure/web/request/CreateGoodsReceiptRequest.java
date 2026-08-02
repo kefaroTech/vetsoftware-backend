@@ -8,11 +8,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record CreateGoodsReceiptRequest(
-        @NotNull Long branchId,
-        @NotNull Long supplierId,
-        Long purchaseOrderId,
-        @NotNull LocalDate receiptDate,
-        @Size(max = 60) String supplierInvoiceNumber,
-        @Size(max = 500) String notes,
-        @NotEmpty @Valid List<GoodsReceiptLineRequest> lines
-) {}
+    @NotNull Long branchId,
+    @NotNull Long supplierId,
+    Long purchaseOrderId,
+    @NotNull LocalDate receiptDate,
+    @Size(max = 60) String supplierInvoiceNumber,
+    @Size(max = 500) String notes,
+    @NotEmpty @Valid List<GoodsReceiptLineRequest> lines) {}

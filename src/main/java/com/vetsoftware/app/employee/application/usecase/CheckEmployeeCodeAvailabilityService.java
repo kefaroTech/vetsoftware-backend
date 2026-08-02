@@ -9,17 +9,17 @@ import org.springframework.stereotype.Service;
 @Service
 public class CheckEmployeeCodeAvailabilityService implements CheckEmployeeCodeAvailabilityUseCase {
 
-    private final EmployeeRepository repository;
+  private final EmployeeRepository repository;
 
-    public CheckEmployeeCodeAvailabilityService(EmployeeRepository repository) {
-        this.repository = repository;
-    }
+  public CheckEmployeeCodeAvailabilityService(EmployeeRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public boolean isAvailable(String employeeCode) {
-        if (employeeCode == null) return false;
-        String code = employeeCode.trim();
-        if (code.isEmpty()) return false;
-        return !repository.codeExists(code);
-    }
+  @Override
+  public boolean isAvailable(String employeeCode) {
+    if (employeeCode == null) return false;
+    String code = employeeCode.trim();
+    if (code.isEmpty()) return false;
+    return !repository.codeExists(code);
+  }
 }
