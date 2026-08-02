@@ -23,7 +23,7 @@ scrape_configs:
       password_file: /run/secrets/prometheus_metrics_password
     static_configs:
       - targets:
-          - host.docker.internal:8080
+          - backend:8080
 
   - job_name: prometheus
     static_configs:
