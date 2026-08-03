@@ -46,6 +46,21 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
+      - name: Enforce production-only ECR publication
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Manual ECR publication is allowed only from main." >&2
+            exit 1
+          fi
+
+          [[ "$(git rev-parse HEAD)" == "$RELEASE_COMMIT" ]] || {
+            echo "The checked-out production commit does not match the release event." >&2
+            exit 1
+          }
+
+          echo "Production artifact policy confirmed; development never publishes or retains a separate ECR image."
+
       - name: Validate release version
         id: release
         shell: bash
