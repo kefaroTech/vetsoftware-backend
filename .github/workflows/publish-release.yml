@@ -262,38 +262,27 @@ jobs:
             --generate-notes \
             --title "VetSoftware ${{ steps.release.outputs.version }}"
 
-      - name: Create installation token for the IaC repository
-        id: iac_token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ vars.IAC_DISPATCH_CLIENT_ID }}
-          private-key: ${{ secrets.IAC_DISPATCH_PRIVATE_KEY }}
-          owner: ${{ vars.IAC_GITHUB_OWNER || 'kefaroTech' }}
-          repositories: ${{ vars.IAC_GITHUB_REPOSITORY || 'VetSoftwareIaC' }}
-          permission-actions: write
-
-      - name: Request audited ECS deployment
+      # Este repositorio publica el artefacto y ahi termina su responsabilidad.
+      # El despliegue lo solicita VetSoftwareIaC desde su propia rama main, con
+      # su propia aprobacion: ningun repositorio de aplicacion puede iniciar un
+      # cambio en la infraestructura productiva.
+      - name: Publish the deployment request data
         env:
-          GH_TOKEN: ${{ steps.iac_token.outputs.token }}
-          IAC_OWNER: ${{ vars.IAC_GITHUB_OWNER || 'kefaroTech' }}
-          IAC_REPOSITORY: ${{ vars.IAC_GITHUB_REPOSITORY || 'VetSoftwareIaC' }}
           IMAGE_DIGEST: ${{ steps.immutable_image.outputs.digest }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
-          [[ "$IAC_OWNER" =~ ^[A-Za-z0-9_.-]+$ && "$IAC_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]] || {
-            echo "Invalid IaC repository coordinates." >&2
-            exit 1
-          }
-
-          gh api --method POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
-            "repos/${IAC_OWNER}/${IAC_REPOSITORY}/actions/workflows/deploy-backend.yml/dispatches" \
-            -f ref=main \
-            -f 'inputs[environment]=prod' \
-            -f "inputs[version]=$RELEASE_VERSION" \
-            -f "inputs[image_digest]=$IMAGE_DIGEST" \
-            -f "inputs[source_commit]=$RELEASE_COMMIT" \
-            -f "inputs[source_run_url]=$SOURCE_RUN_URL"
+          {
+            echo "## Release publicada"
+            echo
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Versión | \`${RELEASE_VERSION}\` |"
+            echo "| Digest | \`${IMAGE_DIGEST}\` |"
+            echo "| Commit | \`${RELEASE_COMMIT}\` |"
+            echo "| Run de origen | ${SOURCE_RUN_URL} |"
+            echo
+            echo "Para desplegar, ejecute **Deploy backend image prod** en \`VetSoftwareIaC\`"
+            echo "desde la rama \`main\` con exactamente estos cuatro valores."
+          } >> "$GITHUB_STEP_SUMMARY"
