@@ -37,4 +37,8 @@ El `Dockerfile` compila con Maven y Java 25, y ejecuta con Eclipse Temurin JRE 2
 - usa el mismo endpoint de readiness que Docker, ECS y el target group;
 - fija por digest las imágenes base.
 
-El CI construye la imagen sin publicarla. Una release SemVer aprobada publica en ECR los tags inmutables `X.Y.Z` y `sha-<12 caracteres>` antes de crear el tag y la GitHub Release.
+El CI construye la imagen sin publicarla. Una release SemVer aprobada publica en ECR los tags inmutables `X.Y.Z` y `sha-<12 caracteres>`, resuelve el digest `sha256`, espera el escaneo ECR y bloquea la release ante hallazgos High o Critical.
+
+Después de crear el tag y la GitHub Release, `publish-release.yml` solicita a `VetSoftwareIaC/deploy-backend.yml` un despliegue de producción con estos datos auditables: versión, digest, commit completo y URL del run que publicó la imagen. La autenticación entre repositorios usa un token efímero de GitHub App; el `GITHUB_TOKEN` del backend no se amplía ni se comparte.
+
+La conexión externa queda deliberadamente pendiente hasta configurar GitHub. En el environment `production` se necesitarán la variable `IAC_DISPATCH_CLIENT_ID` y el secret `IAC_DISPATCH_PRIVATE_KEY`; `IAC_GITHUB_OWNER` e `IAC_GITHUB_REPOSITORY` son variables opcionales y usan `kefaroTech`/`VetSoftwareIaC` por omisión.
