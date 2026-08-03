@@ -39,8 +39,15 @@ El `Dockerfile` compila con Maven y Java 25, y ejecuta con Eclipse Temurin JRE 2
 
 El CI construye la imagen de forma efímera sin publicarla en ECR. Una release SemVer aprobada en el environment `production` publica los tags inmutables `X.Y.Z` y `sha-<12 caracteres>`, resuelve el digest `sha256`, espera el escaneo ECR y bloquea la release ante hallazgos High o Critical. Un despacho manual solo puede ejecutarse desde `main`.
 
-ECR es exclusivamente el registro de artefactos de producción. Dev no publica tags ni conserva imágenes históricas o de recuperación propias: ECS dev consume por digest una release productiva ya retenida. Así se mantiene la capacidad de reiniciar o escalar tareas sin duplicar almacenamiento; borrar esa imagen productiva mientras algún entorno la use rompería futuros arranques de ECS.
+Cada entorno publica su propia imagen y ninguno depende del otro:
 
-Después de crear el tag y la GitHub Release, `publish-release.yml` solicita a `VetSoftwareIaC/deploy-backend.yml` un despliegue de producción con estos datos auditables: versión, digest, commit completo y URL del run que publicó la imagen. La autenticación entre repositorios usa un token efímero de GitHub App; el `GITHUB_TOKEN` del backend no se amplía ni se comparte.
+| Workflow | Rama | Environment | Tags ECR | Retención |
+|---|---|---|---|---|
+| `publish-dev-image.yml` | `develop` | `development` | `dev-<12 caracteres>` | 10 imágenes |
+| `publish-release.yml` | `main` | `production` | `X.Y.Z` y `sha-<12 caracteres>` | 30 imágenes |
 
-La conexión externa queda deliberadamente pendiente hasta configurar GitHub. En el environment `production` se necesitarán la variable `IAC_DISPATCH_CLIENT_ID` y el secret `IAC_DISPATCH_PRIVATE_KEY`; `IAC_GITHUB_OWNER` e `IAC_GITHUB_REPOSITORY` son variables opcionales y usan `kefaroTech`/`VetSoftwareIaC` por omisión.
+Son roles IAM distintos con trust policies distintas: el publicador de releases solo confía en el environment `production` y el de desarrollo solo en `development`. Ninguna credencial se comparte entre los dos ciclos.
+
+Este repositorio publica el artefacto y ahí termina su responsabilidad. **No dispara ningún despliegue.** Ambos workflows dejan en el Summary de su run los cuatro datos auditables —identificador de la imagen, digest, commit completo y URL del run— para que quien opera la infraestructura ejecute `Deploy backend image dev` o `Deploy backend image prod` desde `VetSoftwareIaC`, con la aprobación de su propio environment.
+
+No existe GitHub App, token cruzado ni despacho remoto. La confianza va en una sola dirección: el repositorio IaC concede permiso OIDC de mínimo privilegio para publicar en ECR; el backend no obtiene la capacidad inversa de iniciar un cambio en la infraestructura.
