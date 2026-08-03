@@ -132,6 +132,7 @@ jobs:
 
       - name: Build and publish immutable ARM64 image
         if: steps.image.outputs.push == 'true'
+        id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
@@ -147,6 +148,76 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=backend-arm64
           cache-to: type=gha,mode=max,scope=backend-arm64
+
+      - name: Resolve and certify immutable image digest
+        id: immutable_image
+        shell: bash
+        run: |
+          version="${{ steps.release.outputs.version }}"
+          sha_tag="${{ steps.image.outputs.sha_tag }}"
+          digest="${{ steps.build.outputs.digest }}"
+
+          if [[ -z "$digest" ]]; then
+            digest="$(aws ecr describe-images \
+              --repository-name "$ECR_REPOSITORY" \
+              --image-ids "imageTag=$version" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text)"
+          fi
+
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo "ECR did not return a valid sha256 digest." >&2
+            exit 1
+          }
+
+          version_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$version" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          sha_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$sha_tag" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          [[ "$digest" == "$version_digest" && "$digest" == "$sha_digest" ]] || {
+            echo "The SemVer and commit tags do not resolve to the published digest." >&2
+            exit 1
+          }
+
+          aws ecr wait image-scan-complete \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-id "imageDigest=$digest"
+
+          scan_status="$(aws ecr describe-image-scan-findings \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-id "imageDigest=$digest" \
+            --query 'imageScanStatus.status' \
+            --output text)"
+          critical="$(aws ecr describe-image-scan-findings \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-id "imageDigest=$digest" \
+            --query 'imageScanFindings.findingSeverityCounts.CRITICAL' \
+            --output text)"
+          high="$(aws ecr describe-image-scan-findings \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-id "imageDigest=$digest" \
+            --query 'imageScanFindings.findingSeverityCounts.HIGH' \
+            --output text)"
+          [[ "$critical" == "None" || "$critical" == "null" ]] && critical=0
+          [[ "$high" == "None" || "$high" == "null" ]] && high=0
+
+          [[ "$scan_status" == "COMPLETE" && "$critical" == "0" && "$high" == "0" ]] || {
+            echo "ECR scan rejected: status=$scan_status critical=$critical high=$high." >&2
+            exit 1
+          }
+
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          image_uri="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}@${digest}"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "image_uri=$image_uri" >> "$GITHUB_OUTPUT"
+          echo "Certified immutable image: $image_uri"
 
       - name: Create immutable version tag
         shell: bash
@@ -175,3 +246,39 @@ jobs:
             --verify-tag \
             --generate-notes \
             --title "VetSoftware ${{ steps.release.outputs.version }}"
+
+      - name: Create installation token for the IaC repository
+        id: iac_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.IAC_DISPATCH_CLIENT_ID }}
+          private-key: ${{ secrets.IAC_DISPATCH_PRIVATE_KEY }}
+          owner: ${{ vars.IAC_GITHUB_OWNER || 'kefaroTech' }}
+          repositories: ${{ vars.IAC_GITHUB_REPOSITORY || 'VetSoftwareIaC' }}
+          permission-actions: write
+
+      - name: Request audited ECS deployment
+        env:
+          GH_TOKEN: ${{ steps.iac_token.outputs.token }}
+          IAC_OWNER: ${{ vars.IAC_GITHUB_OWNER || 'kefaroTech' }}
+          IAC_REPOSITORY: ${{ vars.IAC_GITHUB_REPOSITORY || 'VetSoftwareIaC' }}
+          IMAGE_DIGEST: ${{ steps.immutable_image.outputs.digest }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          [[ "$IAC_OWNER" =~ ^[A-Za-z0-9_.-]+$ && "$IAC_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]] || {
+            echo "Invalid IaC repository coordinates." >&2
+            exit 1
+          }
+
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "repos/${IAC_OWNER}/${IAC_REPOSITORY}/actions/workflows/deploy-backend.yml/dispatches" \
+            -f ref=main \
+            -f 'inputs[environment]=prod' \
+            -f "inputs[version]=$RELEASE_VERSION" \
+            -f "inputs[image_digest]=$IMAGE_DIGEST" \
+            -f "inputs[source_commit]=$RELEASE_COMMIT" \
+            -f "inputs[source_run_url]=$SOURCE_RUN_URL"
