@@ -1,0 +1,132 @@
+name: Publish development image
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-publish-dev-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish dev image
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: development
+    env:
+      CI: true
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
+      ECR_REPOSITORY: vetsoftware-backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve immutable development tag
+        id: image
+        shell: bash
+        run: |
+          # El prefijo dev- separa este artefacto de los tags sha- de release y
+          # lo somete a su propia regla de retencion en ECR.
+          echo "tag=dev-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate AWS publication configuration
+        shell: bash
+        run: |
+          [[ -n "$AWS_ROLE_TO_ASSUME" ]] || {
+            echo "Configure AWS_ECR_PUBLISH_ROLE_ARN en el environment development con el output github_ecr_development_publisher_role_arns." >&2
+            exit 1
+          }
+
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c # v6
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+
+      - name: Skip when the immutable tag already exists
+        id: existing
+        shell: bash
+        run: |
+          # Los repositorios son IMMUTABLE: reejecutar el mismo commit no debe fallar.
+          digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=${{ steps.image.outputs.tag }}" \
+            --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)"
+
+          if [[ -n "$digest" && "$digest" != "None" ]]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "La imagen dev de este commit ya existe; se reutiliza su digest."
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: steps.existing.outputs.push == 'true'
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        if: steps.existing.outputs.push == 'true'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build and publish ARM64 development image
+        if: steps.existing.outputs.push == 'true'
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=backend-arm64
+          cache-to: type=gha,mode=max,scope=backend-arm64
+
+      - name: Publish the deployable image URI
+        shell: bash
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          [[ -n "$digest" ]] || digest="${{ steps.existing.outputs.digest }}"
+
+          if [[ -z "$digest" ]]; then
+            echo "No fue posible resolver el digest de la imagen de desarrollo." >&2
+            exit 1
+          fi
+
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          image_uri="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}@${digest}"
+
+          {
+            echo "## Imagen de desarrollo publicada"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Tag: \`${{ steps.image.outputs.tag }}\`"
+            echo "- Digest: \`${digest}\`"
+            echo
+            echo "Use este valor como \`backend_image_uri\` del root \`environments/dev\`:"
+            echo
+            echo "\`\`\`"
+            echo "${image_uri}"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
