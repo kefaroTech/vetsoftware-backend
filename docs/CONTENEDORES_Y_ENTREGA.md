@@ -37,7 +37,9 @@ El `Dockerfile` compila con Maven y Java 25, y ejecuta con Eclipse Temurin JRE 2
 - usa el mismo endpoint de readiness que Docker, ECS y el target group;
 - fija por digest las imágenes base.
 
-El CI construye la imagen sin publicarla. Una release SemVer aprobada publica en ECR los tags inmutables `X.Y.Z` y `sha-<12 caracteres>`, resuelve el digest `sha256`, espera el escaneo ECR y bloquea la release ante hallazgos High o Critical.
+El CI construye la imagen de forma efímera sin publicarla en ECR. Una release SemVer aprobada en el environment `production` publica los tags inmutables `X.Y.Z` y `sha-<12 caracteres>`, resuelve el digest `sha256`, espera el escaneo ECR y bloquea la release ante hallazgos High o Critical. Un despacho manual solo puede ejecutarse desde `main`.
+
+ECR es exclusivamente el registro de artefactos de producción. Dev no publica tags ni conserva imágenes históricas o de recuperación propias: ECS dev consume por digest una release productiva ya retenida. Así se mantiene la capacidad de reiniciar o escalar tareas sin duplicar almacenamiento; borrar esa imagen productiva mientras algún entorno la use rompería futuros arranques de ECS.
 
 Después de crear el tag y la GitHub Release, `publish-release.yml` solicita a `VetSoftwareIaC/deploy-backend.yml` un despliegue de producción con estos datos auditables: versión, digest, commit completo y URL del run que publicó la imagen. La autenticación entre repositorios usa un token efímero de GitHub App; el `GITHUB_TOKEN` del backend no se amplía ni se comparte.
 
