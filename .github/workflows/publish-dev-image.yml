@@ -25,7 +25,7 @@ jobs:
       CI: true
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
-      ECR_REPOSITORY: vetsoftware-backend
+      ECR_REPOSITORY: vetsoftware-dev-backend
 
     steps:
       - name: Check out repository
@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           [[ -n "$AWS_ROLE_TO_ASSUME" ]] || {
-            echo "Configure AWS_ECR_PUBLISH_ROLE_ARN en el environment development con el output github_ecr_development_publisher_role_arns." >&2
+            echo "Configure AWS_ECR_PUBLISH_ROLE_ARN en development con el output del bootstrap dev." >&2
             exit 1
           }
 

@@ -41,10 +41,10 @@ El CI construye la imagen de forma efímera sin publicarla en ECR. Una release S
 
 Cada entorno publica su propia imagen y ninguno depende del otro:
 
-| Workflow | Rama | Environment | Tags ECR | Retención |
-|---|---|---|---|---|
-| `publish-dev-image.yml` | `develop` | `development` | `dev-<12 caracteres>` | 10 imágenes |
-| `publish-release.yml` | `main` | `production` | `X.Y.Z` y `sha-<12 caracteres>` | 30 imágenes |
+| Workflow | Rama | Environment | Repositorio ECR | Tags | Retención |
+|---|---|---|---|---|---|
+| `publish-dev-image.yml` | `develop` | `development` | `vetsoftware-dev-backend` | `dev-<12 caracteres>` | 10 imágenes |
+| `publish-release.yml` | `main` | `production` | `vetsoftware-backend` | `X.Y.Z` y `sha-<12 caracteres>` | 30 imágenes |
 
 Son roles IAM distintos con trust policies distintas: el publicador de releases solo confía en el environment `production` y el de desarrollo solo en `development`. Ninguna credencial se comparte entre los dos ciclos.
 

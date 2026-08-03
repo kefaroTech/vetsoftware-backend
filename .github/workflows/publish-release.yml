@@ -59,7 +59,7 @@ jobs:
             exit 1
           }
 
-          echo "Production artifact policy confirmed; development never publishes or retains a separate ECR image."
+          echo "Production artifact policy confirmed; production publishes only to vetsoftware-backend."
 
       - name: Validate release version
         id: release
