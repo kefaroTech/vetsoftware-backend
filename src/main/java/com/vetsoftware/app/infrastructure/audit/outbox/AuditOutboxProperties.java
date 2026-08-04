@@ -179,6 +179,18 @@ public class AuditOutboxProperties {
                     "vetsoftware.audit.outbox.delivery-stream-name es obligatorio con"
                             + " publisher-enabled=true");
         }
+        // El Binder de @ConfigurationProperties es tolerante con los placeholders que
+        // no resuelve: los deja como texto literal. Sin este chequeo, un
+        // AUDIT_FIREHOSE_DELIVERY_STREAM sin definir arranca la app y el nombre
+        // "${AUDIT_FIREHOSE_DELIVERY_STREAM}" llega tal cual al SDK, que responde
+        // AccessDenied en cada ciclo del publicador en vez de fallar al arrancar.
+        if (publisherEnabled && deliveryStreamName.contains("${")) {
+            throw new IllegalStateException(
+                    "vetsoftware.audit.outbox.delivery-stream-name quedó con un placeholder sin"
+                            + " resolver (" + deliveryStreamName + "): define"
+                            + " AUDIT_FIREHOSE_DELIVERY_STREAM o apaga el publicador con"
+                            + " AUDIT_OUTBOX_PUBLISHER_ENABLED=false");
+        }
         if (StringUtils.hasText(accessKey) != StringUtils.hasText(secretKey)) {
             throw new IllegalStateException(
                     "audit.outbox access-key y secret-key deben configurarse juntos");
