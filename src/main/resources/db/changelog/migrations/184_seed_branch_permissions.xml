@@ -11,6 +11,24 @@
          (selector de sede) NO requiere permiso: cualquier empleado de la empresa lista sus sedes.
          Todas las sentencias son idempotentes (guardas NOT EXISTS / claves por code). -->
 
+    <!-- El módulo GENERAL nunca se sembró: `modules` solo se llena por API (Module.create), así que en
+         una base recién creada está vacía. Los cuatro seeds de catálogo que resuelven su sub-módulo con
+         (SELECT id FROM modules WHERE code = 'GENERAL') reciben NULL y revientan contra el NOT NULL de
+         module_id — 184 aquí, y detrás 191, 196 y 199. Al ser Liquibase parte del arranque, la app no
+         levanta y el contenedor entra en crashloop. Se siembra aquí, antes del primer consumidor, para
+         que cualquier instalación desde cero arranque. Idempotente: donde el módulo ya existe (local,
+         prod) el NOT EXISTS lo deja intacto. -->
+    <changeSet id="184_general_module" author="orlando">
+        <sql>
+            INSERT INTO modules (name, code, enabled)
+            SELECT 'General', 'GENERAL', 1
+            WHERE NOT EXISTS (SELECT 1 FROM modules WHERE code = 'GENERAL');
+        </sql>
+        <rollback>
+            DELETE FROM modules WHERE code = 'GENERAL';
+        </rollback>
+    </changeSet>
+
     <changeSet id="184_branch_submodule" author="orlando">
         <sql>
             INSERT INTO sub_modules (name, code, module_id, enabled)
