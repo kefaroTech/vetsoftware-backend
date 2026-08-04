@@ -40,8 +40,15 @@
     <logger name="com.vetsoftware" level="INFO"/>
     <logger name="AUDIT" level="INFO"/>
 
+    <!--
+      La consola tambien va en prod y dev: el runtime es ECS, donde stdout es lo unico que
+      llega a CloudWatch. Sin ella, un fallo de arranque anterior a la instalacion del SDK de
+      OpenTelemetry no deja rastro en ningun lado. Sigue envuelta en RedactingAppender, de modo
+      que la politica de redaccion no se debilita.
+    -->
     <springProfile name="prod | dev">
         <root level="INFO">
+            <appender-ref ref="REDACTED_CONSOLE"/>
             <appender-ref ref="REDACTED_OTEL"/>
         </root>
     </springProfile>
