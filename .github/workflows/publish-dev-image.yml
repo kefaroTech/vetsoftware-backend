@@ -185,8 +185,13 @@ jobs:
             org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             com.vetsoftware.image.run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          provenance: mode=max
-          sbom: true
+          # Sin atestaciones el tag apunta a un manifiesto de imagen y no a un
+          # index. El escaneo basico de ECR solo escanea manifiestos de
+          # plataforma, asi que con provenance y SBOM activos ninguna imagen
+          # llegaba a tener escaneo y el gate del despliegue rechazaba todo.
+          # Nada en los cuatro repositorios verificaba esas atestaciones.
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=backend-arm64
           cache-to: type=gha,mode=max,scope=backend-arm64
 
