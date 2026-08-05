@@ -159,8 +159,13 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
             org.opencontainers.image.version=${{ steps.release.outputs.version }}
-          provenance: mode=max
-          sbom: true
+          # Sin atestaciones el tag apunta a un manifiesto de imagen y no a un
+          # index. El escaneo basico de ECR solo escanea manifiestos de
+          # plataforma: con provenance y SBOM activos, el wait de mas abajo
+          # habria bloqueado toda publicacion de release igual que bloqueo el
+          # despliegue de desarrollo.
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=backend-arm64
           cache-to: type=gha,mode=max,scope=backend-arm64
 
