@@ -21,6 +21,40 @@ mvn test -Dtest=ClassName  # single test class
 mvn clean verify sonar:sonar -Dsonar.login=<token>   # análisis de código (SonarQube 9.9 LTS en localhost:9000)
 ```
 
+```bash
+npm test                                          # tests de los scripts de .github/scripts
+node .github/scripts/dev-version.mjs next         # qué versión de desarrollo tocaría (no escribe nada)
+```
+
+## Versionado automático de develop — qué mueve cada dígito
+
+Cada merge a `develop` calcula su propia versión `X.Y.Z-dev.N`, la commitea en `pom.xml`,
+`package.json` y `package-lock.json`, y publica la imagen ya versionada. Desplegar en dev
+es escribir esa versión y nada más. Las releases (`X.Y.Z` limpias) siguen siendo territorio
+exclusivo de `prepare-release.yml`.
+
+La decisión se toma sobre el **tipo convencional** del commit, no sobre el gitmoji:
+
+| En el commit | Bump | Ejemplo | Partiendo de `1.1.0-dev.3` |
+|---|---|---|---|
+| `!` tras el scope, o footer `BREAKING CHANGE:` | major | `:boom: feat(api)!: …` | `2.0.0-dev.1` |
+| `feat` | minor | `:sparkles: feat(kardex): …` | `1.2.0-dev.1` |
+| `fix` · `perf` | patch | `:bug: fix(audit): …` | `1.1.1-dev.1` |
+| `refactor` · `docs` · `style` · `test` · `build` · `ci` · `chore` | solo N | `:memo: docs: …` | `1.1.0-dev.4` |
+
+Dos reglas que sostienen el esquema:
+
+- **Gana el más alto.** Se evalúan todos los commits que entraron con el merge, no solo el
+  asunto del merge: un `feat` entre cuatro `chore` es un minor.
+- **Cuando el dígito base se mueve, `N` vuelve a 1.** `1.1.0-dev.7` + un `feat` da
+  `1.2.0-dev.1`, no `1.2.0-dev.8`.
+- Un `pom.xml` limpio (el back-merge de una release) abre el ciclo siguiente en
+  `X.Y.(Z+1)-dev.1` aunque no haya nada que bumpear: emitir `X.Y.Z-dev.1` daría una versión
+  *anterior* a la release ya publicada.
+
+El algoritmo vive en `.github/scripts/dev-version.mjs` y esta tabla es su contrato; el
+`CHANGELOG.md` no se toca en develop.
+
 ## Configuration
 
 MySQL en `src/main/resources/application.yml`:
