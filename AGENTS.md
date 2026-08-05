@@ -70,13 +70,14 @@ No se permiten ramas de trabajo creadas desde otra rama temporal ni ramas con fl
 - Únicamente `.github/workflows/prepare-release.yml` puede crear un commit automático, y solo en una rama existente `release/X.Y.Z` que descienda de `develop`.
 - La aprobación manual registrada por un developer autorizado en el environment protegido `release-preparation` constituye la aprobación escrita y auditable de ese commit concreto. La rama determina la versión y el mensaje autorizado es `:bookmark: chore(release): prepare X.Y.Z`.
 - Ese commit solo puede modificar `pom.xml`, `package.json`, `package-lock.json` y `CHANGELOG.md`. Debe sincronizar la misma versión SemVer, ejecutar todos los controles de calidad y finalizar sin commit si no existe un diff.
+- Únicamente `.github/workflows/publish-dev-image.yml` puede crear un commit automático sobre `develop`, y solo inmediatamente después de un merge, para fijar la versión de desarrollo que llevará la imagen publicada. El mensaje autorizado es `:bookmark: chore(version): X.Y.Z-dev.N`, la versión la calcula `.github/scripts/dev-version.mjs` a partir de los commits que entraron con ese merge, y el commit solo puede modificar `pom.xml`, `package.json` y `package-lock.json`. Es la única excepción a la prohibición de push directo a `develop`, está acotada al actor `github-actions[bot]` y no reemplaza el pull request de ningún cambio funcional.
 - Únicamente `.github/workflows/publish-release.yml`, después de la aprobación del environment protegido `production`, puede crear el tag anotado inmutable `vX.Y.Z` y el GitHub Release correspondiente sobre el commit ya integrado en `main`.
 - La automatización nunca puede aprobar su propio pull request, hacer merge, evadir reglas de protección, hacer force-push, modificar código funcional ni crear una versión que no coincida con la rama.
 - Cualquier otro commit automático permanece prohibido y sujeto a la política general de aprobación humana.
 
 ## Prohibiciones
 
-- No hacer commits directos, cherry-picks rutinarios ni pushes directos a `main` o `develop`.
+- No hacer commits directos, cherry-picks rutinarios ni pushes directos a `main` o `develop`, salvo el commit de versión descrito en la excepción controlada.
 - No actualizar `main` directamente desde `develop`; toda promoción normal debe pasar por `release/*`.
 - No usar `push --force`, reescribir historial publicado ni eliminar ramas no integradas.
 - No mezclar una feature directamente en `main`.

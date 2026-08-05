@@ -7,7 +7,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Bypass acotado (opcion A del diseno de versionado automatico): el permiso de
+  # escritura vive solo en este workflow, no en el default del repositorio, que
+  # sigue en read. Habilita el commit de bump de version sobre develop y el
+  # comentario con la version asignada en el PR que lo origino.
+  contents: write
+  pull-requests: write
   id-token: write
 
 concurrency:
@@ -17,7 +22,10 @@ concurrency:
 jobs:
   publish:
     name: Build and publish dev image
-    if: github.ref == 'refs/heads/develop'
+    # El guard de actor rompe cualquier realimentacion: el commit de version no
+    # vuelve a entrar aca. Hoy es redundante -un push hecho con GITHUB_TOKEN no
+    # dispara workflows- y deja de serlo el dia que se cambie a una GitHub App.
+    if: github.ref == 'refs/heads/develop' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: development
@@ -28,18 +36,86 @@ jobs:
       ECR_REPOSITORY: vetsoftware-dev-backend
 
     steps:
-      - name: Check out repository
+      - name: Check out develop
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: develop
+          # El bump necesita historia completa para leer los commits del merge y
+          # credenciales persistidas para empujar el commit de version.
+          fetch-depth: 0
+          persist-credentials: true
 
-      - name: Resolve immutable development tag
-        id: image
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      # El orden no es negociable: primero el commit de version, despues el
+      # build. Al reves la imagen saldria de un commit cuyo pom todavia declara
+      # la version anterior, que es justo la discrepancia que esto elimina.
+      - name: Bump development version and push to develop
+        id: version
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
         shell: bash
         run: |
-          # El prefijo dev- separa este artefacto de los tags sha- de release y
-          # lo somete a su propia regla de retencion en ECR.
-          echo "tag=dev-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          outputs="$RUNNER_TEMP/dev-version.env"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          bump() {
+            : > "$outputs"
+            GITHUB_OUTPUT="$outputs" node .github/scripts/dev-version.mjs apply
+
+            unexpected="$(git diff --name-only | grep -Ev '^(package\.json|package-lock\.json|pom\.xml)$' || true)"
+            if [[ -n "$unexpected" ]]; then
+              echo "El bump modifico archivos fuera de la version: $unexpected" >&2
+              exit 1
+            fi
+
+            version="$(sed -n 's/^version=//p' "$outputs")"
+            [[ -n "$version" ]] || { echo "dev-version no emitio la version." >&2; exit 1; }
+
+            git add package.json package-lock.json pom.xml
+            if git diff --cached --quiet; then
+              echo "La version calculada ($version) ya estaba escrita; no hay commit que hacer." >&2
+              exit 1
+            fi
+            git commit -m ":bookmark: chore(version): $version"
+          }
+
+          # Una carrera con otro merge solo puede rechazar el push. El rango de
+          # commits a evaluar no cambia -sigue siendo el de este merge-, asi que
+          # alcanza con recalcular sobre la develop actualizada y reintentar.
+          bump
+          attempt=1
+          until git push origin HEAD:develop; do
+            attempt=$((attempt + 1))
+            if [[ "$attempt" -gt 3 ]]; then
+              echo "No fue posible empujar el commit de version tras 3 intentos." >&2
+              exit 1
+            fi
+            echo "Push rechazado; recalculando sobre develop actualizada (intento $attempt)."
+            git fetch origin develop
+            git reset --hard origin/develop
+            # El reset descarta el commit de version que acabamos de crear, no el
+            # merge que lo origino. Si el merge ya no esta en develop, alguien
+            # reescribio la rama y publicar esta imagen seria mentir sobre su
+            # origen.
+            git merge-base --is-ancestor "$GITHUB_SHA" HEAD || {
+              echo "El merge $GITHUB_SHA ya no pertenece a develop; se aborta el bump." >&2
+              exit 1
+            }
+            bump
+          done
+
+          cat "$outputs" >> "$GITHUB_OUTPUT"
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "tag=dev-$(git rev-parse HEAD | cut -c1-12)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Validate AWS publication configuration
         shell: bash
@@ -61,18 +137,21 @@ jobs:
 
       - name: Skip when the immutable tag already exists
         id: existing
+        env:
+          IMAGE_VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
-          # Los repositorios son IMMUTABLE: reejecutar el mismo commit no debe fallar.
+          # Los repositorios son IMMUTABLE: reejecutar sobre una version ya
+          # publicada no debe fallar contra ECR.
           digest="$(aws ecr describe-images \
             --repository-name "$ECR_REPOSITORY" \
-            --image-ids "imageTag=${{ steps.image.outputs.tag }}" \
+            --image-ids "imageTag=$IMAGE_VERSION" \
             --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)"
 
           if [[ -n "$digest" && "$digest" != "None" ]]; then
             echo "push=false" >> "$GITHUB_OUTPUT"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"
-            echo "La imagen dev de este commit ya existe; se reutiliza su digest."
+            echo "La imagen $IMAGE_VERSION ya existe; se reutiliza su digest."
           else
             echo "push=true" >> "$GITHUB_OUTPUT"
           fi
@@ -87,6 +166,10 @@ jobs:
         if: steps.existing.outputs.push == 'true'
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
+      # Dos tags sobre el mismo digest: la version es lo que se pide al
+      # desplegar, y el tag del commit es lo que prueba que la imagen salio de
+      # este pipeline. El prefijo dev- la separa de los tags sha- de release y la
+      # somete a su propia regla de retencion en ECR.
       - name: Build and publish ARM64 development image
         if: steps.existing.outputs.push == 'true'
         id: build
@@ -95,15 +178,20 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.image.outputs.tag }}
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.version }}
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.tag }}
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            com.vetsoftware.image.run-url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           provenance: mode=max
           sbom: true
           cache-from: type=gha,scope=backend-arm64
           cache-to: type=gha,mode=max,scope=backend-arm64
 
-      - name: Publish the deployable image URI
+      - name: Resolve the published digest
+        id: image
         shell: bash
         run: |
           digest="${{ steps.build.outputs.digest }}"
@@ -115,18 +203,77 @@ jobs:
           fi
 
           account_id="$(aws sts get-caller-identity --query Account --output text)"
-          image_uri="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}@${digest}"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "uri=${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
 
+      # El comentario es lo que vuelve usable el input unico del despliegue:
+      # pedir "solo la version" solo funciona si es trivial saber cual toco. El
+      # PR se resuelve por API sobre el commit del merge, no parseando su
+      # mensaje.
+      - name: Comment the assigned version on the merged pull request
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_VERSION: ${{ steps.version.outputs.version }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+          BUMP_LEVEL: ${{ steps.version.outputs.level }}
+          BUMP_SUBJECT: ${{ steps.version.outputs.subject }}
+          BUMP_DEGRADED: ${{ steps.version.outputs.degraded }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          pr="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0].number' 2>/dev/null || true)"
+          if [[ -z "$pr" || "$pr" == "null" ]]; then
+            echo "El merge no proviene de un pull request; solo queda el resumen del run."
+            exit 0
+          fi
+
+          reason="$BUMP_SUBJECT"
+          if [[ "$BUMP_DEGRADED" == "true" ]]; then
+            reason="rango de commits no resuelto; solo avanzó el contador"
+          fi
+
+          gh pr comment "$pr" --body "$(cat <<EOF
+          ## Versión asignada: \`${IMAGE_VERSION}\`
+
+          - Bump: **${BUMP_LEVEL}**${reason:+ (por \`${reason}\`)}
+          - Digest: \`${IMAGE_DIGEST}\`
+          - Tags: \`${IMAGE_VERSION}\`, \`${IMAGE_TAG}\`
+          - Run: ${RUN_URL}
+
+          Para desplegar en dev: **Deploy backend image dev** en \`VetSoftwareIaC\` → version = \`${IMAGE_VERSION}\`
+          EOF
+          )"
+
+      - name: Publish the deployable image URI
+        env:
+          IMAGE_VERSION: ${{ steps.version.outputs.version }}
+          PREVIOUS_VERSION: ${{ steps.version.outputs.previous }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+          BUMP_LEVEL: ${{ steps.version.outputs.level }}
+          VERSION_COMMIT: ${{ steps.version.outputs.commit }}
+        shell: bash
+        run: |
           {
             echo "## Imagen de desarrollo publicada"
             echo
-            echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Tag: \`${{ steps.image.outputs.tag }}\`"
-            echo "- Digest: \`${digest}\`"
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Versión | \`${IMAGE_VERSION}\` |"
+            echo "| Anterior | \`${PREVIOUS_VERSION}\` (bump ${BUMP_LEVEL}) |"
+            echo "| Commit de versión | \`${VERSION_COMMIT}\` |"
+            echo "| Tags | \`${IMAGE_VERSION}\`, \`${IMAGE_TAG}\` |"
+            echo "| Digest | \`${IMAGE_DIGEST}\` |"
             echo
-            echo "Use este valor como \`backend_image_uri\` del root \`environments/dev\`:"
+            echo "Para desplegar: **Deploy backend image dev** en \`VetSoftwareIaC\` con"
+            echo "\`version = ${IMAGE_VERSION}\`. El digest se resuelve solo."
+            echo
+            echo "URI fijada por digest:"
             echo
             echo "\`\`\`"
-            echo "${image_uri}"
+            echo "${IMAGE_URI}"
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -52,6 +52,11 @@ jobs:
       - name: Audit workflow tooling dependencies
         run: npm audit --audit-level=high
 
+      # Los scripts de .github/scripts deciden que version lleva cada artefacto;
+      # un error ahi se paga en el despliegue, no en el build.
+      - name: Verify workflow tooling
+        run: npm test
+
       - name: Verify with Maven
         run: mvn --batch-mode --no-transfer-progress verify
 

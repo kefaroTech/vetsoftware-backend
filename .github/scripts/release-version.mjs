@@ -1,7 +1,20 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
+// El lector del pom vive en el modulo compartido: dev-version.mjs necesita
+// exactamente el mismo, y duplicarlo era la via segura para que un dia dejaran
+// de coincidir.
+import {
+  projectPomVersion,
+  readJson,
+  setProjectPomVersion,
+  writeJson,
+} from "./version-files.mjs";
+
 const [, , mode, version] = process.argv;
+// Ojo: este patron RECHAZA los pre-release. Es correcto -este script solo ve
+// versiones limpias, porque prepare corre sobre release/X.Y.Z- pero no sirve
+// para un X.Y.Z-dev.N; ese lo valida dev-version.mjs con su propio patron.
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 function fail(message) {
@@ -37,36 +50,14 @@ function git(...args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function writeJson(path, value) {
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function projectPomVersion(xml) {
-  const parentEnd = xml.indexOf("</parent>");
-  const propertiesStart = xml.indexOf("<properties>", parentEnd);
-  const versionMatch = xml
-    .slice(parentEnd, propertiesStart)
-    .match(/<version>([^<]+)<\/version>/);
-
-  if (!versionMatch) fail("the project version was not found in pom.xml");
-  return versionMatch[1];
-}
-
-function setProjectPomVersion(xml, nextVersion) {
-  const parentEnd = xml.indexOf("</parent>");
-  const propertiesStart = xml.indexOf("<properties>", parentEnd);
-  const projectHeader = xml.slice(parentEnd, propertiesStart);
-  const currentVersion = projectPomVersion(xml);
-  const updatedHeader = projectHeader.replace(
-    `<version>${currentVersion}</version>`,
-    `<version>${nextVersion}</version>`,
-  );
-
-  return `${xml.slice(0, parentEnd)}${updatedHeader}${xml.slice(propertiesStart)}`;
+// Los helpers del modulo compartido lanzan; aqui todo error termina en un exit
+// con mensaje, asi que se traducen en el borde.
+function orFail(action) {
+  try {
+    return action();
+  } catch (error) {
+    return fail(error.message);
+  }
 }
 
 function latestVersionTag() {
@@ -160,7 +151,7 @@ if (mode === "prepare") {
 
   if (existsSync("pom.xml")) {
     const pom = readFileSync("pom.xml", "utf8");
-    writeFileSync("pom.xml", setProjectPomVersion(pom, version));
+    writeFileSync("pom.xml", orFail(() => setProjectPomVersion(pom, version)));
   }
 
   prepareChangelog(latestVersion);
@@ -179,7 +170,9 @@ if (packageLock.packages?.[""]?.version !== version) {
 }
 
 if (existsSync("pom.xml")) {
-  const pomVersion = projectPomVersion(readFileSync("pom.xml", "utf8"));
+  const pomVersion = orFail(() =>
+    projectPomVersion(readFileSync("pom.xml", "utf8")),
+  );
   if (pomVersion !== version)
     fail(`pom.xml is ${pomVersion}, expected ${version}`);
 }
