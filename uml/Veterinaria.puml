@@ -1,411 +1,45 @@
 @startuml
 
-' =========================
-' Enums
-' =========================
+' ############################################################################
+' MainVetSoftware — Modelo de dominio
+'
+' Organización del archivo:
+'   - El documento se divide en secciones numeradas por área de negocio.
+'   - Cada sección declara PRIMERO sus enums y DESPUÉS sus clases.
+'   - Un enum vive en la sección de la clase que lo "posee"; si otras áreas
+'     lo reutilizan, eso se ve como una arista más, no como una copia.
+'   - El bloque final de relaciones repite la MISMA numeración de secciones,
+'     así que cada sección se lee de corrido: clases arriba, aristas abajo.
+'
+' Índice
+'   1.  Sistema / autenticación
+'   2.  Membresías y módulos
+'   3.  Ubicación geográfica
+'   4.  Empresa, sedes y empleados
+'   5.  Autorización (roles y permisos)
+'   6.  Propietarios y pacientes
+'   7.  Agenda de citas
+'   8.  Historia clínica — consulta y exploración física
+'   9.  Historia clínica — procedimientos y tratamientos
+'   10. Hospitalización y guardería
+'   11. Historia clínica — read model
+'   12. Catálogo comercial (productos, servicios, impuestos)
+'   13. Catálogo petshop (presentaciones, combos, códigos de barras)
+'   14. Promociones
+'   15. Inventario (stock, kardex, conteos, descomposición de venta)
+'   16. Compras y proveedores
+'   17. Caja
+'   18. Cuentas abiertas y cobros
+'   19. Perfil tributario de la empresa (DIAN)
+'   20. Documento electrónico (DIAN)
+'   21. Integración con proveedor DIAN y retenciones
+'   22. Auditoría
+' ############################################################################
 
-enum OpenAccountStatus {
-  OPEN
-  CLOSE
-  CANCEL
-}
 
-enum MembershipStatus {
-  ACTIVE
-  INACTIVE
-  DEPRECATED
-}
-
-enum Gender {
-  MALE
-  FEMALE
-}
-
-enum WeightType {
-  GRAMS
-  POUNDS
-  KILOGRAMS
-}
-
-enum WeightSource {
-  MANUAL
-  CONSULTATION
-  HOSPITALIZATION
-}
-
-enum AnimalType {
-  SERVICE
-  SUPPORT
-  NONE
-}
-
-enum AlertType {
-  ALLERGY
-  DRUG_REACTION
-  CHRONIC_CONDITION
-  BEHAVIOR
-  OTHER
-}
-
-enum AlertSeverity {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum AppointmentType {
-  CONSULTATION
-  CONTROL
-  VACCINATION
-  DEWORMING
-  SURGERY
-  IMAGING
-  LABORATORY
-  GROOMING
-  OTHER
-}
-
-enum AppointmentStatus {
-  REQUESTED
-  CONFIRMED
-  ARRIVED
-  IN_PROGRESS
-  COMPLETED
-  NO_SHOW
-  CANCELLED
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  BANK_TRANSFER
-}
-
-enum ReproductiveState {
-  STERILIZED
-  NO_STERILIZED
-  UNKNOWN
-}
-
-enum HospitalizationType {
-  OUTPATIENT
-  HOSPITALIZATION
-}
-
-enum DayCareType {
-  DAYCARE
-  HOTEL
-}
-
-enum ReasonLeaving {
-  MEDICAL_DISCHARGE
-  HOME_TREATMENT
-  TRANSFER
-  TUTOR_WISH
-  ADMIN
-  DEATH
-  EUTHANASIA
-}
-
-enum DewormingType {
-  INTERNAL
-  EXTERNAL
-  MIX
-  OTHER
-}
-
-enum Frequency {
-  CONTINUOUS
-  EVERY_4H
-  EVERY_6H
-  EVERY_8H
-  EVERY_12H
-  EVERY_24H
-  SINGLE
-}
-
-enum GuidelineType {
-  FIXED
-  INTERVAL
-}
-
-enum DurationMeasure {
-  DAYS
-  DOSES
-  INDEFINITE
-}
-
-enum AppliedStatus {
-  PENDING
-  APPLIED
-  SKIPPED
-}
-
-enum LaboratoryTestStatus {
-  PENDING_COLLECTION
-  PENDING_PROCESSING
-  IN_PROGRESS
-  PENDING_VALIDATION
-  COMPLETED
-  CANCELLED
-}
-
-enum LaboratoryTestPriority {
-  NORMAL
-  URGENTE
-}
-
-enum SurgeryStatus {
-  PROGRAMADA
-  PENDIENTE
-  COMPLETADO
-  CANCELADO
-}
-
-enum DiagnosticImagingStatus {
-  PENDIENTE
-  COMPLETADO
-  CANCELADO
-}
-
-enum SpaStatus {
-  AGENDADA
-  COMPLETADO
-  CANCELADO
-}
-
-enum ClinicalEventType {
-  CONSULTATION
-  SURGERY
-  VACCINATION
-  DEWORMING
-  HOSPITALIZATION
-  LABORATORY_TEST
-  DIAGNOSTIC_IMAGING
-  PRESCRIPTION
-  SPA
-}
-
-enum PromotionType {
-  DISCOUNT
-  SPECIAL_PRICE
-}
-
-enum ApplicationType {
-  CATEGORY
-  PRODUCT
-  SERVICE
-}
-
-enum ValueType {
-  PERCENTAGE
-  VALUE
-}
-
-enum PromotionStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum CompanyDocumentType {
-  NIT(31)
-  CEDULA_CIUDADANIA(13)
-  CEDULA_EXTRANJERIA(22)
-  PASAPORTE(41)
-}
-
-enum TaxRegime {
-  RESPONSABLE_IVA
-  NO_RESPONSABLE_IVA
-}
-
-enum FiscalResponsibility {
-  NO_APLICA
-  GRAN_CONTRIBUYENTE
-  AUTORRETENEDOR
-  AGENTE_RETENCION_IVA
-  REGIMEN_SIMPLE
-}
-
-enum ElectronicDocumentType {
-  FE_VENTA
-  DOC_EQUIV_POS
-  NOTA_CREDITO
-  NOTA_DEBITO
-}
-
-enum OwnerDocumentType {
-  CEDULA_CIUDADANIA(13)
-  NIT(31)
-  CEDULA_EXTRANJERIA(22)
-  PASAPORTE(41)
-  PEP(47)
-}
-
-enum PersonType {
-  NATURAL
-  JURIDICA
-}
-
-enum TaxTreatment {
-  GRAVADO
-  EXENTO
-  EXCLUIDO
-  INC
-}
-
-enum TaxScheme {
-  IVA(01)
-  INC(04)
-}
-
-enum DianStatus {
-  PENDIENTE
-  VALIDADO
-  RECHAZADO
-  CONTINGENCIA
-}
-
-enum PaymentForm {
-  CONTADO(1)
-  CREDITO(2)
-}
-
-enum PaymentMeans {
-  EFECTIVO(10)
-  TARJETA_DEBITO(48)
-  TARJETA_CREDITO(49)
-  TRANSFERENCIA(42)
-}
-
-enum TaxCategory {
-  GRAVADO
-  EXENTO
-  EXCLUIDO
-  INC
-}
-
-enum CreditNoteReason {
-  DEVOLUCION(1)
-  ANULACION(2)
-  REBAJA(3)
-  AJUSTE_PRECIO(4)
-  OTROS(5)
-}
-
-enum DebitNoteReason {
-  INTERESES(1)
-  GASTOS(2)
-  CAMBIO_VALOR(3)
-  OTROS(4)
-}
-
-enum ProviderType {
-  MATIAS
-}
-
-enum TransmissionResult {
-  ACCEPTED
-  REJECTED
-  PENDING
-  ERROR
-}
-
-enum WebhookOutcome {
-  ACCEPTED
-  REJECTED
-  IGNORED
-}
-
-enum EmployeeStatus {
-  INVITED
-  ACTIVE
-}
-
-enum CashSessionStatus {
-  OPEN
-  CLOSED
-}
-
-enum CashMovementType {
-  SALE_IN
-  OPEN_ACCOUNT_IN
-  MANUAL_IN
-  WITHDRAWAL
-  EXPENSE
-  VOID_OUT
-}
-
-enum CashPaymentMethod {
-  CASH
-  CARD
-  TRANSFER
-}
-
-enum CashReferenceType {
-  POS_DOCUMENT
-  OPEN_ACCOUNT_PAYMENT
-  MANUAL
-}
-
-enum PurchaseOrderStatus {
-  DRAFT
-  PLACED
-  PARTIALLY_RECEIVED
-  RECEIVED
-  CANCELLED
-}
-
-enum GoodsReceiptStatus {
-  DRAFT
-  CONFIRMED
-  CANCELLED
-}
-
-enum SupplierInvoiceStatus {
-  PENDING
-  PARTIAL
-  PAID
-  CANCELLED
-}
-
-enum SupplierInvoicePaymentMethod {
-  CASH
-  CARD
-  TRANSFER
-  OTHER
-}
-
-enum StockMovementType {
-  PURCHASE
-  SALE
-  ADJUSTMENT_IN
-  ADJUSTMENT_OUT
-  CLINICAL_USE
-  TRANSFER_OUT
-  TRANSFER_IN
-  VOID_IN
-  VOID_OUT
-}
-
-enum StockReferenceType {
-  POS_DOCUMENT
-  OPEN_ACCOUNT_CHARGE
-  GOODS_RECEIPT
-  ADJUSTMENT
-  TRANSFER
-  CLINICAL_EVENT
-}
-
-enum ProblemStatus {
-  ACTIVE
-  RESOLVED
-  CHRONIC
-}
-
-' =========================
-' System / Auth
-' =========================
+' ============================================================================
+' 1. SISTEMA / AUTENTICACIÓN
+' ============================================================================
 
 class SystemUser {
   -code: String
@@ -455,6 +89,7 @@ class EmailVerificationToken {
   -createdDate: LocalDateTime
 }
 
+' Configuración global del sistema. Su equivalente por empresa es CompanySettings (§4).
 class SystemConfiguration {
   -propertyName: String
   -value: String
@@ -462,9 +97,16 @@ class SystemConfiguration {
   -enabled: boolean
 }
 
-' =========================
-' Membership / Modules
-' =========================
+
+' ============================================================================
+' 2. MEMBRESÍAS Y MÓDULOS
+' ============================================================================
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+}
 
 class Membership {
   -name: String
@@ -504,9 +146,42 @@ class BasePermission {
   -enabled: boolean
 }
 
-' =========================
-' Company / Employee
-' =========================
+
+' ============================================================================
+' 3. UBICACIÓN GEOGRÁFICA
+' ============================================================================
+
+class Country {
+  -name: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class State {
+  -name: String
+  -country: Country
+  -daneCode: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class City {
+  -name: String
+  -state: State
+  -daneCode: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 4. EMPRESA, SEDES Y EMPLEADOS
+' ============================================================================
+
+enum EmployeeStatus {
+  INVITED
+  ACTIVE
+}
 
 class Company {
   -name: String
@@ -551,87 +226,31 @@ class EmployeeBranch {
   -enabled: boolean
 }
 
-' =========================
-' Scheduling
-' =========================
-
-class Appointment {
-  -startAt: LocalDateTime
-  -type: AppointmentType
-  -status: AppointmentStatus
-  -notes: String
-  -cancellationReason: String
-  -animal: Animal
-  -owner: Owner
-  -clientName: String
-  -clientPhone: String
-  -clientEmail: String
-  -employee: Employee
-  -company: Company
-  -branch: Branch
-  -version: long
-  -enabled: boolean
-  -createdDate: LocalDateTime
-}
-
-' =========================
-' Company Tax Profile (DIAN)
-' =========================
-
-class EconomicActivity {
-  -code: String
-  -name: String
+' Almacén clave-valor por empresa (company_settings). Complementa a SystemConfiguration, que es global.
+class CompanySettings {
+  -companyId: Long
+  -propertyName: String
+  -value: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
 
-class CompanyTaxProfile {
-  -company: Company
-  -companyDocumentType: CompanyDocumentType
-  -companyDocumentId: String
-  -companyDocumentVerificationDigit: String
-  -legalName: String
-  -taxRegime: TaxRegime
-  -fiscalEmail: String
-  -commercialName: String
-  -economicActivity: EconomicActivity
-  -responsibilities: List<CompanyTaxProfileResponsibility>
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
 
-class CompanyTaxProfileResponsibility {
-  -companyTaxProfile: CompanyTaxProfile
-  -code: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class NumberingResolution {
-  -company: Company
-  -branchId: Long
-  -documentType: ElectronicDocumentType
-  -resolutionNumber: String
-  -resolutionDate: LocalDate
-  -prefix: String
-  -rangeFrom: Long
-  -rangeTo: Long
-  -validFrom: LocalDate
-  -validTo: LocalDate
-  -technicalKey: String
-  -currentNumber: Long
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-' =========================
-' Authorization
-' =========================
+' ============================================================================
+' 5. AUTORIZACIÓN (ROLES Y PERMISOS)
+' ============================================================================
 
 class BaseRole {
   -name: String
   -code: String
   -mandatory: Boolean
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class BaseRolePermission {
+  -baseRole: BaseRole
+  -basePermission: BasePermission
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -660,13 +279,6 @@ class RolePermission {
   -enabled: boolean
 }
 
-class BaseRolePermission {
-  -baseRole: BaseRole
-  -basePermission: BasePermission
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
 class EmployeeRole {
   -employee: Employee
   -role: Role
@@ -674,36 +286,74 @@ class EmployeeRole {
   -enabled: boolean
 }
 
-' =========================
-' Location
-' =========================
 
-class Country {
-  -name: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
+' ============================================================================
+' 6. PROPIETARIOS Y PACIENTES
+' ============================================================================
+
+enum OwnerDocumentType {
+  CEDULA_CIUDADANIA(13)
+  NIT(31)
+  CEDULA_EXTRANJERIA(22)
+  PASAPORTE(41)
+  PEP(47)
 }
 
-class State {
-  -name: String
-  -country: Country
-  -daneCode: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
+enum PersonType {
+  NATURAL
+  JURIDICA
 }
 
-class City {
-  -name: String
-  -state: State
-  -daneCode: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
+enum Gender {
+  MALE
+  FEMALE
 }
 
-' =========================
-' Owner / Animal
-' =========================
+enum WeightType {
+  GRAMS
+  POUNDS
+  KILOGRAMS
+}
 
+enum WeightSource {
+  MANUAL
+  CONSULTATION
+  HOSPITALIZATION
+}
+
+enum AnimalType {
+  SERVICE
+  SUPPORT
+  NONE
+}
+
+enum ReproductiveState {
+  STERILIZED
+  NO_STERILIZED
+  UNKNOWN
+}
+
+enum AlertType {
+  ALLERGY
+  DRUG_REACTION
+  CHRONIC_CONDITION
+  BEHAVIOR
+  OTHER
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ProblemStatus {
+  ACTIVE
+  RESOLVED
+  CHRONIC
+}
+
+' Los campos fiscales (taxRegime, fiscalResponsibility) alimentan el CustomerSnapshot del documento electrónico (§20).
 class Owner {
   -name: String
   -email: String
@@ -729,15 +379,15 @@ class Specie {
   -enabled: boolean
 }
 
-class AnimalColor {
+class Breed {
   -name: String
+  -specie: Specie
   -createdDate: LocalDateTime
   -enabled: boolean
 }
 
-class Breed {
+class AnimalColor {
   -name: String
-  -specie: Specie
   -createdDate: LocalDateTime
   -enabled: boolean
 }
@@ -765,6 +415,7 @@ class Animal {
   -enabled: boolean
 }
 
+' Histórico de pesos. `source`/`sourceId` apuntan al evento clínico que originó la medición.
 class WeightRecord {
   -animal: Animal
   -value: BigDecimal
@@ -800,9 +451,58 @@ class Problem {
   -enabled: boolean
 }
 
-' =========================
-' Medical Records
-' =========================
+
+' ============================================================================
+' 7. AGENDA DE CITAS
+' ============================================================================
+
+enum AppointmentType {
+  CONSULTATION
+  CONTROL
+  VACCINATION
+  DEWORMING
+  SURGERY
+  IMAGING
+  LABORATORY
+  GROOMING
+  OTHER
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+' Los campos clientName/clientPhone/clientEmail cubren la cita de un cliente aún no registrado como Owner.
+class Appointment {
+  -startAt: LocalDateTime
+  -type: AppointmentType
+  -status: AppointmentStatus
+  -notes: String
+  -cancellationReason: String
+  -animal: Animal
+  -owner: Owner
+  -clientName: String
+  -clientPhone: String
+  -clientEmail: String
+  -employee: Employee
+  -company: Company
+  -branch: Branch
+  -version: long
+  -enabled: boolean
+  -createdDate: LocalDateTime
+}
+
+
+' ============================================================================
+' 8. HISTORIA CLÍNICA — CONSULTA Y EXPLORACIÓN FÍSICA
+'    La Consultation es el eje: casi todo procedimiento de §9 cuelga de ella (0..1).
+' ============================================================================
 
 class ConsultationType {
   -name: String
@@ -838,6 +538,15 @@ class PhysicalExam <<value object>> {
   -findings: String
 }
 
+
+' ============================================================================
+' 9. HISTORIA CLÍNICA — PROCEDIMIENTOS Y TRATAMIENTOS
+'    Los tipos (`XxxType`) con `general = true` y `company = null` son catálogo
+'    compartido; con company asignada son catálogo propio de la empresa.
+' ============================================================================
+
+' --- 9.1 Vacunación ---------------------------------------------------------
+
 class VaccinationType {
   -name: String
   -description: String
@@ -862,6 +571,15 @@ class Vaccination {
   -enabled: boolean
 }
 
+' --- 9.2 Cirugía ------------------------------------------------------------
+
+enum SurgeryStatus {
+  PROGRAMADA
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
 class SurgeryType {
   -name: String
   -description: String
@@ -884,6 +602,232 @@ class Surgery {
   -company: Company
   -createdDate: LocalDateTime
   -enabled: boolean
+}
+
+' --- 9.3 Desparasitación ----------------------------------------------------
+
+enum DewormingType {
+  INTERNAL
+  EXTERNAL
+  MIX
+  OTHER
+}
+
+class Deworming {
+  -date: LocalDate
+  -lastDeworming: LocalDate
+  -nextControl: LocalDate
+  -type: DewormingType
+  -product: String
+  -dosage: String
+  -observations: String
+  -animal: Animal
+  -consultation: Consultation
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' --- 9.4 Laboratorio --------------------------------------------------------
+
+enum LaboratoryTestStatus {
+  PENDING_COLLECTION
+  PENDING_PROCESSING
+  IN_PROGRESS
+  PENDING_VALIDATION
+  COMPLETED
+  CANCELLED
+}
+
+enum LaboratoryTestPriority {
+  NORMAL
+  URGENTE
+}
+
+class LaboratoryTestType {
+  -name: String
+  -description: String
+  -company: Company
+  -general: Boolean
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class LaboratoryTest {
+  -date: LocalDate
+  -testType: LaboratoryTestType
+  -branchId: Long
+  -quantity: Integer
+  -diagnosis: String
+  -status: LaboratoryTestStatus
+  -prioridad: LaboratoryTestPriority
+  -animal: Animal
+  -consultation: Consultation
+  -company: Company
+  -processedBy: Employee
+  -processedDate: LocalDateTime
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' Adjunto del resultado; el binario vive en el bucket, aquí solo van las coordenadas.
+class LaboratoryTestFile {
+  -storageKey: String
+  -bucket: String
+  -originalFileName: String
+  -contentType: String
+  -sizeBytes: Long
+  -eTag: String
+  -uploadedBy: Employee
+  -createdDate: LocalDateTime
+  -laboratoryTest: LaboratoryTest
+}
+
+' --- 9.5 Imagenología -------------------------------------------------------
+
+enum DiagnosticImagingStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+class DiagnosticImagingType {
+  -name: String
+  -description: String
+  -company: Company
+  -general: Boolean
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class DiagnosticImaging {
+  -date: LocalDate
+  -diagnosticImagingType: DiagnosticImagingType
+  -clinicalSigns: String
+  -studyType: String
+  -diagnosis: String
+  -observations: String
+  -status: DiagnosticImagingStatus
+  -animal: Animal
+  -consultation: Consultation
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' --- 9.6 Recetas ------------------------------------------------------------
+
+class Medicament {
+  -name: String
+  -description: String
+  -company: Company
+  -general: Boolean
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Prescription {
+  -date: LocalDate
+  -diagnosis: String
+  -observations: String
+  -animal: Animal
+  -consultation: Consultation
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class MedicamentPrescription {
+  -medicament: Medicament
+  -presentation: String
+  -quantity: Double
+  -posology: String
+  -observation: String
+  -prescription: Prescription
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' --- 9.7 Spa / estética -----------------------------------------------------
+
+enum SpaStatus {
+  AGENDADA
+  COMPLETADO
+  CANCELADO
+}
+
+class SpaType {
+  -name: String
+  -description: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class Spa {
+  -date: LocalDate
+  -spaType: SpaType
+  -reason: String
+  -details: String
+  -observations: String
+  -status: SpaStatus
+  -animal: Animal
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 10. HOSPITALIZACIÓN Y GUARDERÍA
+'     Medicaciones y procedimientos definen una pauta (frecuencia + duración)
+'     que se materializa en filas de agenda (MedicationSchedule / ProcedureSchedule).
+' ============================================================================
+
+enum HospitalizationType {
+  OUTPATIENT
+  HOSPITALIZATION
+}
+
+enum ReasonLeaving {
+  MEDICAL_DISCHARGE
+  HOME_TREATMENT
+  TRANSFER
+  TUTOR_WISH
+  ADMIN
+  DEATH
+  EUTHANASIA
+}
+
+enum Frequency {
+  CONTINUOUS
+  EVERY_4H
+  EVERY_6H
+  EVERY_8H
+  EVERY_12H
+  EVERY_24H
+  SINGLE
+}
+
+enum GuidelineType {
+  FIXED
+  INTERVAL
+}
+
+enum DurationMeasure {
+  DAYS
+  DOSES
+  INDEFINITE
+}
+
+enum AppliedStatus {
+  PENDING
+  APPLIED
+  SKIPPED
+}
+
+enum DayCareType {
+  DAYCARE
+  HOTEL
 }
 
 class Hospitalization {
@@ -935,6 +879,18 @@ class HospitalizationMedication {
   -enabled: boolean
 }
 
+class MedicationSchedule {
+  -hospitalizationMedication: HospitalizationMedication
+  -originalDateTime: LocalDateTime
+  -currentDateTime: LocalDateTime
+  -realDateTime: LocalDateTime
+  -appliedStatus: AppliedStatus
+  -rescheduled: Boolean
+  -createdDate: LocalDateTime
+  -createdBy: Employee
+  -enabled: boolean
+}
+
 class HospitalizationProcedure {
   -hospitalization: Hospitalization
   -name: String
@@ -965,18 +921,6 @@ class ProcedureSchedule {
   -enabled: boolean
 }
 
-class MedicationSchedule {
-  -hospitalizationMedication: HospitalizationMedication
-  -originalDateTime: LocalDateTime
-  -currentDateTime: LocalDateTime
-  -realDateTime: LocalDateTime
-  -appliedStatus: AppliedStatus
-  -rescheduled: Boolean
-  -createdDate: LocalDateTime
-  -createdBy: Employee
-  -enabled: boolean
-}
-
 class DayCare {
   -date: LocalDate
   -startDate: LocalDate
@@ -990,41 +934,53 @@ class DayCare {
   -enabled: boolean
 }
 
-' =========================
-' Inventory / Catalog
-' =========================
 
-class Product {
-  -name: String
-  -code: String
-  -salePrice: BigDecimal
-  -provider: String
-  -supplier: Supplier
-  -taxTreatment: TaxTreatment
-  -notes: String
-  -productCategory: ProductCategory
-  -tax: Tax
-  -company: Company
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -updatedBy: Long
-  -version: Long
-  -enabled: boolean
+' ============================================================================
+' 11. HISTORIA CLÍNICA — READ MODEL
+' ============================================================================
+
+' Vista de solo lectura (@Immutable, mapea la vista SQL v_clinical_event).
+' Agrega los eventos clínicos de un animal; referencia por IDs primitivos, no por asociaciones JPA.
+class ClinicalEventView <<view>> {
+  -compositeKey: String
+  -sourceId: Long
+  -animalId: Long
+  -companyId: Long
+  -consultationId: Long
+  -eventDate: LocalDate
+  -endDate: LocalDate
+  -eventType: ClinicalEventType
+  -summary: String
 }
 
-class Service {
-  -name: String
-  -price: BigDecimal
-  -taxTreatment: TaxTreatment
-  -notes: String
-  -serviceCategory: ServiceCategory
-  -tax: Tax
-  -company: Company
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -updatedBy: Long
-  -version: Long
-  -enabled: boolean
+' Un valor por cada tipo de evento que la vista consolida (§9 y §10).
+enum ClinicalEventType {
+  CONSULTATION
+  SURGERY
+  VACCINATION
+  DEWORMING
+  HOSPITALIZATION
+  LABORATORY_TEST
+  DIAGNOSTIC_IMAGING
+  PRESCRIPTION
+  SPA
+}
+
+
+' ============================================================================
+' 12. CATÁLOGO COMERCIAL (PRODUCTOS, SERVICIOS, IMPUESTOS)
+' ============================================================================
+
+enum TaxTreatment {
+  GRAVADO
+  EXENTO
+  EXCLUIDO
+  INC
+}
+
+enum TaxScheme {
+  IVA(01)
+  INC(04)
 }
 
 class ProductCategory {
@@ -1059,6 +1015,175 @@ class Tax {
   -updatedBy: Long
   -version: Long
   -enabled: boolean
+}
+
+class Product {
+  -name: String
+  -code: String
+  -salePrice: BigDecimal
+  -provider: String
+  -supplier: Supplier
+  -taxTreatment: TaxTreatment
+  -notes: String
+  -productCategory: ProductCategory
+  -tax: Tax
+  -company: Company
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class Service {
+  -name: String
+  -price: BigDecimal
+  -taxTreatment: TaxTreatment
+  -notes: String
+  -serviceCategory: ServiceCategory
+  -tax: Tax
+  -company: Company
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 13. CATÁLOGO PETSHOP (PRESENTACIONES, COMBOS Y CÓDIGOS DE BARRAS)
+' ============================================================================
+
+' Catálogo técnico de unidades DIAN admitidas por el proveedor tecnológico. La PK es el código, no un id.
+class UnitMeasureCatalog {
+  -code: String
+  -name: String
+  -symbol: String
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -enabled: boolean
+}
+
+' Unidad vendible de un producto. Todo producto tiene una presentación predeterminada con factor 1.
+class ProductPresentation {
+  -companyId: Long
+  -productId: Long
+  -name: String
+  -unitMeasureCode: String
+  -conversionFactor: int
+  -salePrice: BigDecimal
+  -defaultPresentation: boolean
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+' Combo vendible como una sola línea comercial. No admite combos anidados.
+class ProductBundle {
+  -companyId: Long
+  -name: String
+  -code: String
+  -unitMeasureCode: String
+  -salePrice: BigDecimal
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+class ProductBundleItem {
+  -companyId: Long
+  -bundleId: Long
+  -presentationId: Long
+  -quantity: int
+  -displayOrder: int
+  -createdDate: LocalDateTime
+}
+
+' Registro central de barcodes: garantiza unicidad entre presentaciones y combos activos de una empresa.
+class CatalogBarcode {
+  -companyId: Long
+  -barcode: String
+  -itemType: String
+  -presentationId: Long
+  -bundleId: Long
+  -createdDate: LocalDateTime
+  -updatedDate: LocalDateTime
+  -updatedBy: Long
+  -version: Long
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 14. PROMOCIONES
+' ============================================================================
+
+enum PromotionType {
+  DISCOUNT
+  SPECIAL_PRICE
+}
+
+enum ApplicationType {
+  CATEGORY
+  PRODUCT
+  SERVICE
+}
+
+enum ValueType {
+  PERCENTAGE
+  VALUE
+}
+
+enum PromotionStatus {
+  ACTIVE
+  INACTIVE
+}
+
+' `applicationItem` es el id del objetivo; qué tabla apunta lo decide `applicationType`.
+class Promotion {
+  -name: String
+  -promotionType: PromotionType
+  -applicationType: ApplicationType
+  -applicationItem: Long
+  -valueType: ValueType
+  -value: BigDecimal
+  -startDate: LocalDateTime
+  -endDate: LocalDateTime
+  -promotionStatus: PromotionStatus
+  -company: Company
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 15. INVENTARIO (STOCK, KARDEX, CONTEOS, DESCOMPOSICIÓN DE VENTA)
+' ============================================================================
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  CLINICAL_USE
+  TRANSFER_OUT
+  TRANSFER_IN
+  VOID_IN
+  VOID_OUT
+}
+
+enum StockReferenceType {
+  POS_DOCUMENT
+  OPEN_ACCOUNT_CHARGE
+  GOODS_RECEIPT
+  ADJUSTMENT
+  TRANSFER
+  CLINICAL_EVENT
 }
 
 class StockBalance {
@@ -1098,24 +1223,80 @@ class StockMovement {
   -createdDate: LocalDateTime
 }
 
-class Promotion {
-  -name: String
-  -promotionType: PromotionType
-  -applicationType: ApplicationType
-  -applicationItem: Long
-  -valueType: ValueType
-  -value: BigDecimal
-  -startDate: LocalDateTime
-  -endDate: LocalDateTime
-  -promotionStatus: PromotionStatus
-  -company: Company
+class InventoryCount {
+  -companyId: Long
+  -branchId: Long
+  -note: String
+  -countedBy: Long
+  -totalLines: int
+  -adjustedLines: int
   -createdDate: LocalDateTime
   -enabled: boolean
 }
 
-' =========================
-' Purchasing / Suppliers
-' =========================
+class InventoryCountLine {
+  -countId: Long
+  -productId: Long
+  -systemQuantity: int
+  -countedQuantity: int
+  -difference: int
+}
+
+' Fotografía inmutable de cómo una línea comercial (presentación o combo) se descompuso en inventario.
+' La idempotencia del kardex se apoya en (referenceType, referenceId, commercialLineKey, componentSequence).
+class SaleInventoryAllocation {
+  -companyId: Long
+  -branchId: Long
+  -referenceType: String
+  -referenceId: Long
+  -commercialLineKey: String
+  -componentSequence: int
+  -sourceType: String
+  -sourcePresentationId: Long
+  -sourceBundleId: Long
+  -componentPresentationId: Long
+  -componentProductId: Long
+  -sourceQuantity: int
+  -componentQuantity: int
+  -conversionFactor: int
+  -baseQuantity: int
+  -createdBy: Long
+  -createdDate: LocalDateTime
+}
+
+
+' ============================================================================
+' 16. COMPRAS Y PROVEEDORES
+'     Flujo: PurchaseOrder → GoodsReceipt (entra al stock) → SupplierInvoice (se paga).
+' ============================================================================
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PLACED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum SupplierInvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum SupplierInvoicePaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
 
 class Supplier {
   -name: String
@@ -1219,159 +1400,46 @@ class SupplierInvoicePayment {
   -createdBy: Long
 }
 
-' =========================
-' Medical Records (continuación)
-' =========================
 
-class LaboratoryTestType {
-  -name: String
-  -description: String
-  -company: Company
-  -general: Boolean
-  -createdDate: LocalDateTime
-  -enabled: boolean
+' ============================================================================
+' 17. CAJA
+' ============================================================================
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
 }
 
-class LaboratoryTest {
-  -date: LocalDate
-  -testType: LaboratoryTestType
-  -branchId: Long
-  -quantity: Integer
-  -diagnosis: String
-  -status: LaboratoryTestStatus
-  -prioridad: LaboratoryTestPriority
-  -animal: Animal
-  -consultation: Consultation
-  -company: Company
-  -processedBy: Employee
-  -processedDate: LocalDateTime
-  -createdDate: LocalDateTime
-  -enabled: boolean
+enum CashMovementType {
+  SALE_IN
+  OPEN_ACCOUNT_IN
+  MANUAL_IN
+  WITHDRAWAL
+  EXPENSE
+  VOID_OUT
 }
 
-class LaboratoryTestFile {
-  - storageKey: String
-  - bucket: String
-  - originalFileName: String
-  - contentType: String
-  - sizeBytes: Long
-  - eTag: String
-  - uploadedBy: Employee
-  - createdDate: LocalDateTime
-  - laboratoryTest: LaboratoryTest
+enum CashPaymentMethod {
+  CASH
+  CARD
+  TRANSFER
 }
 
-class Medicament {
-  -name: String
-  -description: String
-  -company: Company
-  -general: Boolean
-  -createdDate: LocalDateTime
-  -enabled: boolean
+enum CashReferenceType {
+  POS_DOCUMENT
+  OPEN_ACCOUNT_PAYMENT
+  MANUAL
 }
 
-class Prescription {
-  -date: LocalDate
-  -diagnosis: String
-  -observations: String
-  -animal: Animal
-  -consultation: Consultation
-  -company: Company
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class MedicamentPrescription {
-  -medicament: Medicament
-  -presentation: String
-  -quantity: Double
-  -posology: String
-  -observation: String
-  -prescription: Prescription
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class Deworming {
-  -date: LocalDate
-  -lastDeworming: LocalDate
-  -nextControl: LocalDate
-  -type: DewormingType
-  -product: String
-  -dosage: String
-  -observations: String
-  -animal: Animal
-  -consultation: Consultation
-  -company: Company
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class DiagnosticImagingType {
-  -name: String
-  -description: String
-  -company: Company
-  -general: Boolean
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class DiagnosticImaging {
-  -date: LocalDate
-  -diagnosticImagingType: DiagnosticImagingType
-  -clinicalSigns: String
-  -studyType: String
-  -diagnosis: String
-  -observations: String
-  -status: DiagnosticImagingStatus
-  -animal: Animal
-  -consultation: Consultation
-  -company: Company
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class SpaType {
-  -name: String
-  -description: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class Spa {
-  -date: LocalDate
-  -spaType: SpaType
-  -reason: String
-  -details: String
-  -observations: String
-  -status: SpaStatus
-  -animal: Animal
-  -company: Company
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-' =========================
-' Clinical History (read model)
-' =========================
-
-' Vista de solo lectura (@Immutable, mapea la vista SQL v_clinical_event).
-' Agrega los eventos clínicos de un animal; referencia por IDs primitivos, no por asociaciones JPA.
-class ClinicalEventView <<view>> {
-  -compositeKey: String
-  -sourceId: Long
-  -animalId: Long
+' Punto de cobro físico por sede. Una CashSession se abre contra un terminal.
+class CashTerminal {
   -companyId: Long
-  -consultationId: Long
-  -eventDate: LocalDate
-  -endDate: LocalDate
-  -eventType: ClinicalEventType
-  -summary: String
+  -branchId: Long
+  -name: String
+  -code: String
+  -active: boolean
+  -createdAt: LocalDateTime
 }
-
-' =========================
-' Cash Register
-' =========================
 
 class CashSession {
   -companyId: Long
@@ -1400,15 +1468,32 @@ class CashMovement {
   -note: String
 }
 
+' Arqueo por medio de pago al cierre de la sesión.
 class CashSessionCount {
   -method: CashPaymentMethod
   -expectedAmount: BigDecimal
   -countedAmount: BigDecimal
 }
 
-' =========================
-' Billing / Open Accounts
-' =========================
+
+' ============================================================================
+' 18. CUENTAS ABIERTAS Y COBROS
+'     Los cargos congelan el impuesto al momento del cobro (taxPercentage,
+'     taxName, taxScheme…) para que un cambio posterior en Tax no reescriba
+'     la historia. La anulación es lógica: voided + voidedBy + voidReason.
+' ============================================================================
+
+enum OpenAccountStatus {
+  OPEN
+  CLOSE
+  CANCEL
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+}
 
 class OpenAccount {
   -owner: Owner
@@ -1515,9 +1600,132 @@ class GeneralChargeOpenAccount {
   -voidReason: String
 }
 
-' =========================
-' Electronic Document (DIAN) - F2
-' =========================
+
+' ============================================================================
+' 19. PERFIL TRIBUTARIO DE LA EMPRESA (DIAN)
+' ============================================================================
+
+enum CompanyDocumentType {
+  NIT(31)
+  CEDULA_CIUDADANIA(13)
+  CEDULA_EXTRANJERIA(22)
+  PASAPORTE(41)
+}
+
+enum TaxRegime {
+  RESPONSABLE_IVA
+  NO_RESPONSABLE_IVA
+}
+
+enum FiscalResponsibility {
+  NO_APLICA
+  GRAN_CONTRIBUYENTE
+  AUTORRETENEDOR
+  AGENTE_RETENCION_IVA
+  REGIMEN_SIMPLE
+}
+
+enum ElectronicDocumentType {
+  FE_VENTA
+  DOC_EQUIV_POS
+  NOTA_CREDITO
+  NOTA_DEBITO
+}
+
+class EconomicActivity {
+  -code: String
+  -name: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class CompanyTaxProfile {
+  -company: Company
+  -companyDocumentType: CompanyDocumentType
+  -companyDocumentId: String
+  -companyDocumentVerificationDigit: String
+  -legalName: String
+  -taxRegime: TaxRegime
+  -fiscalEmail: String
+  -commercialName: String
+  -economicActivity: EconomicActivity
+  -responsibilities: List<CompanyTaxProfileResponsibility>
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+class CompanyTaxProfileResponsibility {
+  -companyTaxProfile: CompanyTaxProfile
+  -code: String
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+' Resolución de numeración DIAN: define el rango y el consecutivo vigente por (sede, tipo de documento).
+class NumberingResolution {
+  -company: Company
+  -branchId: Long
+  -documentType: ElectronicDocumentType
+  -resolutionNumber: String
+  -resolutionDate: LocalDate
+  -prefix: String
+  -rangeFrom: Long
+  -rangeTo: Long
+  -validFrom: LocalDate
+  -validTo: LocalDate
+  -technicalKey: String
+  -currentNumber: Long
+  -createdDate: LocalDateTime
+  -enabled: boolean
+}
+
+
+' ============================================================================
+' 20. DOCUMENTO ELECTRÓNICO (DIAN)
+'     Emisor y adquiriente se copian como snapshots inmutables: el documento
+'     debe seguir reflejando los datos vigentes en el momento de la emisión.
+' ============================================================================
+
+enum DianStatus {
+  PENDIENTE
+  VALIDADO
+  RECHAZADO
+  CONTINGENCIA
+}
+
+enum PaymentForm {
+  CONTADO(1)
+  CREDITO(2)
+}
+
+enum PaymentMeans {
+  EFECTIVO(10)
+  TARJETA_DEBITO(48)
+  TARJETA_CREDITO(49)
+  TRANSFERENCIA(42)
+}
+
+enum TaxCategory {
+  GRAVADO
+  EXENTO
+  EXCLUIDO
+  INC
+}
+
+enum CreditNoteReason {
+  DEVOLUCION(1)
+  ANULACION(2)
+  REBAJA(3)
+  AJUSTE_PRECIO(4)
+  OTROS(5)
+}
+
+enum DebitNoteReason {
+  INTERESES(1)
+  GASTOS(2)
+  CAMBIO_VALOR(3)
+  OTROS(4)
+}
 
 class IssuerSnapshot {
   -documentType: String
@@ -1538,6 +1746,14 @@ class CustomerSnapshot {
   -name: String
   -email: String
   -cityDaneCode: String
+}
+
+' Apunta al documento corregido por una nota crédito/débito.
+class DocumentReference {
+  -cufe: String
+  -prefix: String
+  -number: Long
+  -issueDate: LocalDate
 }
 
 class ElectronicDocument {
@@ -1581,50 +1797,6 @@ class ElectronicDocument {
   -enabled: boolean
 }
 
-class DocumentReference {
-  -cufe: String
-  -prefix: String
-  -number: Long
-  -issueDate: LocalDate
-}
-
-class ElectronicDocumentTransmission {
-  -electronicDocumentId: Long
-  -provider: String
-  -attempt: int
-  -httpStatus: Integer
-  -providerDocumentKey: String
-  -result: TransmissionResult
-  -errorMessage: String
-  -createdDate: LocalDateTime
-}
-
-class DianProviderConfig {
-  -company: Company
-  -provider: ProviderType
-  -baseUrl: String
-  -clientId: String
-  -clientSecret: String
-  -username: String
-  -password: String
-  -apiToken: String
-  -webhookSecret: String
-  -accessToken: String
-  -tokenExpiresAt: LocalDateTime
-  -numberingProviderRef: String
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
-class WithholdingConfig {
-  -company: Company
-  -reteFuenteRate: BigDecimal
-  -reteIvaRate: BigDecimal
-  -reteIcaRate: BigDecimal
-  -createdDate: LocalDateTime
-  -enabled: boolean
-}
-
 class ElectronicDocumentLine {
   -lineNumber: int
   -description: String
@@ -1644,148 +1816,70 @@ class ElectronicDocumentPayment {
   -amount: BigDecimal
 }
 
-' =========================
-' Configuración por empresa
-' =========================
 
-' Almacén clave-valor por empresa (company_settings). Complementa a SystemConfiguration, que es global.
-class CompanySettings {
-  -companyId: Long
-  -propertyName: String
-  -value: String
+' ============================================================================
+' 21. INTEGRACIÓN CON PROVEEDOR DIAN Y RETENCIONES
+' ============================================================================
+
+enum ProviderType {
+  MATIAS
+}
+
+enum TransmissionResult {
+  ACCEPTED
+  REJECTED
+  PENDING
+  ERROR
+}
+
+enum WebhookOutcome {
+  ACCEPTED
+  REJECTED
+  IGNORED
+}
+
+class DianProviderConfig {
+  -company: Company
+  -provider: ProviderType
+  -baseUrl: String
+  -clientId: String
+  -clientSecret: String
+  -username: String
+  -password: String
+  -apiToken: String
+  -webhookSecret: String
+  -accessToken: String
+  -tokenExpiresAt: LocalDateTime
+  -numberingProviderRef: String
   -createdDate: LocalDateTime
   -enabled: boolean
 }
 
-' =========================
-' Caja — terminales
-' =========================
-
-' Punto de cobro físico por sede. Una CashSession se abre contra un terminal.
-class CashTerminal {
-  -companyId: Long
-  -branchId: Long
-  -name: String
-  -code: String
-  -active: boolean
-  -createdAt: LocalDateTime
-}
-
-' =========================
-' Catálogo petshop (presentaciones, combos y códigos de barras)
-' =========================
-
-' Catálogo técnico de unidades DIAN admitidas por el proveedor tecnológico. La PK es el código, no un id.
-class UnitMeasureCatalog {
-  -code: String
-  -name: String
-  -symbol: String
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -enabled: boolean
-}
-
-' Unidad vendible de un producto. Todo producto tiene una presentación predeterminada con factor 1.
-class ProductPresentation {
-  -companyId: Long
-  -productId: Long
-  -name: String
-  -unitMeasureCode: String
-  -conversionFactor: int
-  -salePrice: BigDecimal
-  -defaultPresentation: boolean
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -updatedBy: Long
-  -version: Long
-  -enabled: boolean
-}
-
-' Combo vendible como una sola línea comercial. No admite combos anidados.
-class ProductBundle {
-  -companyId: Long
-  -name: String
-  -code: String
-  -unitMeasureCode: String
-  -salePrice: BigDecimal
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -updatedBy: Long
-  -version: Long
-  -enabled: boolean
-}
-
-class ProductBundleItem {
-  -companyId: Long
-  -bundleId: Long
-  -presentationId: Long
-  -quantity: int
-  -displayOrder: int
+' Un registro por intento de envío; `attempt` numera los reintentos del mismo documento.
+class ElectronicDocumentTransmission {
+  -electronicDocumentId: Long
+  -provider: String
+  -attempt: int
+  -httpStatus: Integer
+  -providerDocumentKey: String
+  -result: TransmissionResult
+  -errorMessage: String
   -createdDate: LocalDateTime
 }
 
-' Registro central de barcodes: garantiza unicidad entre presentaciones y combos activos de una empresa.
-class CatalogBarcode {
-  -companyId: Long
-  -barcode: String
-  -itemType: String
-  -presentationId: Long
-  -bundleId: Long
-  -createdDate: LocalDateTime
-  -updatedDate: LocalDateTime
-  -updatedBy: Long
-  -version: Long
-  -enabled: boolean
-}
-
-' =========================
-' Inventario — conteo físico y asignación de venta
-' =========================
-
-class InventoryCount {
-  -companyId: Long
-  -branchId: Long
-  -note: String
-  -countedBy: Long
-  -totalLines: int
-  -adjustedLines: int
+class WithholdingConfig {
+  -company: Company
+  -reteFuenteRate: BigDecimal
+  -reteIvaRate: BigDecimal
+  -reteIcaRate: BigDecimal
   -createdDate: LocalDateTime
   -enabled: boolean
 }
 
-class InventoryCountLine {
-  -countId: Long
-  -productId: Long
-  -systemQuantity: int
-  -countedQuantity: int
-  -difference: int
-}
 
-' Fotografía inmutable de cómo una línea comercial (presentación o combo) se descompuso en inventario.
-' La idempotencia del kardex se apoya en (referenceType, referenceId, commercialLineKey, componentSequence).
-class SaleInventoryAllocation {
-  -companyId: Long
-  -branchId: Long
-  -referenceType: String
-  -referenceId: Long
-  -commercialLineKey: String
-  -componentSequence: int
-  -sourceType: String
-  -sourcePresentationId: Long
-  -sourceBundleId: Long
-  -componentPresentationId: Long
-  -componentProductId: Long
-  -sourceQuantity: int
-  -componentQuantity: int
-  -conversionFactor: int
-  -baseQuantity: int
-  -createdBy: Long
-  -createdDate: LocalDateTime
-}
-
-' =========================
-' Auditoría — outbox y cadena de integridad
-' =========================
+' ============================================================================
+' 22. AUDITORÍA
+' ============================================================================
 
 ' Outbox transaccional de eventos de auditoría con reintentos, lease y cadena de hash encadenada.
 class AuditEventOutbox {
@@ -1813,326 +1907,333 @@ class AuditChainHead {
   -updatedAt: LocalDateTime
 }
 
-' =========================
-' Relationships
-' =========================
 
-' --- System / Auth ---
-SystemUserPermission --> SystemUser
-SystemUserPermission --> SystemPermission
+' ############################################################################
+' RELACIONES
+'
+' Mismo orden y numeración que las secciones de arriba.
+' Convención de aristas:
+'   -->   asociación JPA real (@ManyToOne / @OneToOne) o referencia a enum
+'   ..>   referencia lógica por ID primitivo (sin FK JPA); la etiqueta nombra el campo
+'   *--   composición (el hijo no existe fuera del padre: @Embedded / @ElementCollection)
+' ############################################################################
 
-' --- Membership / Modules ---
-Membership          --> MembershipStatus
-MembershipSubModule --> Membership
-MembershipSubModule --> SubModule
-SubModule           --> Module
-BasePermission      --> SubModule
+' --- 1. Sistema / autenticación ---------------------------------------------
+SystemUserPermission           --> SystemUser
+SystemUserPermission           --> SystemPermission
 
-' --- Company / Employee ---
-Company  --> Membership
-Company  --> City
-Branch   --> Company
-Branch   --> City
-Employee --> Company
-Employee --> EmployeeStatus
-EmployeeBranch --> Employee
-EmployeeBranch --> Branch
+' --- 2. Membresías y módulos ------------------------------------------------
+Membership                     --> MembershipStatus
+SubModule                      --> Module
+MembershipSubModule            --> Membership
+MembershipSubModule            --> SubModule
+BasePermission                 --> SubModule
 
-' --- Scheduling ---
-Appointment --> AppointmentType
-Appointment --> AppointmentStatus
-Appointment --> Animal
-Appointment --> Owner
-Appointment "0..*" --> "0..1" Employee
-Appointment --> Company
-Appointment --> Branch
+' --- 3. Ubicación geográfica ------------------------------------------------
+City                           --> State
+State                          --> Country
 
-' --- Company Tax Profile (DIAN) ---
-CompanyTaxProfile               --> Company
-CompanyTaxProfile               --> CompanyDocumentType
-CompanyTaxProfile               --> TaxRegime
-CompanyTaxProfile               "0..*" --> "0..1" EconomicActivity
-CompanyTaxProfileResponsibility --> CompanyTaxProfile
-NumberingResolution             --> Company
-NumberingResolution             "0..*" ..> "0..1" Branch : branchId
-NumberingResolution             --> ElectronicDocumentType
+' --- 4. Empresa, sedes y empleados ------------------------------------------
+Company                        --> Membership
+Company                        --> City
+Branch                         --> Company
+Branch                         --> City
+Employee                       --> Company
+Employee                       --> EmployeeStatus
+EmployeeBranch                 --> Employee
+EmployeeBranch                 --> Branch
+CompanySettings                ..> Company : companyId
 
-' --- Authorization ---
-Role               --> Company
-Permission         --> Company
-Permission         --> SubModule
-RolePermission     --> Role
-RolePermission     --> Permission
-BaseRolePermission --> BaseRole
-BaseRolePermission --> BasePermission
-EmployeeRole       --> Employee
-EmployeeRole       --> Role
+' --- 5. Autorización --------------------------------------------------------
+BaseRolePermission             --> BaseRole
+BaseRolePermission             --> BasePermission
+Role                           --> Company
+Permission                     --> Company
+Permission                     --> SubModule
+RolePermission                 --> Role
+RolePermission                 --> Permission
+EmployeeRole                   --> Employee
+EmployeeRole                   --> Role
 
-' --- Location ---
-City  --> State
-State --> Country
+' --- 6. Propietarios y pacientes --------------------------------------------
+Owner            "0..*"        --> "1" City
+Owner                          --> Company
+Owner                          --> OwnerDocumentType
+Owner                          --> PersonType
+Owner                          --> TaxRegime
+Owner                          --> FiscalResponsibility
+Breed                          --> Specie
+Animal                         --> Specie
+Animal                         --> Breed
+Animal                         --> AnimalColor
+Animal                         --> Owner
+Animal                         --> Company
+Animal                         --> Gender
+Animal                         --> WeightType
+Animal                         --> AnimalType
+Animal                         --> ReproductiveState
+WeightRecord                   --> Animal
+WeightRecord                   --> Company
+WeightRecord                   --> WeightType
+WeightRecord                   --> WeightSource
+AnimalAlert                    --> Animal
+AnimalAlert                    --> Company
+AnimalAlert                    --> AlertType
+AnimalAlert                    --> AlertSeverity
+Problem                        --> Animal
+Problem                        --> Company
+Problem                        --> ProblemStatus
 
-' --- Owner / Animal ---
-Owner  "0..*" --> "1" City
-Owner         --> Company
-Owner         --> OwnerDocumentType
-Owner         --> PersonType
-Owner         --> TaxRegime
-Owner         --> FiscalResponsibility
-Breed         --> Specie
-Animal        --> Specie
-Animal        --> Breed
-Animal        --> AnimalColor
-Animal        --> Owner
-Animal        --> Company
-Animal        --> Gender
-Animal        --> WeightType
-Animal        --> AnimalType
-Animal        --> ReproductiveState
-WeightRecord  --> Animal
-WeightRecord  --> Company
-WeightRecord  --> WeightType
-WeightRecord  --> WeightSource
-AnimalAlert   --> Animal
-AnimalAlert   --> Company
-AnimalAlert   --> AlertType
-AnimalAlert   --> AlertSeverity
-Problem       --> Animal
-Problem       --> Company
-Problem       --> ProblemStatus
+' --- 7. Agenda de citas -----------------------------------------------------
+Appointment                    --> AppointmentType
+Appointment                    --> AppointmentStatus
+Appointment                    --> Animal
+Appointment                    --> Owner
+Appointment      "0..*"        --> "0..1" Employee
+Appointment                    --> Company
+Appointment                    --> Branch
 
-' --- Medical Records ---
-Consultation          --> ConsultationType
-Consultation          --> PhysicalExam
-Consultation          --> Animal
-Consultation          --> Company
+' --- 8. Consulta y exploración física ---------------------------------------
+Consultation                   --> ConsultationType
+Consultation                   --> PhysicalExam
+Consultation                   --> Animal
+Consultation                   --> Company
 
-VaccinationType       "0..*" --> "0..1" Company
-Vaccination           --> VaccinationType
-Vaccination           --> Animal
-Vaccination           --> Company
-Vaccination           "0..*" --> "0..1" Consultation
+' --- 9.1 Vacunación ---------------------------------------------------------
+VaccinationType  "0..*"        --> "0..1" Company
+Vaccination                    --> VaccinationType
+Vaccination                    --> Animal
+Vaccination                    --> Company
+Vaccination      "0..*"        --> "0..1" Consultation
 
-SurgeryType           "0..*" --> "0..1" Company
-Surgery               --> SurgeryType
-Surgery               --> Animal
-Surgery               --> Company
-Surgery               --> SurgeryStatus
-Surgery               "0..*" --> "0..1" Consultation
+' --- 9.2 Cirugía ------------------------------------------------------------
+SurgeryType      "0..*"        --> "0..1" Company
+Surgery                        --> SurgeryType
+Surgery                        --> Animal
+Surgery                        --> Company
+Surgery                        --> SurgeryStatus
+Surgery          "0..*"        --> "0..1" Consultation
 
-Hospitalization       --> HospitalizationType
-HospitalizationObservation       --> Hospitalization
-HospitalizationProgressNote       --> Hospitalization
-HospitalizationMedication       --> Hospitalization
-HospitalizationMedication       --> Frequency
-HospitalizationMedication       --> GuidelineType
-HospitalizationMedication       --> DurationMeasure
+' --- 9.3 Desparasitación ----------------------------------------------------
+Deworming                      --> DewormingType
+Deworming                      --> Animal
+Deworming                      --> Company
+Deworming        "0..*"        --> "0..1" Consultation
+
+' --- 9.4 Laboratorio --------------------------------------------------------
+LaboratoryTestType "0..*"      --> "0..1" Company
+LaboratoryTest                 --> LaboratoryTestType
+LaboratoryTest                 --> Animal
+LaboratoryTest                 --> Company
+LaboratoryTest   "0..*"        ..> "0..1" Branch : branchId
+LaboratoryTest                 --> LaboratoryTestStatus
+LaboratoryTest                 --> LaboratoryTestPriority
+LaboratoryTest   "0..*"        --> "0..1" Consultation
+LaboratoryTest   "0..*"        --> "0..1" Employee : processedBy
+LaboratoryTestFile             --> LaboratoryTest
+
+' --- 9.5 Imagenología -------------------------------------------------------
+DiagnosticImagingType "0..*"   --> "0..1" Company
+DiagnosticImaging              --> DiagnosticImagingType
+DiagnosticImaging              --> Animal
+DiagnosticImaging              --> Company
+DiagnosticImaging              --> DiagnosticImagingStatus
+DiagnosticImaging "0..*"       --> "0..1" Consultation
+
+' --- 9.6 Recetas ------------------------------------------------------------
+Medicament       "0..*"        --> "0..1" Company
+Prescription                   --> Animal
+Prescription                   --> Company
+Prescription                   --> Consultation
+MedicamentPrescription         --> Prescription
+MedicamentPrescription         --> Medicament
+
+' --- 9.7 Spa / estética -----------------------------------------------------
+Spa                            --> SpaType
+Spa                            --> SpaStatus
+Spa                            --> Animal
+Spa                            --> Company
+
+' --- 10. Hospitalización y guardería ----------------------------------------
+Hospitalization                --> HospitalizationType
+Hospitalization                --> ReasonLeaving
+Hospitalization                --> Animal
+Hospitalization                --> Company
+Hospitalization  "0..*"        --> "0..1" Consultation
+HospitalizationObservation     --> Hospitalization
+HospitalizationProgressNote    --> Hospitalization
+HospitalizationMedication      --> Hospitalization
+HospitalizationMedication      --> Frequency
+HospitalizationMedication      --> GuidelineType
+HospitalizationMedication      --> DurationMeasure
+MedicationSchedule             --> HospitalizationMedication
+MedicationSchedule             --> AppliedStatus
 HospitalizationProcedure       --> Hospitalization
 HospitalizationProcedure       --> Frequency
 HospitalizationProcedure       --> GuidelineType
 HospitalizationProcedure       --> DurationMeasure
-ProcedureSchedule       --> HospitalizationProcedure
-ProcedureSchedule       --> AppliedStatus
-MedicationSchedule       --> HospitalizationMedication
-MedicationSchedule       --> AppliedStatus
-Hospitalization       --> ReasonLeaving
-Hospitalization       --> Animal
-Hospitalization       --> Company
-Hospitalization       "0..*" --> "0..1" Consultation
+ProcedureSchedule              --> HospitalizationProcedure
+ProcedureSchedule              --> AppliedStatus
+DayCare                        --> DayCareType
+DayCare                        --> Animal
+DayCare                        --> Company
 
-DayCare       --> DayCareType
-DayCare       --> Animal
-DayCare       --> Company
+' --- 11. Historia clínica (read model) --------------------------------------
+ClinicalEventView              --> ClinicalEventType
 
-LaboratoryTestType              "0..*" --> "0..1" Company
-LaboratoryTest        --> LaboratoryTestType
-LaboratoryTestFile    --> LaboratoryTest
-LaboratoryTest        --> Animal
-LaboratoryTest        --> Company
-LaboratoryTest        "0..*" ..> "0..1" Branch : branchId
-LaboratoryTest        --> LaboratoryTestStatus
-LaboratoryTest        --> LaboratoryTestPriority
-LaboratoryTest        "0..*" --> "0..1" Consultation
-LaboratoryTest        "0..*" --> "0..1" Employee : processedBy
+' --- 12. Catálogo comercial -------------------------------------------------
+ProductCategory                --> Company
+ServiceCategory                --> Company
+Tax                            --> TaxScheme
+Tax                            --> Company
+Product                        --> ProductCategory
+Product          "0..*"        --> "0..1" Tax
+Product          "0..*"        --> "0..1" Supplier
+Product                        --> TaxTreatment
+Product                        --> Company
+Service                        --> ServiceCategory
+Service          "0..*"        --> "0..1" Tax
+Service                        --> TaxTreatment
+Service                        --> Company
 
-Prescription          --> Animal
-Prescription          --> Company
-Prescription          --> Consultation
-Medicament            "0..*" --> "0..1" Company
-MedicamentPrescription --> Prescription
-MedicamentPrescription --> Medicament
+' --- 13. Catálogo petshop ---------------------------------------------------
+ProductPresentation            ..> Company : companyId
+ProductPresentation "0..*"     --> "1" Product
+ProductPresentation "0..*"     ..> "1" UnitMeasureCatalog : unitMeasureCode
+ProductBundle                  ..> Company : companyId
+ProductBundle    "0..*"        ..> "1" UnitMeasureCatalog : unitMeasureCode
+ProductBundle    "1"           *-- "1..*" ProductBundleItem
+ProductBundleItem "0..*"       --> "1" ProductPresentation
+CatalogBarcode                 ..> Company : companyId
+CatalogBarcode   "0..*"        ..> "0..1" ProductPresentation : presentationId
+CatalogBarcode   "0..*"        ..> "0..1" ProductBundle : bundleId
 
-Deworming             --> DewormingType
-Deworming             --> Animal
-Deworming             --> Company
-Deworming             "0..*" --> "0..1" Consultation
+' --- 14. Promociones --------------------------------------------------------
+Promotion                      --> PromotionType
+Promotion                      --> ApplicationType
+Promotion                      --> ValueType
+Promotion                      --> PromotionStatus
+Promotion                      --> Company
 
-DiagnosticImagingType "0..*" --> "0..1" Company
-DiagnosticImaging     --> DiagnosticImagingType
-DiagnosticImaging     --> Animal
-DiagnosticImaging     --> Company
-DiagnosticImaging     --> DiagnosticImagingStatus
-DiagnosticImaging     "0..*" --> "0..1" Consultation
-
-Spa                   --> SpaType
-Spa                   --> SpaStatus
-Spa                   --> Animal
-Spa                   --> Company
-
-' --- Clinical History (read model) ---
-ClinicalEventView     --> ClinicalEventType
-
-' --- Inventory / Catalog ---
-Product               --> ProductCategory
-Product               "0..*" --> "0..1" Tax
-Product               "0..*" --> "0..1" Supplier
-Product               --> TaxTreatment
-Product               --> Company
-Service               --> ServiceCategory
-Service               "0..*" --> "0..1" Tax
-Service               --> TaxTreatment
-Service               --> Company
-ProductCategory       --> Company
-ServiceCategory       --> Company
-Tax                   --> TaxScheme
-Tax                   --> Company
-StockBalance          ..> Company : companyId
-StockBalance          ..> Branch : branchId
-StockBalance          ..> Product : productId
-StockLot              ..> Company : companyId
-StockLot              ..> Branch : branchId
-StockLot              ..> Product : productId
-StockMovement         ..> Company : companyId
-StockMovement         ..> Branch : branchId
-StockMovement         ..> Product : productId
-StockMovement         "0..*" ..> "0..1" StockLot : lotId
-StockMovement         --> StockMovementType
-StockMovement         --> StockReferenceType
-
-Promotion             --> PromotionType
-Promotion             --> ApplicationType
-Promotion             --> ValueType
-Promotion             --> PromotionStatus
-Promotion             --> Company
-
-' --- Purchasing / Suppliers ---
-Supplier              --> Company
-PurchaseOrder         --> Company
-PurchaseOrder         --> Branch
-PurchaseOrder         --> Supplier
-PurchaseOrder         --> PurchaseOrderStatus
-PurchaseOrder         "1" *-- "1..*" PurchaseOrderLine
-PurchaseOrderLine     --> Product
-GoodsReceipt          --> Company
-GoodsReceipt          --> Branch
-GoodsReceipt          --> Supplier
-GoodsReceipt          --> GoodsReceiptStatus
-GoodsReceipt          "0..*" ..> "0..1" PurchaseOrder : purchaseOrderId
-GoodsReceipt          "1" *-- "1..*" GoodsReceiptLine
-GoodsReceiptLine      --> Product
-GoodsReceiptLine      "0..*" ..> "0..1" PurchaseOrderLine : purchaseOrderLineId
-SupplierInvoice       --> Company
-SupplierInvoice       --> Branch
-SupplierInvoice       --> Supplier
-SupplierInvoice       --> SupplierInvoiceStatus
-SupplierInvoice       "0..*" ..> "0..1" PurchaseOrder : purchaseOrderId
-SupplierInvoice       "0..*" ..> "0..1" GoodsReceipt : goodsReceiptId
-SupplierInvoice       "1" *-- "0..*" SupplierInvoicePayment
-SupplierInvoicePayment --> SupplierInvoicePaymentMethod
-
-' --- Cash Register ---
-CashSession           ..> Company : companyId
-CashSession           ..> Branch : branchId
-CashSession           "0..*" ..> "0..1" Employee : openedByEmployeeId
-CashSession           "0..*" ..> "0..1" Employee : closedByEmployeeId
-CashSession           --> CashSessionStatus
-CashSession           "1" *-- "0..*" CashMovement
-CashSession           "1" *-- "0..*" CashSessionCount
-CashMovement          --> CashMovementType
-CashMovement          --> CashPaymentMethod
-CashMovement          --> CashReferenceType
-CashMovement          "0..*" ..> "0..1" Employee : createdByEmployeeId
-CashSessionCount      --> CashPaymentMethod
-
-' --- Billing / Open Accounts ---
-OpenAccount                --> Owner
-OpenAccount                --> Company
-OpenAccount                --> Branch
-DebtOpenAccount            --> PaymentMethod
-DebtOpenAccount            --> OpenAccount
-ProductChargeOpenAccount   --> Animal
-ProductChargeOpenAccount   --> Product
-ProductChargeOpenAccount   "0..*" --> "0..1" Tax
-ProductChargeOpenAccount   --> OpenAccount
-ServiceChargeOpenAccount   --> Animal
-ServiceChargeOpenAccount   --> Service
-ServiceChargeOpenAccount   "0..*" --> "0..1" Tax
-ServiceChargeOpenAccount   --> OpenAccount
-GeneralChargeOpenAccount   "0..*" --> "0..1" Tax
-GeneralChargeOpenAccount   --> OpenAccount
-
-' --- Electronic Document (DIAN) ---
-ElectronicDocument         ..> Company : companyId
-ElectronicDocument         "0..*" ..> "0..1" OpenAccount : openAccountId
-ElectronicDocument         ..> Branch : branchId
-ElectronicDocument         --> ElectronicDocumentType
-ElectronicDocument         --> DianStatus
-ElectronicDocument         --> PaymentForm
-ElectronicDocument         --> IssuerSnapshot
-ElectronicDocument         --> CustomerSnapshot
-ElectronicDocument         "0..*" --> "0..1" DocumentReference
-ElectronicDocument         "1" *-- "1..*" ElectronicDocumentLine
-ElectronicDocument         "1" *-- "0..*" ElectronicDocumentPayment
-ElectronicDocumentLine     --> TaxCategory
-ElectronicDocumentLine     "0..*" --> "0..1" TaxScheme
-ElectronicDocumentPayment  --> PaymentMeans
-
-' --- Integración proveedor DIAN (F3) ---
-DianProviderConfig          --> Company
-DianProviderConfig          --> ProviderType
-ElectronicDocumentTransmission ..> ElectronicDocument : electronicDocumentId
-ElectronicDocumentTransmission --> TransmissionResult
-
-' --- Retenciones (F6) ---
-WithholdingConfig           --> Company
-
-' --- Configuración por empresa ---
-CompanySettings       ..> Company : companyId
-
-' --- Caja: terminales ---
-CashTerminal          ..> Company : companyId
-CashTerminal          ..> Branch : branchId
-CashSession           "0..*" ..> "1" CashTerminal : terminal (code)
-
-' --- Catálogo petshop ---
-ProductPresentation   ..> Company : companyId
-ProductPresentation   "0..*" --> "1" Product
-ProductPresentation   "0..*" ..> "1" UnitMeasureCatalog : unitMeasureCode
-ProductBundle         ..> Company : companyId
-ProductBundle         "0..*" ..> "1" UnitMeasureCatalog : unitMeasureCode
-ProductBundle         "1" *-- "1..*" ProductBundleItem
-ProductBundleItem     "0..*" --> "1" ProductPresentation
-CatalogBarcode        ..> Company : companyId
-CatalogBarcode        "0..*" ..> "0..1" ProductPresentation : presentationId
-CatalogBarcode        "0..*" ..> "0..1" ProductBundle : bundleId
-
-' --- Inventario: conteo físico ---
-InventoryCount        ..> Company : companyId
-InventoryCount        ..> Branch : branchId
-InventoryCount        "0..*" ..> "0..1" Employee : countedBy
-InventoryCount        "1" *-- "0..*" InventoryCountLine
-InventoryCountLine    "0..*" --> "1" Product
-
-' --- Inventario: descomposición de la venta ---
-SaleInventoryAllocation ..> Company : companyId
-SaleInventoryAllocation ..> Branch : branchId
-SaleInventoryAllocation --> StockReferenceType
+' --- 15. Inventario ---------------------------------------------------------
+StockBalance                   ..> Company : companyId
+StockBalance                   ..> Branch : branchId
+StockBalance                   ..> Product : productId
+StockLot                       ..> Company : companyId
+StockLot                       ..> Branch : branchId
+StockLot                       ..> Product : productId
+StockMovement                  ..> Company : companyId
+StockMovement                  ..> Branch : branchId
+StockMovement                  ..> Product : productId
+StockMovement    "0..*"        ..> "0..1" StockLot : lotId
+StockMovement                  --> StockMovementType
+StockMovement                  --> StockReferenceType
+InventoryCount                 ..> Company : companyId
+InventoryCount                 ..> Branch : branchId
+InventoryCount   "0..*"        ..> "0..1" Employee : countedBy
+InventoryCount   "1"           *-- "0..*" InventoryCountLine
+InventoryCountLine "0..*"      --> "1" Product
+SaleInventoryAllocation        ..> Company : companyId
+SaleInventoryAllocation        ..> Branch : branchId
+SaleInventoryAllocation        --> StockReferenceType
 SaleInventoryAllocation "0..*" ..> "0..1" ProductPresentation : sourcePresentationId
 SaleInventoryAllocation "0..*" ..> "0..1" ProductBundle : sourceBundleId
 SaleInventoryAllocation "0..*" ..> "1" ProductPresentation : componentPresentationId
 SaleInventoryAllocation "0..*" ..> "1" Product : componentProductId
 
-' --- Auditoría: outbox + cadena de integridad ---
-AuditChainHead        ..> AuditEventOutbox : ancla la cabeza de la cadena
+' --- 16. Compras y proveedores ----------------------------------------------
+Supplier                       --> Company
+PurchaseOrder                  --> Company
+PurchaseOrder                  --> Branch
+PurchaseOrder                  --> Supplier
+PurchaseOrder                  --> PurchaseOrderStatus
+PurchaseOrder    "1"           *-- "1..*" PurchaseOrderLine
+PurchaseOrderLine              --> Product
+GoodsReceipt                   --> Company
+GoodsReceipt                   --> Branch
+GoodsReceipt                   --> Supplier
+GoodsReceipt                   --> GoodsReceiptStatus
+GoodsReceipt     "0..*"        ..> "0..1" PurchaseOrder : purchaseOrderId
+GoodsReceipt     "1"           *-- "1..*" GoodsReceiptLine
+GoodsReceiptLine               --> Product
+GoodsReceiptLine "0..*"        ..> "0..1" PurchaseOrderLine : purchaseOrderLineId
+SupplierInvoice                --> Company
+SupplierInvoice                --> Branch
+SupplierInvoice                --> Supplier
+SupplierInvoice                --> SupplierInvoiceStatus
+SupplierInvoice  "0..*"        ..> "0..1" PurchaseOrder : purchaseOrderId
+SupplierInvoice  "0..*"        ..> "0..1" GoodsReceipt : goodsReceiptId
+SupplierInvoice  "1"           *-- "0..*" SupplierInvoicePayment
+SupplierInvoicePayment         --> SupplierInvoicePaymentMethod
+
+' --- 17. Caja ---------------------------------------------------------------
+CashTerminal                   ..> Company : companyId
+CashTerminal                   ..> Branch : branchId
+CashSession                    ..> Company : companyId
+CashSession                    ..> Branch : branchId
+CashSession      "0..*"        ..> "1" CashTerminal : terminal (code)
+CashSession      "0..*"        ..> "0..1" Employee : openedByEmployeeId
+CashSession      "0..*"        ..> "0..1" Employee : closedByEmployeeId
+CashSession                    --> CashSessionStatus
+CashSession      "1"           *-- "0..*" CashMovement
+CashSession      "1"           *-- "0..*" CashSessionCount
+CashMovement                   --> CashMovementType
+CashMovement                   --> CashPaymentMethod
+CashMovement                   --> CashReferenceType
+CashMovement     "0..*"        ..> "0..1" Employee : createdByEmployeeId
+CashSessionCount               --> CashPaymentMethod
+
+' --- 18. Cuentas abiertas y cobros ------------------------------------------
+OpenAccount                    --> Owner
+OpenAccount                    --> Company
+OpenAccount                    --> Branch
+DebtOpenAccount                --> PaymentMethod
+DebtOpenAccount                --> OpenAccount
+ProductChargeOpenAccount       --> Animal
+ProductChargeOpenAccount       --> Product
+ProductChargeOpenAccount "0..*" --> "0..1" Tax
+ProductChargeOpenAccount       --> OpenAccount
+ServiceChargeOpenAccount       --> Animal
+ServiceChargeOpenAccount       --> Service
+ServiceChargeOpenAccount "0..*" --> "0..1" Tax
+ServiceChargeOpenAccount       --> OpenAccount
+GeneralChargeOpenAccount "0..*" --> "0..1" Tax
+GeneralChargeOpenAccount       --> OpenAccount
+
+' --- 19. Perfil tributario de la empresa (DIAN) -----------------------------
+CompanyTaxProfile              --> Company
+CompanyTaxProfile              --> CompanyDocumentType
+CompanyTaxProfile              --> TaxRegime
+CompanyTaxProfile "0..*"       --> "0..1" EconomicActivity
+CompanyTaxProfileResponsibility --> CompanyTaxProfile
+NumberingResolution            --> Company
+NumberingResolution "0..*"     ..> "0..1" Branch : branchId
+NumberingResolution            --> ElectronicDocumentType
+
+' --- 20. Documento electrónico (DIAN) ---------------------------------------
+ElectronicDocument             ..> Company : companyId
+ElectronicDocument "0..*"      ..> "0..1" OpenAccount : openAccountId
+ElectronicDocument             ..> Branch : branchId
+ElectronicDocument             --> ElectronicDocumentType
+ElectronicDocument             --> DianStatus
+ElectronicDocument             --> PaymentForm
+ElectronicDocument             --> IssuerSnapshot
+ElectronicDocument             --> CustomerSnapshot
+ElectronicDocument "0..*"      --> "0..1" DocumentReference
+ElectronicDocument "1"         *-- "1..*" ElectronicDocumentLine
+ElectronicDocument "1"         *-- "0..*" ElectronicDocumentPayment
+ElectronicDocumentLine         --> TaxCategory
+ElectronicDocumentLine "0..*"  --> "0..1" TaxScheme
+ElectronicDocumentPayment      --> PaymentMeans
+
+' --- 21. Integración proveedor DIAN (F3) y retenciones (F6) -----------------
+DianProviderConfig             --> Company
+DianProviderConfig             --> ProviderType
+ElectronicDocumentTransmission ..> ElectronicDocument : electronicDocumentId
+ElectronicDocumentTransmission --> TransmissionResult
+WithholdingConfig              --> Company
+
+' --- 22. Auditoría ----------------------------------------------------------
+AuditChainHead                 ..> AuditEventOutbox : ancla la cabeza de la cadena
 
 @enduml
