@@ -7,9 +7,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > Pausa indicada por el usuario el 2026-06-06. Mantener hasta que el usuario diga explícitamente lo contrario.
 
 - ❌ **No actualizar ni crear diagramas `.puml`** (ni `uml/Veterinaria.puml` ni los `uml/sequenceDiagram/**`). Aunque se toque un endpoint, NO sincronizar su diagrama.
-- ❌ **No crear ni modificar tests unitarios** al manipular endpoints (ni nuevos `*ServiceTest`, ni ajustar stubs/firmas en los existentes). Dejar los tests como están.
+- ~~No crear ni modificar tests unitarios~~ — **levantada por el usuario el 2026-08-08** para implementar RF-11. Los tests vuelven a la convención normal ("un test por service", más abajo).
 
-Estas dos reglas suspenden temporalmente las convenciones de "diagramas sincronizados" y "un test por service" descritas más abajo. El resto del documento sigue vigente.
+La pausa de diagramas suspende la convención de "diagramas sincronizados". El resto del documento sigue vigente.
+
+## Las reglas de este documento se verifican solas
+
+`HexagonalArchitectureTest` (ArchUnit) ejecuta ocho de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
+
+```bash
+mvn test -Dtest=HexagonalArchitectureTest
+```
+
+Tres reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios y **todo puerto de entrada con `@PreAuthorize`**. Las otras cinco encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+
+- **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
+- **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
+- **Congelar una regla nueva**: pon `freeze.store.default.allowStoreCreation=true` en `src/test/resources/archunit.properties`, corre el test, y devuélvelo a `false` en el mismo commit.
 
 ## Commands
 

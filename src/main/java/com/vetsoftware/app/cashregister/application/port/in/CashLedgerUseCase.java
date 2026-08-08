@@ -2,6 +2,7 @@ package com.vetsoftware.app.cashregister.application.port.in;
 
 import com.vetsoftware.app.cashregister.application.command.RegisterCashInflowCommand;
 import com.vetsoftware.app.cashregister.application.command.ReverseCashMovementsCommand;
+import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
 
 /**
  * Puerto INTERNO de orquestación: lo consumen POS y cuenta abierta (vía sus
@@ -10,6 +11,7 @@ import com.vetsoftware.app.cashregister.application.command.ReverseCashMovements
  * validó ownership/permiso de la acción de negocio (venta/abono), igual que
  * {@code StockLedgerUseCase} en inventario.
  */
+@NoAuthorizationRequired(reason = "Puerto interno de orquestación: ningún controller lo expone. Corre dentro de la transacción del caso de uso que lo invoca, que ya validó permiso y ownership.")
 public interface CashLedgerUseCase {
 
     /**

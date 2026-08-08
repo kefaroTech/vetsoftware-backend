@@ -7,6 +7,7 @@ import com.vetsoftware.app.inventory.application.command.RecordSaleCommand;
 import com.vetsoftware.app.inventory.application.command.TransferStockCommand;
 import com.vetsoftware.app.inventory.application.dto.StockConsumptionDto;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
+import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
 import java.util.List;
 
 /**
@@ -14,6 +15,7 @@ import java.util.List;
  * clínica (vía adapters de orquestación) y los endpoints de ajuste. Todas las
  * operaciones son transaccionales y por sede.
  */
+@NoAuthorizationRequired(reason = "Puerto interno de orquestación: ningún controller lo expone. Corre dentro de la transacción del caso de uso que lo invoca, que ya validó permiso y ownership.")
 public interface StockLedgerUseCase {
 
     /** Entrada de inventario (compra/recepción). */
