@@ -11,6 +11,8 @@ public interface AnimalColorRepository {
 
     List<AnimalColor> findAll();
 
+    List<AnimalColor> findBySpecieId(Long specieId);
+
     void delete(Long id);
 
     int reactivate(Long id);

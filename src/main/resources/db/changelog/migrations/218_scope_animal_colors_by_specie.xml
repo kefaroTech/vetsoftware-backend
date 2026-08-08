@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Los colores dejan de ser un catálogo global y pasan a pertenecer a una especie,
+         igual que las razas: Merle sólo aplica a caninos y Carey sólo a felinos. -->
+
+    <changeSet id="218_animal_colors_add_specie" author="orlando">
+        <addColumn tableName="animal_colors">
+            <column name="specie_id" type="BIGINT"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_animal_colors_specie"
+                                 baseTableName="animal_colors" baseColumnNames="specie_id"
+                                 referencedTableName="species" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- El unique global de name impide replicar un mismo color por especie; se cambia
+         por (specie_id, name) más abajo, una vez repartidas las filas. -->
+    <changeSet id="218_animal_colors_drop_unique_name" author="orlando">
+        <dropUniqueConstraint tableName="animal_colors" constraintName="name"/>
+        <rollback>
+            <addUniqueConstraint tableName="animal_colors" columnNames="name"
+                                 constraintName="name"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Los colores existentes quedan bajo la especie base y se replican para el resto;
+         cada animal se reapunta a la copia de su propia especie para no romper la FK. -->
+    <changeSet id="218_animal_colors_backfill_specie" author="orlando">
+        <sql>
+            UPDATE animal_colors
+               SET specie_id = (SELECT MIN(id) FROM species)
+             WHERE specie_id IS NULL;
+
+            INSERT INTO animal_colors (name, created_date, enabled, specie_id)
+            SELECT src.name, src.created_date, src.enabled, s.id
+              FROM (SELECT name, created_date, enabled
+                      FROM animal_colors
+                     WHERE specie_id = (SELECT MIN(id) FROM species)) src
+              CROSS JOIN species s
+             WHERE s.id &lt;&gt; (SELECT MIN(id) FROM species);
+
+            UPDATE animals a
+              JOIN animal_colors old_color ON old_color.id = a.color_id
+              JOIN animal_colors new_color ON new_color.name = old_color.name
+                                          AND new_color.specie_id = a.specie_id
+               SET a.color_id = new_color.id
+             WHERE old_color.specie_id &lt;&gt; a.specie_id;
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="218_animal_colors_unique_specie_name" author="orlando">
+        <addNotNullConstraint tableName="animal_colors" columnName="specie_id"
+                              columnDataType="BIGINT"/>
+        <addUniqueConstraint tableName="animal_colors" columnNames="specie_id, name"
+                             constraintName="uq_animal_colors_specie_name"/>
+    </changeSet>
+
+    <!-- La replicación anterior copió todos los colores a todas las especies; se limpian
+         los que zootécnicamente no aplican, siempre que ningún animal los use. -->
+    <changeSet id="218_animal_colors_purge_cross_specie" author="orlando">
+        <sql>
+            DELETE c FROM animal_colors c
+              JOIN species s ON s.id = c.specie_id
+             WHERE ((s.name = 'Canino' AND c.name IN ('Carey', 'Calico', 'Carey Diluido',
+                         'Colorpoint', 'Esmoquin', 'Humo', 'Sombreado', 'Chinchilla'))
+                 OR (s.name = 'Felino' AND c.name IN ('Leonado', 'Trigueño', 'Higado', 'Ruano',
+                         'Arlequin', 'Merle', 'Merle Azul', 'Merle Rojo', 'Sable',
+                         'Negro y Fuego', 'Manto Negro')))
+               AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <!-- Catálogo de capas de perros y gatos. INSERT IGNORE contra uq_animal_colors_specie_name
+         lo hace idempotente frente a entornos que ya tengan parte del catálogo cargado. -->
+    <changeSet id="218_seed_animal_colors_catalog" author="orlando">
+        <sql>
+            INSERT IGNORE INTO animal_colors (name, created_date, enabled, specie_id)
+            SELECT n.name, CURRENT_TIMESTAMP, 1, s.id
+              FROM species s
+              CROSS JOIN (
+                            SELECT 'Negro' AS name
+                  UNION ALL SELECT 'Cafe'            UNION ALL SELECT 'Blanco'
+                  UNION ALL SELECT 'Gris'            UNION ALL SELECT 'Crema'
+                  UNION ALL SELECT 'Beige'           UNION ALL SELECT 'Dorado'
+                  UNION ALL SELECT 'Naranja'         UNION ALL SELECT 'Rojo'
+                  UNION ALL SELECT 'Chocolate'       UNION ALL SELECT 'Canela'
+                  UNION ALL SELECT 'Azul'            UNION ALL SELECT 'Lila'
+                  UNION ALL SELECT 'Plateado'        UNION ALL SELECT 'Marfil'
+                  UNION ALL SELECT 'Arena'           UNION ALL SELECT 'Albino'
+                  UNION ALL SELECT 'Bicolor'         UNION ALL SELECT 'Tricolor'
+                  UNION ALL SELECT 'Atigrado'        UNION ALL SELECT 'Manchado'
+                  UNION ALL SELECT 'Moteado'         UNION ALL SELECT 'Aguti'
+                  UNION ALL SELECT 'Blanco y Negro'  UNION ALL SELECT 'Blanco y Cafe'
+                  UNION ALL SELECT 'Blanco y Gris'   UNION ALL SELECT 'Blanco y Naranja'
+                  UNION ALL SELECT 'Multicolor'      UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name IN ('Canino', 'Felino');
+
+            INSERT IGNORE INTO animal_colors (name, created_date, enabled, specie_id)
+            SELECT n.name, CURRENT_TIMESTAMP, 1, s.id
+              FROM species s
+              CROSS JOIN (
+                            SELECT 'Leonado' AS name
+                  UNION ALL SELECT 'Trigueño'        UNION ALL SELECT 'Higado'
+                  UNION ALL SELECT 'Ruano'           UNION ALL SELECT 'Arlequin'
+                  UNION ALL SELECT 'Merle'           UNION ALL SELECT 'Merle Azul'
+                  UNION ALL SELECT 'Merle Rojo'      UNION ALL SELECT 'Sable'
+                  UNION ALL SELECT 'Negro y Fuego'   UNION ALL SELECT 'Manto Negro'
+              ) n
+             WHERE s.name = 'Canino';
+
+            INSERT IGNORE INTO animal_colors (name, created_date, enabled, specie_id)
+            SELECT n.name, CURRENT_TIMESTAMP, 1, s.id
+              FROM species s
+              CROSS JOIN (
+                            SELECT 'Carey' AS name
+                  UNION ALL SELECT 'Calico'          UNION ALL SELECT 'Carey Diluido'
+                  UNION ALL SELECT 'Colorpoint'      UNION ALL SELECT 'Esmoquin'
+                  UNION ALL SELECT 'Humo'            UNION ALL SELECT 'Sombreado'
+                  UNION ALL SELECT 'Chinchilla'
+              ) n
+             WHERE s.name = 'Felino';
+        </sql>
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

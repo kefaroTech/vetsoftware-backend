@@ -2,6 +2,7 @@ package com.vetsoftware.app.specie.application.usecase;
 
 import com.vetsoftware.app.specie.application.port.in.DeleteSpecieUseCase;
 import com.vetsoftware.app.specie.application.port.out.AnimalChildrenQueryPort;
+import com.vetsoftware.app.specie.application.port.out.AnimalColorChildrenQueryPort;
 import com.vetsoftware.app.specie.application.port.out.BreedChildrenQueryPort;
 import com.vetsoftware.app.specie.application.port.out.SpecieRepository;
 import com.vetsoftware.app.specie.domain.SpecieHasActiveChildrenException;
@@ -15,13 +16,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeleteSpecieService implements DeleteSpecieUseCase {
     private final SpecieRepository repository;
     private final BreedChildrenQueryPort breedChildrenQueryPort;
+    private final AnimalColorChildrenQueryPort animalColorChildrenQueryPort;
     private final AnimalChildrenQueryPort animalChildrenQueryPort;
 
     public DeleteSpecieService(SpecieRepository repository,
             BreedChildrenQueryPort breedChildrenQueryPort,
+            AnimalColorChildrenQueryPort animalColorChildrenQueryPort,
             AnimalChildrenQueryPort animalChildrenQueryPort) {
         this.repository = repository;
         this.breedChildrenQueryPort = breedChildrenQueryPort;
+        this.animalColorChildrenQueryPort = animalColorChildrenQueryPort;
         this.animalChildrenQueryPort = animalChildrenQueryPort;
     }
 
@@ -31,6 +35,9 @@ public class DeleteSpecieService implements DeleteSpecieUseCase {
         repository.findById(id).orElseThrow(() -> new SpecieNotFoundException(id));
         if (breedChildrenQueryPort.existsActiveBySpecieId(id)) {
             throw new SpecieHasActiveChildrenException(id, "breed");
+        }
+        if (animalColorChildrenQueryPort.existsActiveBySpecieId(id)) {
+            throw new SpecieHasActiveChildrenException(id, "animalColor");
         }
         if (animalChildrenQueryPort.existsActiveBySpecieId(id)) {
             throw new SpecieHasActiveChildrenException(id, "animal");
