@@ -1,12 +1,15 @@
 package com.vetsoftware.app.animalcolor.infrastructure.persistence;
 
+import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "animal_colors")
+@Table(name = "animal_colors", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_animal_colors_specie_name", columnNames = {"specie_id",
+                "name"})})
 @SQLDelete(sql = "UPDATE animal_colors SET enabled = false WHERE id = ?")
 @SQLRestriction("enabled = true")
 public class AnimalColorJpaEntity {
@@ -14,8 +17,12 @@ public class AnimalColorJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100, unique = true)
+    @Column(nullable = false, length = 100)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "specie_id", nullable = false)
+    private SpecieJpaEntity specie;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -40,6 +47,14 @@ public class AnimalColorJpaEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public SpecieJpaEntity getSpecie() {
+        return specie;
+    }
+
+    public void setSpecie(SpecieJpaEntity specie) {
+        this.specie = specie;
     }
 
     public LocalDateTime getCreatedDate() {

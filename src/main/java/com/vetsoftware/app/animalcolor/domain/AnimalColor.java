@@ -5,30 +5,38 @@ import java.time.LocalDateTime;
 public class AnimalColor {
     private Long id;
     private String name;
+    private SpecieRef specie;
     private final LocalDateTime createdDate;
     private boolean enabled;
 
-    public AnimalColor(Long id, String name, LocalDateTime createdDate, boolean enabled) {
+    public AnimalColor(Long id, String name, SpecieRef specie, LocalDateTime createdDate,
+            boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
             throw new IllegalArgumentException("name must be 100 chars or less");
+        if (specie == null)
+            throw new IllegalArgumentException("specie is required");
         this.id = id;
         this.name = name;
+        this.specie = specie;
         this.createdDate = createdDate;
         this.enabled = enabled;
     }
 
-    public static AnimalColor create(String name) {
-        return new AnimalColor(null, name, LocalDateTime.now(), true);
+    public static AnimalColor create(String name, SpecieRef specie) {
+        return new AnimalColor(null, name, specie, LocalDateTime.now(), true);
     }
 
-    public void update(String name) {
+    public void update(String name, SpecieRef specie) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
             throw new IllegalArgumentException("name must be 100 chars or less");
+        if (specie == null)
+            throw new IllegalArgumentException("specie is required");
         this.name = name;
+        this.specie = specie;
     }
 
     public Long getId() {
@@ -37,6 +45,10 @@ public class AnimalColor {
 
     public String getName() {
         return name;
+    }
+
+    public SpecieRef getSpecie() {
+        return specie;
     }
 
     public LocalDateTime getCreatedDate() {
