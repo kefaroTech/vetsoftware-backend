@@ -23,14 +23,22 @@ public interface SurgeryJpaRepository extends JpaRepository<SurgeryJpaEntity, Lo
     Optional<SurgeryJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"surgeryType", "animal", "consultation", "company"})
-    @Query("SELECT x FROM SurgeryJpaEntity x WHERE x.animal.id = :animalId "
-            + "AND (:q IS NULL OR :q = '' OR LOWER(x.description) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.medicament) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))")
+    @Query("""
+            SELECT x
+            FROM SurgeryJpaEntity x
+            WHERE x.animal.id = :animalId
+              AND (:q IS NULL OR :q = '' OR LOWER(x.description) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.medicament) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
     Page<SurgeryJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId, @Param("q") String q,
             Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE surgeries SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE surgeries
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsBySurgeryType_Id(Long surgeryTypeId);

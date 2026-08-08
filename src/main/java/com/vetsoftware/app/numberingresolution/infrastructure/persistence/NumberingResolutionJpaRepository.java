@@ -29,9 +29,14 @@ public interface NumberingResolutionJpaRepository
      * {@code branchId} null = alcance de EMPRESA (branch_id IS NULL); no null = esa
      * sede concreta. Nativa para el manejo simétrico del null.
      */
-    @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) FROM numbering_resolutions WHERE company_id = :companyId "
-            + "AND document_type = :documentType AND enabled = true "
-            + "AND ((:branchId IS NULL AND branch_id IS NULL) OR branch_id = :branchId)", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT COUNT(*)
+            FROM numbering_resolutions
+            WHERE company_id = :companyId
+              AND document_type = :documentType
+              AND enabled = true
+              AND ((:branchId IS NULL AND branch_id IS NULL) OR branch_id = :branchId)
+            """, nativeQuery = true)
     long countActiveByCompanyBranchAndType(
             @org.springframework.data.repository.query.Param("companyId") Long companyId,
             @org.springframework.data.repository.query.Param("branchId") Long branchId,
@@ -47,10 +52,16 @@ public interface NumberingResolutionJpaRepository
      * {@code documentType} es el nombre del enum (columna document_type se persiste
      * como STRING).
      */
-    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM numbering_resolutions WHERE company_id = :companyId "
-            + "AND document_type = :documentType AND enabled = true "
-            + "AND (branch_id = :branchId OR branch_id IS NULL) "
-            + "ORDER BY (branch_id IS NULL), id LIMIT 1 FOR UPDATE", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT *
+            FROM numbering_resolutions
+            WHERE company_id = :companyId
+              AND document_type = :documentType
+              AND enabled = true
+              AND (branch_id = :branchId OR branch_id IS NULL)
+            ORDER BY (branch_id IS NULL), id
+            LIMIT 1 FOR UPDATE
+            """, nativeQuery = true)
     Optional<NumberingResolutionJpaEntity> lockActiveForUpdate(
             @org.springframework.data.repository.query.Param("companyId") Long companyId,
             @org.springframework.data.repository.query.Param("branchId") Long branchId,
@@ -61,10 +72,16 @@ public interface NumberingResolutionJpaRepository
      * casos que solo necesitan resolución+prefijo y NO consumen consecutivo (POS
      * auto-increment: MATIAS asigna el número). Mismo fallback sede→empresa.
      */
-    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM numbering_resolutions WHERE company_id = :companyId "
-            + "AND document_type = :documentType AND enabled = true "
-            + "AND (branch_id = :branchId OR branch_id IS NULL) "
-            + "ORDER BY (branch_id IS NULL), id LIMIT 1", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT *
+            FROM numbering_resolutions
+            WHERE company_id = :companyId
+              AND document_type = :documentType
+              AND enabled = true
+              AND (branch_id = :branchId OR branch_id IS NULL)
+            ORDER BY (branch_id IS NULL), id
+            LIMIT 1
+            """, nativeQuery = true)
     Optional<NumberingResolutionJpaEntity> findActive(
             @org.springframework.data.repository.query.Param("companyId") Long companyId,
             @org.springframework.data.repository.query.Param("branchId") Long branchId,
@@ -72,6 +89,10 @@ public interface NumberingResolutionJpaRepository
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE numbering_resolutions SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE numbering_resolutions
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 }

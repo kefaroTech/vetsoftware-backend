@@ -34,8 +34,12 @@ public interface OpenAccountJpaRepository
     // @ManyToOne).
     // branchId null = todas las sedes.
     @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
-    @Query("SELECT o FROM OpenAccountJpaEntity o WHERE o.company.id = :companyId "
-            + "AND (:branchId IS NULL OR o.branch.id = :branchId)")
+    @Query("""
+            SELECT o
+            FROM OpenAccountJpaEntity o
+            WHERE o.company.id = :companyId
+              AND (:branchId IS NULL OR o.branch.id = :branchId)
+            """)
     Page<OpenAccountJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, Pageable pageable);
 
@@ -47,7 +51,9 @@ public interface OpenAccountJpaRepository
     // join-fetch; las
     // asociaciones se cargan lazy dentro de la transacción.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select o from OpenAccountJpaEntity o where o.id = :id")
+    @Query("""
+            select o from OpenAccountJpaEntity o where o.id = :id
+            """)
     Optional<OpenAccountJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
     // Variante scoped a la empresa: el FOR UPDATE solo toma el lock si la fila
@@ -56,7 +62,9 @@ public interface OpenAccountJpaRepository
     // sin-@EntityGraph que
     // arriba.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select o from OpenAccountJpaEntity o where o.id = :id and o.company.id = :companyId")
+    @Query("""
+            select o from OpenAccountJpaEntity o where o.id = :id and o.company.id = :companyId
+            """)
     Optional<OpenAccountJpaEntity> findByIdForUpdateAndCompanyId(@Param("id") Long id,
             @Param("companyId") Long companyId);
 
@@ -67,6 +75,10 @@ public interface OpenAccountJpaRepository
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE open_accounts SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE open_accounts
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 }

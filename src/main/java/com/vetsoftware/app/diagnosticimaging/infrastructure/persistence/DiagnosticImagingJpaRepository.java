@@ -25,14 +25,22 @@ public interface DiagnosticImagingJpaRepository
     Optional<DiagnosticImagingJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"diagnosticImagingType", "animal", "consultation", "company"})
-    @Query("SELECT x FROM DiagnosticImagingJpaEntity x WHERE x.animal.id = :animalId "
-            + "AND (:q IS NULL OR :q = '' OR LOWER(x.clinicalSigns) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.studyType) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))")
+    @Query("""
+            SELECT x
+            FROM DiagnosticImagingJpaEntity x
+            WHERE x.animal.id = :animalId
+              AND (:q IS NULL OR :q = '' OR LOWER(x.clinicalSigns) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.studyType) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
     Page<DiagnosticImagingJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
             @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE diagnostic_imagings SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE diagnostic_imagings
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsByDiagnosticImagingType_Id(Long diagnosticImagingTypeId);

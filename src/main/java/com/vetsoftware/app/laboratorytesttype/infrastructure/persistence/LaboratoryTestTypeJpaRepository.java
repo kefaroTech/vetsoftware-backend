@@ -18,8 +18,14 @@ public interface LaboratoryTestTypeJpaRepository
     Optional<LaboratoryTestTypeJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
-    @org.springframework.data.jpa.repository.Query("SELECT e FROM LaboratoryTestTypeJpaEntity e LEFT JOIN e.company c "
-            + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT e
+            FROM LaboratoryTestTypeJpaEntity e
+            LEFT
+            JOIN e.company c
+            WHERE e.id = :id
+              AND (e.general = true OR c.id = :companyId)
+            """)
     Optional<LaboratoryTestTypeJpaEntity> findAvailableById(
             @org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
@@ -29,6 +35,10 @@ public interface LaboratoryTestTypeJpaRepository
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE laboratory_test_types SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE laboratory_test_types
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 }

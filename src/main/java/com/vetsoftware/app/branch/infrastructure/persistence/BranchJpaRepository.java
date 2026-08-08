@@ -14,12 +14,22 @@ public interface BranchJpaRepository extends JpaRepository<BranchJpaEntity, Long
     Optional<BranchJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = {"city", "company"})
-    @Query("SELECT b FROM BranchJpaEntity b WHERE b.id = :id AND b.company.id = :companyId")
+    @Query("""
+            SELECT b
+            FROM BranchJpaEntity b
+            WHERE b.id = :id
+              AND b.company.id = :companyId
+            """)
     Optional<BranchJpaEntity> findByIdAndCompanyId(@Param("id") Long id,
             @Param("companyId") Long companyId);
 
     @EntityGraph(attributePaths = {"city", "company"})
-    @Query("SELECT b FROM BranchJpaEntity b WHERE b.company.id = :companyId ORDER BY b.name")
+    @Query("""
+            SELECT b
+            FROM BranchJpaEntity b
+            WHERE b.company.id = :companyId
+            ORDER BY b.name
+            """)
     List<BranchJpaEntity> findAllByCompanyId(@Param("companyId") Long companyId);
 
     boolean existsByCompany_IdAndCodeIgnoreCase(Long companyId, String code);

@@ -20,8 +20,14 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
     Optional<MedicamentJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
-    @org.springframework.data.jpa.repository.Query("SELECT e FROM MedicamentJpaEntity e LEFT JOIN e.company c "
-            + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT e
+            FROM MedicamentJpaEntity e
+            LEFT
+            JOIN e.company c
+            WHERE e.id = :id
+              AND (e.general = true OR c.id = :companyId)
+            """)
     Optional<MedicamentJpaEntity> findAvailableById(
             @org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
@@ -32,11 +38,20 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
     // Native: los pausados (enabled = false) NO pasan el @SQLRestriction; se listan
     // crudos para
     // reactivar.
-    @Query(value = "SELECT * FROM medicaments WHERE enabled = false AND company_id = :companyId", nativeQuery = true)
+    @Query(value = """
+            SELECT *
+            FROM medicaments
+            WHERE enabled = false
+              AND company_id = :companyId
+            """, nativeQuery = true)
     List<MedicamentJpaEntity> findAllDisabledForCompany(@Param("companyId") Long companyId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE medicaments SET enabled = true WHERE id = :id", nativeQuery = true)
+    @Query(value = """
+            UPDATE medicaments
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
 }

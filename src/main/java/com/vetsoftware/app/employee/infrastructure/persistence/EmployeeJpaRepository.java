@@ -24,7 +24,11 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     Optional<EmployeeJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
-    @Query("SELECT e FROM EmployeeJpaEntity e WHERE e.company.id = :companyId")
+    @Query("""
+            SELECT e
+            FROM EmployeeJpaEntity e
+            WHERE e.company.id = :companyId
+            """)
     List<EmployeeJpaEntity> findAllByCompanyId(@Param("companyId") Long companyId);
 
     // Lista de la company INCLUYENDO desactivados (para la pantalla de empleados,
@@ -34,7 +38,12 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // company se
     // hidrata
     // perezosamente al mapear (el servicio corre @Transactional).
-    @Query(value = "SELECT * FROM employees WHERE company_id = :companyId ORDER BY id", nativeQuery = true)
+    @Query(value = """
+            SELECT *
+            FROM employees
+            WHERE company_id = :companyId
+            ORDER BY id
+            """, nativeQuery = true)
     List<EmployeeJpaEntity> findAllByCompanyIdIncludingDisabled(@Param("companyId") Long companyId);
 
     // Búsqueda paginada de la company INCLUYENDO desactivados (la pantalla muestra
@@ -46,10 +55,18 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // El filtro de texto es opcional (:q == null → sin filtro); LIKE usa la
     // collation CI de MySQL
     // (case-insensitive).
-    @Query(value = "SELECT * FROM employees e WHERE e.company_id = :companyId "
-            + "AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q) "
-            + "ORDER BY e.name ASC", countQuery = "SELECT COUNT(*) FROM employees e WHERE e.company_id = :companyId "
-                    + "AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q)", nativeQuery = true)
+    @Query(value = """
+            SELECT *
+            FROM employees e
+            WHERE e.company_id = :companyId
+              AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q)
+            ORDER BY e.name ASC
+            """, countQuery = """
+            SELECT COUNT(*)
+            FROM employees e
+            WHERE e.company_id = :companyId
+              AND (:q IS NULL OR e.name LIKE :q OR e.email LIKE :q OR e.employee_code LIKE :q)
+            """, nativeQuery = true)
     Page<EmployeeJpaEntity> searchByCompanyIncludingDisabled(@Param("companyId") Long companyId,
             @Param("q") String q, Pageable pageable);
 
@@ -60,7 +77,11 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // @SQLRestriction("enabled = true").
     // La company se hidrata perezosamente al mapear (el caller corre en
     // transacción).
-    @Query(value = "SELECT * FROM employees WHERE id = :id", nativeQuery = true)
+    @Query(value = """
+            SELECT *
+            FROM employees
+            WHERE id = :id
+            """, nativeQuery = true)
     Optional<EmployeeJpaEntity> findByIdIncludingDisabled(@Param("id") Long id);
 
     boolean existsByEmployeeCode(String employeeCode);
@@ -74,7 +95,11 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // La comparación usa la collation de la columna (ci en MySQL) → es
     // case-insensitive, igual que el
     // unique.
-    @Query(value = "SELECT COUNT(*) FROM employees WHERE employee_code = :code", nativeQuery = true)
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM employees
+            WHERE employee_code = :code
+            """, nativeQuery = true)
     long countByEmployeeCodeAllRows(@Param("code") String code);
 
     @EntityGraph(attributePaths = "company")
@@ -89,18 +114,34 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     @EntityGraph(attributePaths = "company")
     List<EmployeeJpaEntity> findByEmailAndEmailVerified(String email, boolean emailVerified);
 
-    @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled ="
-            + " true AND c.enabled = true")
+    @Query("""
+            SELECT e
+            FROM EmployeeJpaEntity e
+            JOIN FETCH e.company c
+            WHERE e.id = :id
+              AND e.enabled = true
+              AND c.enabled = true
+            """)
     Optional<EmployeeJpaEntity> findActiveWithCompanyById(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT e FROM EmployeeJpaEntity e JOIN FETCH e.company c WHERE e.id = :id AND e.enabled ="
-            + " true AND c.enabled = true")
+    @Query("""
+            SELECT e
+            FROM EmployeeJpaEntity e
+            JOIN FETCH e.company c
+            WHERE e.id = :id
+              AND e.enabled = true
+              AND c.enabled = true
+            """)
     Optional<EmployeeJpaEntity> findActiveWithCompanyByIdForUpdate(@Param("id") Long id);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE employees SET enabled = true, auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
+    @Query(value = """
+            UPDATE employees
+            SET enabled = true, auth_version = auth_version + 1
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
 
     // Soft-delete por UPDATE nativo (mismo efecto que el @SQLDelete de la entidad).
@@ -114,14 +155,22 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // hijos.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE employees SET enabled = false, auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
+    @Query(value = """
+            UPDATE employees
+            SET enabled = false, auth_version = auth_version + 1
+            WHERE id = :id
+            """, nativeQuery = true)
     int deactivate(@Param("id") Long id);
 
     // Invalida los access tokens vivos del empleado (usado en logout) sin tocar
     // `enabled`.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE employees SET auth_version = auth_version + 1 WHERE id = :id", nativeQuery = true)
+    @Query(value = """
+            UPDATE employees
+            SET auth_version = auth_version + 1
+            WHERE id = :id
+            """, nativeQuery = true)
     int bumpAuthVersion(@Param("id") Long id);
 
     // Primer login del staff invitado: INVITED → ACTIVE. Solo toca filas invitadas
@@ -131,7 +180,12 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // id directamente.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE employees SET status = 'ACTIVE' WHERE id = :id AND status = 'INVITED'", nativeQuery = true)
+    @Query(value = """
+            UPDATE employees
+            SET status = 'ACTIVE'
+            WHERE id = :id
+              AND status = 'INVITED'
+            """, nativeQuery = true)
     int activateInvited(@Param("id") Long id);
 
     boolean existsByCompany_Id(Long companyId);

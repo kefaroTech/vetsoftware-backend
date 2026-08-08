@@ -18,8 +18,14 @@ public interface DiagnosticImagingTypeJpaRepository
     Optional<DiagnosticImagingTypeJpaEntity> findById(Long id);
 
     @EntityGraph(attributePaths = "company")
-    @org.springframework.data.jpa.repository.Query("SELECT e FROM DiagnosticImagingTypeJpaEntity e LEFT JOIN e.company c "
-            + "WHERE e.id = :id AND (e.general = true OR c.id = :companyId)")
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT e
+            FROM DiagnosticImagingTypeJpaEntity e
+            LEFT
+            JOIN e.company c
+            WHERE e.id = :id
+              AND (e.general = true OR c.id = :companyId)
+            """)
     Optional<DiagnosticImagingTypeJpaEntity> findAvailableById(
             @org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
@@ -29,6 +35,10 @@ public interface DiagnosticImagingTypeJpaRepository
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE diagnostic_imaging_types SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE diagnostic_imaging_types
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 }

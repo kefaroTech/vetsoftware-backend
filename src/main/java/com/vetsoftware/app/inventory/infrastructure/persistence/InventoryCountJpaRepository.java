@@ -14,8 +14,13 @@ public interface InventoryCountJpaRepository extends JpaRepository<InventoryCoun
     // líneas (LAZY): el
     // listado solo usa
     // los contadores desnormalizados. @SQLRestriction filtra enabled=true.
-    @Query("SELECT c FROM InventoryCountJpaEntity c WHERE c.companyId = :companyId "
-            + "AND (:branchId IS NULL OR c.branchId = :branchId) ORDER BY c.createdDate DESC")
+    @Query("""
+            SELECT c
+            FROM InventoryCountJpaEntity c
+            WHERE c.companyId = :companyId
+              AND (:branchId IS NULL OR c.branchId = :branchId)
+            ORDER BY c.createdDate DESC
+            """)
     Page<InventoryCountJpaEntity> search(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, Pageable pageable);
 

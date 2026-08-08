@@ -23,14 +23,22 @@ public interface DewormingJpaRepository extends JpaRepository<DewormingJpaEntity
     Optional<DewormingJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
-    @Query("SELECT x FROM DewormingJpaEntity x WHERE x.animal.id = :animalId "
-            + "AND (:q IS NULL OR :q = '' OR LOWER(x.product) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))")
+    @Query("""
+            SELECT x
+            FROM DewormingJpaEntity x
+            WHERE x.animal.id = :animalId
+              AND (:q IS NULL OR :q = '' OR LOWER(x.product) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
     Page<DewormingJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
             @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE dewormings SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE dewormings
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsByAnimal_Id(Long animalId);

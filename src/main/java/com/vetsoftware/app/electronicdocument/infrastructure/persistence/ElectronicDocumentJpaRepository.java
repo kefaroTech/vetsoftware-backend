@@ -37,8 +37,12 @@ public interface ElectronicDocumentJpaRepository
      * (HHH000104). Es decir, parecería que funciona sin arreglar nada. Contando ids
      * no hay producto cartesiano y el LIMIT es real.
      */
-    @Query("SELECT e.id FROM ElectronicDocumentJpaEntity e WHERE e.company.id = :companyId "
-            + "AND (:branchId IS NULL OR e.branchId = :branchId)")
+    @Query("""
+            SELECT e.id
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.company.id = :companyId
+              AND (:branchId IS NULL OR e.branchId = :branchId)
+            """)
     Page<Long> findIdsByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, Pageable pageable);
 
@@ -47,12 +51,20 @@ public interface ElectronicDocumentJpaRepository
      * elegida.
      */
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
-    @Query("SELECT DISTINCT e FROM ElectronicDocumentJpaEntity e WHERE e.id IN :ids")
+    @Query("""
+            SELECT DISTINCT e
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.id IN :ids
+            """)
     List<ElectronicDocumentJpaEntity> findAllByIdsWithDetails(@Param("ids") List<Long> ids);
 
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
-    @Query("SELECT e FROM ElectronicDocumentJpaEntity e WHERE e.company.id = :companyId "
-            + "AND (:branchId IS NULL OR e.branchId = :branchId)")
+    @Query("""
+            SELECT e
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.company.id = :companyId
+              AND (:branchId IS NULL OR e.branchId = :branchId)
+            """)
     List<ElectronicDocumentJpaEntity> findByCompanyIdAndOptionalBranch(
             @Param("companyId") Long companyId, @Param("branchId") Long branchId);
 
@@ -66,17 +78,30 @@ public interface ElectronicDocumentJpaRepository
     @EntityGraph(attributePaths = {"company", "lines", "payments"})
     List<ElectronicDocumentJpaEntity> findByDianStatus(DianStatus dianStatus);
 
-    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
-            + "WHERE e.dianStatus = :status AND e.createdDate >= :from")
+    @Query("""
+            SELECT COUNT(e)
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.dianStatus = :status
+              AND e.createdDate >= :from
+            """)
     long countBacklogSince(@Param("status") DianStatus status, @Param("from") LocalDateTime from);
 
-    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
-            + "WHERE e.dianStatus = :status AND e.createdDate >= :from AND e.createdDate < :to")
+    @Query("""
+            SELECT COUNT(e)
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.dianStatus = :status
+              AND e.createdDate >= :from
+              AND e.createdDate < :to
+            """)
     long countBacklogBetween(@Param("status") DianStatus status, @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
-    @Query("SELECT COUNT(e) FROM ElectronicDocumentJpaEntity e "
-            + "WHERE e.dianStatus = :status AND e.createdDate < :before")
+    @Query("""
+            SELECT COUNT(e)
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.dianStatus = :status
+              AND e.createdDate < :before
+            """)
     long countBacklogBefore(@Param("status") DianStatus status,
             @Param("before") LocalDateTime before);
 

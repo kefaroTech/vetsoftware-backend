@@ -19,11 +19,19 @@ public interface CompanyTaxProfileJpaRepository
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE company_tax_profiles SET enabled = false WHERE company_id = :companyId", nativeQuery = true)
+    @Query(value = """
+            UPDATE company_tax_profiles
+            SET enabled = false
+            WHERE company_id = :companyId
+            """, nativeQuery = true)
     int deleteByCompanyId(@Param("companyId") Long companyId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query(value = "UPDATE company_tax_profiles SET enabled = true WHERE company_id = :companyId", nativeQuery = true)
+    @Query(value = """
+            UPDATE company_tax_profiles
+            SET enabled = true
+            WHERE company_id = :companyId
+            """, nativeQuery = true)
     int reactivate(@Param("companyId") Long companyId);
 }
