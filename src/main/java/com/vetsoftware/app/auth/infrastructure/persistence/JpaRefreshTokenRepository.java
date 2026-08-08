@@ -31,7 +31,7 @@ public class JpaRefreshTokenRepository implements RefreshTokenRepository {
     public Optional<StoredRefreshToken> findByHash(String tokenHash) {
         return jpaRepository.findByTokenHash(tokenHash)
                 .map(e -> new StoredRefreshToken(e.getId(), e.getSubjectId(), e.getSubjectType(),
-                        e.getAuthVersion(), e.getExpiresAt(), e.isRevoked()));
+                        e.getAuthVersion(), e.getExpiresAt(), e.isRevoked(), e.getRevokedAt()));
     }
 
     @Override

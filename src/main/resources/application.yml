@@ -110,6 +110,12 @@ jwt:
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
   # Refresh token largo (opaco, persistido y rotado). Controla cuánto dura la sesión sin re-login.
   refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:30}
+  # Un refresh token revocado que vuelve a presentarse es señal de robo y revoca
+  # la familia entera del sujeto. Dos pestañas compartiendo la cookie pueden
+  # producir el mismo síntoma sin que haya ataque, así que por debajo de este
+  # margen se trata como carrera y no se corta la sesión. Ver
+  # RefreshAccessTokenService#reactToReuse.
+  refresh-reuse-grace-seconds: ${JWT_REFRESH_REUSE_GRACE_SECONDS:10}
   refresh-cookie:
     # El refresh token viaja en cookie HttpOnly para que un XSS no pueda exfiltrar
     # 30 días de acceso. Ver RefreshTokenCookie.
