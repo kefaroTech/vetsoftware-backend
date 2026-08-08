@@ -1,10 +1,10 @@
 package com.vetsoftware.app.owner.application.usecase;
 
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
+import com.vetsoftware.app.owner.application.dto.PageResult;
 import com.vetsoftware.app.owner.application.port.in.ListOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "owner.list")
@@ -17,7 +17,7 @@ public class ListOwnersService implements ListOwnersUseCase {
     }
 
     @Override
-    public List<OwnerDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(OwnerDto::from).toList();
+    public PageResult<OwnerDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllByCompanyId(companyId, page, pageSize).map(OwnerDto::from);
     }
 }

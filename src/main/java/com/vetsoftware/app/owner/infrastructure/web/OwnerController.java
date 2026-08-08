@@ -5,7 +5,9 @@ import com.vetsoftware.app.owner.application.command.CreateOwnerCommand;
 import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.dto.CitySummaryDto;
 import com.vetsoftware.app.owner.application.dto.CompanySummaryDto;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
+import com.vetsoftware.app.owner.application.dto.PageResult;
 import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
@@ -19,7 +21,6 @@ import com.vetsoftware.app.owner.infrastructure.web.response.CitySummary;
 import com.vetsoftware.app.owner.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.owner.infrastructure.web.response.OwnerResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -59,16 +60,28 @@ public class OwnerController {
                 request.withholdingAgent(), request.taxRegime(), request.fiscalResponsibility())));
     }
 
+    /**
+     * BE-06: devuelve una página, no la tabla. {@code page} y {@code pageSize} son
+     * opcionales y llevan los mismos valores por defecto que el resto de listados
+     * ya paginados del sistema.
+     */
     @GetMapping
-    public List<OwnerResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
+    public PageResponse<OwnerResponse> listAll(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return toPageResponse(listUseCase.listAll(authz.currentCompanyId(), page, pageSize));
     }
 
     @GetMapping("/search")
-    public List<OwnerResponse> search(@RequestParam("q") String query) {
-        return searchUseCase.search(authz.currentCompanyId(), query).stream().map(this::toResponse)
-                .toList();
+    public PageResponse<OwnerResponse> search(@RequestParam("q") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return toPageResponse(
+                searchUseCase.search(authz.currentCompanyId(), query, page, pageSize));
+    }
+
+    private PageResponse<OwnerResponse> toPageResponse(PageResult<OwnerDto> result) {
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

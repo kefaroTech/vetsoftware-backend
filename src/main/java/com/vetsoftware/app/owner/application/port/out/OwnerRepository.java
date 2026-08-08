@@ -1,7 +1,7 @@
 package com.vetsoftware.app.owner.application.port.out;
 
+import com.vetsoftware.app.owner.application.dto.PageResult;
 import com.vetsoftware.app.owner.domain.Owner;
-import java.util.List;
 import java.util.Optional;
 
 public interface OwnerRepository {
@@ -9,9 +9,9 @@ public interface OwnerRepository {
 
     Optional<Owner> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<Owner> findAllByCompanyId(Long companyId);
+    PageResult<Owner> findAllByCompanyId(Long companyId, int page, int pageSize);
 
-    List<Owner> searchByCompanyAndTerm(Long companyId, String query);
+    PageResult<Owner> searchByCompanyAndTerm(Long companyId, String query, int page, int pageSize);
 
     void delete(Long id, Long companyId);
 
