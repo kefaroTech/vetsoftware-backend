@@ -6,5 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationsByAnimalUseCase {
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.read')")
-    PageResult<HospitalizationDto> listByAnimal(Long animalId, int page, int pageSize);
+    PageResult<HospitalizationDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize);
 }

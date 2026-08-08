@@ -75,8 +75,9 @@ public class JpaDiagnosticImagingRepository implements DiagnosticImagingReposito
     }
 
     @Override
-    public PageResult<DiagnosticImaging> findAllByAnimalId(Long animalId, int page, int pageSize) {
-        Page<DiagnosticImagingJpaEntity> result = jpaRepository.findAllByAnimalId(animalId,
+    public PageResult<DiagnosticImaging> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize) {
+        Page<DiagnosticImagingJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
                 byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),

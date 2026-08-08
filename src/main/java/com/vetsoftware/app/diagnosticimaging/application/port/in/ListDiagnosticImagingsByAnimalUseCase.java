@@ -6,5 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDiagnosticImagingsByAnimalUseCase {
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('diagnosticimaging.create')")
-    PageResult<DiagnosticImagingDto> listByAnimal(Long animalId, int page, int pageSize);
+    PageResult<DiagnosticImagingDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize);
 }

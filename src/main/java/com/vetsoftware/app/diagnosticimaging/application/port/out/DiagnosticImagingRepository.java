@@ -14,7 +14,8 @@ public interface DiagnosticImagingRepository {
 
     List<DiagnosticImaging> findAll();
 
-    PageResult<DiagnosticImaging> findAllByAnimalId(Long animalId, int page, int pageSize);
+    PageResult<DiagnosticImaging> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize);
 
     void delete(Long id);
 

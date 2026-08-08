@@ -6,5 +6,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListLaboratoryTestsByAnimalUseCase {
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.read')")
-    PageResult<LaboratoryTestDto> listByAnimal(Long animalId, int page, int pageSize);
+    PageResult<LaboratoryTestDto> listByAnimal(Long animalId, String query, int page, int pageSize);
 }

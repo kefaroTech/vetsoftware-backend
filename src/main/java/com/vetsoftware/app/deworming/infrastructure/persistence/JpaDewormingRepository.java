@@ -68,8 +68,9 @@ public class JpaDewormingRepository implements DewormingRepository {
     }
 
     @Override
-    public PageResult<Deworming> findAllByAnimalId(Long animalId, int page, int pageSize) {
-        Page<DewormingJpaEntity> result = jpaRepository.findAllByAnimalId(animalId,
+    public PageResult<Deworming> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize) {
+        Page<DewormingJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
                 byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),

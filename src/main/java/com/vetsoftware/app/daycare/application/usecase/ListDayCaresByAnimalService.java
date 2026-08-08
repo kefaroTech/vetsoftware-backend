@@ -17,7 +17,8 @@ public class ListDayCaresByAnimalService implements ListDayCaresByAnimalUseCase 
     }
 
     @Override
-    public PageResult<DayCareDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(DayCareDto::from);
+    public PageResult<DayCareDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize).map(DayCareDto::from);
     }
 }

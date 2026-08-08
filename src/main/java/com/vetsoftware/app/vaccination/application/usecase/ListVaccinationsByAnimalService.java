@@ -17,7 +17,9 @@ public class ListVaccinationsByAnimalService implements ListVaccinationsByAnimal
     }
 
     @Override
-    public PageResult<VaccinationDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(VaccinationDto::from);
+    public PageResult<VaccinationDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+                .map(VaccinationDto::from);
     }
 }

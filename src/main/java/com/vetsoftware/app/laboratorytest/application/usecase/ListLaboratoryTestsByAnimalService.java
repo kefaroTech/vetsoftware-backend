@@ -17,7 +17,9 @@ public class ListLaboratoryTestsByAnimalService implements ListLaboratoryTestsBy
     }
 
     @Override
-    public PageResult<LaboratoryTestDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(LaboratoryTestDto::from);
+    public PageResult<LaboratoryTestDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+                .map(LaboratoryTestDto::from);
     }
 }

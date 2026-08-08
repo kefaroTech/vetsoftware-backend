@@ -17,7 +17,9 @@ public class ListHospitalizationsByAnimalService implements ListHospitalizations
     }
 
     @Override
-    public PageResult<HospitalizationDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(HospitalizationDto::from);
+    public PageResult<HospitalizationDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+                .map(HospitalizationDto::from);
     }
 }

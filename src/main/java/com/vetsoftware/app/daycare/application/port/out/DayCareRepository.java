@@ -14,7 +14,7 @@ public interface DayCareRepository {
 
     List<DayCare> findAll();
 
-    PageResult<DayCare> findAllByAnimalId(Long animalId, int page, int pageSize);
+    PageResult<DayCare> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
 
     void delete(Long id);
 

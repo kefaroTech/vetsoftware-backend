@@ -15,7 +15,8 @@ public interface LaboratoryTestRepository {
 
     List<LaboratoryTest> findAll();
 
-    PageResult<LaboratoryTest> findAllByAnimalId(Long animalId, int page, int pageSize);
+    PageResult<LaboratoryTest> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize);
 
     PageResult<LaboratoryTest> search(SearchLaboratoryTestsCommand command);
 

@@ -75,8 +75,9 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     }
 
     @Override
-    public PageResult<Vaccination> findAllByAnimalId(Long animalId, int page, int pageSize) {
-        Page<VaccinationJpaEntity> result = jpaRepository.findAllByAnimalId(animalId,
+    public PageResult<Vaccination> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize) {
+        Page<VaccinationJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
                 byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),

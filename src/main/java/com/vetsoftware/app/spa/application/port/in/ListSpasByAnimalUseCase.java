@@ -6,5 +6,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSpasByAnimalUseCase {
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('spa.read')")
-    PageResult<SpaDto> listByAnimal(Long animalId, int page, int pageSize);
+    PageResult<SpaDto> listByAnimal(Long animalId, String query, int page, int pageSize);
 }

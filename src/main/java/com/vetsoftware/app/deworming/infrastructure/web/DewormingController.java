@@ -70,9 +70,10 @@ public class DewormingController {
 
     @GetMapping("/by-animal/{animalId}")
     public PageResponse<DewormingResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<DewormingDto> result = listByAnimalUseCase.listByAnimal(animalId, page,
+        PageResult<DewormingDto> result = listByAnimalUseCase.listByAnimal(animalId, query, page,
                 pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());

@@ -17,7 +17,8 @@ public class ListSurgeriesByAnimalService implements ListSurgeriesByAnimalUseCas
     }
 
     @Override
-    public PageResult<SurgeryDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(SurgeryDto::from);
+    public PageResult<SurgeryDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize).map(SurgeryDto::from);
     }
 }

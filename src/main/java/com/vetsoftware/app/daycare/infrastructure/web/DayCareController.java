@@ -66,9 +66,11 @@ public class DayCareController {
 
     @GetMapping("/by-animal/{animalId}")
     public PageResponse<DayCareResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<DayCareDto> result = listByAnimalUseCase.listByAnimal(animalId, page, pageSize);
+        PageResult<DayCareDto> result = listByAnimalUseCase.listByAnimal(animalId, query, page,
+                pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }

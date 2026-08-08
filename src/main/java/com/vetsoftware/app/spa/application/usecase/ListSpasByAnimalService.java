@@ -17,7 +17,7 @@ public class ListSpasByAnimalService implements ListSpasByAnimalUseCase {
     }
 
     @Override
-    public PageResult<SpaDto> listByAnimal(Long animalId, int page, int pageSize) {
-        return repository.findAllByAnimalId(animalId, page, pageSize).map(SpaDto::from);
+    public PageResult<SpaDto> listByAnimal(Long animalId, String query, int page, int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize).map(SpaDto::from);
     }
 }
