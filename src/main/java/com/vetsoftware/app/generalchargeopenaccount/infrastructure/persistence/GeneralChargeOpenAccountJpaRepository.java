@@ -3,6 +3,8 @@ package com.vetsoftware.app.generalchargeopenaccount.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GeneralChargeOpenAccountJpaRepository
@@ -22,7 +24,8 @@ public interface GeneralChargeOpenAccountJpaRepository
             Long companyId);
 
     @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
-    List<GeneralChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId);
+    Page<GeneralChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId,
+            Pageable pageable);
 
     @EntityGraph(attributePaths = {"tax", "openAccount", "createdBy", "voidedBy"})
     List<GeneralChargeOpenAccountJpaEntity> findByOpenAccount_IdAndOpenAccount_Company_Id(

@@ -3,6 +3,8 @@ package com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ServiceChargeOpenAccountJpaRepository
@@ -26,7 +28,8 @@ public interface ServiceChargeOpenAccountJpaRepository
 
     @EntityGraph(attributePaths = {"animal", "service", "tax", "openAccount", "createdBy",
             "voidedBy"})
-    List<ServiceChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId);
+    Page<ServiceChargeOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId,
+            Pageable pageable);
 
     @EntityGraph(attributePaths = {"animal", "service", "tax", "openAccount", "createdBy",
             "voidedBy"})

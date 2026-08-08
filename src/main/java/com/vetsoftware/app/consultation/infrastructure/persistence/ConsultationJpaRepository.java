@@ -3,6 +3,8 @@ package com.vetsoftware.app.consultation.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ConsultationJpaRepository extends JpaRepository<ConsultationJpaEntity, Long> {
@@ -19,7 +21,7 @@ public interface ConsultationJpaRepository extends JpaRepository<ConsultationJpa
     Optional<ConsultationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"consultationType", "animal", "company"})
-    List<ConsultationJpaEntity> findAllByCompany_Id(Long companyId);
+    Page<ConsultationJpaEntity> findAllByCompany_Id(Long companyId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

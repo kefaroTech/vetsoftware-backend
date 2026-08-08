@@ -1,5 +1,6 @@
 package com.vetsoftware.app.productchargeopenaccount.application.port.out;
 
+import com.vetsoftware.app.productchargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public interface ProductChargeOpenAccountRepository {
 
     List<ProductChargeOpenAccount> findAll();
 
-    List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId);
+    PageResult<ProductChargeOpenAccount> findAllByCompanyId(Long companyId, int page, int pageSize);
 
     List<ProductChargeOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId,
             Long companyId);

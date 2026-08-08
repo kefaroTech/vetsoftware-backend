@@ -5,7 +5,9 @@ import com.vetsoftware.app.generalchargeopenaccount.application.command.CreateGe
 import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.VoidGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.EmployeeSummaryDto;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
+import com.vetsoftware.app.generalchargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.OpenAccountSummaryDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.TaxSummaryDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.CreateGeneralChargeOpenAccountUseCase;
@@ -67,9 +69,13 @@ public class GeneralChargeOpenAccountController {
     }
 
     @GetMapping
-    public List<GeneralChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
+    public PageResponse<GeneralChargeOpenAccountResponse> listAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<GeneralChargeOpenAccountDto> result = listUseCase
+                .listAll(authz.currentCompanyId(), page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/by-open-account/{openAccountId}")
