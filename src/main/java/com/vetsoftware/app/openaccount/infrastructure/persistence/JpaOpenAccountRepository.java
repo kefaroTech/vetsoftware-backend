@@ -26,6 +26,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaOpenAccountRepository implements OpenAccountRepository {
+
+    private static final int LIST_DEFAULT_PAGE_SIZE = 20;
+    private static final int LIST_MAX_PAGE_SIZE = 200;
     private final OpenAccountJpaRepository jpaRepository;
     private final OpenAccountJpaMapper mapper;
     private final OwnerJpaRepository ownerJpaRepository;
@@ -88,9 +91,30 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
     }
 
     @Override
-    public List<OpenAccount> findAllByCompanyId(Long companyId, Long branchId) {
-        return jpaRepository.findByCompanyIdAndOptionalBranch(companyId, branchId).stream()
-                .map(mapper::toDomain).toList();
+    public PageResult<OpenAccount> findAllByCompanyId(Long companyId, Long branchId, int page,
+            int pageSize) {
+        Page<OpenAccountJpaEntity> result = jpaRepository.findByCompanyIdAndOptionalBranch(
+                companyId, branchId, listPageRequest(page, pageSize));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
+    }
+
+    /**
+     * Normaliza lo que llega del cliente y acota el tamano: sin tope se vuelve a
+     * pedir la tabla entera por query param. Orden por id descendente, estable y
+     * con lo mas reciente primero.
+     *
+     * <p>
+     * El grafo de la consulta es todo to-one (owner, company, branch, createdBy),
+     * asi que el JOIN FETCH convive con la paginacion. Con una coleccion Hibernate
+     * paginaria en memoria.
+     */
+    private static PageRequest listPageRequest(int page, int pageSize) {
+        int safeSize = pageSize <= 0
+                ? LIST_DEFAULT_PAGE_SIZE
+                : Math.min(pageSize, LIST_MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
     }
 
     @Override

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -34,8 +36,8 @@ public interface OpenAccountJpaRepository
     @EntityGraph(attributePaths = {"owner", "company", "branch", "createdBy"})
     @Query("SELECT o FROM OpenAccountJpaEntity o WHERE o.company.id = :companyId "
             + "AND (:branchId IS NULL OR o.branch.id = :branchId)")
-    List<OpenAccountJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
-            @Param("branchId") Long branchId);
+    Page<OpenAccountJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
+            @Param("branchId") Long branchId, Pageable pageable);
 
     // Bloqueo pesimista de la fila de la cuenta para serializar el recálculo de
     // totales bajo
