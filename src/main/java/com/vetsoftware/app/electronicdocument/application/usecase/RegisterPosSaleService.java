@@ -5,19 +5,15 @@ import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSal
 import com.vetsoftware.app.electronicdocument.application.command.SaleLineKind;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
 import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSaleUseCase;
-import com.vetsoftware.app.electronicdocument.application.port.out.CashPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
-import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics.Channel;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics.Result;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Registra y emite una venta de POS: construye el documento PENDIENTE desde el
@@ -35,29 +31,49 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "electronic.document.pos.sale")
 @Service
 public class RegisterPosSaleService implements RegisterPosSaleUseCase {
-    private final PosSaleDocumentBuilder documentBuilder;
+    private final PosSaleRegistrar saleRegistrar;
     private final ElectronicDocumentEmitter emitter;
     private final DeliverElectronicDocumentService deliverService;
     private final ElectronicDocumentRepository repository;
-    private final InventoryLedgerPort inventoryLedger;
-    private final CashPort cashPort;
     private final SalesMetrics salesMetrics;
 
-    public RegisterPosSaleService(PosSaleDocumentBuilder documentBuilder,
-            ElectronicDocumentEmitter emitter, DeliverElectronicDocumentService deliverService,
-            ElectronicDocumentRepository repository, InventoryLedgerPort inventoryLedger,
-            CashPort cashPort, SalesMetrics salesMetrics) {
-        this.documentBuilder = documentBuilder;
+    public RegisterPosSaleService(PosSaleRegistrar saleRegistrar, ElectronicDocumentEmitter emitter,
+            DeliverElectronicDocumentService deliverService,
+            ElectronicDocumentRepository repository, SalesMetrics salesMetrics) {
+        this.saleRegistrar = saleRegistrar;
         this.emitter = emitter;
         this.deliverService = deliverService;
         this.repository = repository;
-        this.inventoryLedger = inventoryLedger;
-        this.cashPort = cashPort;
         this.salesMetrics = salesMetrics;
     }
 
+    /**
+     * Sin {@code @Transactional} en el metodo completo, a proposito. La venta se
+     * parte en tres tiempos para que el HTTP al proveedor —hasta 75 segundos— no
+     * corra dentro de ninguna transaccion:
+     *
+     * <ol>
+     * <li>Transaccion corta: documento PENDIENTE, descuento de stock y registro de
+     * caja. Commitea y suelta la conexion.</li>
+     * <li>Emision: numeracion y HTTP a MATIAS, sin transaccion abierta. El
+     * desenlace lo guarda {@link TransmissionResultPersister} en una transaccion
+     * propia y corta.</li>
+     * <li>Entrega: PDF, QR y S3, tambien fuera de transaccion.</li>
+     * </ol>
+     *
+     * <p>
+     * La respuesta no cambia: sigue llevando CUFE y QR, que es lo que el cajero
+     * imprime.
+     *
+     * <p>
+     * Lo que si cambia es la atomicidad. Antes, un fallo del proveedor revertia la
+     * venta entera —stock y caja incluidos—. Ahora la venta queda registrada y el
+     * documento en PENDIENTE, re-emitible por el job de reconciliacion. Es la
+     * semantica correcta para un mostrador: si ya se cobro, no se puede des-vender
+     * porque el proveedor este lento. Es tambien la que el equipo ya eligio para el
+     * cierre de cuenta.
+     */
     @Override
-    @Transactional
     public ElectronicDocumentDto execute(RegisterPosSaleCommand command) {
         // Idempotencia: si el POST se reintenta con la misma key (respuesta perdida en
         // transporte), se
@@ -78,13 +94,11 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
             // Rechaza cantidades de producto no enteras antes de construir/transmitir.
             validateProductQuantities(command);
 
-            ElectronicDocument document = documentBuilder.build(command);
-            // Si la empresa exige caja, se valida antes de transmitir.
-            cashPort.requireOpenSession(command.companyId(), document.getBranchId(),
-                    command.issuedByEmployeeId());
+            // Tiempo 1 — transaccion corta: nada de I/O externo aca dentro.
+            ElectronicDocument document = saleRegistrar.registerPending(command);
+            // Tiempo 2 — sin transaccion abierta: numeracion + HTTP al proveedor.
             ElectronicDocument emitted = emitter.emit(document);
-            discountStock(command, emitted);
-            registerCash(command, emitted);
+            // Tiempo 3 — sin transaccion: PDF, QR y S3.
             deliverService.deliverIfValidated(emitted);
             salesMetrics.completed(Channel.POS, emitted.getDocumentType(),
                     emitted.getPayableAmount(), emitted.getLines().size());
@@ -98,15 +112,6 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
         }
     }
 
-    private void registerCash(RegisterPosSaleCommand command, ElectronicDocument document) {
-        if (document.getOpenAccountId() != null || document.getPayments().isEmpty())
-            return;
-        List<CashPort.PaymentLine> payments = document.getPayments().stream()
-                .map(p -> new CashPort.PaymentLine(p.getPaymentMeans(), p.getAmount())).toList();
-        cashPort.registerSale(command.companyId(), document.getBranchId(), document.getId(),
-                payments, command.issuedByEmployeeId());
-    }
-
     private void validateProductQuantities(RegisterPosSaleCommand command) {
         for (SaleLine line : command.lines()) {
             if (line.kind() == SaleLineKind.PRODUCT) {
@@ -115,20 +120,6 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
         }
     }
 
-    private void discountStock(RegisterPosSaleCommand command, ElectronicDocument document) {
-        for (SaleLine line : command.lines()) {
-            if (line.kind() != SaleLineKind.PRODUCT)
-                continue;
-            inventoryLedger.recordPosSale(command.companyId(), document.getBranchId(), line.refId(),
-                    toUnits(line.refId(), line.quantity()), document.getId(),
-                    command.issuedByEmployeeId());
-        }
-    }
-
-    /**
-     * Convierte la cantidad a unidades enteras; rechaza fracciones (un producto se
-     * vende por unidad).
-     */
     private static int toUnits(Long productId, BigDecimal quantity) {
         if (quantity == null || quantity.stripTrailingZeros().scale() > 0) {
             throw new IllegalArgumentException(
