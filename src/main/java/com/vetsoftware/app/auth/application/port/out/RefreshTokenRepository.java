@@ -17,7 +17,13 @@ public interface RefreshTokenRepository {
             LocalDateTime expiresAt) {
     }
 
+    /**
+     * {@code revokedAt} es {@code null} mientras el token siga vivo. Se expone
+     * porque la detección de reuso necesita saber <em>cuándo</em> se revocó: una
+     * revocación de hace dos segundos es una carrera entre pestañas; una de hace
+     * dos días es un robo.
+     */
     record StoredRefreshToken(Long id, Long subjectId, String subjectType, Long authVersion,
-            LocalDateTime expiresAt, boolean revoked) {
+            LocalDateTime expiresAt, boolean revoked, LocalDateTime revokedAt) {
     }
 }

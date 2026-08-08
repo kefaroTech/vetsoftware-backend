@@ -157,6 +157,31 @@ public class AuditLogger {
     }
 
     /**
+     * Se presentó un refresh token ya revocado y se revocó la familia entera del
+     * sujeto. Es la señal canónica de robo del OAuth 2.0 Security BCP (§4.14.2), y
+     * el único evento de este archivo que describe un ataque en curso y no una
+     * decisión de autorización: merece revisión humana, no solo quedar registrado.
+     *
+     * <p>
+     * {@code seconds_since_revocation} es lo que permite separar el robo de una
+     * carrera benigna entre pestañas al leer el log. Valores de pocos segundos por
+     * encima de la ventana de gracia apuntan a lo segundo; horas o días, a lo
+     * primero.
+     */
+    public void refreshTokenReuseDetected(Long subjectId, String subjectType,
+            long secondsSinceRevocation) {
+        persist("refresh_token_reuse_detected", "DENIED", "actor.id", String.valueOf(subjectId),
+                "actor.type", subjectType, "seconds_since_revocation",
+                String.valueOf(secondsSinceRevocation));
+        audit.atWarn().addKeyValue("event", "refresh_token_reuse_detected")
+                .addKeyValue("actor.id", subjectId).addKeyValue("actor.type", subjectType)
+                .addKeyValue("outcome", "DENIED")
+                .addKeyValue("seconds_since_revocation", secondsSinceRevocation)
+                .log("refresh token reuse detected type={} id={}; revoked all sessions",
+                        subjectType, subjectId);
+    }
+
+    /**
      * Denegación de autorización (@PreAuthorize → AccessDeniedException). Actor,
      * http.* vía MDC.
      */
