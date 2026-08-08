@@ -18,6 +18,6 @@ public interface AssertOpenAccountVersionUseCase {
     // lanza
     // OpenAccountNotFoundException (defensa en profundidad, no filtra versión
     // cross-tenant).
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and @authz.isMyCompany(#companyId)")
     void assertVersion(Long companyId, Long openAccountId, Long expectedVersion);
 }

@@ -5,6 +5,6 @@ import com.vetsoftware.app.surgerytype.application.dto.SurgeryTypeDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateSurgeryTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('surgery.update')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('surgery.update') and @authz.isMyCompany(#command.companyId))")
     SurgeryTypeDto execute(UpdateSurgeryTypeCommand command);
 }

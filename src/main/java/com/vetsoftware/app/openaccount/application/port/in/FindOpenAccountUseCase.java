@@ -4,6 +4,6 @@ import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindOpenAccountUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('openAccount.read')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('openAccount.read') and @authz.isMyCompany(#companyId))")
     OpenAccountDto findById(Long id, Long companyId);
 }

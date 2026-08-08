@@ -10,13 +10,17 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import jakarta.persistence.ManyToOne;
+import java.lang.reflect.Parameter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -35,6 +39,13 @@ final class VetSoftwareConditions {
      * Profundidad máxima de la búsqueda transitiva; evita recorrer el grafo entero.
      */
     private static final int MAX_DEPTH = 6;
+
+    /** Captura la expresión que recibe {@code @authz.isMyCompany(#…)}. */
+    private static final Pattern ISMYCOMPANY_REF = Pattern
+            .compile("isMyCompany\\(\\s*#([A-Za-z0-9_.]+)");
+
+    /** Disyunto que deja pasar al principal SYSTEM, cross-tenant por diseño. */
+    private static final String SYSTEM_DISJUNCT = "hasRole('SYSTEM')";
 
     private VetSoftwareConditions() {
     }
@@ -174,16 +185,84 @@ final class VetSoftwareConditions {
                     return;
                 }
                 Optional<PreAuthorize> gate = method.tryGetAnnotationOfType(PreAuthorize.class);
-                boolean valida = gate.isPresent() && gate.get().value().contains("isMyCompany");
-                events.add(new SimpleConditionEvent(method, valida,
-                        method.getFullName() + " recibe companyId pero su @PreAuthorize "
-                                + (gate.isEmpty() ? "no existe" : "no invoca @authz.isMyCompany")));
+                if (gate.isPresent() && soloAlcanzablePorSystem(gate.get().value())) {
+                    return;
+                }
+                if (gate.isEmpty()) {
+                    events.add(new SimpleConditionEvent(method, false,
+                            method.getFullName() + " recibe companyId y no tiene @PreAuthorize"));
+                    return;
+                }
+                String motivo = revisarGate(method, gate.get().value());
+                events.add(new SimpleConditionEvent(method, motivo == null, method.getFullName()
+                        + " recibe companyId pero su @PreAuthorize " + motivo));
             }
         };
     }
 
     /**
-     * {@code true} si algún parámetro del método lleva un campo {@code companyId}.
+     * {@code null} si el gate valida el tenant correctamente; si no, qué le pasa.
+     *
+     * <p>
+     * No basta con que aparezca {@code isMyCompany}: hay que comprobar a qué
+     * apunta. SpEL resuelve un {@code #parametroInexistente} a {@code null} sin
+     * avisar, {@code isMyCompany(null)} devuelve {@code false} y la regla queda
+     * siempre falsa — el endpoint se cierra para todos y nadie entiende por qué. Es
+     * la trampa que advierte el CLAUDE.md, y con decenas de anotaciones editadas a
+     * la vez es fácil de sembrar.
+     */
+    private static String revisarGate(JavaMethod method, String expression) {
+        Matcher reference = ISMYCOMPANY_REF.matcher(expression);
+        if (!reference.find()) {
+            return "no invoca @authz.isMyCompany";
+        }
+        String root = reference.group(1).split("\\.")[0];
+        Optional<Set<String>> parameterNames = nombresDeParametro(method);
+        if (parameterNames.isPresent() && !parameterNames.get().contains(root)) {
+            return "invoca @authz.isMyCompany(#" + reference.group(1) + "), y '" + root
+                    + "' no es un parametro del metodo: SpEL lo resuelve a null y el gate"
+                    + " queda siempre en false";
+        }
+        return null;
+    }
+
+    /**
+     * {@code true} si al gate solo llega un principal SYSTEM, que es cross-tenant
+     * por diseño. Ahí el conjunto del tenant seria codigo muerto: ningun empleado
+     * alcanza el metodo.
+     */
+    private static boolean soloAlcanzablePorSystem(String expression) {
+        return Arrays.stream(expression.split("\\bor\\b")).map(part -> part.replaceAll("\\s", ""))
+                .allMatch(part -> part.isEmpty() || SYSTEM_DISJUNCT.equals(part));
+    }
+
+    /**
+     * Vacío si la clase no se puede reflexionar: sin nombres no hay nada que
+     * validar.
+     */
+    private static Optional<Set<String>> nombresDeParametro(JavaMethod method) {
+        try {
+            Set<String> names = new HashSet<>();
+            for (Parameter parameter : method.reflect().getParameters()) {
+                names.add(parameter.getName());
+            }
+            return Optional.of(names);
+        } catch (RuntimeException | NoClassDefFoundError ignored) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * {@code true} si el método recibe la empresa, de cualquiera de las dos formas
+     * que se usan en el proyecto: dentro de un command
+     * ({@code execute(CreateXxxCommand)}, con un campo {@code companyId}) o como
+     * parámetro suelto ({@code find(Long companyId, Long id)}).
+     *
+     * <p>
+     * Las dos cuentan. Mirar solo los commands deja fuera los Find/List/Delete, que
+     * es justo donde estaban los hallazgos financieros y clínicos de BE-08; mirar
+     * solo los parámetros sueltos deja fuera los Create/Update. Son conjuntos casi
+     * disjuntos.
      */
     private static boolean transportaCompanyId(JavaMethod method) {
         for (JavaClass parameter : method.getRawParameterTypes()) {
@@ -195,6 +274,25 @@ final class VetSoftwareConditions {
                     return true;
                 }
             }
+        }
+        return tieneParametroLlamadoCompanyId(method);
+    }
+
+    /**
+     * ArchUnit no expone los nombres de parámetro, así que se reflexiona la clase
+     * real. Funciona porque Spring Boot compila con {@code -parameters}; si no
+     * estuviera, los nombres serían {@code arg0}, {@code arg1}… y este chequeo
+     * simplemente no encontraría nada.
+     */
+    private static boolean tieneParametroLlamadoCompanyId(JavaMethod method) {
+        try {
+            for (Parameter parameter : method.reflect().getParameters()) {
+                if ("companyId".equals(parameter.getName())) {
+                    return true;
+                }
+            }
+        } catch (RuntimeException | NoClassDefFoundError ignored) {
+            // La clase no se puede cargar; el chequeo por command sigue aplicando.
         }
         return false;
     }

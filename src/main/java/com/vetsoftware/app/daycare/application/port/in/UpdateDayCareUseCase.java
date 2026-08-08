@@ -5,6 +5,6 @@ import com.vetsoftware.app.daycare.application.dto.DayCareDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateDayCareUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('dayCare.update')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('dayCare.update') and @authz.isMyCompany(#command.companyId))")
     DayCareDto execute(UpdateDayCareCommand command);
 }

@@ -14,6 +14,6 @@ public interface RecalculateOpenAccountUseCase {
     // de ese tenant;
     // una cuenta ajena lanza OpenAccountNotFoundException sin tomar el lock
     // (defensa en profundidad).
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and @authz.isMyCompany(#companyId)")
     void recalculate(Long companyId, Long openAccountId);
 }

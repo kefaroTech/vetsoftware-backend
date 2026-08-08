@@ -1,6 +1,5 @@
 #
 #Sat Aug 08 00:25:25 GMT-05:00 2026
 classes\ that\ are\ assignable\ to\ org.springframework.data.jpa.repository.JpaRepository\ and\ have\ simple\ name\ ending\ with\ 'JpaRepository'\ should\ declarar\ @EntityGraph\ en\ los\ finders\ que\ devuelven\ la\ entidad,\ because\ la\ regla\ del\ CLAUDE.md\ sobre\ N+1\ debe\ ser\ verificable=e2542dba-b181-4100-970a-72399cc6d22c
-methods\ that\ are\ declared\ in\ classes\ that\ reside\ in\ a\ package\ '..application.port.in..'\ and\ are\ declared\ in\ classes\ that\ are\ interfaces\ and\ are\ declared\ in\ classes\ that\ are\ not\ annotated\ with\ @NoAuthorizationRequired\ should\ validar\ el\ tenant\ con\ @authz.isMyCompany,\ because\ un\ companyId\ que\ no\ viene\ del\ principal\ es\ una\ fuga\ entre\ empresas=b6cf2c98-6130-46c4-9e58-fcea329eac99
 no\ classes\ that\ reside\ in\ a\ package\ '..application..'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ '..infrastructure..',\ because\ infrastructure\ ->\ application\ ->\ domain,\ nunca\ al\ reves=d56421bd-621b-43ab-8ec1-1c2ff6cf1abd
 no\ classes\ that\ reside\ in\ a\ package\ '..application.usecase..'\ should\ call\ method\ where\ es\ findAll()\ sin\ argumentos,\ because\ un\ findAll()\ sin\ companyId\ es\ una\ fuga\ entre\ empresas\ esperando\ a\ ocurrir=79e421fb-a7ed-4e11-b09d-d530a56929a6
