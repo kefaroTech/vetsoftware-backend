@@ -26,11 +26,21 @@ public interface MembershipSubModuleJpaRepository
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE membership_sub_modules SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE membership_sub_modules
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT id FROM membership_sub_modules WHERE membership_id = :membershipId AND"
-            + " sub_module_id = :subModuleId AND enabled = false LIMIT 1", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT id
+            FROM membership_sub_modules
+            WHERE membership_id = :membershipId
+              AND sub_module_id = :subModuleId
+              AND enabled = false
+            LIMIT 1
+            """, nativeQuery = true)
     Optional<Long> findDisabledIdByMembershipAndSubModule(
             @org.springframework.data.repository.query.Param("membershipId") Long membershipId,
             @org.springframework.data.repository.query.Param("subModuleId") Long subModuleId);
@@ -47,11 +57,11 @@ public interface MembershipSubModuleJpaRepository
      */
     @org.springframework.data.jpa.repository.Query("""
             SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END
-              FROM MembershipSubModuleJpaEntity m
-             WHERE m.membership.id = :membershipId
-               AND m.subModule.code = :code
-               AND m.enabled = true
-               AND m.subModule.enabled = true
+            FROM MembershipSubModuleJpaEntity m
+            WHERE m.membership.id = :membershipId
+              AND m.subModule.code = :code
+              AND m.enabled = true
+              AND m.subModule.enabled = true
             """)
     boolean hasEnabledSubModuleCode(
             @org.springframework.data.repository.query.Param("membershipId") Long membershipId,

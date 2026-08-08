@@ -58,21 +58,21 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
             Long companyId, Long branchId, String terminal, CashSessionStatus status);
 
     @Query(value = SUMMARY_SELECT + """
-             WHERE s.company_id = :companyId
-               AND s.branch_id = :branchId
-               AND s.terminal = :terminal
-               AND s.status = 'OPEN'
-             LIMIT 1
+            WHERE s.company_id = :companyId
+              AND s.branch_id = :branchId
+              AND s.terminal = :terminal
+              AND s.status = 'OPEN'
+            LIMIT 1
             """, nativeQuery = true)
     Optional<CashSessionSummaryRow> findOpenSummary(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, @Param("terminal") String terminal);
 
     @Query(value = SUMMARY_SELECT + """
-             WHERE s.company_id = :companyId
-               AND s.branch_id = :branchId
-               AND s.terminal_id = :terminalId
-               AND s.status = 'OPEN'
-             LIMIT 1
+            WHERE s.company_id = :companyId
+              AND s.branch_id = :branchId
+              AND s.terminal_id = :terminalId
+              AND s.status = 'OPEN'
+            LIMIT 1
             """, nativeQuery = true)
     Optional<CashSessionSummaryRow> findOpenSummaryByTerminalId(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, @Param("terminalId") Long terminalId);
@@ -97,20 +97,20 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
     // @SQLRestriction enabled=true) y evitan resolver responsables con una consulta
     // por fila.
     @Query(value = SUMMARY_SELECT + """
-             WHERE s.company_id = :companyId
-               AND (:branchId IS NULL OR s.branch_id = :branchId)
-               AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
-               AND (:from IS NULL OR s.opened_at >= :from)
-               AND (:to IS NULL OR s.opened_at < :to)
-             ORDER BY s.opened_at DESC
+            WHERE s.company_id = :companyId
+              AND (:branchId IS NULL OR s.branch_id = :branchId)
+              AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
+              AND (:from IS NULL OR s.opened_at >= :from)
+              AND (:to IS NULL OR s.opened_at < :to)
+            ORDER BY s.opened_at DESC
             """, countQuery = """
             SELECT COUNT(*)
-              FROM cash_session s
-             WHERE s.company_id = :companyId
-               AND (:branchId IS NULL OR s.branch_id = :branchId)
-               AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
-               AND (:from IS NULL OR s.opened_at >= :from)
-               AND (:to IS NULL OR s.opened_at < :to)
+            FROM cash_session s
+            WHERE s.company_id = :companyId
+              AND (:branchId IS NULL OR s.branch_id = :branchId)
+              AND (:employeeId IS NULL OR s.opened_by_employee_id = :employeeId)
+              AND (:from IS NULL OR s.opened_at >= :from)
+              AND (:to IS NULL OR s.opened_at < :to)
             """, nativeQuery = true)
     Page<CashSessionSummaryRow> search(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, @Param("employeeId") Long employeeId,
@@ -118,9 +118,9 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
 
     /** Admin: todas las cajas OPEN de la empresa, sin acotar por sede. */
     @Query(value = SUMMARY_SELECT + """
-             WHERE s.company_id = :companyId
-               AND s.status = 'OPEN'
-             ORDER BY s.opened_at DESC
+            WHERE s.company_id = :companyId
+              AND s.status = 'OPEN'
+            ORDER BY s.opened_at DESC
             """, nativeQuery = true)
     List<CashSessionSummaryRow> findAllOpenByCompany(@Param("companyId") Long companyId);
 
@@ -128,10 +128,10 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
      * No-admin: cajas OPEN únicamente de las sedes asignadas incluidas en el JWT.
      */
     @Query(value = SUMMARY_SELECT + """
-             WHERE s.company_id = :companyId
-               AND s.status = 'OPEN'
-               AND s.branch_id IN (:branchIds)
-             ORDER BY s.opened_at DESC
+            WHERE s.company_id = :companyId
+              AND s.status = 'OPEN'
+              AND s.branch_id IN (:branchIds)
+            ORDER BY s.opened_at DESC
             """, nativeQuery = true)
     List<CashSessionSummaryRow> findAllOpenByCompanyAndBranchIdIn(
             @Param("companyId") Long companyId, @Param("branchIds") Collection<Long> branchIds);

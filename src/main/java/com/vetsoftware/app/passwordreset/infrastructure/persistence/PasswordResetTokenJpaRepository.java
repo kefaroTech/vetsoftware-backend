@@ -19,8 +19,12 @@ public interface PasswordResetTokenJpaRepository
     // entidades.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE PasswordResetTokenJpaEntity t SET t.consumedAt = :now "
-            + "WHERE t.employeeId = :employeeId AND t.consumedAt IS NULL")
+    @Query("""
+            UPDATE PasswordResetTokenJpaEntity t
+            SET t.consumedAt = :now
+            WHERE t.employeeId = :employeeId
+              AND t.consumedAt IS NULL
+            """)
     int consumeActiveForEmployee(@Param("employeeId") Long employeeId,
             @Param("now") LocalDateTime now);
 }

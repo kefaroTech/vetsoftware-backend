@@ -26,7 +26,12 @@ public interface RoleJpaRepository extends JpaRepository<RoleJpaEntity, Long> {
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE roles SET enabled = true WHERE id = :id AND company_id = :companyId", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE roles
+            SET enabled = true
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 

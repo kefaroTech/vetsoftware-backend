@@ -27,14 +27,22 @@ public interface LaboratoryTestJpaRepository
     Optional<LaboratoryTestJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company", "processedBy"})
-    @Query("SELECT x FROM LaboratoryTestJpaEntity x WHERE x.animal.id = :animalId "
-            + "AND (:q IS NULL OR :q = '' OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')))")
+    @Query("""
+            SELECT x
+            FROM LaboratoryTestJpaEntity x
+            WHERE x.animal.id = :animalId
+              AND (:q IS NULL OR :q = '' OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
     Page<LaboratoryTestJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
             @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE laboratory_tests SET enabled = true WHERE id = :id", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE laboratory_tests
+            SET enabled = true
+            WHERE id = :id
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsByTestType_Id(Long testTypeId);

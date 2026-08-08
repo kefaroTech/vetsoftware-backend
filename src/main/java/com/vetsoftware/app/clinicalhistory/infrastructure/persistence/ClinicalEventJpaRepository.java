@@ -12,7 +12,8 @@ public interface ClinicalEventJpaRepository
             JpaRepository<ClinicalEventViewJpaEntity, String> {
 
     @Query("""
-            SELECT e FROM ClinicalEventViewJpaEntity e
+            SELECT e
+            FROM ClinicalEventViewJpaEntity e
             WHERE e.animalId = :animalId
               AND e.companyId = :companyId
               AND e.eventType IN :types
@@ -25,7 +26,8 @@ public interface ClinicalEventJpaRepository
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     @Query("""
-            SELECT e FROM ClinicalEventViewJpaEntity e
+            SELECT e
+            FROM ClinicalEventViewJpaEntity e
             WHERE e.companyId = :companyId
               AND e.eventType IN :types
               AND (:from IS NULL OR e.eventDate >= :from)

@@ -32,13 +32,24 @@ public interface SupplierJpaRepository
     // UI.
     // Las asociaciones se hidratan perezosamente dentro de la transacción de
     // lectura del caso de uso.
-    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM suppliers WHERE company_id = :companyId AND enabled = false ORDER BY name", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT *
+            FROM suppliers
+            WHERE company_id = :companyId
+              AND enabled = false
+            ORDER BY name
+            """, nativeQuery = true)
     List<SupplierJpaEntity> findAllDisabledByCompany_Id(
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = "UPDATE suppliers SET enabled = true WHERE id = :id AND company_id = :companyId", nativeQuery = true)
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE suppliers
+            SET enabled = true
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
