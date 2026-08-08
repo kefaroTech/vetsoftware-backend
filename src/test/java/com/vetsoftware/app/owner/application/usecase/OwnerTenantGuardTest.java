@@ -11,6 +11,7 @@ import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.port.out.AnimalChildrenQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CityQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.owner.application.dto.PageResult;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import java.util.List;
@@ -51,12 +52,29 @@ class OwnerTenantGuardTest {
 
     @Test
     void listAllUsesCurrentCompanyScope() {
-        when(ownerRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of());
+        when(ownerRepository.findAllByCompanyId(COMPANY_ID, 0, 20))
+                .thenReturn(new PageResult<>(List.of(), 0, 20, 0L, 0));
 
         ListOwnersService service = new ListOwnersService(ownerRepository);
 
-        assertThat(service.listAll(COMPANY_ID)).isEmpty();
-        verify(ownerRepository).findAllByCompanyId(COMPANY_ID);
+        assertThat(service.listAll(COMPANY_ID, 0, 20).content()).isEmpty();
+        verify(ownerRepository).findAllByCompanyId(COMPANY_ID, 0, 20);
+    }
+
+    /**
+     * BE-06: la paginación no puede abrirle una puerta a otra empresa. El companyId
+     * sigue saliendo del principal y viajando hasta el repositorio, y page/pageSize
+     * no lo tocan.
+     */
+    @Test
+    void searchKeepsCompanyScopeWhenPaginated() {
+        when(ownerRepository.searchByCompanyAndTerm(COMPANY_ID, "rex", 2, 50))
+                .thenReturn(new PageResult<>(List.of(), 2, 50, 0L, 0));
+
+        SearchOwnersService service = new SearchOwnersService(ownerRepository);
+
+        assertThat(service.search(COMPANY_ID, "rex", 2, 50).page()).isEqualTo(2);
+        verify(ownerRepository).searchByCompanyAndTerm(COMPANY_ID, "rex", 2, 50);
     }
 
     @Test

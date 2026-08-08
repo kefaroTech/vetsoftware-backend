@@ -2,6 +2,8 @@ package com.vetsoftware.app.owner.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,17 +24,20 @@ public interface OwnerJpaRepository extends JpaRepository<OwnerJpaEntity, Long> 
     Optional<OwnerJpaEntity> findByIdAndCompanyId(@Param("id") Long id,
             @Param("companyId") Long companyId);
 
+    // Las asociaciones del grafo son to-one, así que el JOIN FETCH convive con la
+    // paginación sin traerse la tabla a memoria. Con una colección habría que
+    // separar la consulta o Hibernate paginaría en el heap (HHH000104).
     @EntityGraph(attributePaths = {"city", "company"})
     @Query("SELECT o FROM OwnerJpaEntity o WHERE o.company.id = :companyId")
-    List<OwnerJpaEntity> findAllByCompanyId(@Param("companyId") Long companyId);
+    Page<OwnerJpaEntity> findAllByCompanyId(@Param("companyId") Long companyId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"city", "company"})
     @Query("SELECT o FROM OwnerJpaEntity o WHERE o.company.id = :companyId AND ("
             + "LOWER(o.name) LIKE LOWER(CONCAT('%', :query, '%')) OR "
             + "LOWER(o.email) LIKE LOWER(CONCAT('%', :query, '%')) OR "
             + "LOWER(o.document) LIKE LOWER(CONCAT('%', :query, '%')))")
-    List<OwnerJpaEntity> searchByCompanyAndTerm(@Param("companyId") Long companyId,
-            @Param("query") String query);
+    Page<OwnerJpaEntity> searchByCompanyAndTerm(@Param("companyId") Long companyId,
+            @Param("query") String query, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

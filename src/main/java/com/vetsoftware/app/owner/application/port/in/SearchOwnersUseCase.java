@@ -1,10 +1,16 @@
 package com.vetsoftware.app.owner.application.port.in;
 
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
-import java.util.List;
+import com.vetsoftware.app.owner.application.dto.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchOwnersUseCase {
+
+    /**
+     * La búsqueda se pagina igual que el listado: filtrar en servidor no acota nada
+     * por sí solo —un término de una letra devuelve casi toda la tabla— y el front
+     * necesita las mismas páginas para el scroll.
+     */
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('owner.read') and @authz.isMyCompany(#companyId))")
-    List<OwnerDto> search(Long companyId, String query);
+    PageResult<OwnerDto> search(Long companyId, String query, int page, int pageSize);
 }
