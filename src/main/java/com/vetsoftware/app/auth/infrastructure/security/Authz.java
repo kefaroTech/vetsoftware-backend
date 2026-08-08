@@ -1,6 +1,8 @@
 package com.vetsoftware.app.auth.infrastructure.security;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
+import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import java.util.Collection;
 import java.util.Set;
@@ -16,40 +18,58 @@ public class Authz {
 
     public static final String COMPANY_SCOPE_HEADER = "X-Company-Id";
 
+    private static final String NO_COMPANY_CONTEXT = "No company context";
+    private static final String NO_EMPLOYEE_CONTEXT = "No employee context";
+
+    /**
+     * Actor autenticado de la request, o {@code null} si no hay ninguno. Único
+     * punto de lectura del {@link SecurityContextHolder} de esta clase: todo lo
+     * demás decide con un {@code switch} exhaustivo sobre el tipo sellado, de forma
+     * que un cuarto actor rompa la compilación aquí y no el comportamiento en
+     * producción.
+     */
+    private static AuthContext currentContext() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null ? null : AuthContext.ofPrincipal(auth.getPrincipal());
+    }
+
     public boolean isMyCompany(Long companyId) {
         if (companyId == null)
             return false;
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof EmployeeContext me
-                && companyId.equals(me.companyId());
+        return switch (currentContext()) {
+            case EmployeeContext me -> companyId.equals(me.companyId());
+            case SystemUserContext _ -> false;
+            case SystemContext _ -> false;
+            case null -> false;
+        };
     }
 
     public Long currentCompanyId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
-            return me.companyId();
-        }
-        if (auth != null && auth.getPrincipal() instanceof SystemUserContext) {
-            return requiredSystemCompanyId();
-        }
-        throw new AccessDeniedException("No company context");
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.companyId();
+            case SystemUserContext _ -> requiredSystemCompanyId();
+            case SystemContext _ -> throw new AccessDeniedException(NO_COMPANY_CONTEXT);
+            case null -> throw new AccessDeniedException(NO_COMPANY_CONTEXT);
+        };
     }
 
     /** Empresa del empleado o {@code null} para un superadmin/proceso global. */
     public Long currentCompanyIdOrNull() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
-            return me.companyId();
-        }
-        return null;
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.companyId();
+            case SystemUserContext _ -> null;
+            case SystemContext _ -> null;
+            case null -> null;
+        };
     }
 
     public Long currentEmployeeId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
-            return me.employeeId();
-        }
-        throw new AccessDeniedException("No employee context");
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.employeeId();
+            case SystemUserContext _ -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+            case SystemContext _ -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+            case null -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+        };
     }
 
     /**
@@ -59,9 +79,12 @@ public class Authz {
     public boolean isCurrentEmployee(Long employeeId) {
         if (employeeId == null)
             return false;
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof EmployeeContext me
-                && employeeId.equals(me.employeeId());
+        return switch (currentContext()) {
+            case EmployeeContext me -> employeeId.equals(me.employeeId());
+            case SystemUserContext _ -> false;
+            case SystemContext _ -> false;
+            case null -> false;
+        };
     }
 
     /**
@@ -69,17 +92,22 @@ public class Authz {
      * empleado (p.ej. SYSTEM).
      */
     public Long currentEmployeeIdOrNull() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
-            return me.employeeId();
-        }
-        return null;
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.employeeId();
+            case SystemUserContext _ -> null;
+            case SystemContext _ -> null;
+            case null -> null;
+        };
     }
 
     /** El bypass global sólo corresponde a una cuenta de sistema autenticada. */
     public boolean isSuperAdmin() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof SystemUserContext;
+        return switch (currentContext()) {
+            case SystemUserContext _ -> true;
+            case EmployeeContext _ -> false;
+            case SystemContext _ -> false;
+            case null -> false;
+        };
     }
 
     private static Long requiredSystemCompanyId() {
@@ -109,11 +137,12 @@ public class Authz {
      * a otros).
      */
     public Set<Long> currentBranchIds() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof EmployeeContext me) {
-            return me.branchIds();
-        }
-        throw new AccessDeniedException("No employee context");
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.branchIds();
+            case SystemUserContext _ -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+            case SystemContext _ -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+            case null -> throw new AccessDeniedException(NO_EMPLOYEE_CONTEXT);
+        };
     }
 
     /**
@@ -138,9 +167,12 @@ public class Authz {
     public boolean canAccessBranch(Long branchId) {
         if (branchId == null)
             return false;
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof EmployeeContext me
-                && me.branchIds().contains(branchId);
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.branchIds().contains(branchId);
+            case SystemUserContext _ -> false;
+            case SystemContext _ -> false;
+            case null -> false;
+        };
     }
 
     /**
@@ -160,11 +192,7 @@ public class Authz {
      * cae en la sede "Principal" fuera de alcance.
      */
     public Long resolveAccessibleBranch(Long requested) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (!(auth != null && auth.getPrincipal() instanceof EmployeeContext me)) {
-            throw new AccessDeniedException("No employee context");
-        }
-        Set<Long> scope = me.branchIds();
+        Set<Long> scope = currentBranchIds();
         if (requested != null) {
             if (!scope.contains(requested)) {
                 throw new BranchAccessDeniedException(

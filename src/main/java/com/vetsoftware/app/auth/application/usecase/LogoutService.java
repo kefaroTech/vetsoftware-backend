@@ -1,6 +1,8 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
+import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import com.vetsoftware.app.auth.application.port.in.LogoutUseCase;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "auth.logout")
 @Service
 public class LogoutService implements LogoutUseCase {
+
+    private static final String NOT_A_USER_CONTEXT = "Not an authenticated user context";
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthEmployeeRepository authEmployeeRepository;
@@ -33,18 +37,21 @@ public class LogoutService implements LogoutUseCase {
     @Transactional
     public void execute() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = auth == null ? null : auth.getPrincipal();
+        AuthContext principal = AuthContext.ofPrincipal(auth == null ? null : auth.getPrincipal());
 
-        if (principal instanceof EmployeeContext me) {
-            refreshTokenRepository.revokeAllForSubject(me.employeeId(), "EMPLOYEE");
-            // Invalida de inmediato los access tokens vivos (todas las sesiones del
-            // empleado).
-            authEmployeeRepository.bumpAuthVersion(me.employeeId());
-        } else if (principal instanceof SystemUserContext me) {
-            refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");
-            authSystemUserRepository.bumpAuthVersion(me.systemUserId());
-        } else {
-            throw new AccessDeniedException("Not an authenticated user context");
+        switch (principal) {
+            case EmployeeContext me -> {
+                refreshTokenRepository.revokeAllForSubject(me.employeeId(), "EMPLOYEE");
+                // Invalida de inmediato los access tokens vivos (todas las sesiones del
+                // empleado).
+                authEmployeeRepository.bumpAuthVersion(me.employeeId());
+            }
+            case SystemUserContext me -> {
+                refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");
+                authSystemUserRepository.bumpAuthVersion(me.systemUserId());
+            }
+            case SystemContext _ -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);
+            case null -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);
         }
     }
 }
