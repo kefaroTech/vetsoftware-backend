@@ -10,6 +10,11 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:REMOVED_SENSITIVE_VALUE}
+  refresh-cookie:
+    # En local el front habla por http://localhost. Una cookie Secure sobre http
+    # la descartan los navegadores que no tratan localhost como origen seguro, y
+    # el sintoma es una sesion que se cae a los 15 minutos sin explicacion.
+    secure: false
 
 management:
   endpoints:
