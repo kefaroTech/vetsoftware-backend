@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -279,24 +280,57 @@ public class ElectronicDocument {
         }
         List<ElectronicDocumentLine> noteLines = original.lines.stream()
                 .map(l -> scaleLine(l, ratio)).toList();
-        List<ElectronicDocumentPayment> notePayments = original.payments.stream()
-                .map(p -> new ElectronicDocumentPayment(null, p.getPaymentMeans(),
-                        Money.scaled(p.getAmount().multiply(ratio))))
-                .toList();
+        // BE-19: los totales de la nota SON la suma de sus líneas, nunca un escalado
+        // aparte del total del original. El adaptador envía LegalMonetaryTotal y las
+        // líneas en dos bloques distintos, y la DIAN los compara: si cada bloque se
+        // redondea por su cuenta, con N líneas el descuadre llega a ~N/2 centavos y el
+        // rechazo fiscal bloquea la anulación de la factura delante del cliente.
+        // Derivándolos de las líneas ya redondeadas, cuadran por construcción — que es
+        // lo que createPending ya hacía para la factura.
+        BigDecimal noteLineExtension = sum(noteLines,
+                ElectronicDocumentLine::getLineExtensionAmount);
+        BigDecimal noteTaxTotal = sum(noteLines, ElectronicDocumentLine::getTaxAmount);
+        BigDecimal noteTaxInclusive = Money.scaled(noteLineExtension.add(noteTaxTotal));
+        List<ElectronicDocumentPayment> notePayments = scalePayments(original.payments, ratio,
+                noteTaxInclusive);
         ZonedDateTime now = ZonedDateTime.now(COLOMBIA);
         String issueTime = now.toLocalTime().format(TIME_FORMAT) + COLOMBIA_OFFSET;
         return new ElectronicDocument(null, original.companyId, original.openAccountId, type, null,
                 null, null, now.toLocalDate(), issueTime, null, null, null, null, null, null, null,
-                DianStatus.PENDIENTE, null, original.issuer, original.customer,
-                Money.scaled(original.lineExtensionAmount.multiply(ratio)),
-                Money.scaled(original.taxExclusiveAmount.multiply(ratio)),
-                Money.scaled(original.taxInclusiveAmount.multiply(ratio)),
-                Money.scaled(original.payableAmount.multiply(ratio)), original.paymentForm,
+                DianStatus.PENDIENTE, null, original.issuer, original.customer, noteLineExtension,
+                noteLineExtension, noteTaxInclusive, noteTaxInclusive, original.paymentForm,
                 noteLines, notePayments, LocalDateTime.now(), true, ref, reasonCode, reasonText,
                 false, Money.scaled(original.reteFuenteAmount.multiply(ratio)),
                 Money.scaled(original.reteIvaAmount.multiply(ratio)),
                 Money.scaled(original.reteIcaAmount.multiply(ratio)), null, issuedByEmployeeId,
                 original.branchId);
+    }
+
+    /**
+     * Prorratea los medios de pago y carga el residuo del redondeo al último, para
+     * que la suma de pagos cuadre con el total de la nota. Es la misma regla que
+     * {@code createPending} impone a la factura, donde un descuadre entre pagos y
+     * total es motivo de rechazo antes de persistir.
+     */
+    private static List<ElectronicDocumentPayment> scalePayments(
+            List<ElectronicDocumentPayment> payments, BigDecimal ratio, BigDecimal payable) {
+        if (payments.isEmpty())
+            return List.of();
+        List<ElectronicDocumentPayment> scaled = new ArrayList<>(payments.size());
+        for (ElectronicDocumentPayment p : payments) {
+            scaled.add(new ElectronicDocumentPayment(null, p.getPaymentMeans(),
+                    Money.scaled(p.getAmount().multiply(ratio))));
+        }
+        BigDecimal residual = payable
+                .subtract(scaled.stream().map(ElectronicDocumentPayment::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+        if (residual.signum() != 0) {
+            int last = scaled.size() - 1;
+            ElectronicDocumentPayment p = scaled.get(last);
+            scaled.set(last, new ElectronicDocumentPayment(null, p.getPaymentMeans(),
+                    Money.scaled(p.getAmount().add(residual))));
+        }
+        return List.copyOf(scaled);
     }
 
     /**
@@ -310,12 +344,16 @@ public class ElectronicDocument {
                     l.getLineExtensionAmount(), l.getTaxCategory(), l.getTaxScheme(),
                     l.getTaxRate(), l.getTaxAmount(), l.getTotalAmount());
         }
+        BigDecimal base = Money.scaled(l.getLineExtensionAmount().multiply(ratio));
+        BigDecimal tax = Money.scaled(l.getTaxAmount().multiply(ratio));
+        // BE-19, mismo problema una escala más abajo: el total de la línea se DERIVA de
+        // sus dos componentes ya redondeados. Escalándolo por su cuenta,
+        // scaled(total·ratio) puede no ser scaled(base·ratio) + scaled(iva·ratio) y la
+        // propia línea sale descuadrada.
         return new ElectronicDocumentLine(null, l.getLineNumber(), l.getDescription(),
                 l.getQuantity(), l.getUnitMeasureCode(),
-                Money.scaled(l.getUnitPrice().multiply(ratio)),
-                Money.scaled(l.getLineExtensionAmount().multiply(ratio)), l.getTaxCategory(),
-                l.getTaxScheme(), l.getTaxRate(), Money.scaled(l.getTaxAmount().multiply(ratio)),
-                Money.scaled(l.getTotalAmount().multiply(ratio)));
+                Money.scaled(l.getUnitPrice().multiply(ratio)), base, l.getTaxCategory(),
+                l.getTaxScheme(), l.getTaxRate(), tax, base.add(tax));
     }
 
     private static BigDecimal sum(List<ElectronicDocumentLine> lines,
