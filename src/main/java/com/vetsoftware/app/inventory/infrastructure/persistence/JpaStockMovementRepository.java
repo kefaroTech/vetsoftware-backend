@@ -22,10 +22,12 @@ public class JpaStockMovementRepository implements StockMovementRepository {
     }
 
     @Override
-    public boolean existsByReference(StockReferenceType referenceType, Long referenceId) {
-        if (referenceId == null)
+    public boolean existsByReference(StockReferenceType referenceType, Long referenceId,
+            Long productId) {
+        if (referenceId == null || productId == null)
             return false;
-        return jpaRepository.existsByReferenceTypeAndReferenceId(referenceType.name(), referenceId);
+        return jpaRepository.existsByReferenceTypeAndReferenceIdAndProductId(referenceType.name(),
+                referenceId, productId);
     }
 
     @Override

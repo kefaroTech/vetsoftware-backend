@@ -9,7 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface StockMovementJpaRepository extends JpaRepository<StockMovementJpaEntity, Long> {
-    boolean existsByReferenceTypeAndReferenceId(String referenceType, Long referenceId);
+    boolean existsByReferenceTypeAndReferenceIdAndProductId(String referenceType, Long referenceId,
+            Long productId);
 
     List<StockMovementJpaEntity> findByReferenceTypeAndReferenceId(String referenceType,
             Long referenceId);
