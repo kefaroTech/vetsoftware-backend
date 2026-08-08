@@ -87,10 +87,16 @@ class StockLedgerServiceTest {
      */
     private StockLot seedLot(long branch, int qty, String cost, LocalDate expire,
             String lotNumber) {
-        StockLot lot = lots.save(new StockLot(null, CO, branch, P, lotNumber, expire, qty, bd(cost),
-                null, null, true));
-        StockBalance bal = balances.find(P, branch)
-                .orElseGet(() -> balances.save(StockBalance.create(CO, branch, P, 0)));
+        return seedLotFor(P, branch, qty, cost, expire, lotNumber);
+    }
+
+    /** Igual que {@link #seedLot}, para un producto distinto de {@code P}. */
+    private StockLot seedLotFor(long product, long branch, int qty, String cost, LocalDate expire,
+            String lotNumber) {
+        StockLot lot = lots.save(new StockLot(null, CO, branch, product, lotNumber, expire, qty,
+                bd(cost), null, null, true));
+        StockBalance bal = balances.find(product, branch)
+                .orElseGet(() -> balances.save(StockBalance.create(CO, branch, product, 0)));
         bal.add(qty);
         balances.save(bal);
         return lot;
@@ -341,6 +347,78 @@ class StockLedgerServiceTest {
             assertThat(generic.getQuantityAvailable()).isEqualTo(-4);
             assertThat(balances.qty(P, A)).isEqualTo(-4);
             assertThat(result).hasSize(1);
+        }
+
+        /**
+         * Regresión de BE-01. Una venta POS de varios productos emite un
+         * {@code recordSale} por línea con el MISMO id de documento como referencia.
+         * Cuando la clave de idempotencia era solo (tipo, referencia), el INSERT de la
+         * primera línea —visible en la transacción porque el id es IDENTITY— hacía que
+         * la segunda saliera como duplicado: sin error, sin descuento y con el
+         * inventario sobrestimado.
+         */
+        @Test
+        void venta_multiproducto_descuenta_todas_las_lineas_bajo_el_mismo_documento() {
+            long otroProducto = 200L;
+            seedLot(A, 50, "30", null, "L-P");
+            seedLotFor(otroProducto, A, 40, "12", null, "L-OTRO");
+            movements.clear();
+
+            service.recordSale(sale(5, false));
+            List<StockConsumptionDto> segunda = service.recordSale(new RecordSaleCommand(CO, A,
+                    otroProducto, 3, StockReferenceType.POS_DOCUMENT, 555L, USER, false));
+
+            assertThat(segunda).as("la segunda línea no puede descartarse como duplicado")
+                    .isNotEmpty();
+            assertThat(balances.qty(P, A)).isEqualTo(45);
+            assertThat(balances.qty(otroProducto, A)).as("el segundo producto también descuenta")
+                    .isEqualTo(37);
+            assertThat(movements.all()).hasSize(2);
+        }
+
+        /**
+         * El producto entra en la clave, pero la referencia sigue mandando: reenviar la
+         * misma línea del mismo documento no puede descontar dos veces.
+         */
+        @Test
+        void reintento_de_la_misma_linea_sigue_siendo_idempotente() {
+            long otroProducto = 200L;
+            seedLot(A, 50, "30", null, "L-P");
+            seedLotFor(otroProducto, A, 40, "12", null, "L-OTRO");
+            movements.clear();
+
+            service.recordSale(sale(5, false));
+            service.recordSale(new RecordSaleCommand(CO, A, otroProducto, 3,
+                    StockReferenceType.POS_DOCUMENT, 555L, USER, false));
+            List<StockConsumptionDto> reintento = service.recordSale(sale(5, false));
+
+            assertThat(reintento).as("mismo documento y mismo producto: duplicado").isEmpty();
+            assertThat(balances.qty(P, A)).isEqualTo(45);
+            assertThat(balances.qty(otroProducto, A)).isEqualTo(37);
+            assertThat(movements.all()).hasSize(2);
+        }
+
+        /**
+         * Un solo producto puede consumir varios lotes por FEFO y emitir un movimiento
+         * por lote, todos con la misma terna (tipo, referencia, producto). Es la razón
+         * por la que la clave de idempotencia vive en la aplicación y no puede
+         * expresarse como un índice único sobre esa terna.
+         */
+        @Test
+        void una_linea_que_cruza_varios_lotes_emite_un_movimiento_por_lote() {
+            seedLot(A, 4, "30", LocalDate.now().plusDays(10), "L-EARLY");
+            seedLot(A, 10, "31", LocalDate.now().plusDays(90), "L-LATE");
+            movements.clear();
+
+            List<StockConsumptionDto> result = service.recordSale(sale(9, false));
+
+            assertThat(result).as("dos lotes consumidos").hasSize(2);
+            assertThat(movements.all()).as("un movimiento de kardex por lote").hasSize(2);
+            assertThat(movements.all()).allSatisfy(m -> {
+                assertThat(m.getReferenceType()).isEqualTo(StockReferenceType.POS_DOCUMENT);
+                assertThat(m.getReferenceId()).isEqualTo(555L);
+                assertThat(m.getProductId()).isEqualTo(P);
+            });
         }
 
         private RecordSaleCommand sale(int qty, boolean allowNegative) {
@@ -866,9 +944,12 @@ class StockLedgerServiceTest {
         }
 
         @Override
-        public boolean existsByReference(StockReferenceType referenceType, Long referenceId) {
-            return saved.stream().anyMatch(m -> m.getReferenceType() == referenceType
-                    && Objects.equals(m.getReferenceId(), referenceId));
+        public boolean existsByReference(StockReferenceType referenceType, Long referenceId,
+                Long productId) {
+            return saved.stream()
+                    .anyMatch(m -> m.getReferenceType() == referenceType
+                            && Objects.equals(m.getReferenceId(), referenceId)
+                            && Objects.equals(m.getProductId(), productId));
         }
 
         @Override

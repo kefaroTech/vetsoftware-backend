@@ -80,9 +80,14 @@ public class StockLedgerService implements StockLedgerUseCase {
             inventoryMetrics.movement(StockMovementType.SALE, Result.VALIDATION_ERROR, 0);
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
-        // Idempotencia: si ya se registró esta referencia (reintento POS), no volver a
-        // descontar.
-        if (movementRepository.existsByReference(c.referenceType(), c.referenceId())) {
+        // Idempotencia por (referencia, PRODUCTO), no por referencia sola: una venta
+        // POS
+        // de N productos emite N movimientos bajo el mismo documento, y como el id del
+        // movimiento es IDENTITY el INSERT de la primera línea ya es visible en esta
+        // misma transacción. Con la referencia sola, la línea 2..N se descartaba como
+        // duplicado sin error y el stock quedaba sobrestimado.
+        if (movementRepository.existsByReference(c.referenceType(), c.referenceId(),
+                c.productId())) {
             inventoryMetrics.movement(StockMovementType.SALE, Result.DUPLICATE_IGNORED, 0);
             return List.of();
         }
@@ -114,9 +119,12 @@ public class StockLedgerService implements StockLedgerUseCase {
             inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.VALIDATION_ERROR, 0);
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
-        // Idempotencia por evento clínico (si viene referencia).
-        if (c.referenceId() != null && movementRepository
-                .existsByReference(StockReferenceType.CLINICAL_EVENT, c.referenceId())) {
+        // Idempotencia por (evento clínico, producto), si viene referencia. Hoy el
+        // controlador siempre manda referencia nula, pero un evento que consuma varios
+        // productos tendría la misma falla que tuvo el POS si la clave omitiera el
+        // producto.
+        if (c.referenceId() != null && movementRepository.existsByReference(
+                StockReferenceType.CLINICAL_EVENT, c.referenceId(), c.productId())) {
             inventoryMetrics.movement(StockMovementType.CLINICAL_USE, Result.DUPLICATE_IGNORED, 0);
             return List.of();
         }
