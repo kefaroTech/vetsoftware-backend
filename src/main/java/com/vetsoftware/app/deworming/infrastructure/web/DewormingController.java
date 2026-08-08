@@ -7,6 +7,8 @@ import com.vetsoftware.app.deworming.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.deworming.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.deworming.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.deworming.application.dto.DewormingDto;
+import com.vetsoftware.app.deworming.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.deworming.application.port.in.CreateDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.DeleteDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.FindDewormingUseCase;
@@ -67,8 +69,13 @@ public class DewormingController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<DewormingResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<DewormingResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<DewormingDto> result = listByAnimalUseCase.listByAnimal(animalId, page,
+                pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

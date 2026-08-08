@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface DiagnosticImagingJpaRepository
         extends
@@ -21,7 +23,7 @@ public interface DiagnosticImagingJpaRepository
     Optional<DiagnosticImagingJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"diagnosticImagingType", "animal", "consultation", "company"})
-    List<DiagnosticImagingJpaEntity> findAllByAnimalId(Long animalId);
+    Page<DiagnosticImagingJpaEntity> findAllByAnimalId(Long animalId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

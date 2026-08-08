@@ -8,6 +8,10 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.vaccination.application.port.out.VaccinationRepository;
 import com.vetsoftware.app.vaccination.domain.Vaccination;
+import com.vetsoftware.app.vaccination.application.dto.PageResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.vetsoftware.app.vaccinationtype.infrastructure.persistence.VaccinationTypeJpaEntity;
 import com.vetsoftware.app.vaccinationtype.infrastructure.persistence.VaccinationTypeJpaRepository;
 import java.util.List;
@@ -16,6 +20,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaVaccinationRepository implements VaccinationRepository {
+
+    private static final int BY_ANIMAL_DEFAULT_PAGE_SIZE = 20;
+    private static final int BY_ANIMAL_MAX_PAGE_SIZE = 200;
     private final VaccinationJpaRepository jpaRepository;
     private final VaccinationJpaMapper mapper;
     private final VaccinationTypeJpaRepository vaccinationTypeJpaRepository;
@@ -68,8 +75,25 @@ public class JpaVaccinationRepository implements VaccinationRepository {
     }
 
     @Override
-    public List<Vaccination> findAllByAnimalId(Long animalId) {
-        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    public PageResult<Vaccination> findAllByAnimalId(Long animalId, int page, int pageSize) {
+        Page<VaccinationJpaEntity> result = jpaRepository.findAllByAnimalId(animalId,
+                byAnimalPageRequest(page, pageSize));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
+    }
+
+    /**
+     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
+     * no deben poder volver a pedir el historial entero del animal. El orden por id
+     * descendente es estable y devuelve primero lo mas reciente, que es lo que la
+     * ficha clinica muestra arriba.
+     */
+    private static PageRequest byAnimalPageRequest(int page, int pageSize) {
+        int safeSize = pageSize <= 0
+                ? BY_ANIMAL_DEFAULT_PAGE_SIZE
+                : Math.min(pageSize, BY_ANIMAL_MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
     }
 
     @Override

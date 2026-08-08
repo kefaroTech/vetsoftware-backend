@@ -7,6 +7,8 @@ import com.vetsoftware.app.spa.application.command.UpdateSpaCommand;
 import com.vetsoftware.app.spa.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.spa.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.spa.application.dto.SpaDto;
+import com.vetsoftware.app.spa.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.spa.application.dto.SpaTypeSummaryDto;
 import com.vetsoftware.app.spa.application.port.in.ChangeSpaStatusUseCase;
 import com.vetsoftware.app.spa.application.port.in.CreateSpaUseCase;
@@ -71,8 +73,12 @@ public class SpaController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<SpaResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<SpaResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<SpaDto> result = listByAnimalUseCase.listByAnimal(animalId, page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

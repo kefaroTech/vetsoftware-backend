@@ -6,6 +6,8 @@ import com.vetsoftware.app.daycare.application.command.UpdateDayCareCommand;
 import com.vetsoftware.app.daycare.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.daycare.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.daycare.application.dto.DayCareDto;
+import com.vetsoftware.app.daycare.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.daycare.application.port.in.CreateDayCareUseCase;
 import com.vetsoftware.app.daycare.application.port.in.DeleteDayCareUseCase;
 import com.vetsoftware.app.daycare.application.port.in.FindDayCareUseCase;
@@ -63,8 +65,12 @@ public class DayCareController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<DayCareResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<DayCareResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<DayCareDto> result = listByAnimalUseCase.listByAnimal(animalId, page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

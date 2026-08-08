@@ -1,6 +1,7 @@
 package com.vetsoftware.app.deworming.application.port.out;
 
 import com.vetsoftware.app.deworming.domain.Deworming;
+import com.vetsoftware.app.deworming.application.dto.PageResult;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,7 @@ public interface DewormingRepository {
 
     List<Deworming> findAll();
 
-    List<Deworming> findAllByAnimalId(Long animalId);
+    PageResult<Deworming> findAllByAnimalId(Long animalId, int page, int pageSize);
 
     void delete(Long id);
 

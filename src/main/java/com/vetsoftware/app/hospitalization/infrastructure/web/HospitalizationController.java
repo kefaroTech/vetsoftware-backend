@@ -7,6 +7,8 @@ import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
+import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
@@ -70,8 +72,13 @@ public class HospitalizationController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<HospitalizationResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<HospitalizationResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<HospitalizationDto> result = listByAnimalUseCase.listByAnimal(animalId, page,
+                pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Long> {
 
@@ -19,7 +21,7 @@ public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Lo
     Optional<DayCareJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "company"})
-    List<DayCareJpaEntity> findAllByAnimalId(Long animalId);
+    Page<DayCareJpaEntity> findAllByAnimalId(Long animalId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

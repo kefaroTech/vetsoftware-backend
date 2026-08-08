@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEntity, Long> {
 
@@ -19,7 +21,7 @@ public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEn
     Optional<VaccinationJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"vaccinationType", "animal", "consultation", "company"})
-    List<VaccinationJpaEntity> findAllByAnimalId(Long animalId);
+    Page<VaccinationJpaEntity> findAllByAnimalId(Long animalId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

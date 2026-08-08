@@ -8,6 +8,8 @@ import com.vetsoftware.app.surgery.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.surgery.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.surgery.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
+import com.vetsoftware.app.surgery.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.surgery.application.dto.SurgeryTypeSummaryDto;
 import com.vetsoftware.app.surgery.application.port.in.ChangeSurgeryStatusUseCase;
 import com.vetsoftware.app.surgery.application.port.in.CreateSurgeryUseCase;
@@ -74,8 +76,12 @@ public class SurgeryController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<SurgeryResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<SurgeryResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<SurgeryDto> result = listByAnimalUseCase.listByAnimal(animalId, page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
