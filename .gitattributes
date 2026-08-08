@@ -2,3 +2,7 @@ mvnw text eol=lf
 .husky/* text eol=lf
 mvnw.cmd text eol=crlf
 config/archunit/violation-store/** text eol=lf
+
+# Los workflows corren en Linux: un CRLF rompe el terminador de un heredoc.
+*.yml  text eol=lf
+*.yaml text eol=lf
