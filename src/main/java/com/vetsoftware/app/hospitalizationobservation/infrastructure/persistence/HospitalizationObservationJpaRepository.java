@@ -1,9 +1,10 @@
 package com.vetsoftware.app.hospitalizationobservation.infrastructure.persistence;
 
-import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface HospitalizationObservationJpaRepository
         extends
@@ -18,7 +19,8 @@ public interface HospitalizationObservationJpaRepository
             Long companyId);
 
     @EntityGraph(attributePaths = {"hospitalization", "createdBy"})
-    List<HospitalizationObservationJpaEntity> findByHospitalizationId(Long hospitalizationId);
+    Page<HospitalizationObservationJpaEntity> findByHospitalizationId(Long hospitalizationId,
+            Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

@@ -3,6 +3,8 @@ package com.vetsoftware.app.animal.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AnimalJpaRepository extends JpaRepository<AnimalJpaEntity, Long> {
@@ -22,7 +24,7 @@ public interface AnimalJpaRepository extends JpaRepository<AnimalJpaEntity, Long
     Optional<AnimalJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"specie", "breed", "owner", "company", "color"})
-    List<AnimalJpaEntity> findAllByCompany_Id(Long companyId);
+    Page<AnimalJpaEntity> findAllByCompany_Id(Long companyId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

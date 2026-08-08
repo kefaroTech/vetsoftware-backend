@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationprogressnote.application.port.out;
 
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNote;
-import java.util.List;
+import com.vetsoftware.app.hospitalizationprogressnote.application.dto.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationProgressNoteRepository {
@@ -11,7 +11,8 @@ public interface HospitalizationProgressNoteRepository {
 
     Optional<HospitalizationProgressNote> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<HospitalizationProgressNote> findAllByHospitalizationId(Long hospitalizationId);
+    PageResult<HospitalizationProgressNote> findAllByHospitalizationId(Long hospitalizationId,
+            int page, int pageSize);
 
     void delete(Long id);
 

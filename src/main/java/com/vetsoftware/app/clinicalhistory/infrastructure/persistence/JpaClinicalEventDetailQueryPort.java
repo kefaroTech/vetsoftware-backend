@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,13 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQueryPort {
+
+    /**
+     * El detalle de una estancia carga sus sublistas completas, pero acotadas: son
+     * finitas por definicion y este tope evita que una hospitalizacion larga se
+     * traiga miles de filas.
+     */
+    private static final Pageable STAY_DETAIL_PAGE = Pageable.ofSize(200);
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -261,7 +269,7 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
 
     private DetailTable medicationTable(Long hospitalizationId) {
         List<List<String>> rows = hospitalizationMedicationRepo
-                .findByHospitalizationId(hospitalizationId).stream()
+                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
                 .sorted(Comparator.comparing(m -> m.getCreatedDate()))
                 .map(m -> List.of(nz(m.getName()), nz(m.getDose()), nz(m.getFrequency()),
                         duration(m.getDurationQuantity(), m.getDurationMeasure()),
@@ -274,7 +282,7 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
 
     private DetailTable procedureTable(Long hospitalizationId) {
         List<List<String>> rows = hospitalizationProcedureRepo
-                .findByHospitalizationId(hospitalizationId).stream()
+                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
                 .sorted(Comparator.comparing(p -> p.getCreatedDate()))
                 .map(p -> List.of(nz(p.getName()), nz(p.getDose()), nz(p.getFrequency()),
                         duration(p.getDurationQuantity(), p.getDurationMeasure()),
@@ -287,7 +295,7 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
 
     private DetailTable progressNoteTable(Long hospitalizationId) {
         List<List<String>> rows = hospitalizationProgressNoteRepo
-                .findByHospitalizationId(hospitalizationId).stream()
+                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
                 .sorted(Comparator.comparing(n -> n.getCreatedDate()))
                 .map(n -> List.of(n.getCreatedDate().toLocalDate().format(DATE),
                         author(n.getCreatedBy() == null ? null : n.getCreatedBy().getName()),
@@ -299,7 +307,7 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
 
     private DetailTable observationTable(Long hospitalizationId) {
         List<List<String>> rows = hospitalizationObservationRepo
-                .findByHospitalizationId(hospitalizationId).stream()
+                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
                 .sorted(Comparator.comparing(o -> o.getCreatedDate()))
                 .map(o -> List.of(o.getCreatedDate().toLocalDate().format(DATE),
                         author(o.getCreatedBy() == null ? null : o.getCreatedBy().getName()),

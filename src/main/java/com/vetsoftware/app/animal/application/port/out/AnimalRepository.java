@@ -1,5 +1,6 @@
 package com.vetsoftware.app.animal.application.port.out;
 
+import com.vetsoftware.app.animal.application.dto.PageResult;
 import com.vetsoftware.app.animal.domain.Animal;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,7 @@ public interface AnimalRepository {
 
     List<Animal> findAll();
 
-    List<Animal> findAllByCompanyId(Long companyId);
+    PageResult<Animal> findAllByCompanyId(Long companyId, int page, int pageSize);
 
     List<Animal> findByOwnerIdAndCompanyId(Long ownerId, Long companyId);
 

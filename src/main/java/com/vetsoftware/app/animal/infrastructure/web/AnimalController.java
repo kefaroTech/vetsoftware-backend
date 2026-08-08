@@ -3,6 +3,7 @@ package com.vetsoftware.app.animal.infrastructure.web;
 import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
 import com.vetsoftware.app.animal.application.command.UpdateAnimalCommand;
 import com.vetsoftware.app.animal.application.dto.*;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.animal.application.port.in.*;
 import com.vetsoftware.app.animal.infrastructure.web.request.CreateAnimalRequest;
 import com.vetsoftware.app.animal.infrastructure.web.request.UpdateAnimalRequest;
@@ -51,9 +52,12 @@ public class AnimalController {
     }
 
     @GetMapping
-    public List<AnimalResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
+    public PageResponse<AnimalResponse> listAll(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<AnimalDto> result = listUseCase.listAll(authz.currentCompanyId(), page,
+                pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/by-owner/{ownerId}")
