@@ -36,6 +36,12 @@
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
         <checkstyle.version>13.9.0</checkstyle.version>
         <archunit.version>1.4.1</archunit.version>
+        <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
+        <!-- Suelo de cobertura global: solo puede SUBIR. Medido 14,24 % el 2026-08-08
+             tras la suite del modulo animal (era 12,73 % antes); se fija un par de
+             decimas por debajo para dejar margen a refactors que muevan el
+             denominador. Ver "Cobertura" en CLAUDE.md. -->
+        <jacoco.line.minimum>0.14</jacoco.line.minimum>
     </properties>
 
     <dependencyManagement>
@@ -260,9 +266,69 @@
                 <configuration>
                     <!-- Comillas obligatorias: sin ellas surefire parte el argumento en
                          los espacios de la ruta del .m2 y el fork muere con
-                         "Error opening zip file or JAR manifest missing". -->
+                         "Error opening zip file or JAR manifest missing".
+
+                         @{argLine} es sustitucion TARDIA: resuelve la propiedad argLine en
+                         el momento de ejecutar, que es cuando jacoco:prepare-agent ya la ha
+                         reescrito con su -javaagent. Por eso conviven los dos agentes y por
+                         eso la propiedad argLine se declara vacia arriba: sin declararla,
+                         @{argLine} quedaria literal cuando jacoco no corre. -->
                     <argLine>@{argLine} -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- Sin logica propia: solo estructura o arranque. Medirlos infla
+                             la cobertura sin decir nada sobre el riesgo real. -->
+                        <exclude>**/VetsoftwareApplication.class</exclude>
+                        <exclude>**/*JpaEntity.class</exclude>
+                        <exclude>**/config/**</exclude>
+                        <exclude>**/*Request.class</exclude>
+                        <exclude>**/*Response.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <!-- Trinquete: el suelo global no puede bajar. Se sube a mano al
+                             valor medido cuando un PR lo supera; nunca se baja. -->
+                        <id>check-floor</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.line.minimum}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>

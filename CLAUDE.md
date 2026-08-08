@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > Pausa indicada por el usuario el 2026-06-06. Mantener hasta que el usuario diga explícitamente lo contrario.
 
 - ❌ **No actualizar ni crear diagramas `.puml`** (ni `uml/Veterinaria.puml` ni los `uml/sequenceDiagram/**`). Aunque se toque un endpoint, NO sincronizar su diagrama.
-- ~~No crear ni modificar tests unitarios~~ — **levantada por el usuario el 2026-08-08** para implementar RF-11. Los tests vuelven a la convención normal ("un test por service", más abajo).
+- ~~No crear ni modificar tests unitarios~~ — **levantada por el usuario el 2026-08-08**. Los tests se rigen ahora por la sección **Testing conventions**, reescrita ese mismo día: JUnit 6 + Mockito + AssertJ + JaCoCo. La regla vieja de "sin Mockito, stubs manuales" queda derogada.
 
 La pausa de diagramas suspende la convención de "diagramas sincronizados". El resto del documento sigue vigente.
 
@@ -30,8 +30,9 @@ Tres reglas son duras porque el código ya las cumple: dominio sin framework, si
 ```bash
 mvn clean package          # build
 mvn spring-boot:run        # run
-mvn test                   # all tests
+mvn test                   # all tests + informe de cobertura en target/site/jacoco/index.html
 mvn test -Dtest=ClassName  # single test class
+mvn verify                 # tests + suelo de cobertura (jacoco:check) + checkstyle + spotless
 mvn clean verify sonar:sonar -Dsonar.login=<token>   # análisis de código (SonarQube 9.9 LTS en localhost:9000)
 ```
 
@@ -465,20 +466,186 @@ Las rutas que no requieren JWT se declaran en `AuthFilter.PUBLIC_PATHS` como par
 
 ## Testing conventions
 
-- Tests de capa application: **sin Spring context, sin Mockito** — stubs manuales inline.
-- Nombre de métodos de test en `snake_case` describiendo el escenario.
-- Un test class por service (`CreateAnimalServiceTest`, `FindAnimalServiceTest`, etc.).
+> Reescritas el **2026-08-08**. La convención anterior —*«sin Spring context, sin Mockito,
+> stubs manuales inline»*— queda **derogada**: los stubs manuales hacen que el contrato del
+> puerto lo defina el propio test, que es exactamente donde vivió BE-01 durante meses. Los
+> tests ya escritos con stubs manuales siguen siendo válidos y **no hay que migrarlos en masa**;
+> se modernizan cuando se toque su feature.
+
+### El stack lo fija el BOM — no declares versiones de test en el `pom.xml`
+
+`spring-boot-starter-test` (Boot **4.1.0**, Framework **7.0.8**) ya trae todo y con estas
+versiones gestionadas. Añadir una versión a mano es como se rompe un upgrade.
+
+| Herramienta | Versión | Para qué |
+|---|---|---|
+| JUnit Jupiter | **6.0.3** | motor de test |
+| Mockito (+ `mockito-junit-jupiter`) | **5.23.0** | dobles de los puertos |
+| AssertJ | **3.27.7** | aserciones — la API por defecto |
+| Testcontainers | **2.0.5** | MySQL real para `@DataJpaTest` (fase siguiente) |
+| ArchUnit | 1.4.1 | reglas de este documento |
+| JaCoCo | 0.8.14 | cobertura |
+
+**Java 25 obliga a cargar el agente de Mockito explícitamente.** La JDK ya no permite
+adjuntar agentes dinámicamente en silencio, así que `surefire` pasa
+`-javaagent:"${org.mockito:mockito-core:jar}"`. **No toques ese `argLine`** — y si lo
+tocas, mantén el `@{argLine}`, que es lo que deja entrar al agente de JaCoCo.
+
+### Qué herramienta por capa
+
+| Capa | Cómo se prueba | Mocks |
+|---|---|---|
+| `domain/` | JUnit + AssertJ puros. Instancia la entidad de verdad | ❌ **nunca** |
+| `application/usecase/` | JUnit + `@ExtendWith(MockitoExtension.class)`, sin contexto de Spring | ✅ solo los puertos `port/out` |
+| `application/dto/` | JUnit puro sobre `from(...)` — campo por campo | ❌ |
+| `persistence/XxxJpaMapper` | JUnit puro, ida y vuelta dominio↔entidad | ❌ |
+| `persistence/JpaXxxRepository` | `@DataJpaTest` + Testcontainers MySQL | ❌ — base real |
+| `web/XxxController` | `@WebMvcTest` + `@MockitoBean` sobre los use cases | ✅ los puertos `port/in` |
+| reglas del CLAUDE.md | ArchUnit (`HexagonalArchitectureTest`) | — |
+
+### Mockito — reglas duras
+
+- **Siempre `@ExtendWith(MockitoExtension.class)`.** Nunca `Mockito.mock()` suelto en un
+  campo: pierdes `STRICT_STUBS`, que es lo que detecta stubs que ya nadie usa y llamadas
+  con argumentos distintos a los esperados. Ese chivato vale más que el mock.
+- **No relajes la estrictez.** `lenient()` o `Strictness.LENIENT` exigen un comentario con
+  el motivo en la misma línea. Casi siempre significa que el test está mal montado.
+- **Nunca mockees lo que no es un puerto.** Entidades de dominio, `record`s, VOs, commands
+  y DTOs se construyen de verdad. Un `Animal` mockeado no valida sus propias invariantes,
+  así que el test pasa con datos que producción rechazaría.
+- **Nunca mockees la clase bajo prueba**, ni `spy()` parciales sobre ella.
+- **`verify` solo para efectos**, no para consultas. Si el método devuelve algo, la
+  aserción es el valor devuelto; verificar además que se llamó al repositorio es acoplar el
+  test a la implementación.
+- **`ArgumentCaptor` para afirmar *qué* se guardó**, no solo que se guardó. `verify(repo).save(any())`
+  es una aserción vacía — pasa igual si guardas el objeto equivocado.
+- **`verifyNoInteractions` / `verifyNoMoreInteractions` cuando el escenario es «no debe
+  escribir»**: validación que falla, tenant ajeno, entidad inexistente. Es la mitad del
+  valor de estos tests.
 
 ```java
-// Patrón de stub manual
-private final AnimalRepository repository = new AnimalRepository() {
-    Animal saved;
-    public void save(Animal a)                        { saved = a; }
-    public Optional<Animal> findById(AnimalId id)     { return Optional.ofNullable(saved); }
-    public List<Animal> findAll()                     { return List.of(); }
-    public void delete(AnimalId id)                   {}
-};
+@ExtendWith(MockitoExtension.class)
+class CreateAnimalServiceTest {
+
+    @Mock private AnimalRepository repository;
+    @Mock private SpecieQueryPort specieQueryPort;
+    @InjectMocks private CreateAnimalService service;
+
+    @Test
+    @DisplayName("persiste el animal con la especie resuelta por el puerto")
+    void persiste_el_animal_con_la_especie_resuelta() {
+        when(specieQueryPort.findById(7L)).thenReturn(Optional.of(UN_PERRO));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.execute(comandoValido());
+
+        ArgumentCaptor<Animal> guardado = ArgumentCaptor.forClass(Animal.class);
+        verify(repository).save(guardado.capture());
+        assertThat(guardado.getValue().getSpecie()).isEqualTo(UN_PERRO);   // ← el qué, no el que
+    }
+
+    @Test
+    @DisplayName("no toca el repositorio si la especie no existe")
+    void no_toca_el_repositorio_si_la_especie_no_existe() {
+        when(specieQueryPort.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.execute(comandoValido()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Specie not found: 7");
+
+        verifyNoInteractions(repository);
+    }
+}
 ```
+
+### JUnit 6 y AssertJ
+
+- **`assertThatThrownBy` de AssertJ**, no `assertThrows`: encadena la aserción sobre el
+  mensaje y el tipo en una sola expresión legible.
+- **`@DisplayName` en castellano** describiendo el comportamiento; el nombre del método en
+  `snake_case` (se mantiene la convención anterior). El `@DisplayName` es lo que se lee en
+  el informe de fallos.
+- **`@Nested` para agrupar por escenario** (`class Creacion`, `class Validaciones`,
+  `class Tenancy`). Un test class por service sigue vigente.
+- **`@ParameterizedTest` para matrices de validación** — cada invariante de una entidad es
+  un caso, no un test copiado quince veces. `@EnumSource` para recorrer enums completos:
+  es lo que detecta el `switch` al que se le olvidó una rama nueva.
+- **Sin `if`, `for` ni `try/catch` en el cuerpo de un test.** Si hace falta lógica, el caso
+  está mal partido.
+- **Sin JUnit 4.** No hay `junit-vintage` en el classpath: `org.junit.Test`,
+  `@RunWith` y `Assert.*` no compilan.
+- **`@Disabled` solo con motivo escrito y enlace al issue.**
+
+### Determinismo — la regla que más fallos intermitentes evita
+
+- **Nada de `LocalDate.now()` / `LocalDateTime.now()` / `Instant.now()` en código de
+  producción que un test tenga que afirmar.** Inyecta `java.time.Clock` por constructor y
+  usa `Clock.fixed(...)` en el test. Un test que compara contra `LocalDate.now()` es un
+  test que se cae solo el día que el reloj cruce medianoche entre dos líneas.
+- **Deuda registrada, no excusa:** `Animal.create`, `CreateAnimalService` y
+  `CreateWeightRecordService` llaman a `now()` hoy. Código nuevo inyecta `Clock`; el
+  existente se migra al tocar la feature.
+- Sin `Thread.sleep`, sin aleatoriedad, sin dependencia del orden de ejecución, sin estado
+  `static` mutable compartido entre tests.
+
+### Datos de prueba — *object mother* por feature
+
+Los fixtures viven en `src/test/java/…/<feature>/testsupport/XxxMother.java`, con un método
+por variante y valores válidos por defecto. **No** se crea un paquete de fixtures
+compartido entre features: el vertical slicing aplica igual en `src/test`.
+
+```java
+public final class AnimalMother {
+    public static Animal perroSano()                  { … }
+    public static Animal fallecido(LocalDate fecha)   { … }
+}
+```
+
+### Cobertura — JaCoCo como detector, nunca como objetivo
+
+```bash
+mvn test                      # corre tests y genera target/site/jacoco/index.html
+mvn verify                    # además comprueba el suelo de cobertura
+```
+
+- **Línea base al 2026-08-08: 12,73 % de líneas** (17.968/141.109) y 13,82 % de ramas,
+  sobre 622 tests. Ojo: **no es el 2,3 % de la auditoría** — aquel número era el ratio
+  *archivos de test / archivos de producción*, que no mide lo mismo.
+- **Tras la suite del módulo `animal` (2026-08-08): 14,24 % global**, con 803 tests. Ese
+  módulo es la **referencia** de lo que se espera al modernizar una feature: `domain`,
+  `application/command`, `application/dto` y `application/usecase` al **100 %** de línea y
+  **95,9 % de rama**; `infrastructure/persistence` al 29 % (solo los mappers — los
+  adaptadores JPA necesitan `@DataJpaTest`) y `web` sin tocar (necesita `@WebMvcTest`).
+- El `pom.xml` fija un **trinquete**: `jacoco.line.minimum` es un suelo global que **solo
+  puede subir**. Se sube a mano cuando un PR lo supera de forma estable. **Bajarlo requiere
+  justificarlo en el PR** — es la única forma de que la cifra signifique algo.
+- **Umbrales por paquete de riesgo** (inventario, facturación electrónica, caja, cuenta
+  abierta) en cuanto esos paquetes lleguen al 70 %. Un umbral global alto no se pone: o se
+  fija en lo que hay y no impide nada, o deja el CI en rojo permanente y se acaba
+  desactivando.
+- **Excluido del cómputo** y por qué: `*JpaEntity` (solo campos y accesores), `config/**`,
+  `*Request`/`*Response` (forma del JSON, sin lógica) y la clase `main`. Medirlos infla el
+  número sin decir nada del riesgo.
+- **Prohibido escribir tests para mover el número.** Cobertura alta sobre getters es peor
+  que cobertura baja honesta: entierra la señal. Lo que se mide es dónde falta red, no cuánto
+  se ha trabajado.
+
+### Anti-patterns de test — nunca hacer esto
+
+- ❌ `@MockBean` / `@SpyBean` — **eliminados en Spring Framework 7**. Son `@MockitoBean` y
+  `@MockitoSpyBean`, y viven en `org.springframework.test.context.bean.override.mockito`.
+- ❌ `@SpringBootTest` para probar un service. Arranca el contexto entero para ejercitar
+  una clase: minutos de CI a cambio de nada. `@SpringBootTest` solo cuando lo que se prueba
+  **es** el cableado (seguridad, filtros, autoconfiguración).
+- ❌ Mockear `AnimalRepository` **y además** afirmar sobre el mock en vez de sobre el
+  resultado del caso de uso.
+- ❌ Un test por método público del service. Se prueba **comportamiento** —incluidos los
+  caminos de fallo—, no superficie de API.
+- ❌ Tests sin aserción, o cuya única aserción es `verify(...)` de una consulta.
+- ❌ Afirmar sobre el mensaje exacto de una excepción con `isEqualTo` — usa
+  `hasMessageContaining` con la parte estable (el prefijo y el id).
+- ❌ Compartir `@Mock` mutables entre `@Nested` con estado acumulado entre tests.
+- ❌ Tocar la base de datos o la red desde un test unitario.
 
 ## Anti-patterns — nunca hacer esto
 
