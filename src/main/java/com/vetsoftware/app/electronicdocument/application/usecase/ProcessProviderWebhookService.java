@@ -13,7 +13,6 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ProviderWebho
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
-import com.vetsoftware.app.electronicdocument.domain.TransmissionResult;
 import com.vetsoftware.app.electronicdocument.domain.WebhookOutcome;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Duration;
@@ -24,7 +23,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Procesa un webhook async (p. ej. MATIAS): enruta por proveedor, ubica el
@@ -40,28 +38,42 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
     private final TransmissionLogPort transmissionLog;
     private final BillingEntitlementQueryPort billingEntitlement;
     private final DocumentTransmitter documentTransmitter;
-    private final NumberAssigner numberAssigner;
+    private final WebhookRejectionApplier rejectionApplier;
     private final BillingMetrics billingMetrics;
     private final Map<String, ProviderWebhookParser> parsers;
 
     public ProcessProviderWebhookService(ElectronicDocumentRepository repository,
             ProviderConfigQueryPort configQueryPort, TransmissionLogPort transmissionLog,
             BillingEntitlementQueryPort billingEntitlement, DocumentTransmitter documentTransmitter,
-            NumberAssigner numberAssigner, BillingMetrics billingMetrics,
+            WebhookRejectionApplier rejectionApplier, BillingMetrics billingMetrics,
             List<ProviderWebhookParser> webhookParsers) {
         this.repository = repository;
         this.configQueryPort = configQueryPort;
         this.transmissionLog = transmissionLog;
         this.billingEntitlement = billingEntitlement;
         this.documentTransmitter = documentTransmitter;
-        this.numberAssigner = numberAssigner;
+        this.rejectionApplier = rejectionApplier;
         this.billingMetrics = billingMetrics;
         this.parsers = webhookParsers.stream().collect(
                 Collectors.toMap(ProviderWebhookParser::providerName, Function.identity()));
     }
 
+    /**
+     * Sin {@code @Transactional} a proposito, por el mismo motivo que
+     * {@link DocumentTransmitter}: la rama ACEPTADO consulta el sello fiscal al
+     * proveedor ({@code reconcile} -> {@code fetchStatus}), un HTTP de hasta 75
+     * segundos. Con el metodo anotado, ese HTTP corria dentro de la transaccion del
+     * webhook y retenia su conexion del pool todo ese rato; una rafaga de webhooks
+     * agotaba Hikari y dejaba sin responder al resto del sistema, no solo a
+     * facturacion.
+     *
+     * <p>
+     * Las lecturas de aqui no necesitan una transaccion que las envuelva —cada una
+     * es independiente y el metodo es idempotente—, y las dos rutas que sí escriben
+     * abren la suya, corta: {@link TransmissionResultPersister} dentro de
+     * {@code reconcile}, y {@link WebhookRejectionApplier} en la rama RECHAZADO.
+     */
     @Override
-    @Transactional
     public void execute(ProcessProviderWebhookCommand command) {
         long startedAt = System.nanoTime();
         ProviderWebhookParser parser = parsers.get(command.provider().toUpperCase());
@@ -128,14 +140,7 @@ public class ProcessProviderWebhookService implements ProcessProviderWebhookUseC
         if (parsed.outcome() != WebhookOutcome.REJECTED) {
             return; // outcome no terminal: nada que aplicar
         }
-        document.markRejected();
-        // Recupera el consecutivo (si es seguro) para no dejar un hueco en la secuencia
-        // fiscal antes de
-        // persistir la numeración limpia.
-        numberAssigner.release(document);
-        repository.updateDianResult(document);
-        transmissionLog.record(document.getId(), config.provider(), 200,
-                parsed.providerDocumentKey(), TransmissionResult.REJECTED,
+        rejectionApplier.apply(document, config.provider(), parsed.providerDocumentKey(),
                 parsed.rejectionReason());
         billingMetrics.finished(DianStatus.RECHAZADO, Origin.WEBHOOK, document.getDocumentType(),
                 Duration.ofNanos(System.nanoTime() - startedAt));

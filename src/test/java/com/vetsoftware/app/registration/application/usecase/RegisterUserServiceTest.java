@@ -35,6 +35,11 @@ import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -88,6 +93,31 @@ class RegisterUserServiceTest {
 
     private RegisterUserService service;
 
+    /**
+     * {@code TransactionTemplate} que ejecuta el callback en el sitio, sin
+     * transacción real: aquí no hay BD que abrir. Sirve para comprobar el orden —el
+     * captcha va antes de entrar— sin mockear el template, que dejaría el cuerpo
+     * del registro sin ejecutar.
+     */
+    private static TransactionTemplate directTransactionTemplate() {
+        return new TransactionTemplate(new PlatformTransactionManager() {
+            @Override
+            public TransactionStatus getTransaction(TransactionDefinition definition) {
+                return new SimpleTransactionStatus();
+            }
+
+            @Override
+            public void commit(TransactionStatus status) {
+                // sin transaccion real que confirmar
+            }
+
+            @Override
+            public void rollback(TransactionStatus status) {
+                // sin transaccion real que revertir
+            }
+        });
+    }
+
     private static RegisterUserCommand command() {
         return new RegisterUserCommand("Veterinaria Vetrina", "NIT", "900123456", "Calle 1 # 2-3",
                 "3001234567", 11001L, "Orlando Velásquez", "orlando@vetrina.co", "Orlando1997*",
@@ -100,7 +130,7 @@ class RegisterUserServiceTest {
                 branchCreator, employeeCreator, companyIdentifierChecker, employeeCodeChecker,
                 baseRoleProvider, roleCreator, employeeRoleAssigner, defaultMembershipProvider,
                 rolePermissionInitializationPort, emailVerificationTokenRepository,
-                verificationEmailSender, 24L);
+                verificationEmailSender, directTransactionTemplate(), 24L);
 
         lenient().when(companyIdentifierChecker.exists(anyString())).thenReturn(false);
         lenient().when(employeeCodeChecker.exists(anyString())).thenReturn(false);
