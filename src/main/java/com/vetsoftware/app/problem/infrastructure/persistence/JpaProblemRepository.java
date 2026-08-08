@@ -6,12 +6,17 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.problem.application.port.out.ProblemRepository;
 import com.vetsoftware.app.problem.domain.Problem;
-import java.util.List;
+import com.vetsoftware.app.problem.application.dto.PageResult;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaProblemRepository implements ProblemRepository {
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 200;
+
     private final ProblemJpaRepository jpaRepository;
     private final ProblemJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
@@ -39,9 +44,17 @@ public class JpaProblemRepository implements ProblemRepository {
     }
 
     @Override
-    public List<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId) {
-        return jpaRepository.findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId)
-                .stream().map(mapper::toDomain).toList();
+    public PageResult<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId, int page,
+            int pageSize) {
+        int safeSize = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
+        // El orden ya lo fija el nombre del metodo derivado (createdDate desc), asi que
+        // el PageRequest no lo repite: lo contrario daria dos ORDER BY en conflicto.
+        Page<ProblemJpaEntity> result = jpaRepository
+                .findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(animalId, companyId,
+                        PageRequest.of(Math.max(page, 0), safeSize));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
     }
 
     @Override

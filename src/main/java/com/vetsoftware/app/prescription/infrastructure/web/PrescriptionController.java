@@ -6,7 +6,9 @@ import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCo
 import com.vetsoftware.app.prescription.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.prescription.application.dto.ConsultationSummaryDto;
+import com.vetsoftware.app.prescription.application.dto.PageResult;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ExportPrescriptionUseCase;
@@ -65,8 +67,11 @@ public class PrescriptionController {
     }
 
     @GetMapping
-    public List<PrescriptionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public PageResponse<PrescriptionResponse> listAll(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<PrescriptionDto> result = listUseCase.listAll(page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

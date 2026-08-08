@@ -8,12 +8,18 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.prescription.application.port.out.PrescriptionRepository;
 import com.vetsoftware.app.prescription.domain.Prescription;
-import java.util.List;
+import com.vetsoftware.app.prescription.application.dto.PageResult;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaPrescriptionRepository implements PrescriptionRepository {
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 200;
+
     private final PrescriptionJpaRepository jpaRepository;
     private final PrescriptionJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
@@ -56,8 +62,13 @@ public class JpaPrescriptionRepository implements PrescriptionRepository {
     }
 
     @Override
-    public List<Prescription> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    public PageResult<Prescription> findAll(int page, int pageSize) {
+        int safeSize = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
+        Page<PrescriptionJpaEntity> result = jpaRepository.findAll(
+                PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id")));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
     }
 
     @Override

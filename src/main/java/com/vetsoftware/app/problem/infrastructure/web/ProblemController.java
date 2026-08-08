@@ -4,6 +4,8 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.problem.application.command.CreateProblemCommand;
 import com.vetsoftware.app.problem.application.command.UpdateProblemCommand;
 import com.vetsoftware.app.problem.application.dto.ProblemDto;
+import com.vetsoftware.app.problem.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.problem.application.port.in.CreateProblemUseCase;
 import com.vetsoftware.app.problem.application.port.in.DeleteProblemUseCase;
 import com.vetsoftware.app.problem.application.port.in.ListProblemsByAnimalUseCase;
@@ -13,7 +15,6 @@ import com.vetsoftware.app.problem.infrastructure.web.request.CreateProblemReque
 import com.vetsoftware.app.problem.infrastructure.web.request.UpdateProblemRequest;
 import com.vetsoftware.app.problem.infrastructure.web.response.ProblemResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,10 +46,13 @@ public class ProblemController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<ProblemResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase
-                .execute(new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId())).stream()
-                .map(this::toResponse).toList();
+    public PageResponse<ProblemResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<ProblemDto> result = listByAnimalUseCase.execute(
+                new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId(), page, pageSize));
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @PutMapping("/{id}")
