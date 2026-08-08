@@ -110,6 +110,14 @@ jwt:
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
   # Refresh token largo (opaco, persistido y rotado). Controla cuánto dura la sesión sin re-login.
   refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:30}
+  refresh-cookie:
+    # El refresh token viaja en cookie HttpOnly para que un XSS no pueda exfiltrar
+    # 30 días de acceso. Ver RefreshTokenCookie.
+    secure: ${JWT_REFRESH_COOKIE_SECURE:true}
+    # Lax basta mientras front y API compartan dominio registrable (kefaro.tech en
+    # dev, vetsoftware.co en producción). Si un front pasa a otro dominio —un
+    # *.pages.dev, por ejemplo— hay que poner None, y None exige secure=true.
+    same-site: ${JWT_REFRESH_COOKIE_SAME_SITE:Lax}
 
 management:
   endpoints:

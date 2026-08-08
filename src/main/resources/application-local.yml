@@ -48,6 +48,13 @@ springdoc:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176}
 
+jwt:
+  refresh-cookie:
+    # En local el front habla por http://localhost. Una cookie Secure sobre http la
+    # descartan los navegadores que no tratan localhost como origen seguro, y el
+    # síntoma es una sesión que se cae a los 15 minutos sin explicación.
+    secure: false
+
 vetsoftware:
   observability:
     actuator:
