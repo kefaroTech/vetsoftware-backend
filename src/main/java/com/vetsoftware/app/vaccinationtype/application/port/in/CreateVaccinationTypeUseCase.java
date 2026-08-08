@@ -5,6 +5,6 @@ import com.vetsoftware.app.vaccinationtype.application.dto.VaccinationTypeDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateVaccinationTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('vaccination.create')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('vaccination.create') and @authz.isMyCompany(#command.companyId))")
     VaccinationTypeDto execute(CreateVaccinationTypeCommand command);
 }

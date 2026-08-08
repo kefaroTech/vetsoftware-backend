@@ -70,27 +70,19 @@ class HexagonalArchitectureTest {
             .beAnnotatedWith(PreAuthorize.class)
             .because("la autorizacion vive en el puerto; un puerto nuevo sin gate queda abierto");
 
-    // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
-
+    /**
+     * BE-08, ya sin deuda. Comprueba las dos formas en que un puerto recibe la
+     * empresa —dentro del command y como parámetro suelto— y ademas que la
+     * referencia SpEL apunte a un parámetro real: un {@code #nombre} que no existe
+     * se resuelve a null y deja el gate siempre en false.
+     */
     @ArchTest
-    static final ArchRule APPLICATION_NO_CONOCE_INFRASTRUCTURE = FreezingArchRule
-            .freeze(noClasses().that().resideInAPackage("..application..").should()
-                    .dependOnClassesThat().resideInAPackage("..infrastructure..")
-                    .because("infrastructure -> application -> domain, nunca al reves"));
-
-    @ArchTest
-    static final ArchRule TENANT_DEFENSA_EN_PROFUNDIDAD = FreezingArchRule.freeze(
-            methods().that().areDeclaredInClassesThat().resideInAPackage("..application.port.in..")
-                    .and().areDeclaredInClassesThat().areInterfaces().and()
-                    .areDeclaredInClassesThat().areNotAnnotatedWith(NoAuthorizationRequired.class)
-                    .should(VetSoftwareConditions.validarElTenantCuandoRecibeCompanyId())
-                    .because("un companyId que no viene del principal es una fuga entre empresas"));
-
-    @ArchTest
-    static final ArchRule REPOS_CON_ENTITYGRAPH = FreezingArchRule.freeze(classes().that()
-            .areAssignableTo(JpaRepository.class).and().haveSimpleNameEndingWith("JpaRepository")
-            .should(VetSoftwareConditions.declararEntityGraphEnLosFinders())
-            .because("la regla del CLAUDE.md sobre N+1 debe ser verificable"));
+    static final ArchRule TENANT_DEFENSA_EN_PROFUNDIDAD = methods().that()
+            .areDeclaredInClassesThat().resideInAPackage("..application.port.in..").and()
+            .areDeclaredInClassesThat().areInterfaces().and().areDeclaredInClassesThat()
+            .areNotAnnotatedWith(NoAuthorizationRequired.class)
+            .should(VetSoftwareConditions.validarElTenantCuandoRecibeCompanyId())
+            .because("un companyId que no viene del principal es una fuga entre empresas");
 
     /**
      * Dura: ya no queda ninguna. La búsqueda se detiene en los saltos
@@ -102,6 +94,20 @@ class HexagonalArchitectureTest {
             .areAnnotatedWith(Transactional.class)
             .should(VetSoftwareConditions.alcanzarUnClienteHttp(RestClient.class))
             .because("una llamada HTTP retiene la conexion y los locks hasta el commit");
+
+    // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
+
+    @ArchTest
+    static final ArchRule APPLICATION_NO_CONOCE_INFRASTRUCTURE = FreezingArchRule
+            .freeze(noClasses().that().resideInAPackage("..application..").should()
+                    .dependOnClassesThat().resideInAPackage("..infrastructure..")
+                    .because("infrastructure -> application -> domain, nunca al reves"));
+
+    @ArchTest
+    static final ArchRule REPOS_CON_ENTITYGRAPH = FreezingArchRule.freeze(classes().that()
+            .areAssignableTo(JpaRepository.class).and().haveSimpleNameEndingWith("JpaRepository")
+            .should(VetSoftwareConditions.declararEntityGraphEnLosFinders())
+            .because("la regla del CLAUDE.md sobre N+1 debe ser verificable"));
 
     private static final DescribedPredicate<JavaMethodCall> FIND_ALL_SIN_ARGS = DescribedPredicate
             .describe("es findAll() sin argumentos",

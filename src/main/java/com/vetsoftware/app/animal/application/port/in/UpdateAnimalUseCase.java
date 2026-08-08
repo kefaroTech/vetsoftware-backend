@@ -5,6 +5,6 @@ import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateAnimalUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.update'))")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.update') and @authz.isMyCompany(#command.companyId))")
     AnimalDto execute(UpdateAnimalCommand command);
 }

@@ -5,6 +5,6 @@ import com.vetsoftware.app.laboratorytesttype.application.dto.LaboratoryTestType
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateLaboratoryTestTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.create')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('laboratoryTest.create') and @authz.isMyCompany(#command.companyId))")
     LaboratoryTestTypeDto execute(CreateLaboratoryTestTypeCommand command);
 }

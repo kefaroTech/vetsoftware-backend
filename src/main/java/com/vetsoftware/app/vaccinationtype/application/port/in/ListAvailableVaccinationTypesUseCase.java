@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAvailableVaccinationTypesUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('vaccination.read')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('vaccination.read') and @authz.isMyCompany(#companyId))")
     List<VaccinationTypeDto> listAvailable(Long companyId);
 }

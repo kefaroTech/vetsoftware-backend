@@ -4,6 +4,6 @@ import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocument
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FindElectronicDocumentUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('pos.read')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('pos.read') and @authz.isMyCompany(#companyId))")
     ElectronicDocumentDto findById(Long id, Long companyId);
 }

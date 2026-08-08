@@ -5,6 +5,6 @@ import com.vetsoftware.app.laboratorytesttype.application.dto.LaboratoryTestType
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateLaboratoryTestTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('laboratoryTest.update')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('laboratoryTest.update') and @authz.isMyCompany(#command.companyId))")
     LaboratoryTestTypeDto execute(UpdateLaboratoryTestTypeCommand command);
 }

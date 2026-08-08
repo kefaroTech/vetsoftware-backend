@@ -5,6 +5,6 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDisabledMedicamentsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('prescription.read')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('prescription.read') and @authz.isMyCompany(#companyId))")
     List<MedicamentDto> listDisabled(Long companyId);
 }
