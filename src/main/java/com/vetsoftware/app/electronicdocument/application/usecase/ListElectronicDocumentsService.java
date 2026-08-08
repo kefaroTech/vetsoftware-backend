@@ -1,10 +1,10 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
+import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "electronic.document.list")
@@ -17,8 +17,9 @@ public class ListElectronicDocumentsService implements ListElectronicDocumentsUs
     }
 
     @Override
-    public List<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId) {
-        return repository.findAllByCompanyId(companyId, branchId).stream()
-                .map(ElectronicDocumentDto::from).toList();
+    public PageResult<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId, int page,
+            int pageSize) {
+        return repository.findAllByCompanyId(companyId, branchId, page, pageSize)
+                .map(ElectronicDocumentDto::from);
     }
 }

@@ -9,6 +9,8 @@ import com.vetsoftware.app.electronicdocument.application.command.IssueDebitNote
 import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand;
 import com.vetsoftware.app.electronicdocument.application.command.TransmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
+import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ConvertPosToInvoiceUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.EmitElectronicDocumentFromAccountUseCase;
@@ -154,10 +156,14 @@ public class ElectronicDocumentController {
     }
 
     @GetMapping
-    public List<ElectronicDocumentDto> listAll(
-            @RequestParam(name = "branchId", required = false) Long branchId) {
-        return listUseCase.listByCompany(authz.currentCompanyId(),
-                authz.resolveAccessibleBranch(branchId));
+    public PageResponse<ElectronicDocumentDto> listAll(
+            @RequestParam(name = "branchId", required = false) Long branchId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<ElectronicDocumentDto> result = listUseCase.listByCompany(
+                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), page, pageSize);
+        return new PageResponse<>(result.content(), result.page(), result.pageSize(),
+                result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
