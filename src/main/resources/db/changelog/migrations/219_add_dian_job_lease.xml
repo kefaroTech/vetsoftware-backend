@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- BE-04: los jobs de DIAN cargaban TODOS los documentos de un estado y los
+         retransmitían. Con más de una tarea Fargate, las N réplicas trabajaban sobre
+         la misma lista y el mismo documento se enviaba N veces a la DIAN.
+
+         Esta columna sostiene el lease que reparte el trabajo: cada réplica reclama
+         un lote con FOR UPDATE SKIP LOCKED y marca hasta cuándo es suyo, igual que
+         audit_event_outbox.locked_until. Nullable porque un documento sin reclamar
+         no tiene dueño. -->
+
+    <changeSet id="219_electronic_documents_add_job_lease" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="dian_leased_until" type="DATETIME"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- El job filtra por estado y descarta lo arrendado; sin este índice la consulta
+         del lease recorre la tabla entera en cada ciclo. -->
+    <changeSet id="219_electronic_documents_index_job_lease" author="orlando">
+        <createIndex tableName="electronic_documents"
+                     indexName="idx_electronic_documents_dian_status_lease">
+            <column name="dian_status"/>
+            <column name="dian_leased_until"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="electronic_documents"
+                       indexName="idx_electronic_documents_dian_status_lease"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

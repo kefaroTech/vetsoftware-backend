@@ -1,11 +1,15 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.scheduling;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
+import com.vetsoftware.app.electronicdocument.application.port.out.DianJobLeasePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
@@ -15,8 +19,10 @@ import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.support.ScheduledMethodRunnable;
 
@@ -25,12 +31,15 @@ class ScheduledJobsObservationTest {
     @Test
     void contingencyRetryReportsPartialFailureWithoutHighCardinalityTags() throws Exception {
         ElectronicDocumentRepository repository = mock(ElectronicDocumentRepository.class);
+        DianJobLeasePort leasePort = mock(DianJobLeasePort.class);
         DocumentTransmitter transmitter = mock(DocumentTransmitter.class);
         TransmissionLogPort transmissionLog = mock(TransmissionLogPort.class);
         ElectronicDocument successful = document(101L);
         ElectronicDocument failed = document(202L);
-        when(repository.findByDianStatus(DianStatus.CONTINGENCIA))
-                .thenReturn(List.of(successful, failed));
+        when(leasePort.leaseByDianStatus(eq(DianStatus.CONTINGENCIA), anyInt(), any()))
+                .thenReturn(List.of(101L, 202L));
+        when(repository.findById(101L)).thenReturn(Optional.of(successful));
+        when(repository.findById(202L)).thenReturn(Optional.of(failed));
         when(transmissionLog.countAttempts(101L)).thenReturn(0);
         when(transmissionLog.countAttempts(202L)).thenReturn(0);
         when(transmitter.transmit(successful, Origin.RETRY)).thenReturn(successful);
@@ -38,8 +47,8 @@ class ScheduledJobsObservationTest {
                 .thenThrow(new IllegalStateException("provider unavailable"));
         ObservationCapture capture = new ObservationCapture();
 
-        ContingencyRetryJob job = new ContingencyRetryJob(repository, transmitter, transmissionLog,
-                capture.telemetry(), 12, 48);
+        ContingencyRetryJob job = new ContingencyRetryJob(repository, leasePort, transmitter,
+                transmissionLog, capture.telemetry(), 12, 48, 25, Duration.ofMinutes(30));
 
         runAsSpringScheduledTask(job, "retryContingencies", capture.registry());
 
@@ -57,12 +66,14 @@ class ScheduledJobsObservationTest {
     @Test
     void pendingReconciliationReportsNoWork() throws Exception {
         ElectronicDocumentRepository repository = mock(ElectronicDocumentRepository.class);
+        DianJobLeasePort leasePort = mock(DianJobLeasePort.class);
         DocumentTransmitter transmitter = mock(DocumentTransmitter.class);
-        when(repository.findByDianStatus(DianStatus.PENDIENTE)).thenReturn(List.of());
+        when(leasePort.leaseByDianStatus(eq(DianStatus.PENDIENTE), anyInt(), any()))
+                .thenReturn(List.of());
         ObservationCapture capture = new ObservationCapture();
 
-        PendingReconciliationJob job = new PendingReconciliationJob(repository, transmitter,
-                capture.telemetry());
+        PendingReconciliationJob job = new PendingReconciliationJob(repository, leasePort,
+                transmitter, capture.telemetry(), 50, Duration.ofMinutes(15));
 
         runAsSpringScheduledTask(job, "reconcilePending", capture.registry());
 
