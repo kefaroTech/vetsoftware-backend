@@ -14,17 +14,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.core.task.support.ContextPropagatingTaskDecorator;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 class AsyncConfigTest {
 
-    private ThreadPoolTaskExecutor executor;
+    private AsyncTaskExecutor executor;
 
     @AfterEach
     void cleanUp() {
         MDC.clear();
         if (executor != null) {
-            executor.shutdown();
+            ((SimpleAsyncTaskExecutor) executor).close();
         }
     }
 
@@ -43,7 +44,6 @@ class AsyncConfigTest {
                 snapshotFactory);
 
         executor = new AsyncConfig().emailTaskExecutor(decorator);
-        executor.initialize();
 
         Observation parent = Observation.start("test.request", observationRegistry);
         AsyncContext propagated;
@@ -69,8 +69,8 @@ class AsyncConfigTest {
         assertThat(propagated.httpPath()).isEqualTo("/emails");
         assertThat(propagated.clientIp()).isNull();
 
-        // El pool reutiliza hilos. Ninguna tarea posterior puede heredar el contexto
-        // anterior.
+        // Cada tarea corre en un hilo virtual nuevo, pero el decorador debe limpiar
+        // igual: ninguna tarea puede heredar el contexto de la anterior.
         for (int i = 0; i < 4; i++) {
             AsyncContext clean = executor.submit(() -> captureContext(observationRegistry)).get(5,
                     TimeUnit.SECONDS);
