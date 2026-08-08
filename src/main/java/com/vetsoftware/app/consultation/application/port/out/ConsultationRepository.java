@@ -1,5 +1,6 @@
 package com.vetsoftware.app.consultation.application.port.out;
 
+import com.vetsoftware.app.consultation.application.dto.PageResult;
 import com.vetsoftware.app.consultation.domain.Consultation;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,7 @@ public interface ConsultationRepository {
 
     List<Consultation> findAll();
 
-    List<Consultation> findAllByCompanyId(Long companyId);
+    PageResult<Consultation> findAllByCompanyId(Long companyId, int page, int pageSize);
 
     void delete(Long id, Long companyId);
 

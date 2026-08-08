@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface LaboratoryTestJpaRepository
@@ -23,7 +27,10 @@ public interface LaboratoryTestJpaRepository
     Optional<LaboratoryTestJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"testType", "animal", "consultation", "company", "processedBy"})
-    List<LaboratoryTestJpaEntity> findAllByAnimalId(Long animalId);
+    @Query("SELECT x FROM LaboratoryTestJpaEntity x WHERE x.animal.id = :animalId "
+            + "AND (:q IS NULL OR :q = '' OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')))")
+    Page<LaboratoryTestJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
+            @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

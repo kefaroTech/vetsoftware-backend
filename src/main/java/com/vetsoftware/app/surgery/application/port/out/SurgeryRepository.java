@@ -1,6 +1,7 @@
 package com.vetsoftware.app.surgery.application.port.out;
 
 import com.vetsoftware.app.surgery.domain.Surgery;
+import com.vetsoftware.app.surgery.application.dto.PageResult;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,7 @@ public interface SurgeryRepository {
 
     List<Surgery> findAll();
 
-    List<Surgery> findAllByAnimalId(Long animalId);
+    PageResult<Surgery> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
 
     void delete(Long id);
 

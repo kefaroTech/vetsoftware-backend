@@ -7,7 +7,9 @@ import com.vetsoftware.app.productchargeopenaccount.application.command.VoidProd
 import com.vetsoftware.app.productchargeopenaccount.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.OpenAccountSummaryDto;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
+import com.vetsoftware.app.productchargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductSummaryDto;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.CreateProductChargeOpenAccountUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.FindProductChargeOpenAccountUseCase;
@@ -74,9 +76,13 @@ public class ProductChargeOpenAccountController {
     }
 
     @GetMapping
-    public List<ProductChargeOpenAccountResponse> listAll() {
-        return listUseCase.listAll(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
+    public PageResponse<ProductChargeOpenAccountResponse> listAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<ProductChargeOpenAccountDto> result = listUseCase
+                .listAll(authz.currentCompanyId(), page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/by-open-account/{openAccountId}")

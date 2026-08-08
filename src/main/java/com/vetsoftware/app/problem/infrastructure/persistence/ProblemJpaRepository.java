@@ -1,9 +1,10 @@
 package com.vetsoftware.app.problem.infrastructure.persistence;
 
-import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ProblemJpaRepository extends JpaRepository<ProblemJpaEntity, Long> {
 
@@ -15,6 +16,6 @@ public interface ProblemJpaRepository extends JpaRepository<ProblemJpaEntity, Lo
     Optional<ProblemJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"animal", "company"})
-    List<ProblemJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId,
-            Long companyId);
+    Page<ProblemJpaEntity> findByAnimal_IdAndCompany_IdOrderByCreatedDateDesc(Long animalId,
+            Long companyId, Pageable pageable);
 }

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.problem.application.port.out;
 
 import com.vetsoftware.app.problem.domain.Problem;
-import java.util.List;
+import com.vetsoftware.app.problem.application.dto.PageResult;
 import java.util.Optional;
 
 public interface ProblemRepository {
@@ -9,7 +9,8 @@ public interface ProblemRepository {
 
     Optional<Problem> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId);
+    PageResult<Problem> findByAnimalIdAndCompanyId(Long animalId, Long companyId, int page,
+            int pageSize);
 
     void delete(Long id, Long companyId);
 }

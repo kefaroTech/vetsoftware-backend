@@ -9,15 +9,22 @@ import com.vetsoftware.app.openaccount.infrastructure.persistence.OpenAccountJpa
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaEntity;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaRepository;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
+import com.vetsoftware.app.productchargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaEntity;
 import com.vetsoftware.app.tax.infrastructure.persistence.TaxJpaRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenAccountRepository {
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 200;
     private final ProductChargeOpenAccountJpaRepository jpaRepository;
     private final ProductChargeOpenAccountJpaMapper mapper;
     private final AnimalJpaRepository animalJpaRepository;
@@ -85,9 +92,25 @@ public class JpaProductChargeOpenAccountRepository implements ProductChargeOpenA
     }
 
     @Override
-    public List<ProductChargeOpenAccount> findAllByCompanyId(Long companyId) {
-        return jpaRepository.findAllByOpenAccount_Company_Id(companyId).stream()
-                .map(mapper::toDomain).toList();
+    public PageResult<ProductChargeOpenAccount> findAllByCompanyId(Long companyId, int page,
+            int pageSize) {
+        Page<ProductChargeOpenAccountJpaEntity> result = jpaRepository
+                .findAllByOpenAccount_Company_Id(companyId, pageRequest(page, pageSize));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
+    }
+
+    /**
+     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
+     * no deben poder volver a pedir la tabla entera, que es el fallo que se esta
+     * corrigiendo. El orden por id descendente es estable y devuelve primero lo mas
+     * reciente; sin orden explicito la paginacion no es determinista y una misma
+     * fila puede salir en dos paginas.
+     */
+    private static PageRequest pageRequest(int page, int pageSize) {
+        int safeSize = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
     }
 
     @Override

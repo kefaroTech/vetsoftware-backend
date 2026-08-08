@@ -1,10 +1,11 @@
 package com.vetsoftware.app.hospitalizationprogressnote.application.port.in;
 
 import com.vetsoftware.app.hospitalizationprogressnote.application.dto.HospitalizationProgressNoteDto;
-import java.util.List;
+import com.vetsoftware.app.hospitalizationprogressnote.application.dto.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationProgressNotesByHospitalizationUseCase {
     @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.read')")
-    List<HospitalizationProgressNoteDto> listByHospitalization(Long hospitalizationId);
+    PageResult<HospitalizationProgressNoteDto> listByHospitalization(Long hospitalizationId,
+            int page, int pageSize);
 }

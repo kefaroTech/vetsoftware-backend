@@ -89,8 +89,14 @@ public class LaboratoryTestController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<LaboratoryTestResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<LaboratoryTestResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<LaboratoryTestDto> result = listByAnimalUseCase.listByAnimal(animalId, query,
+                page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/search")

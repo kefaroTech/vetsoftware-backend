@@ -33,7 +33,8 @@ public interface OpenAccountRepository {
 
     List<OpenAccount> findAll();
 
-    List<OpenAccount> findAllByCompanyId(Long companyId, Long branchId);
+    PageResult<OpenAccount> findAllByCompanyId(Long companyId, Long branchId, int page,
+            int pageSize);
 
     /**
      * true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.prescription.application.port.out;
 
 import com.vetsoftware.app.prescription.domain.Prescription;
-import java.util.List;
+import com.vetsoftware.app.prescription.application.dto.PageResult;
 import java.util.Optional;
 
 public interface PrescriptionRepository {
@@ -11,7 +11,7 @@ public interface PrescriptionRepository {
 
     Optional<Prescription> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<Prescription> findAll();
+    PageResult<Prescription> findAll(int page, int pageSize);
 
     void delete(Long id);
 

@@ -1,10 +1,10 @@
 package com.vetsoftware.app.openaccount.application.usecase;
 
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
+import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.in.ListOpenAccountsUseCase;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "open.account.list.by.company")
@@ -17,8 +17,9 @@ public class ListOpenAccountsService implements ListOpenAccountsUseCase {
     }
 
     @Override
-    public List<OpenAccountDto> listByCompany(Long companyId, Long branchId) {
-        return repository.findAllByCompanyId(companyId, branchId).stream().map(OpenAccountDto::from)
-                .toList();
+    public PageResult<OpenAccountDto> listByCompany(Long companyId, Long branchId, int page,
+            int pageSize) {
+        return repository.findAllByCompanyId(companyId, branchId, page, pageSize)
+                .map(OpenAccountDto::from);
     }
 }

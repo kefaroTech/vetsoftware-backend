@@ -27,6 +27,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
+
+    private static final int BY_ANIMAL_DEFAULT_PAGE_SIZE = 20;
+    private static final int BY_ANIMAL_MAX_PAGE_SIZE = 200;
     private final LaboratoryTestJpaRepository jpaRepository;
     private final LaboratoryTestJpaMapper mapper;
     private final LaboratoryTestTypeJpaRepository testTypeJpaRepository;
@@ -87,8 +90,26 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     }
 
     @Override
-    public List<LaboratoryTest> findAllByAnimalId(Long animalId) {
-        return jpaRepository.findAllByAnimalId(animalId).stream().map(mapper::toDomain).toList();
+    public PageResult<LaboratoryTest> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize) {
+        Page<LaboratoryTestJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
+                byAnimalPageRequest(page, pageSize));
+        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(),
+                result.getTotalPages());
+    }
+
+    /**
+     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
+     * no deben poder volver a pedir el historial entero del animal. El orden por id
+     * descendente es estable y devuelve primero lo mas reciente, que es lo que la
+     * ficha clinica muestra arriba.
+     */
+    private static PageRequest byAnimalPageRequest(int page, int pageSize) {
+        int safeSize = pageSize <= 0
+                ? BY_ANIMAL_DEFAULT_PAGE_SIZE
+                : Math.min(pageSize, BY_ANIMAL_MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
     }
 
     @Override

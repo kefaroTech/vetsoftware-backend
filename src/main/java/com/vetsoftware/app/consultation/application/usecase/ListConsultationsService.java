@@ -1,10 +1,10 @@
 package com.vetsoftware.app.consultation.application.usecase;
 
 import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
+import com.vetsoftware.app.consultation.application.dto.PageResult;
 import com.vetsoftware.app.consultation.application.port.in.ListConsultationsUseCase;
 import com.vetsoftware.app.consultation.application.port.out.ConsultationRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "consultation.list")
@@ -17,8 +17,7 @@ public class ListConsultationsService implements ListConsultationsUseCase {
     }
 
     @Override
-    public List<ConsultationDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(ConsultationDto::from)
-                .toList();
+    public PageResult<ConsultationDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllByCompanyId(companyId, page, pageSize).map(ConsultationDto::from);
     }
 }

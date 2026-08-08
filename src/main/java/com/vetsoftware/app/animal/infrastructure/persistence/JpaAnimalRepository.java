@@ -2,6 +2,7 @@ package com.vetsoftware.app.animal.infrastructure.persistence;
 
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import com.vetsoftware.app.animal.domain.Animal;
+import com.vetsoftware.app.animal.application.dto.PageResult;
 import com.vetsoftware.app.animal.domain.WeightType;
 import com.vetsoftware.app.animal.infrastructure.persistence.WeightRecordJpaRepository.LatestWeightProjection;
 import com.vetsoftware.app.animalcolor.infrastructure.persistence.AnimalColorJpaEntity;
@@ -19,10 +20,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaAnimalRepository implements AnimalRepository {
+
+    private static final int LIST_DEFAULT_PAGE_SIZE = 20;
+    private static final int LIST_MAX_PAGE_SIZE = 200;
     private final AnimalJpaRepository jpaRepository;
     private final AnimalJpaMapper mapper;
     private final SpecieJpaRepository specieJpaRepository;
@@ -80,9 +87,29 @@ public class JpaAnimalRepository implements AnimalRepository {
     }
 
     @Override
-    public List<Animal> findAllByCompanyId(Long companyId) {
-        return enrichAll(jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain)
-                .toList());
+    public PageResult<Animal> findAllByCompanyId(Long companyId, int page, int pageSize) {
+        Page<AnimalJpaEntity> result = jpaRepository.findAllByCompany_Id(companyId,
+                listPageRequest(page, pageSize));
+        // enrichAll opera sobre la lista que reciba: al paginar solo enriquece la
+        // pagina, que es justamente lo que evita traer el peso de los 50.000 animales.
+        List<Animal> content = enrichAll(
+                result.getContent().stream().map(mapper::toDomain).toList());
+        return new PageResult<>(content, result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages());
+    }
+
+    /**
+     * Normaliza lo que llega del cliente y acota el tamano; sin tope se vuelve a
+     * pedir la tabla entera por query param. Orden por nombre, que es como se lee
+     * un censo de pacientes, con el id de desempate para que la paginacion sea
+     * determinista.
+     */
+    private static PageRequest listPageRequest(int page, int pageSize) {
+        int safeSize = pageSize <= 0
+                ? LIST_DEFAULT_PAGE_SIZE
+                : Math.min(pageSize, LIST_MAX_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), safeSize,
+                Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id")));
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.vetsoftware.app.vaccination.application.port.out;
 
 import com.vetsoftware.app.vaccination.domain.Vaccination;
+import com.vetsoftware.app.vaccination.application.dto.PageResult;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,7 @@ public interface VaccinationRepository {
 
     List<Vaccination> findAll();
 
-    List<Vaccination> findAllByAnimalId(Long animalId);
+    PageResult<Vaccination> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
 
     void delete(Long id);
 

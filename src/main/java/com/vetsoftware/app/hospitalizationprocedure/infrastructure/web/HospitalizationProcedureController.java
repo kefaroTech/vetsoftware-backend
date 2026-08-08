@@ -6,6 +6,8 @@ import com.vetsoftware.app.hospitalizationprocedure.application.command.SuspendH
 import com.vetsoftware.app.hospitalizationprocedure.application.command.UpdateHospitalizationProcedureCommand;
 import com.vetsoftware.app.hospitalizationprocedure.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationProcedureDto;
+import com.vetsoftware.app.hospitalizationprocedure.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.CreateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.DeleteHospitalizationProcedureUseCase;
@@ -20,7 +22,6 @@ import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.
 import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.HospitalizationProcedureResponse;
 import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.response.HospitalizationSummary;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,10 +66,13 @@ public class HospitalizationProcedureController {
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
-    public List<HospitalizationProcedureResponse> listByHospitalization(
-            @PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
-                .map(this::toResponse).toList();
+    public PageResponse<HospitalizationProcedureResponse> listByHospitalization(
+            @PathVariable Long hospitalizationId, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<HospitalizationProcedureDto> result = listByHospitalizationUseCase
+                .listByHospitalization(hospitalizationId, page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

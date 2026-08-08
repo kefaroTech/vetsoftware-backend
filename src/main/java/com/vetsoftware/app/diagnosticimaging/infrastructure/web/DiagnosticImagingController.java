@@ -8,6 +8,8 @@ import com.vetsoftware.app.diagnosticimaging.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDto;
+import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingTypeSummaryDto;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ChangeDiagnosticImagingStatusUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.CreateDiagnosticImagingUseCase;
@@ -77,8 +79,14 @@ public class DiagnosticImagingController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<DiagnosticImagingResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<DiagnosticImagingResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<DiagnosticImagingDto> result = listByAnimalUseCase.listByAnimal(animalId, query,
+                page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")

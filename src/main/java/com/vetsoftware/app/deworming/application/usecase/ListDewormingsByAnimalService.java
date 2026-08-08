@@ -1,10 +1,10 @@
 package com.vetsoftware.app.deworming.application.usecase;
 
 import com.vetsoftware.app.deworming.application.dto.DewormingDto;
+import com.vetsoftware.app.deworming.application.dto.PageResult;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsByAnimalUseCase;
 import com.vetsoftware.app.deworming.application.port.out.DewormingRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "deworming.list.by.animal")
@@ -17,7 +17,9 @@ public class ListDewormingsByAnimalService implements ListDewormingsByAnimalUseC
     }
 
     @Override
-    public List<DewormingDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(DewormingDto::from).toList();
+    public PageResult<DewormingDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+                .map(DewormingDto::from);
     }
 }

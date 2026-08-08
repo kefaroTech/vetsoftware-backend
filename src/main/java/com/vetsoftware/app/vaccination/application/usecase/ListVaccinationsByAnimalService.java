@@ -1,10 +1,10 @@
 package com.vetsoftware.app.vaccination.application.usecase;
 
 import com.vetsoftware.app.vaccination.application.dto.VaccinationDto;
+import com.vetsoftware.app.vaccination.application.dto.PageResult;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsByAnimalUseCase;
 import com.vetsoftware.app.vaccination.application.port.out.VaccinationRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "vaccination.list.by.animal")
@@ -17,7 +17,9 @@ public class ListVaccinationsByAnimalService implements ListVaccinationsByAnimal
     }
 
     @Override
-    public List<VaccinationDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(VaccinationDto::from).toList();
+    public PageResult<VaccinationDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+                .map(VaccinationDto::from);
     }
 }

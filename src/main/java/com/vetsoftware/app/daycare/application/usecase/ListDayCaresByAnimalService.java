@@ -1,10 +1,10 @@
 package com.vetsoftware.app.daycare.application.usecase;
 
 import com.vetsoftware.app.daycare.application.dto.DayCareDto;
+import com.vetsoftware.app.daycare.application.dto.PageResult;
 import com.vetsoftware.app.daycare.application.port.in.ListDayCaresByAnimalUseCase;
 import com.vetsoftware.app.daycare.application.port.out.DayCareRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "day.care.list.by.animal")
@@ -17,7 +17,8 @@ public class ListDayCaresByAnimalService implements ListDayCaresByAnimalUseCase 
     }
 
     @Override
-    public List<DayCareDto> listByAnimal(Long animalId) {
-        return repository.findAllByAnimalId(animalId).stream().map(DayCareDto::from).toList();
+    public PageResult<DayCareDto> listByAnimal(Long animalId, String query, int page,
+            int pageSize) {
+        return repository.findAllByAnimalId(animalId, query, page, pageSize).map(DayCareDto::from);
     }
 }

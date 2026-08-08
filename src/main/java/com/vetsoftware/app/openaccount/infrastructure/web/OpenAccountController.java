@@ -29,7 +29,6 @@ import com.vetsoftware.app.openaccount.infrastructure.web.response.EmployeeSumma
 import com.vetsoftware.app.openaccount.infrastructure.web.response.OpenAccountResponse;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.OwnerSummary;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -71,11 +70,14 @@ public class OpenAccountController {
     }
 
     @GetMapping
-    public List<OpenAccountResponse> list(
-            @RequestParam(name = "branchId", required = false) Long branchId) {
-        return listUseCase
-                .listByCompany(authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId))
-                .stream().map(this::toResponse).toList();
+    public PageResponse<OpenAccountResponse> list(
+            @RequestParam(name = "branchId", required = false) Long branchId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<OpenAccountDto> result = listUseCase.listByCompany(authz.currentCompanyId(),
+                authz.resolveAccessibleBranch(branchId), page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/search")

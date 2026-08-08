@@ -1,10 +1,10 @@
 package com.vetsoftware.app.hospitalizationmedication.application.usecase;
 
 import com.vetsoftware.app.hospitalizationmedication.application.dto.HospitalizationMedicationDto;
+import com.vetsoftware.app.hospitalizationmedication.application.dto.PageResult;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.ListHospitalizationMedicationsByHospitalizationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.out.HospitalizationMedicationRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "hospitalization.medication.list.by.hospitalization")
@@ -20,8 +20,9 @@ public class ListHospitalizationMedicationsByHospitalizationService
     }
 
     @Override
-    public List<HospitalizationMedicationDto> listByHospitalization(Long hospitalizationId) {
-        return repository.findAllByHospitalizationId(hospitalizationId).stream()
-                .map(HospitalizationMedicationDto::from).toList();
+    public PageResult<HospitalizationMedicationDto> listByHospitalization(Long hospitalizationId,
+            int page, int pageSize) {
+        return repository.findAllByHospitalizationId(hospitalizationId, page, pageSize)
+                .map(HospitalizationMedicationDto::from);
     }
 }

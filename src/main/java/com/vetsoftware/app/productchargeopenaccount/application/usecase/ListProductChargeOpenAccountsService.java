@@ -1,10 +1,10 @@
 package com.vetsoftware.app.productchargeopenaccount.application.usecase;
 
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
+import com.vetsoftware.app.productchargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.productchargeopenaccount.application.port.in.ListProductChargeOpenAccountsUseCase;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "product.charge.open.account.list.all")
@@ -17,8 +17,8 @@ public class ListProductChargeOpenAccountsService implements ListProductChargeOp
     }
 
     @Override
-    public List<ProductChargeOpenAccountDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream()
-                .map(ProductChargeOpenAccountDto::from).toList();
+    public PageResult<ProductChargeOpenAccountDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllByCompanyId(companyId, page, pageSize)
+                .map(ProductChargeOpenAccountDto::from);
     }
 }

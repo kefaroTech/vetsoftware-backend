@@ -1,5 +1,6 @@
 package com.vetsoftware.app.debtopenaccount.application.port.out;
 
+import com.vetsoftware.app.debtopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public interface DebtOpenAccountRepository {
 
     List<DebtOpenAccount> findAll();
 
-    List<DebtOpenAccount> findAllByCompanyId(Long companyId);
+    PageResult<DebtOpenAccount> findAllByCompanyId(Long companyId, int page, int pageSize);
 
     List<DebtOpenAccount> findByOpenAccountIdAndCompanyId(Long openAccountId, Long companyId);
 

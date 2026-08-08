@@ -1,10 +1,10 @@
 package com.vetsoftware.app.animal.application.usecase;
 
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
+import com.vetsoftware.app.animal.application.dto.PageResult;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsUseCase;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "animal.list")
@@ -17,7 +17,7 @@ public class ListAnimalsService implements ListAnimalsUseCase {
     }
 
     @Override
-    public List<AnimalDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(AnimalDto::from).toList();
+    public PageResult<AnimalDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllByCompanyId(companyId, page, pageSize).map(AnimalDto::from);
     }
 }

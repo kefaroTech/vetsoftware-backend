@@ -3,6 +3,8 @@ package com.vetsoftware.app.debtopenaccount.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DebtOpenAccountJpaRepository
@@ -21,7 +23,8 @@ public interface DebtOpenAccountJpaRepository
     Optional<DebtOpenAccountJpaEntity> findByIdAndOpenAccount_Company_Id(Long id, Long companyId);
 
     @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
-    List<DebtOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId);
+    Page<DebtOpenAccountJpaEntity> findAllByOpenAccount_Company_Id(Long companyId,
+            Pageable pageable);
 
     @EntityGraph(attributePaths = {"openAccount", "createdBy", "voidedBy"})
     List<DebtOpenAccountJpaEntity> findByOpenAccount_IdAndOpenAccount_Company_Id(Long openAccountId,

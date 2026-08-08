@@ -1,6 +1,7 @@
 package com.vetsoftware.app.diagnosticimaging.application.port.out;
 
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImaging;
+import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,8 @@ public interface DiagnosticImagingRepository {
 
     List<DiagnosticImaging> findAll();
 
-    List<DiagnosticImaging> findAllByAnimalId(Long animalId);
+    PageResult<DiagnosticImaging> findAllByAnimalId(Long animalId, String query, int page,
+            int pageSize);
 
     void delete(Long id);
 

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationmedication.application.port.out;
 
 import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedication;
-import java.util.List;
+import com.vetsoftware.app.hospitalizationmedication.application.dto.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationMedicationRepository {
@@ -11,7 +11,8 @@ public interface HospitalizationMedicationRepository {
 
     Optional<HospitalizationMedication> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<HospitalizationMedication> findAllByHospitalizationId(Long hospitalizationId);
+    PageResult<HospitalizationMedication> findAllByHospitalizationId(Long hospitalizationId,
+            int page, int pageSize);
 
     void delete(Long id);
 

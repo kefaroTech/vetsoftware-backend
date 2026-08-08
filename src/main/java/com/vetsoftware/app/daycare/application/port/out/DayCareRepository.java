@@ -1,6 +1,7 @@
 package com.vetsoftware.app.daycare.application.port.out;
 
 import com.vetsoftware.app.daycare.domain.DayCare;
+import com.vetsoftware.app.daycare.application.dto.PageResult;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,7 @@ public interface DayCareRepository {
 
     List<DayCare> findAll();
 
-    List<DayCare> findAllByAnimalId(Long animalId);
+    PageResult<DayCare> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
 
     void delete(Long id);
 

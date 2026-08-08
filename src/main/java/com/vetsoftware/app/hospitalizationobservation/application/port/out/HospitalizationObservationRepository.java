@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationobservation.application.port.out;
 
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservation;
-import java.util.List;
+import com.vetsoftware.app.hospitalizationobservation.application.dto.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationObservationRepository {
@@ -11,7 +11,8 @@ public interface HospitalizationObservationRepository {
 
     Optional<HospitalizationObservation> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<HospitalizationObservation> findAllByHospitalizationId(Long hospitalizationId);
+    PageResult<HospitalizationObservation> findAllByHospitalizationId(Long hospitalizationId,
+            int page, int pageSize);
 
     void delete(Long id);
 

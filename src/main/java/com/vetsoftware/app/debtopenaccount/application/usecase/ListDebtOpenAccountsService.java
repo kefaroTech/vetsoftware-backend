@@ -1,10 +1,10 @@
 package com.vetsoftware.app.debtopenaccount.application.usecase;
 
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
+import com.vetsoftware.app.debtopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "debt.open.account.list.all")
@@ -17,8 +17,8 @@ public class ListDebtOpenAccountsService implements ListDebtOpenAccountsUseCase 
     }
 
     @Override
-    public List<DebtOpenAccountDto> listAll(Long companyId) {
-        return repository.findAllByCompanyId(companyId).stream().map(DebtOpenAccountDto::from)
-                .toList();
+    public PageResult<DebtOpenAccountDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllByCompanyId(companyId, page, pageSize)
+                .map(DebtOpenAccountDto::from);
     }
 }

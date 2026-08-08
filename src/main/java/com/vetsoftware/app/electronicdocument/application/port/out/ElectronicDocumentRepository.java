@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import java.util.List;
 import java.util.Optional;
@@ -60,7 +61,8 @@ public interface ElectronicDocumentRepository {
      * Documentos de la empresa, con filtro OPCIONAL por sede (branchId null = todas
      * las sedes).
      */
-    List<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId);
+    PageResult<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId, int page,
+            int pageSize);
 
     /**
      * Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de

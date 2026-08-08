@@ -7,6 +7,8 @@ import com.vetsoftware.app.vaccination.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.vaccination.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.vaccination.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.vaccination.application.dto.VaccinationDto;
+import com.vetsoftware.app.vaccination.application.dto.PageResult;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.vaccination.application.dto.VaccinationTypeSummaryDto;
 import com.vetsoftware.app.vaccination.application.port.in.CreateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.DeleteVaccinationUseCase;
@@ -70,8 +72,14 @@ public class VaccinationController {
     }
 
     @GetMapping("/by-animal/{animalId}")
-    public List<VaccinationResponse> listByAnimal(@PathVariable Long animalId) {
-        return listByAnimalUseCase.listByAnimal(animalId).stream().map(this::toResponse).toList();
+    public PageResponse<VaccinationResponse> listByAnimal(@PathVariable Long animalId,
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<VaccinationDto> result = listByAnimalUseCase.listByAnimal(animalId, query, page,
+                pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
