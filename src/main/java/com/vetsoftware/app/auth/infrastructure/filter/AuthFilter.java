@@ -141,15 +141,17 @@ public class AuthFilter extends OncePerRequestFilter {
      * log de la request.
      */
     private static void putActorToMdc(AuthContext authContext) {
-        if (authContext instanceof EmployeeContext employee) {
-            MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
-            MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, String.valueOf(employee.employeeId()));
-            MDC.put(MdcKeys.ACTOR_COMPANY_ID, String.valueOf(employee.companyId()));
-        } else if (authContext instanceof SystemUserContext systemUser) {
-            MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM_USER");
-            MDC.put(MdcKeys.ACTOR_SYSTEM_USER_ID, String.valueOf(systemUser.systemUserId()));
-        } else if (authContext instanceof SystemContext) {
-            MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM");
+        switch (authContext) {
+            case EmployeeContext(Long employeeId, Long companyId, _, _) -> {
+                MDC.put(MdcKeys.ACTOR_TYPE, "EMPLOYEE");
+                MDC.put(MdcKeys.ACTOR_EMPLOYEE_ID, String.valueOf(employeeId));
+                MDC.put(MdcKeys.ACTOR_COMPANY_ID, String.valueOf(companyId));
+            }
+            case SystemUserContext(Long systemUserId, _) -> {
+                MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM_USER");
+                MDC.put(MdcKeys.ACTOR_SYSTEM_USER_ID, String.valueOf(systemUserId));
+            }
+            case SystemContext _ -> MDC.put(MdcKeys.ACTOR_TYPE, "SYSTEM");
         }
     }
 
@@ -163,7 +165,12 @@ public class AuthFilter extends OncePerRequestFilter {
     private static UsernamePasswordAuthenticationToken toAuthentication(AuthContext authContext) {
         List<GrantedAuthority> authorities = new ArrayList<>(authContext.permissions().stream()
                 .<GrantedAuthority>map(SimpleGrantedAuthority::new).toList());
-        if (authContext instanceof SystemContext || authContext instanceof SystemUserContext) {
+        boolean systemRole = switch (authContext) {
+            case EmployeeContext _ -> false;
+            case SystemUserContext _ -> true;
+            case SystemContext _ -> true;
+        };
+        if (systemRole) {
             authorities.add(new SimpleGrantedAuthority(SYSTEM_ROLE));
         }
         return new UsernamePasswordAuthenticationToken(authContext, null, authorities);
