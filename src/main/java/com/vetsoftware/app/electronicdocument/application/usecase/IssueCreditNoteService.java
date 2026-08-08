@@ -11,7 +11,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Emite una nota credito total (anulacion) sobre una factura VALIDADA y la
@@ -25,16 +25,32 @@ import org.springframework.transaction.annotation.Transactional;
 public class IssueCreditNoteService implements IssueCreditNoteUseCase {
     private final ElectronicDocumentRepository repository;
     private final ElectronicDocumentEmitter emitter;
+    private final TransactionTemplate transactionTemplate;
 
     public IssueCreditNoteService(ElectronicDocumentRepository repository,
-            ElectronicDocumentEmitter emitter) {
+            ElectronicDocumentEmitter emitter, TransactionTemplate transactionTemplate) {
         this.repository = repository;
         this.emitter = emitter;
+        this.transactionTemplate = transactionTemplate;
     }
 
+    /**
+     * Sin {@code @Transactional} en el metodo completo: la nota se persiste
+     * PENDIENTE en una transaccion corta que commitea, y solo despues se numera y
+     * se transmite. Asi el HTTP al proveedor —hasta 75 segundos— no retiene la
+     * conexion del pool ni el {@code FOR UPDATE} del consecutivo fiscal.
+     *
+     * <p>
+     * Si la transmision falla, la nota queda PENDIENTE y re-emitible en vez de
+     * desaparecer con el rollback.
+     */
     @Override
-    @Transactional
     public ElectronicDocumentDto execute(IssueCreditNoteCommand command) {
+        ElectronicDocument saved = transactionTemplate.execute(status -> buildPending(command));
+        return ElectronicDocumentDto.from(emitter.emit(saved));
+    }
+
+    private ElectronicDocument buildPending(IssueCreditNoteCommand command) {
         ElectronicDocument original = repository.findById(command.documentId())
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));
         if (!command.companyId().equals(original.getCompanyId())) {
@@ -54,10 +70,8 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
         ElectronicDocument note = ElectronicDocument.createCreditNote(original,
                 command.reason().dianCode(), command.reason().description(),
                 command.issuedByEmployeeId(), command.partialAmount());
-        // Persiste la nota PENDIENTE; el emisor numera+transmite (empresa con BILLING)
-        // o la guarda
-        // local.
-        ElectronicDocument saved = repository.save(note);
-        return ElectronicDocumentDto.from(emitter.emit(saved));
+        // Persiste la nota PENDIENTE. La numeracion y la transmision ocurren fuera de
+        // esta transaccion, ya commiteada.
+        return repository.save(note);
     }
 }

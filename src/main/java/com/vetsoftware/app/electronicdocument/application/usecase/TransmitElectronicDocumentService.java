@@ -8,7 +8,6 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transmite un documento a la DIAN a través del proveedor configurado para la
@@ -28,8 +27,12 @@ public class TransmitElectronicDocumentService implements TransmitElectronicDocu
         this.transmitter = transmitter;
     }
 
+    /**
+     * Sin {@code @Transactional}: aca solo se lee el documento y se retransmite. El
+     * HTTP al proveedor —hasta 75 segundos— no puede correr dentro de una
+     * transaccion, y el desenlace lo guarda el transmisor en la suya.
+     */
     @Override
-    @Transactional
     public ElectronicDocumentDto execute(TransmitElectronicDocumentCommand command) {
         ElectronicDocument document = repository.findById(command.documentId())
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));

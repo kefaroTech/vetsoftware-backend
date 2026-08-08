@@ -9,7 +9,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundE
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Convierte un documento equivalente POS en factura electrónica de venta: emite
@@ -27,19 +27,34 @@ public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
     private final DocumentBuilder documentBuilder;
     private final ElectronicDocumentEmitter emitter;
     private final DeliverElectronicDocumentService deliverService;
+    private final TransactionTemplate transactionTemplate;
 
     public ConvertPosToInvoiceService(ElectronicDocumentRepository repository,
             DocumentBuilder documentBuilder, ElectronicDocumentEmitter emitter,
-            DeliverElectronicDocumentService deliverService) {
+            DeliverElectronicDocumentService deliverService,
+            TransactionTemplate transactionTemplate) {
         this.repository = repository;
         this.documentBuilder = documentBuilder;
         this.emitter = emitter;
         this.deliverService = deliverService;
+        this.transactionTemplate = transactionTemplate;
     }
 
+    /**
+     * Sin {@code @Transactional} en el metodo completo: la factura se persiste
+     * PENDIENTE en una transaccion corta que commitea, y solo despues se numera, se
+     * transmite y se entrega. El HTTP al proveedor —hasta 75 segundos— dejaria
+     * retenidos la conexion del pool y el {@code FOR UPDATE} del consecutivo.
+     */
     @Override
-    @Transactional
     public ElectronicDocumentDto execute(ConvertPosToInvoiceCommand command) {
+        ElectronicDocument invoice = transactionTemplate.execute(status -> buildPending(command));
+        ElectronicDocument emitted = emitter.emit(invoice);
+        deliverService.deliverIfValidated(emitted);
+        return ElectronicDocumentDto.from(emitted);
+    }
+
+    private ElectronicDocument buildPending(ConvertPosToInvoiceCommand command) {
         ElectronicDocument pos = repository.findById(command.posDocumentId()).orElseThrow(
                 () -> new ElectronicDocumentNotFoundException(command.posDocumentId()));
         if (!command.companyId().equals(pos.getCompanyId())) {
@@ -63,10 +78,7 @@ public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
                     "La cuenta ya tiene una factura electrónica: el documento POS ya fue convertido.");
         }
 
-        ElectronicDocument invoice = documentBuilder.build(pos.getOpenAccountId(),
-                ElectronicDocumentType.FE_VENTA, command.companyId(), false);
-        ElectronicDocument emitted = emitter.emit(invoice);
-        deliverService.deliverIfValidated(emitted);
-        return ElectronicDocumentDto.from(emitted);
+        return documentBuilder.build(pos.getOpenAccountId(), ElectronicDocumentType.FE_VENTA,
+                command.companyId(), false);
     }
 }
