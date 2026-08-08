@@ -221,5 +221,6 @@
     <include file="db/changelog/migrations/216_remove_admin_all.xml"/>
     <include file="db/changelog/migrations/217_add_token_retention_support.xml"/>
     <include file="db/changelog/migrations/218_scope_animal_colors_by_specie.xml"/>
+    <include file="db/changelog/migrations/219_add_dian_job_lease.xml"/>
 
 </databaseChangeLog>

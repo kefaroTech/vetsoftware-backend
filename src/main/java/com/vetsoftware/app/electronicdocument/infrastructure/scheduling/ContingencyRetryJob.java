@@ -1,6 +1,7 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.scheduling;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics.Origin;
+import com.vetsoftware.app.electronicdocument.application.port.out.DianJobLeasePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
@@ -8,6 +9,7 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
@@ -32,6 +34,12 @@ import org.springframework.stereotype.Component;
  * documento se deja en CONTINGENCIA pero deja de reintentarse automáticamente
  * (se registra un error para atención manual: reemisión vía
  * {@code POST /electronic-documents/{id}/transmit} o corrección por nota).
+ *
+ * <p>
+ * El lote se reclama con {@link DianJobLeasePort}. Este job corre en todas las
+ * réplicas del backend a la vez: sin reparto, N réplicas retransmitirían el
+ * mismo documento a la DIAN en el mismo ciclo, y con un proveedor que no
+ * deduplique eso son documentos fiscales repetidos.
  */
 @Component
 public class ContingencyRetryJob {
@@ -39,23 +47,31 @@ public class ContingencyRetryJob {
     private static final String JOB_NAME = "dian.contingency.retry";
 
     private final ElectronicDocumentRepository repository;
+    private final DianJobLeasePort leasePort;
     private final DocumentTransmitter transmitter;
     private final TransmissionLogPort transmissionLog;
     private final ScheduledJobTelemetry telemetry;
     private final int maxAttempts;
     private final long deadlineHours;
+    private final int batchSize;
+    private final Duration lease;
 
-    public ContingencyRetryJob(ElectronicDocumentRepository repository,
+    public ContingencyRetryJob(ElectronicDocumentRepository repository, DianJobLeasePort leasePort,
             DocumentTransmitter transmitter, TransmissionLogPort transmissionLog,
             ScheduledJobTelemetry telemetry,
             @Value("${dian.contingency.max-attempts:12}") int maxAttempts,
-            @Value("${dian.contingency.deadline-hours:48}") long deadlineHours) {
+            @Value("${dian.contingency.deadline-hours:48}") long deadlineHours,
+            @Value("${dian.contingency.batch-size:25}") int batchSize,
+            @Value("${dian.contingency.lease:PT30M}") Duration lease) {
         this.repository = repository;
+        this.leasePort = leasePort;
         this.transmitter = transmitter;
         this.transmissionLog = transmissionLog;
         this.telemetry = telemetry;
         this.maxAttempts = maxAttempts;
         this.deadlineHours = deadlineHours;
+        this.batchSize = batchSize;
+        this.lease = lease;
     }
 
     @Scheduled(initialDelayString = "${dian.contingency.initial-delay-ms:60000}", fixedDelayString = "${dian.contingency.retry-delay-ms:300000}")
@@ -64,22 +80,23 @@ public class ContingencyRetryJob {
     }
 
     private Outcome executeRetries() {
-        List<ElectronicDocument> pending = repository.findByDianStatus(DianStatus.CONTINGENCIA);
-        if (pending.isEmpty())
+        List<Long> leased = leasePort.leaseByDianStatus(DianStatus.CONTINGENCIA, batchSize, lease);
+        if (leased.isEmpty())
             return Outcome.NO_WORK;
         LocalDateTime deadlineThreshold = LocalDateTime.now().minusHours(deadlineHours);
-        log.info("Reintentando documento(s) en contingencia DIAN: {} candidato(s)", pending.size());
+        log.info("Reintentando documento(s) en contingencia DIAN: {} reclamado(s)", leased.size());
         int attempted = 0;
         int failures = 0;
-        for (ElectronicDocument document : pending) {
-            if (isExhausted(document, deadlineThreshold))
+        for (Long documentId : leased) {
+            ElectronicDocument document = repository.findById(documentId).orElse(null);
+            if (document == null || isExhausted(document, deadlineThreshold))
                 continue;
             attempted++;
             try {
                 transmitter.transmit(document, Origin.RETRY);
             } catch (Exception e) {
                 failures++;
-                log.warn("Reintento de contingencia falló para documento {}: {}", document.getId(),
+                log.warn("Reintento de contingencia falló para documento {}: {}", documentId,
                         e.getMessage());
             }
         }
