@@ -1,0 +1,9 @@
+BranchJpaRepository.findFirstByCompany_IdAndActiveTrueOrderByIdAsc() devuelve BranchJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+BranchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCase() devuelve BranchJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+BranchJpaRepository.findFirstByCompany_IdAndCodeIgnoreCaseAndActiveTrue() devuelve BranchJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+CatalogBarcodeJpaRepository.findAllByCompany_IdAndBundle_IdOrderByBarcode() devuelve CatalogBarcodeJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+CatalogBarcodeJpaRepository.findAllByCompany_IdAndPresentation_IdOrderByBarcode() devuelve CatalogBarcodeJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+MedicamentPrescriptionJpaRepository.findByPrescriptionId() devuelve MedicamentPrescriptionJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+PermissionJpaRepository.findByCompanyIdAndCode() devuelve PermissionJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+ProductPresentationJpaRepository.findByCompany_IdAndProduct_IdAndDefaultPresentationTrue() devuelve ProductPresentationJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1
+WeightRecordJpaRepository.findByIdAndCompany_Id() devuelve WeightRecordJpaEntity (con @ManyToOne) sin @EntityGraph ni @Query: N+1

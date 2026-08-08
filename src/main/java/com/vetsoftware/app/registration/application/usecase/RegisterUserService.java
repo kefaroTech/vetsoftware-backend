@@ -27,7 +27,7 @@ import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Observed(name = "registration.register")
 @Service
@@ -49,6 +49,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final RolePermissionInitializationPort rolePermissionInitializationPort;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final VerificationEmailSender verificationEmailSender;
+    private final TransactionTemplate transactionTemplate;
     private final long verificationTtlHours;
 
     public RegisterUserService(CaptchaVerifier captchaVerifier, CompanyCreator companyCreator,
@@ -60,6 +61,7 @@ public class RegisterUserService implements RegisterUserUseCase {
             RolePermissionInitializationPort rolePermissionInitializationPort,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
             VerificationEmailSender verificationEmailSender,
+            TransactionTemplate transactionTemplate,
             @Value("${vetsoftware.registration.verification-token-ttl-hours:24}") long verificationTtlHours) {
         this.captchaVerifier = captchaVerifier;
         this.companyCreator = companyCreator;
@@ -75,17 +77,38 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.rolePermissionInitializationPort = rolePermissionInitializationPort;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.verificationEmailSender = verificationEmailSender;
+        this.transactionTemplate = transactionTemplate;
         this.verificationTtlHours = verificationTtlHours;
     }
 
+    /**
+     * El captcha corre ANTES de abrir la transaccion, no dentro.
+     *
+     * <p>
+     * Verificarlo es un POST a Google: con {@code @Transactional} sobre todo el
+     * metodo, ese HTTP quedaba dentro de la transaccion del registro y retenia su
+     * conexion del pool mientras esperaba respuesta. Un pico de registros —o un
+     * siteverify lento— consumia conexiones de Hikari sin haber tocado todavia una
+     * sola fila. Es el mismo patron de BE-02, en pequeño.
+     *
+     * <p>
+     * Con {@link TransactionTemplate} el limite transaccional se abre recien en
+     * {@link #register}, ya con el captcha resuelto. Programatico y no anotado a
+     * proposito: la alternativa —extraer el cuerpo a otro bean— o se hace bien o
+     * cae en la auto-invocacion, donde el proxy no aplica y no se abre transaccion
+     * ninguna.
+     */
     @Override
-    @Transactional
     public RegistrationDto execute(RegisterUserCommand command) {
         // 1) Anti-abuso: captcha antes de tocar la BD (no-op si el captcha esta
         // deshabilitado por
         // config).
         captchaVerifier.verify(command.recaptchaToken(), command.remoteIp());
 
+        return transactionTemplate.execute(status -> register(command));
+    }
+
+    private RegistrationDto register(RegisterUserCommand command) {
         if (companyIdentifierChecker.exists(command.companyIdentifier())) {
             throw new IllegalArgumentException(
                     "Company identifier already in use: " + command.companyIdentifier());

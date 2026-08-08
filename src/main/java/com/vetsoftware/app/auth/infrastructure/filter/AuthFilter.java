@@ -7,6 +7,7 @@ import com.vetsoftware.app.auth.application.dto.SystemUserContext;
 import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.auth.application.port.in.ResolveAuthContextUseCase;
 import com.vetsoftware.app.auth.application.port.in.ResolveSystemAuthContextUseCase;
+import com.vetsoftware.app.auth.infrastructure.config.PublicRoutes;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
@@ -57,45 +58,22 @@ public class AuthFilter extends OncePerRequestFilter {
         this.tracer = tracer;
     }
 
-    private record JwtExcludedRoute(String method, String pattern) {
-    }
-
-    private static final List<JwtExcludedRoute> JWT_EXCLUDED_PATHS = List.of(
-            new JwtExcludedRoute("POST", "/auth/login/**"),
-            new JwtExcludedRoute("POST", "/auth/refresh"),
-            new JwtExcludedRoute("POST", "/register"),
-            new JwtExcludedRoute("POST", "/register/verify"),
-            new JwtExcludedRoute("POST", "/auth/forgot-password"),
-            new JwtExcludedRoute("GET", "/auth/reset-password/validate"),
-            new JwtExcludedRoute("POST", "/auth/reset-password"),
-            new JwtExcludedRoute("POST", "/auth/recover-code"),
-            new JwtExcludedRoute("POST", "/dian/webhooks/**"),
-            new JwtExcludedRoute("GET", "/countries"),
-            new JwtExcludedRoute("GET", "/countries/{countryId}/states"),
-            new JwtExcludedRoute("GET", "/states/{stateId}/cities"),
-            new JwtExcludedRoute("GET", "/species/{specieId}/breeds"),
-            new JwtExcludedRoute("GET", "/species"), new JwtExcludedRoute("GET", "/animal-colors"),
-            new JwtExcludedRoute("GET", "/consultation-types"),
-            new JwtExcludedRoute("GET", "/modules"), new JwtExcludedRoute("GET", "/sub-modules"),
-            new JwtExcludedRoute("GET", "/spa-types"), new JwtExcludedRoute(null, "/swagger-ui/**"),
-            new JwtExcludedRoute(null, "/v3/api-docs/**"),
-            new JwtExcludedRoute(null, "/swagger-resources/**"),
-            new JwtExcludedRoute(null, "/webjars/**"),
-            // Actuator pertenece a su propia SecurityFilterChain; este filtro solo procesa
-            // JWT de
-            // negocio.
-            new JwtExcludedRoute(null, "/actuator/**"));
-
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
+    /**
+     * Las rutas viven en {@link PublicRoutes}, compartidas con
+     * {@code SecurityConfig}: la cadena de filtros de Spring Security tiene que
+     * permitir exactamente lo mismo que este filtro deja pasar, o una ruta pública
+     * terminaría en 403.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod()))
             return true;
         String method = request.getMethod();
         String path = request.getServletPath();
-        return JWT_EXCLUDED_PATHS.stream()
-                .anyMatch(r -> (r.method() == null || r.method().equalsIgnoreCase(method))
+        return PublicRoutes.JWT_EXCLUDED.stream()
+                .anyMatch(r -> (r.anyMethod() || r.method().matches(method))
                         && PATH_MATCHER.match(r.pattern(), path));
     }
 

@@ -4,7 +4,6 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDoc
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * A1 — completa la emisión de un documento del cierre en su PROPIA transacción,
@@ -34,7 +33,19 @@ public class ClosedAccountEmissionCompleter {
         this.deliverService = deliverService;
     }
 
-    @Transactional
+    /**
+     * Sin {@code @Transactional}, igual que los otros cinco casos de uso que llaman
+     * a {@link ElectronicDocumentEmitter}. Tenerlo anulaba media A1: sacar la
+     * emisión del commit del cierre liberaba el lock de {@code open_accounts}, pero
+     * abría acto seguido otra transacción que retenía una conexión del pool —y el
+     * {@code FOR UPDATE} del consecutivo— durante los hasta 75 segundos del HTTP a
+     * MATIAS. El lock de facturación solo se había mudado de tabla.
+     *
+     * <p>
+     * Cada paso abre ahora la suya, corta: la numeración en {@link NumberAssigner}
+     * ({@code REQUIRES_NEW}) y el desenlace en {@link TransmissionResultPersister}.
+     * La lectura inicial no necesita ninguna.
+     */
     public void complete(Long documentId) {
         ElectronicDocument document = repository.findById(documentId)
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(documentId));
