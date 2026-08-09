@@ -2,6 +2,7 @@ package com.vetsoftware.app.electronicdocument.infrastructure.inventory;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.inventory.application.command.RecordSaleCommand;
+import com.vetsoftware.app.inventory.application.dto.StockConsumptionDto;
 import com.vetsoftware.app.inventory.application.port.in.StockLedgerUseCase;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import org.springframework.stereotype.Component;
@@ -23,11 +24,15 @@ public class LedgerInventoryAdapter implements InventoryLedgerPort {
     }
 
     @Override
-    public void recordPosSale(Long companyId, Long branchId, Long productId, int quantity,
+    public int recordPosSale(Long companyId, Long branchId, Long productId, int quantity,
             Long documentId, Long issuedBy) {
         // allowNegative=true: la venta de mostrador nunca se frena por stock.
-        stockLedger.recordSale(new RecordSaleCommand(companyId, branchId, productId, quantity,
-                StockReferenceType.POS_DOCUMENT, documentId, issuedBy, true));
+        // La lista de consumos por lote es la prueba de lo que SE DESCONTO: vacia
+        // significa que el ledger trato la salida como duplicada y no movio nada.
+        return stockLedger
+                .recordSale(new RecordSaleCommand(companyId, branchId, productId, quantity,
+                        StockReferenceType.POS_DOCUMENT, documentId, issuedBy, true))
+                .stream().mapToInt(StockConsumptionDto::quantity).sum();
     }
 
     @Override

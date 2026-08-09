@@ -11,11 +11,17 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
 public interface InventoryLedgerPort {
 
     /**
-     * Registra la salida de inventario por una línea de producto del POS.
-     * Idempotente por el id del documento. La venta de mostrador NUNCA se frena por
-     * stock: siempre permite negativo (no consulta el flag de empresa).
+     * Registra la salida de inventario por un producto del POS. Idempotente por
+     * (documento, producto). La venta de mostrador NUNCA se frena por stock:
+     * siempre permite negativo (no consulta el flag de empresa).
+     *
+     * @return unidades realmente descontadas del kardex. <b>Devolverlo no es
+     *         cosmético</b>: el ledger ignora en silencio una salida que considera
+     *         duplicada, y ese silencio es exactamente lo que dejó el inventario
+     *         sobrestimado en BE-01. Quien llama compara lo pedido con lo
+     *         descontado.
      */
-    void recordPosSale(Long companyId, Long branchId, Long productId, int quantity, Long documentId,
+    int recordPosSale(Long companyId, Long branchId, Long productId, int quantity, Long documentId,
             Long issuedBy);
 
     /**
