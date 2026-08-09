@@ -233,6 +233,32 @@
         <!-- ArchUnit: las reglas de CLAUDE.md como test que rompe el build.
              Se declaran api + engine en lugar del agregador archunit-junit5
              porque es lo mismo que él agrupa, sin el pom intermedio. -->
+        <!-- @DataJpaTest contra MySQL real. H2 no sirve aqui: el schema depende de
+             comportamientos concretos de MySQL (TINYINT pelado, AUTO_INCREMENT con
+             IDENTITY, SELECT ... FOR UPDATE), y un motor distinto daria verde sobre algo
+             que no es lo que se despliega. Versiones gestionadas por el BOM de Boot. -->
+        <!-- Boot 4 partio las rodajas de test por modulo: @DataJpaTest ya no viene en
+             spring-boot-starter-test, hay que pedir su starter. Lo mismo @WebMvcTest. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5-api</artifactId>
@@ -274,6 +300,14 @@
                          eso la propiedad argLine se declara vacia arriba: sin declararla,
                          @{argLine} quedaria literal cuando jacoco no corre. -->
                     <argLine>@{argLine} -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                    <environmentVariables>
+                        <!-- EncryptedStringConverter lo instancia Hibernate, no Spring, asi
+                             que lee la clave del ENTORNO de forma estatica y sin default: sin
+                             esto no arranca ningun contexto con JPA. Clave de juguete, valida
+                             solo para que el converter se inicialice en tests; jamas se usa
+                             fuera de aqui y no descifra nada real. -->
+                        <DIAN_ENC_KEY>cvPOiufeDsByvGdw71gg8XxS880Xf7S6lH9WvdfiwQY=</DIAN_ENC_KEY>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
