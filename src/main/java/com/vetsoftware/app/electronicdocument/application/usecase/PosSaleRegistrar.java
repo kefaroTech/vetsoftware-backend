@@ -6,8 +6,11 @@ import com.vetsoftware.app.electronicdocument.application.command.SaleLineKind;
 import com.vetsoftware.app.electronicdocument.application.port.out.CashPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedgerPort;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.electronicdocument.domain.StockDiscountMismatchException;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,12 +56,32 @@ public class PosSaleRegistrar {
     }
 
     private void discountStock(RegisterPosSaleCommand command, ElectronicDocument document) {
+        // Se agrupa por producto ANTES de tocar el kardex. El ledger es idempotente por
+        // (documento, producto), asi que dos lineas del mismo producto en la misma
+        // venta —dos escaneos del mismo articulo, sin fusionar en el front— acababan
+        // con la segunda descartada como duplicada: se cobraban dos y se descontaba
+        // una. Una unica salida por producto con la cantidad total elimina esa
+        // ambiguedad, en vez de depender de que el front agrupe.
+        Map<Long, Integer> unitsByProduct = new LinkedHashMap<>();
         for (SaleLine line : command.lines()) {
             if (line.kind() != SaleLineKind.PRODUCT)
                 continue;
-            inventoryLedger.recordPosSale(command.companyId(), document.getBranchId(), line.refId(),
-                    toUnits(line.refId(), line.quantity()), document.getId(),
+            unitsByProduct.merge(line.refId(), toUnits(line.refId(), line.quantity()),
+                    Integer::sum);
+        }
+        for (Map.Entry<Long, Integer> entry : unitsByProduct.entrySet()) {
+            int expected = entry.getValue();
+            int discounted = inventoryLedger.recordPosSale(command.companyId(),
+                    document.getBranchId(), entry.getKey(), expected, document.getId(),
                     command.issuedByEmployeeId());
+            // BE-01: el invariante que faltaba. Lo vendido y lo descontado tienen que
+            // coincidir, y si no coinciden la venta se deshace entera. El POS permite
+            // stock negativo, asi que no hay ningun caso legitimo en que el ledger
+            // descuente de menos.
+            if (discounted != expected) {
+                throw new StockDiscountMismatchException(document.getId(), entry.getKey(), expected,
+                        discounted);
+            }
         }
     }
 
