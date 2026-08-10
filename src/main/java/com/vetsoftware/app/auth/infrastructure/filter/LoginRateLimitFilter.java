@@ -25,6 +25,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -59,6 +60,27 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static final RouteLimit DIAN_WEBHOOK_LIMIT = new RouteLimit("dian-webhook-rl:",
             "/dian/webhooks", 120, Duration.ofMinutes(1), "DIAN_WEBHOOK_RATE_LIMITED",
             "Too many webhook requests. Try again later.", List.of());
+    // Mismo limite que /auth/forgot-password: las dos rutas disparan un correo, asi
+    // que el recurso que hay que proteger es el mismo y el abuso tambien.
+    private static final RouteLimit RECOVER_CODE_LIMIT = new RouteLimit("recover-code-rl:",
+            "/auth/recover-code", 3, Duration.ofHours(1), "RECOVER_CODE_RATE_LIMITED",
+            "Too many code recovery attempts. Try again later.", List.of("email"));
+    // Consume un token de un solo uso: sin limite, el token se puede adivinar a
+    // fuerza bruta. 10/h deja margen a que la nueva contrasena falle la politica
+    // varias veces seguidas.
+    private static final RouteLimit RESET_PASSWORD_LIMIT = new RouteLimit("reset-password-rl:",
+            "/auth/reset-password", 10, Duration.ofHours(1), "RESET_PASSWORD_RATE_LIMITED",
+            "Too many password reset attempts. Try again later.", List.of("token"));
+    private static final RouteLimit VERIFY_EMAIL_LIMIT = new RouteLimit("verify-email-rl:",
+            "/register/verify", 10, Duration.ofHours(1), "VERIFY_EMAIL_RATE_LIMITED",
+            "Too many verification attempts. Try again later.", List.of("token"));
+
+    /**
+     * Campos cuyo valor es un secreto opaco y NO se normaliza a minusculas: dos
+     * tokens que solo difieran en mayusculas son tokens distintos, y meterlos en el
+     * mismo bucket los cuenta como uno.
+     */
+    private static final Set<String> OPAQUE_FIELDS = Set.of("refreshToken", "token");
 
     private final LettuceBasedProxyManager<String> proxyManager;
     private final ObjectMapper objectMapper;
@@ -130,6 +152,14 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return REGISTER_LIMIT;
         if (uri.equals(FORGOT_PASSWORD_LIMIT.path()))
             return FORGOT_PASSWORD_LIMIT;
+        if (uri.equals(RECOVER_CODE_LIMIT.path()))
+            return RECOVER_CODE_LIMIT;
+        // equals, no startsWith: /auth/reset-password/validate es otra ruta (y es GET,
+        // que aqui ya se descarto arriba).
+        if (uri.equals(RESET_PASSWORD_LIMIT.path()))
+            return RESET_PASSWORD_LIMIT;
+        if (uri.equals(VERIFY_EMAIL_LIMIT.path()))
+            return VERIFY_EMAIL_LIMIT;
         if (uri.startsWith(DIAN_WEBHOOK_LIMIT.path() + "/"))
             return DIAN_WEBHOOK_LIMIT;
         return null;
@@ -148,6 +178,20 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         return bucket.tryConsume(1);
     }
 
+    /**
+     * {@code getRemoteAddr()} devuelve aqui la IP <b>del cliente</b>, no la del
+     * balanceador: {@code server.forward-headers-strategy=native} activa el
+     * {@code RemoteIpValve} de Tomcat, que reescribe la IP remota desde
+     * {@code X-Forwarded-For} confiando <b>solo</b> en proxies de rangos privados.
+     * Un cliente externo no puede falsear la cabecera para escaparse del limite, y
+     * detras del balanceador el limite no se aplica a todos los clientes a la vez.
+     *
+     * <p>
+     * Por eso aqui NO se parsea {@code X-Forwarded-For} a mano: hacerlo duplicaria
+     * —y casi con seguridad debilitaria— la logica de proxies de confianza que ya
+     * aplica el contenedor. {@code ServerForwardHeadersConfigTest} fija esa
+     * configuracion para que no desaparezca en silencio.
+     */
     private static String ipKey(HttpServletRequest request, RouteLimit routeLimit) {
         return routeLimit.keyPrefix() + "ip:" + request.getRemoteAddr();
     }
@@ -174,7 +218,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
                 String value = valueNode.asText().trim();
                 if (value.isEmpty())
                     continue;
-                if (!"refreshToken".equals(field))
+                if (!OPAQUE_FIELDS.contains(field))
                     value = value.toLowerCase(Locale.ROOT);
                 keys.add(accountKey(routeLimit, field, value));
             }
