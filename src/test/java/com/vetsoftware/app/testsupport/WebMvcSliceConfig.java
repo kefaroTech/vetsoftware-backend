@@ -45,10 +45,20 @@ public class WebMvcSliceConfig {
     /** Company del contexto en las rodajas. Los tests pueden re-stubearlo. */
     public static final Long COMPANY_ID = 9L;
 
+    /**
+     * Empleado del contexto en las rodajas. Se stubea explicitamente porque los
+     * controllers que sellan autoria (`createdBy`/`updatedBy`) leen
+     * {@code currentEmployeeIdOrNull()}: sin stub, Mockito devuelve 0L para un
+     * {@code Long} —no null—, y el command llegaria firmado por un empleado que no
+     * existe. Un valor propio deja ver el sello en la asercion.
+     */
+    public static final Long EMPLOYEE_ID = 4L;
+
     @Bean
     Authz authz() {
         Authz authz = mock(Authz.class);
         org.mockito.Mockito.lenient().when(authz.currentCompanyId()).thenReturn(COMPANY_ID);
+        org.mockito.Mockito.lenient().when(authz.currentEmployeeIdOrNull()).thenReturn(EMPLOYEE_ID);
         org.mockito.Mockito.lenient().when(authz.isMyCompany(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(true);
         return authz;
