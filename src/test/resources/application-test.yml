@@ -1,0 +1,37 @@
+# Perfil de los tests de integracion ligera (@DataJpaTest sobre Testcontainers).
+#
+# Solo apaga lo que no tiene sentido dentro de una rodaja de persistencia: Redis,
+# S3, correo y la telemetria. La base NO se toca: Liquibase corre sus changesets
+# reales y Hibernate valida las entidades contra el schema resultante, que es
+# justo lo que estos tests vienen a comprobar.
+spring:
+  jpa:
+    hibernate:
+      # 'validate' es el contrato: si una entidad no cuadra con la migracion, el
+      # contexto no arranca. Es la comprobacion que hoy solo ocurre al desplegar.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        type:
+          preferred_boolean_jdbc_type: TINYINT
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  cache:
+    type: none
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+# La rodaja @DataJpaTest no levanta estos beans, pero varias
+# @ConfigurationProperties se validan en el arranque del contexto y exigen valor.
+jwt:
+  secret: test-secret-de-32-bytes-como-minimo-para-hmac
+  access-token-minutes: 15
+  refresh-token-days: 30
+
+logging:
+  level:
+    liquibase: WARN
+    org.hibernate.SQL: WARN
+    com.zaxxer.hikari: WARN

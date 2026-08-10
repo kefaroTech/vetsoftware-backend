@@ -616,6 +616,9 @@ mvn verify                    # además comprueba el suelo de cobertura
   `application/command`, `application/dto` y `application/usecase` al **100 %** de línea y
   **95,9 % de rama**; `infrastructure/persistence` al 29 % (solo los mappers — los
   adaptadores JPA necesitan `@DataJpaTest`) y `web` sin tocar (necesita `@WebMvcTest`).
+- **Tras extender la suite a 17 features más (2026-08-09): 25,64 % de línea**
+  (7.192/28.045) y 29,18 % de rama, sobre **2.897 tests**. El suelo del `pom.xml` sube en
+  el mismo PR a `0.25`.
 - El `pom.xml` fija un **trinquete**: `jacoco.line.minimum` es un suelo global que **solo
   puede subir**. Se sube a mano cuando un PR lo supera de forma estable. **Bajarlo requiere
   justificarlo en el PR** — es la única forma de que la cifra signifique algo.
