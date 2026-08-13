@@ -2,8 +2,10 @@ package com.vetsoftware.app.clinicalhistory.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventDto;
+import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventTypeCountDto;
 import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.port.in.ExportClinicalHistoryUseCase;
+import com.vetsoftware.app.clinicalhistory.application.port.in.GetClinicalHistorySummaryUseCase;
 import com.vetsoftware.app.clinicalhistory.application.port.in.GetClinicalHistoryUseCase;
 import com.vetsoftware.app.clinicalhistory.application.query.GetClinicalHistoryQuery;
 import com.vetsoftware.app.clinicalhistory.domain.ClinicalEventType;
@@ -27,12 +29,15 @@ public class ClinicalHistoryController {
 
     private final GetClinicalHistoryUseCase getUseCase;
     private final ExportClinicalHistoryUseCase exportUseCase;
+    private final GetClinicalHistorySummaryUseCase summaryUseCase;
     private final Authz authz;
 
     public ClinicalHistoryController(GetClinicalHistoryUseCase getUseCase,
-            ExportClinicalHistoryUseCase exportUseCase, Authz authz) {
+            ExportClinicalHistoryUseCase exportUseCase,
+            GetClinicalHistorySummaryUseCase summaryUseCase, Authz authz) {
         this.getUseCase = getUseCase;
         this.exportUseCase = exportUseCase;
+        this.summaryUseCase = summaryUseCase;
         this.authz = authz;
     }
 
@@ -42,13 +47,26 @@ public class ClinicalHistoryController {
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "q", required = false) String q,
+            // Procedimientos derivados de una consulta concreta (los "hijos" del
+            // detalle). null = toda la historia.
+            @RequestParam(name = "consultationId", required = false) Long consultationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         GetClinicalHistoryQuery query = new GetClinicalHistoryQuery(animalId,
-                authz.currentCompanyId(), types == null ? List.of() : types, from, to, q);
+                authz.currentCompanyId(), types == null ? List.of() : types, from, to, q,
+                consultationId);
         PageResult<ClinicalEventDto> result = getUseCase.execute(query, page, pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+    }
+
+    /**
+     * BE-06: cuantos eventos de cada tipo tiene el animal, para los chips de
+     * filtro.
+     */
+    @GetMapping("/summary")
+    public List<ClinicalEventTypeCountDto> summary(@PathVariable Long animalId) {
+        return summaryUseCase.countByType(animalId, authz.currentCompanyId());
     }
 
     @GetMapping("/export.pdf")
@@ -58,7 +76,7 @@ public class ClinicalHistoryController {
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(name = "q", required = false) String q) {
         GetClinicalHistoryQuery query = new GetClinicalHistoryQuery(animalId,
-                authz.currentCompanyId(), types == null ? List.of() : types, from, to, q);
+                authz.currentCompanyId(), types == null ? List.of() : types, from, to, q, null);
         byte[] pdf = exportUseCase.execute(query);
         String filename = "historia-clinica-" + animalId + ".pdf";
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)

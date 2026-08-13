@@ -1,5 +1,6 @@
 package com.vetsoftware.app.clinicalhistory.application.port.out;
 
+import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventTypeCountDto;
 import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.query.GetClinicalHistoryQuery;
 import com.vetsoftware.app.clinicalhistory.application.query.ListCompanyClinicalEventsQuery;
@@ -21,6 +22,12 @@ public interface ClinicalEventRepository {
      */
     PageResult<ClinicalEvent> findHistoryPage(GetClinicalHistoryQuery query, int page,
             int pageSize);
+
+    /**
+     * Contador por tipo sobre toda la historia del animal, para los chips de la
+     * pantalla. Ver {@link ClinicalEventTypeCountDto}.
+     */
+    List<ClinicalEventTypeCountDto> countByType(Long animalId, Long companyId);
 
     List<ClinicalEvent> findByCompany(ListCompanyClinicalEventsQuery query);
 }

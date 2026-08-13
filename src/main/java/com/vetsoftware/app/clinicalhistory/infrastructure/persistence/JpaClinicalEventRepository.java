@@ -1,5 +1,6 @@
 package com.vetsoftware.app.clinicalhistory.infrastructure.persistence;
 
+import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventTypeCountDto;
 import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.port.out.ClinicalEventRepository;
 import com.vetsoftware.app.clinicalhistory.application.query.GetClinicalHistoryQuery;
@@ -32,7 +33,8 @@ public class JpaClinicalEventRepository implements ClinicalEventRepository {
     public List<ClinicalEvent> findHistory(GetClinicalHistoryQuery query) {
         List<ClinicalEventType> types = query.types().isEmpty() ? ALL_TYPES : query.types();
         return jpaRepository.findHistory(query.animalId(), query.companyId(), types, query.from(),
-                query.to(), query.q()).stream().map(mapper::toDomain).toList();
+                query.to(), query.q(), query.consultationId()).stream().map(mapper::toDomain)
+                .toList();
     }
 
     @Override
@@ -41,7 +43,7 @@ public class JpaClinicalEventRepository implements ClinicalEventRepository {
         List<ClinicalEventType> types = query.types().isEmpty() ? ALL_TYPES : query.types();
         Page<ClinicalEventViewJpaEntity> result = jpaRepository.findHistoryPage(query.animalId(),
                 query.companyId(), types, query.from(), query.to(), query.q(),
-                pageRequest(page, pageSize));
+                query.consultationId(), pageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());
@@ -54,6 +56,11 @@ public class JpaClinicalEventRepository implements ClinicalEventRepository {
     private static PageRequest pageRequest(int page, int pageSize) {
         int safeSize = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
         return PageRequest.of(Math.max(page, 0), safeSize);
+    }
+
+    @Override
+    public List<ClinicalEventTypeCountDto> countByType(Long animalId, Long companyId) {
+        return jpaRepository.countByType(animalId, companyId);
     }
 
     @Override

@@ -8,12 +8,14 @@ import java.util.List;
  * Criterios de la historia clinica de un animal.
  *
  * <p>
- * {@code q} se anade en BE-06: es el buscador de la pantalla, que filtraba en
- * cliente sobre la historia completa. Paginada, ese filtro solo veria la pagina
- * ya cargada.
+ * {@code q} y {@code consultationId} se anaden en BE-06. {@code q} es el
+ * buscador de la pantalla, que filtraba en cliente sobre la historia completa.
+ * {@code consultationId} acota a los procedimientos derivados de una consulta:
+ * el detalle los sacaba del array cargado, y paginado pueden estar en otra
+ * pagina.
  */
 public record GetClinicalHistoryQuery(Long animalId, Long companyId, List<ClinicalEventType> types,
-        LocalDate from, LocalDate to, String q) {
+        LocalDate from, LocalDate to, String q, Long consultationId) {
     public GetClinicalHistoryQuery {
         if (animalId == null)
             throw new IllegalArgumentException("animalId is required");
