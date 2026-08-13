@@ -41,6 +41,9 @@ public final class SchemaSeed {
     public static final Long PRODUCT_ID = 930L;
     public static final Long OTRO_PRODUCT_ID = 931L;
     public static final Long EMPLOYEE_ID = 940L;
+    public static final Long OTRO_EMPLOYEE_ID = 941L;
+    public static final Long TERMINAL_ID = 950L;
+    public static final Long OTRO_TERMINAL_ID = 951L;
 
     private SchemaSeed() {
     }
@@ -75,12 +78,29 @@ public final class SchemaSeed {
         product(em, PRODUCT_ID, "Amoxicilina 500mg", "SKU-100");
         product(em, OTRO_PRODUCT_ID, "Ivermectina 1%", "SKU-200");
 
+        empleado(em, EMPLOYEE_ID, "EMP-001", "Ana Ruiz", "ana@test.local");
+        empleado(em, OTRO_EMPLOYEE_ID, "EMP-002", "Luis Paz", "luis@test.local");
+        terminal(em, TERMINAL_ID, "Caja principal", "PRINCIPAL", BRANCH_ID);
+        terminal(em, OTRO_TERMINAL_ID, "Caja 2", "CAJA-2", BRANCH_ID);
+        em.flush();
+    }
+
+    private static void empleado(EntityManager em, Long id, String codigo, String nombre,
+            String correo) {
         insert(em, """
                 INSERT IGNORE INTO employees (id, employee_code, hash_password, name, email,
                                               company_id)
-                VALUES (:id, 'EMP-001', 'x', 'Ana Ruiz', 'ana@test.local', %d)
-                """.formatted(COMPANY_ID), EMPLOYEE_ID);
-        em.flush();
+                VALUES (:id, '%s', 'x', '%s', '%s', %d)
+                """.formatted(codigo, nombre, correo, COMPANY_ID), id);
+    }
+
+    private static void terminal(EntityManager em, Long id, String nombre, String codigo,
+            Long branchId) {
+        insert(em, """
+                INSERT IGNORE INTO cash_terminals (id, company_id, branch_id, name, code, active,
+                                                   created_at)
+                VALUES (:id, %d, %d, '%s', '%s', true, '2026-01-15 08:00:00')
+                """.formatted(COMPANY_ID, branchId, nombre, codigo), id);
     }
 
     private static void company(EntityManager em, Long id, String nombre, String nit) {
