@@ -33,6 +33,10 @@ mvn spring-boot:run        # run
 mvn test                   # all tests + informe de cobertura en target/site/jacoco/index.html
 mvn test -Dtest=ClassName  # single test class
 mvn verify                 # tests + suelo de cobertura (jacoco:check) + checkstyle + spotless
+
+# El contrato OpenAPI vive en api/openapi.json y `mvn verify` falla si se quedó atrás.
+# Tras un cambio deliberado de API, regenéralo y commitéalo:
+mvn verify -Dit.test=OpenApiContractIT -Dopenapi.write=true
 mvn clean verify sonar:sonar -Dsonar.login=<token>   # análisis de código (SonarQube 9.9 LTS en localhost:9000)
 ```
 
@@ -76,6 +80,22 @@ MySQL en `src/main/resources/application.yml`:
 - DB: `<project>_db` at `localhost:3306`
 - `ddl-auto: update` — Hibernate gestiona el schema automáticamente
 - Credenciales deben usar variables de entorno: `${DB_USERNAME:root}`
+
+## El contrato de la API es un fichero versionado
+
+`api/openapi.json` es la especificación que expone este backend, y **`mvn verify` falla si no
+coincide con el código** (`OpenApiContractIT` levanta la aplicación entera y compara). No se edita
+a mano: se regenera con `-Dopenapi.write=true` y se commitea en el mismo PR que el cambio de API.
+
+Ese fichero es la única fuente de verdad de los tipos de los dos frontends, que hasta ahora
+declaraban ~565 interfaces a mano sin nada que las atara aquí (TR-01). Cada front lo copia y
+genera sus tipos con `openapi-typescript`; sus pruebas fallan si un DTO deja de cuadrar. En la
+práctica eso significa que **renombrar un campo de un `record` de `web/response` rompe el build
+del front**, que es justo lo que antes no pasaba: compilaba, desplegaba y fallaba en el navegador.
+
+No hace falta anotar nada con `@Schema` ni `@Operation` para que esto funcione — springdoc deriva
+el esquema de los tipos. Las anotaciones (BE-20) añaden descripciones y ejemplos a la
+documentación publicada, no precisión al contrato.
 
 ## Package structure — Vertical Slicing (una feature por paquete raíz)
 
