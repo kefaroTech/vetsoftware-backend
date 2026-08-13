@@ -1,10 +1,10 @@
 package com.vetsoftware.app.medicament.application.usecase;
 
 import com.vetsoftware.app.medicament.application.dto.MedicamentDto;
+import com.vetsoftware.app.medicament.application.dto.PageResult;
 import com.vetsoftware.app.medicament.application.port.in.ListMedicamentsUseCase;
 import com.vetsoftware.app.medicament.application.port.out.MedicamentRepository;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "medicament.list")
@@ -17,7 +17,7 @@ public class ListMedicamentsService implements ListMedicamentsUseCase {
     }
 
     @Override
-    public List<MedicamentDto> listAll() {
-        return repository.findAll().stream().map(MedicamentDto::from).toList();
+    public PageResult<MedicamentDto> listAll(int page, int pageSize) {
+        return repository.findAll(page, pageSize).map(MedicamentDto::from);
     }
 }
