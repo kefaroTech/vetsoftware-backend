@@ -94,14 +94,29 @@ class OpenApiContractIT {
 
         assertThat(Files.exists(SPEC)).as("falta %s; generalo con -Dopenapi.write=true", SPEC)
                 .isTrue();
-        assertThat(Files.readString(SPEC, StandardCharsets.UTF_8)).as("""
+        // Se normalizan los finales de linea. Git reescribe el fichero a CRLF en una
+        // copia
+        // de trabajo de Windows, asi que comparar el texto crudo rompia el build en
+        // cualquier
+        // clon nuevo aunque el contrato fuese identico, y el mensaje invitaba a
+        // regenerar,
+        // que no arreglaba nada porque el diff seguia vacio.
+        assertThat(normalizar(Files.readString(SPEC, StandardCharsets.UTF_8))).as("""
                 El contrato de la API cambio y %s no se actualizo.
 
                 Si el cambio es deliberado, regenera y commitea:
                   ./mvnw verify -Dit.test=OpenApiContractIT -Dopenapi.write=true
                 y regenera despues los tipos de los dos frontends:
                   npm run api:types
-                """, SPEC).isEqualTo(actual);
+                """, SPEC).isEqualTo(normalizar(actual));
+    }
+
+    /**
+     * Finales de linea a LF: lo que se compara es el contrato, no como lo guardo
+     * git.
+     */
+    private static String normalizar(String texto) {
+        return texto.replace("\r\n", "\n");
     }
 
     /**
