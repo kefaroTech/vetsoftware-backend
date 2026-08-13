@@ -1,11 +1,20 @@
 package com.vetsoftware.app.service.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import com.vetsoftware.app.service.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record ServiceResponse(Long id, String name, BigDecimal price, TaxTreatment taxTreatment,
-        String notes, ServiceCategorySummary serviceCategory, TaxSummary tax,
-        CompanySummary company, LocalDateTime createdDate, LocalDateTime updatedDate,
-        Long updatedBy, Long version, boolean enabled) {
+public record ServiceResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal price,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TaxTreatment taxTreatment,
+        String notes,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ServiceCategorySummary serviceCategory,
+        TaxSummary tax, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        LocalDateTime updatedDate, Long updatedBy,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long version,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

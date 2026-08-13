@@ -56,6 +56,16 @@ if [ "$RUN_FULL" = true ]; then
   exec ./mvnw --batch-mode --no-transfer-progress -DskipTests spotless:check checkstyle:check
 fi
 
+# Un cambio que toca muchos ficheros no cabe en una linea de comandos: los patrones de
+# Spotless y los includes de Checkstyle se construyen uno por fichero, y a partir de unas
+# decenas el `exec` muere con "Argument list too long". Ahi la comprobacion completa no solo
+# funciona, sino que es mas barata que armar la lista.
+STAGED_JAVA_COUNT="$(printf '%s\n' "$STAGED_PATHS" | grep -cE '^src/(main|test)/java/.*\.java$' || true)"
+if [ "$STAGED_JAVA_COUNT" -gt 40 ]; then
+  echo "Backend quality gate: $STAGED_JAVA_COUNT ficheros Java en el commit; se ejecuta la comprobacion completa."
+  exec ./mvnw --batch-mode --no-transfer-progress -DskipTests spotless:check checkstyle:check
+fi
+
 IFS='
 '
 for path in $STAGED_PATHS; do

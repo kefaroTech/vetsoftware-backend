@@ -1,4 +1,7 @@
 package com.vetsoftware.app.city.infrastructure.web.response;
 
-public record StateSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record StateSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

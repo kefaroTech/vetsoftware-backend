@@ -1,13 +1,23 @@
 package com.vetsoftware.app.openaccount.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record OpenAccountResponse(Long id, OwnerSummary owner, BigDecimal totalAmount,
-        BigDecimal paidAmount, BigDecimal outstandingAmount, CompanySummary company,
-        BranchSummary branch, OpenAccountStatus status, EmployeeSummary createdBy,
-        LocalDateTime createdDate, boolean enabled, EmployeeSummary closedBy,
-        LocalDateTime closedAt, String closeReason, boolean reversed, LocalDateTime reversedAt,
-        Long version) {
+public record OpenAccountResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OwnerSummary owner,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal totalAmount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal paidAmount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal outstandingAmount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BranchSummary branch,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OpenAccountStatus status,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary createdBy,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
+        EmployeeSummary closedBy, LocalDateTime closedAt, String closeReason, boolean reversed,
+        LocalDateTime reversedAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long version) {
 }

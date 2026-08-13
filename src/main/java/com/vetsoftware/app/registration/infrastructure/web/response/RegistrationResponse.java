@@ -1,4 +1,10 @@
 package com.vetsoftware.app.registration.infrastructure.web.response;
 
-public record RegistrationResponse(Long companyId, Long employeeId, String email, String status) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record RegistrationResponse(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long companyId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long employeeId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String email,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String status) {
 }

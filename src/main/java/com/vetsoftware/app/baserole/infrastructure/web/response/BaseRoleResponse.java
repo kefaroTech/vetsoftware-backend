@@ -1,7 +1,13 @@
 package com.vetsoftware.app.baserole.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
-public record BaseRoleResponse(Long id, String name, String code, Boolean mandatory,
-        LocalDateTime createdDate, boolean enabled) {
+public record BaseRoleResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Boolean mandatory,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        boolean enabled) {
 }

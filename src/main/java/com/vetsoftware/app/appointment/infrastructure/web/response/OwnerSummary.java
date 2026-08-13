@@ -1,4 +1,7 @@
 package com.vetsoftware.app.appointment.infrastructure.web.response;
 
-public record OwnerSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record OwnerSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }
