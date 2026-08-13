@@ -1,5 +1,6 @@
 package com.vetsoftware.app.medicament.application.port.out;
 
+import com.vetsoftware.app.medicament.application.dto.PageResult;
 import com.vetsoftware.app.medicament.domain.Medicament;
 import java.util.List;
 import java.util.Optional;
@@ -11,7 +12,11 @@ public interface MedicamentRepository {
 
     Optional<Medicament> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<Medicament> findAll();
+    /**
+     * Catalogo GLOBAL de la plataforma: no filtra por empresa. Pagina porque de
+     * otro modo trae la tabla entera; su uso esta restringido a ROLE_SYSTEM.
+     */
+    PageResult<Medicament> findAll(int page, int pageSize);
 
     List<Medicament> findAllAvailableForCompany(Long companyId);
 

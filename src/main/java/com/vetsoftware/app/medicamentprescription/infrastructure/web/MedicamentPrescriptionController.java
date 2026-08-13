@@ -1,9 +1,11 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.medicamentprescription.application.command.CreateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.application.command.UpdateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.application.dto.MedicamentPrescriptionDto;
+import com.vetsoftware.app.medicamentprescription.application.dto.PageResult;
 import com.vetsoftware.app.medicamentprescription.application.dto.PrescriptionSummaryDto;
 import com.vetsoftware.app.medicamentprescription.application.port.in.CreateMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.in.DeleteMedicamentPrescriptionUseCase;
@@ -16,7 +18,6 @@ import com.vetsoftware.app.medicamentprescription.infrastructure.web.request.Upd
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.response.MedicamentPrescriptionResponse;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.response.PrescriptionSummary;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,8 +57,12 @@ public class MedicamentPrescriptionController {
     }
 
     @GetMapping
-    public List<MedicamentPrescriptionResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+    public PageResponse<MedicamentPrescriptionResponse> listAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        PageResult<MedicamentPrescriptionDto> result = listUseCase.listAll(page, pageSize);
+        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
+                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }
 
     @GetMapping("/{id}")
