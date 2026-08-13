@@ -1,0 +1,52 @@
+# Perfil del volcado del contrato OpenAPI (OpenApiContractIT).
+#
+# El contexto se levanta ENTERO porque springdoc construye el esquema leyendo los
+# handlers registrados: sin controllers reales no hay 564 endpoints que inspeccionar.
+# Pero no se habla con ningun servicio externo, asi que todo lo que exige valor para
+# arrancar se rellena aqui con literales evidentemente falsos.
+#
+# Se apila sobre `test` (que trae MySQL de Testcontainers y apaga la telemetria):
+# @ActiveProfiles({"test", "openapi"}).
+vetsoftware:
+  email:
+    enabled: false
+    from: noreply@test.invalid
+    resend:
+      api-key: test
+  registration:
+    verification-base-url: http://localhost/verify
+  password-reset:
+    reset-base-url: http://localhost/reset
+  code-recovery:
+    login-url: http://localhost/login
+  employee:
+    login-url: http://localhost/login
+  recaptcha:
+    enabled: false
+    secret: ""
+  audit:
+    outbox:
+      enabled: false
+      publisher-enabled: false
+      delivery-stream-name: ""
+      region: us-east-1
+      endpoint: ""
+      access-key: ""
+      secret-key: ""
+  storage:
+    s3:
+      bucket: test
+      region: us-east-1
+      endpoint: http://localhost:4566
+      access-key: test
+      secret-key: test
+      path-style-access: true
+
+cors:
+  allowed-origins: http://localhost
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
