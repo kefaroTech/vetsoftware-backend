@@ -58,11 +58,16 @@ public interface ElectronicDocumentRepository {
     Optional<ElectronicDocument> findByOpenAccountId(Long openAccountId, Long companyId);
 
     /**
-     * Documentos de la empresa, con filtro OPCIONAL por sede (branchId null = todas
-     * las sedes).
+     * Documentos de la empresa, con filtros OPCIONALES por sede, tipo de documento
+     * y estado DIAN (null = sin filtrar por ese criterio).
+     *
+     * <p>
+     * BE-06: tipo y estado los filtraba la pantalla EN CLIENTE sobre la lista
+     * completa. Al pasar a paginacion real, un filtro de cliente solo veria las
+     * paginas ya cargadas, asi que tiene que resolverse aqui.
      */
-    PageResult<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId, int page,
-            int pageSize);
+    PageResult<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId,
+            ElectronicDocumentType documentType, DianStatus dianStatus, int page, int pageSize);
 
     /**
      * Documentos en un estado DIAN dado (p. ej. CONTINGENCIA para el job de

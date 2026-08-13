@@ -10,12 +10,15 @@ import com.vetsoftware.app.openaccount.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
+import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
+import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.OwnerSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.in.ChangeOpenAccountStatusUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.CreateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.FindOpenAccountUseCase;
+import com.vetsoftware.app.openaccount.application.port.in.GetOpenAccountsSummaryUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.ListOpenAccountsUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.ReactivateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.SearchOpenAccountsUseCase;
@@ -27,8 +30,10 @@ import com.vetsoftware.app.openaccount.infrastructure.web.response.BranchSummary
 import com.vetsoftware.app.openaccount.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.OpenAccountResponse;
+import com.vetsoftware.app.openaccount.infrastructure.web.response.OpenAccountsSummaryResponse;
 import com.vetsoftware.app.openaccount.infrastructure.web.response.OwnerSummary;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +45,7 @@ public class OpenAccountController {
     private final FindOpenAccountUseCase findUseCase;
     private final ListOpenAccountsUseCase listUseCase;
     private final SearchOpenAccountsUseCase searchUseCase;
+    private final GetOpenAccountsSummaryUseCase summaryUseCase;
     private final DeleteOpenAccountUseCase deleteUseCase;
     private final ReactivateOpenAccountUseCase reactivateUseCase;
     private final ChangeOpenAccountStatusUseCase changeStatusUseCase;
@@ -48,13 +54,15 @@ public class OpenAccountController {
     public OpenAccountController(CreateOpenAccountUseCase createUseCase,
             UpdateOpenAccountUseCase updateUseCase, FindOpenAccountUseCase findUseCase,
             ListOpenAccountsUseCase listUseCase, SearchOpenAccountsUseCase searchUseCase,
-            DeleteOpenAccountUseCase deleteUseCase, ReactivateOpenAccountUseCase reactivateUseCase,
+            GetOpenAccountsSummaryUseCase summaryUseCase, DeleteOpenAccountUseCase deleteUseCase,
+            ReactivateOpenAccountUseCase reactivateUseCase,
             ChangeOpenAccountStatusUseCase changeStatusUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.searchUseCase = searchUseCase;
+        this.summaryUseCase = summaryUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -83,14 +91,29 @@ public class OpenAccountController {
     @GetMapping("/search")
     public PageResponse<OpenAccountResponse> search(@RequestParam(required = false) Long ownerId,
             @RequestParam(required = false) Boolean enabled,
-            @RequestParam(defaultValue = "0") int page,
+            // Repetible: la pestana "Cerradas" manda status=CLOSE&status=CANCEL.
+            @RequestParam(required = false) List<OpenAccountStatus> status,
+            @RequestParam(required = false) String q, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) Long branchId) {
         PageResult<OpenAccountDto> result = searchUseCase
                 .execute(new SearchOpenAccountsCommand(authz.currentCompanyId(), ownerId, enabled,
-                        page, pageSize, authz.resolveAccessibleBranch(branchId)));
+                        status, q, page, pageSize, authz.resolveAccessibleBranch(branchId)));
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+    }
+
+    /**
+     * BE-06: contadores de las pestanas y saldo pendiente acumulado. Con la lista
+     * paginada, el front ya no puede sumarlos sobre el array completo.
+     */
+    @GetMapping("/summary")
+    public OpenAccountsSummaryResponse summary(
+            @RequestParam(name = "branchId", required = false) Long branchId) {
+        OpenAccountsSummaryDto dto = summaryUseCase.summarize(authz.currentCompanyId(),
+                authz.resolveAccessibleBranch(branchId));
+        return new OpenAccountsSummaryResponse(dto.openCount(), dto.closedCount(),
+                dto.totalOutstanding());
     }
 
     @GetMapping("/{id}")

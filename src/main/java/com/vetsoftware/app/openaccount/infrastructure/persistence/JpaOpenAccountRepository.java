@@ -7,6 +7,7 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaReposito
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaRepository;
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
+import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
@@ -15,6 +16,7 @@ import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -100,6 +102,15 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
                 result.getTotalPages());
     }
 
+    @Override
+    public OpenAccountsSummaryDto summarize(Long companyId, Long branchId) {
+        OpenAccountJpaRepository.OpenAccountsSummaryProjection row = jpaRepository
+                .summarize(companyId, branchId, OpenAccountStatus.OPEN);
+        BigDecimal pendiente = row.getTotalOutstanding();
+        return new OpenAccountsSummaryDto(row.getOpenCount(), row.getClosedCount(),
+                pendiente == null ? BigDecimal.ZERO : pendiente);
+    }
+
     /**
      * Normaliza lo que llega del cliente y acota el tamano: sin tope se vuelve a
      * pedir la tabla entera por query param. Orden por id descendente, estable y
@@ -157,6 +168,18 @@ public class JpaOpenAccountRepository implements OpenAccountRepository {
             // Multi-sucursal (Fase C): filtro opcional por sede.
             if (command.branchId() != null) {
                 predicates.add(cb.equal(root.get("branch").get("id"), command.branchId()));
+            }
+            // BE-06: la pestana de la pantalla. "Cerradas" son dos estados (cobrada y
+            // cancelada), por eso es un IN y no una igualdad.
+            if (!command.statuses().isEmpty()) {
+                predicates.add(root.get("status").in(command.statuses()));
+            }
+            // BE-06: el buscador de la pantalla. Se compara en minusculas sobre nombre
+            // y documento del propietario, que es exactamente lo que hacia el cliente.
+            if (command.q() != null && !command.q().isBlank()) {
+                String patron = "%" + command.q().trim().toLowerCase() + "%";
+                predicates.add(cb.or(cb.like(cb.lower(root.get("owner").get("name")), patron),
+                        cb.like(cb.lower(root.get("owner").get("document")), patron)));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

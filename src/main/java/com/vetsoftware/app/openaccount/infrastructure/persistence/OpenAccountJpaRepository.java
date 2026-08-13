@@ -2,6 +2,7 @@ package com.vetsoftware.app.openaccount.infrastructure.persistence;
 
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import jakarta.persistence.LockModeType;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -42,6 +43,39 @@ public interface OpenAccountJpaRepository
             """)
     Page<OpenAccountJpaEntity> findByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, Pageable pageable);
+
+    /**
+     * BE-06: contadores por pestana y saldo pendiente, en una sola consulta. La
+     * pantalla los calculaba sumando el array completo; con paginacion servida esa
+     * suma solo veria la pagina cargada.
+     *
+     * <p>
+     * El saldo acumula solo cuentas OPEN: el {@code outstandingAmount} de una
+     * cancelada es un monto dado de baja, no algo cobrable.
+     */
+    @Query("""
+            SELECT COUNT(CASE WHEN o.status = :open THEN 1 END) AS openCount,
+                   COUNT(CASE WHEN o.status <> :open THEN 1 END) AS closedCount,
+                   SUM(CASE WHEN o.status = :open THEN o.outstandingAmount END) AS totalOutstanding
+            FROM OpenAccountJpaEntity o
+            WHERE o.company.id = :companyId
+              AND (:branchId IS NULL OR o.branch.id = :branchId)
+            """)
+    OpenAccountsSummaryProjection summarize(@Param("companyId") Long companyId,
+            @Param("branchId") Long branchId, @Param("open") OpenAccountStatus open);
+
+    /**
+     * Proyeccion de {@link #summarize}. {@code totalOutstanding} llega null cuando
+     * no hay ninguna cuenta abierta (SUM sobre cero filas); el adaptador lo
+     * normaliza a cero.
+     */
+    interface OpenAccountsSummaryProjection {
+        long getOpenCount();
+
+        long getClosedCount();
+
+        BigDecimal getTotalOutstanding();
+    }
 
     // Bloqueo pesimista de la fila de la cuenta para serializar el recálculo de
     // totales bajo

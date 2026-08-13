@@ -4,7 +4,9 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
+import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
@@ -106,13 +108,13 @@ public class JpaElectronicDocumentRepository implements ElectronicDocumentReposi
 
     @Override
     public PageResult<ElectronicDocument> findAllByCompanyId(Long companyId, Long branchId,
-            int page, int pageSize) {
+            ElectronicDocumentType documentType, DianStatus dianStatus, int page, int pageSize) {
         // Dos consultas a proposito: la primera pagina ids (sin colecciones, LIMIT
         // real)
         // y la segunda hidrata solo esa pagina. Ver
         // findIdsByCompanyIdAndOptionalBranch.
         Page<Long> ids = jpaRepository.findIdsByCompanyIdAndOptionalBranch(companyId, branchId,
-                listPageRequest(page, pageSize));
+                documentType, dianStatus, listPageRequest(page, pageSize));
         if (ids.isEmpty()) {
             return new PageResult<>(List.of(), ids.getNumber(), ids.getSize(),
                     ids.getTotalElements(), ids.getTotalPages());

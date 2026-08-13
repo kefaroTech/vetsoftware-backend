@@ -168,16 +168,25 @@ class CreateOpenAccountServiceBranchTest {
         verifyNoInteractions(ownerQueryPort, companyQueryPort, employeeQueryPort);
     }
 
+    /**
+     * BE-06: el filtro de estado paso al servidor, asi que la cuenta cerrada ya no
+     * llega y el get-or-create no tiene que descartarla. Lo que se protege ahora es
+     * que la busqueda pida SOLO abiertas: si alguien le quitara el filtro, una
+     * cuenta cerrada volveria a reutilizarse como si estuviera abierta.
+     */
     @Test
     void crea_una_nueva_open_si_la_unica_cuenta_previa_esta_cerrada() {
-        OpenAccount closed = OpenAccount.create(owner, company, principal, createdBy);
-        closed.changeStatus(OpenAccountStatus.CLOSE, createdBy, null); // saldo 0 ⇒ cierre válido
-        when(repository.search(any())).thenReturn(page(closed));
+        when(repository.search(any())).thenReturn(page());
         stubNewAccountLookups();
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
                 .thenReturn(Optional.of(requested));
 
         service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L));
+
+        ArgumentCaptor<SearchOpenAccountsCommand> searchCaptor = ArgumentCaptor
+                .forClass(SearchOpenAccountsCommand.class);
+        verify(repository).search(searchCaptor.capture());
+        assertThat(searchCaptor.getValue().statuses()).containsExactly(OpenAccountStatus.OPEN);
 
         ArgumentCaptor<OpenAccount> captor = ArgumentCaptor.forClass(OpenAccount.class);
         verify(repository).save(captor.capture());
