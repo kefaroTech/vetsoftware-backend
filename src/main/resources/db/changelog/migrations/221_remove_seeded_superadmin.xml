@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- BE-07. El changeset 021 sembraba un SYSTEM_USER 'superadmin' cuya contraseña
+         está escrita en el historial de este repositorio. Ese seed ya no existe, así que
+         una base nueva no lo crea nunca más.
+
+         Pero quitar el seed NO borra lo ya sembrado: en toda base donde el 021 llegó a
+         aplicarse la fila sigue ahí, con la misma contraseña y sirviendo para iniciar
+         sesión. Liquibase no deshace un changeset por dejar de listarlo. Esto es lo que
+         cierra el hallazgo de verdad, y por eso es un cambio de DATOS y no de esquema.
+
+         La precondición es la parte importante: solo borra si la contraseña SIGUE siendo
+         la conocida. Si alguien ya la rotó, esa cuenta es una credencial legítima que
+         alguien está usando y este changeset no la toca — se marca como ejecutado y
+         sigue. Sin esa guarda, desplegar esto dejaría fuera a quien hubiera hecho lo
+         correcto. -->
+
+    <changeSet id="221_remove_seeded_superadmin" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM system_users
+                WHERE code = 'superadmin'
+                  AND hash_password = '$2a$12$OMQG3kvT8J/2BP7c1m0MnuA3EYDKpKOpQmfSO1wDOArdfTtW1sSNC'
+            </sqlCheck>
+        </preConditions>
+
+        <!-- Los permisos primero: hay FK desde system_user_permissions. El 216 ya retiró
+             'admin.all', pero esta cuenta pudo recibir otros permisos por el camino. -->
+        <sql>
+            DELETE sup
+            FROM system_user_permissions sup
+            JOIN system_users su ON su.id = sup.system_user_id
+            WHERE su.code = 'superadmin'
+              AND su.hash_password = '$2a$12$OMQG3kvT8J/2BP7c1m0MnuA3EYDKpKOpQmfSO1wDOArdfTtW1sSNC';
+
+            DELETE FROM system_users
+            WHERE code = 'superadmin'
+              AND hash_password = '$2a$12$OMQG3kvT8J/2BP7c1m0MnuA3EYDKpKOpQmfSO1wDOArdfTtW1sSNC';
+        </sql>
+
+        <rollback>
+            <!-- Deshacerlo seria volver a poner en la base una credencial publica.
+                 El camino de vuelta, si hiciera falta un usuario de sistema, es crearlo
+                 con una contrasena nueva fuera del repositorio. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -24,7 +24,6 @@
     <include file="db/changelog/migrations/018_create_role_permissions.xml"/>
     <include file="db/changelog/migrations/019_create_employee_roles.xml"/>
     <include file="db/changelog/migrations/020_seed_membership_basic.xml"/>
-    <include file="db/changelog/migrations/021_seed_superadmin.xml"/>
     <include file="db/changelog/migrations/022_seed_americas_geography.xml"/>
     <include file="db/changelog/migrations/023_add_unique_modules_code.xml"/>
     <include file="db/changelog/migrations/024_add_unique_sub_modules_code.xml"/>
@@ -223,5 +222,6 @@
     <include file="db/changelog/migrations/218_scope_animal_colors_by_specie.xml"/>
     <include file="db/changelog/migrations/219_add_dian_job_lease.xml"/>
     <include file="db/changelog/migrations/220_hash_seeded_superadmin_password.xml"/>
+    <include file="db/changelog/migrations/221_remove_seeded_superadmin.xml"/>
 
 </databaseChangeLog>
