@@ -1,4 +1,8 @@
 package com.vetsoftware.app.systemuserpermission.infrastructure.web.response;
 
-public record SystemPermissionSummary(Long id, String name, String code) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record SystemPermissionSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code) {
 }

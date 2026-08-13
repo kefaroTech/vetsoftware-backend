@@ -1,4 +1,7 @@
 package com.vetsoftware.app.consultation.infrastructure.web.response;
 
-public record ConsultationTypeSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record ConsultationTypeSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

@@ -1,4 +1,8 @@
 package com.vetsoftware.app.supplierinvoice.infrastructure.web.response;
 
-public record CompanySummary(Long id, String name, String identifier) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record CompanySummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String identifier) {
 }

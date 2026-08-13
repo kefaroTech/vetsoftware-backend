@@ -1,5 +1,8 @@
 package com.vetsoftware.app.prescription.infrastructure.web.response;
 
-public record MedicamentSummary(Long id, String name, String presentation, Double quantity,
-        String posology, String observation) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record MedicamentSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name, String presentation,
+        Double quantity, String posology, String observation) {
 }

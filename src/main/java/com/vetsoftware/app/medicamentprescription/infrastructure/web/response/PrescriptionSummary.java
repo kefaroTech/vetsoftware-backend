@@ -1,6 +1,9 @@
 package com.vetsoftware.app.medicamentprescription.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 
-public record PrescriptionSummary(Long id, LocalDate date) {
+public record PrescriptionSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date) {
 }

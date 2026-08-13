@@ -1,11 +1,18 @@
 package com.vetsoftware.app.debtopenaccount.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record DebtOpenAccountResponse(Long id, BigDecimal amount, PaymentMethod paymentMethod,
-        OpenAccountSummary openAccount, EmployeeSummary createdBy, LocalDateTime createdDate,
-        boolean enabled, boolean voided, EmployeeSummary voidedBy, LocalDateTime voidedAt,
-        String voidReason) {
+public record DebtOpenAccountResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal amount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PaymentMethod paymentMethod,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OpenAccountSummary openAccount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary createdBy,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean voided,
+        EmployeeSummary voidedBy, LocalDateTime voidedAt, String voidReason) {
 }

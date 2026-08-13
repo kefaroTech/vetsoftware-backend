@@ -1,6 +1,11 @@
 package com.vetsoftware.app.productchargeopenaccount.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.math.BigDecimal;
 
-public record ProductSummary(Long id, String name, String code, BigDecimal salePrice) {
+public record ProductSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal salePrice) {
 }

@@ -1,4 +1,8 @@
 package com.vetsoftware.app.diagnosticimaging.infrastructure.web.response;
 
-public record DiagnosticImagingTypeSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record DiagnosticImagingTypeSummary(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

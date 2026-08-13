@@ -1,9 +1,19 @@
 package com.vetsoftware.app.spa.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record SpaResponse(Long id, LocalDate date, SpaTypeSummary spaType, String reason,
-        String details, String observations, String status, AnimalSummary animal,
-        CompanySummary company, LocalDateTime createdDate, boolean enabled) {
+public record SpaResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SpaTypeSummary spaType,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String reason,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String details,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String observations,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String status,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AnimalSummary animal,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.command.LoginSystemUserCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
@@ -56,6 +57,6 @@ public class LoginSystemUserService implements LoginSystemUserUseCase {
                 activeSession.authVersion());
         String refreshToken = refreshTokenIssuer.issue(activeSession.id(), "SYSTEM_USER",
                 activeSession.authVersion());
-        return new TokenDto(accessToken, "SYSTEM_USER", refreshToken);
+        return new TokenDto(accessToken, AuthSubjectType.SYSTEM_USER, refreshToken);
     }
 }

@@ -1,7 +1,14 @@
 package com.vetsoftware.app.branch.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
-public record BranchResponse(Long id, String name, String code, String address, String phone,
-        CitySummary city, CompanySummary company, LocalDateTime createdDate, boolean active) {
+public record BranchResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code, String address,
+        String phone, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CitySummary city,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean active) {
 }

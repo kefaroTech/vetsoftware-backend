@@ -1,7 +1,13 @@
 package com.vetsoftware.app.basepermission.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
-public record BasePermissionResponse(Long id, String name, String code, SubModuleSummary subModule,
-        LocalDateTime createdDate, boolean enabled) {
+public record BasePermissionResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SubModuleSummary subModule,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

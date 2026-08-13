@@ -1,4 +1,7 @@
 package com.vetsoftware.app.state.infrastructure.web.response;
 
-public record CountrySummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record CountrySummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

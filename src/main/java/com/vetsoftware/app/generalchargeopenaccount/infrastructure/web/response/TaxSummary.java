@@ -1,6 +1,10 @@
 package com.vetsoftware.app.generalchargeopenaccount.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.math.BigDecimal;
 
-public record TaxSummary(Long id, String name, BigDecimal percentage) {
+public record TaxSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal percentage) {
 }

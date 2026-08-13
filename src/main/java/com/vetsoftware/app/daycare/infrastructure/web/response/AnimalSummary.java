@@ -1,4 +1,7 @@
 package com.vetsoftware.app.daycare.infrastructure.web.response;
 
-public record AnimalSummary(Long id, String name, String code) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record AnimalSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name, String code) {
 }

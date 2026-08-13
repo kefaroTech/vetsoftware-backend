@@ -1,6 +1,11 @@
 package com.vetsoftware.app.systemuser.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
-public record SystemUserResponse(Long id, String code, LocalDateTime createdDate, boolean enabled) {
+public record SystemUserResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

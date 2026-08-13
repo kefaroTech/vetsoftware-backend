@@ -1,4 +1,8 @@
 package com.vetsoftware.app.laboratorytest.infrastructure.web.response;
 
-public record LaboratoryTestTypeSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record LaboratoryTestTypeSummary(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }
