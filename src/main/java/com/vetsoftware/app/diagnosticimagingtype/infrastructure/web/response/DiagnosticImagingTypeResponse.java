@@ -11,5 +11,5 @@ public record DiagnosticImagingTypeResponse(
         CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean general,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

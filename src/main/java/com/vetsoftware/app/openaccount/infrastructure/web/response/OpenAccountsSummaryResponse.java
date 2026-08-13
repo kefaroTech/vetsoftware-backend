@@ -1,7 +1,11 @@
 package com.vetsoftware.app.openaccount.infrastructure.web.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.math.BigDecimal;
 
-public record OpenAccountsSummaryResponse(long openCount, long closedCount,
+public record OpenAccountsSummaryResponse(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long openCount,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long closedCount,
         BigDecimal totalOutstanding) {
 }

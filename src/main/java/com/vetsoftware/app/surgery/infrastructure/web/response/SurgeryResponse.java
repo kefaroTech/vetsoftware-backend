@@ -11,10 +11,11 @@ public record SurgeryResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRE
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String description,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String medicament,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String observations,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String complications, String status,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String complications,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String status,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AnimalSummary animal,
         ConsultationSummary consultation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

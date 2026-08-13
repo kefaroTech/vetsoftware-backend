@@ -14,7 +14,8 @@ public record ConsultationResponse(@Schema(requiredMode = Schema.RequiredMode.RE
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AnimalSummary animal,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled, BigDecimal temperature, Integer heartRate, Integer respiratoryRate,
-        String mucousMembranes, String capillaryRefill, String hydration,
-        Integer bodyConditionScore, Integer painScore, String attitude, String examFindings) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
+        BigDecimal temperature, Integer heartRate, Integer respiratoryRate, String mucousMembranes,
+        String capillaryRefill, String hydration, Integer bodyConditionScore, Integer painScore,
+        String attitude, String examFindings) {
 }

@@ -8,5 +8,5 @@ public record CityResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) 
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) StateSummary state, String daneCode,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

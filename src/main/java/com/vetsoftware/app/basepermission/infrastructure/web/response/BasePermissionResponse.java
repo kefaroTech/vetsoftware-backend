@@ -9,5 +9,5 @@ public record BasePermissionResponse(@Schema(requiredMode = Schema.RequiredMode.
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SubModuleSummary subModule,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

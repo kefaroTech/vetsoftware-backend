@@ -1,4 +1,7 @@
 package com.vetsoftware.app.service.infrastructure.web.response;
 
-public record ServiceCategorySummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record ServiceCategorySummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

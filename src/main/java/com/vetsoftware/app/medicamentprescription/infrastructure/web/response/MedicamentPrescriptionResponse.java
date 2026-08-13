@@ -11,7 +11,7 @@ public record MedicamentPrescriptionResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String presentation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Double quantity,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String posology, String observation,
-        PrescriptionSummary prescription,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PrescriptionSummary prescription,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

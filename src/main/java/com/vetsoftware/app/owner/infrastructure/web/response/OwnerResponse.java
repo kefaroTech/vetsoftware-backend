@@ -12,12 +12,16 @@ public record OwnerResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String email,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String document,
-        OwnerDocumentType documentType, PersonType personType, String verificationDigit,
-        String legalName, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String address,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OwnerDocumentType documentType,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PersonType personType,
+        String verificationDigit, String legalName,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String address,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String phone,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CitySummary city,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
-        boolean withholdingAgent, TaxRegime taxRegime, FiscalResponsibility fiscalResponsibility,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean withholdingAgent,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TaxRegime taxRegime,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) FiscalResponsibility fiscalResponsibility,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

@@ -16476,7 +16476,8 @@
             "type" : "string",
             "format" : "date"
           }
-        }
+        },
+        "required" : [ "date", "id" ]
       },
       "VaccinationResponse" : {
         "type" : "object",
@@ -16525,7 +16526,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "createdDate", "date", "id", "lot", "notes", "vaccinationType" ]
+        "required" : [ "animal", "company", "createdDate", "date", "enabled", "id", "lot", "notes", "vaccinationType" ]
       },
       "VaccinationTypeSummary" : {
         "type" : "object",
@@ -16586,7 +16587,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "general", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "general", "id", "name" ]
       },
       "UpdateTaxRequest" : {
         "type" : "object",
@@ -16652,7 +16653,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "company", "createdDate", "enabled", "version" ]
+        "required" : [ "company", "createdDate", "enabled", "id", "name", "percentage", "taxScheme", "version" ]
       },
       "UpdateSystemUserRequest" : {
         "type" : "object",
@@ -16682,7 +16683,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "code", "createdDate", "enabled", "id" ]
       },
       "UpdateSystemUserPermissionRequest" : {
         "type" : "object",
@@ -16711,7 +16713,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "SystemUserPermissionResponse" : {
         "type" : "object",
@@ -16733,7 +16736,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "createdDate", "enabled", "id", "systemPermission", "systemUser" ]
       },
       "SystemUserSummary" : {
         "type" : "object",
@@ -16745,7 +16749,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id" ]
       },
       "UpdateSystemPermissionRequest" : {
         "type" : "object",
@@ -16783,7 +16788,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "code", "createdDate", "enabled", "id", "name" ]
       },
       "SetSystemConfigurationRequest" : {
         "type" : "object",
@@ -16869,7 +16875,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "general", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "general", "id", "name" ]
       },
       "UpdateSurgeryRequest" : {
         "type" : "object",
@@ -16959,7 +16965,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "complications", "createdDate", "date", "description", "id", "medicament", "observations", "surgeryType" ]
+        "required" : [ "animal", "company", "complications", "createdDate", "date", "description", "enabled", "id", "medicament", "observations", "status", "surgeryType" ]
       },
       "SurgeryTypeSummary" : {
         "type" : "object",
@@ -17078,7 +17084,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "company", "createdDate", "enabled", "id", "name", "version" ]
       },
       "UpdateSupplierInvoiceRequest" : {
         "type" : "object",
@@ -17181,7 +17188,8 @@
             "type" : "integer",
             "format" : "int64"
           }
-        }
+        },
+        "required" : [ "amount", "createdDate", "id", "method", "paymentDate" ]
       },
       "SupplierInvoiceResponse" : {
         "type" : "object",
@@ -17275,7 +17283,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "branch", "company", "createdDate", "dueDate", "enabled", "id", "invoiceNumber", "issueDate", "status", "subtotal", "supplier", "taxAmount", "total", "version", "withholdingAmount" ]
       },
       "SupplierSummary" : {
         "type" : "object",
@@ -17326,7 +17335,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "SubModuleResponse" : {
         "type" : "object",
@@ -17352,7 +17362,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "createdDate", "id", "module", "name" ]
+        "required" : [ "code", "createdDate", "enabled", "id", "module", "name" ]
       },
       "UpdateStateRequest" : {
         "type" : "object",
@@ -17411,7 +17421,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "country", "createdDate", "id", "name" ]
+        "required" : [ "country", "createdDate", "enabled", "id", "name" ]
       },
       "UpdateSpecieRequest" : {
         "type" : "object",
@@ -17442,7 +17452,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name" ]
+        "required" : [ "createdDate", "enabled", "id", "name" ]
       },
       "UpdateSpaRequest" : {
         "type" : "object",
@@ -17517,7 +17527,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "createdDate", "date", "details", "id", "observations", "reason", "spaType" ]
+        "required" : [ "animal", "company", "createdDate", "date", "details", "enabled", "id", "observations", "reason", "spaType", "status" ]
       },
       "SpaTypeSummary" : {
         "type" : "object",
@@ -17569,7 +17579,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "id", "name" ]
       },
       "UpdateServiceRequest" : {
         "type" : "object",
@@ -17617,7 +17627,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "ServiceResponse" : {
         "type" : "object",
@@ -17732,7 +17743,8 @@
             "type" : "integer",
             "format" : "int64"
           }
-        }
+        },
+        "required" : [ "id" ]
       },
       "ServiceChargeOpenAccountResponse" : {
         "type" : "object",
@@ -17794,7 +17806,8 @@
           "voidReason" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "animal", "baseAmount", "createdBy", "createdDate", "enabled", "hasTax", "id", "openAccount", "service", "taxAmount", "totalAmount", "unitPrice", "voided" ]
       },
       "ServiceSummary" : {
         "type" : "object",
@@ -17809,7 +17822,8 @@
           "price" : {
             "type" : "number"
           }
-        }
+        },
+        "required" : [ "id", "name", "price" ]
       },
       "UpdateServiceCategoryRequest" : {
         "type" : "object",
@@ -17866,7 +17880,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "company", "createdDate", "description", "enabled", "id", "name", "version" ]
       },
       "UpdateRoleRequest" : {
         "type" : "object",
@@ -17901,7 +17916,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "RoleResponse" : {
         "type" : "object",
@@ -17933,7 +17949,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "company", "enabled", "id", "name", "permissions" ]
+        "required" : [ "code", "company", "createdDate", "enabled", "id", "name", "permissions" ]
       },
       "UpdateRolePermissionRequest" : {
         "type" : "object",
@@ -17970,7 +17986,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "id", "permission", "role" ]
+        "required" : [ "createdDate", "enabled", "id", "permission", "role" ]
       },
       "RoleSummary" : {
         "type" : "object",
@@ -17985,7 +18001,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "SyncRolePermissionsRequest" : {
         "type" : "object",
@@ -18100,7 +18117,8 @@
           "fullyReceived" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "fullyReceived", "id", "pendingQuantity", "product", "quantityOrdered", "quantityReceived", "unitCost" ]
       },
       "PurchaseOrderResponse" : {
         "type" : "object",
@@ -18162,7 +18180,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "branch", "company", "createdDate", "enabled", "id", "lines", "orderDate", "status", "supplier", "version" ]
       },
       "UpdatePromotionRequest" : {
         "type" : "object",
@@ -18322,7 +18341,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "ProductResponse" : {
         "type" : "object",
@@ -18385,7 +18405,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "company", "createdDate", "enabled", "id", "name", "productCategory", "salePrice", "taxTreatment", "version" ]
+        "required" : [ "baseUnitMeasureCode", "code", "company", "createdDate", "enabled", "id", "name", "productCategory", "salePrice", "taxTreatment", "version" ]
       },
       "UpdateProductChargeOpenAccountRequest" : {
         "type" : "object",
@@ -18473,7 +18493,8 @@
           "voidReason" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "animal", "baseAmount", "createdBy", "createdDate", "enabled", "hasTax", "id", "openAccount", "product", "quantity", "taxAmount", "totalAmount", "unitPrice", "voided" ]
       },
       "UpdateProductCategoryRequest" : {
         "type" : "object",
@@ -18530,7 +18551,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "company", "createdDate", "description", "enabled", "id", "name", "version" ]
       },
       "UpdateProblemRequest" : {
         "type" : "object",
@@ -18599,7 +18621,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "createdDate", "description", "enabled", "id", "status" ]
       },
       "UpdatePrescriptionRequest" : {
         "type" : "object",
@@ -18652,7 +18675,8 @@
           "observation" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "PrescriptionResponse" : {
         "type" : "object",
@@ -18694,7 +18718,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "consultation", "createdDate", "date", "id", "medicaments", "observations" ]
+        "required" : [ "animal", "company", "consultation", "createdDate", "date", "enabled", "id", "medicaments", "observations" ]
       },
       "PresentationRequest" : {
         "type" : "object",
@@ -18950,7 +18974,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "company", "id", "name", "subModule" ]
+        "required" : [ "code", "company", "createdDate", "enabled", "id", "name", "subModule" ]
       },
       "SubModuleSummary" : {
         "type" : "object",
@@ -18965,7 +18989,8 @@
           "code" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "UpdateOwnerRequest" : {
         "type" : "object",
@@ -19106,7 +19131,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "address", "city", "company", "createdDate", "document", "email", "id", "name", "phone" ]
+        "required" : [ "address", "city", "company", "createdDate", "document", "documentType", "email", "enabled", "fiscalResponsibility", "id", "name", "personType", "phone", "taxRegime", "withholdingAgent" ]
       },
       "UpdateOpenAccountRequest" : {
         "type" : "object",
@@ -19183,7 +19208,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "branch", "company", "createdBy", "createdDate", "enabled", "id", "outstandingAmount", "owner", "paidAmount", "status", "totalAmount", "version" ]
+        "required" : [ "branch", "company", "createdBy", "createdDate", "enabled", "id", "outstandingAmount", "owner", "paidAmount", "reversed", "status", "totalAmount", "version" ]
       },
       "OwnerSummary" : {
         "type" : "object",
@@ -19199,7 +19224,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "name" ]
+        "required" : [ "document", "id", "name" ]
       },
       "UpdateNumberingResolutionRequest" : {
         "type" : "object",
@@ -19350,7 +19375,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "createdDate", "id", "name" ]
+        "required" : [ "code", "createdDate", "enabled", "id", "name" ]
       },
       "UpdateMembershipRequest" : {
         "type" : "object",
@@ -19395,7 +19420,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name", "status" ]
+        "required" : [ "createdDate", "enabled", "id", "mandatory", "name", "status" ]
       },
       "UpdateMembershipSubModuleRequest" : {
         "type" : "object",
@@ -19432,7 +19457,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "membership", "subModule" ]
+        "required" : [ "createdDate", "enabled", "id", "membership", "subModule" ]
       },
       "MembershipSummary" : {
         "type" : "object",
@@ -19563,7 +19588,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "medicamentId", "name", "posology", "presentation", "quantity" ]
+        "required" : [ "createdDate", "enabled", "id", "medicamentId", "name", "posology", "prescription", "presentation", "quantity" ]
       },
       "PrescriptionSummary" : {
         "type" : "object",
@@ -19576,7 +19601,8 @@
             "type" : "string",
             "format" : "date"
           }
-        }
+        },
+        "required" : [ "date", "id" ]
       },
       "UpdateLaboratoryTestRequest" : {
         "type" : "object",
@@ -19672,7 +19698,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "createdDate", "date", "diagnosis", "id", "prioridad", "quantity", "status", "testType" ]
+        "required" : [ "animal", "company", "createdDate", "date", "diagnosis", "enabled", "id", "prioridad", "quantity", "status", "testType" ]
       },
       "LaboratoryTestTypeSummary" : {
         "type" : "object",
@@ -19733,7 +19759,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "general", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "general", "id", "name" ]
       },
       "SetMinStockRequest" : {
         "type" : "object",
@@ -19894,7 +19920,8 @@
             "type" : "string",
             "format" : "date"
           }
-        }
+        },
+        "required" : [ "date", "id" ]
       },
       "UpdateHospitalizationProcedureRequest" : {
         "type" : "object",
@@ -20235,7 +20262,8 @@
           "unitCost" : {
             "type" : "number"
           }
-        }
+        },
+        "required" : [ "id", "product", "quantityReceived", "unitCost" ]
       },
       "GoodsReceiptResponse" : {
         "type" : "object",
@@ -20300,7 +20328,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "branch", "company", "createdDate", "enabled", "id", "receiptDate", "status", "supplier", "version" ]
       },
       "UpdateGeneralChargeOpenAccountRequest" : {
         "type" : "object",
@@ -20394,7 +20423,8 @@
           "voidReason" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "baseAmount", "createdBy", "createdDate", "enabled", "hasTax", "id", "name", "openAccount", "quantity", "taxAmount", "totalAmount", "unitAmount", "voided" ]
       },
       "UpdateEmployeeRequest" : {
         "type" : "object",
@@ -20532,7 +20562,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "employee", "id", "role" ]
+        "required" : [ "createdDate", "employee", "enabled", "id", "role" ]
       },
       "UpdateEconomicActivityRequest" : {
         "type" : "object",
@@ -20570,7 +20600,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "code", "createdDate", "enabled", "id", "name" ]
       },
       "UpdateDianProviderConfigRequest" : {
         "type" : "object",
@@ -20743,7 +20774,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "clinicalSigns", "company", "createdDate", "date", "diagnosis", "diagnosticImagingType", "id", "observations", "studyType" ]
+        "required" : [ "animal", "clinicalSigns", "company", "createdDate", "date", "diagnosis", "diagnosticImagingType", "enabled", "id", "observations", "status", "studyType" ]
       },
       "DiagnosticImagingTypeSummary" : {
         "type" : "object",
@@ -20804,7 +20835,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "general", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "general", "id", "name" ]
       },
       "UpdateDewormingRequest" : {
         "type" : "object",
@@ -20900,7 +20931,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animal", "company", "createdDate", "date", "dosage", "id", "observations", "product", "type" ]
+        "required" : [ "animal", "company", "createdDate", "date", "dosage", "enabled", "id", "observations", "product", "type" ]
       },
       "UpdateDebtOpenAccountRequest" : {
         "type" : "object",
@@ -20963,7 +20994,8 @@
           "voidReason" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "amount", "createdBy", "createdDate", "enabled", "id", "openAccount", "paymentMethod", "voided" ]
       },
       "UpdateDayCareRequest" : {
         "type" : "object",
@@ -21043,7 +21075,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "animal", "company", "createdDate", "date", "enabled", "id", "startDate", "type" ]
       },
       "UpdateCountryRequest" : {
         "type" : "object",
@@ -21074,7 +21107,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name" ]
+        "required" : [ "createdDate", "enabled", "id", "name" ]
       },
       "UpdateConsultationRequest" : {
         "type" : "object",
@@ -21242,7 +21275,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "anamnesis", "animal", "company", "consultationType", "createdDate", "date", "id" ]
+        "required" : [ "anamnesis", "animal", "company", "consultationType", "createdDate", "date", "enabled", "id" ]
       },
       "ConsultationTypeSummary" : {
         "type" : "object",
@@ -21294,7 +21327,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "description", "id", "name" ]
+        "required" : [ "createdDate", "description", "enabled", "id", "name" ]
       },
       "UpdateCompanyTaxProfileRequest" : {
         "type" : "object",
@@ -21412,7 +21445,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "code", "id", "name" ]
       },
       "SetCompanySettingRequest" : {
         "type" : "object",
@@ -21554,7 +21588,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name", "state" ]
+        "required" : [ "createdDate", "enabled", "id", "name", "state" ]
       },
       "StateSummary" : {
         "type" : "object",
@@ -21647,7 +21681,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name", "specie" ]
+        "required" : [ "createdDate", "enabled", "id", "name", "specie" ]
       },
       "SpecieSummary" : {
         "type" : "object",
@@ -21725,7 +21759,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "active", "city", "code", "id", "name" ]
+        "required" : [ "active", "city", "code", "company", "createdDate", "id", "name" ]
       },
       "UpdateBaseRoleRequest" : {
         "type" : "object",
@@ -21770,7 +21804,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "createdDate", "id", "mandatory", "name" ]
+        "required" : [ "code", "createdDate", "enabled", "id", "mandatory", "name" ]
       },
       "UpdateBaseRolePermissionRequest" : {
         "type" : "object",
@@ -21823,7 +21857,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "basePermission", "baseRole", "createdDate", "id" ]
+        "required" : [ "basePermission", "baseRole", "createdDate", "enabled", "id" ]
       },
       "BaseRoleSummary" : {
         "type" : "object",
@@ -21885,7 +21919,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "code", "createdDate", "id", "name", "subModule" ]
+        "required" : [ "code", "createdDate", "enabled", "id", "name", "subModule" ]
       },
       "UpdateAppointmentRequest" : {
         "type" : "object",
@@ -21999,7 +22033,7 @@
             }
           }
         },
-        "required" : [ "createdDate", "employee", "enabled", "id", "overlappingAppointmentIds", "startAt", "status", "type", "version" ]
+        "required" : [ "branch", "createdDate", "employee", "enabled", "id", "overlappingAppointmentIds", "startAt", "status", "type", "version" ]
       },
       "UpdateAnimalRequest" : {
         "type" : "object",
@@ -22154,7 +22188,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "animalType", "bod", "breed", "color", "company", "createdDate", "deceased", "gender", "id", "name", "owner", "reproductiveState", "specie", "weightType" ]
+        "required" : [ "animalType", "bod", "breed", "color", "company", "createdDate", "deceased", "enabled", "gender", "id", "name", "owner", "reproductiveState", "specie", "weightType" ]
       },
       "BreedSummary" : {
         "type" : "object",
@@ -22166,7 +22200,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "UpdateAnimalColorRequest" : {
         "type" : "object",
@@ -22204,7 +22239,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "createdDate", "id", "name", "specie" ]
+        "required" : [ "createdDate", "enabled", "id", "name", "specie" ]
       },
       "UpdateAnimalAlertRequest" : {
         "type" : "object",
@@ -22257,7 +22292,8 @@
           "enabled" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "createdDate", "description", "enabled", "id", "type" ]
       },
       "CreateVaccinationRequest" : {
         "type" : "object",
@@ -23072,7 +23108,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "ProcedureScheduleResponse" : {
         "type" : "object",
@@ -23383,7 +23420,8 @@
           "name" : {
             "type" : "string"
           }
-        }
+        },
+        "required" : [ "id", "name" ]
       },
       "MedicationScheduleResponse" : {
         "type" : "object",
@@ -23581,7 +23619,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "contentType", "createdDate", "eTag", "id", "laboratoryTest", "originalFileName", "sizeBytes", "uploadedBy" ]
+        "required" : [ "bucket", "contentType", "createdDate", "eTag", "id", "laboratoryTest", "originalFileName", "sizeBytes", "storageKey", "uploadedBy" ]
       },
       "LaboratoryTestSummary" : {
         "type" : "object",
@@ -23594,7 +23632,8 @@
             "type" : "string",
             "format" : "date"
           }
-        }
+        },
+        "required" : [ "date", "id" ]
       },
       "TransferStockRequest" : {
         "type" : "object",
@@ -25633,7 +25672,8 @@
             "type" : "integer",
             "format" : "int32"
           }
-        }
+        },
+        "required" : [ "companiesProcessed", "companiesUpdated", "permissionsCreated", "rolePermissionsCreated" ]
       },
       "ChangeSurgeryStatusRequest" : {
         "type" : "object",
@@ -25961,7 +26001,8 @@
           "total" : {
             "type" : "number"
           }
-        }
+        },
+        "required" : [ "total" ]
       },
       "SupplierRow" : {
         "type" : "object",
@@ -26561,7 +26602,8 @@
           "totalOutstanding" : {
             "type" : "number"
           }
-        }
+        },
+        "required" : [ "closedCount", "openCount" ]
       },
       "PageResponseMedicamentResponse" : {
         "type" : "object",
@@ -27225,7 +27267,8 @@
           "available" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "available" ]
       },
       "PageResponseElectronicDocumentDto" : {
         "type" : "object",
@@ -27455,7 +27498,8 @@
           "valid" : {
             "type" : "boolean"
           }
-        }
+        },
+        "required" : [ "valid" ]
       },
       "MeResponse" : {
         "type" : "object",

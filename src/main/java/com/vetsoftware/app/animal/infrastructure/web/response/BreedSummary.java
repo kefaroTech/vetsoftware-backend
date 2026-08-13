@@ -1,4 +1,7 @@
 package com.vetsoftware.app.animal.infrastructure.web.response;
 
-public record BreedSummary(Long id, String name) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record BreedSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

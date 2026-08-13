@@ -6,5 +6,6 @@ import java.math.BigDecimal;
 
 public record ProductSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code, BigDecimal salePrice) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal salePrice) {
 }

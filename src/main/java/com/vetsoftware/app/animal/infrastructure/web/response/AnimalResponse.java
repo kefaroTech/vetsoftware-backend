@@ -26,5 +26,5 @@ public record AnimalResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED
         LocalDate deceasedDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

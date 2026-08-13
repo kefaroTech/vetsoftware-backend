@@ -9,5 +9,5 @@ public record MembershipSubModuleResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) MembershipSummary membership,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SubModuleSummary subModule,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

@@ -9,5 +9,5 @@ public record StateResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CountrySummary country,
         String daneCode,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

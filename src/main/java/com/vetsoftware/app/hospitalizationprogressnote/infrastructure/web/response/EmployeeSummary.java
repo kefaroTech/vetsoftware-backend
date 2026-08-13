@@ -3,5 +3,6 @@ package com.vetsoftware.app.hospitalizationprogressnote.infrastructure.web.respo
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record EmployeeSummary(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
-        String employeeCode, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String employeeCode,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 }

@@ -17,5 +17,5 @@ public record LaboratoryTestResponse(@Schema(requiredMode = Schema.RequiredMode.
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         EmployeeSummary processedBy, LocalDateTime processedDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

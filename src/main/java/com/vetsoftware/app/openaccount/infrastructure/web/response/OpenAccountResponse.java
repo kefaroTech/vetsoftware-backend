@@ -17,7 +17,8 @@ public record OpenAccountResponse(@Schema(requiredMode = Schema.RequiredMode.REQ
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary createdBy,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
-        EmployeeSummary closedBy, LocalDateTime closedAt, String closeReason, boolean reversed,
+        EmployeeSummary closedBy, LocalDateTime closedAt, String closeReason,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean reversed,
         LocalDateTime reversedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long version) {
 }

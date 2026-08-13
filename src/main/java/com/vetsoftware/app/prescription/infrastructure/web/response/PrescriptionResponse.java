@@ -14,5 +14,5 @@ public record PrescriptionResponse(@Schema(requiredMode = Schema.RequiredMode.RE
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<MedicamentSummary> medicaments,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

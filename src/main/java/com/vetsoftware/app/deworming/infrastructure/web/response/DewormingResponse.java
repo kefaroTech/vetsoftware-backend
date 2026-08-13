@@ -17,5 +17,5 @@ public record DewormingResponse(@Schema(requiredMode = Schema.RequiredMode.REQUI
         ConsultationSummary consultation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

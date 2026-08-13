@@ -10,9 +10,10 @@ public record SpaResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) L
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SpaTypeSummary spaType,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String reason,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String details,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String observations, String status,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String observations,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String status,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AnimalSummary animal,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

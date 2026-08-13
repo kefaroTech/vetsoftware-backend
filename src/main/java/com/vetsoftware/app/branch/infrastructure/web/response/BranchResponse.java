@@ -8,6 +8,7 @@ public record BranchResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code, String address,
         String phone, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CitySummary city,
-        CompanySummary company, LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean active) {
 }

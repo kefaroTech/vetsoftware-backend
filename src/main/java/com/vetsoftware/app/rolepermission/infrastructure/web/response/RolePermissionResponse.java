@@ -7,5 +7,6 @@ import java.time.LocalDateTime;
 public record RolePermissionResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) RoleSummary role,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PermissionSummary permission,
-        LocalDateTime createdDate, boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

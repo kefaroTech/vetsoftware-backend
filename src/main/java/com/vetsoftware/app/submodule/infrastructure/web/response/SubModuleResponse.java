@@ -9,5 +9,5 @@ public record SubModuleResponse(@Schema(requiredMode = Schema.RequiredMode.REQUI
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ModuleSummary module,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

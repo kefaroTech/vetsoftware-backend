@@ -9,5 +9,5 @@ public record BaseRoleResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIR
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Boolean mandatory,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

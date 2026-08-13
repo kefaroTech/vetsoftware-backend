@@ -15,5 +15,5 @@ public record VaccinationResponse(@Schema(requiredMode = Schema.RequiredMode.REQ
         ConsultationSummary consultation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

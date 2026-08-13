@@ -8,5 +8,5 @@ public record EmployeeRoleResponse(@Schema(requiredMode = Schema.RequiredMode.RE
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary employee,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) RoleSummary role,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

@@ -14,7 +14,8 @@ public record AppointmentResponse(@Schema(requiredMode = Schema.RequiredMode.REQ
         String cancellationReason, AnimalSummary animal, OwnerSummary owner, String clientName,
         String clientPhone, String clientEmail,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary employee,
-        BranchSummary branch, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long version,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BranchSummary branch,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long version,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<Long> overlappingAppointmentIds) {
