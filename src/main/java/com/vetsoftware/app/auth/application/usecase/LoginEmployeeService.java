@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.command.LoginEmployeeCommand;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
@@ -72,6 +73,6 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
                 activeSession.companyId(), activeSession.authVersion());
         String refreshToken = refreshTokenIssuer.issue(activeSession.id(), "EMPLOYEE",
                 activeSession.authVersion());
-        return new TokenDto(accessToken, "EMPLOYEE", refreshToken);
+        return new TokenDto(accessToken, AuthSubjectType.EMPLOYEE, refreshToken);
     }
 }

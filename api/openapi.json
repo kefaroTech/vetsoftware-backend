@@ -25331,7 +25331,8 @@
             "type" : "string"
           },
           "type" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "EMPLOYEE", "SYSTEM_USER" ]
           },
           "refreshToken" : {
             "type" : "string"
@@ -27464,7 +27465,8 @@
             "format" : "int64"
           },
           "type" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "EMPLOYEE", "SYSTEM_USER" ]
           },
           "companyId" : {
             "type" : "integer",

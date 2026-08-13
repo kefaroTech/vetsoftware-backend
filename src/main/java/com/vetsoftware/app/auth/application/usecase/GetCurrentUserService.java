@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.MeDto;
@@ -41,16 +42,16 @@ public class GetCurrentUserService implements GetCurrentUserUseCase {
             case EmployeeContext me -> {
                 EmployeeProfile profile = employeeProfileQueryPort.findById(me.employeeId())
                         .orElseThrow(() -> new AccessDeniedException("Employee profile not found"));
-                yield new MeDto(me.employeeId(), "EMPLOYEE", me.companyId(), profile.name(),
-                        profile.employeeCode(), profile.mustChangePassword(), me.permissions(),
-                        me.branchIds());
+                yield new MeDto(me.employeeId(), AuthSubjectType.EMPLOYEE, me.companyId(),
+                        profile.name(), profile.employeeCode(), profile.mustChangePassword(),
+                        me.permissions(), me.branchIds());
             }
             case SystemUserContext me -> {
                 SystemUserProfile profile = systemUserProfileQueryPort.findById(me.systemUserId())
                         .orElseThrow(
                                 () -> new AccessDeniedException("System user profile not found"));
-                yield new MeDto(me.systemUserId(), "SYSTEM_USER", null, profile.code(), null, false,
-                        me.permissions(), Set.of());
+                yield new MeDto(me.systemUserId(), AuthSubjectType.SYSTEM_USER, null,
+                        profile.code(), null, false, me.permissions(), Set.of());
             }
             case SystemContext _ -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);
             case null -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);

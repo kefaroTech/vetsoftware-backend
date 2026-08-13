@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
@@ -104,7 +105,10 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
         refreshTokenRepository.revokeById(stored.id());
         String newRefreshToken = refreshTokenIssuer.issue(stored.subjectId(), stored.subjectType(),
                 stored.authVersion());
-        return new TokenDto(accessToken, stored.subjectType(), newRefreshToken);
+        // El tipo viaja como texto en el token almacenado; se convierte al entrar al
+        // DTO.
+        return new TokenDto(accessToken, AuthSubjectType.valueOf(stored.subjectType()),
+                newRefreshToken);
     }
 
     /**

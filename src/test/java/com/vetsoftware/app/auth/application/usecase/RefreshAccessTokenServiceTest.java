@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -105,7 +106,7 @@ class RefreshAccessTokenServiceTest {
         var result = service.execute("refresh");
 
         assertThat(result.token()).isEqualTo("access-1");
-        assertThat(result.type()).isEqualTo("EMPLOYEE");
+        assertThat(result.type()).isEqualTo(AuthSubjectType.EMPLOYEE);
         verify(refreshTokenRepository).revokeById(11L);
     }
 
