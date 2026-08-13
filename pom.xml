@@ -40,11 +40,22 @@
         <checkstyle.version>13.9.0</checkstyle.version>
         <archunit.version>1.4.1</archunit.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
-        <!-- Suelo de cobertura global: solo puede SUBIR. Medido 25,64 % el 2026-08-09
-             tras cubrir 17 features mas (era 14,24 % el 2026-08-08 y 12,73 % antes);
-             se fija un par de decimas por debajo para dejar margen a refactors que
-             muevan el denominador. Ver "Cobertura" en CLAUDE.md. -->
-        <jacoco.line.minimum>0.25</jacoco.line.minimum>
+        <!-- Suelo de cobertura global. OJO: 0.90 es un OBJETIVO, no el valor medido.
+             La cobertura real el 2026-08-12 es 31,09 % (8.723 de 28.061 lineas), asi
+             que `mvn verify` FALLA a proposito y seguira fallando hasta cubrir unas
+             16.500 lineas mas. Puesto asi por decision explicita del responsable del
+             repo, sabiendo que deja el build y todo PR en rojo mientras tanto.
+
+             Esto se aparta de dos reglas del CLAUDE.md, que quedan anotadas aqui para
+             que nadie las de por derogadas sin querer: el suelo se describia como un
+             trinquete que se sube al valor medido cuando un PR lo supera de forma
+             estable, y la seccion "Cobertura" desaconseja un umbral global alto porque
+             "deja el CI en rojo permanente y se acaba desactivando".
+
+             Historico de lo MEDIDO: 12,73 % (2026-08-08), 14,24 % (modulo animal),
+             25,64 % (2026-08-09, +17 features), 31,09 % (2026-08-12, campana de
+             cobertura + rodajas de persistencia). -->
+        <jacoco.line.minimum>0.90</jacoco.line.minimum>
     </properties>
 
     <dependencyManagement>
