@@ -1,6 +1,7 @@
 package com.vetsoftware.app.openaccount.application.port.out;
 
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
+import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import java.util.List;
@@ -35,6 +36,12 @@ public interface OpenAccountRepository {
 
     PageResult<OpenAccount> findAllByCompanyId(Long companyId, Long branchId, int page,
             int pageSize);
+
+    /**
+     * Contadores por pestana y saldo pendiente acumulado, calculados en SQL. Ver
+     * {@link OpenAccountsSummaryDto}.
+     */
+    OpenAccountsSummaryDto summarize(Long companyId, Long branchId);
 
     /**
      * true si el propietario ya tiene una cuenta abierta (enabled) — regla: 1 por

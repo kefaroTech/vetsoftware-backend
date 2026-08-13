@@ -21,7 +21,9 @@ import com.vetsoftware.app.electronicdocument.application.port.in.IssueDebitNote
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.RegisterPosSaleUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.TransmitElectronicDocumentUseCase;
+import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.BuildElectronicDocumentRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueCreditNoteRequest;
 import com.vetsoftware.app.electronicdocument.infrastructure.web.request.IssueDebitNoteRequest;
@@ -158,10 +160,13 @@ public class ElectronicDocumentController {
     @GetMapping
     public PageResponse<ElectronicDocumentDto> listAll(
             @RequestParam(name = "branchId", required = false) Long branchId,
+            @RequestParam(required = false) ElectronicDocumentType documentType,
+            @RequestParam(required = false) DianStatus dianStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<ElectronicDocumentDto> result = listUseCase.listByCompany(
-                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), page, pageSize);
+                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), documentType,
+                dianStatus, page, pageSize);
         return new PageResponse<>(result.content(), result.page(), result.pageSize(),
                 result.totalElements(), result.totalPages());
     }

@@ -16,6 +16,7 @@ import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.domain.OwnerRef;
 import io.micrometer.observation.annotation.Observed;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
@@ -64,11 +65,12 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Company has no active branch: " + command.companyId()));
 
+        // El estado ahora lo filtra el servidor (BE-06), asi que ya no hace falta
+        // traerse 50 filas para quedarse con las abiertas: se piden solo esas.
         Optional<OpenAccount> existing = repository
                 .search(new SearchOpenAccountsCommand(command.companyId(), command.ownerId(), true,
-                        0, 50, branch.id()))
-                .content().stream().filter(a -> a.getStatus() == OpenAccountStatus.OPEN)
-                .findFirst();
+                        List.of(OpenAccountStatus.OPEN), null, 0, 1, branch.id()))
+                .content().stream().findFirst();
         if (existing.isPresent()) {
             return OpenAccountDto.from(existing.get());
         }

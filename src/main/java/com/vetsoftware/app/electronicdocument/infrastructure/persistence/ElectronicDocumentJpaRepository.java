@@ -1,6 +1,7 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -42,9 +43,15 @@ public interface ElectronicDocumentJpaRepository
             FROM ElectronicDocumentJpaEntity e
             WHERE e.company.id = :companyId
               AND (:branchId IS NULL OR e.branchId = :branchId)
+              AND (:documentType IS NULL OR e.documentType = :documentType)
+              AND (:dianStatus IS NULL OR e.dianStatus = :dianStatus)
             """)
     Page<Long> findIdsByCompanyIdAndOptionalBranch(@Param("companyId") Long companyId,
-            @Param("branchId") Long branchId, Pageable pageable);
+            @Param("branchId") Long branchId,
+            // BE-06: la pantalla filtraba por estos dos EN CLIENTE sobre la lista
+            // completa. Sin ellos aqui no se puede paginar sin ocultar documentos.
+            @Param("documentType") ElectronicDocumentType documentType,
+            @Param("dianStatus") DianStatus dianStatus, Pageable pageable);
 
     /**
      * Paso 2: hidrata con sus colecciones solo los documentos de la página ya

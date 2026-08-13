@@ -4,6 +4,8 @@ import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocument
 import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
+import com.vetsoftware.app.electronicdocument.domain.DianStatus;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +19,10 @@ public class ListElectronicDocumentsService implements ListElectronicDocumentsUs
     }
 
     @Override
-    public PageResult<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId, int page,
-            int pageSize) {
-        return repository.findAllByCompanyId(companyId, branchId, page, pageSize)
+    public PageResult<ElectronicDocumentDto> listByCompany(Long companyId, Long branchId,
+            ElectronicDocumentType documentType, DianStatus dianStatus, int page, int pageSize) {
+        return repository
+                .findAllByCompanyId(companyId, branchId, documentType, dianStatus, page, pageSize)
                 .map(ElectronicDocumentDto::from);
     }
 }
