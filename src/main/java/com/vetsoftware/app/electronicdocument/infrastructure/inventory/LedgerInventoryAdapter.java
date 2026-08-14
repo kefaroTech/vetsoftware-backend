@@ -36,7 +36,7 @@ public class LedgerInventoryAdapter implements InventoryLedgerPort {
     }
 
     @Override
-    public void reversePosSale(Long documentId, Long actorId) {
-        stockLedger.reverse(StockReferenceType.POS_DOCUMENT, documentId, actorId);
+    public void reversePosSale(Long documentId, Long companyId, Long actorId) {
+        stockLedger.reverse(StockReferenceType.POS_DOCUMENT, documentId, companyId, actorId);
     }
 }

@@ -18,5 +18,6 @@ public interface LaboratoryTestFileJpaRepository
             Long companyId);
 
     @EntityGraph(attributePaths = {"uploadedBy", "laboratoryTest"})
-    List<LaboratoryTestFileJpaEntity> findAllByLaboratoryTest_Id(Long laboratoryTestId);
+    List<LaboratoryTestFileJpaEntity> findAllByLaboratoryTest_IdAndLaboratoryTest_Company_Id(
+            Long laboratoryTestId, Long companyId);
 }

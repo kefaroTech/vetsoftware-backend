@@ -127,6 +127,7 @@ class VoidProductChargeOpenAccountServiceTest {
             service.execute(ProductChargeOpenAccountMother.comandoAnular());
 
             verify(inventoryLedger).reverseSale(ProductChargeOpenAccountMother.CHARGE_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID,
                     ProductChargeOpenAccountMother.OTRO_EMPLEADO.id());
             verify(refresher).refresh(ProductChargeOpenAccountMother.COMPANY_ID,
                     ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);

@@ -14,7 +14,8 @@ public interface DewormingRepository {
 
     List<Deworming> findAll();
 
-    PageResult<Deworming> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
+    PageResult<Deworming> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId, String query,
+            int page, int pageSize);
 
     void delete(Long id);
 

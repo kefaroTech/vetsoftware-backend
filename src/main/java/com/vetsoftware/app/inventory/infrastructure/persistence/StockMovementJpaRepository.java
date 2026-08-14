@@ -12,8 +12,8 @@ public interface StockMovementJpaRepository extends JpaRepository<StockMovementJ
     boolean existsByReferenceTypeAndReferenceIdAndProductId(String referenceType, Long referenceId,
             Long productId);
 
-    List<StockMovementJpaEntity> findByReferenceTypeAndReferenceId(String referenceType,
-            Long referenceId);
+    List<StockMovementJpaEntity> findByReferenceTypeAndReferenceIdAndCompanyId(String referenceType,
+            Long referenceId, Long companyId);
 
     // Kardex paginado de un producto. branchId null = todas las sedes; from/to
     // (inclusive/exclusivo)

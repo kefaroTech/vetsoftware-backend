@@ -27,10 +27,11 @@ public interface SurgeryJpaRepository extends JpaRepository<SurgeryJpaEntity, Lo
             SELECT x
             FROM SurgeryJpaEntity x
             WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
               AND (:q IS NULL OR :q = '' OR LOWER(x.description) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.medicament) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    Page<SurgeryJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId, @Param("q") String q,
-            Pageable pageable);
+    Page<SurgeryJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

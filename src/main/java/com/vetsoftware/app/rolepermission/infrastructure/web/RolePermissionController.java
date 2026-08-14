@@ -66,8 +66,8 @@ public class RolePermissionController {
     @PutMapping("/by-role/{roleId}")
     public List<RolePermissionResponse> syncByRole(@PathVariable Long roleId,
             @Valid @RequestBody SyncRolePermissionsRequest request) {
-        return syncUseCase.execute(new SyncRolePermissionsCommand(roleId, request.permissionIds()))
-                .stream().map(this::toResponse).toList();
+        return syncUseCase.execute(new SyncRolePermissionsCommand(roleId, request.permissionIds(),
+                authz.currentCompanyIdOrNull())).stream().map(this::toResponse).toList();
     }
 
     @GetMapping

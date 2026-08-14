@@ -17,6 +17,9 @@ public interface HospitalizationJpaRepository
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     List<HospitalizationJpaEntity> findAll();
 
+    @EntityGraph(attributePaths = {"animal", "consultation", "company"})
+    List<HospitalizationJpaEntity> findAllByCompany_Id(Long companyId);
+
     @Override
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<HospitalizationJpaEntity> findById(Long id);
@@ -29,10 +32,11 @@ public interface HospitalizationJpaRepository
             SELECT x
             FROM HospitalizationJpaEntity x
             WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
               AND (:q IS NULL OR :q = '' OR LOWER(x.reason) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    Page<HospitalizationJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
-            @Param("q") String q, Pageable pageable);
+    Page<HospitalizationJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

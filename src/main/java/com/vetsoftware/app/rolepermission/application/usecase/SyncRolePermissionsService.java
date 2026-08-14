@@ -43,8 +43,14 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
         if (command.roleId() == null) {
             throw new IllegalArgumentException("roleId is required");
         }
-        RoleRef role = roleQueryPort.findById(command.roleId()).orElseThrow(
-                () -> new IllegalArgumentException("Role not found: " + command.roleId()));
+        // El companyId null es el principal SYSTEM, cross-tenant por diseno; un
+        // empleado
+        // solo alcanza los roles de su empresa (BE-29).
+        RoleRef role = (command.companyId() == null
+                ? roleQueryPort.findById(command.roleId())
+                : roleQueryPort.findByIdAndCompanyId(command.roleId(), command.companyId()))
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Role not found: " + command.roleId()));
 
         Set<Long> desired = command.permissionIds() == null
                 ? new HashSet<>()

@@ -31,11 +31,12 @@ public class JpaStockMovementRepository implements StockMovementRepository {
     }
 
     @Override
-    public List<StockMovement> findByReference(StockReferenceType referenceType, Long referenceId) {
+    public List<StockMovement> findByReferenceAndCompanyId(StockReferenceType referenceType,
+            Long referenceId, Long companyId) {
         if (referenceId == null)
             return List.of();
-        return jpaRepository.findByReferenceTypeAndReferenceId(referenceType.name(), referenceId)
-                .stream().map(JpaStockMovementRepository::toDomain).toList();
+        return jpaRepository.findByReferenceTypeAndReferenceIdAndCompanyId(referenceType.name(),
+                referenceId, companyId).stream().map(JpaStockMovementRepository::toDomain).toList();
     }
 
     private static StockMovementJpaEntity toJpa(StockMovement m) {

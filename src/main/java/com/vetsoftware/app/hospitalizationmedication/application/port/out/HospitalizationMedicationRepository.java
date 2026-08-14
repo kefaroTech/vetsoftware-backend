@@ -11,8 +11,8 @@ public interface HospitalizationMedicationRepository {
 
     Optional<HospitalizationMedication> findByIdAndCompanyId(Long id, Long companyId);
 
-    PageResult<HospitalizationMedication> findAllByHospitalizationId(Long hospitalizationId,
-            int page, int pageSize);
+    PageResult<HospitalizationMedication> findAllByHospitalizationIdAndCompanyId(
+            Long hospitalizationId, Long companyId, int page, int pageSize);
 
     void delete(Long id);
 

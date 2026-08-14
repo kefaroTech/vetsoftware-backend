@@ -14,7 +14,8 @@ public interface SurgeryRepository {
 
     List<Surgery> findAll();
 
-    PageResult<Surgery> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
+    PageResult<Surgery> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId, String query,
+            int page, int pageSize);
 
     void delete(Long id);
 

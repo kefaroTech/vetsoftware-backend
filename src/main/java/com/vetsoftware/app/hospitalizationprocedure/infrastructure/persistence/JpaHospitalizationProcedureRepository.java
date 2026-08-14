@@ -61,10 +61,11 @@ public class JpaHospitalizationProcedureRepository implements HospitalizationPro
     }
 
     @Override
-    public PageResult<HospitalizationProcedure> findAllByHospitalizationId(Long hospitalizationId,
-            int page, int pageSize) {
+    public PageResult<HospitalizationProcedure> findAllByHospitalizationIdAndCompanyId(
+            Long hospitalizationId, Long companyId, int page, int pageSize) {
         Page<HospitalizationProcedureJpaEntity> result = jpaRepository
-                .findByHospitalizationId(hospitalizationId, byStayPageRequest(page, pageSize));
+                .findByHospitalizationIdAndHospitalization_Company_Id(hospitalizationId, companyId,
+                        byStayPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

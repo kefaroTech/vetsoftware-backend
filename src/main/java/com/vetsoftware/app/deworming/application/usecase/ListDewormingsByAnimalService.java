@@ -17,9 +17,9 @@ public class ListDewormingsByAnimalService implements ListDewormingsByAnimalUseC
     }
 
     @Override
-    public PageResult<DewormingDto> listByAnimal(Long animalId, String query, int page,
-            int pageSize) {
-        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+    public PageResult<DewormingDto> listByAnimal(Long animalId, Long companyId, String query,
+            int page, int pageSize) {
+        return repository.findAllByAnimalIdAndCompanyId(animalId, companyId, query, page, pageSize)
                 .map(DewormingDto::from);
     }
 }

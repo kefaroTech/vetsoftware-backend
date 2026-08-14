@@ -27,10 +27,11 @@ public interface DewormingJpaRepository extends JpaRepository<DewormingJpaEntity
             SELECT x
             FROM DewormingJpaEntity x
             WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
               AND (:q IS NULL OR :q = '' OR LOWER(x.product) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    Page<DewormingJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
-            @Param("q") String q, Pageable pageable);
+    Page<DewormingJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

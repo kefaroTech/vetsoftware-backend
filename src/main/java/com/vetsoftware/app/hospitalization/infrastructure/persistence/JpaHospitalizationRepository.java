@@ -70,10 +70,15 @@ public class JpaHospitalizationRepository implements HospitalizationRepository {
     }
 
     @Override
-    public PageResult<Hospitalization> findAllByAnimalId(Long animalId, String query, int page,
-            int pageSize) {
-        Page<HospitalizationJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
-                byAnimalPageRequest(page, pageSize));
+    public List<Hospitalization> findAllByCompanyId(Long companyId) {
+        return jpaRepository.findAllByCompany_Id(companyId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public PageResult<Hospitalization> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<HospitalizationJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(
+                animalId, companyId, query, byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

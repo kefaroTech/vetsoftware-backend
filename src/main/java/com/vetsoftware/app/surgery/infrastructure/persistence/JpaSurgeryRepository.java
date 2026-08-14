@@ -74,10 +74,10 @@ public class JpaSurgeryRepository implements SurgeryRepository {
     }
 
     @Override
-    public PageResult<Surgery> findAllByAnimalId(Long animalId, String query, int page,
-            int pageSize) {
-        Page<SurgeryJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
-                byAnimalPageRequest(page, pageSize));
+    public PageResult<Surgery> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<SurgeryJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId,
+                companyId, query, byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

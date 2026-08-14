@@ -11,7 +11,8 @@ public interface LaboratoryTestFileRepository {
 
     Optional<LaboratoryTestFile> findByIdAndCompanyId(Long id, Long companyId);
 
-    List<LaboratoryTestFile> findAllByLaboratoryTestId(Long laboratoryTestId);
+    List<LaboratoryTestFile> findAllByLaboratoryTestIdAndCompanyId(Long laboratoryTestId,
+            Long companyId);
 
     void delete(Long id);
 }

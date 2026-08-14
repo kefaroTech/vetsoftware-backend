@@ -70,7 +70,7 @@ public class HospitalizationProcedureController {
             @PathVariable Long hospitalizationId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<HospitalizationProcedureDto> result = listByHospitalizationUseCase
-                .listByHospitalization(hospitalizationId, page, pageSize);
+                .listByHospitalization(hospitalizationId, authz.currentCompanyId(), page, pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }

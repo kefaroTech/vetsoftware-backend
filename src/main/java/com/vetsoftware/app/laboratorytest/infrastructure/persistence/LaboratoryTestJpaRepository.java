@@ -31,10 +31,11 @@ public interface LaboratoryTestJpaRepository
             SELECT x
             FROM LaboratoryTestJpaEntity x
             WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
               AND (:q IS NULL OR :q = '' OR LOWER(x.diagnosis) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    Page<LaboratoryTestJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
-            @Param("q") String q, Pageable pageable);
+    Page<LaboratoryTestJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

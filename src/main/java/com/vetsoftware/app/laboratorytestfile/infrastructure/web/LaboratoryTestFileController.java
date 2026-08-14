@@ -74,7 +74,8 @@ public class LaboratoryTestFileController {
     @GetMapping("/by-laboratory-test/{laboratoryTestId}")
     public List<LaboratoryTestFileResponse> listByLaboratoryTest(
             @PathVariable Long laboratoryTestId) {
-        return listByLaboratoryTestUseCase.listByLaboratoryTest(laboratoryTestId).stream()
+        return listByLaboratoryTestUseCase
+                .listByLaboratoryTest(laboratoryTestId, authz.currentCompanyId()).stream()
                 .map(this::toResponse).toList();
     }
 

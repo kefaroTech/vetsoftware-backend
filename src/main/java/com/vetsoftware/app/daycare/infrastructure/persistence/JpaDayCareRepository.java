@@ -56,10 +56,10 @@ public class JpaDayCareRepository implements DayCareRepository {
     }
 
     @Override
-    public PageResult<DayCare> findAllByAnimalId(Long animalId, String query, int page,
-            int pageSize) {
-        Page<DayCareJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
-                byAnimalPageRequest(page, pageSize));
+    public PageResult<DayCare> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<DayCareJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId,
+                companyId, query, byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

@@ -31,11 +31,11 @@ class ListHospitalizationsByAnimalServiceTest {
     void mapea_el_contenido_y_conserva_los_metadatos() {
         PageResult<Hospitalization> pagina = new PageResult<>(
                 List.of(HospitalizationMother.internado()), 1, 10, 25L, 3);
-        when(repository.findAllByAnimalId(HospitalizationMother.ANIMAL_ID, "gastro", 1, 10))
-                .thenReturn(pagina);
+        when(repository.findAllByAnimalIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                HospitalizationMother.COMPANY_ID, "gastro", 1, 10)).thenReturn(pagina);
 
-        PageResult<HospitalizationDto> resultado = service
-                .listByAnimal(HospitalizationMother.ANIMAL_ID, "gastro", 1, 10);
+        PageResult<HospitalizationDto> resultado = service.listByAnimal(
+                HospitalizationMother.ANIMAL_ID, HospitalizationMother.COMPANY_ID, "gastro", 1, 10);
 
         assertThat(resultado.content()).hasSize(1);
         assertThat(resultado.content().get(0).id())
@@ -49,11 +49,12 @@ class ListHospitalizationsByAnimalServiceTest {
     @Test
     @DisplayName("el filtro de texto nulo se propaga tal cual al repositorio")
     void el_filtro_nulo_se_propaga_tal_cual() {
-        when(repository.findAllByAnimalId(HospitalizationMother.ANIMAL_ID, null, 0, 20))
+        when(repository.findAllByAnimalIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                HospitalizationMother.COMPANY_ID, null, 0, 20))
                 .thenReturn(new PageResult<>(List.of(), 0, 20, 0L, 0));
 
-        PageResult<HospitalizationDto> resultado = service
-                .listByAnimal(HospitalizationMother.ANIMAL_ID, null, 0, 20);
+        PageResult<HospitalizationDto> resultado = service.listByAnimal(
+                HospitalizationMother.ANIMAL_ID, HospitalizationMother.COMPANY_ID, null, 0, 20);
 
         assertThat(resultado.content()).isEmpty();
         assertThat(resultado.totalElements()).isZero();

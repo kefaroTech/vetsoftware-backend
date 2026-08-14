@@ -79,7 +79,7 @@ class CancelGoodsReceiptServiceTest {
             cancelar();
 
             verify(inventoryLedger).reverseReceipt(GoodsReceiptMother.RECEIPT_ID,
-                    GoodsReceiptMother.ACTOR_ID);
+                    GoodsReceiptMother.COMPANY_ID, GoodsReceiptMother.ACTOR_ID);
         }
 
         @Test
@@ -148,7 +148,7 @@ class CancelGoodsReceiptServiceTest {
             cancelar();
 
             verify(inventoryLedger).reverseReceipt(GoodsReceiptMother.RECEIPT_ID,
-                    GoodsReceiptMother.ACTOR_ID);
+                    GoodsReceiptMother.COMPANY_ID, GoodsReceiptMother.ACTOR_ID);
         }
 
         @Test

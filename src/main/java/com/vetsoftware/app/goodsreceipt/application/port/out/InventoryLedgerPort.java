@@ -22,5 +22,5 @@ public interface InventoryLedgerPort {
      * Compensa (revierte) todas las entradas registradas por la recepción al
      * cancelarla. Idempotente.
      */
-    void reverseReceipt(Long receiptId, Long actorId);
+    void reverseReceipt(Long receiptId, Long companyId, Long actorId);
 }

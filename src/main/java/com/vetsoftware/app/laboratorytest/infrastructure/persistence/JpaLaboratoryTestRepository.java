@@ -90,10 +90,10 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     }
 
     @Override
-    public PageResult<LaboratoryTest> findAllByAnimalId(Long animalId, String query, int page,
-            int pageSize) {
-        Page<LaboratoryTestJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
-                byAnimalPageRequest(page, pageSize));
+    public PageResult<LaboratoryTest> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<LaboratoryTestJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId,
+                companyId, query, byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

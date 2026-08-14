@@ -20,5 +20,6 @@ public interface StockMovementRepository {
     boolean existsByReference(StockReferenceType referenceType, Long referenceId, Long productId);
 
     /** Movimientos de una referencia (para compensar/anular). */
-    List<StockMovement> findByReference(StockReferenceType referenceType, Long referenceId);
+    List<StockMovement> findByReferenceAndCompanyId(StockReferenceType referenceType,
+            Long referenceId, Long companyId);
 }

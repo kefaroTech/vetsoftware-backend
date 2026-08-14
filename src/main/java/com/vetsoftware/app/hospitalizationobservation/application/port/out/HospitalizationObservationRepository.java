@@ -11,8 +11,8 @@ public interface HospitalizationObservationRepository {
 
     Optional<HospitalizationObservation> findByIdAndCompanyId(Long id, Long companyId);
 
-    PageResult<HospitalizationObservation> findAllByHospitalizationId(Long hospitalizationId,
-            int page, int pageSize);
+    PageResult<HospitalizationObservation> findAllByHospitalizationIdAndCompanyId(
+            Long hospitalizationId, Long companyId, int page, int pageSize);
 
     void delete(Long id);
 

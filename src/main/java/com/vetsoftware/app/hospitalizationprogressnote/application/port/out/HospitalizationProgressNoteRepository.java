@@ -11,8 +11,8 @@ public interface HospitalizationProgressNoteRepository {
 
     Optional<HospitalizationProgressNote> findByIdAndCompanyId(Long id, Long companyId);
 
-    PageResult<HospitalizationProgressNote> findAllByHospitalizationId(Long hospitalizationId,
-            int page, int pageSize);
+    PageResult<HospitalizationProgressNote> findAllByHospitalizationIdAndCompanyId(
+            Long hospitalizationId, Long companyId, int page, int pageSize);
 
     void delete(Long id);
 

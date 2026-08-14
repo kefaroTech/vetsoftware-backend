@@ -19,8 +19,8 @@ public class ListLaboratoryTestFilesByLaboratoryTestService
     }
 
     @Override
-    public List<LaboratoryTestFileDto> listByLaboratoryTest(Long laboratoryTestId) {
-        return repository.findAllByLaboratoryTestId(laboratoryTestId).stream()
-                .map(LaboratoryTestFileDto::from).toList();
+    public List<LaboratoryTestFileDto> listByLaboratoryTest(Long laboratoryTestId, Long companyId) {
+        return repository.findAllByLaboratoryTestIdAndCompanyId(laboratoryTestId, companyId)
+                .stream().map(LaboratoryTestFileDto::from).toList();
     }
 }

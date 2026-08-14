@@ -259,9 +259,10 @@ public class StockLedgerService implements StockLedgerUseCase {
     @Override
     @Observed(name = "inventory.reverse.ledger")
     @Transactional
-    public void reverse(StockReferenceType referenceType, Long referenceId, Long createdBy) {
-        List<StockMovement> movements = movementRepository.findByReference(referenceType,
-                referenceId);
+    public void reverse(StockReferenceType referenceType, Long referenceId, Long companyId,
+            Long createdBy) {
+        List<StockMovement> movements = movementRepository
+                .findByReferenceAndCompanyId(referenceType, referenceId, companyId);
         // Idempotencia: si ya hay movimientos de anulación, no volver a compensar.
         boolean alreadyReversed = movements.stream()
                 .anyMatch(m -> m.getType() == StockMovementType.VOID_IN

@@ -13,13 +13,13 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` (ArchUnit) ejecuta ocho de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
+`HexagonalArchitectureTest` (ArchUnit) ejecuta nueve de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
 
 ```bash
 mvn test -Dtest=HexagonalArchitectureTest
 ```
 
-Tres reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios y **todo puerto de entrada con `@PreAuthorize`**. Las otras cinco encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+Seis reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción y **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**. Las otras tres encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
 - **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
 - **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
@@ -399,6 +399,8 @@ Todo recurso scoped a una `Company` (multi-tenant) se protege con permisos + own
 - ✅ El controller obtiene `companyId` con `authz.currentCompanyId()` y lo inyecta en el command.
 - ✅ El `@PreAuthorize` del puerto de entrada **siempre** valida `@authz.isMyCompany(#command.companyId)` como defensa en profundidad — protege contra otros callers o bugs futuros que pasen un `companyId` distinto.
 - ✅ Endpoints globales para admin/SYSTEM que sí pueden elegir company van en otro caso de uso aparte; no se mezclan con los de employee.
+- ✅ **Un listado que no filtra por empresa solo lo puede servir `hasRole('SYSTEM')` a secas.** Si el repositorio sabe filtrar por empresa —declara algún método que recibe `companyId`—, cualquier `find…` suyo que devuelva varias filas sin ese filtro devuelve filas de todos los tenants. Acotarlo por una FK ajena (`findAllByAnimalId`, `findByHospitalizationId`) **no** cuenta: el animal es de alguien. La regla `LISTADOS_SIN_EMPRESA_SOLO_SYSTEM` lo comprueba y es dura (BE-29).
+- ✅ Lo que el tenant necesita va en un caso de uso hermano que sí recibe `companyId`: `listByCompany(companyId)` para el listado de la empresa, `listAvailable(companyId)` para los catálogos que mezclan filas globales y privadas.
 
 ### Bean `Authz`
 

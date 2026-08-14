@@ -5,6 +5,7 @@ import com.vetsoftware.app.deworming.application.dto.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDewormingsByAnimalUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('deworming.read')")
-    PageResult<DewormingDto> listByAnimal(Long animalId, String query, int page, int pageSize);
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('deworming.read') and @authz.isMyCompany(#companyId))")
+    PageResult<DewormingDto> listByAnimal(Long animalId, Long companyId, String query, int page,
+            int pageSize);
 }

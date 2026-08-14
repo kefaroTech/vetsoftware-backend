@@ -5,7 +5,7 @@ import com.vetsoftware.app.hospitalization.application.dto.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationsByAnimalUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.read')")
-    PageResult<HospitalizationDto> listByAnimal(Long animalId, String query, int page,
-            int pageSize);
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('hospitalization.read') and @authz.isMyCompany(#companyId))")
+    PageResult<HospitalizationDto> listByAnimal(Long animalId, Long companyId, String query,
+            int page, int pageSize);
 }

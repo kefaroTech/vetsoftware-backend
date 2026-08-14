@@ -14,8 +14,10 @@ public interface HospitalizationRepository {
 
     List<Hospitalization> findAll();
 
-    PageResult<Hospitalization> findAllByAnimalId(Long animalId, String query, int page,
-            int pageSize);
+    List<Hospitalization> findAllByCompanyId(Long companyId);
+
+    PageResult<Hospitalization> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize);
 
     void delete(Long id);
 

@@ -13,6 +13,7 @@ import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitaliza
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByCompanyUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ReactivateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
@@ -34,6 +35,7 @@ public class HospitalizationController {
     private final UpdateHospitalizationUseCase updateUseCase;
     private final FindHospitalizationUseCase findUseCase;
     private final ListHospitalizationsUseCase listUseCase;
+    private final ListHospitalizationsByCompanyUseCase listByCompanyUseCase;
     private final ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteHospitalizationUseCase deleteUseCase;
     private final ReactivateHospitalizationUseCase reactivateUseCase;
@@ -43,6 +45,7 @@ public class HospitalizationController {
             UpdateHospitalizationUseCase updateUseCase, FindHospitalizationUseCase findUseCase,
             ListHospitalizationsUseCase listUseCase,
             ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
+            ListHospitalizationsByCompanyUseCase listByCompanyUseCase,
             DeleteHospitalizationUseCase deleteUseCase,
             ReactivateHospitalizationUseCase reactivateUseCase, Authz authz) {
         this.createUseCase = createUseCase;
@@ -50,6 +53,7 @@ public class HospitalizationController {
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
+        this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
@@ -71,13 +75,19 @@ public class HospitalizationController {
         return listUseCase.listAll().stream().map(this::toResponse).toList();
     }
 
+    @GetMapping("/by-company")
+    public List<HospitalizationResponse> listByCompany() {
+        return listByCompanyUseCase.listByCompany(authz.currentCompanyId()).stream()
+                .map(this::toResponse).toList();
+    }
+
     @GetMapping("/by-animal/{animalId}")
     public PageResponse<HospitalizationResponse> listByAnimal(@PathVariable Long animalId,
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<HospitalizationDto> result = listByAnimalUseCase.listByAnimal(animalId, query,
-                page, pageSize);
+        PageResult<HospitalizationDto> result = listByAnimalUseCase.listByAnimal(animalId,
+                authz.currentCompanyId(), query, page, pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }

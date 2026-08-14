@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SyncRolePermissionsUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('rolePermissions.create')")
+    @PreAuthorize("hasRole('SYSTEM') or "
+            + "(hasAuthority('rolePermissions.create') and @authz.isMyCompany(#command.companyId))")
     List<RolePermissionDto> execute(SyncRolePermissionsCommand command);
 }
