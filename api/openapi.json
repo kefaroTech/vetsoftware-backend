@@ -14994,6 +14994,27 @@
         }
       }
     },
+    "/hospitalizations/by-company" : {
+      "get" : {
+        "tags" : [ "hospitalization-controller" ],
+        "operationId" : "listByCompany_9",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/HospitalizationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hospitalizations/by-animal/{animalId}" : {
       "get" : {
         "tags" : [ "hospitalization-controller" ],
@@ -15433,7 +15454,7 @@
     "/employees/by-company" : {
       "get" : {
         "tags" : [ "employee-controller" ],
-        "operationId" : "listByCompany_9",
+        "operationId" : "listByCompany_10",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -15806,7 +15827,7 @@
     "/clinical-history" : {
       "get" : {
         "tags" : [ "clinical-history-company-controller" ],
-        "operationId" : "listByCompany_10",
+        "operationId" : "listByCompany_11",
         "parameters" : [ {
           "name" : "types",
           "in" : "query",
