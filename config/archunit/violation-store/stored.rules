@@ -1,5 +1,6 @@
 #
-#Sat Aug 08 00:25:25 GMT-05:00 2026
+#Sun Aug 16 17:59:08 GMT-05:00 2026
 classes\ that\ are\ assignable\ to\ org.springframework.data.jpa.repository.JpaRepository\ and\ have\ simple\ name\ ending\ with\ 'JpaRepository'\ should\ declarar\ @EntityGraph\ en\ los\ finders\ que\ devuelven\ la\ entidad,\ because\ la\ regla\ del\ CLAUDE.md\ sobre\ N+1\ debe\ ser\ verificable=e2542dba-b181-4100-970a-72399cc6d22c
 no\ classes\ that\ reside\ in\ a\ package\ '..application..'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ '..infrastructure..',\ because\ infrastructure\ ->\ application\ ->\ domain,\ nunca\ al\ reves=d56421bd-621b-43ab-8ec1-1c2ff6cf1abd
 no\ classes\ that\ reside\ in\ a\ package\ '..application.usecase..'\ should\ call\ method\ where\ es\ findAll()\ sin\ argumentos,\ because\ un\ findAll()\ sin\ companyId\ es\ una\ fuga\ entre\ empresas\ esperando\ a\ ocurrir=79e421fb-a7ed-4e11-b09d-d530a56929a6
+no\ methods\ that\ are\ annotated\ with\ @Transactional\ or\ are\ declared\ in\ classes\ that\ are\ annotated\ with\ @Transactional\ should\ disparar\ un\ efecto\ @Async\ sin\ esperar\ al\ commit,\ because\ lo\ que\ cruza\ de\ hilo\ antes\ del\ commit\ no\ vuelve\ si\ hay\ rollback=2ee76f00-1080-49cb-ad1b-a07d3421f55b
