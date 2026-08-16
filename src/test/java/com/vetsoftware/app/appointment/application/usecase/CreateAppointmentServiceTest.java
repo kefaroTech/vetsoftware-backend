@@ -27,6 +27,8 @@ import com.vetsoftware.app.appointment.domain.AppointmentType;
 import com.vetsoftware.app.appointment.testsupport.AppointmentMother;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Agendamiento de una cita: resolucion de las referencias contra el tenant,
@@ -279,6 +283,91 @@ class CreateAppointmentServiceTest {
             service.execute(contactoLibre(null));
 
             verifyNoInteractions(confirmationEmailSender, companyQueryPort);
+        }
+    }
+
+    /**
+     * BE-18: el adaptador de correo es {@code @Async}, asi que encolar el envio
+     * dentro de la transaccion lo entregaba sin esperar al desenlace. Estos tests
+     * abren una sincronizacion de transaccion a mano —sin contexto de Spring— y
+     * comprueban que el correo solo sale si la transaccion confirma.
+     */
+    @Nested
+    @DisplayName("Envio diferido al commit")
+    class DiferidoAlCommit {
+
+        @BeforeEach
+        void abrirLaSincronizacionDeTransaccion() {
+            TransactionSynchronizationManager.initSynchronization();
+        }
+
+        @AfterEach
+        void cerrarLaSincronizacionDeTransaccion() {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        private void confirmarLaTransaccion() {
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+        }
+
+        private void revertirLaTransaccion() {
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sincronizacion -> sincronizacion
+                            .afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+        }
+
+        private void stubDatosDelCorreo() {
+            when(companyQueryPort.findNameById(COMPANY)).thenReturn(Optional.of("Clinica Norte"));
+            when(branchQueryPort.findAddressById(AppointmentMother.BRANCH_ID))
+                    .thenReturn(Optional.of("Calle 1 #2-3"));
+        }
+
+        @Test
+        @DisplayName("resuelve los datos del correo dentro de la transaccion pero no lo envia")
+        void resuelve_los_datos_dentro_de_la_transaccion_pero_no_envia() {
+            stubEmpleadoYSede();
+            stubDatosDelCorreo();
+            stubGuardadoSinSolapes();
+
+            service.execute(contactoLibre("walkin@example.com"));
+
+            verify(companyQueryPort).findNameById(COMPANY);
+            verify(branchQueryPort).findAddressById(AppointmentMother.BRANCH_ID);
+            verifyNoInteractions(confirmationEmailSender);
+        }
+
+        @Test
+        @DisplayName("envia el correo cuando la transaccion confirma, con los datos ya resueltos")
+        void envia_el_correo_cuando_la_transaccion_confirma() {
+            stubEmpleadoYSede();
+            stubDatosDelCorreo();
+            stubGuardadoSinSolapes();
+
+            service.execute(contactoLibre("walkin@example.com"));
+            confirmarLaTransaccion();
+
+            ArgumentCaptor<AppointmentConfirmationData> correo = ArgumentCaptor
+                    .forClass(AppointmentConfirmationData.class);
+            verify(confirmationEmailSender).send(correo.capture());
+            AppointmentConfirmationData datos = correo.getValue();
+            assertThat(datos.recipientEmail()).isEqualTo("walkin@example.com");
+            assertThat(datos.recipientName()).isEqualTo("Walk-in");
+            assertThat(datos.companyName()).isEqualTo("Clinica Norte");
+            assertThat(datos.branchAddress()).isEqualTo("Calle 1 #2-3");
+        }
+
+        @Test
+        @DisplayName("un rollback no envia nada: nadie recibe la confirmacion de una cita fantasma")
+        void un_rollback_no_envia_nada() {
+            stubEmpleadoYSede();
+            stubDatosDelCorreo();
+            stubGuardadoSinSolapes();
+
+            service.execute(contactoLibre("walkin@example.com"));
+            revertirLaTransaccion();
+
+            verifyNoInteractions(confirmationEmailSender);
         }
     }
 

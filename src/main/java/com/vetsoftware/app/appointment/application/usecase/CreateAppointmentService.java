@@ -21,12 +21,18 @@ import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.appointment.domain.OwnerRef;
 import io.micrometer.observation.annotation.Observed;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Observed(name = "appointment.create")
 @Service
 public class CreateAppointmentService implements CreateAppointmentUseCase {
+    private static final Logger log = LoggerFactory.getLogger(CreateAppointmentService.class);
+
     private final AppointmentRepository repository;
     private final AnimalQueryPort animalQueryPort;
     private final OwnerQueryPort ownerQueryPort;
@@ -87,8 +93,11 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
         Appointment saved = repository.save(appointment);
 
         // Notificación al cliente (async y no bloqueante; si falla, el agendamiento
-        // sigue).
-        sendConfirmationEmail(saved, employee, owner, animal, branch, command.companyId());
+        // sigue). Los datos se resuelven AQUÍ, con la transacción y su conexión
+        // abiertas; el envío se difiere al commit: mientras la transacción pueda
+        // revertirse, la cita no existe y el correo no debe salir.
+        sendAfterCommit(
+                buildConfirmationData(saved, employee, owner, animal, branch, command.companyId()));
 
         List<Long> clashes = repository.findClashingIds(command.companyId(), command.employeeId(),
                 command.startAt(), saved.getId());
@@ -97,7 +106,7 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     }
 
     /**
-     * Envía el correo de confirmación al cliente. Destinatario:
+     * Resuelve los datos del correo de confirmación del cliente. Destinatario:
      *
      * <ul>
      * <li>propietario registrado → su correo (si tiene), nombre = nombre del
@@ -106,11 +115,14 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
      * clientName.
      * </ul>
      *
-     * Si no hay correo (propietario sin email o contacto libre sin email), no se
-     * envía nada. El envío es {@code @Async} en el adaptador y nunca lanza.
+     * Devuelve {@code null} si no hay a quién escribirle (propietario sin email o
+     * contacto libre sin email). Las consultas viven aquí y no en el callback de
+     * {@link #sendAfterCommit} a propósito: después del commit la conexión ya
+     * volvió al pool y cada una abriría la suya, añadiendo latencia a la respuesta.
      */
-    private void sendConfirmationEmail(Appointment saved, EmployeeRef employee, OwnerRef owner,
-            AnimalRef animal, BranchRef branch, Long companyId) {
+    private AppointmentConfirmationData buildConfirmationData(Appointment saved,
+            EmployeeRef employee, OwnerRef owner, AnimalRef animal, BranchRef branch,
+            Long companyId) {
         String recipientEmail;
         String recipientName;
         if (owner != null) {
@@ -122,14 +134,53 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
             recipientName = saved.getClientName();
         }
         if (recipientEmail == null || recipientEmail.isBlank())
-            return;
+            return null;
 
         String companyName = companyQueryPort.findNameById(companyId).orElse(null);
         String branchAddress = branchQueryPort.findAddressById(branch.id()).orElse(null);
         String petName = animal != null ? animal.name() : null;
-        confirmationEmailSender.send(new AppointmentConfirmationData(recipientEmail, recipientName,
-                companyName, saved.getStartAt(), saved.getType(), employee.name(), petName,
-                branch.name(), branchAddress, saved.getNotes()));
+        return new AppointmentConfirmationData(recipientEmail, recipientName, companyName,
+                saved.getStartAt(), saved.getType(), employee.name(), petName, branch.name(),
+                branchAddress, saved.getNotes());
+    }
+
+    /**
+     * Difiere el envío al commit. El adaptador es {@code @Async}, así que encolar
+     * dentro de la transacción entregaba el correo sin esperar al desenlace: un
+     * rollback posterior —p. ej. el {@code ObjectOptimisticLockingFailureException}
+     * de otra entidad— dejaba al cliente con la confirmación de una cita que no
+     * existe (BE-18).
+     *
+     * <p>
+     * Sin transacción activa —un test unitario, o un caller futuro sin
+     * {@code @Transactional}— se envía en el acto, que es el comportamiento
+     * correcto ahí; registrar la sincronización lanzaría
+     * {@code IllegalStateException}.
+     *
+     * <p>
+     * El port no debe lanzar por contrato, pero el {@code catch} protege igualmente
+     * al caller: una excepción en {@code afterCommit} se propaga aunque la
+     * transacción ya haya confirmado, y convertiría una cita agendada en un 500.
+     */
+    private void sendAfterCommit(AppointmentConfirmationData confirmation) {
+        if (confirmation == null) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            confirmationEmailSender.send(confirmation);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    confirmationEmailSender.send(confirmation);
+                } catch (RuntimeException exception) {
+                    log.warn("No se pudo enviar la confirmación de la cita agendada: {}",
+                            exception.getMessage());
+                }
+            }
+        });
     }
 
     // Sede solicitada explícitamente: activa y de la empresa. Distingue "inactiva"
