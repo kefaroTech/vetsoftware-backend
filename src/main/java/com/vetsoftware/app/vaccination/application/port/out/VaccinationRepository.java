@@ -14,7 +14,8 @@ public interface VaccinationRepository {
 
     List<Vaccination> findAll();
 
-    PageResult<Vaccination> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
+    PageResult<Vaccination> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize);
 
     void delete(Long id);
 

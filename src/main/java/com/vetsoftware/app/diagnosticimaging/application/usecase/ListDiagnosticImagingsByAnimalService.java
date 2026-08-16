@@ -19,9 +19,9 @@ public class ListDiagnosticImagingsByAnimalService
     }
 
     @Override
-    public PageResult<DiagnosticImagingDto> listByAnimal(Long animalId, String query, int page,
-            int pageSize) {
-        return repository.findAllByAnimalId(animalId, query, page, pageSize)
+    public PageResult<DiagnosticImagingDto> listByAnimal(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        return repository.findAllByAnimalIdAndCompanyId(animalId, companyId, query, page, pageSize)
                 .map(DiagnosticImagingDto::from);
     }
 }

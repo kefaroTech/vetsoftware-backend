@@ -85,6 +85,24 @@ class HexagonalArchitectureTest {
             .because("un companyId que no viene del principal es una fuga entre empresas");
 
     /**
+     * El cierre de BE-29, y la otra mitad de la regla anterior. Aquella cubre los
+     * puertos que <em>reciben</em> un {@code companyId}; esta, los que no reciben
+     * ninguno y por eso pasaban sin que nadie mirara lo que servían por debajo.
+     *
+     * <p>
+     * La fuga concreta —{@code GET /medicaments} devolviendo el catálogo privado de
+     * todas las empresas a cualquiera con {@code prescription.read}— se tapó a mano
+     * al encontrarla de casualidad. Esta regla es lo que la habría encontrado sola,
+     * y lo que impide que la siguiente entre por el mismo sitio.
+     */
+    @ArchTest
+    static final ArchRule LISTADOS_SIN_EMPRESA_SOLO_SYSTEM = classes().that()
+            .resideInAPackage("..application.usecase..")
+            .should(VetSoftwareConditions.cerrarASystemLosListadosSinEmpresa())
+            .because("un listado que no filtra por empresa devuelve filas de todas:"
+                    + " solo puede servirlo un principal cross-tenant");
+
+    /**
      * Dura: ya no queda ninguna. La búsqueda se detiene en los saltos
      * {@code @Async}, así que el envío de correos —asíncrono a propósito— no cuenta
      * como HTTP dentro de la transacción.

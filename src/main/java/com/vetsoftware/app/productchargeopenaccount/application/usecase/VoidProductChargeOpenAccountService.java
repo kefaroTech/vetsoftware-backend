@@ -83,7 +83,7 @@ public class VoidProductChargeOpenAccountService implements VoidProductChargeOpe
         // (idempotente). La sede/lote se toman de los movimientos originales, no hace
         // falta
         // recalcularlos.
-        inventoryLedger.reverseSale(command.id(), command.voidedById());
+        inventoryLedger.reverseSale(command.id(), command.companyId(), command.voidedById());
         refresher.refresh(command.companyId(), openAccountId);
         return dto;
     }

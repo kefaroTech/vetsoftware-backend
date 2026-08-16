@@ -24,6 +24,7 @@ import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitaliza
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
+import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByCompanyUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ReactivateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
@@ -76,6 +77,8 @@ class HospitalizationControllerTest {
     private ListHospitalizationsUseCase listUseCase;
     @MockitoBean
     private ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
+    @MockitoBean
+    private ListHospitalizationsByCompanyUseCase listByCompanyUseCase;
     @MockitoBean
     private DeleteHospitalizationUseCase deleteUseCase;
     @MockitoBean
@@ -233,6 +236,18 @@ class HospitalizationControllerTest {
         }
 
         @Test
+        @DisplayName("by-company acota el tablero a la company del contexto")
+        void by_company_acota_el_tablero_a_la_company_del_contexto() throws Exception {
+            when(listByCompanyUseCase.listByCompany(WebMvcSliceConfig.COMPANY_ID))
+                    .thenReturn(List.of(internado()));
+
+            mockMvc.perform(get("/hospitalizations/by-company")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(55));
+
+            verify(listByCompanyUseCase).listByCompany(WebMvcSliceConfig.COMPANY_ID);
+        }
+
+        @Test
         @DisplayName("sin resultados devuelve un array vacio")
         void sin_resultados_devuelve_array_vacio() throws Exception {
             when(listUseCase.listAll()).thenReturn(List.of());
@@ -249,7 +264,7 @@ class HospitalizationControllerTest {
         @Test
         @DisplayName("devuelve la pagina con sus metadatos")
         void devuelve_la_pagina_con_sus_metadatos() throws Exception {
-            when(listByAnimalUseCase.listByAnimal(3L, "gastro", 1, 5))
+            when(listByAnimalUseCase.listByAnimal(3L, WebMvcSliceConfig.COMPANY_ID, "gastro", 1, 5))
                     .thenReturn(new PageResult<>(List.of(internado()), 1, 5, 11L, 3));
 
             mockMvc.perform(get("/hospitalizations/by-animal/3").param("q", "gastro")
@@ -264,13 +279,13 @@ class HospitalizationControllerTest {
         @Test
         @DisplayName("sin parametros usa page=0 y pageSize=20 por defecto")
         void sin_parametros_usa_los_valores_por_defecto() throws Exception {
-            when(listByAnimalUseCase.listByAnimal(3L, null, 0, 20))
+            when(listByAnimalUseCase.listByAnimal(3L, WebMvcSliceConfig.COMPANY_ID, null, 0, 20))
                     .thenReturn(new PageResult<>(List.of(), 0, 20, 0L, 0));
 
             mockMvc.perform(get("/hospitalizations/by-animal/3")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.pageSize").value(20));
 
-            verify(listByAnimalUseCase).listByAnimal(3L, null, 0, 20);
+            verify(listByAnimalUseCase).listByAnimal(3L, WebMvcSliceConfig.COMPANY_ID, null, 0, 20);
         }
     }
 

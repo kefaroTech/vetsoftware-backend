@@ -750,7 +750,7 @@ class StockLedgerServiceTest {
 
         @Test
         void sin_movimientos_no_hace_nada() {
-            service.reverse(StockReferenceType.POS_DOCUMENT, 999L, USER);
+            service.reverse(StockReferenceType.POS_DOCUMENT, 999L, CO, USER);
             assertThat(movements.all()).isEmpty();
         }
 
@@ -761,7 +761,7 @@ class StockLedgerServiceTest {
             movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.SALE, 8,
                     bd("30"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
-            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
+            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, CO, USER);
 
             assertThat(lot.getQuantityAvailable()).as("se repone el lote").isEqualTo(50);
             assertThat(balances.qty(P, A)).isEqualTo(50);
@@ -778,7 +778,7 @@ class StockLedgerServiceTest {
             movements.save(StockMovement.of(CO, A, P, lot.getId(), StockMovementType.PURCHASE, 50,
                     bd("30"), StockReferenceType.GOODS_RECEIPT, 321L, null, USER));
 
-            service.reverse(StockReferenceType.GOODS_RECEIPT, 321L, USER);
+            service.reverse(StockReferenceType.GOODS_RECEIPT, 321L, CO, USER);
 
             assertThat(lot.getQuantityAvailable()).isZero();
             assertThat(balances.qty(P, A)).isZero();
@@ -801,7 +801,7 @@ class StockLedgerServiceTest {
             movements.save(StockMovement.of(CO, A, P, late.getId(), StockMovementType.SALE, 3,
                     bd("35"), StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
-            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
+            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, CO, USER);
 
             assertThat(early.getQuantityAvailable()).isEqualTo(5);
             assertThat(late.getQuantityAvailable()).isEqualTo(10);
@@ -819,7 +819,7 @@ class StockLedgerServiceTest {
             int before = movements.all().size();
             int lotQtyBefore = lot.getQuantityAvailable();
 
-            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
+            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, CO, USER);
 
             assertThat(movements.all()).as("no vuelve a compensar").hasSize(before);
             assertThat(lot.getQuantityAvailable()).isEqualTo(lotQtyBefore);
@@ -831,7 +831,7 @@ class StockLedgerServiceTest {
             movements.save(StockMovement.of(CO, A, P, 9999L, StockMovementType.SALE, 8, bd("30"),
                     StockReferenceType.POS_DOCUMENT, 555L, null, USER));
 
-            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, USER);
+            service.reverse(StockReferenceType.POS_DOCUMENT, 555L, CO, USER);
 
             assertThat(movements.ofType(StockMovementType.VOID_IN)).isEmpty();
             assertThat(movements.ofType(StockMovementType.VOID_OUT)).isEmpty();
@@ -953,10 +953,13 @@ class StockLedgerServiceTest {
         }
 
         @Override
-        public List<StockMovement> findByReference(StockReferenceType referenceType,
-                Long referenceId) {
-            return saved.stream().filter(m -> m.getReferenceType() == referenceType
-                    && Objects.equals(m.getReferenceId(), referenceId)).toList();
+        public List<StockMovement> findByReferenceAndCompanyId(StockReferenceType referenceType,
+                Long referenceId, Long companyId) {
+            return saved.stream()
+                    .filter(m -> m.getReferenceType() == referenceType
+                            && Objects.equals(m.getReferenceId(), referenceId)
+                            && Objects.equals(m.getCompanyId(), companyId))
+                    .toList();
         }
 
         List<StockMovement> all() {

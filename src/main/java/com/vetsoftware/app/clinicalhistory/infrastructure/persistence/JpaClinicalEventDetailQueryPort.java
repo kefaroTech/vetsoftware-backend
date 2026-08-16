@@ -186,10 +186,10 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                     add(f, "Motivo de egreso", reasonLeaving(enumName(e.getReasonLeaving())));
                     add(f, "Observaciones", e.getObservations());
                     List<DetailTable> tables = new ArrayList<>();
-                    addTable(tables, medicationTable(id));
-                    addTable(tables, procedureTable(id));
-                    addTable(tables, progressNoteTable(id));
-                    addTable(tables, observationTable(id));
+                    addTable(tables, medicationTable(id, companyId));
+                    addTable(tables, procedureTable(id, companyId));
+                    addTable(tables, progressNoteTable(id, companyId));
+                    addTable(tables, observationTable(id, companyId));
                     return new ClinicalEventDetail(hospitalizationType(enumName(e.getType())), f,
                             tables);
                 });
@@ -267,10 +267,11 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                 rows);
     }
 
-    private DetailTable medicationTable(Long hospitalizationId) {
+    private DetailTable medicationTable(Long hospitalizationId, Long companyId) {
         List<List<String>> rows = hospitalizationMedicationRepo
-                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
-                .sorted(Comparator.comparing(m -> m.getCreatedDate()))
+                .findByHospitalizationIdAndHospitalization_Company_Id(hospitalizationId, companyId,
+                        STAY_DETAIL_PAGE)
+                .getContent().stream().sorted(Comparator.comparing(m -> m.getCreatedDate()))
                 .map(m -> List.of(nz(m.getName()), nz(m.getDose()), nz(m.getFrequency()),
                         duration(m.getDurationQuantity(), m.getDurationMeasure()),
                         startAt(m.getStartDate(), m.getStartTime()), status(m.getSuspensionDate())))
@@ -280,10 +281,11 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                 rows);
     }
 
-    private DetailTable procedureTable(Long hospitalizationId) {
+    private DetailTable procedureTable(Long hospitalizationId, Long companyId) {
         List<List<String>> rows = hospitalizationProcedureRepo
-                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
-                .sorted(Comparator.comparing(p -> p.getCreatedDate()))
+                .findByHospitalizationIdAndHospitalization_Company_Id(hospitalizationId, companyId,
+                        STAY_DETAIL_PAGE)
+                .getContent().stream().sorted(Comparator.comparing(p -> p.getCreatedDate()))
                 .map(p -> List.of(nz(p.getName()), nz(p.getDose()), nz(p.getFrequency()),
                         duration(p.getDurationQuantity(), p.getDurationMeasure()),
                         startAt(p.getStartDate(), p.getStartTime()), status(p.getSuspensionDate())))
@@ -293,10 +295,11 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                 rows);
     }
 
-    private DetailTable progressNoteTable(Long hospitalizationId) {
+    private DetailTable progressNoteTable(Long hospitalizationId, Long companyId) {
         List<List<String>> rows = hospitalizationProgressNoteRepo
-                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
-                .sorted(Comparator.comparing(n -> n.getCreatedDate()))
+                .findByHospitalizationIdAndHospitalization_Company_Id(hospitalizationId, companyId,
+                        STAY_DETAIL_PAGE)
+                .getContent().stream().sorted(Comparator.comparing(n -> n.getCreatedDate()))
                 .map(n -> List.of(n.getCreatedDate().toLocalDate().format(DATE),
                         author(n.getCreatedBy() == null ? null : n.getCreatedBy().getName()),
                         nz(n.getDescription())))
@@ -305,10 +308,11 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                 rows);
     }
 
-    private DetailTable observationTable(Long hospitalizationId) {
+    private DetailTable observationTable(Long hospitalizationId, Long companyId) {
         List<List<String>> rows = hospitalizationObservationRepo
-                .findByHospitalizationId(hospitalizationId, STAY_DETAIL_PAGE).getContent().stream()
-                .sorted(Comparator.comparing(o -> o.getCreatedDate()))
+                .findByHospitalizationIdAndHospitalization_Company_Id(hospitalizationId, companyId,
+                        STAY_DETAIL_PAGE)
+                .getContent().stream().sorted(Comparator.comparing(o -> o.getCreatedDate()))
                 .map(o -> List.of(o.getCreatedDate().toLocalDate().format(DATE),
                         author(o.getCreatedBy() == null ? null : o.getCreatedBy().getName()),
                         nz(o.getDescription())))

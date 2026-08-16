@@ -21,8 +21,8 @@ public class ListHospitalizationProceduresByHospitalizationService
 
     @Override
     public PageResult<HospitalizationProcedureDto> listByHospitalization(Long hospitalizationId,
-            int page, int pageSize) {
-        return repository.findAllByHospitalizationId(hospitalizationId, page, pageSize)
-                .map(HospitalizationProcedureDto::from);
+            Long companyId, int page, int pageSize) {
+        return repository.findAllByHospitalizationIdAndCompanyId(hospitalizationId, companyId, page,
+                pageSize).map(HospitalizationProcedureDto::from);
     }
 }

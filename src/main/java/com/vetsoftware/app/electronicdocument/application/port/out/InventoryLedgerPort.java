@@ -28,5 +28,5 @@ public interface InventoryLedgerPort {
      * Compensa (repone) las salidas registradas por el documento POS al reversarlo
      * (nota crédito total). Idempotente.
      */
-    void reversePosSale(Long documentId, Long actorId);
+    void reversePosSale(Long documentId, Long companyId, Long actorId);
 }

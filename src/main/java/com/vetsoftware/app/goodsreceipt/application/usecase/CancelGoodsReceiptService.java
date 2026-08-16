@@ -45,7 +45,7 @@ public class CancelGoodsReceiptService implements CancelGoodsReceiptUseCase {
                     GoodsReceiptStatus.CANCELLED);
         }
 
-        inventoryLedger.reverseReceipt(receipt.getId(), actorId);
+        inventoryLedger.reverseReceipt(receipt.getId(), companyId, actorId);
 
         if (receipt.getPurchaseOrderId() != null) {
             List<ReceivedLine> receivedLines = receipt.getLines().stream()

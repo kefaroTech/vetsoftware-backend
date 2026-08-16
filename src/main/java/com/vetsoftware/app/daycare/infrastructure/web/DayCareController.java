@@ -69,8 +69,8 @@ public class DayCareController {
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<DayCareDto> result = listByAnimalUseCase.listByAnimal(animalId, query, page,
-                pageSize);
+        PageResult<DayCareDto> result = listByAnimalUseCase.listByAnimal(animalId,
+                authz.currentCompanyId(), query, page, pageSize);
         return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
                 result.page(), result.pageSize(), result.totalElements(), result.totalPages());
     }

@@ -19,8 +19,8 @@ public interface HospitalizationObservationJpaRepository
             Long companyId);
 
     @EntityGraph(attributePaths = {"hospitalization", "createdBy"})
-    Page<HospitalizationObservationJpaEntity> findByHospitalizationId(Long hospitalizationId,
-            Pageable pageable);
+    Page<HospitalizationObservationJpaEntity> findByHospitalizationIdAndHospitalization_Company_Id(
+            Long hospitalizationId, Long companyId, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

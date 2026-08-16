@@ -34,7 +34,7 @@ public class LedgerInventoryAdapter implements InventoryLedgerPort {
     }
 
     @Override
-    public void reverseReceipt(Long receiptId, Long actorId) {
-        stockLedger.reverse(StockReferenceType.GOODS_RECEIPT, receiptId, actorId);
+    public void reverseReceipt(Long receiptId, Long companyId, Long actorId) {
+        stockLedger.reverse(StockReferenceType.GOODS_RECEIPT, receiptId, companyId, actorId);
     }
 }

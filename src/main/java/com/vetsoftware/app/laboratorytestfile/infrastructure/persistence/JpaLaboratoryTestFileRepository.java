@@ -49,9 +49,11 @@ public class JpaLaboratoryTestFileRepository implements LaboratoryTestFileReposi
     }
 
     @Override
-    public List<LaboratoryTestFile> findAllByLaboratoryTestId(Long laboratoryTestId) {
-        return jpaRepository.findAllByLaboratoryTest_Id(laboratoryTestId).stream()
-                .map(mapper::toDomain).toList();
+    public List<LaboratoryTestFile> findAllByLaboratoryTestIdAndCompanyId(Long laboratoryTestId,
+            Long companyId) {
+        return jpaRepository
+                .findAllByLaboratoryTest_IdAndLaboratoryTest_Company_Id(laboratoryTestId, companyId)
+                .stream().map(mapper::toDomain).toList();
     }
 
     @Override

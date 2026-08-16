@@ -72,7 +72,7 @@ public class CreditNoteReversalApplier {
                 // solo se marca reversada la factura y su cartera. Idempotente (el ledger no
                 // re-compensa).
                 if (original.getOpenAccountId() == null) {
-                    inventoryLedger.reversePosSale(original.getId(), null);
+                    inventoryLedger.reversePosSale(original.getId(), original.getCompanyId(), null);
                     // Compensa el cobro en la caja OPEN actual (VOID_OUT por método). Idempotente;
                     // no-op si la
                     // sede no tiene caja abierta (no se compensa contra un cajón ya

@@ -37,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SyncRolePermissionsServiceTest {
 
     private static final Long ROLE_ID = 3L;
+    private static final Long COMPANY_ID = 9L;
 
     @Mock
     private RolePermissionRepository repository;
@@ -58,7 +59,7 @@ class SyncRolePermissionsServiceTest {
     private ArgumentCaptor<Collection<Long>> idsReactivados;
 
     private void elRolExiste() {
-        when(roleQueryPort.findById(ROLE_ID))
+        when(roleQueryPort.findByIdAndCompanyId(ROLE_ID, COMPANY_ID))
                 .thenReturn(Optional.of(RolePermissionMother.VETERINARIO));
     }
 
@@ -69,8 +70,8 @@ class SyncRolePermissionsServiceTest {
         @Test
         @DisplayName("roleId nulo falla antes de tocar nada")
         void role_id_nulo_falla_antes_de_tocar_nada() {
-            assertThatThrownBy(
-                    () -> service.execute(new SyncRolePermissionsCommand(null, List.of(7L))))
+            assertThatThrownBy(() -> service
+                    .execute(new SyncRolePermissionsCommand(null, List.of(7L), COMPANY_ID)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("roleId is required");
 
@@ -81,10 +82,11 @@ class SyncRolePermissionsServiceTest {
         @Test
         @DisplayName("rol inexistente falla y no escribe nada")
         void rol_inexistente_falla_sin_escribir() {
-            when(roleQueryPort.findById(ROLE_ID)).thenReturn(Optional.empty());
+            when(roleQueryPort.findByIdAndCompanyId(ROLE_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
-            assertThatThrownBy(
-                    () -> service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L))))
+            assertThatThrownBy(() -> service
+                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Role not found: 3");
 
@@ -107,7 +109,7 @@ class SyncRolePermissionsServiceTest {
             when(permissionQueryPort.findById(7L))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             verify(repository).saveAll(nuevos.capture());
             assertThat(nuevos.getValue()).singleElement()
@@ -126,8 +128,8 @@ class SyncRolePermissionsServiceTest {
                     .thenReturn(List.of());
             when(permissionQueryPort.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(
-                    () -> service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(99L))))
+            assertThatThrownBy(() -> service
+                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(99L), COMPANY_ID)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Permission not found: 99");
 
@@ -149,7 +151,7 @@ class SyncRolePermissionsServiceTest {
             when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
                     .thenReturn(List.of(new DisabledRolePermissionLookup(1L, 7L)));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             verify(repository).reactivateAllByIds(idsReactivados.capture());
             assertThat(idsReactivados.getValue()).containsExactly(1L);
@@ -168,7 +170,7 @@ class SyncRolePermissionsServiceTest {
             when(permissionQueryPort.findById(8L))
                     .thenReturn(Optional.of(RolePermissionMother.CREAR_ANIMALES));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L, 8L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L, 8L), COMPANY_ID));
 
             verify(repository).reactivateAllByIds(idsReactivados.capture());
             assertThat(idsReactivados.getValue()).containsExactly(1L);
@@ -191,7 +193,7 @@ class SyncRolePermissionsServiceTest {
                             RolePermissionMother.conId(2L, RolePermissionMother.CREAR_ANIMALES)),
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             verify(repository).deleteAllByIds(idsBorrados.capture());
             assertThat(idsBorrados.getValue()).containsExactly(2L);
@@ -207,7 +209,7 @@ class SyncRolePermissionsServiceTest {
                     List.of());
 
             List<RolePermissionDto> resultado = service
-                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of()));
+                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(), COMPANY_ID));
 
             verify(repository).deleteAllByIds(idsBorrados.capture());
             assertThat(idsBorrados.getValue()).containsExactly(1L);
@@ -222,7 +224,7 @@ class SyncRolePermissionsServiceTest {
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)),
                     List.of());
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, null));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, null, COMPANY_ID));
 
             verify(repository).deleteAllByIds(idsBorrados.capture());
             assertThat(idsBorrados.getValue()).containsExactly(1L);
@@ -241,7 +243,7 @@ class SyncRolePermissionsServiceTest {
             when(repository.findAllByRoleId(ROLE_ID)).thenReturn(
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             verify(repository, never()).deleteAllByIds(anyList());
             verify(repository, never()).saveAll(anyList());
@@ -259,7 +261,8 @@ class SyncRolePermissionsServiceTest {
             when(permissionQueryPort.findById(7L))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L, 7L, 7L)));
+            service.execute(
+                    new SyncRolePermissionsCommand(ROLE_ID, List.of(7L, 7L, 7L), COMPANY_ID));
 
             verify(repository).saveAll(nuevos.capture());
             assertThat(nuevos.getValue()).hasSize(1);
@@ -273,7 +276,7 @@ class SyncRolePermissionsServiceTest {
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
 
             List<RolePermissionDto> resultado = service
-                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+                    .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             assertThat(resultado).singleElement().extracting(RolePermissionDto::id).isEqualTo(1L);
         }
@@ -285,7 +288,7 @@ class SyncRolePermissionsServiceTest {
             when(repository.findAllByRoleId(ROLE_ID)).thenReturn(
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
 
-            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L)));
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
             verify(permissionCachePort).evictByRoleId(ROLE_ID);
         }

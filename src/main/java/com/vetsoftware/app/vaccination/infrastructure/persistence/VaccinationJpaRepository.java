@@ -27,10 +27,11 @@ public interface VaccinationJpaRepository extends JpaRepository<VaccinationJpaEn
             SELECT x
             FROM VaccinationJpaEntity x
             WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
               AND (:q IS NULL OR :q = '' OR LOWER(x.lot) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.notes) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.applicationSite) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    Page<VaccinationJpaEntity> findAllByAnimalId(@Param("animalId") Long animalId,
-            @Param("q") String q, Pageable pageable);
+    Page<VaccinationJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional

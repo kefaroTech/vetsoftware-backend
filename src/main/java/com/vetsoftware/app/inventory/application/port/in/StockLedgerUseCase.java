@@ -46,5 +46,6 @@ public interface StockLedgerUseCase {
      * Compensa (anula) todos los movimientos de una referencia con su inverso.
      * Idempotente.
      */
-    void reverse(StockReferenceType referenceType, Long referenceId, Long createdBy);
+    void reverse(StockReferenceType referenceType, Long referenceId, Long companyId,
+            Long createdBy);
 }

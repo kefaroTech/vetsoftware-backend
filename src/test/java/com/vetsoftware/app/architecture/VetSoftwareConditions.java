@@ -14,6 +14,7 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +47,13 @@ final class VetSoftwareConditions {
 
     /** Disyunto que deja pasar al principal SYSTEM, cross-tenant por diseño. */
     private static final String SYSTEM_DISJUNCT = "hasRole('SYSTEM')";
+
+    private static final String PORT_IN_PACKAGE = ".application.port.in";
+
+    private static final String PORT_OUT_PACKAGE = ".application.port.out";
+
+    /** Envoltorio de página del proyecto; cada feature declara el suyo. */
+    private static final String PAGE_RESULT = "PageResult";
 
     private VetSoftwareConditions() {
     }
@@ -295,6 +303,130 @@ final class VetSoftwareConditions {
             // La clase no se puede cargar; el chequeo por command sigue aplicando.
         }
         return false;
+    }
+
+    /**
+     * Exige que un listado que no filtra por empresa quede cerrado a
+     * {@code ROLE_SYSTEM}.
+     *
+     * <p>
+     * Es el hueco por el que se coló BE-29.
+     * {@link #validarElTenantCuandoRecibeCompanyId()} mira los puertos <em>que
+     * reciben</em> un {@code companyId}: si el método no recibe ninguno no hay nada
+     * que validar, así que el puerto pasa limpio aunque por debajo esté sirviendo
+     * filas de todas las empresas. Desde esa regla, un catálogo global legítimo y
+     * una fuga entre empresas se ven exactamente igual.
+     *
+     * <p>
+     * Lo que los distingue es el repositorio. Si <strong>sabe</strong> filtrar por
+     * empresa —declara algún método que recibe {@code companyId}, del tipo
+     * {@code findByIdAndCompanyId}— entonces sus filas son de alguien, y servirlas
+     * sin ese filtro a un permiso de empleado es una fuga. Los catálogos maestros
+     * (ciudades, razas, especies) no declaran ningún método así y la regla ni los
+     * mira.
+     *
+     * <p>
+     * A propósito no se comprueba la <em>forma</em> de la llamada: da igual que sea
+     * {@code findAll()}, {@code findAll(page, size)} o
+     * {@code findAllByAnimalId(id, …)}. Paginar un listado no lo hace multi-tenant,
+     * y acotarlo por una FK ajena tampoco: mientras el {@code WHERE} no nombre la
+     * empresa, las filas que salen son de cualquiera.
+     */
+    static ArchCondition<JavaClass> cerrarASystemLosListadosSinEmpresa() {
+        return new ArchCondition<>("cerrar a ROLE_SYSTEM los listados que no filtran por empresa") {
+            @Override
+            public void check(JavaClass service, ConditionEvents events) {
+                for (JavaMethod method : service.getMethods()) {
+                    Optional<JavaMethod> puerto = puertoQueImplementa(method);
+                    if (puerto.isEmpty() || transportaCompanyId(puerto.get())) {
+                        continue;
+                    }
+                    for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
+                        Optional<JavaMethod> listado = listadoSinEmpresa(call);
+                        if (listado.isPresent()) {
+                            events.add(evaluarElGate(puerto.get(), method, listado.get()));
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    /**
+     * El método homónimo del puerto de entrada que este service implementa, si lo
+     * hay. Un método que no implementa ningún puerto no es alcanzable desde fuera:
+     * su gate es el del puerto que acabe llamándolo.
+     */
+    private static Optional<JavaMethod> puertoQueImplementa(JavaMethod method) {
+        String[] parameterTypeNames = method.getRawParameterTypes().stream().map(JavaClass::getName)
+                .toArray(String[]::new);
+        for (JavaClass implemented : method.getOwner().getAllRawInterfaces()) {
+            if (!implemented.getPackageName().contains(PORT_IN_PACKAGE)) {
+                continue;
+            }
+            Optional<JavaMethod> candidato = implemented.tryGetMethod(method.getName(),
+                    parameterTypeNames);
+            if (candidato.isPresent()) {
+                return candidato;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * La llamada, si es a un listado sin empresa de un repositorio que sí sabe
+     * filtrar por ella.
+     */
+    private static Optional<JavaMethod> listadoSinEmpresa(JavaMethodCall call) {
+        JavaClass repositorio = call.getTargetOwner();
+        if (!isOwnCode(repositorio) || !repositorio.getPackageName().contains(PORT_OUT_PACKAGE)) {
+            return Optional.empty();
+        }
+        Optional<JavaMethod> destino = call.getTarget().resolveMember();
+        if (destino.isEmpty() || !esUnFinderDeVariasFilas(destino.get())
+                || filtraPorEmpresa(destino.get())) {
+            return Optional.empty();
+        }
+        boolean sabeFiltrarPorEmpresa = repositorio.getMethods().stream()
+                .anyMatch(VetSoftwareConditions::filtraPorEmpresa);
+        return sabeFiltrarPorEmpresa ? destino : Optional.empty();
+    }
+
+    private static SimpleConditionEvent evaluarElGate(JavaMethod puerto, JavaMethod servicio,
+            JavaMethod listado) {
+        Optional<PreAuthorize> gate = puerto.tryGetAnnotationOfType(PreAuthorize.class);
+        boolean cerrado = gate.isPresent() && soloAlcanzablePorSystem(gate.get().value());
+        String hecho = servicio.getOwner().getSimpleName() + "." + servicio.getName() + "() sirve "
+                + listado.getOwner().getSimpleName() + "." + listado.getName()
+                + "(), que no filtra por empresa, y su puerto no recibe companyId";
+        return new SimpleConditionEvent(servicio, cerrado,
+                cerrado
+                        ? hecho + ", pero solo lo alcanza ROLE_SYSTEM"
+                        : hecho + " ni esta cerrado a ROLE_SYSTEM: "
+                                + gate.map(PreAuthorize::value).orElse("sin @PreAuthorize"));
+    }
+
+    /**
+     * {@code true} si el método lleva la empresa consigo. El nombre cuenta porque
+     * los repositorios la declaran ahí ({@code findByIdAndCompanyId},
+     * {@code findAllAvailableForCompany}) y así el chequeo no depende de que la
+     * clase se pueda reflexionar para leer los nombres de parámetro.
+     */
+    private static boolean filtraPorEmpresa(JavaMethod method) {
+        return transportaCompanyId(method) || method.getName().contains("Company");
+    }
+
+    /**
+     * Solo los <em>finders</em> que devuelven varias filas. El nombre importa: un
+     * {@code saveAll} también devuelve una colección y no es un listado.
+     */
+    private static boolean esUnFinderDeVariasFilas(JavaMethod method) {
+        if (!method.getName().startsWith("find")) {
+            return false;
+        }
+        JavaClass returnType = method.getRawReturnType();
+        return returnType.isAssignableTo(Collection.class)
+                || PAGE_RESULT.equals(returnType.getSimpleName());
     }
 
     /**

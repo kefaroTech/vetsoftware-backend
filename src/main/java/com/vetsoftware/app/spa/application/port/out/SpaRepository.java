@@ -14,7 +14,8 @@ public interface SpaRepository {
 
     List<Spa> findAll();
 
-    PageResult<Spa> findAllByAnimalId(Long animalId, String query, int page, int pageSize);
+    PageResult<Spa> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId, String query,
+            int page, int pageSize);
 
     void delete(Long id);
 

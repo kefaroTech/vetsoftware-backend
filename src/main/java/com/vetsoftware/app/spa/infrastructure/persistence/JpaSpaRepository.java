@@ -62,9 +62,10 @@ public class JpaSpaRepository implements SpaRepository {
     }
 
     @Override
-    public PageResult<Spa> findAllByAnimalId(Long animalId, String query, int page, int pageSize) {
-        Page<SpaJpaEntity> result = jpaRepository.findAllByAnimalId(animalId, query,
-                byAnimalPageRequest(page, pageSize));
+    public PageResult<Spa> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<SpaJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId, companyId,
+                query, byAnimalPageRequest(page, pageSize));
         return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(),
                 result.getTotalPages());

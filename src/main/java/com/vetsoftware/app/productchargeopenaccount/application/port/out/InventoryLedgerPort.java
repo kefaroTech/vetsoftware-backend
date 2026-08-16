@@ -20,5 +20,5 @@ public interface InventoryLedgerPort {
     /**
      * Compensa (repone) la salida registrada por el cargo al anularlo. Idempotente.
      */
-    void reverseSale(Long chargeId, Long actorId);
+    void reverseSale(Long chargeId, Long companyId, Long actorId);
 }
