@@ -1,7 +1,7 @@
 package com.vetsoftware.app.diagnosticimaging.application.port.in;
 
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDto;
-import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListDiagnosticImagingsByAnimalUseCase {

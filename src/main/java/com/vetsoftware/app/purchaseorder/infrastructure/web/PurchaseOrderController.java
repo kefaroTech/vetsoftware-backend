@@ -6,7 +6,7 @@ import com.vetsoftware.app.purchaseorder.application.command.CreatePurchaseOrder
 import com.vetsoftware.app.purchaseorder.application.command.PurchaseOrderLineCommand;
 import com.vetsoftware.app.purchaseorder.application.command.SearchPurchaseOrdersCommand;
 import com.vetsoftware.app.purchaseorder.application.command.UpdatePurchaseOrderCommand;
-import com.vetsoftware.app.purchaseorder.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.purchaseorder.application.dto.PurchaseOrderDto;
 import com.vetsoftware.app.purchaseorder.application.dto.PurchaseOrderLineDto;
 import com.vetsoftware.app.purchaseorder.application.port.in.CancelPurchaseOrderUseCase;
@@ -100,8 +100,7 @@ public class PurchaseOrderController {
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<PurchaseOrderDto> result = searchUseCase.execute(new SearchPurchaseOrdersCommand(
                 authz.currentCompanyId(), supplierId, branchId, status, from, to, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(result, this::toResponse);
     }
 
     @GetMapping("/{id}")

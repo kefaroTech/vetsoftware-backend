@@ -7,7 +7,6 @@ import com.vetsoftware.app.supplierinvoice.application.command.RegisterSupplierP
 import com.vetsoftware.app.supplierinvoice.application.command.SearchSupplierInvoicesCommand;
 import com.vetsoftware.app.supplierinvoice.application.command.UpdateSupplierInvoiceCommand;
 import com.vetsoftware.app.supplierinvoice.application.dto.AccountsPayableAgingDto;
-import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
 import com.vetsoftware.app.supplierinvoice.application.dto.SupplierInvoiceDto;
 import com.vetsoftware.app.supplierinvoice.application.dto.SupplierInvoicePaymentDto;
 import com.vetsoftware.app.supplierinvoice.application.port.in.CancelSupplierInvoiceUseCase;
@@ -90,11 +89,10 @@ public class SupplierInvoiceController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<SupplierInvoiceDto> result = searchUseCase
+        return PageResponse.from(searchUseCase
                 .execute(new SearchSupplierInvoicesCommand(authz.currentCompanyId(), supplierId,
-                        authz.resolveAccessibleBranch(branchId), status, from, to, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                        authz.resolveAccessibleBranch(branchId), status, from, to, page, pageSize)),
+                this::toResponse);
     }
 
     @GetMapping("/aging")

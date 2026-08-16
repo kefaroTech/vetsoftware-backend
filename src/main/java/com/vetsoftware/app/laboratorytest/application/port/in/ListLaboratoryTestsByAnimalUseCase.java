@@ -1,7 +1,7 @@
 package com.vetsoftware.app.laboratorytest.application.port.in;
 
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
-import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListLaboratoryTestsByAnimalUseCase {

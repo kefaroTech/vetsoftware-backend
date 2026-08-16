@@ -6,7 +6,6 @@ import com.vetsoftware.app.supplier.application.command.CreateSupplierCommand;
 import com.vetsoftware.app.supplier.application.command.SearchSuppliersCommand;
 import com.vetsoftware.app.supplier.application.command.UpdateSupplierCommand;
 import com.vetsoftware.app.supplier.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.supplier.application.dto.PageResult;
 import com.vetsoftware.app.supplier.application.dto.SupplierDto;
 import com.vetsoftware.app.supplier.application.port.in.CreateSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.DeleteSupplierUseCase;
@@ -77,10 +76,9 @@ public class SupplierController {
             @RequestParam(required = false) String taxId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<SupplierDto> result = searchUseCase.execute(
-                new SearchSuppliersCommand(authz.currentCompanyId(), name, taxId, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(searchUseCase.execute(
+                new SearchSuppliersCommand(authz.currentCompanyId(), name, taxId, page, pageSize)),
+                this::toResponse);
     }
 
     @GetMapping("/{id}")

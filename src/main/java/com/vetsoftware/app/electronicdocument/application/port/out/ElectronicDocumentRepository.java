@@ -2,7 +2,7 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
-import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import java.util.List;
 import java.util.Optional;

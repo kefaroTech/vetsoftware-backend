@@ -1,7 +1,7 @@
 package com.vetsoftware.app.animal.application.port.in;
 
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
-import com.vetsoftware.app.animal.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListAnimalsUseCase {

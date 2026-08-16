@@ -1,7 +1,7 @@
 package com.vetsoftware.app.daycare.application.port.out;
 
 import com.vetsoftware.app.daycare.domain.DayCare;
-import com.vetsoftware.app.daycare.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.List;
 import java.util.Optional;
 

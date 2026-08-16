@@ -12,7 +12,6 @@ import com.vetsoftware.app.laboratorytest.application.dto.ConsultationSummaryDto
 import com.vetsoftware.app.laboratorytest.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestTypeSummaryDto;
-import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
 import com.vetsoftware.app.laboratorytest.application.port.in.ChangeLaboratoryTestStatusUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.CreateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTestUseCase;
@@ -93,10 +92,8 @@ public class LaboratoryTestController {
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<LaboratoryTestDto> result = listByAnimalUseCase.listByAnimal(animalId,
-                authz.currentCompanyId(), query, page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listByAnimalUseCase.listByAnimal(animalId,
+                authz.currentCompanyId(), query, page, pageSize), this::toResponse);
     }
 
     @GetMapping("/search")
@@ -117,12 +114,11 @@ public class LaboratoryTestController {
         LaboratoryTestPriority priority = prioridad == null || prioridad.isBlank()
                 ? null
                 : LaboratoryTestPriority.valueOf(prioridad.toUpperCase());
-        PageResult<LaboratoryTestDto> result = searchUseCase
-                .execute(new SearchLaboratoryTestsCommand(authz.currentCompanyId(),
+        return PageResponse.from(
+                searchUseCase.execute(new SearchLaboratoryTestsCommand(authz.currentCompanyId(),
                         authz.resolveAccessibleBranch(branchId), statusList, animalId, testTypeId,
-                        priority, dateFrom, dateTo, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                        priority, dateFrom, dateTo, page, pageSize)),
+                this::toResponse);
     }
 
     @GetMapping("/{id}")

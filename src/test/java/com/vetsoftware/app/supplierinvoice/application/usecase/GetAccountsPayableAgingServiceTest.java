@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.supplierinvoice.application.command.SearchSupplierInvoicesCommand;
 import com.vetsoftware.app.supplierinvoice.application.dto.AccountsPayableAgingDto;
-import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;
 import com.vetsoftware.app.supplierinvoice.domain.BranchRef;
 import com.vetsoftware.app.supplierinvoice.domain.CompanyRef;

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.generalchargeopenaccount.application.usecase;
 
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
-import com.vetsoftware.app.generalchargeopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.out.GeneralChargeOpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;

@@ -2,14 +2,14 @@ package com.vetsoftware.app.inventory.infrastructure.persistence;
 
 import com.vetsoftware.app.inventory.application.command.SearchCountsQuery;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.inventory.application.port.out.InventoryCountRepository;
 import com.vetsoftware.app.inventory.domain.InventoryCount;
 import com.vetsoftware.app.inventory.domain.InventoryCountLine;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -46,14 +46,11 @@ public class JpaInventoryCountRepository implements InventoryCountRepository {
     @Override
     public PageResult<InventoryCountView> search(SearchCountsQuery query) {
         Page<InventoryCountJpaEntity> page = jpaRepository.search(query.companyId(),
-                query.branchId(), PageRequest.of(query.page(), query.pageSize()));
-        List<InventoryCountView> content = page.getContent().stream()
-                .map(e -> InventoryCountView.summary(e.getId(), e.getBranchId(), e.getNote(),
+                query.branchId(), Pages.request(query.page(), query.pageSize()));
+        return Pages.result(page,
+                e -> InventoryCountView.summary(e.getId(), e.getBranchId(), e.getNote(),
                         e.getCountedBy(), e.getCreatedDate(), e.getTotalLines(),
-                        e.getAdjustedLines()))
-                .toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+                        e.getAdjustedLines()));
     }
 
     @Override

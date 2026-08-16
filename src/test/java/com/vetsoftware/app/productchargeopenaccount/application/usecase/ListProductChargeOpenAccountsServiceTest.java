@@ -3,7 +3,7 @@ package com.vetsoftware.app.productchargeopenaccount.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.vetsoftware.app.productchargeopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccount;

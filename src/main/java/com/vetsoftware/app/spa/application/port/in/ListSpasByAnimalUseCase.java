@@ -1,7 +1,7 @@
 package com.vetsoftware.app.spa.application.port.in;
 
 import com.vetsoftware.app.spa.application.dto.SpaDto;
-import com.vetsoftware.app.spa.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSpasByAnimalUseCase {

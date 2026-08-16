@@ -2,7 +2,8 @@ package com.vetsoftware.app.cashregister.infrastructure.persistence;
 
 import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQuery;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
-import com.vetsoftware.app.cashregister.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
 import com.vetsoftware.app.cashregister.domain.CashMovement;
 import com.vetsoftware.app.cashregister.domain.CashSession;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -128,11 +128,10 @@ public class JpaCashSessionRepository implements CashSessionRepository {
     public PageResult<CashSessionView> search(SearchCashSessionsQuery query) {
         LocalDateTime from = query.from() == null ? null : query.from().atStartOfDay();
         LocalDateTime to = query.to() == null ? null : query.to().plusDays(1).atStartOfDay();
+        // El orden lo fija la propia consulta (ORDER BY s.opened_at DESC).
         Page<CashSessionSummaryRow> page = jpaRepository.search(query.companyId(), query.branchId(),
-                query.employeeId(), from, to, PageRequest.of(query.page(), query.pageSize()));
-        List<CashSessionView> content = page.getContent().stream().map(this::toSummary).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+                query.employeeId(), from, to, Pages.request(query.page(), query.pageSize()));
+        return Pages.result(page, this::toSummary);
     }
 
     @Override

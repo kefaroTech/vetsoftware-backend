@@ -1,7 +1,7 @@
 package com.vetsoftware.app.laboratorytest.application.port.out;
 
 import com.vetsoftware.app.laboratorytest.application.command.SearchLaboratoryTestsCommand;
-import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
 import java.util.List;
 import java.util.Optional;

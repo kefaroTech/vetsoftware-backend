@@ -1,7 +1,7 @@
 package com.vetsoftware.app.owner.application.usecase;
 
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
-import com.vetsoftware.app.owner.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.owner.application.port.in.SearchOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import io.micrometer.observation.annotation.Observed;

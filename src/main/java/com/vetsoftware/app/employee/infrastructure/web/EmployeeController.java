@@ -8,7 +8,6 @@ import com.vetsoftware.app.employee.application.command.SearchEmployeesCommand;
 import com.vetsoftware.app.employee.application.command.UpdateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
-import com.vetsoftware.app.employee.application.dto.PageResult;
 import com.vetsoftware.app.employee.application.port.in.ChangeMyPasswordUseCase;
 import com.vetsoftware.app.employee.application.port.in.CheckEmployeeCodeAvailabilityUseCase;
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
@@ -145,10 +144,10 @@ public class EmployeeController {
     public PageResponse<EmployeeResponse> search(@RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int pageSize) {
-        PageResult<EmployeeDto> result = searchUseCase
-                .search(new SearchEmployeesCommand(authz.currentCompanyId(), q, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(
+                searchUseCase.search(
+                        new SearchEmployeesCommand(authz.currentCompanyId(), q, page, pageSize)),
+                this::toResponse);
     }
 
     /**

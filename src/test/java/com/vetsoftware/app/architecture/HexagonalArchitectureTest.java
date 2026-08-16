@@ -103,6 +103,61 @@ class HexagonalArchitectureTest {
                     + " solo puede servirlo un principal cross-tenant");
 
     /**
+     * El cierre de BE-21, y la regla sin la cual el hallazgo vuelve a crecer.
+     *
+     * <p>
+     * «Una lista con su total y su número de página» es infraestructura de
+     * colección, no semántica de negocio: por eso el vertical slicing —que sí
+     * justifica duplicar tipos de dominio— no la cubre. Cuando cada feature declaró
+     * la suya, la cuenta pasó de 12 a 36 en una semana, y no por descuido: paginar
+     * una feature nueva copiando el {@code PageResult} del vecino era literalmente
+     * lo que pedía la regla de no compartir DTOs.
+     *
+     * <p>
+     * Quedan dos, uno a cada lado de la frontera y ambos únicos:
+     * {@code shared.pagination.PageResult} para dentro e
+     * {@code infrastructure.web.PageResponse} para el JSON. Esta regla es lo que
+     * impide que entre el tercero con la próxima feature paginada.
+     */
+    @ArchTest
+    static final ArchRule PAGINACION_CON_UN_SOLO_CONTRATO = classes()
+            .that(VetSoftwareConditions.declaranElConceptoDePagina()).should()
+            .resideInAnyPackage("com.vetsoftware.app.shared.pagination",
+                    "com.vetsoftware.app.infrastructure.web")
+            .because("la pagina es un tipo sin semantica de negocio: uno por lado"
+                    + " de la frontera, no uno por feature");
+
+    /**
+     * La otra mitad de {@link #PAGINACION_CON_UN_SOLO_CONTRATO}: unificar el tipo
+     * no sirve de nada si cada adaptador sigue traduciendo a mano lo que pide el
+     * cliente. Ahí la copia no era solo ruido —tres adaptadores pasaban los
+     * parámetros crudos a {@code PageRequest.of}, sin normalizar el índice ni topar
+     * el tamaño, y un {@code ?pageSize=100000} deshacía el trabajo de paginar.
+     */
+    @ArchTest
+    static final ArchRule PAGINA_ACOTADA_EN_UN_SOLO_SITIO = noClasses().that()
+            .resideOutsideOfPackage("com.vetsoftware.app.shared.pagination").should()
+            .callMethodWhere(VetSoftwareConditions.esUnPageRequestSinAcotar())
+            .because("el tope de filas por pagina se decide en Pages.request(), no por adaptador");
+
+    /**
+     * Lo que mantiene a Spring Data fuera de {@code application}. El kernel tiene
+     * dos piezas y solo una conoce el framework: {@code PageResult} lo cruza todo,
+     * {@code Pages} se queda en el adaptador. Sin esta regla, un caso de uso que
+     * llame a {@code Pages.request(...)} arrastra {@code PageRequest} a la capa que
+     * el CLAUDE.md exige poder probar sin contexto — y no lo detectaría ninguna de
+     * las otras dos, porque la llamada a {@code PageRequest.of} ocurre dentro del
+     * kernel.
+     */
+    @ArchTest
+    static final ArchRule PUENTE_DE_PAGINACION_SOLO_EN_PERSISTENCIA = noClasses().that()
+            .resideOutsideOfPackages("..infrastructure.persistence..",
+                    "com.vetsoftware.app.shared.pagination")
+            .should().dependOnClassesThat()
+            .haveFullyQualifiedName("com.vetsoftware.app.shared.pagination.Pages")
+            .because("Pages habla Spring Data: application se queda con PageResult");
+
+    /**
      * Dura: ya no queda ninguna. La búsqueda se detiene en los saltos
      * {@code @Async}, así que el envío de correos —asíncrono a propósito— no cuenta
      * como HTTP dentro de la transacción.

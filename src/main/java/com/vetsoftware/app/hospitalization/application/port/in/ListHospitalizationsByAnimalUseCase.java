@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalization.application.port.in;
 
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListHospitalizationsByAnimalUseCase {

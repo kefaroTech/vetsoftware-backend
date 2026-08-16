@@ -11,7 +11,7 @@ import com.vetsoftware.app.owner.application.command.UpdateOwnerCommand;
 import com.vetsoftware.app.owner.application.port.out.AnimalChildrenQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CityQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
-import com.vetsoftware.app.owner.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import java.util.List;

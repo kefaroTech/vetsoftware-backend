@@ -6,7 +6,8 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.product.infrastructure.persistence.ProductJpaRepository;
 import com.vetsoftware.app.purchaseorder.application.command.SearchPurchaseOrdersCommand;
-import com.vetsoftware.app.purchaseorder.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.purchaseorder.application.port.out.PurchaseOrderRepository;
 import com.vetsoftware.app.purchaseorder.domain.ProductRef;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrder;
@@ -22,7 +23,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
@@ -90,14 +90,11 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     @Override
     public PageResult<PurchaseOrder> search(SearchPurchaseOrdersCommand command) {
         Specification<PurchaseOrderJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "orderDate")
-                        .and(Sort.by(Sort.Direction.DESC, "createdDate")));
-        Page<PurchaseOrderJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<PurchaseOrder> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<PurchaseOrderJpaEntity> page = jpaRepository.findAll(spec,
+                Pages.request(command.page(), command.pageSize(),
+                        Sort.by(Sort.Direction.DESC, "orderDate")
+                                .and(Sort.by(Sort.Direction.DESC, "createdDate"))));
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<PurchaseOrderJpaEntity> buildSpec(SearchPurchaseOrdersCommand command) {

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.clinicalhistory.application.port.in;
 
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventDto;
-import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.query.GetClinicalHistoryQuery;
 import org.springframework.security.access.prepost.PreAuthorize;
 

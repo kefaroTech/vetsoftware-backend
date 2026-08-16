@@ -9,7 +9,6 @@ import com.vetsoftware.app.goodsreceipt.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.GoodsReceiptDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.GoodsReceiptLineDto;
-import com.vetsoftware.app.goodsreceipt.application.dto.PageResult;
 import com.vetsoftware.app.goodsreceipt.application.dto.SupplierSummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.port.in.CancelGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.ConfirmGoodsReceiptUseCase;
@@ -90,10 +89,9 @@ public class GoodsReceiptController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<GoodsReceiptDto> result = searchUseCase.execute(new SearchGoodsReceiptsCommand(
-                authz.currentCompanyId(), supplierId, branchId, status, from, to, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse
+                .from(searchUseCase.execute(new SearchGoodsReceiptsCommand(authz.currentCompanyId(),
+                        supplierId, branchId, status, from, to, page, pageSize)), this::toResponse);
     }
 
     @GetMapping("/{id}")

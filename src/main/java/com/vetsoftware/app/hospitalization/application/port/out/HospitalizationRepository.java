@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalization.application.port.out;
 
 import com.vetsoftware.app.hospitalization.domain.Hospitalization;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.List;
 import java.util.Optional;
 

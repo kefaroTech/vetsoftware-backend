@@ -54,10 +54,8 @@ public class AnimalController {
     @GetMapping
     public PageResponse<AnimalResponse> listAll(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<AnimalDto> result = listUseCase.listAll(authz.currentCompanyId(), page,
-                pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listAll(authz.currentCompanyId(), page, pageSize),
+                this::toResponse);
     }
 
     @GetMapping("/by-owner/{ownerId}")

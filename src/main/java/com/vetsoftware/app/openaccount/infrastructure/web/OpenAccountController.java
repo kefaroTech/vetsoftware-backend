@@ -13,7 +13,6 @@ import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
 import com.vetsoftware.app.openaccount.application.dto.OwnerSummaryDto;
-import com.vetsoftware.app.openaccount.application.dto.PageResult;
 import com.vetsoftware.app.openaccount.application.port.in.ChangeOpenAccountStatusUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.CreateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseCase;
@@ -82,10 +81,8 @@ public class OpenAccountController {
             @RequestParam(name = "branchId", required = false) Long branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<OpenAccountDto> result = listUseCase.listByCompany(authz.currentCompanyId(),
-                authz.resolveAccessibleBranch(branchId), page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listByCompany(authz.currentCompanyId(),
+                authz.resolveAccessibleBranch(branchId), page, pageSize), this::toResponse);
     }
 
     @GetMapping("/search")
@@ -96,11 +93,10 @@ public class OpenAccountController {
             @RequestParam(required = false) String q, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) Long branchId) {
-        PageResult<OpenAccountDto> result = searchUseCase
+        return PageResponse.from(searchUseCase
                 .execute(new SearchOpenAccountsCommand(authz.currentCompanyId(), ownerId, enabled,
-                        status, q, page, pageSize, authz.resolveAccessibleBranch(branchId)));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+                        status, q, page, pageSize, authz.resolveAccessibleBranch(branchId))),
+                this::toResponse);
     }
 
     /**

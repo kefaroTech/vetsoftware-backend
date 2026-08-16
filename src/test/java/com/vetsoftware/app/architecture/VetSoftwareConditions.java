@@ -1,5 +1,6 @@
 package com.vetsoftware.app.architecture;
 
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -52,10 +53,43 @@ final class VetSoftwareConditions {
 
     private static final String PORT_OUT_PACKAGE = ".application.port.out";
 
-    /** Envoltorio de página del proyecto; cada feature declara el suyo. */
+    /** Envoltorio de página de la capa de aplicación; hay exactamente uno. */
     private static final String PAGE_RESULT = "PageResult";
 
+    /**
+     * Los nombres con los que se ha declarado —o se podría volver a declarar— el
+     * concepto «página». No es una lista de prohibidos: es la firma del hallazgo
+     * BE-21, donde treinta y cinco features escribieron el mismo record con el
+     * mismo nombre en su propio paquete.
+     */
+    private static final Set<String> NOMBRES_DE_PAGINA = Set.of(PAGE_RESULT, "PageResponse",
+            "PagedResult", "PagedResponse", "PageDto", "Slice", "SliceResult");
+
+    /** El {@code PageRequest} de Spring Data: el que hay que acotar. */
+    private static final String PAGE_REQUEST = "org.springframework.data.domain.PageRequest";
+
     private VetSoftwareConditions() {
+    }
+
+    /**
+     * Las clases que declaran el concepto «página» por su nombre. Mira el nombre y
+     * no la forma a propósito: la copia 37 se llamará igual que las 36 anteriores,
+     * y para cuando difiera en un campo ya será otra deuda distinta.
+     */
+    static DescribedPredicate<JavaClass> declaranElConceptoDePagina() {
+        return DescribedPredicate.describe("declaran el concepto «pagina»",
+                clazz -> NOMBRES_DE_PAGINA.contains(clazz.getSimpleName()));
+    }
+
+    /**
+     * Toda llamada a {@code PageRequest.of(...)}. Fuera del kernel de paginación no
+     * hay ninguna legítima: el índice hay que normalizarlo y el tamaño hay que
+     * toparlo, y eso ya lo hace {@code Pages.request(...)}.
+     */
+    static DescribedPredicate<JavaMethodCall> esUnPageRequestSinAcotar() {
+        return DescribedPredicate.describe("construye un PageRequest fuera del kernel",
+                call -> PAGE_REQUEST.equals(call.getTargetOwner().getFullName())
+                        && "of".equals(call.getTarget().getName()));
     }
 
     /**

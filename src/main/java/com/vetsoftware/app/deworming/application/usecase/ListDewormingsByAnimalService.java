@@ -1,7 +1,7 @@
 package com.vetsoftware.app.deworming.application.usecase;
 
 import com.vetsoftware.app.deworming.application.dto.DewormingDto;
-import com.vetsoftware.app.deworming.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsByAnimalUseCase;
 import com.vetsoftware.app.deworming.application.port.out.DewormingRepository;
 import io.micrometer.observation.annotation.Observed;

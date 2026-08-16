@@ -6,7 +6,7 @@ import com.vetsoftware.app.product.application.command.CreateProductCommand;
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
 import com.vetsoftware.app.product.application.command.UpdateProductCommand;
 import com.vetsoftware.app.product.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductCategorySummaryDto;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import com.vetsoftware.app.product.application.dto.SupplierSummaryDto;
@@ -88,8 +88,7 @@ public class ProductController {
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<ProductDto> result = searchUseCase.execute(new SearchProductsCommand(
                 authz.currentCompanyId(), name, code, productCategoryId, taxId, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(result, this::toResponse);
     }
 
     @GetMapping("/{id}")

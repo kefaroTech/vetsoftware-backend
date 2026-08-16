@@ -1,5 +1,6 @@
 package com.vetsoftware.app.cashregister.application.dto;
 
+import com.vetsoftware.app.shared.pagination.PageResult;
 import static com.vetsoftware.app.cashregister.testsupport.CashSessionMother.BASE;
 import static com.vetsoftware.app.cashregister.testsupport.CashSessionMother.BRANCH_ID;
 import static com.vetsoftware.app.cashregister.testsupport.CashSessionMother.SESSION_ID;

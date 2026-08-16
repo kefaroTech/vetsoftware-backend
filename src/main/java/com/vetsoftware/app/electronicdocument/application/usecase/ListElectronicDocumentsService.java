@@ -1,7 +1,7 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
-import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.electronicdocument.application.port.in.ListElectronicDocumentsUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
