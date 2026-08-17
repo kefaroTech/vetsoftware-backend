@@ -1,6 +1,6 @@
 package com.vetsoftware.app.owner.application.port.out;
 
-import com.vetsoftware.app.owner.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.owner.domain.Owner;
 import java.util.Optional;
 

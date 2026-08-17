@@ -1,7 +1,7 @@
 package com.vetsoftware.app.purchaseorder.application.port.out;
 
 import com.vetsoftware.app.purchaseorder.application.command.SearchPurchaseOrdersCommand;
-import com.vetsoftware.app.purchaseorder.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrder;
 import java.util.List;
 import java.util.Optional;

@@ -2,7 +2,7 @@ package com.vetsoftware.app.openaccount.application.port.out;
 
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
-import com.vetsoftware.app.openaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.openaccount.domain.OpenAccount;
 import java.util.List;
 import java.util.Optional;

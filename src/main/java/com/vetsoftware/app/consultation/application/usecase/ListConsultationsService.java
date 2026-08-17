@@ -1,7 +1,7 @@
 package com.vetsoftware.app.consultation.application.usecase;
 
 import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
-import com.vetsoftware.app.consultation.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.consultation.application.port.in.ListConsultationsUseCase;
 import com.vetsoftware.app.consultation.application.port.out.ConsultationRepository;
 import io.micrometer.observation.annotation.Observed;

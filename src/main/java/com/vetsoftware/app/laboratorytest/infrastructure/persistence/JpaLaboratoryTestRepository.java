@@ -9,7 +9,8 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaEntity;
 import com.vetsoftware.app.employee.infrastructure.persistence.EmployeeJpaRepository;
 import com.vetsoftware.app.laboratorytest.application.command.SearchLaboratoryTestsCommand;
-import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTest;
 import com.vetsoftware.app.laboratorytesttype.infrastructure.persistence.LaboratoryTestTypeJpaEntity;
@@ -28,8 +29,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
 
-    private static final int BY_ANIMAL_DEFAULT_PAGE_SIZE = 20;
-    private static final int BY_ANIMAL_MAX_PAGE_SIZE = 200;
     private final LaboratoryTestJpaRepository jpaRepository;
     private final LaboratoryTestJpaMapper mapper;
     private final LaboratoryTestTypeJpaRepository testTypeJpaRepository;
@@ -92,36 +91,21 @@ public class JpaLaboratoryTestRepository implements LaboratoryTestRepository {
     @Override
     public PageResult<LaboratoryTest> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
             String query, int page, int pageSize) {
+        // Orden por id descendente: es estable y devuelve primero lo mas reciente, que
+        // es lo que la ficha clinica muestra arriba.
         Page<LaboratoryTestJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId,
-                companyId, query, byAnimalPageRequest(page, pageSize));
-        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
-                result.getNumber(), result.getSize(), result.getTotalElements(),
-                result.getTotalPages());
-    }
-
-    /**
-     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
-     * no deben poder volver a pedir el historial entero del animal. El orden por id
-     * descendente es estable y devuelve primero lo mas reciente, que es lo que la
-     * ficha clinica muestra arriba.
-     */
-    private static PageRequest byAnimalPageRequest(int page, int pageSize) {
-        int safeSize = pageSize <= 0
-                ? BY_ANIMAL_DEFAULT_PAGE_SIZE
-                : Math.min(pageSize, BY_ANIMAL_MAX_PAGE_SIZE);
-        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
+                companyId, query,
+                Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+        return Pages.result(result, mapper::toDomain);
     }
 
     @Override
     public PageResult<LaboratoryTest> search(SearchLaboratoryTestsCommand command) {
         Specification<LaboratoryTestJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
+        PageRequest pageRequest = Pages.request(command.page(), command.pageSize(),
                 Sort.by(Sort.Direction.DESC, "createdDate"));
         Page<LaboratoryTestJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<LaboratoryTest> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<LaboratoryTestJpaEntity> buildSpec(SearchLaboratoryTestsCommand command) {

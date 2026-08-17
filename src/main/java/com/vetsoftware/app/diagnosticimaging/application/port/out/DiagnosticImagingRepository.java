@@ -1,7 +1,7 @@
 package com.vetsoftware.app.diagnosticimaging.application.port.out;
 
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImaging;
-import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.List;
 import java.util.Optional;
 

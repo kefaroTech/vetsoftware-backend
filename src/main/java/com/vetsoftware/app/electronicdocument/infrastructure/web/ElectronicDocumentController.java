@@ -9,7 +9,6 @@ import com.vetsoftware.app.electronicdocument.application.command.IssueDebitNote
 import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand;
 import com.vetsoftware.app.electronicdocument.application.command.TransmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
-import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ConvertPosToInvoiceUseCase;
@@ -164,11 +163,8 @@ public class ElectronicDocumentController {
             @RequestParam(required = false) DianStatus dianStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<ElectronicDocumentDto> result = listUseCase.listByCompany(
-                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), documentType,
-                dianStatus, page, pageSize);
-        return new PageResponse<>(result.content(), result.page(), result.pageSize(),
-                result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listByCompany(authz.currentCompanyId(),
+                authz.resolveAccessibleBranch(branchId), documentType, dianStatus, page, pageSize));
     }
 
     @GetMapping("/{id}")

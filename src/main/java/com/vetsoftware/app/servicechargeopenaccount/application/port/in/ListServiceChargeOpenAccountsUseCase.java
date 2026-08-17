@@ -1,7 +1,7 @@
 package com.vetsoftware.app.servicechargeopenaccount.application.port.in;
 
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceChargeOpenAccountDto;
-import com.vetsoftware.app.servicechargeopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListServiceChargeOpenAccountsUseCase {

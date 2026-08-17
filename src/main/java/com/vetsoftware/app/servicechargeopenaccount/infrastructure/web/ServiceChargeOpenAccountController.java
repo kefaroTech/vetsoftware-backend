@@ -9,7 +9,6 @@ import com.vetsoftware.app.servicechargeopenaccount.application.dto.EmployeeSumm
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.OpenAccountSummaryDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceChargeOpenAccountDto;
-import com.vetsoftware.app.servicechargeopenaccount.application.dto.PageResult;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.CreateServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.FindServiceChargeOpenAccountUseCase;
@@ -74,10 +73,8 @@ public class ServiceChargeOpenAccountController {
     public PageResponse<ServiceChargeOpenAccountResponse> listAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<ServiceChargeOpenAccountDto> result = listUseCase
-                .listAll(authz.currentCompanyId(), page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listAll(authz.currentCompanyId(), page, pageSize),
+                this::toResponse);
     }
 
     @GetMapping("/by-open-account/{openAccountId}")

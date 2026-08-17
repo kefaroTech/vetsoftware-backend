@@ -1,5 +1,6 @@
 package com.vetsoftware.app.servicechargeopenaccount.application.dto;
 
+import com.vetsoftware.app.shared.pagination.PageResult;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccount;

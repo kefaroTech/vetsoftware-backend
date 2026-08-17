@@ -8,7 +8,6 @@ import com.vetsoftware.app.surgery.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.surgery.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.surgery.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
-import com.vetsoftware.app.surgery.application.dto.PageResult;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.surgery.application.dto.SurgeryTypeSummaryDto;
 import com.vetsoftware.app.surgery.application.port.in.ChangeSurgeryStatusUseCase;
@@ -80,10 +79,8 @@ public class SurgeryController {
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<SurgeryDto> result = listByAnimalUseCase.listByAnimal(animalId,
-                authz.currentCompanyId(), query, page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listByAnimalUseCase.listByAnimal(animalId,
+                authz.currentCompanyId(), query, page, pageSize), this::toResponse);
     }
 
     @GetMapping("/{id}")

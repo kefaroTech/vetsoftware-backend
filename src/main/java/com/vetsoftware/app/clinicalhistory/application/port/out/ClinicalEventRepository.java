@@ -1,7 +1,7 @@
 package com.vetsoftware.app.clinicalhistory.application.port.out;
 
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventTypeCountDto;
-import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.query.GetClinicalHistoryQuery;
 import com.vetsoftware.app.clinicalhistory.application.query.ListCompanyClinicalEventsQuery;
 import com.vetsoftware.app.clinicalhistory.domain.ClinicalEvent;

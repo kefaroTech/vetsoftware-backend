@@ -3,7 +3,8 @@ package com.vetsoftware.app.supplier.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.supplier.application.command.SearchSuppliersCommand;
-import com.vetsoftware.app.supplier.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.supplier.application.port.out.SupplierRepository;
 import com.vetsoftware.app.supplier.domain.Supplier;
 import jakarta.persistence.criteria.JoinType;
@@ -12,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
@@ -77,13 +77,9 @@ public class JpaSupplierRepository implements SupplierRepository {
     @Override
     public PageResult<Supplier> search(SearchSuppliersCommand command) {
         Specification<SupplierJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "createdDate"));
-        Page<SupplierJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<Supplier> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<SupplierJpaEntity> page = jpaRepository.findAll(spec, Pages.request(command.page(),
+                command.pageSize(), Sort.by(Sort.Direction.DESC, "createdDate")));
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<SupplierJpaEntity> buildSpec(SearchSuppliersCommand command) {

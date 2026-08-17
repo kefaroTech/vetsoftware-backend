@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationprocedure.application.port.out;
 
 import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationProcedure;
-import com.vetsoftware.app.hospitalizationprocedure.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationProcedureRepository {

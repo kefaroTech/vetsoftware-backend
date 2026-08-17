@@ -7,7 +7,8 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaReposito
 import com.vetsoftware.app.supplier.infrastructure.persistence.SupplierJpaEntity;
 import com.vetsoftware.app.supplier.infrastructure.persistence.SupplierJpaRepository;
 import com.vetsoftware.app.supplierinvoice.application.command.SearchSupplierInvoicesCommand;
-import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoice;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceStatus;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
@@ -59,13 +59,10 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
     @Override
     public PageResult<SupplierInvoice> search(SearchSupplierInvoicesCommand command) {
         Specification<SupplierInvoiceJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "issueDate").and(Sort.by(Sort.Direction.DESC, "id")));
-        Page<SupplierInvoiceJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<SupplierInvoice> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<SupplierInvoiceJpaEntity> page = jpaRepository.findAll(spec, Pages.request(
+                command.page(), command.pageSize(),
+                Sort.by(Sort.Direction.DESC, "issueDate").and(Sort.by(Sort.Direction.DESC, "id"))));
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<SupplierInvoiceJpaEntity> buildSpec(

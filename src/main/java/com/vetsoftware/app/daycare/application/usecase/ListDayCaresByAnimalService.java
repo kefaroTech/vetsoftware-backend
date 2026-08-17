@@ -1,7 +1,7 @@
 package com.vetsoftware.app.daycare.application.usecase;
 
 import com.vetsoftware.app.daycare.application.dto.DayCareDto;
-import com.vetsoftware.app.daycare.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.daycare.application.port.in.ListDayCaresByAnimalUseCase;
 import com.vetsoftware.app.daycare.application.port.out.DayCareRepository;
 import io.micrometer.observation.annotation.Observed;

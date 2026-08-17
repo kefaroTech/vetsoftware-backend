@@ -1,7 +1,7 @@
 package com.vetsoftware.app.supplierinvoice.application.port.out;
 
 import com.vetsoftware.app.supplierinvoice.application.command.SearchSupplierInvoicesCommand;
-import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoice;
 import java.util.List;
 import java.util.Optional;

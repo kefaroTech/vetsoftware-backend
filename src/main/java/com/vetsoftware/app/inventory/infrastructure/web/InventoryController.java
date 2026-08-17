@@ -19,7 +19,6 @@ import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
 import com.vetsoftware.app.inventory.application.dto.KardexReport;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.PurchasesReport;
 import com.vetsoftware.app.inventory.application.dto.StockLotView;
@@ -125,10 +124,9 @@ public class InventoryController {
             @RequestParam(defaultValue = "false") boolean lowStock,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<StockView> result = listStockUseCase
-                .search(new SearchStockCommand(authz.currentCompanyId(),
-                        authz.resolveAccessibleBranch(branchId), q, lowStock, page, pageSize));
-        return toPageResponse(result);
+        return PageResponse
+                .from(listStockUseCase.search(new SearchStockCommand(authz.currentCompanyId(),
+                        authz.resolveAccessibleBranch(branchId), q, lowStock, page, pageSize)));
     }
 
     @GetMapping("/products/{productId}/lots")
@@ -145,11 +143,9 @@ public class InventoryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<StockMovementView> result = listKardexUseCase
-                .searchKardex(new SearchKardexCommand(authz.currentCompanyId(),
-                        authz.resolveAccessibleBranch(branchId), productId, from, to, page,
-                        pageSize));
-        return toPageResponse(result);
+        return PageResponse.from(listKardexUseCase.searchKardex(new SearchKardexCommand(
+                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), productId, from,
+                to, page, pageSize)));
     }
 
     @GetMapping("/alerts")
@@ -171,10 +167,9 @@ public class InventoryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<PurchaseView> result = listPurchasesUseCase
-                .purchases(new SearchPurchasesQuery(authz.currentCompanyId(),
-                        authz.resolveAccessibleBranch(branchId), from, to, page, pageSize));
-        return toPageResponse(result);
+        return PageResponse.from(
+                listPurchasesUseCase.purchases(new SearchPurchasesQuery(authz.currentCompanyId(),
+                        authz.resolveAccessibleBranch(branchId), from, to, page, pageSize)));
     }
 
     @PostMapping("/consumptions")
@@ -241,9 +236,9 @@ public class InventoryController {
     public PageResponse<InventoryCountView> counts(@RequestParam(required = false) Long branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<InventoryCountView> result = listCountsUseCase.list(new SearchCountsQuery(
-                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), page, pageSize));
-        return toPageResponse(result);
+        return PageResponse
+                .from(listCountsUseCase.list(new SearchCountsQuery(authz.currentCompanyId(),
+                        authz.resolveAccessibleBranch(branchId), page, pageSize)));
     }
 
     @GetMapping("/counts/{id}")
@@ -290,10 +285,5 @@ public class InventoryController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + filename + "\"; filename*=UTF-8''" + encoded)
                 .body(body);
-    }
-
-    private static <T> PageResponse<T> toPageResponse(PageResult<T> r) {
-        return new PageResponse<>(r.content(), r.page(), r.pageSize(), r.totalElements(),
-                r.totalPages());
     }
 }

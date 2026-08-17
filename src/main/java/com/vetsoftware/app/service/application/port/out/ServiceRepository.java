@@ -1,7 +1,7 @@
 package com.vetsoftware.app.service.application.port.out;
 
 import com.vetsoftware.app.service.application.command.SearchServicesCommand;
-import com.vetsoftware.app.service.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.service.domain.Service;
 import java.util.List;
 import java.util.Optional;

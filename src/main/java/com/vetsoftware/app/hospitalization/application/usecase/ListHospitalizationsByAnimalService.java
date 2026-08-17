@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalization.application.usecase;
 
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
 import com.vetsoftware.app.hospitalization.application.port.out.HospitalizationRepository;
 import io.micrometer.observation.annotation.Observed;

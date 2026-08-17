@@ -1,7 +1,7 @@
 package com.vetsoftware.app.supplier.application.port.out;
 
 import com.vetsoftware.app.supplier.application.command.SearchSuppliersCommand;
-import com.vetsoftware.app.supplier.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.supplier.domain.Supplier;
 import java.util.List;
 import java.util.Optional;

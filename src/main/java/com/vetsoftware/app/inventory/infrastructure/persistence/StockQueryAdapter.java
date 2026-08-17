@@ -7,7 +7,8 @@ import com.vetsoftware.app.inventory.application.dto.ExpiringLotView;
 import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
 import com.vetsoftware.app.inventory.application.dto.KardexExportRow;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.inventory.application.dto.ProductValuationView;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.StockLotView;
@@ -19,7 +20,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -39,14 +39,9 @@ public class StockQueryAdapter implements StockQueryPort {
     @Override
     public PageResult<StockView> searchStock(SearchStockCommand c) {
         String q = (c.q() == null || c.q().isBlank()) ? null : c.q().trim();
-        PageRequest pageRequest = PageRequest.of(Math.max(c.page(), 0),
-                c.pageSize() <= 0 ? 20 : c.pageSize());
         Page<StockRow> page = balanceRepository.searchStock(c.companyId(), c.branchId(), q,
-                c.lowStock(), pageRequest);
-        List<StockView> content = page.getContent().stream().map(StockQueryAdapter::toStockView)
-                .toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+                c.lowStock(), Pages.request(c.page(), c.pageSize()));
+        return Pages.result(page, StockQueryAdapter::toStockView);
     }
 
     @Override
@@ -62,17 +57,12 @@ public class StockQueryAdapter implements StockQueryPort {
         LocalDateTime from = c.from() == null ? null : c.from().atStartOfDay();
         // `to` inclusivo por día → convertir a exclusivo al inicio del día siguiente.
         LocalDateTime to = c.to() == null ? null : c.to().plusDays(1).atStartOfDay();
-        PageRequest pageRequest = PageRequest.of(Math.max(c.page(), 0),
-                c.pageSize() <= 0 ? 20 : c.pageSize());
         Page<StockMovementJpaEntity> page = movementRepository.searchKardex(c.companyId(),
-                c.productId(), c.branchId(), from, to, pageRequest);
-        List<StockMovementView> content = page.getContent().stream()
-                .map(m -> new StockMovementView(m.getId(), m.getLotId(), m.getType(),
-                        m.getQuantity(), m.getUnitCost(), m.getReferenceType(), m.getReferenceId(),
-                        m.getReason(), m.getCreatedBy(), m.getCreatedDate()))
-                .toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+                c.productId(), c.branchId(), from, to, Pages.request(c.page(), c.pageSize()));
+        return Pages.result(page,
+                m -> new StockMovementView(m.getId(), m.getLotId(), m.getType(), m.getQuantity(),
+                        m.getUnitCost(), m.getReferenceType(), m.getReferenceId(), m.getReason(),
+                        m.getCreatedBy(), m.getCreatedDate()));
     }
 
     @Override
@@ -109,20 +99,16 @@ public class StockQueryAdapter implements StockQueryPort {
     public PageResult<PurchaseView> purchases(SearchPurchasesQuery c) {
         LocalDateTime from = c.from() == null ? null : c.from().atStartOfDay();
         LocalDateTime to = c.to() == null ? null : c.to().plusDays(1).atStartOfDay();
-        PageRequest pageRequest = PageRequest.of(Math.max(c.page(), 0),
-                c.pageSize() <= 0 ? 20 : c.pageSize());
         Page<PurchaseRow> page = movementRepository.searchPurchases(c.companyId(), c.branchId(),
-                from, to, pageRequest);
-        List<PurchaseView> content = page.getContent().stream().map(r -> {
+                from, to, Pages.request(c.page(), c.pageSize()));
+        return Pages.result(page, r -> {
             BigDecimal unitCost = r.getUnitCost() == null ? BigDecimal.ZERO : r.getUnitCost();
             return new PurchaseView(r.getId(), r.getProductId(), r.getProductName(),
                     r.getProductCode(), r.getLotId(), r.getBranchId(), r.getBranchName(),
                     r.getQuantity(), unitCost,
                     unitCost.multiply(BigDecimal.valueOf(Math.abs(r.getQuantity()))),
                     r.getReferenceId(), r.getCreatedDate());
-        }).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        });
     }
 
     @Override

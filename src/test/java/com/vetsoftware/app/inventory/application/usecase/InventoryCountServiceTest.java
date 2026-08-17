@@ -24,7 +24,7 @@ import com.vetsoftware.app.inventory.application.command.RecordAdjustmentCommand
 import com.vetsoftware.app.inventory.application.command.SearchCountsQuery;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountLineView;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.inventory.application.port.in.StockLedgerUseCase;
 import com.vetsoftware.app.inventory.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.inventory.application.port.out.InventoryCountRepository;

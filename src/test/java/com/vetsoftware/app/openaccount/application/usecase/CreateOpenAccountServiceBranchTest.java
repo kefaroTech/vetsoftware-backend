@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
-import com.vetsoftware.app.openaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.openaccount.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.openaccount.application.port.out.EmployeeQueryPort;

@@ -3,7 +3,6 @@ package com.vetsoftware.app.clinicalhistory.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventDto;
 import com.vetsoftware.app.clinicalhistory.application.dto.ClinicalEventTypeCountDto;
-import com.vetsoftware.app.clinicalhistory.application.dto.PageResult;
 import com.vetsoftware.app.clinicalhistory.application.port.in.ExportClinicalHistoryUseCase;
 import com.vetsoftware.app.clinicalhistory.application.port.in.GetClinicalHistorySummaryUseCase;
 import com.vetsoftware.app.clinicalhistory.application.port.in.GetClinicalHistoryUseCase;
@@ -55,9 +54,7 @@ public class ClinicalHistoryController {
         GetClinicalHistoryQuery query = new GetClinicalHistoryQuery(animalId,
                 authz.currentCompanyId(), types == null ? List.of() : types, from, to, q,
                 consultationId);
-        PageResult<ClinicalEventDto> result = getUseCase.execute(query, page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(getUseCase.execute(query, page, pageSize), this::toResponse);
     }
 
     /**

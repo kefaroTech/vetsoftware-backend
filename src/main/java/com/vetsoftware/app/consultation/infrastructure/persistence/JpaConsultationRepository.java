@@ -5,22 +5,20 @@ import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaRepository
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.consultation.application.port.out.ConsultationRepository;
-import com.vetsoftware.app.consultation.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.consultation.domain.Consultation;
 import com.vetsoftware.app.consultationtype.infrastructure.persistence.ConsultationTypeJpaEntity;
 import com.vetsoftware.app.consultationtype.infrastructure.persistence.ConsultationTypeJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaConsultationRepository implements ConsultationRepository {
 
-    private static final int DEFAULT_PAGE_SIZE = 20;
-    private static final int MAX_PAGE_SIZE = 200;
     private final ConsultationJpaRepository jpaRepository;
     private final ConsultationJpaMapper mapper;
     private final ConsultationTypeJpaRepository consultationTypeJpaRepository;
@@ -69,23 +67,12 @@ public class JpaConsultationRepository implements ConsultationRepository {
 
     @Override
     public PageResult<Consultation> findAllByCompanyId(Long companyId, int page, int pageSize) {
+        // El orden por id descendente es estable y devuelve primero lo mas reciente;
+        // sin orden explicito la paginacion no es determinista y una misma fila puede
+        // salir en dos paginas.
         Page<ConsultationJpaEntity> result = jpaRepository.findAllByCompany_Id(companyId,
-                pageRequest(page, pageSize));
-        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
-                result.getNumber(), result.getSize(), result.getTotalElements(),
-                result.getTotalPages());
-    }
-
-    /**
-     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
-     * no deben poder volver a pedir la tabla entera, que es el fallo que se esta
-     * corrigiendo. El orden por id descendente es estable y devuelve primero lo mas
-     * reciente; sin orden explicito la paginacion no es determinista y una misma
-     * fila puede salir en dos paginas.
-     */
-    private static PageRequest pageRequest(int page, int pageSize) {
-        int safeSize = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
-        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
+                Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+        return Pages.result(result, mapper::toDomain);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.surgery.application.usecase;
 
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
-import com.vetsoftware.app.surgery.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesByAnimalUseCase;
 import com.vetsoftware.app.surgery.application.port.out.SurgeryRepository;
 import io.micrometer.observation.annotation.Observed;

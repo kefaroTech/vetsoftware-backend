@@ -2,7 +2,7 @@ package com.vetsoftware.app.goodsreceipt.application.usecase;
 
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
 import com.vetsoftware.app.goodsreceipt.application.dto.GoodsReceiptDto;
-import com.vetsoftware.app.goodsreceipt.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.goodsreceipt.application.port.in.SearchGoodsReceiptsUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.out.GoodsReceiptRepository;
 import io.micrometer.observation.annotation.Observed;

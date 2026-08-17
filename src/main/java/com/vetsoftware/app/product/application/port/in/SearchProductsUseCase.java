@@ -1,7 +1,7 @@
 package com.vetsoftware.app.product.application.port.in;
 
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 

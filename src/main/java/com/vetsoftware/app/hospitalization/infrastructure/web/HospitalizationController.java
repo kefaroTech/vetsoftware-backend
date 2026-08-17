@@ -7,7 +7,6 @@ import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
@@ -86,10 +85,8 @@ public class HospitalizationController {
             @RequestParam(name = "q", required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<HospitalizationDto> result = listByAnimalUseCase.listByAnimal(animalId,
-                authz.currentCompanyId(), query, page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listByAnimalUseCase.listByAnimal(animalId,
+                authz.currentCompanyId(), query, page, pageSize), this::toResponse);
     }
 
     @GetMapping("/{id}")

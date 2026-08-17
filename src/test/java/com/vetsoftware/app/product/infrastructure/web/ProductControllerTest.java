@@ -16,7 +16,7 @@ import com.vetsoftware.app.product.application.command.CreateProductCommand;
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
 import com.vetsoftware.app.product.application.command.UpdateProductCommand;
 import com.vetsoftware.app.product.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductCategorySummaryDto;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import com.vetsoftware.app.product.application.dto.SupplierSummaryDto;

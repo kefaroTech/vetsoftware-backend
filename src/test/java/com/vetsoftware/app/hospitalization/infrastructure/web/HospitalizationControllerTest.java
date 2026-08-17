@@ -19,7 +19,7 @@ import com.vetsoftware.app.hospitalization.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.hospitalization.application.port.in.CreateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.DeleteHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizationUseCase;

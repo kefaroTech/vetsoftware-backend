@@ -1,7 +1,7 @@
 package com.vetsoftware.app.supplier.application.usecase;
 
 import com.vetsoftware.app.supplier.application.command.SearchSuppliersCommand;
-import com.vetsoftware.app.supplier.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.supplier.application.dto.SupplierDto;
 import com.vetsoftware.app.supplier.application.port.in.SearchSuppliersUseCase;
 import com.vetsoftware.app.supplier.application.port.out.SupplierRepository;

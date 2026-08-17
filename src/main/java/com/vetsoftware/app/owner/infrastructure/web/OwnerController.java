@@ -7,7 +7,6 @@ import com.vetsoftware.app.owner.application.dto.CitySummaryDto;
 import com.vetsoftware.app.owner.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
-import com.vetsoftware.app.owner.application.dto.PageResult;
 import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
@@ -68,20 +67,17 @@ public class OwnerController {
     @GetMapping
     public PageResponse<OwnerResponse> listAll(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return toPageResponse(listUseCase.listAll(authz.currentCompanyId(), page, pageSize));
+        return PageResponse.from(listUseCase.listAll(authz.currentCompanyId(), page, pageSize),
+                this::toResponse);
     }
 
     @GetMapping("/search")
     public PageResponse<OwnerResponse> search(@RequestParam("q") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return toPageResponse(
-                searchUseCase.search(authz.currentCompanyId(), query, page, pageSize));
-    }
-
-    private PageResponse<OwnerResponse> toPageResponse(PageResult<OwnerDto> result) {
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(
+                searchUseCase.search(authz.currentCompanyId(), query, page, pageSize),
+                this::toResponse);
     }
 
     @GetMapping("/{id}")

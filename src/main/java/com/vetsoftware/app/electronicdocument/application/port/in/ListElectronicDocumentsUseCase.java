@@ -1,7 +1,7 @@
 package com.vetsoftware.app.electronicdocument.application.port.in;
 
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
-import com.vetsoftware.app.electronicdocument.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import org.springframework.security.access.prepost.PreAuthorize;

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationmedication.application.port.out;
 
 import com.vetsoftware.app.hospitalizationmedication.domain.HospitalizationMedication;
-import com.vetsoftware.app.hospitalizationmedication.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationMedicationRepository {

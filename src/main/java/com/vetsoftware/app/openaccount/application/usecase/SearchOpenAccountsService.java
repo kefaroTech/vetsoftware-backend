@@ -2,7 +2,7 @@ package com.vetsoftware.app.openaccount.application.usecase;
 
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
-import com.vetsoftware.app.openaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.openaccount.application.port.in.SearchOpenAccountsUseCase;
 import com.vetsoftware.app.openaccount.application.port.out.OpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;
