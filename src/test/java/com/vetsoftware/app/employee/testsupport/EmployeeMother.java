@@ -41,6 +41,21 @@ public final class EmployeeMother {
 
     public static final String HASH = "$2a$10$hash";
 
+    /**
+     * Razon social de 45 palabras. El prefijo del generador es una inicial por
+     * palabra, asi que la base sale de 56 caracteres y no cabe en
+     * {@code employee_code(50)}: es el fixture que ejercita el recorte previo a la
+     * consulta de disponibilidad.
+     */
+    public static final String RAZON_SOCIAL_LARGA = "Palabra ".repeat(45);
+
+    /**
+     * La misma empresa de siempre, pero con la razon social que desborda la
+     * columna.
+     */
+    public static final CompanyRef VETRINA_RAZON_SOCIAL_LARGA = new CompanyRef(COMPANY_ID,
+            RAZON_SOCIAL_LARGA, "900123456");
+
     private EmployeeMother() {
     }
 
