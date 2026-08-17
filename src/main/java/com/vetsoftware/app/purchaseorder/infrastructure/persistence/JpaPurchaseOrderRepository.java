@@ -132,9 +132,11 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
         };
     }
 
+    // Baja lógica = UPDATE nativo. Con deleteById() el cascade de la colección
+    // borraba las líneas antes de que el @SQLDelete pausara la cabecera.
     @Override
     public void delete(Long id) {
-        jpaRepository.deleteById(id);
+        jpaRepository.softDelete(id);
     }
 
     @Override

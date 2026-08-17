@@ -18,11 +18,22 @@ import org.hibernate.annotations.SQLRestriction;
  * y {@code
  * goods_receipt_id} son columnas Long peladas (enlace por id, sin @ManyToOne a
  * esas features, para no acoplar el modelo JPA). Los abonos cuelgan por cascade
- * + orphanRemoval.
+ * {@code PERSIST}/{@code MERGE} + {@code orphanRemoval}: se guardan y se quitan
+ * con la factura al editarla, pero el cascade NO incluye {@code REMOVE}.
+ *
+ * <p>
+ * <b>La baja lógica NO pasa por aquí.</b> Va por
+ * {@link SupplierInvoiceJpaRepository#softDelete(Long)}, un UPDATE nativo. El
+ * {@code @SQLDelete} solo sustituye el DELETE de la raíz: el borrado en cascada
+ * de los abonos lo emite Hibernate <i>antes</i>, y no hay forma de
+ * interceptarlo. El {@code orphanRemoval} por sí solo ya propaga ese borrado al
+ * eliminar el padre, así que llamar a {@code deleteById()} sobre esta entidad
+ * sigue destruyendo el historial de pagos: usa el puerto {@code delete(id)} del
+ * adaptador.
  */
 @Entity
 @Table(name = "supplier_invoices")
-@SQLDelete(sql = "UPDATE supplier_invoices SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE supplier_invoices SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class SupplierInvoiceJpaEntity {
     @Id
@@ -75,7 +86,8 @@ public class SupplierInvoiceJpaEntity {
     @Column(name = "notes", length = 500)
     private String notes;
 
-    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "invoice", cascade = {CascadeType.PERSIST,
+            CascadeType.MERGE}, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<SupplierInvoicePaymentJpaEntity> payments = new ArrayList<>();
 
     @Column(name = "created_date", nullable = false)

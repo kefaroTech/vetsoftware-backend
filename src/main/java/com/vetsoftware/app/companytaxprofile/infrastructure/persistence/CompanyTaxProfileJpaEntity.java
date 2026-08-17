@@ -11,6 +11,20 @@ import java.util.List;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * Perfil fiscal de la empresa con sus responsabilidades DIAN.
+ *
+ * <p>
+ * <b>La baja lógica NO pasa por aquí.</b> Va por
+ * {@link CompanyTaxProfileJpaRepository#deleteByCompanyId(Long)}, un UPDATE
+ * nativo. El {@code @SQLDelete} solo sustituye el DELETE de la raíz: el borrado
+ * en cascada de las responsabilidades lo emite Hibernate <i>antes</i>, y no hay
+ * forma de interceptarlo. El {@code orphanRemoval} de {@link #responsibilities}
+ * es imprescindible para el camino de edición (quitar una responsabilidad debe
+ * borrar su fila) y por sí solo ya propaga el borrado al eliminar el padre, así
+ * que llamar a {@code deleteById()} sobre esta entidad destruiría el detalle
+ * fiscal: usa el puerto {@code delete(companyId)} del adaptador.
+ */
 @Entity
 @Table(name = "company_tax_profiles")
 @SQLDelete(sql = "UPDATE company_tax_profiles SET enabled = false WHERE id = ?")
@@ -51,7 +65,8 @@ public class CompanyTaxProfileJpaEntity {
     @JoinColumn(name = "economic_activity_id")
     private EconomicActivityJpaEntity economicActivity;
 
-    @OneToMany(mappedBy = "companyTaxProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "companyTaxProfile", cascade = {CascadeType.PERSIST,
+            CascadeType.MERGE}, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities = new ArrayList<>();
 
     @Column(name = "created_date", nullable = false)
