@@ -8,7 +8,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "service_categories")
-@SQLDelete(sql = "UPDATE service_categories SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE service_categories SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class ServiceCategoryJpaEntity {
     @Id
