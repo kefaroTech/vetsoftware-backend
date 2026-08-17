@@ -13,7 +13,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "products")
-@SQLDelete(sql = "UPDATE products SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE products SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class ProductJpaEntity {
     @Id

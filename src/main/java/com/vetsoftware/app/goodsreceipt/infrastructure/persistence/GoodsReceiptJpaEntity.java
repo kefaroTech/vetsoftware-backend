@@ -16,11 +16,22 @@ import org.hibernate.annotations.SQLRestriction;
  * Recepción de mercancía (cabecera). {@code purchase_order_id} es una columna
  * Long pelada (sin @ManyToOne a la feature {@code purchaseorder}) para NO
  * acoplar el modelo JPA; el enlace es solo por id. Las líneas cuelgan por
- * cascade + orphanRemoval.
+ * cascade {@code PERSIST}/{@code MERGE} + {@code orphanRemoval}: se guardan y
+ * se quitan con la cabecera al editar, pero el cascade NO incluye
+ * {@code REMOVE}.
+ *
+ * <p>
+ * <b>La baja lógica NO pasa por aquí.</b> Va por
+ * {@link GoodsReceiptJpaRepository#softDelete(Long)}, un UPDATE nativo. El
+ * {@code @SQLDelete} solo sustituye el DELETE de la raíz: el borrado en cascada
+ * del detalle lo emite Hibernate <i>antes</i>, y no hay forma de interceptarlo.
+ * El {@code orphanRemoval} por sí solo ya propaga ese borrado al eliminar el
+ * padre, así que llamar a {@code deleteById()} sobre esta entidad sigue
+ * destruyendo el detalle: usa el puerto {@code delete(id)} del adaptador.
  */
 @Entity
 @Table(name = "goods_receipts")
-@SQLDelete(sql = "UPDATE goods_receipts SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE goods_receipts SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class GoodsReceiptJpaEntity {
     @Id
@@ -58,7 +69,8 @@ public class GoodsReceiptJpaEntity {
     @Column(name = "status", nullable = false, length = 30)
     private GoodsReceiptStatus status;
 
-    @OneToMany(mappedBy = "goodsReceipt", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "goodsReceipt", cascade = {CascadeType.PERSIST,
+            CascadeType.MERGE}, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<GoodsReceiptLineJpaEntity> lines = new ArrayList<>();
 
     @Column(name = "created_date", nullable = false)

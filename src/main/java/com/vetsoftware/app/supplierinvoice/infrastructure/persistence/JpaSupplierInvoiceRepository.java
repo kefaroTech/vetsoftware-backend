@@ -120,8 +120,10 @@ public class JpaSupplierInvoiceRepository implements SupplierInvoiceRepository {
                 invoiceNumber);
     }
 
+    // Baja lógica = UPDATE nativo. Con deleteById() el cascade de la colección
+    // borraba los abonos antes de que el @SQLDelete deshabilitara la factura.
     @Override
     public void delete(Long id) {
-        jpaRepository.deleteById(id);
+        jpaRepository.softDelete(id);
     }
 }

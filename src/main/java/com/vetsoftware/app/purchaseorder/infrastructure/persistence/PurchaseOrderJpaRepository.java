@@ -5,6 +5,10 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface PurchaseOrderJpaRepository
         extends
@@ -28,24 +32,37 @@ public interface PurchaseOrderJpaRepository
     // reactivarlas desde la UI.
     // Las asociaciones se hidratan perezosamente dentro de la transacción de
     // lectura del caso de uso.
-    @org.springframework.data.jpa.repository.Query(value = """
+    @Query(value = """
             SELECT *
             FROM purchase_orders
             WHERE company_id = :companyId
               AND enabled = false
             ORDER BY order_date DESC, created_date DESC
             """, nativeQuery = true)
-    List<PurchaseOrderJpaEntity> findAllDisabledByCompany_Id(
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
+    List<PurchaseOrderJpaEntity> findAllDisabledByCompany_Id(@Param("companyId") Long companyId);
 
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = """
+    // Pausa (baja lógica) por query nativa, NUNCA por em.remove(). El @SQLDelete de
+    // la entidad solo sustituye el DELETE de la raíz: el cascade a
+    // purchase_order_lines lo emite Hibernate antes y sin interceptar, así que
+    // deleteById() dejaba la cabecera pausada y el detalle borrado de la base
+    // (producto, cantidad pedida, coste y cantidad recibida). Mismo choque que
+    // documenta AppointmentJpaRepository.softDelete.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            UPDATE purchase_orders
+            SET enabled = false
+            WHERE id = :id
+            """, nativeQuery = true)
+    int softDelete(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
             UPDATE purchase_orders
             SET enabled = true
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
+    int reactivate(@Param("id") Long id, @Param("companyId") Long companyId);
 }

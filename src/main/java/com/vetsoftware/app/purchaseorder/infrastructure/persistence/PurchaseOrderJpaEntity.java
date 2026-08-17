@@ -12,9 +12,23 @@ import java.util.List;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * Orden de compra (cabecera) con su detalle.
+ *
+ * <p>
+ * <b>La baja lógica NO pasa por aquí.</b> Va por
+ * {@link PurchaseOrderJpaRepository#softDelete(Long)}, un UPDATE nativo. El
+ * {@code @SQLDelete} solo sustituye el DELETE de la raíz: el borrado en cascada
+ * del detalle lo emite Hibernate <i>antes</i>, y no hay forma de interceptarlo.
+ * El {@code orphanRemoval} de {@link #lines} es imprescindible para el camino
+ * de edición del borrador (quitar una línea debe borrar su fila) y por sí solo
+ * ya propaga el borrado al eliminar el padre —comprobado en ejecución—, así que
+ * llamar a {@code deleteById()} sobre esta entidad sigue destruyendo el
+ * detalle. No lo hagas: usa el puerto {@code delete(id)} del adaptador.
+ */
 @Entity
 @Table(name = "purchase_orders")
-@SQLDelete(sql = "UPDATE purchase_orders SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE purchase_orders SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class PurchaseOrderJpaEntity {
     @Id
@@ -46,7 +60,7 @@ public class PurchaseOrderJpaEntity {
     @Column(length = 500)
     private String notes;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     @JoinColumn(name = "purchase_order_id", nullable = false)
     private List<PurchaseOrderLineJpaEntity> lines = new ArrayList<>();
 
