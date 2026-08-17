@@ -13,17 +13,20 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` (ArchUnit) ejecuta trece de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
+`HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **quince** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
 
 ```bash
-mvn test -Dtest=HexagonalArchitectureTest
+mvn test -Dtest='HexagonalArchitectureTest,PiramideDeTestsTest'
 ```
 
-Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras cuatro encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+
+**Son dos clases porque miran universos distintos.** `HexagonalArchitectureTest` declara `ImportOption.DoNotIncludeTests` — sus trece reglas hablan de código de producción. Las dos de BE-10 (**cada adaptador con su rodaja**) necesitan ver `src/main` y `src/test` a la vez, así que viven en `PiramideDeTestsTest`, con su propio `@AnalyzeClasses` sin esa opción.
 
 - **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
 - **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
-- **Congelar una regla nueva**: pon `freeze.store.default.allowStoreCreation=true` en `src/test/resources/archunit.properties`, corre el test, y devuélvelo a `false` en el mismo commit.
+- **Congelar una regla nueva**: no hace falta tocar nada. `allowStoreCreation=false` solo impide **crear el directorio** del store; con el directorio ya versionado, una regla nueva envuelta en `freeze(...)` registra su foto sola en la primera ejecución. Eso es cómodo y es una trampa: **la deuda entra al repo en silencio**, así que revisa el diff de `config/archunit/violation-store` y cuenta las líneas antes de commitear. Solo se pone en `true` —y se devuelve a `false` en el mismo commit— si el directorio del store no existe.
+- **No toques la descripción de una regla congelada.** El store indexa por el texto completo (`stored.rules`): cambiar un predicado o el `because` huérfana la foto y la deuda reaparece entera.
 
 ## Commands
 
@@ -654,7 +657,50 @@ tocas, mantén el `@{argLine}`, que es lo que deja entrar al agente de JaCoCo.
 | `persistence/XxxJpaMapper` | JUnit puro, ida y vuelta dominio↔entidad | ❌ |
 | `persistence/JpaXxxRepository` | `@DataJpaTest` + Testcontainers MySQL | ❌ — base real |
 | `web/XxxController` | `@WebMvcTest` + `@MockitoBean` sobre los use cases | ✅ los puertos `port/in` |
-| reglas del CLAUDE.md | ArchUnit (`HexagonalArchitectureTest`) | — |
+| reglas del CLAUDE.md | ArchUnit (`HexagonalArchitectureTest`, `PiramideDeTestsTest`) | — |
+
+### Las dos últimas filas son obligatorias, y hay una regla que lo comprueba (BE-10)
+
+Las cuatro primeras filas de esa tabla se cubren solas: son JUnit puro y nadie se salta un
+test de dominio. Las **rodajas** —`@DataJpaTest` del adaptador y `@WebMvcTest` del
+controller— sí se saltaban, y ese fue el defecto BE-10: el mapper se probaba aislado y el
+caso de uso con mocks, así que **el SQL y el HTTP no los ejercitaba nadie**. Un `Sort` sin
+desempate que repite filas entre páginas, un `@PreAuthorize` con un `#param` inexistente, un
+`@EntityGraph` que no evita el N+1 que cree evitar, un campo del JSON renombrado: nada de eso
+lo ve un test de mapper ni un test de service.
+
+`PiramideDeTestsTest` lo convierte en regla. Son dos, y **nacen congeladas** porque la deuda
+que encontraron es grande: de 91 adaptadores JPA hay **74 sin rodaja**, y de 92
+`@RestController` hay **78 sin rodaja**. Esas 152 líneas son el store, y solo pueden bajar:
+
+| Regla | Qué exige | Nombre esperado |
+|---|---|---|
+| `ADAPTADOR_JPA_CON_RODAJA` | Todo `Jpa<Algo>Repository` de `..infrastructure.persistence` tiene en **su mismo paquete** una clase `*IT` cuyo nombre contenga `<Algo>` | `<Algo>PersistenceIT` |
+| `CONTROLLER_CON_RODAJA` | Todo `@RestController` tiene en **su mismo paquete** una clase `*Test` cuyo nombre empiece por el del controller | `<Xxx>ControllerTest` |
+
+Cuatro decisiones de criterio, que son las que evitan que la regla mienta:
+
+- **Se cruza por el nombre, no solo por el paquete.** Un único `*IT` en
+  `animal/infrastructure/persistence` taparía los dieciséis adaptadores de esa feature. La
+  unidad de medida es el adaptador porque es la unidad de riesgo: cada uno tiene su consulta.
+- **La rodaja web se exige por prefijo** porque en `infrastructure/web` conviven rodajas y
+  tests unitarios corrientes. `RefreshTokenCookieTest`, `CashArqueoCsvTest` e
+  `InventoryCsvTest` son JUnit puro sobre un helper y **no** cuentan como red de un endpoint.
+- **`GlobalExceptionHandler` no es un controller**: es `@RestControllerAdvice`, anotación que
+  no está meta-anotada con `@RestController`. El predicado ni lo mira.
+- **Los fixtures de test no son adaptadores.** Importar `src/test` para *encontrar* las
+  rodajas mete también sus dobles en el universo analizado:
+  `GlobalExceptionHandlerTest.BoomController` es un `@RestController` de juguete y la regla
+  llegó a exigirle su propia rodaja. `sonCodigoDeProduccion()` descarta lo que viene de
+  `target/test-classes` y lo que es una clase anidada.
+
+Fuera de alcance a propósito: los `JpaXxxQueryPort` / `JpaXxxValidationPort` y los adaptadores
+que no siguen el naming (`NumberingAllocationAdapter`, `DianJobLeaseAdapter`). Ampliar el
+alcance es ampliar el predicado de la regla, nunca relajar la condición.
+
+**Lo que significa en la práctica**: añadir un `JpaXxxRepository` o un `@RestController` sin su
+rodaja **rompe el build ese mismo día**. Lo viejo está en el store y solo puede bajar; cuando
+llegue a cero, se les quita el `freeze(...)` y pasan a duras.
 
 ### Mockito — reglas duras
 
@@ -775,10 +821,29 @@ mvn verify                    # además comprueba el suelo de cobertura
 - El `pom.xml` fija un **trinquete**: `jacoco.line.minimum` es un suelo global que **solo
   puede subir**. Se sube a mano cuando un PR lo supera de forma estable. **Bajarlo requiere
   justificarlo en el PR** — es la única forma de que la cifra signifique algo.
-- **Umbrales por paquete de riesgo** (inventario, facturación electrónica, caja, cuenta
-  abierta) en cuanto esos paquetes lleguen al 70 %. Un umbral global alto no se pone: o se
-  fija en lo que hay y no impide nada, o deja el CI en rojo permanente y se acaba
-  desactivando.
+- **Tras las rodajas de persistencia y web de BE-10 (2026-08-16): 53,15 % de línea**
+  (14.828/27.898) y 43,32 % de rama, sobre **3.978 tests de surefire y 428 de failsafe**,
+  cero fallos. El suelo global **se queda en `0.33`**: es un salto de casi 28 puntos de una
+  sola vez y el trinquete solo sube cuando la cifra es estable, no en el PR que la produce.
+- **Umbrales por paquete de riesgo: evaluados con datos y NO añadidos.** La condición de
+  llegar al 70 % ya se cumple si se agrega por feature —inventory 97,77 %, cashregister
+  96,98 %, goodsreceipt 94,77 %, purchaseorder 89,53 %, supplierinvoice 75,61 %— pero **esa
+  no es la granularidad que evalúa JaCoCo**: `<element>PACKAGE</element>` mide cada paquete
+  real por separado, y ahí **8 de los 42 paquetes de esas cinco features están por debajo
+  del 70 %** (`purchaseorder.infrastructure.web.response` al 0 %,
+  `purchaseorder.infrastructure.web` al 22,64 %, `supplierinvoice.application.dto` al
+  34,78 %, `supplierinvoice.application.usecase` al 51,91 %, y los `infrastructure/pdf` de
+  6 y 9 líneas). Cualquier suelo con sentido dejaría el CI en rojo salvo que se le adjunte
+  una lista de exclusiones con exactamente los agujeros de hoy, que es congelar la deuda
+  llamándola umbral. **El agregado por feature engaña**: purchaseorder marca 89,53 % con su
+  controller al 22,64 %.
+  - Cuidado además al escribir el `<includes>`: tiene que ir anclado
+    (`com/vetsoftware/app/inventory/*`). Un patrón por subcadena se traga
+    `goodsreceipt.infrastructure.inventory` y `electronicdocument.infrastructure.inventory`,
+    que son adaptadores de salida de **otras** features.
+  - Lo que sí cubre ese riesgo es `PiramideDeTestsTest`: `purchaseorder.infrastructure.web`
+    está al 22,64 % **porque `PurchaseOrderController` no tiene rodaja**, y la regla lo dice
+    con nombre y apellido en vez de con un porcentaje.
 - **Excluido del cómputo** y por qué: `*JpaEntity` (solo campos y accesores), `config/**`,
   `*Request`/`*Response` (forma del JSON, sin lógica) y la clase `main`. Medirlos infla el
   número sin decir nada del riesgo.
