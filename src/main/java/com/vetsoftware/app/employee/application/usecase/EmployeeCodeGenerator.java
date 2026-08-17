@@ -9,7 +9,8 @@ import java.util.function.Predicate;
  * y del empleado:
  * {@code PREFIJO(iniciales de la empresa)-SUFIJO(nombre sin espacios, máx 10)}.
  * El admin puede editar la sugerencia; {@link #generateAvailable} garantiza que
- * esté libre en el momento de proponerla (sufijo -2, -3…).
+ * esté libre en el momento de proponerla (sufijo -2, -3…) y que quepa en
+ * {@code employee_code(50)} por los dos caminos, con y sin sufijo.
  */
 final class EmployeeCodeGenerator {
 
@@ -26,7 +27,13 @@ final class EmployeeCodeGenerator {
 
     static String generateAvailable(String companyName, String employeeName,
             Predicate<String> taken) {
-        String base = generate(companyName, employeeName);
+        // El recorte a 50 va ANTES de consultar disponibilidad, no solo en la rama del
+        // sufijo: el candidato que se consulta tiene que ser exactamente el que se
+        // devuelve y se persiste. Si se recortara al salir, se sugeriría un código que
+        // nunca se comprobó; si no se recortara, una razón social larga devolvería ~56
+        // caracteres y reventaría la invariante de Employee (employee_code(50)) en
+        // mitad de la transacción de invitación.
+        String base = truncate(generate(companyName, employeeName), MAX_EMPLOYEE_CODE_LENGTH);
         if (!taken.test(base))
             return base;
         for (int i = 2; i <= MAX_SUFFIX_ATTEMPTS; i++) {
@@ -40,9 +47,9 @@ final class EmployeeCodeGenerator {
 
     private static String withSuffix(String base, int n) {
         String suffix = "-" + n;
-        int reserved = MAX_EMPLOYEE_CODE_LENGTH - suffix.length();
-        String trimmed = base.length() > reserved ? base.substring(0, reserved) : base;
-        return trimmed + suffix;
+        // La base ya viene acotada a 50; aquí se reservan además los caracteres del
+        // sufijo, así que el desempate sigue cabiendo en la columna.
+        return truncate(base, MAX_EMPLOYEE_CODE_LENGTH - suffix.length()) + suffix;
     }
 
     private static String prefix(String companyName) {
@@ -57,7 +64,11 @@ final class EmployeeCodeGenerator {
 
     private static String suffix(String employeeName) {
         String upper = normalize(employeeName).replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
-        return upper.length() > MAX_NAME_CHARS ? upper.substring(0, MAX_NAME_CHARS) : upper;
+        return truncate(upper, MAX_NAME_CHARS);
+    }
+
+    private static String truncate(String value, int max) {
+        return value.length() > max ? value.substring(0, max) : value;
     }
 
     private static String normalize(String input) {
