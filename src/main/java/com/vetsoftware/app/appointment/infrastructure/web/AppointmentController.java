@@ -72,9 +72,11 @@ public class AppointmentController {
     @ResponseStatus(HttpStatus.CREATED)
     public AppointmentResponse create(@Valid @RequestBody CreateAppointmentRequest request) {
         return toResponse(createUseCase.execute(new CreateAppointmentCommand(request.startAt(),
-                request.type(), request.employeeId(), request.animalId(), request.ownerId(),
-                request.clientName(), request.clientPhone(), request.clientEmail(), request.notes(),
-                authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId())));
+                request.durationMinutes(), request.type(), request.employeeId(), request.animalId(),
+                request.ownerId(), request.clientName(), request.clientPhone(),
+                request.clientEmail(), request.notes(),
+                authz.resolveAccessibleBranch(request.branchId()), authz.currentCompanyId(),
+                request.forceOverlap(), authz.currentBranchIdsOrEmpty())));
     }
 
     @GetMapping
@@ -99,16 +101,19 @@ public class AppointmentController {
     public AppointmentResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateAppointmentRequest request) {
         return toResponse(updateUseCase.execute(new UpdateAppointmentCommand(id, request.startAt(),
-                request.type(), request.employeeId(), request.animalId(), request.ownerId(),
-                request.clientName(), request.clientPhone(), request.clientEmail(), request.notes(),
-                authz.currentCompanyId())));
+                request.durationMinutes(), request.type(), request.employeeId(), request.animalId(),
+                request.ownerId(), request.clientName(), request.clientPhone(),
+                request.clientEmail(), request.notes(), authz.currentCompanyId(),
+                request.forceOverlap(), authz.currentBranchIdsOrEmpty())));
     }
 
     @PatchMapping("/{id}/reschedule")
     public AppointmentResponse reschedule(@PathVariable Long id,
             @Valid @RequestBody RescheduleAppointmentRequest request) {
-        return toResponse(rescheduleUseCase.execute(new RescheduleAppointmentCommand(id,
-                request.startAt(), request.employeeId(), authz.currentCompanyId())));
+        return toResponse(
+                rescheduleUseCase.execute(new RescheduleAppointmentCommand(id, request.startAt(),
+                        request.durationMinutes(), request.employeeId(), authz.currentCompanyId(),
+                        request.forceOverlap(), authz.currentBranchIdsOrEmpty())));
     }
 
     @PatchMapping("/{id}/status")
@@ -137,8 +142,8 @@ public class AppointmentController {
         OwnerSummaryDto o = dto.owner();
         EmployeeSummaryDto e = dto.employee();
         BranchSummaryDto b = dto.branch();
-        return new AppointmentResponse(dto.id(), dto.startAt(), dto.type(), dto.status(),
-                dto.notes(), dto.cancellationReason(),
+        return new AppointmentResponse(dto.id(), dto.startAt(), dto.durationMinutes(), dto.type(),
+                dto.status(), dto.notes(), dto.cancellationReason(),
                 a == null ? null : new AnimalSummary(a.id(), a.name(), a.code()),
                 o == null ? null : new OwnerSummary(o.id(), o.name()), dto.clientName(),
                 dto.clientPhone(), dto.clientEmail(), new EmployeeSummary(e.id(), e.name()),

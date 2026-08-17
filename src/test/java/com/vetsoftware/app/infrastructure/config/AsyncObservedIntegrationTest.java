@@ -14,9 +14,9 @@ import io.micrometer.observation.contextpropagation.ObservationThreadLocalAccess
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.core.task.support.ContextPropagatingTaskDecorator;
@@ -29,7 +29,7 @@ class AsyncObservedIntegrationTest {
     @Test
     void createsTheObservedChildInsideTheWorkerAndKeepsItsParent() throws Exception {
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
-                TestConfiguration.class)) {
+                TestConfig.class)) {
             ObservationRegistry registry = context.getBean(ObservationRegistry.class);
             AsyncObservedWorker worker = context.getBean(AsyncObservedWorker.class);
             Observation parent = Observation.start("test.parent", registry);
@@ -47,10 +47,19 @@ class AsyncObservedIntegrationTest {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    /**
+     * {@code @TestConfiguration} y no {@code @Configuration}: la clase vive dentro
+     * de la raiz del {@code @ComponentScan} y {@code target/test-classes} esta en
+     * el classpath, asi que una {@code @Configuration} simple la escanearia
+     * cualquier {@code @SpringBootTest} y le colaria estos beans —entre ellos un
+     * {@code emailTaskExecutor} de juguete—. Hoy no chocan con nada; la anotacion
+     * es lo que impide que empiecen a hacerlo. Se registra igual porque el
+     * {@code AnnotationConfigApplicationContext} la nombra explicitamente.
+     */
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableAsync
     @EnableAspectJAutoProxy
-    static class TestConfiguration {
+    static class TestConfig {
 
         @Bean
         ObservationRegistry observationRegistry() {

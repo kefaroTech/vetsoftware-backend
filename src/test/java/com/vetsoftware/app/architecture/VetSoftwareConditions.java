@@ -692,11 +692,35 @@ final class VetSoftwareConditions {
     }
 
     private static boolean esCodigoDeProduccion(JavaClass javaClass) {
-        if (javaClass.getEnclosingClass().isPresent()) {
-            return false;
-        }
+        return javaClass.getEnclosingClass().isEmpty() && !vieneDelArbolDeTest(javaClass);
+    }
+
+    /**
+     * La mitad de {@link #sonCodigoDeProduccion()} que mira <em>de dónde salió el
+     * {@code .class}</em>, sin el filtro de clases anidadas.
+     *
+     * <p>
+     * Existe separada porque hay una regla —{@code DOBLE_DE_TEST_NO_ESCANEABLE}— a
+     * la que el filtro de anidadas le sobra, y no en el sentido de que le dé igual:
+     * las clases anidadas son <strong>el 100 %</strong> de lo que esa regla
+     * persigue, así que negar {@code sonCodigoDeProduccion()} entero descartaría
+     * exactamente los casos que hay que cazar. Extraída aquí para que las dos
+     * reglas compartan la única constante que dice qué es
+     * {@code target/test-classes}: dos copias de esa cadena es como una de las dos
+     * se queda atrás.
+     */
+    static DescribedPredicate<JavaClass> vienenDelArbolDeTest() {
+        return DescribedPredicate.describe("vienen del arbol de test",
+                VetSoftwareConditions::vieneDelArbolDeTest);
+    }
+
+    /**
+     * Sin origen conocido no se puede afirmar que sea de test: se trata como
+     * producción, igual que hacía el chequeo del que se extrajo.
+     */
+    private static boolean vieneDelArbolDeTest(JavaClass javaClass) {
         return javaClass.getSource()
-                .map(source -> !source.getUri().toString().contains(SALIDA_DE_TEST)).orElse(true);
+                .map(source -> source.getUri().toString().contains(SALIDA_DE_TEST)).orElse(false);
     }
 
     /**

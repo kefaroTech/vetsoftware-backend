@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- BE-17. Duracion de la cita, en minutos. Nullable a proposito: null significa
+         "usa el valor por defecto de la empresa", que se resuelve en codigo leyendo
+         company_settings (clave-valor, sin esquema propio). Sin defaultValue: un default
+         en la columna haria indistinguible "no configurado" de "configurado a 30".
+
+         No se crea indice nuevo. La consulta de solape filtra por company_id + employee_id
+         y hace un rango sobre start_at, pero employee_id ya implica una unica empresa
+         (employees.company_id es NOT NULL y cada empleado pertenece a una sola empresa), asi
+         que el indice existente idx_appointments_employee_start (employee_id, start_at) ya
+         resuelve el acceso: MySQL hace ref lookup por employee_id y range scan por start_at;
+         anteponer company_id no poda filas adicionales, solo replica el mismo resultado.
+         La comparacion contra el fin del intervalo (start_at + duration_minutes) no es
+         sargable de todas formas y se evalua como filtro sobre las filas ya acotadas por el
+         rango de start_at. -->
+    <changeSet id="222_add_duration_to_appointments" author="orlando">
+        <addColumn tableName="appointments">
+            <column name="duration_minutes" type="INT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="appointments" columnName="duration_minutes"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

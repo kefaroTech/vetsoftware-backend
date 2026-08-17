@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import com.vetsoftware.app.appointment.application.command.CreateAppointmentComm
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentDurationPolicyPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
@@ -25,6 +27,7 @@ import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -58,23 +61,28 @@ class CreateAppointmentServiceBranchTest {
     private AppointmentConfirmationEmailSender confirmationEmailSender;
     @Mock
     private AppointmentMetrics appointmentMetrics;
+    @Mock
+    private AppointmentDurationPolicyPort durationPolicyPort;
     @InjectMocks
     private CreateAppointmentService service;
 
     private static final long COMPANY = 9L;
+    private static final int DURACION_POR_DEFECTO = 30;
     private final EmployeeRef employee = new EmployeeRef(4L, "Dra. Vet");
     private final BranchRef requested = new BranchRef(11L, "Sede Norte", "NORTE");
     private final BranchRef principal = new BranchRef(1L, "Principal", "PRINCIPAL");
     private final LocalDateTime startAt = LocalDateTime.of(2026, 8, 1, 9, 0);
 
     private CreateAppointmentCommand command(Long branchId) {
-        return new CreateAppointmentCommand(startAt, AppointmentType.CONSULTATION, 4L, null, null,
-                "Walk-in", null, null, null, branchId, COMPANY);
+        return new CreateAppointmentCommand(startAt, null, AppointmentType.CONSULTATION, 4L, null,
+                null, "Walk-in", null, null, null, branchId, COMPANY, false, Set.of(1L, 11L));
     }
 
-    private ArgumentCaptor<Appointment> stubSaveAndClashes() {
+    private ArgumentCaptor<Appointment> stubSaveSinSolapes() {
+        when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DURACION_POR_DEFECTO);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(repository.findClashingIds(eq(COMPANY), eq(4L), any(), any())).thenReturn(List.of());
+        when(repository.findOverlapping(eq(COMPANY), eq(4L), any(), any(), eq(DURACION_POR_DEFECTO),
+                isNull())).thenReturn(List.of());
         return ArgumentCaptor.forClass(Appointment.class);
     }
 
@@ -83,7 +91,7 @@ class CreateAppointmentServiceBranchTest {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
                 .thenReturn(Optional.of(requested));
-        ArgumentCaptor<Appointment> captor = stubSaveAndClashes();
+        ArgumentCaptor<Appointment> captor = stubSaveSinSolapes();
 
         AppointmentDto dto = service.execute(command(11L));
 
@@ -127,7 +135,7 @@ class CreateAppointmentServiceBranchTest {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findDefaultActiveByCompanyId(COMPANY))
                 .thenReturn(Optional.of(principal));
-        ArgumentCaptor<Appointment> captor = stubSaveAndClashes();
+        ArgumentCaptor<Appointment> captor = stubSaveSinSolapes();
 
         AppointmentDto dto = service.execute(command(null));
 

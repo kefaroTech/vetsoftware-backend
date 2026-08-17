@@ -1,7 +1,6 @@
 JpaAnimalAlertRepository no tiene rodaja de persistencia: falta AnimalAlertPersistenceIT (@DataJpaTest) en com.vetsoftware.app.animalalert.infrastructure.persistence
 JpaAnimalColorRepository no tiene rodaja de persistencia: falta AnimalColorPersistenceIT (@DataJpaTest) en com.vetsoftware.app.animalcolor.infrastructure.persistence
 JpaAnimalRepository no tiene rodaja de persistencia: falta AnimalPersistenceIT (@DataJpaTest) en com.vetsoftware.app.animal.infrastructure.persistence
-JpaAppointmentRepository no tiene rodaja de persistencia: falta AppointmentPersistenceIT (@DataJpaTest) en com.vetsoftware.app.appointment.infrastructure.persistence
 JpaAuthEmployeeRepository no tiene rodaja de persistencia: falta AuthEmployeePersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
 JpaAuthSystemUserRepository no tiene rodaja de persistencia: falta AuthSystemUserPersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
 JpaBasePermissionRepository no tiene rodaja de persistencia: falta BasePermissionPersistenceIT (@DataJpaTest) en com.vetsoftware.app.basepermission.infrastructure.persistence

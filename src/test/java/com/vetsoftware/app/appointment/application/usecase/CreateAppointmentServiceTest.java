@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentConfirmationDa
 import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentDurationPolicyPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
@@ -22,6 +24,7 @@ import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.appointment.domain.Appointment;
+import com.vetsoftware.app.appointment.domain.AppointmentOverlapException;
 import com.vetsoftware.app.appointment.domain.AppointmentStatus;
 import com.vetsoftware.app.appointment.domain.AppointmentType;
 import com.vetsoftware.app.appointment.testsupport.AppointmentMother;
@@ -69,13 +72,23 @@ class CreateAppointmentServiceTest {
     private AppointmentConfirmationEmailSender confirmationEmailSender;
     @Mock
     private AppointmentMetrics appointmentMetrics;
+    @Mock
+    private AppointmentDurationPolicyPort durationPolicyPort;
     @InjectMocks
     private CreateAppointmentService service;
 
+    private static final int DEFECTO = AppointmentMother.DURACION_POR_DEFECTO;
+
     private static CreateAppointmentCommand contactoLibre(String clientEmail) {
-        return new CreateAppointmentCommand(AppointmentMother.INICIO, AppointmentType.GROOMING,
-                EMPLOYEE, null, null, "Walk-in", "3001234567", clientEmail, null,
-                AppointmentMother.BRANCH_ID, COMPANY);
+        return contactoLibre(clientEmail, false);
+    }
+
+    private static CreateAppointmentCommand contactoLibre(String clientEmail,
+            boolean forceOverlap) {
+        return new CreateAppointmentCommand(AppointmentMother.INICIO, null,
+                AppointmentType.GROOMING, EMPLOYEE, null, null, "Walk-in", "3001234567",
+                clientEmail, null, AppointmentMother.BRANCH_ID, COMPANY, forceOverlap,
+                AppointmentMother.SEDES_VISIBLES);
     }
 
     private void stubEmpleadoYSede() {
@@ -85,10 +98,25 @@ class CreateAppointmentServiceTest {
                 .thenReturn(Optional.of(AppointmentMother.PRINCIPAL));
     }
 
+    /** La agenda esta libre: ni la politica ni la consulta encuentran nada. */
     private void stubGuardadoSinSolapes() {
+        when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(repository.findClashingIds(eq(COMPANY), eq(EMPLOYEE), any(), any()))
-                .thenReturn(List.of());
+        when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(), eq(DEFECTO),
+                isNull())).thenReturn(List.of());
+    }
+
+    /**
+     * La agenda del veterinario ya tiene esas citas en el hueco, todas en una sede
+     * que el caller ve.
+     */
+    private void stubSolapeCon(List<Long> ids) {
+        when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
+        when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(), eq(DEFECTO),
+                isNull()))
+                .thenReturn(ids.stream().map(
+                        id -> new AppointmentRepository.Overlap(id, AppointmentMother.BRANCH_ID))
+                        .toList());
     }
 
     @Nested
@@ -149,35 +177,164 @@ class CreateAppointmentServiceTest {
         }
     }
 
+    /**
+     * BE-17. Antes de este defecto el solape era un aviso: la cita se guardaba
+     * igualmente y el conflicto se descubria con el animal en la sala. Ahora
+     * bloquea con 409, y solo un {@code forceOverlap} explicito lo atraviesa.
+     */
     @Nested
-    @DisplayName("Aviso de solape")
-    class AvisoDeSolape {
+    @DisplayName("Bloqueo por solape")
+    class BloqueoPorSolape {
 
         @Test
-        @DisplayName("devuelve las citas del mismo veterinario a la misma hora como aviso")
-        void devuelve_las_citas_solapadas_como_aviso() {
+        @DisplayName("el solape impide agendar: lanza y no guarda nada")
+        void el_solape_impide_agendar() {
             stubEmpleadoYSede();
-            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-            when(repository.findClashingIds(eq(COMPANY), eq(EMPLOYEE), eq(AppointmentMother.INICIO),
-                    any())).thenReturn(List.of(70L, 71L));
+            stubSolapeCon(List.of(70L));
 
-            AppointmentDto dto = service.execute(contactoLibre(null));
+            // Solo el tipo: el texto del detail y la lista de ids que lo acompañan son
+            // material sensible (filtran agenda entre sedes) y estan cambiando. Lo
+            // estable —y lo que de verdad arreglaba el defecto— es que no se guarde.
+            assertThatThrownBy(() -> service.execute(contactoLibre(null)))
+                    .isInstanceOf(AppointmentOverlapException.class);
 
-            assertThat(dto.overlappingAppointmentIds()).containsExactly(70L, 71L);
+            verify(repository, never()).save(any());
         }
 
         @Test
-        @DisplayName("el solape no impide agendar: la cita queda guardada igualmente")
-        void el_solape_no_impide_agendar() {
+        @DisplayName("el correo de confirmacion no se encola cuando el solape bloquea")
+        void el_correo_no_se_encola_cuando_el_solape_bloquea() {
             stubEmpleadoYSede();
-            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-            when(repository.findClashingIds(eq(COMPANY), eq(EMPLOYEE), any(), any()))
-                    .thenReturn(List.of(70L));
+            stubSolapeCon(List.of(70L));
 
-            AppointmentDto dto = service.execute(contactoLibre(null));
+            assertThatThrownBy(() -> service.execute(contactoLibre("walkin@example.com")))
+                    .isInstanceOf(AppointmentOverlapException.class);
+
+            // La comprobacion va ANTES de resolver el correo: si fuera al reves, el
+            // cliente recibiria la confirmacion de una cita que se rechazo.
+            verifyNoInteractions(confirmationEmailSender, companyQueryPort, appointmentMetrics);
+        }
+
+        @Test
+        @DisplayName("con forceOverlap la cita si se guarda pese al cruce")
+        void con_force_overlap_la_cita_si_se_guarda() {
+            stubEmpleadoYSede();
+            stubSolapeCon(List.of(70L, 71L));
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            AppointmentDto dto = service.execute(contactoLibre(null, true));
 
             assertThat(dto.status()).isEqualTo(AppointmentStatus.REQUESTED);
             verify(repository).save(any());
+        }
+
+        /**
+         * El cruce se calcula por veterinario, pero solo se le puede contar al caller
+         * lo de sus sedes. Bloquear y revelar son dos decisiones distintas.
+         */
+        @Test
+        @DisplayName("un cruce en una sede del caller sale nombrado en la excepcion")
+        void un_cruce_en_sede_propia_sale_nombrado() {
+            stubEmpleadoYSede();
+            when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
+            when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(), eq(DEFECTO),
+                    isNull()))
+                    .thenReturn(List.of(
+                            new AppointmentRepository.Overlap(70L, AppointmentMother.BRANCH_ID)));
+
+            assertThatThrownBy(() -> service.execute(contactoLibre(null)))
+                    .isInstanceOf(AppointmentOverlapException.class)
+                    .extracting(
+                            e -> ((AppointmentOverlapException) e).getOverlappingAppointmentIds())
+                    .isEqualTo(List.of(70L));
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un cruce en una sede ajena bloquea igual pero no revela ningun id")
+        void un_cruce_en_sede_ajena_no_revela_ningun_id() {
+            stubEmpleadoYSede();
+            when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
+            when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(), eq(DEFECTO),
+                    isNull())).thenReturn(List.of(new AppointmentRepository.Overlap(70L, 999L)));
+
+            // Fuga corregida: el veterinario esta ocupado en otra sede, asi que la cita
+            // se bloquea, pero el caller no puede llegar a saber con que cita choca —a
+            // base de 409 se reconstruia la agenda de la otra sede.
+            assertThatThrownBy(() -> service.execute(contactoLibre(null)))
+                    .isInstanceOf(AppointmentOverlapException.class)
+                    .extracting(
+                            e -> ((AppointmentOverlapException) e).getOverlappingAppointmentIds())
+                    .isEqualTo(List.of());
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("con cruces mezclados solo se nombran los visibles")
+        void con_cruces_mezclados_solo_se_nombran_los_visibles() {
+            stubEmpleadoYSede();
+            when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
+            when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(), eq(DEFECTO),
+                    isNull()))
+                    .thenReturn(List.of(
+                            new AppointmentRepository.Overlap(70L, AppointmentMother.BRANCH_ID),
+                            new AppointmentRepository.Overlap(71L, 999L)));
+
+            assertThatThrownBy(() -> service.execute(contactoLibre(null)))
+                    .isInstanceOf(AppointmentOverlapException.class)
+                    .extracting(
+                            e -> ((AppointmentOverlapException) e).getOverlappingAppointmentIds())
+                    .isEqualTo(List.of(70L));
+        }
+
+        @Test
+        @DisplayName("sin solape el DTO trae la lista vacia, nunca null")
+        void sin_solape_el_dto_trae_la_lista_vacia() {
+            stubEmpleadoYSede();
+            stubGuardadoSinSolapes();
+
+            AppointmentDto dto = service.execute(contactoLibre(null));
+
+            assertThat(dto.overlappingAppointmentIds()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("la ventana de solape se calcula con la duracion por defecto de la empresa")
+        void la_ventana_se_calcula_con_la_duracion_por_defecto() {
+            stubEmpleadoYSede();
+            when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(90);
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), eq(AppointmentMother.INICIO),
+                    eq(AppointmentMother.INICIO.plusMinutes(90)), eq(90), isNull()))
+                    .thenReturn(List.of());
+
+            service.execute(contactoLibre(null));
+
+            // La cita no trae duracion propia, asi que el fin del intervalo lo pone la
+            // empresa. Un endAt mal derivado consultaria la ventana equivocada y el
+            // bloqueo dejaria pasar cruces reales.
+            verify(repository).findOverlapping(COMPANY, EMPLOYEE, AppointmentMother.INICIO,
+                    AppointmentMother.INICIO.plusMinutes(90), 90, null);
+        }
+
+        @Test
+        @DisplayName("la duracion propia de la cita gana sobre la de la empresa al calcular el fin")
+        void la_duracion_propia_gana_al_calcular_el_fin() {
+            stubEmpleadoYSede();
+            when(durationPolicyPort.defaultDurationMinutes(COMPANY)).thenReturn(DEFECTO);
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(repository.findOverlapping(eq(COMPANY), eq(EMPLOYEE), eq(AppointmentMother.INICIO),
+                    eq(AppointmentMother.INICIO.plusMinutes(15)), eq(DEFECTO), isNull()))
+                    .thenReturn(List.of());
+
+            service.execute(new CreateAppointmentCommand(AppointmentMother.INICIO, 15,
+                    AppointmentType.GROOMING, EMPLOYEE, null, null, "Walk-in", null, null, null,
+                    AppointmentMother.BRANCH_ID, COMPANY, false, AppointmentMother.SEDES_VISIBLES));
+
+            verify(repository).findOverlapping(COMPANY, EMPLOYEE, AppointmentMother.INICIO,
+                    AppointmentMother.INICIO.plusMinutes(15), DEFECTO, null);
         }
     }
 

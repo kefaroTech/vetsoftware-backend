@@ -6,20 +6,24 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.application.port.in.CreateAppointmentUseCase;
 import com.vetsoftware.app.appointment.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmationEmailSender;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentDurationPolicyPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository.Overlap;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.OwnerQueryPort;
 import com.vetsoftware.app.appointment.domain.AnimalRef;
 import com.vetsoftware.app.appointment.domain.Appointment;
+import com.vetsoftware.app.appointment.domain.AppointmentOverlapException;
 import com.vetsoftware.app.appointment.domain.BranchRef;
 import com.vetsoftware.app.appointment.domain.CompanyRef;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.appointment.domain.OwnerRef;
 import io.micrometer.observation.annotation.Observed;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,13 +45,16 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     private final CompanyQueryPort companyQueryPort;
     private final AppointmentConfirmationEmailSender confirmationEmailSender;
     private final AppointmentMetrics appointmentMetrics;
+    private final AppointmentDurationPolicyPort durationPolicyPort;
 
     public CreateAppointmentService(AppointmentRepository repository,
             AnimalQueryPort animalQueryPort, OwnerQueryPort ownerQueryPort,
             EmployeeQueryPort employeeQueryPort, BranchQueryPort branchQueryPort,
             CompanyQueryPort companyQueryPort,
             AppointmentConfirmationEmailSender confirmationEmailSender,
-            AppointmentMetrics appointmentMetrics) {
+            AppointmentMetrics appointmentMetrics,
+            AppointmentDurationPolicyPort durationPolicyPort) {
+        this.durationPolicyPort = durationPolicyPort;
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
         this.ownerQueryPort = ownerQueryPort;
@@ -87,9 +94,37 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Company has no active branch: " + command.companyId()));
 
-        Appointment appointment = Appointment.create(command.startAt(), command.type(),
-                command.notes(), animal, owner, command.clientName(), command.clientPhone(),
-                command.clientEmail(), employee, CompanyRef.of(command.companyId()), branch);
+        Appointment appointment = Appointment.create(command.startAt(), command.durationMinutes(),
+                command.type(), command.notes(), animal, owner, command.clientName(),
+                command.clientPhone(), command.clientEmail(), employee,
+                CompanyRef.of(command.companyId()), branch);
+
+        // BE-17: el cruce de horarios se comprueba ANTES de guardar y ANTES de
+        // resolver el correo. Hacerlo después dejaba dos citas encima y —peor— el
+        // sendAfterCommit ya encolado: salía la confirmación de una cita rechazada.
+        int defaultMinutes = durationPolicyPort.defaultDurationMinutes(command.companyId());
+        LocalDateTime endAt = appointment.endAt(defaultMinutes);
+        List<Overlap> overlaps = repository.findOverlapping(command.companyId(),
+                command.employeeId(), appointment.getStartAt(), endAt, defaultMinutes, null);
+        // El cruce se decide con TODOS los solapes; lo que se devuelve, solo con los
+        // que el caller puede ver por sede.
+        List<Long> visibleOverlapIds = AppointmentOverlaps.visibleIds(overlaps,
+                command.visibleBranchIds());
+        if (!overlaps.isEmpty()) {
+            if (!command.forceOverlap()) {
+                throw new AppointmentOverlapException(command.employeeId(), employee.name(),
+                        appointment.getStartAt(), endAt, visibleOverlapIds, overlaps.size());
+            }
+            // El forzado no se persiste (es una decisión del momento, no un atributo
+            // de la cita), así que el log es el único rastro de que alguien desactivó
+            // el control de solape.
+            log.warn(
+                    "Appointment overlap forced on create: employeeId={} startAt={} count={}"
+                            + " overlappingIds={}",
+                    command.employeeId(), appointment.getStartAt(), overlaps.size(),
+                    AppointmentOverlaps.allIds(overlaps));
+        }
+
         Appointment saved = repository.save(appointment);
 
         // Notificación al cliente (async y no bloqueante; si falla, el agendamiento
@@ -99,10 +134,10 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
         sendAfterCommit(
                 buildConfirmationData(saved, employee, owner, animal, branch, command.companyId()));
 
-        List<Long> clashes = repository.findClashingIds(command.companyId(), command.employeeId(),
-                command.startAt(), saved.getId());
         appointmentMetrics.transitioned(saved.getStatus(), Channel.STAFF);
-        return AppointmentDto.from(saved, clashes);
+        // Solo puede venir no vacío si se forzó: el bloqueo ya lanzó en caso
+        // contrario. Y solo con las citas visibles para el caller.
+        return AppointmentDto.from(saved, visibleOverlapIds);
     }
 
     /**

@@ -2,7 +2,6 @@ AdminPermissionPublishController no tiene rodaja web: falta AdminPermissionPubli
 AnimalAlertController no tiene rodaja web: falta AnimalAlertControllerTest (@WebMvcTest) en com.vetsoftware.app.animalalert.infrastructure.web
 AnimalColorController no tiene rodaja web: falta AnimalColorControllerTest (@WebMvcTest) en com.vetsoftware.app.animalcolor.infrastructure.web
 AnimalController no tiene rodaja web: falta AnimalControllerTest (@WebMvcTest) en com.vetsoftware.app.animal.infrastructure.web
-AppointmentController no tiene rodaja web: falta AppointmentControllerTest (@WebMvcTest) en com.vetsoftware.app.appointment.infrastructure.web
 AuthController no tiene rodaja web: falta AuthControllerTest (@WebMvcTest) en com.vetsoftware.app.auth.infrastructure.web
 BasePermissionController no tiene rodaja web: falta BasePermissionControllerTest (@WebMvcTest) en com.vetsoftware.app.basepermission.infrastructure.web
 BaseRoleController no tiene rodaja web: falta BaseRoleControllerTest (@WebMvcTest) en com.vetsoftware.app.baserole.infrastructure.web

@@ -132,7 +132,7 @@ class ChangeAppointmentStatusServiceTest {
     @Test
     @DisplayName("cancelar por esta via conserva el motivo ya registrado en la cita")
     void cancelar_por_esta_via_conserva_el_motivo_registrado() {
-        Appointment cita = new Appointment(ID, AppointmentMother.INICIO,
+        Appointment cita = new Appointment(ID, AppointmentMother.INICIO, null,
                 AppointmentType.CONSULTATION, AppointmentStatus.CONFIRMED, null, "El dueno aviso",
                 AppointmentMother.FIRULAIS, null, null, null, null, AppointmentMother.VETERINARIA,
                 AppointmentMother.CLINICA, AppointmentMother.PRINCIPAL, 1L, true,
