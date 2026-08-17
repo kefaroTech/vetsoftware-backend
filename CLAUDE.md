@@ -13,13 +13,13 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` (ArchUnit) ejecuta doce de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
+`HexagonalArchitectureTest` (ArchUnit) ejecuta trece de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
 
 ```bash
 mvn test -Dtest=HexagonalArchitectureTest
 ```
 
-Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras tres encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras cuatro encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
 - **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
 - **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
@@ -458,6 +458,68 @@ public SubModuleDto execute(CreateSubModuleCommand command, AuthContext auth) {
 - **No necesitas datos del agregado externo, solo el ID** → usa `Long moduleId` en el dominio + `YyyValidationPort` para validar en escritura.
 - **Las dos entidades son realmente el mismo agregado** (e.g. `Order` y `OrderItem`) → entonces no son features separadas; ponlas en el mismo paquete.
 
+## Efectos externos y transacciones — lo que sale no vuelve
+
+Una transacción protege lo que está en la base de datos. No protege un correo enviado, un
+documento transmitido ni un webhook disparado: eso ya salió. Por eso hay dos reglas, y miran
+el mismo salto desde lados opuestos.
+
+**Nada de I/O síncrono dentro de la transacción.** Una llamada HTTP retiene la conexión del
+pool y los locks mientras dura. Lo comprueba `SIN_IO_EXTERNO_EN_TRANSACCION`, que sigue la
+cadena de llamadas —no solo la línea del método— y **se detiene** en los saltos `@Async`:
+lo que cruza de hilo ya no bloquea a nadie.
+
+**Ningún efecto `@Async` antes del commit.** Ahí empieza la otra regla,
+`EFECTOS_ASINCRONOS_DESPUES_DEL_COMMIT`. El proxy de `@Async` encola la tarea **al instante**,
+sin esperar al desenlace; si la transacción revierte después, el efecto ya se entregó y no hay
+forma de retirarlo. Y la última línea del método **todavía no es «después del commit»**: quedan
+por delante el flush (con el chequeo de `@Version`), el commit en sí y, con propagación
+`REQUIRED`, el commit del caller externo que se una a la transacción. Fue BE-18: una cita que
+revertía en el flush dejaba al cliente con la confirmación de una cita inexistente.
+
+El patrón es siempre el mismo: **resolver los datos dentro de la transacción, disparar el
+efecto en `afterCommit`.**
+
+```java
+private void sendAfterCommit(ConfirmationData confirmation) {
+    if (confirmation == null) {
+        return;
+    }
+    // Sin transaccion activa (test unitario, caller sin @Transactional) se envia en el
+    // acto: registerSynchronization lanzaria IllegalStateException.
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+        emailSender.send(confirmation);
+        return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+            try {                       // una excepcion aqui se propaga al caller aunque
+                emailSender.send(confirmation);   // la transaccion ya haya confirmado
+            } catch (RuntimeException exception) {
+                log.warn("No se pudo enviar la confirmacion: {}", exception.getMessage());
+            }
+        }
+    });
+}
+```
+
+Tres detalles que el patrón exige:
+
+- **Las consultas del payload van fuera del callback.** Después del commit la conexión volvió
+  al pool y cada `find…` abriría la suya, sumando latencia a la respuesta.
+- **El callback nunca lanza.** Una excepción en `afterCommit` se propaga al caller con la
+  transacción ya confirmada, y convierte una operación correcta en un 500.
+- **El diferido va en su propio método**, con la clase anónima. La regla se detiene en el
+  primer método que habla con `TransactionSynchronizationManager` —el envío inmediato de la
+  rama de guarda no la dispara—, pero un `afterCommit` escrito con un *lambda* le queda
+  atribuido al método que lo declara y da falso positivo.
+
+Referencias en el código: `CreateAppointmentService.sendAfterCommit` y
+`EmitElectronicDocumentOnCloseService.execute`. Para métricas ya existe
+`AfterCommitMetricRecorder.recordAfterCommit(Runnable)`, pero **vive en `infrastructure/` y no
+se puede importar desde `application/usecase`** (`APPLICATION_NO_CONOCE_INFRASTRUCTURE`).
+
 ## Autorización — `@PreAuthorize` y `Authz`
 
 Todo recurso scoped a una `Company` (multi-tenant) se protege con permisos + ownership. El frontend **nunca** elige el `companyId`: lo deriva el backend desde el `AuthContext` que el `AuthFilter` puso en `SecurityContextHolder` al validar el JWT.
@@ -763,6 +825,7 @@ mvn verify                    # además comprueba el suelo de cobertura
 - ❌ Validar existencia de FK en el repositorio con `findById().orElseThrow()` — esa lógica va en el service via `YyyQueryPort` (o `YyyValidationPort` si solo validas)
 - ❌ Importar la entidad de dominio de otra feature en el dominio propio (`submodule.domain.SubModule` con un `module.domain.Module` colgado) — usar companion VO `YyyRef`
 - ❌ Importar Responses o DTOs de aplicación de otra feature (`SubModuleResponse` con `ModuleResponse` adentro) — definir un companion local (`ModuleSummary`)
+- ❌ Disparar un efecto `@Async` (correo, notificación, transmisión) desde dentro de un método `@Transactional` — se entrega aunque la transacción revierta; difiérelo con `afterCommit` (ver "Efectos externos y transacciones")
 - ❌ `@ManyToOne` cross-feature SIN `@EntityGraph` en `findAll`/`findById` — produce N+1
 - ❌ En el mapper, leer `entity.getModule().getName()` después de `getReferenceById` en `save` — dispara una query de hidratación; reusa el `Ref` precargado vía el overload `toDomain(entity, ref)`
 

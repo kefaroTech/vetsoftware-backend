@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -28,6 +29,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Condiciones de arquitectura propias del proyecto, las que no se expresan con
@@ -67,6 +69,10 @@ final class VetSoftwareConditions {
 
     /** El {@code PageRequest} de Spring Data: el que hay que acotar. */
     private static final String PAGE_REQUEST = "org.springframework.data.domain.PageRequest";
+
+    /** La API del commit: quien la toca sabe a qué lado del commit está. */
+    private static final String TRANSACTION_SYNCHRONIZATION_MANAGER = TransactionSynchronizationManager.class
+            .getName();
 
     private VetSoftwareConditions() {
     }
@@ -117,7 +123,9 @@ final class VetSoftwareConditions {
         return new ArchCondition<>(description) {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
-                List<String> path = findPathToHttpClient(method, clientNames);
+                List<String> path = rutaHasta(method,
+                        call -> clientNames.contains(call.getTargetOwner().getFullName()),
+                        VetSoftwareConditions::saltaDeHilo);
                 if (!path.isEmpty()) {
                     events.add(SimpleConditionEvent.satisfied(method, method.getFullName()
                             + " alcanza un cliente HTTP: " + String.join(" -> ", path)));
@@ -127,10 +135,81 @@ final class VetSoftwareConditions {
     }
 
     /**
-     * Recorre en anchura las llamadas salientes y devuelve la primera ruta que
-     * termina en un cliente HTTP, o una lista vacía si no hay ninguna.
+     * La otra mitad de {@link #alcanzarUnClienteHttp(Class...)}, y el cierre de
+     * BE-18: detecta el efecto {@code @Async} que se dispara <em>dentro</em> de una
+     * transacción sin esperar a que confirme.
+     *
+     * <p>
+     * Las dos reglas miran el mismo salto y sacan conclusiones opuestas, a
+     * propósito. Aquella se detiene ahí porque lo que cruza de hilo ya no retiene
+     * la conexión ni los locks del caller: deja de ser su problema. Esta empieza
+     * justo ahí porque lo que cruza de hilo <b>tampoco vuelve</b>. El proxy encola
+     * la tarea al instante y el pool la ejecuta cuando quiere —normalmente antes de
+     * que el caller haya hecho flush—, así que un rollback posterior no deshace
+     * nada: el correo ya salió.
+     *
+     * <p>
+     * El caso real: {@code CreateAppointmentService.execute} enviaba la
+     * confirmación desde dentro de la transacción, y {@code AppointmentJpaEntity}
+     * tiene {@code @Version}, cuyo choque optimista salta en el flush,
+     * <i>después</i> de la última línea del método. El cliente recibía la
+     * confirmación de una cita que nunca existió.
+     *
+     * <p>
+     * <b>Dónde se detiene la búsqueda.</b> En el primer método que habla con
+     * {@code TransactionSynchronizationManager} —el origen incluido—. Ese método
+     * está decidiendo explícitamente qué ocurre a cada lado del commit; si lo
+     * decide mal, eso lo ve una revisión, no una regla de arquitectura. Sin este
+     * corte la regla marcaría el propio patrón correcto: la rama de guarda de
+     * {@code sendAfterCommit} —la que envía en el acto cuando no hay transacción
+     * activa, porque {@code registerSynchronization} lanzaría ahí— es una llamada
+     * directa al port como cualquier otra.
+     *
+     * <p>
+     * <b>Por qué el callback no se comprueba.</b> No hace falta: el cuerpo de un
+     * {@code afterCommit} vive en una clase anónima aparte, así que no cuelga del
+     * método transaccional y el recorrido nunca llega. Es la misma razón por la que
+     * el patrón es correcto en ejecución. El día que alguien difiera con un
+     * <i>lambda</i>, ArchUnit atribuirá su cuerpo al método que lo declara y la
+     * regla dará un falso positivo: la salida es extraer el diferido a su propio
+     * método, como hacen hoy los dos que existen.
      */
-    private static List<String> findPathToHttpClient(JavaMethod origin, Set<String> clientNames) {
+    static ArchCondition<JavaMethod> alcanzarUnEfectoAsincrono() {
+        return new ArchCondition<>("disparar un efecto @Async sin esperar al commit") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                if (difiereAlCommit(method)) {
+                    return;
+                }
+                List<String> path = rutaHasta(method, VetSoftwareConditions::saltaAOtroHilo,
+                        VetSoftwareConditions::difiereAlCommit);
+                if (!path.isEmpty()) {
+                    events.add(SimpleConditionEvent.satisfied(method,
+                            method.getFullName() + " dispara un efecto @Async dentro de la"
+                                    + " transaccion: " + String.join(" -> ", path)));
+                }
+            }
+        };
+    }
+
+    /**
+     * Recorre en anchura las llamadas salientes del proyecto y devuelve la primera
+     * ruta que llega al destino, o una lista vacía si no hay ninguna.
+     *
+     * <p>
+     * La búsqueda es transitiva a propósito. El caso real que motivó la primera
+     * regla que la usa (BE-02) no llamaba al cliente HTTP desde el método
+     * transaccional, sino desde un provider dos saltos más abajo; una regla de
+     * llamada directa no lo habría visto. Cuando el salto es a una interfaz, se
+     * siguen también sus implementaciones, que es donde vive la llamada.
+     *
+     * @param esElDestino
+     *            qué llamada cierra la búsqueda
+     * @param cortaLaBusqueda
+     *            métodos en los que no se sigue bajando
+     */
+    private static List<String> rutaHasta(JavaMethod origin, Predicate<JavaMethodCall> esElDestino,
+            Predicate<JavaMethod> cortaLaBusqueda) {
         Set<String> visited = new HashSet<>();
         Deque<List<JavaMethod>> queue = new ArrayDeque<>();
         queue.add(List.of(origin));
@@ -141,15 +220,14 @@ final class VetSoftwareConditions {
             JavaMethod current = path.get(path.size() - 1);
 
             for (JavaMethodCall call : current.getMethodCallsFromSelf()) {
-                JavaClass targetOwner = call.getTargetOwner();
-                if (clientNames.contains(targetOwner.getFullName())) {
+                if (esElDestino.test(call)) {
                     return describe(path, call);
                 }
-                if (path.size() >= MAX_DEPTH || !isOwnCode(targetOwner)) {
+                if (path.size() >= MAX_DEPTH || !isOwnCode(call.getTargetOwner())) {
                     continue;
                 }
                 for (JavaMethod next : resolveTargets(call)) {
-                    if (saltaDeHilo(next) || !visited.add(next.getFullName())) {
+                    if (cortaLaBusqueda.test(next) || !visited.add(next.getFullName())) {
                         continue;
                     }
                     List<JavaMethod> extended = new ArrayList<>(path);
@@ -159,6 +237,28 @@ final class VetSoftwareConditions {
             }
         }
         return List.of();
+    }
+
+    /**
+     * {@code true} si la llamada entrega el trabajo a otro hilo vía {@code @Async}.
+     */
+    private static boolean saltaAOtroHilo(JavaMethodCall call) {
+        return resolveTargets(call).stream().anyMatch(VetSoftwareConditions::saltaDeHilo);
+    }
+
+    /**
+     * {@code true} si el método habla con
+     * {@code TransactionSynchronizationManager}, en cualquiera de sus dos formas:
+     * registrar el callback o preguntar si hay sincronización activa. Las dos
+     * delatan a un método que sabe dónde está el commit.
+     */
+    private static boolean difiereAlCommit(JavaMethod method) {
+        for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
+            if (TRANSACTION_SYNCHRONIZATION_MANAGER.equals(call.getTargetOwner().getFullName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -198,11 +298,13 @@ final class VetSoftwareConditions {
      * {@code true} si la llamada cruza a otro hilo vía {@code @Async}.
      *
      * <p>
-     * Ahí se corta la búsqueda: el proxy encola la ejecución en otro pool y
-     * devuelve inmediatamente, así que lo que pase al otro lado ya no corre dentro
-     * de la transacción del caller ni retiene su conexión. Seguir el grafo más allá
-     * reporta el envío de correos —que es asíncrono a propósito— como si bloqueara
-     * la transacción.
+     * El proxy encola la ejecución en otro pool y devuelve inmediatamente, así que
+     * lo que pase al otro lado ya no corre dentro de la transacción del caller. De
+     * ahí que las dos reglas que usan este predicado lo lean al revés:
+     * {@link #alcanzarUnClienteHttp(Class...)} <b>corta</b> aquí, porque más allá
+     * del salto ya no se retiene la conexión ni los locks;
+     * {@link #alcanzarUnEfectoAsincrono()} <b>reporta</b> aquí, porque más allá del
+     * salto el efecto ya no se puede deshacer.
      */
     private static boolean saltaDeHilo(JavaMethod method) {
         return method.isAnnotatedWith(Async.class)

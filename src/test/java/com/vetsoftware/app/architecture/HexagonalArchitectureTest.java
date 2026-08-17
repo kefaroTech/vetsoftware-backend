@@ -191,4 +191,31 @@ class HexagonalArchitectureTest {
     static final ArchRule SIN_FINDALL_SIN_TENANT = FreezingArchRule.freeze(noClasses().that()
             .resideInAPackage("..application.usecase..").should().callMethodWhere(FIND_ALL_SIN_ARGS)
             .because("un findAll() sin companyId es una fuga entre empresas esperando a ocurrir"));
+
+    /**
+     * El cierre de BE-18, y el complemento exacto de
+     * {@link #SIN_IO_EXTERNO_EN_TRANSACCION}: aquella protege la transacción del
+     * I/O, esta protege al cliente de la transacción. Un efecto {@code @Async}
+     * disparado antes del commit se entrega igual aunque la transacción revierta
+     * después, y no hay forma de retirarlo: el correo ya está en la bandeja.
+     *
+     * <p>
+     * Congelada porque el correo transaccional del proyecto nació así: la cita no
+     * era el único sitio, solo el que se miró. El store registra las otras cuatro
+     * notificaciones que hoy salen sin esperar al commit —invitación de empleado,
+     * reenvío de invitación, restablecer contraseña y recuperar código—, todas con
+     * la misma consecuencia: el correo llega y la operación no ocurrió.
+     *
+     * <p>
+     * La forma de resolver una violación no es tocar la regla, sino diferir el
+     * efecto: resolver los datos dentro de la transacción y registrar el envío en
+     * {@code afterCommit}. {@code CreateAppointmentService.sendAfterCommit} y
+     * {@code EmitElectronicDocumentOnCloseService} son las dos referencias.
+     */
+    @ArchTest
+    static final ArchRule EFECTOS_ASINCRONOS_DESPUES_DEL_COMMIT = FreezingArchRule
+            .freeze(noMethods().that().areAnnotatedWith(Transactional.class).or()
+                    .areDeclaredInClassesThat().areAnnotatedWith(Transactional.class)
+                    .should(VetSoftwareConditions.alcanzarUnEfectoAsincrono())
+                    .because("lo que cruza de hilo antes del commit no vuelve si hay rollback"));
 }
