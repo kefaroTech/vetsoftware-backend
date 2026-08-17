@@ -59,11 +59,6 @@ public class JpaSupplierRepository implements SupplierRepository {
     }
 
     @Override
-    public List<Supplier> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
-    }
-
-    @Override
     public List<Supplier> findAllByCompanyId(Long companyId) {
         return jpaRepository.findAllByCompanyId(companyId).stream().map(mapper::toDomain).toList();
     }

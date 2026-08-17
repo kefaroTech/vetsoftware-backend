@@ -22,8 +22,6 @@ public interface SupplierRepository {
     /** Igual, excluyendo el propio proveedor (para validar en actualización). */
     boolean existsByCompanyIdAndNameExcludingId(Long companyId, String name, Long id);
 
-    List<Supplier> findAll();
-
     List<Supplier> findAllByCompanyId(Long companyId);
 
     /**
