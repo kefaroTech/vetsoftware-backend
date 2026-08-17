@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestComponent;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -48,8 +49,22 @@ import org.springframework.web.bind.annotation.RestController;
 @DisplayName("GlobalExceptionHandler — traduccion de excepciones a HTTP")
 class GlobalExceptionHandlerTest {
 
-    /** Controller de juguete: cada ruta lanza la excepcion que se quiere mapear. */
+    /**
+     * Controller de juguete: cada ruta lanza la excepcion que se quiere mapear.
+     *
+     * <p>
+     * El {@code @TestComponent} no es decorativo. Sin el, esta clase es un
+     * {@code @RestController} escaneable que vive en {@code target/test-classes},
+     * dentro de la raiz del {@code @ComponentScan}: hoy no se registra solo porque
+     * {@code GlobalExceptionHandlerTest} tiene un {@code @Test} de primer nivel y
+     * el {@code TestTypeExcludeFilter} la reconoce como clase de test. El dia que
+     * su ultimo {@code @Test} suelto se mueva a un {@code @Nested}, las rutas
+     * {@code /boom/*} entran en el contrato publico de la API. Lo comprueba
+     * {@code PiramideDeTestsTest.DOBLE_DE_TEST_NO_ESCANEABLE}. El {@code @Import}
+     * de abajo lo registra igual: los filtros de exclusion solo aplican al escaneo.
+     */
     @RestController
+    @TestComponent
     static class BoomController {
 
         @GetMapping("/boom/animal-not-found")

@@ -16,6 +16,7 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.liquibase.autoconfigure.LiquibaseAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestComponent;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
@@ -72,7 +73,22 @@ class ActuatorSecurityConfigIntegrationTest {
                 + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * Raiz de contexto de este test, nombrada explicitamente en el
+     * {@code @SpringBootTest(classes = ...)}.
+     *
+     * <p>
+     * El {@code @TestComponent} la marca como cableado de test: un
+     * {@code @SpringBootConfiguration} anidado en {@code target/test-classes}
+     * tambien es una clase escaneable dentro de la raiz del {@code @ComponentScan},
+     * y hoy solo la salva que su clase envolvente tenga {@code @Test} de primer
+     * nivel — la misma condicion inestable que casi cuela {@code BoomController}.
+     * No cambia como se registra: {@code classes = ...} la instala directamente, y
+     * los filtros de exclusion solo aplican al escaneo. Lo comprueba
+     * {@code PiramideDeTestsTest.DOBLE_DE_TEST_NO_ESCANEABLE}.
+     */
     @SpringBootConfiguration
+    @TestComponent
     @EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class, DataJpaRepositoriesAutoConfiguration.class,
             LiquibaseAutoConfiguration.class})
