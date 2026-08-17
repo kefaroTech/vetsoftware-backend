@@ -1,7 +1,7 @@
 package com.vetsoftware.app.medicamentprescription.application.usecase;
 
 import com.vetsoftware.app.medicamentprescription.application.dto.MedicamentPrescriptionDto;
-import com.vetsoftware.app.medicamentprescription.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.medicamentprescription.application.port.in.ListMedicamentPrescriptionsUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.out.MedicamentPrescriptionRepository;
 import io.micrometer.observation.annotation.Observed;

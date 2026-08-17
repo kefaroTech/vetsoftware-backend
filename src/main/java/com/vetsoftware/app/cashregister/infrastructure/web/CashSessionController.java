@@ -7,7 +7,6 @@ import com.vetsoftware.app.cashregister.application.command.RegisterCashMovement
 import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQuery;
 import com.vetsoftware.app.cashregister.application.dto.CashArqueoReport;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
-import com.vetsoftware.app.cashregister.application.dto.PageResult;
 import com.vetsoftware.app.cashregister.application.port.in.CloseCashSessionUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.ExportArqueoUseCase;
 import com.vetsoftware.app.cashregister.application.port.in.GetCashSessionUseCase;
@@ -133,11 +132,10 @@ public class CashSessionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<CashSessionView> result = listUseCase.list(new SearchCashSessionsQuery(
-                authz.currentCompanyId(), authz.resolveAccessibleBranch(branchId), employeeId, from,
-                to, page, pageSize));
-        return new PageResponse<>(result.content(), result.page(), result.pageSize(),
-                result.totalElements(), result.totalPages());
+        return PageResponse
+                .from(listUseCase.list(new SearchCashSessionsQuery(authz.currentCompanyId(),
+                        authz.resolveAccessibleBranch(branchId), employeeId, from, to, page,
+                        pageSize)));
     }
 
     // ── Arqueo (export CSV/PDF)

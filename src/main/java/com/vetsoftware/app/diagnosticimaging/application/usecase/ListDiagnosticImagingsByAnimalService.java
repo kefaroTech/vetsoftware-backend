@@ -1,7 +1,7 @@
 package com.vetsoftware.app.diagnosticimaging.application.usecase;
 
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDto;
-import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsByAnimalUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.out.DiagnosticImagingRepository;
 import io.micrometer.observation.annotation.Observed;

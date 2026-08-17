@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
-import com.vetsoftware.app.animal.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import com.vetsoftware.app.animal.domain.Animal;
 import com.vetsoftware.app.animal.testsupport.AnimalMother;

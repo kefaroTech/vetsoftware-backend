@@ -1,6 +1,6 @@
 package com.vetsoftware.app.medicamentprescription.application.port.out;
 
-import com.vetsoftware.app.medicamentprescription.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
 import java.util.Optional;
 

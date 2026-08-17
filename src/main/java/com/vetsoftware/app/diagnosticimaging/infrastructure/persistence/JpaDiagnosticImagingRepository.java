@@ -8,9 +8,9 @@ import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJ
 import com.vetsoftware.app.consultation.infrastructure.persistence.ConsultationJpaRepository;
 import com.vetsoftware.app.diagnosticimaging.application.port.out.DiagnosticImagingRepository;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImaging;
-import com.vetsoftware.app.diagnosticimaging.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.persistence.DiagnosticImagingTypeJpaEntity;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.persistence.DiagnosticImagingTypeJpaRepository;
@@ -21,8 +21,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaDiagnosticImagingRepository implements DiagnosticImagingRepository {
 
-    private static final int BY_ANIMAL_DEFAULT_PAGE_SIZE = 20;
-    private static final int BY_ANIMAL_MAX_PAGE_SIZE = 200;
     private final DiagnosticImagingJpaRepository jpaRepository;
     private final DiagnosticImagingJpaMapper mapper;
     private final DiagnosticImagingTypeJpaRepository diagnosticImagingTypeJpaRepository;
@@ -74,27 +72,17 @@ public class JpaDiagnosticImagingRepository implements DiagnosticImagingReposito
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
 
+    /**
+     * El orden por id descendente es estable y devuelve primero lo mas reciente,
+     * que es lo que la ficha clinica muestra arriba.
+     */
     @Override
     public PageResult<DiagnosticImaging> findAllByAnimalIdAndCompanyId(Long animalId,
             Long companyId, String query, int page, int pageSize) {
         Page<DiagnosticImagingJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(
-                animalId, companyId, query, byAnimalPageRequest(page, pageSize));
-        return new PageResult<>(result.getContent().stream().map(mapper::toDomain).toList(),
-                result.getNumber(), result.getSize(), result.getTotalElements(),
-                result.getTotalPages());
-    }
-
-    /**
-     * Normaliza lo que llega del cliente: una pagina negativa o un tamano desmedido
-     * no deben poder volver a pedir el historial entero del animal. El orden por id
-     * descendente es estable y devuelve primero lo mas reciente, que es lo que la
-     * ficha clinica muestra arriba.
-     */
-    private static PageRequest byAnimalPageRequest(int page, int pageSize) {
-        int safeSize = pageSize <= 0
-                ? BY_ANIMAL_DEFAULT_PAGE_SIZE
-                : Math.min(pageSize, BY_ANIMAL_MAX_PAGE_SIZE);
-        return PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
+                animalId, companyId, query,
+                Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+        return Pages.result(result, mapper::toDomain);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.spa.application.port.out;
 
 import com.vetsoftware.app.spa.domain.Spa;
-import com.vetsoftware.app.spa.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.List;
 import java.util.Optional;
 

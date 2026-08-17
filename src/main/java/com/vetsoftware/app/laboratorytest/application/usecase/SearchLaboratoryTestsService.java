@@ -2,7 +2,7 @@ package com.vetsoftware.app.laboratorytest.application.usecase;
 
 import com.vetsoftware.app.laboratorytest.application.command.SearchLaboratoryTestsCommand;
 import com.vetsoftware.app.laboratorytest.application.dto.LaboratoryTestDto;
-import com.vetsoftware.app.laboratorytest.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.laboratorytest.application.port.in.SearchLaboratoryTestsUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.out.LaboratoryTestRepository;
 import io.micrometer.observation.annotation.Observed;

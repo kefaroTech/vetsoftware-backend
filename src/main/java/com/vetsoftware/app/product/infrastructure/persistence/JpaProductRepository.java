@@ -3,7 +3,8 @@ package com.vetsoftware.app.product.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.product.application.port.out.ProductRepository;
 import com.vetsoftware.app.product.domain.Product;
 import com.vetsoftware.app.productcategory.infrastructure.persistence.ProductCategoryJpaEntity;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
@@ -110,13 +110,9 @@ public class JpaProductRepository implements ProductRepository {
     @Override
     public PageResult<Product> search(SearchProductsCommand command) {
         Specification<ProductJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "createdDate"));
-        Page<ProductJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<Product> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<ProductJpaEntity> page = jpaRepository.findAll(spec, Pages.request(command.page(),
+                command.pageSize(), Sort.by(Sort.Direction.DESC, "createdDate")));
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<ProductJpaEntity> buildSpec(SearchProductsCommand command) {

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationobservation.application.port.out;
 
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservation;
-import com.vetsoftware.app.hospitalizationobservation.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationObservationRepository {

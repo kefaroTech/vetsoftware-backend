@@ -1,7 +1,7 @@
 package com.vetsoftware.app.supplierinvoice.application.usecase;
 
 import com.vetsoftware.app.supplierinvoice.application.command.SearchSupplierInvoicesCommand;
-import com.vetsoftware.app.supplierinvoice.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.supplierinvoice.application.dto.SupplierInvoiceDto;
 import com.vetsoftware.app.supplierinvoice.application.port.in.SearchSupplierInvoicesUseCase;
 import com.vetsoftware.app.supplierinvoice.application.port.out.SupplierInvoiceRepository;

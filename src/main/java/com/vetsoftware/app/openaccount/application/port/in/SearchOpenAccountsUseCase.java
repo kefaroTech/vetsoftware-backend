@@ -2,7 +2,7 @@ package com.vetsoftware.app.openaccount.application.port.in;
 
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
-import com.vetsoftware.app.openaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchOpenAccountsUseCase {

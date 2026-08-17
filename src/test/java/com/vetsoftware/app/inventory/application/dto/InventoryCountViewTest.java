@@ -1,5 +1,6 @@
 package com.vetsoftware.app.inventory.application.dto;
 
+import com.vetsoftware.app.shared.pagination.PageResult;
 import static com.vetsoftware.app.inventory.testsupport.InventoryMother.BRANCH_ID;
 import static com.vetsoftware.app.inventory.testsupport.InventoryMother.COUNT_ID;
 import static com.vetsoftware.app.inventory.testsupport.InventoryMother.EMPLEADO_ID;

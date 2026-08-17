@@ -1,7 +1,7 @@
 package com.vetsoftware.app.owner.application.port.in;
 
 import com.vetsoftware.app.owner.application.dto.OwnerDto;
-import com.vetsoftware.app.owner.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SearchOwnersUseCase {

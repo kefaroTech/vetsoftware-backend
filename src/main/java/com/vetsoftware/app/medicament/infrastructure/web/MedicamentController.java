@@ -6,7 +6,6 @@ import com.vetsoftware.app.medicament.application.command.CreateMedicamentComman
 import com.vetsoftware.app.medicament.application.command.UpdateMedicamentCommand;
 import com.vetsoftware.app.medicament.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.medicament.application.dto.MedicamentDto;
-import com.vetsoftware.app.medicament.application.dto.PageResult;
 import com.vetsoftware.app.medicament.application.port.in.CreateMedicamentUseCase;
 import com.vetsoftware.app.medicament.application.port.in.DeleteMedicamentUseCase;
 import com.vetsoftware.app.medicament.application.port.in.FindMedicamentUseCase;
@@ -68,9 +67,7 @@ public class MedicamentController {
     @GetMapping
     public PageResponse<MedicamentResponse> listAll(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<MedicamentDto> result = listUseCase.listAll(page, pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listAll(page, pageSize), this::toResponse);
     }
 
     @GetMapping("/available")

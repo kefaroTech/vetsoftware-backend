@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.hospitalization.application.dto.HospitalizationDto;
-import com.vetsoftware.app.hospitalization.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.hospitalization.application.port.out.HospitalizationRepository;
 import com.vetsoftware.app.hospitalization.domain.Hospitalization;
 import com.vetsoftware.app.hospitalization.testsupport.HospitalizationMother;

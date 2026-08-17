@@ -7,7 +7,6 @@ import com.vetsoftware.app.consultation.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.consultation.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
-import com.vetsoftware.app.consultation.application.dto.PageResult;
 import com.vetsoftware.app.consultation.application.dto.ConsultationTypeSummaryDto;
 import com.vetsoftware.app.consultation.application.port.in.CreateConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.DeleteConsultationUseCase;
@@ -65,10 +64,8 @@ public class ConsultationController {
     @GetMapping
     public PageResponse<ConsultationResponse> listAll(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<ConsultationDto> result = listUseCase.listAll(authz.currentCompanyId(), page,
-                pageSize);
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(listUseCase.listAll(authz.currentCompanyId(), page, pageSize),
+                this::toResponse);
     }
 
     @GetMapping("/{id}")

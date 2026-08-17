@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationprogressnote.application.usecase;
 
 import com.vetsoftware.app.hospitalizationprogressnote.application.dto.HospitalizationProgressNoteDto;
-import com.vetsoftware.app.hospitalizationprogressnote.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.ListHospitalizationProgressNotesByHospitalizationUseCase;
 import com.vetsoftware.app.hospitalizationprogressnote.application.port.out.HospitalizationProgressNoteRepository;
 import io.micrometer.observation.annotation.Observed;

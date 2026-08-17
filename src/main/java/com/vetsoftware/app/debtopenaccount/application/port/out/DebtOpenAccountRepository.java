@@ -1,6 +1,6 @@
 package com.vetsoftware.app.debtopenaccount.application.port.out;
 
-import com.vetsoftware.app.debtopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
 import java.util.List;
 import java.util.Optional;

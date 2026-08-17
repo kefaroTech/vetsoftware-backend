@@ -1,6 +1,6 @@
 package com.vetsoftware.app.generalchargeopenaccount.application.port.out;
 
-import com.vetsoftware.app.generalchargeopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
 import java.util.List;
 import java.util.Optional;

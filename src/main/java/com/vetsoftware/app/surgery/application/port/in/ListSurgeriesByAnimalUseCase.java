@@ -1,7 +1,7 @@
 package com.vetsoftware.app.surgery.application.port.in;
 
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
-import com.vetsoftware.app.surgery.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListSurgeriesByAnimalUseCase {

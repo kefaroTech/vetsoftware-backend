@@ -1,6 +1,6 @@
 package com.vetsoftware.app.problem.application.usecase;
 
-import com.vetsoftware.app.problem.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.problem.application.dto.ProblemDto;
 import com.vetsoftware.app.problem.application.port.in.ListProblemsByAnimalUseCase;
 import com.vetsoftware.app.problem.application.port.out.ProblemRepository;

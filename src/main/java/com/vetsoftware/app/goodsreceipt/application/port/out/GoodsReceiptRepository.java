@@ -1,7 +1,7 @@
 package com.vetsoftware.app.goodsreceipt.application.port.out;
 
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
-import com.vetsoftware.app.goodsreceipt.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceipt;
 import java.util.List;
 import java.util.Optional;

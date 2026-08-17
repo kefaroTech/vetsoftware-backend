@@ -1,7 +1,7 @@
 package com.vetsoftware.app.spa.application.usecase;
 
 import com.vetsoftware.app.spa.application.dto.SpaDto;
-import com.vetsoftware.app.spa.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.spa.application.port.in.ListSpasByAnimalUseCase;
 import com.vetsoftware.app.spa.application.port.out.SpaRepository;
 import io.micrometer.observation.annotation.Observed;

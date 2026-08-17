@@ -1,7 +1,7 @@
 package com.vetsoftware.app.hospitalizationprogressnote.application.port.out;
 
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNote;
-import com.vetsoftware.app.hospitalizationprogressnote.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.Optional;
 
 public interface HospitalizationProgressNoteRepository {

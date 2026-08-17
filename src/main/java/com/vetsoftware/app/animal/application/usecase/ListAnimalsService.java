@@ -1,7 +1,7 @@
 package com.vetsoftware.app.animal.application.usecase;
 
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
-import com.vetsoftware.app.animal.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsUseCase;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
 import io.micrometer.observation.annotation.Observed;

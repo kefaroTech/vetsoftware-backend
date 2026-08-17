@@ -4,7 +4,7 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.problem.application.command.CreateProblemCommand;
 import com.vetsoftware.app.problem.application.command.UpdateProblemCommand;
 import com.vetsoftware.app.problem.application.dto.ProblemDto;
-import com.vetsoftware.app.problem.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.problem.application.port.in.CreateProblemUseCase;
 import com.vetsoftware.app.problem.application.port.in.DeleteProblemUseCase;
@@ -51,8 +51,7 @@ public class ProblemController {
             @RequestParam(defaultValue = "20") int pageSize) {
         PageResult<ProblemDto> result = listByAnimalUseCase.execute(
                 new ListProblemsByAnimalQuery(animalId, authz.currentCompanyId(), page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse.from(result, this::toResponse);
     }
 
     @PutMapping("/{id}")

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.medicament.application.port.in;
 
 import com.vetsoftware.app.medicament.application.dto.MedicamentDto;
-import com.vetsoftware.app.medicament.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListMedicamentsUseCase {

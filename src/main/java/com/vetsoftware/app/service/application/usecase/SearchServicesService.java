@@ -1,7 +1,7 @@
 package com.vetsoftware.app.service.application.usecase;
 
 import com.vetsoftware.app.service.application.command.SearchServicesCommand;
-import com.vetsoftware.app.service.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.service.application.dto.ServiceDto;
 import com.vetsoftware.app.service.application.port.in.SearchServicesUseCase;
 import com.vetsoftware.app.service.application.port.out.ServiceRepository;

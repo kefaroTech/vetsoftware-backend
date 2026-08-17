@@ -1,5 +1,6 @@
 package com.vetsoftware.app.product.application.dto;
 
+import com.vetsoftware.app.shared.pagination.PageResult;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.product.domain.Product;

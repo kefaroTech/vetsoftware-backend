@@ -1,7 +1,7 @@
 package com.vetsoftware.app.deworming.application.port.out;
 
 import com.vetsoftware.app.deworming.domain.Deworming;
-import com.vetsoftware.app.deworming.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.List;
 import java.util.Optional;
 

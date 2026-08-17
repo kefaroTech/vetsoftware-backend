@@ -3,7 +3,8 @@ package com.vetsoftware.app.service.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.service.application.command.SearchServicesCommand;
-import com.vetsoftware.app.service.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.service.application.port.out.ServiceRepository;
 import com.vetsoftware.app.service.domain.Service;
 import com.vetsoftware.app.servicecategory.infrastructure.persistence.ServiceCategoryJpaEntity;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
@@ -82,13 +82,9 @@ public class JpaServiceRepository implements ServiceRepository {
     @Override
     public PageResult<Service> search(SearchServicesCommand command) {
         Specification<ServiceJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "createdDate"));
-        Page<ServiceJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<Service> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<ServiceJpaEntity> page = jpaRepository.findAll(spec, Pages.request(command.page(),
+                command.pageSize(), Sort.by(Sort.Direction.DESC, "createdDate")));
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<ServiceJpaEntity> buildSpec(SearchServicesCommand command) {

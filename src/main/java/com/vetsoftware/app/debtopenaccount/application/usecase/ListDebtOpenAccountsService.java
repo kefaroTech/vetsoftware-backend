@@ -1,7 +1,7 @@
 package com.vetsoftware.app.debtopenaccount.application.usecase;
 
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
-import com.vetsoftware.app.debtopenaccount.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.out.DebtOpenAccountRepository;
 import io.micrometer.observation.annotation.Observed;

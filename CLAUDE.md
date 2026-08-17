@@ -13,13 +13,13 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` (ArchUnit) ejecuta diez de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
+`HexagonalArchitectureTest` (ArchUnit) ejecuta trece de las reglas de aquí y **rompe el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelo:
 
 ```bash
 mvn test -Dtest=HexagonalArchitectureTest
 ```
 
-Seis reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción y **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**. Las otras cuatro encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras cuatro encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
 - **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
 - **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
@@ -118,9 +118,14 @@ com.<company>.<project>/
 │       └── web/
 │           ├── request/        ← DTOs de entrada REST
 │           └── response/       ← DTOs de salida REST
+├── shared/                     ← el kernel: SOLO tipos sin semántica de negocio (ver criterio)
+│   ├── domain/Money.java       ← aritmética monetaria
+│   ├── pagination/             ← PageResult (aplicación) + Pages (puente con Spring Data)
+│   └── security/               ← @NoAuthorizationRequired
 └── infrastructure/
     └── web/
-        └── GlobalExceptionHandler.java   ← único archivo compartido entre features
+        ├── GlobalExceptionHandler.java
+        └── PageResponse.java   ← la página tal como sale por HTTP
 ```
 
 ### Regla de vertical slicing — nunca romper esto
@@ -130,6 +135,70 @@ com.<company>.<project>/
 - ❌ No importar DTOs de aplicación ni Responses de otra feature
 - ✅ Si dos features necesitan comunicarse, usar IDs primitivos (`Long companyId`), un companion VO propio (`XxxRef`), o un puerto explícito
 - ✅ Excepción acotada: `<feature>/infrastructure/persistence/` puede importar `otraFeature.infrastructure.persistence.XxxJpaEntity` y `XxxJpaRepository` para asociaciones JPA (`@ManyToOne`) — ver sección "Cross-feature references"
+
+### Qué puede entrar en `shared/` — el criterio de admisión
+
+El vertical slicing justifica duplicar tipos **de dominio**: que `animal` y `product` tengan
+cada uno su `XxxNotFoundException` es lo que mantiene las features independientes. No justifica
+duplicar **infraestructura sin semántica de negocio**, y confundir las dos cosas tuvo un precio
+medido: 36 declaraciones del concepto «página» (BE-21), 12 de ellas creadas en una sola semana.
+
+Un tipo entra en `shared/` **solo si cumple las cuatro**:
+
+1. **No significa nada distinto en dos features.** «Redondear a centavos» y «una lista con su
+   total y su número de página» no cambian de sentido entre facturas y animales. «El estado de
+   una cita» sí.
+2. **No tiene estado ni identidad**: `record` inmutable o clase de estáticos. Nada que persista.
+3. **No referencia ninguna feature**: ni entidades, ni DTOs, ni FKs, ni enums de negocio.
+4. **Duplicarlo obligaría a escribir N veces la siguiente regla transversal** (paginación,
+   auditoría de campo, soft delete, filtro de tenant). Ese es el coste real que se evita.
+
+Hoy lo cumplen tres cosas y solo tres: `Money`, `pagination` y `@NoAuthorizationRequired`.
+**Ante la duda, no entra**: un tipo de más en `shared/` es la grieta por la que vuelve la capa
+horizontal que este documento prohíbe.
+
+## Paginación — un solo contrato a cada lado de la frontera
+
+Hay **dos** tipos de página en todo el proyecto, y ninguno se declara por feature:
+
+| Tipo | Dónde | Quién lo usa |
+|---|---|---|
+| `shared.pagination.PageResult<T>` | dentro | `port/in`, `port/out`, `usecase`, adaptadores JPA |
+| `infrastructure.web.PageResponse<T>` | la frontera | los controllers; es el nombre que ven los fronts en el OpenAPI |
+| `shared.pagination.Pages` | puente | **solo** `infrastructure/persistence` |
+
+- **Un caso de uso paginado devuelve `PageResult<XxxDto>`**, y se construye con
+  `repository.findAll(...).map(XxxDto::from)`. Nunca recalcules los totales sobre el contenido
+  ya paginado: son los de la consulta.
+- **El adaptador JPA no construye `PageRequest` a mano.** `Pages.request(page, pageSize, sort)`
+  normaliza el índice y acota el tamaño (`DEFAULT_SIZE` 20, `MAX_SIZE` 200); `Pages.result(page,
+  mapper::toDomain)` convierte la página de Spring Data. El `Sort` sí lo decide cada adaptador,
+  y debe ser total —con desempate por `id`—: sin él, dos páginas consecutivas repiten u omiten
+  filas.
+- **El controller no arrastra los cinco campos a mano.** `PageResponse.from(result,
+  this::toResponse)`, y el `@RequestParam` sigue siendo `page` (base 0) + `pageSize`.
+- Las tres reglas de ArchUnit que lo sostienen —`PAGINACION_CON_UN_SOLO_CONTRATO`,
+  `PAGINA_ACOTADA_EN_UN_SOLO_SITIO` y `PUENTE_DE_PAGINACION_SOLO_EN_PERSISTENCIA`— son duras.
+  Declarar un `PageResult` dentro de una feature, llamar a `PageRequest.of` fuera del kernel, o
+  usar `Pages` desde `application`, rompe el build.
+
+```java
+// ✅ Adaptador
+@Override
+public PageResult<Animal> findAllByCompanyId(Long companyId, int page, int pageSize) {
+    Sort order = Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id"));
+    return Pages.result(jpaRepository.findAllByCompany_Id(companyId,
+            Pages.request(page, pageSize, order)), mapper::toDomain);
+}
+
+// ✅ Controller
+@GetMapping
+public PageResponse<AnimalResponse> listAll(@RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int pageSize) {
+    return PageResponse.from(listUseCase.listAll(authz.currentCompanyId(), page, pageSize),
+            this::toResponse);
+}
+```
 
 ## Architecture: Hexagonal (Ports & Adapters)
 
@@ -737,6 +806,10 @@ mvn verify                    # además comprueba el suelo de cobertura
 ## Anti-patterns — nunca hacer esto
 
 - ❌ Crear capas horizontales compartidas top-level (`domain/`, `application/`, `infrastructure/` fuera de una feature)
+- ❌ Declarar un `PageResult` (o `PageResponse`, `PagedResult`, `Slice`…) dentro de una feature — el contrato de paginación es único y vive en `shared/pagination`; la regla `PAGINACION_CON_UN_SOLO_CONTRATO` rompe el build
+- ❌ Llamar a `PageRequest.of(...)` fuera del kernel — sin acotar, `?pageSize=100000` devuelve la tabla entera; usa `Pages.request(...)`
+- ❌ Copiar en el controller el bloque de cinco campos para convertir `PageResult` en `PageResponse` — es `PageResponse.from(result, this::toResponse)`
+- ❌ Meter en `shared/` cualquier cosa que no cumpla las cuatro condiciones del criterio de admisión (ver "Qué puede entrar en `shared/`")
 - ❌ Importar clases de dominio de otra feature (`employee` importando `company.domain.Company`)
 - ❌ Usar UUID, String u otro tipo como ID de entidad (siempre `Long` autogenerado por la BD)
 - ❌ Ports de entrada importando clases de `infrastructure` (rompe la dirección de dependencias)

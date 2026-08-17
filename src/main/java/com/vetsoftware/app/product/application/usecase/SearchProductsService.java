@@ -1,7 +1,7 @@
 package com.vetsoftware.app.product.application.usecase;
 
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import com.vetsoftware.app.product.application.port.in.SearchProductsUseCase;
 import com.vetsoftware.app.product.application.port.out.ProductRepository;

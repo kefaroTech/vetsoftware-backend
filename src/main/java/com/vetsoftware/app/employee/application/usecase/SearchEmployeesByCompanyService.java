@@ -2,7 +2,7 @@ package com.vetsoftware.app.employee.application.usecase;
 
 import com.vetsoftware.app.employee.application.command.SearchEmployeesCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
-import com.vetsoftware.app.employee.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.employee.application.port.in.SearchEmployeesUseCase;
 import com.vetsoftware.app.employee.application.port.out.EmployeeBranchesQueryPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;

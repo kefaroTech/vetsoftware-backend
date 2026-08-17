@@ -3,13 +3,13 @@ package com.vetsoftware.app.employee.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.employee.application.command.SearchEmployeesCommand;
-import com.vetsoftware.app.employee.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -71,12 +71,9 @@ public class JpaEmployeeRepository implements EmployeeRepository {
                 : "%" + command.query().trim() + "%";
         // El ORDER BY va embebido en la query nativa (evita el manejo de Sort en
         // queries nativas).
-        PageRequest pageRequest = PageRequest.of(command.page(), command.pageSize());
-        Page<EmployeeJpaEntity> page = jpaRepository
-                .searchByCompanyIncludingDisabled(command.companyId(), q, pageRequest);
-        List<Employee> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        Page<EmployeeJpaEntity> page = jpaRepository.searchByCompanyIncludingDisabled(
+                command.companyId(), q, Pages.request(command.page(), command.pageSize()));
+        return Pages.result(page, mapper::toDomain);
     }
 
     @Override

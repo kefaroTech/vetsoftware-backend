@@ -6,7 +6,7 @@ import com.vetsoftware.app.inventory.application.command.SearchStockCommand;
 import com.vetsoftware.app.inventory.application.dto.InventoryAlertsView;
 import com.vetsoftware.app.inventory.application.dto.InventoryValuationView;
 import com.vetsoftware.app.inventory.application.dto.KardexExportRow;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.StockLotView;
 import com.vetsoftware.app.inventory.application.dto.StockMovementView;

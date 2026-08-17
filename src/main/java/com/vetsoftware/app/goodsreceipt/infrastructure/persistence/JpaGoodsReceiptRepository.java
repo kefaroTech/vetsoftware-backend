@@ -5,7 +5,8 @@ import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaRepository
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
-import com.vetsoftware.app.goodsreceipt.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.goodsreceipt.application.port.out.GoodsReceiptRepository;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceipt;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptLine;
@@ -77,14 +78,10 @@ public class JpaGoodsReceiptRepository implements GoodsReceiptRepository {
     @Override
     public PageResult<GoodsReceipt> search(SearchGoodsReceiptsCommand command) {
         Specification<GoodsReceiptJpaEntity> spec = buildSpec(command);
-        PageRequest pageRequest = PageRequest.of(Math.max(command.page(), 0),
-                command.pageSize() <= 0 ? 20 : command.pageSize(),
-                Sort.by(Sort.Direction.DESC, "receiptDate")
-                        .and(Sort.by(Sort.Direction.DESC, "id")));
+        PageRequest pageRequest = Pages.request(command.page(), command.pageSize(), Sort
+                .by(Sort.Direction.DESC, "receiptDate").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<GoodsReceiptJpaEntity> page = jpaRepository.findAll(spec, pageRequest);
-        List<GoodsReceipt> content = page.getContent().stream().map(mapper::toDomain).toList();
-        return new PageResult<>(content, page.getNumber(), page.getSize(), page.getTotalElements(),
-                page.getTotalPages());
+        return Pages.result(page, mapper::toDomain);
     }
 
     private Specification<GoodsReceiptJpaEntity> buildSpec(SearchGoodsReceiptsCommand command) {

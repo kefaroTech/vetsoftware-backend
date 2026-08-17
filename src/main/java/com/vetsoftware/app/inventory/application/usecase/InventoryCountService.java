@@ -4,7 +4,7 @@ import com.vetsoftware.app.inventory.application.command.RecordAdjustmentCommand
 import com.vetsoftware.app.inventory.application.command.RecordCountCommand;
 import com.vetsoftware.app.inventory.application.command.SearchCountsQuery;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.inventory.application.port.in.GetCountUseCase;
 import com.vetsoftware.app.inventory.application.port.in.ListCountsUseCase;
 import com.vetsoftware.app.inventory.application.port.in.RecordCountUseCase;

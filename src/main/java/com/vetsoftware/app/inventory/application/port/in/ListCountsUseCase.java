@@ -2,7 +2,7 @@ package com.vetsoftware.app.inventory.application.port.in;
 
 import com.vetsoftware.app.inventory.application.command.SearchCountsQuery;
 import com.vetsoftware.app.inventory.application.dto.InventoryCountView;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**

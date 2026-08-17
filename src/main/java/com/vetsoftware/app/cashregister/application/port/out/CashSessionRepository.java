@@ -2,7 +2,7 @@ package com.vetsoftware.app.cashregister.application.port.out;
 
 import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQuery;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
-import com.vetsoftware.app.cashregister.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import java.util.List;
 import java.util.Optional;

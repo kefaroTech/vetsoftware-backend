@@ -6,7 +6,6 @@ import com.vetsoftware.app.service.application.command.CreateServiceCommand;
 import com.vetsoftware.app.service.application.command.SearchServicesCommand;
 import com.vetsoftware.app.service.application.command.UpdateServiceCommand;
 import com.vetsoftware.app.service.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.service.application.dto.PageResult;
 import com.vetsoftware.app.service.application.dto.ServiceCategorySummaryDto;
 import com.vetsoftware.app.service.application.dto.ServiceDto;
 import com.vetsoftware.app.service.application.dto.TaxSummaryDto;
@@ -79,10 +78,9 @@ public class ServiceController {
             @RequestParam(required = false) Long serviceCategoryId,
             @RequestParam(required = false) Long taxId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        PageResult<ServiceDto> result = searchUseCase.execute(new SearchServicesCommand(
-                authz.currentCompanyId(), name, serviceCategoryId, taxId, page, pageSize));
-        return new PageResponse<>(result.content().stream().map(this::toResponse).toList(),
-                result.page(), result.pageSize(), result.totalElements(), result.totalPages());
+        return PageResponse
+                .from(searchUseCase.execute(new SearchServicesCommand(authz.currentCompanyId(),
+                        name, serviceCategoryId, taxId, page, pageSize)), this::toResponse);
     }
 
     @GetMapping("/{id}")

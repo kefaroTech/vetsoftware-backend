@@ -1,7 +1,7 @@
 package com.vetsoftware.app.inventory.application.port.in;
 
 import com.vetsoftware.app.inventory.application.command.SearchPurchasesQuery;
-import com.vetsoftware.app.inventory.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import org.springframework.security.access.prepost.PreAuthorize;
 

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.vaccination.application.port.in;
 
 import com.vetsoftware.app.vaccination.application.dto.VaccinationDto;
-import com.vetsoftware.app.vaccination.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ListVaccinationsByAnimalUseCase {

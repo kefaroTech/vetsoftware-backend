@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.product.application.command.SearchProductsCommand;
-import com.vetsoftware.app.product.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.product.application.dto.ProductDto;
 import com.vetsoftware.app.product.application.port.out.ProductRepository;
 import com.vetsoftware.app.product.domain.Product;

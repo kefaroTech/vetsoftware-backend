@@ -1,7 +1,7 @@
 package com.vetsoftware.app.problem.application.port.out;
 
 import com.vetsoftware.app.problem.domain.Problem;
-import com.vetsoftware.app.problem.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import java.util.Optional;
 
 public interface ProblemRepository {

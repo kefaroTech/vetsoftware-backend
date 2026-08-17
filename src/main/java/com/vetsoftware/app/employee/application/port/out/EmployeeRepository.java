@@ -1,7 +1,7 @@
 package com.vetsoftware.app.employee.application.port.out;
 
 import com.vetsoftware.app.employee.application.command.SearchEmployeesCommand;
-import com.vetsoftware.app.employee.application.dto.PageResult;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.employee.domain.Employee;
 import java.util.List;
 import java.util.Optional;
