@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -650,5 +651,148 @@ final class VetSoftwareConditions {
         steps.add(finalCall.getTargetOwner().getSimpleName() + "." + finalCall.getTarget().getName()
                 + "()");
         return steps;
+    }
+
+    // ── BE-10: cada adaptador con su rodaja ──────────────────────────────────
+
+    /** Sufijo de las rodajas de persistencia; failsafe solo recoge {@code *IT}. */
+    private static final String SUFIJO_RODAJA_PERSISTENCIA = "IT";
+
+    /**
+     * Sufijo de las rodajas web; surefire solo recoge {@code *Test}/{@code *Tests}.
+     */
+    private static final String SUFIJO_RODAJA_WEB = "Test";
+
+    /** Marca de {@code target/test-classes} en el URI de origen de una clase. */
+    private static final String SALIDA_DE_TEST = "/test-classes/";
+
+    /**
+     * Deja fuera lo que no es código de producción. El {@code @AnalyzeClasses} de
+     * {@link PiramideDeTestsTest} importa {@code src/test} a propósito —lo necesita
+     * para <em>encontrar</em> las rodajas—, y eso mete en el universo cosas que
+     * parecen adaptadores sin serlo.
+     *
+     * <p>
+     * El caso real: {@code GlobalExceptionHandlerTest.BoomController}, un
+     * {@code @RestController} anidado de juguete cuyas rutas lanzan cada excepción
+     * que se quiere mapear. Sin este filtro la regla exigía un
+     * {@code BoomControllerTest} —una rodaja para un fixture—, y esa violación
+     * fantasma habría entrado al store congelada, contaminando el indicador desde
+     * el primer día.
+     *
+     * <p>
+     * Dos filtros, porque hacen falta los dos: el URI de origen descarta lo que
+     * viene de {@code target/test-classes} (la misma señal que usa
+     * {@code ImportOption.DoNotIncludeTests}), y {@code getEnclosingClass} descarta
+     * las anidadas, que nunca son un adaptador ni un controller de producción.
+     */
+    static DescribedPredicate<JavaClass> sonCodigoDeProduccion() {
+        return DescribedPredicate.describe("son codigo de produccion",
+                VetSoftwareConditions::esCodigoDeProduccion);
+    }
+
+    private static boolean esCodigoDeProduccion(JavaClass javaClass) {
+        if (javaClass.getEnclosingClass().isPresent()) {
+            return false;
+        }
+        return javaClass.getSource()
+                .map(source -> !source.getUri().toString().contains(SALIDA_DE_TEST)).orElse(true);
+    }
+
+    /**
+     * Exige que todo adaptador {@code JpaXxxRepository} tenga en su mismo paquete
+     * una rodaja de persistencia: una clase {@code *IT} cuyo nombre contenga el
+     * núcleo del adaptador ({@code JpaStockLotRepository} →
+     * {@code StockLotPersistenceIT}).
+     *
+     * <p>
+     * <strong>Por qué el nombre y no solo el paquete.</strong> Bastaría con exigir
+     * «algún {@code *IT} en el paquete», pero entonces una sola rodaja taparía los
+     * dieciséis adaptadores de {@code animal.infrastructure.persistence} y el
+     * indicador dejaría de contar lo que importa. Cruzar por el núcleo del nombre
+     * hace que la unidad de medida sea el adaptador, que es la unidad de riesgo:
+     * cada uno traduce su propio SQL y su propio {@code Sort}.
+     *
+     * <p>
+     * <strong>Qué queda fuera, a propósito.</strong> Solo entran los adaptadores
+     * que siguen el naming del CLAUDE.md ({@code Jpa} + entidad +
+     * {@code Repository}). Los {@code JpaXxxQueryPort},
+     * {@code JpaXxxValidationPort} y los adaptadores sueltos
+     * ({@code NumberingAllocationAdapter}, {@code DianJobLeaseAdapter}) no se
+     * exigen: son proyecciones de una consulta o de un lease, y su rodaja aporta
+     * bastante menos que la del adaptador que escribe. Ampliar el alcance es
+     * ampliar el predicado, no relajar esta condición.
+     */
+    static ArchCondition<JavaClass> tenerRodajaDePersistencia() {
+        return new ArchCondition<>("tener una rodaja *IT en su mismo paquete") {
+            @Override
+            public void check(JavaClass adaptador, ConditionEvents events) {
+                String nucleo = nucleoDelAdaptador(adaptador.getSimpleName());
+                boolean cubierto = hermanasDePaquete(adaptador)
+                        .anyMatch(nombre -> nombre.endsWith(SUFIJO_RODAJA_PERSISTENCIA)
+                                && nombre.contains(nucleo));
+                events.add(new SimpleConditionEvent(adaptador, cubierto,
+                        adaptador.getSimpleName() + " no tiene rodaja de persistencia: falta "
+                                + nucleo + "PersistenceIT (@DataJpaTest) en "
+                                + adaptador.getPackageName()));
+            }
+        };
+    }
+
+    /**
+     * Exige que todo {@code @RestController} tenga en su mismo paquete una rodaja
+     * web: una clase {@code *Test} cuyo nombre empiece por el del controller
+     * ({@code AnimalController} → {@code AnimalControllerTest}).
+     *
+     * <p>
+     * <strong>Por qué el prefijo y no «algún {@code *Test} en el paquete».</strong>
+     * Porque en {@code infrastructure/web} conviven rodajas y tests unitarios
+     * corrientes: {@code RefreshTokenCookieTest}, {@code CashArqueoCsvTest} e
+     * {@code InventoryCsvTest} son JUnit puro sobre un helper, no ejercitan ningún
+     * endpoint, y un criterio por paquete los contaría como red que no existe.
+     * Exigir el prefijo del controller elimina los tres falsos positivos sin
+     * enumerar excepciones.
+     *
+     * <p>
+     * <strong>El {@code GlobalExceptionHandler} no cuenta como controller</strong>:
+     * es {@code @RestControllerAdvice}, una anotación distinta que no está
+     * meta-anotada con {@code @RestController}, así que el predicado ni lo mira.
+     */
+    static ArchCondition<JavaClass> tenerRodajaWeb() {
+        return new ArchCondition<>("tener una rodaja *Test en su mismo paquete") {
+            @Override
+            public void check(JavaClass controller, ConditionEvents events) {
+                String esperado = controller.getSimpleName() + SUFIJO_RODAJA_WEB;
+                boolean cubierto = hermanasDePaquete(controller)
+                        .anyMatch(nombre -> nombre.endsWith(SUFIJO_RODAJA_WEB)
+                                && nombre.startsWith(controller.getSimpleName()));
+                events.add(new SimpleConditionEvent(controller, cubierto,
+                        controller.getSimpleName() + " no tiene rodaja web: falta " + esperado
+                                + " (@WebMvcTest) en " + controller.getPackageName()));
+            }
+        };
+    }
+
+    /**
+     * {@code JpaStockLotRepository} → {@code StockLot}. El núcleo es lo que
+     * comparten el adaptador y su rodaja; el prefijo {@code Jpa} y el sufijo
+     * {@code Repository} son ruido del naming.
+     */
+    private static String nucleoDelAdaptador(String simpleName) {
+        String nucleo = simpleName.substring("Jpa".length());
+        return nucleo.substring(0, nucleo.length() - "Repository".length());
+    }
+
+    /**
+     * Nombres simples de las clases de nivel superior del mismo paquete —de los dos
+     * árboles, porque el {@code @AnalyzeClasses} de {@code PiramideDeTestsTest} sí
+     * importa {@code src/test}—. Sin subpaquetes: un test de {@code web/request} no
+     * es la rodaja del controller. Sin clases anidadas: las {@code @Nested} de una
+     * rodaja no son rodajas.
+     */
+    private static Stream<String> hermanasDePaquete(JavaClass javaClass) {
+        return javaClass.getPackage().getClasses().stream()
+                .filter(hermana -> hermana.getEnclosingClass().isEmpty())
+                .filter(hermana -> !hermana.equals(javaClass)).map(JavaClass::getSimpleName);
     }
 }
