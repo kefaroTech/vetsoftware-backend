@@ -1,14 +1,18 @@
 name: Backend CI
 
+# Solo pull_request. El evento evalua refs/pull/N/merge, que es exactamente el
+# arbol que queda en develop despues del merge: revalidarlo en el push posterior
+# es correr dos veces la misma verificacion sobre el mismo codigo.
 on:
   pull_request:
     branches:
       - develop
       - main
-  push:
-    branches:
-      - develop
-      - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
   workflow_dispatch:
 
 permissions:
@@ -23,6 +27,8 @@ jobs:
     name: Verify backend
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      container-image: ${{ steps.changes.outputs.docker }}
     env:
       CI: true
       HUSKY: 0
@@ -31,7 +37,36 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # La historia completa es lo que permite diferenciar contra la base del
+          # pull request y decidir si hay que construir la imagen.
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Detect container image changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Un workflow_dispatch no trae base contra la que comparar. Se construye
+          # la imagen: equivocarse hacia el lado caro es preferible a no verificar
+          # un Dockerfile roto en una ejecucion manual.
+          if [ -z "$BASE_SHA" ]; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            echo "Ejecucion sin base de comparacion; se construye la imagen."
+            exit 0
+          fi
+
+          touched="$(git diff --name-only "$BASE_SHA" HEAD -- Dockerfile .dockerignore)"
+          if [ -n "$touched" ]; then
+            echo "docker=true" >> "$GITHUB_OUTPUT"
+            echo "El pull request toca la imagen: $touched"
+          else
+            echo "docker=false" >> "$GITHUB_OUTPUT"
+            echo "Ni Dockerfile ni .dockerignore cambian; no se construye la imagen."
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
@@ -60,9 +95,13 @@ jobs:
       - name: Verify with Maven
         run: mvn --batch-mode --no-transfer-progress verify
 
+  # Solo cuando el pull request toca la imagen. Fuera de ese caso este job
+  # reconstruia lo mismo que publish-dev-image publica minutos despues sobre el
+  # mismo commit, y el Dockerfile es identico en ambos.
   container-image:
     name: Build ARM64 container image
     needs: verify
+    if: needs.verify.outputs.container-image == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -87,5 +126,7 @@ jobs:
           platforms: linux/arm64
           push: false
           tags: vetsoftware/backend:ci
+          # Solo lectura de cache. Lo que se escribe desde refs/pull/** queda
+          # aislado en el scope de la rama del PR y develop no puede leerlo: seria
+          # ocupar presupuesto de cache (4,07 GB de 10 GB) sin acelerar nada.
           cache-from: type=gha,scope=backend-arm64
-          cache-to: type=gha,mode=max,scope=backend-arm64
