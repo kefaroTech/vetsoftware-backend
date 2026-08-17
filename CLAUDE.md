@@ -13,15 +13,20 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **quince** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
+`HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **dieciséis** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
 
 ```bash
 mvn test -Dtest='HexagonalArchitectureTest,PiramideDeTestsTest'
 ```
 
-Nueve reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, y las tres de paginación (BE-21): **un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+Diez reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, las tres de paginación (BE-21) —**un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**— y **ningún doble de test escaneable**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
-**Son dos clases porque miran universos distintos.** `HexagonalArchitectureTest` declara `ImportOption.DoNotIncludeTests` — sus trece reglas hablan de código de producción. Las dos de BE-10 (**cada adaptador con su rodaja**) necesitan ver `src/main` y `src/test` a la vez, así que viven en `PiramideDeTestsTest`, con su propio `@AnalyzeClasses` sin esa opción.
+**Son dos clases porque miran universos distintos.** `HexagonalArchitectureTest` declara `ImportOption.DoNotIncludeTests` — sus trece reglas hablan de código de producción. Las **tres** que necesitan ver `src/main` y `src/test` a la vez viven en `PiramideDeTestsTest`, con su propio `@AnalyzeClasses` sin esa opción: las dos de BE-10 (**cada adaptador con su rodaja**) y `DOBLE_DE_TEST_NO_ESCANEABLE`.
+
+- **Ningún doble de test puede ser candidato al escaneo de producción** (`DOBLE_DE_TEST_NO_ESCANEABLE`, dura). Toda clase del árbol de test meta-anotada con `@Component` —es decir `@Configuration`, `@SpringBootConfiguration`, `@RestController`, `@Service`, `@Repository` o `@Component`— tiene que estar **meta-anotada con `@TestComponent`**. `@TestConfiguration` ya lo está, así que una configuración de test bien escrita cumple sin mencionarlo; un doble que no sea configuración —un controller de juguete, un `@SpringBootConfiguration` que sirve de raíz a un `@SpringBootTest`— se marca con `@TestComponent` a secas.
+  - **El defecto que la justifica**: un test declaró su cableado como `@Configuration` simple. `target/test-classes` está en el classpath de failsafe y esa clase vive dentro de la raíz del `@ComponentScan`, así que su doble de `CreateAppointmentUseCase` se registraba en todos los contextos; `AppointmentController` encontraba dos beans y **ningún `@SpringBootTest` del repositorio arrancaba** — noventa segundos de build para morir con un `NoUniqueBeanDefinitionException` que no señala a la causa.
+  - **La sutileza que la hace imprescindible**: `TestTypeExcludeFilter` sí descarta las clases anidadas dentro de una clase de test, pero solo reconoce como clase de test a la que tiene **algún `@Test` de primer nivel**. La culpable tenía todos los suyos dentro de `@Nested`. Es decir: la diferencia entre bomba y bomba desactivada era una condición invisible en revisión, que se arma sola el día que alguien mueve el último `@Test` suelto a un `@Nested`. La regla la convierte en una invariante sintáctica.
+  - **`@TestComponent` no cambia cómo se registra el doble.** Los filtros de exclusión solo aplican al escaneo: lo nombrado en un `@Import`, en `@WebMvcTest(controllers = …)` o en `@SpringBootTest(classes = …)` se instala igual.
 
 - **Puerto sin `@PreAuthorize`**: la única salida es anotar la interfaz con `@NoAuthorizationRequired(reason = "...")` y escribir el motivo. No hay forma silenciosa de saltarse el gate.
 - **Bajar deuda congelada**: arregla el código y vuelve a correr el test; ArchUnit quita del store lo resuelto. Cuando una regla llegue a cero, quítale el `freeze(...)`.
@@ -692,7 +697,10 @@ Cuatro decisiones de criterio, que son las que evitan que la regla mienta:
   rodajas mete también sus dobles en el universo analizado:
   `GlobalExceptionHandlerTest.BoomController` es un `@RestController` de juguete y la regla
   llegó a exigirle su propia rodaja. `sonCodigoDeProduccion()` descarta lo que viene de
-  `target/test-classes` y lo que es una clase anidada.
+  `target/test-classes` y lo que es una clase anidada. Que no sea un adaptador no lo hace
+  inofensivo: ese mismo `BoomController` va marcado con `@TestComponent` para que no pueda
+  entrar en el escaneo de producción, y eso lo comprueba `DOBLE_DE_TEST_NO_ESCANEABLE` (ver
+  «Las reglas de este documento se verifican solas»).
 
 Fuera de alcance a propósito: los `JpaXxxQueryPort` / `JpaXxxValidationPort` y los adaptadores
 que no siguen el naming (`NumberingAllocationAdapter`, `DianJobLeaseAdapter`). Ampliar el
