@@ -7,6 +7,7 @@ import com.vetsoftware.app.animalalert.domain.AnimalAlertNotFoundException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorHasActiveChildrenException;
 import com.vetsoftware.app.animalcolor.domain.AnimalColorNotFoundException;
 import com.vetsoftware.app.appointment.domain.AppointmentNotFoundException;
+import com.vetsoftware.app.appointment.domain.AppointmentOverlapException;
 import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionException;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
@@ -296,6 +297,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             InvalidAppointmentTransitionException ex) {
         log.warn("Invalid appointment status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_APPOINTMENT_TRANSITION", ex.getMessage());
+    }
+
+    // BE-17: la cita se cruza con otra del mismo veterinario. El detail va escrito
+    // para el usuario final (a quién y a qué hora) porque el front lo pinta tal
+    // cual; overlappingAppointmentIds acompaña para que pueda enlazar las citas en
+    // conflicto. Se supera reenviando la operación con forceOverlap=true (que
+    // exige appointment.overlap.force).
+    //
+    // Los dos datos que salen ya vienen RECORTADOS al alcance de sede del caller
+    // desde el caso de uso: el cruce se calcula por veterinario, sin sede, pero el
+    // listado sí está acotado, y devolver el id de una cita de otra sede la hacía
+    // legible entera por GET /appointments/{id}.
+    //
+    // El log NO lleva el mensaje: arrastra el nombre del veterinario y el horario a
+    // un canal que no los necesita para diagnosticar. employeeId + número de cruces
+    // dicen lo mismo sin PII.
+    @ExceptionHandler(AppointmentOverlapException.class)
+    public ProblemDetail handleAppointmentOverlap(AppointmentOverlapException ex) {
+        log.warn("Appointment overlap: employeeId={} overlapCount={}", ex.getEmployeeId(),
+                ex.getOverlapCount());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "APPOINTMENT_OVERLAP", ex.getMessage());
+        pd.setProperty("overlappingAppointmentIds", ex.getOverlappingAppointmentIds());
+        return pd;
     }
 
     // Compras: transición de estado inválida en orden de compra o recepción (p. ej.

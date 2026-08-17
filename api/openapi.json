@@ -21949,6 +21949,12 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "durationMinutes" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 720,
+            "minimum" : 1
+          },
           "type" : {
             "type" : "string",
             "enum" : [ "CONSULTATION", "CONTROL", "VACCINATION", "DEWORMING", "SURGERY", "IMAGING", "LABORATORY", "GROOMING", "OTHER" ]
@@ -21985,6 +21991,9 @@
             "type" : "string",
             "maxLength" : 1000,
             "minLength" : 0
+          },
+          "forceOverlap" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "employeeId", "startAt", "type" ]
@@ -21999,6 +22008,12 @@
           "startAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "durationMinutes" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Duración propia de la cita en minutos. null = hereda la duración por defecto de la empresa (ajuste appointment.default_duration_minutes; 30 si no está configurado). El fin es derivado: startAt + duración.",
+            "example" : 30
           },
           "type" : {
             "type" : "string",
@@ -22048,6 +22063,7 @@
           },
           "overlappingAppointmentIds" : {
             "type" : "array",
+            "description" : "Citas del mismo veterinario con las que esta se cruza. Desde BE-17 el cruce bloquea con 409 APPOINTMENT_OVERLAP, así que este array solo llega no vacío cuando la operación se guardó con forceOverlap=true. Incluye únicamente las citas de las sedes que el usuario tiene asignadas: los cruces en otras sedes bloquean o se fuerzan igual, pero no se identifican. Nunca es null.",
             "items" : {
               "type" : "integer",
               "format" : "int64"
@@ -25458,6 +25474,12 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "durationMinutes" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 720,
+            "minimum" : 1
+          },
           "type" : {
             "type" : "string",
             "enum" : [ "CONSULTATION", "CONTROL", "VACCINATION", "DEWORMING", "SURGERY", "IMAGING", "LABORATORY", "GROOMING", "OTHER" ]
@@ -25498,6 +25520,9 @@
           "branchId" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "forceOverlap" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "employeeId", "startAt", "type" ]
@@ -25858,9 +25883,18 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "durationMinutes" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 720,
+            "minimum" : 1
+          },
           "employeeId" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "forceOverlap" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "employeeId", "startAt" ]

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- BE-17. El flag forceOverlap de los puertos de citas (create/update/reschedule) salta la
+         validacion de solape de agenda. Hasta ahora solo exigia 'appointment.create' -el rol mas
+         bajo del modulo, p.ej. una recepcionista- asi que cualquiera con permiso para crear citas
+         podia forzar el solape. Este changeset siembra el permiso independiente
+         'appointment.overlap.force' que el @PreAuthorize de esos tres puertos exige ademas.
+
+         sub_module_id se resuelve leyendo el de la fila YA EXISTENTE de 'appointment.create' en
+         vez de adivinar sub_modules.code: el modulo de citas no tiene ningun changeset Liquibase
+         que lo siembre (se creo por fuera, via consola de plataforma) y el catalogo de
+         sub_modules tiene un defecto conocido de fila duplicada para agenda/citas. Anclarse al
+         permiso hermano que el propio puerto ya usa evita depender de ese codigo ambiguo; si
+         'appointment.create' no existe en base_permissions el dia que esto corra, las cuatro
+         sentencias siguientes no insertan nada (fail-safe, no revientan la migracion) y hay que
+         repetir el seed en un changeset nuevo.
+
+         Solo se asocia al rol base ADMIN, mismo patron que 196 (cashregister.close) y 209
+         (cashregister.history.read): ninguna capacidad de excepcion se le da por defecto al rol
+         mas bajo. Se hace ademas el backfill a permissions/role_permissions de las empresas ya
+         existentes: el administrador de cada clinica actual podra forzar solape sin que un
+         superadmin tenga que concederselo a mano; una recepcionista con solo appointment.create
+         seguira sin poder hasta que su propio admin se lo asigne explicitamente. -->
+    <changeSet id="223_appointment_overlap_force_permission" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Forzar solape de citas', 'appointment.overlap.force', bp.sub_module_id, 1
+            FROM base_permissions bp
+            WHERE bp.code = 'appointment.create'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_permissions WHERE code = 'appointment.overlap.force');
+
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'appointment.overlap.force'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions brp
+                  WHERE brp.base_role_id = br.id AND brp.base_permission_id = bp.id);
+
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, c.id, bp.sub_module_id, 1
+            FROM companies c
+            CROSS JOIN base_permissions bp
+            WHERE bp.code = 'appointment.overlap.force'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = c.id AND p.code = bp.code);
+
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                              AND p.code = 'appointment.overlap.force'
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (
+                SELECT id FROM permissions WHERE code = 'appointment.overlap.force');
+
+            DELETE FROM permissions WHERE code = 'appointment.overlap.force';
+
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions WHERE code = 'appointment.overlap.force');
+
+            DELETE FROM base_permissions WHERE code = 'appointment.overlap.force';
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

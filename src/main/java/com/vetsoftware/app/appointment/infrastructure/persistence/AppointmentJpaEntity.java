@@ -22,6 +22,12 @@ public class AppointmentJpaEntity {
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;
 
+    // NULLABLE a propósito (changeset 222): null = la cita hereda la duración por
+    // defecto de la empresa. Integer envuelto, no int: con ddl-auto validate un
+    // primitivo sobre columna nullable es una bomba de NPE al leer filas antiguas.
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
     @Column(name = "type", nullable = false, length = 30)
     private String type;
 
@@ -90,6 +96,14 @@ public class AppointmentJpaEntity {
 
     public void setStartAt(LocalDateTime startAt) {
         this.startAt = startAt;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
     }
 
     public String getType() {

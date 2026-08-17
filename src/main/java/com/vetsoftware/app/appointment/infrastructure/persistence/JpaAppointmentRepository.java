@@ -73,10 +73,47 @@ public class JpaAppointmentRepository implements AppointmentRepository {
                 .stream().map(mapper::toDomain).toList();
     }
 
+    /**
+     * Intersección de intervalos <strong>semiabiertos</strong>:
+     * {@code nuevoInicio < finExistente AND finNuevo > inicioExistente}. La
+     * consulta acota la ventana y aquí se decide el cruce exacto — ver el javadoc
+     * de {@code AppointmentJpaRepository#findOverlapCandidates} para por qué la
+     * aritmética no está en el SQL.
+     *
+     * <p>
+     * El semiabierto es la mitad del valor de la regla: una cita 10:00-10:30 y otra
+     * 10:30-11:00 <strong>no</strong> se cruzan. Con intervalos cerrados, cada
+     * agenda encadenada daría un falso conflicto y el bloqueo duraría una semana
+     * antes de que alguien lo desactivara.
+     */
     @Override
-    public List<Long> findClashingIds(Long companyId, Long employeeId, LocalDateTime startAt,
-            Long excludeId) {
-        return jpaRepository.findClashingIds(companyId, employeeId, startAt, excludeId);
+    public List<Overlap> findOverlapping(Long companyId, Long employeeId, LocalDateTime startAt,
+            LocalDateTime endAt, int defaultDurationMinutes, Long excludeId) {
+        // Cota inferior de la ventana: ninguna cita que empiece antes de
+        // `startAt - la duración máxima posible` puede seguir en curso. El máximo es
+        // el techo del dominio, salvo que llegue un default mayor (la política lo
+        // descarta, pero el puerto acepta cualquier int).
+        int longestPossible = Math.max(Appointment.MAX_DURATION_MINUTES, defaultDurationMinutes);
+        LocalDateTime earliestStartAt = startAt.minusMinutes(longestPossible);
+
+        return jpaRepository
+                .findOverlapCandidates(companyId, employeeId, earliestStartAt, endAt,
+                        AppointmentStatus.namesNotOccupyingSchedule(), excludeId)
+                .stream().filter(slot -> overlaps(slot, startAt, endAt, defaultDurationMinutes))
+                .map(slot -> new Overlap(slot.getId(), slot.getBranchId())).toList();
+    }
+
+    private static boolean overlaps(AppointmentJpaRepository.AppointmentSlotProjection slot,
+            LocalDateTime startAt, LocalDateTime endAt, int defaultDurationMinutes) {
+        Integer own = slot.getDurationMinutes();
+        int minutes = own != null
+                ? own
+                : (defaultDurationMinutes > 0
+                        ? defaultDurationMinutes
+                        : Appointment.FALLBACK_DURATION_MINUTES);
+        LocalDateTime slotEnd = slot.getStartAt().plusMinutes(minutes);
+        // Semiabierto en los dos extremos: los `isBefore` son estrictos.
+        return startAt.isBefore(slotEnd) && slot.getStartAt().isBefore(endAt);
     }
 
     @Override

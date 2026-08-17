@@ -24,6 +24,7 @@ public class AppointmentJpaMapper {
         AppointmentJpaEntity entity = new AppointmentJpaEntity();
         entity.setId(appointment.getId());
         entity.setStartAt(appointment.getStartAt());
+        entity.setDurationMinutes(appointment.getDurationMinutes());
         entity.setType(appointment.getType().name());
         entity.setStatus(appointment.getStatus().name());
         entity.setNotes(appointment.getNotes());
@@ -59,7 +60,7 @@ public class AppointmentJpaMapper {
     // Write path — reusa los refs ya cargados para no disparar los proxies.
     public Appointment toDomain(AppointmentJpaEntity entity, AnimalRef animalRef, OwnerRef ownerRef,
             EmployeeRef employeeRef, CompanyRef companyRef, BranchRef branchRef) {
-        return new Appointment(entity.getId(), entity.getStartAt(),
+        return new Appointment(entity.getId(), entity.getStartAt(), entity.getDurationMinutes(),
                 AppointmentType.valueOf(entity.getType()),
                 AppointmentStatus.valueOf(entity.getStatus()), entity.getNotes(),
                 entity.getCancellationReason(), animalRef, ownerRef, entity.getClientName(),

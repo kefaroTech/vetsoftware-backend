@@ -16,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("Appointment — invariantes, agenda y ciclo de vida")
 class AppointmentTest {
@@ -35,6 +36,7 @@ class AppointmentTest {
     private static final class Builder {
         private Long id = AppointmentMother.APPOINTMENT_ID;
         private LocalDateTime startAt = INICIO;
+        private Integer durationMinutes;
         private AppointmentType type = AppointmentType.CONSULTATION;
         private AppointmentStatus status = AppointmentStatus.REQUESTED;
         private String notes = "Control anual";
@@ -50,6 +52,11 @@ class AppointmentTest {
 
         private Builder startAt(LocalDateTime value) {
             this.startAt = value;
+            return this;
+        }
+
+        private Builder durationMinutes(Integer value) {
+            this.durationMinutes = value;
             return this;
         }
 
@@ -114,9 +121,9 @@ class AppointmentTest {
         }
 
         private Appointment build() {
-            return new Appointment(id, startAt, type, status, notes, cancellationReason, animal,
-                    owner, clientName, clientPhone, clientEmail, employee, company, branch, 3L,
-                    true, CREADA);
+            return new Appointment(id, startAt, durationMinutes, type, status, notes,
+                    cancellationReason, animal, owner, clientName, clientPhone, clientEmail,
+                    employee, company, branch, 3L, true, CREADA);
         }
     }
 
@@ -269,9 +276,9 @@ class AppointmentTest {
         @Test
         @DisplayName("create deja la cita solicitada, habilitada, sin id y sin motivo de cancelacion")
         void create_deja_la_cita_solicitada_y_habilitada() {
-            Appointment cita = Appointment.create(INICIO, AppointmentType.VACCINATION, "Refuerzo",
-                    AppointmentMother.FIRULAIS, AppointmentMother.DUENO, null, null, null,
-                    AppointmentMother.VETERINARIA, AppointmentMother.CLINICA,
+            Appointment cita = Appointment.create(INICIO, null, AppointmentType.VACCINATION,
+                    "Refuerzo", AppointmentMother.FIRULAIS, AppointmentMother.DUENO, null, null,
+                    null, AppointmentMother.VETERINARIA, AppointmentMother.CLINICA,
                     AppointmentMother.PRINCIPAL);
 
             assertThat(cita.getId()).isNull();
@@ -280,16 +287,27 @@ class AppointmentTest {
             assertThat(cita.isEnabled()).isTrue();
             assertThat(cita.getCancellationReason()).isNull();
             assertThat(cita.getNotes()).isEqualTo("Refuerzo");
+            assertThat(cita.getDurationMinutes()).isNull();
         }
 
         @Test
         @DisplayName("create aplica las mismas invariantes que el constructor")
         void create_aplica_las_mismas_invariantes() {
-            assertThatThrownBy(() -> Appointment.create(INICIO, AppointmentType.VACCINATION, null,
-                    null, null, null, null, null, AppointmentMother.VETERINARIA,
+            assertThatThrownBy(() -> Appointment.create(INICIO, null, AppointmentType.VACCINATION,
+                    null, null, null, null, null, null, AppointmentMother.VETERINARIA,
                     AppointmentMother.CLINICA, AppointmentMother.PRINCIPAL))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("at least one of");
+        }
+
+        @Test
+        @DisplayName("create valida tambien la duracion recibida")
+        void create_valida_tambien_la_duracion() {
+            assertThatThrownBy(() -> Appointment.create(INICIO, 0, AppointmentType.VACCINATION,
+                    null, AppointmentMother.FIRULAIS, null, null, null, null,
+                    AppointmentMother.VETERINARIA, AppointmentMother.CLINICA,
+                    AppointmentMother.PRINCIPAL)).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("durationMinutes must be greater than 0");
         }
     }
 
@@ -302,8 +320,8 @@ class AppointmentTest {
         void update_reemplaza_los_datos_editables() {
             Appointment cita = valida().build();
 
-            cita.update(AppointmentMother.NUEVO_INICIO, AppointmentType.SURGERY, "Cirugia", null,
-                    null, "Walk-in", "3009998888", "walkin@example.com",
+            cita.update(AppointmentMother.NUEVO_INICIO, null, AppointmentType.SURGERY, "Cirugia",
+                    null, null, "Walk-in", "3009998888", "walkin@example.com",
                     AppointmentMother.OTRO_VETERINARIO);
 
             assertThat(cita.getStartAt()).isEqualTo(AppointmentMother.NUEVO_INICIO);
@@ -326,8 +344,8 @@ class AppointmentTest {
             Appointment cita = valida().build();
 
             assertThatThrownBy(
-                    () -> cita.update(AppointmentMother.NUEVO_INICIO, AppointmentType.SURGERY, null,
-                            null, null, null, null, null, AppointmentMother.VETERINARIA))
+                    () -> cita.update(AppointmentMother.NUEVO_INICIO, null, AppointmentType.SURGERY,
+                            null, null, null, null, null, null, AppointmentMother.VETERINARIA))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("at least one of");
 
@@ -340,7 +358,7 @@ class AppointmentTest {
         void update_exige_veterinario_asignado() {
             Appointment cita = valida().build();
 
-            assertThatThrownBy(() -> cita.update(INICIO, AppointmentType.CONTROL, null,
+            assertThatThrownBy(() -> cita.update(INICIO, null, AppointmentType.CONTROL, null,
                     AppointmentMother.FIRULAIS, null, null, null, null, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("employee is required");
@@ -351,8 +369,8 @@ class AppointmentTest {
         void update_normaliza_a_null_las_notas_en_blanco() {
             Appointment cita = valida().build();
 
-            cita.update(INICIO, AppointmentType.CONTROL, "   ", AppointmentMother.FIRULAIS, null,
-                    null, null, null, AppointmentMother.VETERINARIA);
+            cita.update(INICIO, null, AppointmentType.CONTROL, "   ", AppointmentMother.FIRULAIS,
+                    null, null, null, null, AppointmentMother.VETERINARIA);
 
             assertThat(cita.getNotes()).isNull();
         }
@@ -367,7 +385,8 @@ class AppointmentTest {
         void reschedule_mueve_la_hora_y_reasigna_el_veterinario() {
             Appointment cita = valida().status(AppointmentStatus.CONFIRMED).build();
 
-            cita.reschedule(AppointmentMother.NUEVO_INICIO, AppointmentMother.OTRO_VETERINARIO);
+            cita.reschedule(AppointmentMother.NUEVO_INICIO, null,
+                    AppointmentMother.OTRO_VETERINARIO);
 
             assertThat(cita.getStartAt()).isEqualTo(AppointmentMother.NUEVO_INICIO);
             assertThat(cita.getEmployee()).isEqualTo(AppointmentMother.OTRO_VETERINARIO);
@@ -379,7 +398,7 @@ class AppointmentTest {
         void reschedule_exige_nueva_hora_de_inicio() {
             Appointment cita = valida().build();
 
-            assertThatThrownBy(() -> cita.reschedule(null, AppointmentMother.VETERINARIA))
+            assertThatThrownBy(() -> cita.reschedule(null, null, AppointmentMother.VETERINARIA))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("startAt is required");
         }
@@ -389,11 +408,140 @@ class AppointmentTest {
         void reschedule_exige_veterinario() {
             Appointment cita = valida().build();
 
-            assertThatThrownBy(() -> cita.reschedule(AppointmentMother.NUEVO_INICIO, null))
+            assertThatThrownBy(() -> cita.reschedule(AppointmentMother.NUEVO_INICIO, null, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("employee is required");
 
             assertThat(cita.getStartAt()).isEqualTo(INICIO);
+        }
+
+        @Test
+        @DisplayName("reschedule con duracion nula CONSERVA la que la cita ya tenia (es un PATCH)")
+        void reschedule_con_duracion_nula_conserva_la_actual() {
+            Appointment cita = valida().durationMinutes(90).build();
+
+            cita.reschedule(AppointmentMother.NUEVO_INICIO, null, AppointmentMother.VETERINARIA);
+
+            // El PUT devuelve la cita al default de la empresa; el PATCH no. Quien
+            // reprograma dice "a las 11" y no esta renunciando a la duracion pactada.
+            assertThat(cita.getDurationMinutes()).isEqualTo(90);
+        }
+
+        @Test
+        @DisplayName("reschedule con duracion nueva la reemplaza")
+        void reschedule_con_duracion_nueva_la_reemplaza() {
+            Appointment cita = valida().durationMinutes(90).build();
+
+            cita.reschedule(AppointmentMother.NUEVO_INICIO, 20, AppointmentMother.VETERINARIA);
+
+            assertThat(cita.getDurationMinutes()).isEqualTo(20);
+        }
+
+        @Test
+        @DisplayName("reschedule valida la duracion nueva y deja la cita intacta si es invalida")
+        void reschedule_valida_la_duracion_nueva() {
+            Appointment cita = valida().durationMinutes(90).build();
+
+            assertThatThrownBy(() -> cita.reschedule(AppointmentMother.NUEVO_INICIO,
+                    Appointment.MAX_DURATION_MINUTES + 1, AppointmentMother.VETERINARIA))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("durationMinutes must be 720 or less");
+
+            assertThat(cita.getStartAt()).isEqualTo(INICIO);
+            assertThat(cita.getDurationMinutes()).isEqualTo(90);
+        }
+    }
+
+    /**
+     * BE-17. La duracion es opcional en la cita ({@code null} = hereda la de la
+     * empresa) y el fin es derivado, nunca almacenado.
+     */
+    @Nested
+    @DisplayName("Duracion y fin derivado")
+    class Duracion {
+
+        @Test
+        @DisplayName("una cita sin duracion propia la hereda: null no es cero")
+        void una_cita_sin_duracion_propia_la_hereda() {
+            Appointment cita = valida().durationMinutes(null).build();
+
+            assertThat(cita.getDurationMinutes()).isNull();
+            assertThat(cita.effectiveDurationMinutes(45)).isEqualTo(45);
+            assertThat(cita.endAt(45)).isEqualTo(INICIO.plusMinutes(45));
+        }
+
+        @Test
+        @DisplayName("la duracion propia de la cita gana sobre la de la empresa")
+        void la_duracion_propia_gana_sobre_la_de_la_empresa() {
+            Appointment cita = valida().durationMinutes(20).build();
+
+            assertThat(cita.effectiveDurationMinutes(45)).isEqualTo(20);
+            assertThat(cita.endAt(45)).isEqualTo(INICIO.plusMinutes(20));
+        }
+
+        @ParameterizedTest(name = "default de empresa {0} -> cae al respaldo de 30")
+        @ValueSource(ints = {0, -1, -600})
+        @DisplayName("un default de empresa no positivo cae al respaldo, nunca produce citas de duracion cero")
+        void un_default_no_positivo_cae_al_respaldo(int defectoCorrupto) {
+            Appointment cita = valida().durationMinutes(null).build();
+
+            assertThat(cita.effectiveDurationMinutes(defectoCorrupto))
+                    .isEqualTo(Appointment.FALLBACK_DURATION_MINUTES);
+            assertThat(cita.endAt(defectoCorrupto))
+                    .isEqualTo(INICIO.plusMinutes(Appointment.FALLBACK_DURATION_MINUTES));
+        }
+
+        @ParameterizedTest(name = "duracion {0}")
+        @ValueSource(ints = {0, -1, -30})
+        @DisplayName("rechaza una duracion propia no positiva")
+        void rechaza_una_duracion_no_positiva(int invalida) {
+            assertThatThrownBy(() -> valida().durationMinutes(invalida).build())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("durationMinutes must be greater than 0");
+        }
+
+        @Test
+        @DisplayName("rechaza una duracion por encima del techo de 12 horas")
+        void rechaza_una_duracion_por_encima_del_techo() {
+            assertThatThrownBy(
+                    () -> valida().durationMinutes(Appointment.MAX_DURATION_MINUTES + 1).build())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("durationMinutes must be 720 or less");
+        }
+
+        @Test
+        @DisplayName("acepta los extremos validos: 1 minuto y las 12 horas exactas")
+        void acepta_los_extremos_validos() {
+            assertThat(valida().durationMinutes(1).build().effectiveDurationMinutes(30)).isOne();
+            assertThat(valida().durationMinutes(Appointment.MAX_DURATION_MINUTES).build().endAt(30))
+                    .isEqualTo(INICIO.plusHours(12));
+        }
+
+        @Test
+        @DisplayName("update con duracion nula devuelve la cita al default de la empresa (es un PUT)")
+        void update_con_duracion_nula_vuelve_al_default() {
+            Appointment cita = valida().durationMinutes(90).build();
+
+            cita.update(INICIO, null, AppointmentType.CONTROL, null, AppointmentMother.FIRULAIS,
+                    null, null, null, null, AppointmentMother.VETERINARIA);
+
+            assertThat(cita.getDurationMinutes()).isNull();
+            assertThat(cita.effectiveDurationMinutes(30)).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("update valida la duracion y no modifica nada si es invalida")
+        void update_valida_la_duracion() {
+            Appointment cita = valida().durationMinutes(90).build();
+
+            assertThatThrownBy(() -> cita.update(AppointmentMother.NUEVO_INICIO, 0,
+                    AppointmentType.CONTROL, null, AppointmentMother.FIRULAIS, null, null, null,
+                    null, AppointmentMother.VETERINARIA))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("durationMinutes must be greater than 0");
+
+            assertThat(cita.getStartAt()).isEqualTo(INICIO);
+            assertThat(cita.getDurationMinutes()).isEqualTo(90);
         }
     }
 

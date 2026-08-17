@@ -146,6 +146,29 @@ public class Authz {
     }
 
     /**
+     * Sedes visibles para el caller, o el conjunto <strong>vacío</strong> cuando no
+     * hay contexto de empleado (cuenta de sistema, proceso interno). Variante no
+     * lanzadora de {@link #currentBranchIds()}.
+     *
+     * <p>
+     * Existe para <strong>redactar</strong> lo que sale en una respuesta, nunca
+     * para autorizar: por eso el caso sin contexto devuelve vacío —no se revela
+     * nada— en lugar de interpretarlo como «alcance total». Un superadmin recibe
+     * así un mensaje menos detallado, que es el precio correcto de fallar cerrado.
+     * Para decidir si una operación se permite, sigue siendo
+     * {@link #currentBranchIds()} o {@link #resolveAccessibleBranch(Long)}, que
+     * lanzan.
+     */
+    public Set<Long> currentBranchIdsOrEmpty() {
+        return switch (currentContext()) {
+            case EmployeeContext me -> me.branchIds() == null ? Set.of() : me.branchIds();
+            case SystemUserContext _ -> Set.of();
+            case SystemContext _ -> Set.of();
+            case null -> Set.of();
+        };
+    }
+
+    /**
      * Exige que el caller pueda ASIGNAR todas esas sedes a un empleado. El alcance
      * total también se representa con asignaciones explícitas, por lo que nadie
      * obtiene un bypass por código de permiso. Lanza
