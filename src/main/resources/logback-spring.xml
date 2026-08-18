@@ -62,15 +62,21 @@
     <logger name="AUDIT" level="INFO"/>
 
     <!--
-      La consola tambien va en prod y dev: el runtime es ECS, donde stdout es lo unico que
-      llega a CloudWatch. Sin ella, un fallo de arranque anterior a la instalacion del SDK de
-      OpenTelemetry no deja rastro en ningun lado. Sigue envuelta en RedactingAppender, de modo
-      que la politica de redaccion no se debilita.
+      NO TOQUES ESTE APPENDER PENSANDO QUE ES REDUNDANTE. En prod y dev, stdout es LA ruta de
+      entrega de los logs, no un respaldo del pipeline OTLP: el runtime es ECS, lo que se escribe
+      en stdout va a CloudWatch y de ahi Firehose lo lleva a Grafana Cloud. Quitar
+      REDACTED_JSON_CONSOLE deja al servicio sin logs en ningun sitio.
 
-      Alli va en JSON y no en texto: CloudWatch es la fuente durable y necesita los atributos
+      Por eso va en JSON y no en texto: CloudWatch es la fuente durable y necesita los atributos
       estructurados, no solo el mensaje. En local se mantiene el patron legible (JSON en una
       terminal de desarrollo es ilegible), que es justo lo que separa este <springProfile> del
-      de abajo. El pipeline OTLP no cambia: sigue exportando igual por ambos perfiles.
+      de abajo. Sigue envuelta en RedactingAppender, de modo que la politica de redaccion no se
+      debilita.
+
+      REDACTED_OTEL sigue cableado pero inerte en dev/prod: management.logging.export.enabled esta
+      en false (ver application-prod.yml) porque las dos rutas duplicaban cada evento en Loki. Se
+      deja conectado para que reactivarlo sea una variable de entorno y no un cambio de este
+      fichero. Trazas y metricas no pasan por aqui y siguen exportandose por OTLP.
     -->
     <springProfile name="prod | dev">
         <root level="INFO">
