@@ -10,12 +10,24 @@ server:
   # confianza (rangos privados por defecto); un cliente externo no puede falsear su IP. Así
   # request.getRemoteAddr() devuelve la IP real del cliente tanto detrás de balanceador como en local.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
+  # Sin esto rige 'immediate': al recibir SIGTERM el conector se cierra de golpe y las peticiones
+  # en vuelo se cortan a media respuesta, perdiendo ademas sus lineas de log finales — que son
+  # precisamente las que explican que paso durante un despliegue.
+  shutdown: ${SERVER_SHUTDOWN:graceful}
 
 spring:
   application:
     name: vetsoftware
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
+  lifecycle:
+    # Presupuesto de apagado, acotado por el stopTimeout=30s de la task de ECS
+    # (VetSoftwareIaC/modules/ecs_backend/main.tf): pasado ese plazo llega SIGKILL y no hay
+    # segunda oportunidad. El reparto es 15s de drenaje + hasta 10s del flush final del SDK de
+    # OpenTelemetry —limite hardcodeado y NO configurable— = 25s, dejando 5s de margen para el
+    # resto del cierre. Subir este valor por encima de 20s se come el flush y pierde los ultimos
+    # spans y logs exportados, que es el contrario de lo que se busca.
+    timeout-per-shutdown-phase: ${SHUTDOWN_PHASE_TIMEOUT:15s}
   # El perfil de carga es casi puro I/O bloqueante: MySQL, Redis, S3, Resend,
   # reCAPTCHA y el proveedor DIAN. Sobre hilos de plataforma, cada peticion
   # esperando red ocupa uno de los 200 de Tomcat sin hacer nada. Con hilos
