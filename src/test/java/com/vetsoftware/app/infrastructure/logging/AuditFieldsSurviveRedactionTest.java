@@ -1,7 +1,6 @@
 package com.vetsoftware.app.infrastructure.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -9,7 +8,6 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
-import com.vetsoftware.app.infrastructure.audit.outbox.AuditEventStore;
 import java.util.List;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
@@ -37,7 +35,7 @@ import org.slf4j.event.KeyValuePair;
  */
 class AuditFieldsSurviveRedactionTest {
 
-    private final AuditLogger auditLogger = new AuditLogger(mock(AuditEventStore.class));
+    private final AuditLogger auditLogger = new AuditLogger();
 
     private Logger auditChannel;
     private RedactingAppender redacting;

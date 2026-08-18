@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Retirada del outbox de auditoría y de su cadena de integridad.
+
+         El mecanismo escribía cada evento de AuditLogger en audit_event_outbox dentro de la
+         transacción de negocio, lo encadenaba por hash y lo publicaba a Firehose para archivarlo
+         en S3 Object Lock. Se retira entero: el código de los paquetes audit/outbox y audit/chain,
+         la dependencia de Firehose y esta parte del esquema.
+
+         Los changesets 213 y 215 NO se borran, y esto no es un descuido. El checksum de un
+         changeset ya aplicado es inmutable y ddl-auto está en validate: quitar aquellos XML
+         rompería el arranque contra cualquier base donde ya corrieron. La forma correcta de
+         deshacer un cambio de esquema en Liquibase es siempre un changeset nuevo que lo revierta,
+         nunca editar el historial.
+
+         Consecuencia que conviene tener escrita donde se pueda encontrar: a partir de aquí la
+         auditoría existe únicamente como log en el canal AUDIT, que es mutable y de retención
+         acotada. Deja de haber evidencia inalterable. Si aparece una obligación de conservación o
+         de no repudio, hay que reponer un destino durable; el historial de git conserva la
+         implementación anterior completa. -->
+
+    <changeSet id="224_01_drop_audit_outbox" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="audit_event_outbox"/>
+        </preConditions>
+
+        <dropTable tableName="audit_event_outbox"/>
+
+        <rollback>
+            <!-- Recrear la tabla vacía sería peor que no tener nada: dejaría un rastro de
+                 auditoría con la forma correcta y sin un solo evento, que es exactamente lo que
+                 una auditoría interpretaría como "no pasó nada". Si hay que volver atrás, se
+                 revierte el commit y se recuperan 213 y 215 desde git. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="224_02_drop_audit_chain_head" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="audit_chain_head"/>
+        </preConditions>
+
+        <dropTable tableName="audit_chain_head"/>
+
+        <rollback>
+            <!-- Misma razón que arriba: la cabeza de la cadena sin la cadena no prueba nada. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

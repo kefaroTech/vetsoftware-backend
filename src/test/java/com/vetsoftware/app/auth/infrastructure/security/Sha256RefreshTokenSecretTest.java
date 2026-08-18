@@ -75,7 +75,8 @@ class Sha256RefreshTokenSecretTest {
             // SHA-256 es obligatorio en toda implementación de la JVM, así que esta rama
             // de defensa nunca se dispara en producción; se fuerza aquí mockeando el
             // método estático para probar la traducción de la excepción. Mismo patrón
-            // que AuditChainHashTest, que cubre este catch calcado en AuditChainHash.
+            // que VerificationTokensTest, que cubre este catch calcado en
+            // VerificationTokens.
             try (MockedStatic<MessageDigest> digest = mockStatic(MessageDigest.class)) {
                 digest.when(() -> MessageDigest.getInstance("SHA-256"))
                         .thenThrow(new NoSuchAlgorithmException("sin proveedor"));

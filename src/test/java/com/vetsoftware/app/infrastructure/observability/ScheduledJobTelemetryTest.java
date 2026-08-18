@@ -94,10 +94,11 @@ class ScheduledJobTelemetryTest {
     void rejectsJobNamesOutsideLowercaseDotNotation() {
         ScheduledJobTelemetry telemetry = new ScheduledJobTelemetry(ObservationRegistry.create());
 
-        assertThatThrownBy(() -> telemetry.observe("audit_outbox.publish", () -> Outcome.SUCCESS))
+        assertThatThrownBy(
+                () -> telemetry.observe("security_tokens.cleanup", () -> Outcome.SUCCESS))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("lowercase.dot.notation");
-        assertThatThrownBy(() -> telemetry.observe("auditOutbox.publish", () -> Outcome.SUCCESS))
+        assertThatThrownBy(() -> telemetry.observe("securityTokens.cleanup", () -> Outcome.SUCCESS))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("lowercase.dot.notation");
     }

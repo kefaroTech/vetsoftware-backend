@@ -47,7 +47,7 @@ cambio no altera ningún binario: solo lo vuelve reproducible.
 | `loki` | `grafana/loki` | `3.7.1` | Logs |
 | `grafana` | `grafana/grafana` | `13.0.1` | Dashboards y exploración |
 | `sonarqube` | `sonarqube` | `9.9.8-community` | Calidad de código (solo desarrollo) |
-| `localstack` | `localstack/localstack` | `3.8.1` | S3 + Data Firehose emulados |
+| `localstack` | `localstack/localstack` | `3.8.1` | S3 emulado |
 
 Los digests correspondientes están en `docker/image-versions.lock`. El tag dice qué se instala; el
 digest prueba qué se instaló.

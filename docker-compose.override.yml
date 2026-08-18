@@ -24,7 +24,6 @@ services:
       PASSWORD_RESET_URL: http://localhost:5174/restablecer-contrasena
       CODE_RECOVERY_LOGIN_URL: http://localhost:5174/login
       EMPLOYEE_LOGIN_URL: http://localhost:5174/login
-      AUDIT_FIREHOSE_ENDPOINT: http://localstack:4566
       S3_ENDPOINT: http://localstack:4566
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test

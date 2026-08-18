@@ -1,8 +1,5 @@
 package com.vetsoftware.app.infrastructure.audit;
 
-import com.vetsoftware.app.infrastructure.audit.outbox.AuditEventStore;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -11,9 +8,9 @@ import org.springframework.stereotype.Component;
  * Emisor central de eventos de auditoría (OWASP ASVS V7.1.2 / 7.1.4).
  *
  * <p>
- * Escribe al logger {@code "AUDIT"} para consulta en Grafana y, en producción,
- * persiste el mismo hecho en el outbox que termina en S3 Object Lock mediante
- * Firehose. Los campos del actor ({@code
+ * Escribe al logger {@code "AUDIT"}, que sale por el pipeline estructurado
+ * (stdout JSON → CloudWatch → Loki) para consulta en Grafana. Los campos del
+ * actor ({@code
  * actor.type} / {@code actor.companyId} / {@code actor.employeeId} /
  * {@code actor.systemUserId}, poblados en {@code AuthFilter}) y el contexto
  * HTTP de la request ({@code client.ip} / {@code
@@ -24,6 +21,16 @@ import org.springframework.stereotype.Component;
  * MDC, y el encoder estructurado de Spring Boot los emite como campos JSON;
  * aquí solo se añaden los campos propios del evento (no se duplican
  * {@code http.method}/{@code http.path} ya presentes en el MDC).
+ *
+ * <p>
+ * <b>El log es hoy el único destino.</b> El outbox que persistía el mismo hecho
+ * y lo archivaba en S3 Object Lock vía Firehose se retiró deliberadamente
+ * (junto con su cadena de integridad). La consecuencia hay que tenerla presente
+ * y no descubrirla en una auditoría: este rastro es <b>mutable y de retención
+ * acotada</b> —la que dé Loki—, así que no constituye evidencia inalterable. Si
+ * aparece una obligación de conservación o de no repudio (ASVS V7, NIST SP
+ * 800-53 AU-9, ISO/IEC 27001 A.8.15), hay que reponer un destino durable; el
+ * historial de git conserva la implementación anterior.
  *
  * <p>
  * Convención de campos: notación con punto ({@code http.*}, {@code actor.*})
@@ -39,19 +46,12 @@ import org.springframework.stereotype.Component;
 public class AuditLogger {
 
     private static final Logger audit = LoggerFactory.getLogger("AUDIT");
-    private final AuditEventStore eventStore;
-
-    public AuditLogger(AuditEventStore eventStore) {
-        this.eventStore = eventStore;
-    }
 
     /**
      * Mutación de recurso en el borde HTTP (POST/PUT/PATCH/DELETE).
      * http.method/http.path vía MDC.
      */
     public void mutation(String method, String path, int status, String outcome, long durationMs) {
-        persist("http_mutation", outcome, "http.method", method, "http.path", path, "http.status",
-                status, "http.durationMs", durationMs);
         audit.atInfo().addKeyValue("event", "http_mutation").addKeyValue("http.status", status)
                 .addKeyValue("outcome", outcome).addKeyValue("http.durationMs", durationMs)
                 .log("mutation {} {} -> {} ({})", method, path, status, outcome);
@@ -65,9 +65,6 @@ public class AuditLogger {
      */
     public void companyRegistered(Long companyId, String companyName, String companyIdentifier,
             Long ownerEmployeeId, String ownerCode) {
-        persist("company_registered", "SUCCESS", "company.id", companyId, "company.name",
-                companyName, "company.identifier", companyIdentifier, "actor.employeeId",
-                ownerEmployeeId, "actor.identifier", ownerCode);
         audit.atInfo().addKeyValue("event", "company_registered")
                 .addKeyValue("company.id", companyId).addKeyValue("company.name", companyName)
                 .addKeyValue("company.identifier", companyIdentifier)
@@ -83,8 +80,6 @@ public class AuditLogger {
      * un secreto.
      */
     public void employeeInvited(Long invitedEmployeeId, String invitedCode, Long companyId) {
-        persist("employee_invited", "SUCCESS", "employee.id", invitedEmployeeId,
-                "employee.identifier", invitedCode, "company.id", companyId);
         audit.atInfo().addKeyValue("event", "employee_invited")
                 .addKeyValue("employee.id", invitedEmployeeId)
                 .addKeyValue("employee.identifier", invitedCode)
@@ -98,8 +93,6 @@ public class AuditLogger {
      */
     public void employeeInvitationResent(Long invitedEmployeeId, String invitedCode,
             Long companyId) {
-        persist("employee_invitation_resent", "SUCCESS", "employee.id", invitedEmployeeId,
-                "employee.identifier", invitedCode, "company.id", companyId);
         audit.atInfo().addKeyValue("event", "employee_invitation_resent")
                 .addKeyValue("employee.id", invitedEmployeeId)
                 .addKeyValue("employee.identifier", invitedCode)
@@ -113,8 +106,6 @@ public class AuditLogger {
      * propio empleado es el actor (MDC).
      */
     public void invitationAccepted(Long employeeId, Long companyId) {
-        persist("invitation_accepted", "SUCCESS", "employee.id", employeeId, "company.id",
-                companyId);
         audit.atInfo().addKeyValue("event", "invitation_accepted")
                 .addKeyValue("employee.id", employeeId).addKeyValue("company.id", companyId)
                 .addKeyValue("outcome", "SUCCESS")
@@ -126,7 +117,6 @@ public class AuditLogger {
      * secreto.
      */
     public void loginSuccess(String userType, String identifier) {
-        persist("login_success", "SUCCESS", "actor.type", userType, "actor.identifier", identifier);
         audit.atInfo().addKeyValue("event", "login_success").addKeyValue("actor.type", userType)
                 .addKeyValue("actor.identifier", identifier).addKeyValue("outcome", "SUCCESS")
                 .log("login success type={} id={}", userType, identifier);
@@ -137,7 +127,6 @@ public class AuditLogger {
      * credenciales. http.path vía MDC.
      */
     public void loginFailure(String path, String reason) {
-        persist("login_failure", "FAILURE", "http.path", path, "reason", reason);
         audit.atWarn().addKeyValue("event", "login_failure").addKeyValue("outcome", "FAILURE")
                 .addKeyValue("reason", reason).log("login failure {} reason={}", path, reason);
     }
@@ -148,8 +137,6 @@ public class AuditLogger {
      * intentado (no un secreto). http.path/client.ip vía MDC.
      */
     public void loginBlockedEmailNotVerified(String identifier) {
-        persist("login_blocked_email_not_verified", "DENIED", "actor.identifier", identifier,
-                "reason", "email_not_verified");
         audit.atWarn().addKeyValue("event", "login_blocked_email_not_verified")
                 .addKeyValue("actor.identifier", identifier).addKeyValue("outcome", "DENIED")
                 .addKeyValue("reason", "email_not_verified")
@@ -170,9 +157,6 @@ public class AuditLogger {
      */
     public void refreshTokenReuseDetected(Long subjectId, String subjectType,
             long secondsSinceRevocation) {
-        persist("refresh_token_reuse_detected", "DENIED", "actor.id", String.valueOf(subjectId),
-                "actor.type", subjectType, "seconds_since_revocation",
-                String.valueOf(secondsSinceRevocation));
         audit.atWarn().addKeyValue("event", "refresh_token_reuse_detected")
                 .addKeyValue("actor.id", subjectId).addKeyValue("actor.type", subjectType)
                 .addKeyValue("outcome", "DENIED")
@@ -186,7 +170,6 @@ public class AuditLogger {
      * http.* vía MDC.
      */
     public void accessDenied(String method, String path) {
-        persist("access_denied", "DENIED", "http.method", method, "http.path", path);
         audit.atWarn().addKeyValue("event", "access_denied").addKeyValue("outcome", "DENIED")
                 .log("access denied {} {}", method, path);
     }
@@ -196,8 +179,6 @@ public class AuditLogger {
      * ausente/inválido → 401). http.method/http.path vía MDC.
      */
     public void unauthenticated(String method, String path, String reason) {
-        persist("unauthenticated", "DENIED", "http.method", method, "http.path", path, "reason",
-                reason);
         audit.atWarn().addKeyValue("event", "unauthenticated").addKeyValue("outcome", "DENIED")
                 .addKeyValue("reason", reason)
                 .log("unauthenticated {} {} reason={}", method, path, reason);
@@ -215,16 +196,7 @@ public class AuditLogger {
      * Ruta publica bloqueada por rate limiting (429). client.ip/http.path via MDC.
      */
     public void rateLimited(String code) {
-        persist("rate_limited", "DENIED", "code", code);
         audit.atWarn().addKeyValue("event", "rate_limited").addKeyValue("code", code)
                 .addKeyValue("outcome", "DENIED").log("rate limited code={}", code);
-    }
-
-    private void persist(String eventType, String outcome, Object... keyValues) {
-        Map<String, Object> attributes = new LinkedHashMap<>();
-        for (int index = 0; index < keyValues.length; index += 2) {
-            attributes.put((String) keyValues[index], keyValues[index + 1]);
-        }
-        eventStore.append(eventType, outcome, attributes);
     }
 }

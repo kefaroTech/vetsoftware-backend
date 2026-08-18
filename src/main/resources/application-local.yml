@@ -74,15 +74,6 @@ vetsoftware:
   recaptcha:
     enabled: ${RECAPTCHA_ENABLED:false}
     secret: ${RECAPTCHA_SECRET:}
-  audit:
-    outbox:
-      enabled: true
-      publisher-enabled: ${AUDIT_FIREHOSE_ENABLED:true}
-      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM:vetsoftware-audit-local}
-      region: ${AWS_REGION:us-east-1}
-      endpoint: ${AUDIT_FIREHOSE_ENDPOINT:http://localhost:4566}
-      access-key: ${AWS_ACCESS_KEY_ID:test}
-      secret-key: ${AWS_SECRET_ACCESS_KEY:test}
   storage:
     s3:
       bucket: ${S3_BUCKET:vetsoftware-local}

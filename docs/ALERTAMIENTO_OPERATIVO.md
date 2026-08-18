@@ -208,36 +208,6 @@ Inspeccione el error de evaluación y la regla afectada. Valide cambios con
 Compruebe que Alertmanager esté listo, que Prometheus use el destino interno correcto
 y que su cola de notificaciones no esté creciendo.
 
-## VetSoftwareAuditChainBroken
-
-Un evento de auditoría fue **suprimido o alterado en la base de datos**. Es un incidente de
-seguridad, no un problema de capacidad: implica que alguien tiene acceso de escritura a la base de
-producción.
-
-**No escribir sobre `audit_event_outbox`.** Cualquier escritura destruye evidencia. El procedimiento
-completo está en la sección 8 de `docs/AUDITORIA_INTEGRIDAD.md`; en resumen: acotar el tramo con
-`audit_chain_failure_sequence`, comparar contra el último checkpoint del bucket WORM y reconstruir la
-secuencia real desde el archivo inmutable.
-
-## VetSoftwareAuditChainNotVerified
-
-La métrica sigue en `-1`: el verificador no ha completado ninguna pasada desde el arranque. Revisar
-los logs del trabajo `audit.chain.verify` y el estado del pool de conexiones. Mientras esta alerta
-esté activa, **no hay evidencia de que la cadena esté sana** — la ausencia de
-`VetSoftwareAuditChainBroken` no significa nada.
-
-## VetSoftwareAuditChainUnsequencedBacklog
-
-Hay eventos insertados sin posición en la cadena. Como solo se publica lo secuenciado, **esos eventos
-no están llegando al archivo inmutable**. Causas probables: el publicador no corre
-(`publisher-enabled`), o `sequence-batch-size` no alcanza para el ritmo de inserción.
-
-## VetSoftwareAuditChainCheckpointStale
-
-La cabeza de la cadena lleva horas sin anclarse en almacenamiento inmutable. Dos consecuencias: el
-tramo nuevo no tiene ancla que impida recalcularlo, y la depuración de la outbox queda bloqueada
-(por diseño), así que la tabla crecerá. Revisar el trabajo `audit.chain.checkpoint`.
-
 ## VetSoftwareSecurityTokenTableGrowth
 
 La tabla indicada por `token_type` superó durante treinta minutos el umbral publicado en

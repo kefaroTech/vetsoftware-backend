@@ -77,16 +77,6 @@ vetsoftware:
   recaptcha:
     enabled: ${RECAPTCHA_ENABLED:false}
     secret: ${RECAPTCHA_SECRET:}
-  audit:
-    outbox:
-      # Ver nota en application-prod.yml: sin Firehose desplegado hay que apagar el publicador.
-      enabled: ${AUDIT_OUTBOX_ENABLED:true}
-      publisher-enabled: ${AUDIT_OUTBOX_PUBLISHER_ENABLED:true}
-      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM:}
-      region: ${AWS_REGION}
-      endpoint: ${AUDIT_FIREHOSE_ENDPOINT:}
-      access-key: ""
-      secret-key: ""
   storage:
     s3:
       bucket: ${S3_BUCKET}
