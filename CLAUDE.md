@@ -13,15 +13,17 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 
 ## Las reglas de este documento se verifican solas
 
-`HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **dieciséis** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
+`HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **veinte** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
 
 ```bash
 mvn test -Dtest='HexagonalArchitectureTest,PiramideDeTestsTest'
 ```
 
-Diez reglas son duras porque el código ya las cumple: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, las tres de paginación (BE-21) —**un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**— y **ningún doble de test escaneable**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
+**Catorce** reglas son duras: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, las **cuatro de la familia «por id»** de BE-COV —ver «Autorización»—, las tres de paginación (BE-21) —**un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**— y **ningún doble de test escaneable**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
-**Son dos clases porque miran universos distintos.** `HexagonalArchitectureTest` declara `ImportOption.DoNotIncludeTests` — sus trece reglas hablan de código de producción. Las **tres** que necesitan ver `src/main` y `src/test` a la vez viven en `PiramideDeTestsTest`, con su propio `@AnalyzeClasses` sin esa opción: las dos de BE-10 (**cada adaptador con su rodaja**) y `DOBLE_DE_TEST_NO_ESCANEABLE`.
+Ojo con la palabra «duras»: diez de las catorce lo son porque el código ya las cumple. Las **cuatro de BE-COV nacieron duras con la deuda abierta**, a propósito y contra la costumbre del repo: la campaña que las motivó estaba corrigiéndose en el mismo momento en que se escribieron, así que congelarlas habría fotografiado un estado transitorio y metido al store deuda que iba a desaparecer sola —exactamente la trampa que este documento advierte sobre `allowStoreCreation`—. Mientras el contador no esté a cero, la salida es **corregir**, nunca envolverlas en `freeze(...)`.
+
+**Son dos clases porque miran universos distintos.** `HexagonalArchitectureTest` declara `ImportOption.DoNotIncludeTests` — sus diecisiete reglas hablan de código de producción, incluidas las cuatro de BE-COV: los puertos, el SQL de los adaptadores y los casos de uso son todos `src/main`, así que ninguna necesita ver el árbol de test. Las **tres** que necesitan ver `src/main` y `src/test` a la vez viven en `PiramideDeTestsTest`, con su propio `@AnalyzeClasses` sin esa opción: las dos de BE-10 (**cada adaptador con su rodaja**) y `DOBLE_DE_TEST_NO_ESCANEABLE`.
 
 - **Ningún doble de test puede ser candidato al escaneo de producción** (`DOBLE_DE_TEST_NO_ESCANEABLE`, dura). Toda clase del árbol de test meta-anotada con `@Component` —es decir `@Configuration`, `@SpringBootConfiguration`, `@RestController`, `@Service`, `@Repository` o `@Component`— tiene que estar **meta-anotada con `@TestComponent`**. `@TestConfiguration` ya lo está, así que una configuración de test bien escrita cumple sin mencionarlo; un doble que no sea configuración —un controller de juguete, un `@SpringBootConfiguration` que sirve de raíz a un `@SpringBootTest`— se marca con `@TestComponent` a secas.
   - **El defecto que la justifica**: un test declaró su cableado como `@Configuration` simple. `target/test-classes` está en el classpath de failsafe y esa clase vive dentro de la raíz del `@ComponentScan`, así que su doble de `CreateAppointmentUseCase` se registraba en todos los contextos; `AppointmentController` encontraba dos beans y **ningún `@SpringBootTest` del repositorio arrancaba** — noventa segundos de build para morir con un `NoUniqueBeanDefinitionException` que no señala a la causa.
@@ -541,6 +543,49 @@ Todo recurso scoped a una `Company` (multi-tenant) se protege con permisos + own
 - ✅ **Un listado que no filtra por empresa solo lo puede servir `hasRole('SYSTEM')` a secas.** Si el repositorio sabe filtrar por empresa —declara algún método que recibe `companyId`—, cualquier `find…` suyo que devuelva varias filas sin ese filtro devuelve filas de todos los tenants. Acotarlo por una FK ajena (`findAllByAnimalId`, `findByHospitalizationId`) **no** cuenta: el animal es de alguien. La regla `LISTADOS_SIN_EMPRESA_SOLO_SYSTEM` lo comprueba y es dura (BE-29).
 - ✅ Lo que el tenant necesita va en un caso de uso hermano que sí recibe `companyId`: `listByCompany(companyId)` para el listado de la empresa, `listAvailable(companyId)` para los catálogos que mezclan filas globales y privadas.
 
+### La familia «por id» — BE-COV, cuatro reglas duras
+
+El permiso dice **qué** puede hacer un empleado, nunca **sobre qué filas**. Un `id` lo escribe el
+cliente en la URL, así que toda operación que señala una fila concreta necesita además saber de
+quién es. Una auditoría de cobertura encontró **~65 puntos en 27 de 94 features** donde faltaba
+—y `LISTADOS_SIN_EMPRESA_SOLO_SYSTEM` pasaba en verde con todos ellos vivos, porque solo mira
+**listados**—. Las cuatro reglas nuevas cierran el hueco desde sus cuatro ángulos, y son
+**disjuntas por construcción**: ningún punto del código lo marca más de una:
+
+| Regla | Qué exige | Cómo evita el falso positivo |
+|---|---|---|
+| `OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM` | Un puerto de `port/in` que recibe un `Long` (todo id de entidad lo es) o un command con campo `id`, y **no** recibe `companyId`, solo puede estar abierto a `hasRole('SYSTEM')` a secas | Solo aplica si **alguna entidad JPA de la feature alcanza `CompanyJpaEntity`** por asociaciones. Los catálogos maestros (`countries`, `modules`, `spa_types`, `memberships`, los `system_*`) y la propia `companies` no llegan, y la regla ni los mira |
+| `MUTACIONES_SQL_ACOTADAS_POR_EMPRESA` | Toda `@Query` cuyo statement empiece por `UPDATE`/`DELETE` debe nombrar la empresa: columna directa, `JOIN` contra la tabla padre o `EXISTS` correlacionado | Igual discriminador de entidad, **más** la exención de la *sobrecarga acotada del mismo nombre*: `reactivate(id)` junto a `reactivate(id, companyId)` es el camino SYSTEM declarado, y es el patrón corregido |
+| `CARGA_POR_ID_ACOTADA_POR_EMPRESA` | Un `usecase` que llama a `findById(...)` sobre un `port/out` que **también** declara la variante acotada tiene que llamarla en esa misma clase | El ternario legítimo `companyId == null ? findById(id) : findByIdAndCompanyId(id, companyId)` llama a **las dos**; la fuga es la clase que solo conoce la ancha. **Exime al servicio que solo alcanza SYSTEM**: ahí la carga ancha es lo correcto, porque un principal SYSTEM no tiene empresa |
+| `REFERENCIAS_CROSS_FEATURE_ACOTADAS_POR_EMPRESA` | El puerto con el que un `usecase` resuelve una referencia a **otra** feature (`animalQueryPort.findById`) tiene que ofrecer —y usar— la variante acotada | Solo servicios que **ya** usan alguna acotada (ya tienen el `companyId`), solo llamadas `find…` que devuelven un `XxxRef` (no `isOpen`/`lockForUpdate`), y solo si la entidad referida pertenece a una empresa. Si el puerto **sí** ofrece la acotada, el caso es de la regla anterior |
+
+- **La peor es la del SQL.** En un `delete` o un `update` corriente hay una lectura previa que
+  valida la propiedad; en un `reactivate` **no la hay** —el servicio decide si la fila existe
+  mirando cuántas actualizó—, así que el `WHERE` es toda la seguridad. Un
+  `UPDATE employee_roles SET enabled = true WHERE id = :id` devolvía el rol revocado a un
+  empleado de otra empresa y le vaciaba la caché de permisos: escalada de privilegios
+  cross-tenant en cuatro líneas. Modelos correctos: `RoleJpaRepository`,
+  `DebtOpenAccountJpaRepository` y el `EXISTS` de `HospitalizationProcedureJpaRepository`.
+- **La que ninguna revisión humana ve es la tercera.** Doce `Update…UseCase` llevaban
+  `@authz.isMyCompany(#command.companyId)` y eran vulnerables igualmente: esa anotación solo
+  prueba que el atacante declara *su propia* empresa —el controller siempre la inyecta desde el
+  principal—, no de quién es la fila. Con `findById(command.id())` y luego
+  `entidad.update(…, company)` el efecto no es un rechazo sino una **apropiación**: la fila de la
+  empresa B pasa a ser de A. La anotación «se ve bien» y el defecto está debajo. Referencia del
+  arreglo: `spa/application/usecase/UpdateSpaService`.
+- **Cuando el puerto no ofrece vía acotada, hay que crearla.** `medicationschedule` y
+  `procedureschedule` acotan hoy por `hospitalization_medication_id` /
+  `hospitalization_procedure_id`, que es una FK ajena y **no** cuenta como filtro de empresa —el
+  mismo criterio que en BE-29—.
+- **La cuarta forma no se apropia de nada: cuelga lo tuyo de un padre ajeno.** Con la carga propia
+  ya acotada, un `UpdateSurgeryService` no puede robar la cirugía de otro; lo que puede es
+  **reapuntar la suya al animal de otro tenant**, porque resuelve la referencia con
+  `animalQueryPort.findById(command.animalId())`. El resultado es una cirugía de tu empresa en la
+  historia clínica de la vecina. `spa`, `prescription` y `consultation` declaran
+  `findByIdAndCompanyId` en su `AnimalQueryPort` y son el modelo; `laboratorytest`, `surgery`,
+  `diagnosticimaging`, `daycare`, `deworming`, `hospitalization` y `vaccination` solo declaran
+  `findById`, así que **el arreglo empieza por añadir el método al puerto**.
+
 ### Bean `Authz`
 
 `auth/infrastructure/security/Authz.java`, expuesto como `@authz`:
@@ -789,9 +834,10 @@ class CreateAnimalServiceTest {
   producción que un test tenga que afirmar.** Inyecta `java.time.Clock` por constructor y
   usa `Clock.fixed(...)` en el test. Un test que compara contra `LocalDate.now()` es un
   test que se cae solo el día que el reloj cruce medianoche entre dos líneas.
-- **Deuda registrada, no excusa:** `Animal.create`, `CreateAnimalService` y
-  `CreateWeightRecordService` llaman a `now()` hoy. Código nuevo inyecta `Clock`; el
-  existente se migra al tocar la feature.
+- **Deuda registrada, no excusa:** `Animal.create`, `AnimalAlert.create`,
+  `ConsultationType.create`, `SystemUser.create`, `CreateAnimalService`,
+  `CreateWeightRecordService` y `JpaAnimalReportQueryPort.ageLabel` llaman a `now()` hoy.
+  Código nuevo inyecta `Clock`; el existente se migra al tocar la feature.
 - Sin `Thread.sleep`, sin aleatoriedad, sin dependencia del orden de ejecución, sin estado
   `static` mutable compartido entre tests.
 
@@ -832,7 +878,30 @@ mvn verify                    # además comprueba el suelo de cobertura
 - **Tras las rodajas de persistencia y web de BE-10 (2026-08-16): 53,15 % de línea**
   (14.828/27.898) y 43,32 % de rama, sobre **3.978 tests de surefire y 428 de failsafe**,
   cero fallos. El suelo global **se queda en `0.33`**: es un salto de casi 28 puntos de una
-  sola vez y el trinquete solo sube cuando la cifra es estable, no en el PR que la produce.
+  sola vez y el trinquete solo sube cuando la cifra es estable, no en el PR que la
+  produce. **Superado el 2026-08-17** — ver la entrada siguiente.
+- **Tras la campaña BE-COV (2026-08-17): 98,83 % de línea** (27.883/28.214) y **94,54 % de
+  rama** (7.648/8.090), sobre **10.771 tests de surefire y 1.130 de failsafe**, cero fallos y
+  cero errores, con `checkstyle`, `spotless:check` y `OpenApiContractIT` en verde. Los
+  ficheros de test pasan de 382 a **1.809** y las rodajas `*IT` de 27 a **93**. El suelo
+  global **sube a `0.98`**: esta vez sí se mueve el trinquete, porque el número lo produce la
+  suite entera ejecutándose de verdad y no una medición parcial.
+  - **La cifra no se persiguió, se encontró.** Lo que se escribió fueron las rodajas que
+    faltaban; el 98 % es la consecuencia. Por el camino la campaña destapó **~65 fugas de
+    aislamiento entre empresas en 27 de las 94 features** —tres de escalada de privilegios y
+    una de exfiltración de historia clínica— que **ninguna regla veía**, porque
+    `LISTADOS_SIN_EMPRESA_SOLO_SYSTEM` solo mira listados y todas eran escrituras (y una
+    lectura) **por id**. De ahí salieron las cuatro reglas nuevas de la familia «por id».
+    Esto es exactamente lo que esta sección predica: **JaCoCo como detector**.
+  - **Aviso que vale más que el porcentaje: una suite con una cascada de errores no está
+    midiendo nada.** Los 278 errores de integración del primer `verify` eran **una sola
+    causa** —`minimum-idle: 5` heredado de `application.yml` × los 32 contextos que cachea
+    Spring = 160 conexiones contra un `max_connections` de 151—, y **debajo había defectos
+    reales de test que nadie veía**: un `@Import` sin el mapper en tres rodajas, un
+    `assertThatThrownBy` que envolvía el `flush` en vez del `save` que realmente violaba el
+    índice, y un `SchemaSeed` que llevaba tiempo aparentando sembrar geografía sin sembrarla.
+    Mientras la cascada tapaba el resultado, el 25 % de las `*IT` no arrancaba y la cobertura
+    que se leía era honesta pero incompleta.
 - **Umbrales por paquete de riesgo: evaluados con datos y NO añadidos.** La condición de
   llegar al 70 % ya se cumple si se agrega por feature —inventory 97,77 %, cashregister
   96,98 %, goodsreceipt 94,77 %, purchaseorder 89,53 %, supplierinvoice 75,61 %— pero **esa
@@ -853,8 +922,24 @@ mvn verify                    # además comprueba el suelo de cobertura
     está al 22,64 % **porque `PurchaseOrderController` no tiene rodaja**, y la regla lo dice
     con nombre y apellido en vez de con un porcentaje.
 - **Excluido del cómputo** y por qué: `*JpaEntity` (solo campos y accesores), `config/**`,
-  `*Request`/`*Response` (forma del JSON, sin lógica) y la clase `main`. Medirlos infla el
-  número sin decir nada del riesgo.
+  `*Request`/`*Response` (forma del JSON, sin lógica), **el paquete
+  `infrastructure/web/response/` entero** y la clase `main`. Medirlos infla el número sin
+  decir nada del riesgo.
+  - El paquete completo y no solo el sufijo `*Response`: dentro solo viven `*Response` y los
+    136 `*Summary` companion —comprobado: ni un `throw`, ni un `return`, ni una factoría,
+    cero ramas—, y el glob por paquete además alcanza los records **anidados**
+    (`AccountsPayableAgingResponse$Bucket`) que `**/*Response.class` dejaba midiendo. Tiene
+    que ir anclado al paquete: `**/*Summary*.class` se tragaría los 134 `*SummaryDto` de
+    `application/dto`, que **sí** son lógica de proyección.
+  - **Un glob que no casa no excluye nada, y no avisa.** La exclusión de la clase de arranque
+    decía `**/VetsoftwareApplication.class` (s minúscula) y la clase es `VetSoftwareApplication`:
+    estuvo sin aplicarse desde que se escribió. Al añadir un glob, comprueba que el número de
+    clases medidas baja.
+  - **El criterio para admitir uno nuevo**: se leen **todas** las clases que el glob captura, y
+    si una sola tiene una rama, un `throw`, una factoría o una traducción, el glob se rechaza.
+    Medido: las exclusiones «obvias» que se descartaron por esto —excepciones, enums,
+    `*Properties`, los `*Ref` del dominio— **bajaban** la cifra, porque retiraban más línea
+    cubierta que sin cubrir.
 - **Prohibido escribir tests para mover el número.** Cobertura alta sobre getters es peor
   que cobertura baja honesta: entierra la señal. Lo que se mide es dónde falta red, no cuánto
   se ha trabajado.
@@ -875,6 +960,16 @@ mvn verify                    # además comprueba el suelo de cobertura
   `hasMessageContaining` con la parte estable (el prefijo y el id).
 - ❌ Compartir `@Mock` mutables entre `@Nested` con estado acumulado entre tests.
 - ❌ Tocar la base de datos o la red desde un test unitario.
+- ❌ **`INSERT IGNORE` en un seed de test.** Convierte el error en un aviso, así que la fila
+  no entra y **nadie se entera**: el fallo aparece más tarde y en otro sitio, disfrazado de
+  violación de clave foránea en una tabla hija. Engañó tres veces el 2026-08-17, con dos
+  causas distintas bajo el mismo síntoma — columnas `NOT NULL` que el `INSERT` omitía
+  (`created_date`, `enabled`), y una colisión con el índice único `countries.name` porque la
+  migración `022_seed_americas_geography.sql` **ya siembra Colombia** y el seed intentaba
+  meter otra con id fijo. Dejó a `SchemaSeed` aparentando sembrar geografía sin sembrar nada.
+  Usa un `INSERT` normal (que falla ruidosamente) o, si necesitas idempotencia dentro del
+  contenedor compartido, `INSERT … ON DUPLICATE KEY UPDATE` y **datos que no compitan con lo
+  que siembra Liquibase**.
 
 ## Anti-patterns — nunca hacer esto
 

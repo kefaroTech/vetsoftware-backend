@@ -208,7 +208,7 @@ class DocumentTransmitterTest {
 
             assertThat(transmitter.reconcile(validada)).isSameAs(validada);
 
-            verify(matias, never()).fetchStatus(any(), any());
+            verify(matias, never()).fetchStatus(any(), any(), any());
             verifyNoInteractions(billingEntitlement, configQueryPort, resultPersister);
         }
 
@@ -220,7 +220,7 @@ class DocumentTransmitterTest {
 
             assertThat(transmitter.reconcile(documento)).isSameAs(documento);
 
-            verify(matias, never()).fetchStatus(any(), any());
+            verify(matias, never()).fetchStatus(any(), any(), any());
             verifyNoInteractions(resultPersister);
         }
 
@@ -233,7 +233,7 @@ class DocumentTransmitterTest {
 
             // Sin clave del proveedor no hay a que preguntarle por el.
             assertThat(transmitter.reconcile(documento)).isSameAs(documento);
-            verify(matias, never()).fetchStatus(any(), any());
+            verify(matias, never()).fetchStatus(any(), any(), any());
         }
 
         @Test
@@ -243,7 +243,7 @@ class DocumentTransmitterTest {
             conFacturacionElectronicaActiva();
             when(transmissionLog.findLatestProviderKey(DOCUMENT_ID))
                     .thenReturn(Optional.of("KEY-1"));
-            when(matias.fetchStatus("KEY-1", CONFIG)).thenReturn(Optional.empty());
+            when(matias.fetchStatus(documento, "KEY-1", CONFIG)).thenReturn(Optional.empty());
 
             assertThat(transmitter.reconcile(documento)).isSameAs(documento);
             verifyNoInteractions(resultPersister);
@@ -256,7 +256,7 @@ class DocumentTransmitterTest {
             conFacturacionElectronicaActiva();
             when(transmissionLog.findLatestProviderKey(DOCUMENT_ID))
                     .thenReturn(Optional.of("KEY-1"));
-            when(matias.fetchStatus("KEY-1", CONFIG))
+            when(matias.fetchStatus(documento, "KEY-1", CONFIG))
                     .thenReturn(Optional.of(resultado(DianStatus.PENDIENTE)));
 
             assertThat(transmitter.reconcile(documento)).isSameAs(documento);
@@ -274,7 +274,7 @@ class DocumentTransmitterTest {
             conFacturacionElectronicaActiva();
             when(transmissionLog.findLatestProviderKey(DOCUMENT_ID))
                     .thenReturn(Optional.of("KEY-1"));
-            when(matias.fetchStatus("KEY-1", CONFIG))
+            when(matias.fetchStatus(documento, "KEY-1", CONFIG))
                     .thenReturn(Optional.of(resultado(DianStatus.VALIDADO)));
             when(resultPersister.persistReconciled(any(), any(), eq("MATIAS"), eq("KEY-1")))
                     .thenReturn(validada);
@@ -293,7 +293,8 @@ class DocumentTransmitterTest {
             conFacturacionElectronicaActiva();
             when(transmissionLog.findLatestProviderKey(DOCUMENT_ID))
                     .thenReturn(Optional.of("KEY-1"));
-            when(matias.fetchStatus(any(), any())).thenThrow(new IllegalStateException("timeout"));
+            when(matias.fetchStatus(any(), any(), any()))
+                    .thenThrow(new IllegalStateException("timeout"));
 
             assertThatThrownBy(() -> transmitter.reconcile(documento))
                     .isInstanceOf(IllegalStateException.class);

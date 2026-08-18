@@ -223,7 +223,7 @@ class PromotionPersistenceIT extends AbstractDataJpaTest {
 
             // JPA ya no ve la fila (@SQLRestriction), asi que reactivarla con un save
             // seria imposible: por eso el adaptador usa un UPDATE nativo.
-            assertThat(repository.reactivate(guardada.getId())).isOne();
+            assertThat(repository.reactivate(guardada.getId(), COMPANY)).isOne();
 
             assertThat(repository.findById(guardada.getId())).isPresent();
             assertThat(repository.findAllByCompanyId(COMPANY)).hasSize(1);
@@ -232,7 +232,23 @@ class PromotionPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("reactivar un id inexistente no afecta ninguna fila")
         void reactivar_un_id_inexistente_no_afecta_nada() {
-            assertThat(repository.reactivate(999_999L)).isZero();
+            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
+        }
+
+        @Test
+        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y la deja oculta")
+        void reactivar_con_la_empresa_ajena_no_afecta_nada() {
+            // El WHERE es la unica barrera: sin el, otra empresa revivia esta promocion y
+            // con ella los precios que se cobran aqui.
+            Promotion guardada = eneroPerruno();
+            releerDesdeLaBase();
+            repository.delete(guardada.getId());
+            releerDesdeLaBase();
+
+            assertThat(repository.reactivate(guardada.getId(), OTRA_COMPANY)).isZero();
+            releerDesdeLaBase();
+
+            assertThat(repository.findById(guardada.getId())).isEmpty();
         }
 
         private int enabledCrudo(Long id) {

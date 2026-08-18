@@ -353,6 +353,39 @@ class ProductControllerTest {
         }
 
         @Test
+        @DisplayName("PUT sin unidad base el controller aplica el codigo 94 por defecto")
+        void put_aplica_la_unidad_94_por_defecto() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(concentrado());
+
+            mockMvc.perform(put("/products/55").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"Concentrado adulto","code":"P-001","salePrice":12500.00,
+                     "provider":"Proveedor texto","supplierId":6,"notes":"Bulto de 15 kg",
+                     "taxTreatment":"GRAVADO","productCategoryId":3,"taxId":4,"version":2}
+                    """));
+
+            verify(updateUseCase).execute(new UpdateProductCommand(55L, "Concentrado adulto",
+                    "P-001", new BigDecimal("12500.00"), "94", "Proveedor texto", 6L,
+                    "Bulto de 15 kg", TaxTreatment.GRAVADO, 3L, 4L, COMPANY_ID, EMPLOYEE_ID, 2L));
+        }
+
+        @Test
+        @DisplayName("PUT con unidad base en blanco tambien aplica el 94")
+        void put_unidad_en_blanco_aplica_el_94() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(concentrado());
+
+            mockMvc.perform(put("/products/55").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"Concentrado adulto","code":"P-001","salePrice":12500.00,
+                     "baseUnitMeasureCode":"   ","provider":"Proveedor texto","supplierId":6,
+                     "notes":"Bulto de 15 kg","taxTreatment":"GRAVADO","productCategoryId":3,
+                     "taxId":4,"version":2}
+                    """));
+
+            verify(updateUseCase).execute(new UpdateProductCommand(55L, "Concentrado adulto",
+                    "P-001", new BigDecimal("12500.00"), "94", "Proveedor texto", 6L,
+                    "Bulto de 15 kg", TaxTreatment.GRAVADO, 3L, 4L, COMPANY_ID, EMPLOYEE_ID, 2L));
+        }
+
+        @Test
         @DisplayName("PUT sin version responde 400")
         void put_sin_version_responde_400() throws Exception {
             mockMvc.perform(put("/products/55").contentType(MediaType.APPLICATION_JSON)

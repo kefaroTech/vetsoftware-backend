@@ -19,9 +19,18 @@ public class ListMedicationSchedulesByHospitalizationService
         this.repository = repository;
     }
 
+    /**
+     * {@code companyId == null} es el camino SYSTEM, cross-tenant por diseño. Un
+     * empleado solo ve la hoja de medicación de las hospitalizaciones de su
+     * empresa: la hospitalización ajena devuelve la lista vacía, no un 403 que
+     * confirme que existe.
+     */
     @Override
-    public List<MedicationScheduleDto> listByHospitalization(Long hospitalizationId) {
-        return repository.findByHospitalizationId(hospitalizationId).stream()
-                .map(MedicationScheduleDto::from).toList();
+    public List<MedicationScheduleDto> listByHospitalization(Long hospitalizationId,
+            Long companyId) {
+        return (companyId == null
+                ? repository.findByHospitalizationId(hospitalizationId)
+                : repository.findByHospitalizationIdAndCompanyId(hospitalizationId, companyId))
+                .stream().map(MedicationScheduleDto::from).toList();
     }
 }

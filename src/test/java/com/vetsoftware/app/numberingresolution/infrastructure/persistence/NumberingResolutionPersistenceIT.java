@@ -245,7 +245,7 @@ class NumberingResolutionPersistenceIT extends AbstractDataJpaTest {
             // La @SQLRestriction esconde la fila de todo el mapeo JPA. Solo el UPDATE
             // nativo puede volver a activarla; con findById().enable() esto seria
             // imposible y nadie podria recuperar una resolucion dada de baja por error.
-            assertThat(repository.reactivate(guardada.getId())).isEqualTo(1);
+            assertThat(repository.reactivate(guardada.getId(), COMPANY)).isEqualTo(1);
             entityManager.clear();
 
             assertThat(repository.findById(guardada.getId())).map(NumberingResolution::isEnabled)
@@ -255,7 +255,24 @@ class NumberingResolutionPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("reactivar una resolucion inexistente no afecta a ninguna fila")
         void reactivar_una_resolucion_inexistente_no_afecta_nada() {
-            assertThat(repository.reactivate(777777L)).isZero();
+            assertThat(repository.reactivate(777777L, COMPANY)).isZero();
+        }
+
+        @Test
+        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y la deja oculta")
+        void reactivar_con_la_empresa_ajena_no_afecta_filas() {
+            // La unica barrera de la reactivacion es este WHERE: no hay lectura previa que
+            // valide la propiedad. Con el company_id ajeno la numeracion fiscal de esta
+            // empresa sigue dada de baja.
+            NumberingResolution guardada = guardadaDeEmpresa();
+            repository.delete(guardada.getId());
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.reactivate(guardada.getId(), OTRA_COMPANY)).isZero();
+            entityManager.clear();
+
+            assertThat(repository.findById(guardada.getId())).isEmpty();
         }
     }
 

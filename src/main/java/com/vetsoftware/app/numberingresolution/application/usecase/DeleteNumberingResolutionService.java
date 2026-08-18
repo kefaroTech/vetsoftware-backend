@@ -16,10 +16,18 @@ public class DeleteNumberingResolutionService implements DeleteNumberingResoluti
         this.repository = repository;
     }
 
+    /**
+     * {@code companyId} null = caller sin empresa (SYSTEM), que sí puede borrar
+     * cualquier resolución; con empresa, la lectura previa va acotada para que
+     * borrar la resolución fiscal de otro tenant sea un 404 y no un borrado.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new NumberingResolutionNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new NumberingResolutionNotFoundException(id));
         repository.delete(id);
     }
 }

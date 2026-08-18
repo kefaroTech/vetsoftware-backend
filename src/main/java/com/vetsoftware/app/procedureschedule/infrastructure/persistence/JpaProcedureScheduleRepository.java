@@ -52,8 +52,23 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     }
 
     @Override
+    public List<ProcedureSchedule> findByHospitalizationProcedureIdAndCompanyId(
+            Long hospitalizationProcedureId, Long companyId) {
+        return jpaRepository
+                .findByHospitalizationProcedureIdAndCompanyId(hospitalizationProcedureId, companyId)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public List<ProcedureSchedule> findByHospitalizationId(Long hospitalizationId) {
         return jpaRepository.findByHospitalizationProcedureHospitalizationId(hospitalizationId)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public List<ProcedureSchedule> findByHospitalizationIdAndCompanyId(Long hospitalizationId,
+            Long companyId) {
+        return jpaRepository.findByHospitalizationIdAndCompanyId(hospitalizationId, companyId)
                 .stream().map(mapper::toDomain).toList();
     }
 
@@ -68,12 +83,20 @@ public class JpaProcedureScheduleRepository implements ProcedureScheduleReposito
     }
 
     @Override
+    public void disableByHospitalizationProcedureId(Long hospitalizationProcedureId,
+            Long companyId) {
+        jpaRepository.disableByHospitalizationProcedureId(hospitalizationProcedureId, companyId);
+    }
+
+    @Override
     public void disablePendingByHospitalizationProcedureId(Long hospitalizationProcedureId) {
         jpaRepository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId);
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public void disablePendingByHospitalizationProcedureId(Long hospitalizationProcedureId,
+            Long companyId) {
+        jpaRepository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId,
+                companyId);
     }
 }

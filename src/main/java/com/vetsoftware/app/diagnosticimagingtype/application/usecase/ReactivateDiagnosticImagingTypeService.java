@@ -19,13 +19,20 @@ public class ReactivateDiagnosticImagingTypeService
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aquí no hay un
+     * findById previo que valide la propiedad, así que sin filtrar por empresa se
+     * revivía el tipo de otro tenant. La relectura usa el finder ESTRICTO —lo
+     * reactivado es siempre propio— y no el de disponibles, que incluye las
+     * generales.
+     */
     @Override
     @Transactional
-    public DiagnosticImagingTypeDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public DiagnosticImagingTypeDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new DiagnosticImagingTypeNotFoundException(id);
-        return DiagnosticImagingTypeDto.from(repository.findById(id)
+        return DiagnosticImagingTypeDto.from(repository.findOwnedByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(id)));
     }
 }

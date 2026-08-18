@@ -101,7 +101,7 @@ class VoidGeneralChargeOpenAccountServiceTest {
 
             service.execute(comandoAnular());
 
-            verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID);
+            verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
             verify(versionGuard).assertVersion(COMPANY_ID, OPEN_ACCOUNT_ID, null);
             verify(refresher).refresh(COMPANY_ID, OPEN_ACCOUNT_ID);
         }

@@ -13,7 +13,7 @@ public class JpaRolePermissionChildrenCascadePort implements RolePermissionChild
     }
 
     @Override
-    public int deactivateAllByRoleId(Long roleId) {
-        return jpaRepository.disableAllByRoleId(roleId);
+    public int deactivateAllByRoleId(Long roleId, Long companyId) {
+        return jpaRepository.disableAllByRoleId(roleId, companyId);
     }
 }

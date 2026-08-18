@@ -41,18 +41,24 @@ public class ChangeOpenAccountStatusService implements ChangeOpenAccountStatusUs
         // transmisión a la DIAN +
         // entrega
         // (I/O externo ~60s) se difiere a afterCommit (A1), fuera del lock.
-        OpenAccount openAccount = repository.findByIdForUpdate(command.id())
+        //
+        // El FOR UPDATE va acotado a la empresa: asi el lock pesimista no llega
+        // siquiera a tomarse sobre una cuenta ajena (un if posterior lo tomaba
+        // igual y solo despues rechazaba, que es un IDOR/DoS por lock
+        // cross-tenant). El companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId(), nunca null).
+        OpenAccount openAccount = repository
+                .findByIdForUpdateAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
-        if (!openAccount.getCompany().id().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
         if (command.expectedVersion() != null
                 && !command.expectedVersion().equals(openAccount.getVersion())) {
             throw new OpenAccountVersionConflictException(command.id(), command.expectedVersion(),
                     openAccount.getVersion());
         }
-        EmployeeRef closedBy = employeeQueryPort.findById(command.employeeId()).orElseThrow(
-                () -> new IllegalArgumentException("Employee not found: " + command.employeeId()));
+        // closedById viene del principal (authz.currentEmployeeId()), no del
+        // request: no hay nada que acotar aqui.
+        EmployeeRef closedBy = employeeQueryPort.findById(command.closedById()).orElseThrow(
+                () -> new IllegalArgumentException("Employee not found: " + command.closedById()));
         OpenAccountStatus newStatus = OpenAccountStatus.valueOf(command.status().toUpperCase());
         openAccount.changeStatus(newStatus, closedBy, command.reason());
         OpenAccount saved = repository.save(openAccount);

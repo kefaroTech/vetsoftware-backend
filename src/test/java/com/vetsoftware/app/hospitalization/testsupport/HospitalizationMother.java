@@ -20,6 +20,7 @@ public final class HospitalizationMother {
 
     public static final Long HOSPITALIZATION_ID = 55L;
     public static final Long COMPANY_ID = 9L;
+    public static final Long OTRA_COMPANY_ID = 77L;
     public static final Long ANIMAL_ID = 3L;
     public static final Long CONSULTATION_ID = 7L;
 
@@ -27,6 +28,8 @@ public final class HospitalizationMother {
     public static final ConsultationRef CONSULTA = new ConsultationRef(CONSULTATION_ID,
             LocalDate.of(2026, 2, 28));
     public static final CompanyRef CLINICA = new CompanyRef(COMPANY_ID, "Clinica Vet", "900123456");
+    public static final CompanyRef CLINICA_AJENA = new CompanyRef(OTRA_COMPANY_ID,
+            "Veterinaria ajena", "900654321");
 
     public static final LocalDate FECHA = LocalDate.of(2026, 3, 1);
     public static final LocalDate INICIO = LocalDate.of(2026, 3, 1);
@@ -58,6 +61,19 @@ public final class HospitalizationMother {
         return hospitalization;
     }
 
+    /**
+     * Misma hospitalizacion pero perteneciente a {@link #CLINICA_AJENA}. Se
+     * conserva para los tests que necesitan una entidad de otro tenant; los caminos
+     * de escritura ya no la alcanzan, porque cargan con
+     * {@code findByIdAndCompanyId(...)} y una fila ajena sale como {@code empty}.
+     */
+    public static Hospitalization internadoDeOtraEmpresa() {
+        return new Hospitalization(HOSPITALIZATION_ID, FECHA, INICIO, FIN,
+                HospitalizationType.HOSPITALIZATION, ReasonLeaving.MEDICAL_DISCHARGE,
+                "Gastroenteritis aguda", "Sin complicaciones", FIRULAIS, CONSULTA, CLINICA_AJENA,
+                CREADO, true);
+    }
+
     public static CreateHospitalizationCommand comandoCrear() {
         return new CreateHospitalizationCommand(FECHA, INICIO, FIN,
                 HospitalizationType.HOSPITALIZATION, ReasonLeaving.MEDICAL_DISCHARGE,
@@ -80,10 +96,15 @@ public final class HospitalizationMother {
     }
 
     public static UpdateHospitalizationCommand comandoActualizar() {
+        return comandoActualizar(COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static UpdateHospitalizationCommand comandoActualizar(Long companyId) {
         return new UpdateHospitalizationCommand(HOSPITALIZATION_ID, FECHA, INICIO, FIN,
                 HospitalizationType.HOSPITALIZATION, ReasonLeaving.HOME_TREATMENT,
                 "Gastroenteritis controlada", "Alta con dieta", ANIMAL_ID, CONSULTATION_ID,
-                COMPANY_ID);
+                companyId);
     }
 
     public static UpdateHospitalizationCommand comandoActualizarSinConsulta() {

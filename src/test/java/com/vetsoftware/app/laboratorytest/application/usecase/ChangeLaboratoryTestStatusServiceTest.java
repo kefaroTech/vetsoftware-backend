@@ -40,6 +40,10 @@ class ChangeLaboratoryTestStatusServiceTest {
 
     private static final Long ID = LaboratoryTestMother.ID;
     private static final Long EMPLOYEE_ID = 3L;
+    /** La empresa duena de la muestra: la del fixture. */
+    private static final Long COMPANY_ID = LaboratoryTestMother.CLINICA.id();
+    /** Otro tenant: el atacante que conoce el id ajeno. */
+    private static final Long OTRA_EMPRESA = 77L;
 
     @Mock
     private LaboratoryTestRepository repository;
@@ -52,12 +56,13 @@ class ChangeLaboratoryTestStatusServiceTest {
     @Captor
     private ArgumentCaptor<LaboratoryTest> guardada;
 
+    /** Comando del empleado: siempre acotado a su empresa. */
     private static ChangeLaboratoryTestStatusCommand comando(String status, Long processedById) {
-        return new ChangeLaboratoryTestStatusCommand(ID, status, processedById);
+        return new ChangeLaboratoryTestStatusCommand(ID, status, processedById, COMPANY_ID);
     }
 
     private void muestraPendiente() {
-        when(repository.findById(ID))
+        when(repository.findByIdAndCompanyId(ID, COMPANY_ID))
                 .thenReturn(Optional.of(LaboratoryTestMother.pendienteDeToma()));
     }
 
@@ -114,7 +119,8 @@ class ChangeLaboratoryTestStatusServiceTest {
         @Test
         @DisplayName("una transicion sin firma conserva la firma que ya tuviera la muestra")
         void una_transicion_sin_firma_conserva_la_firma_previa() {
-            when(repository.findById(ID)).thenReturn(Optional.of(LaboratoryTestMother.validada()));
+            when(repository.findByIdAndCompanyId(ID, COMPANY_ID))
+                    .thenReturn(Optional.of(LaboratoryTestMother.validada()));
             devuelveLoQueGuarda();
 
             service.execute(comando("CANCELLED", EMPLOYEE_ID));
@@ -167,7 +173,7 @@ class ChangeLaboratoryTestStatusServiceTest {
         @Test
         @DisplayName("una muestra inexistente no consulta al empleado ni guarda")
         void una_muestra_inexistente_no_consulta_ni_guarda() {
-            when(repository.findById(ID)).thenReturn(Optional.empty());
+            when(repository.findByIdAndCompanyId(ID, COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comando("COMPLETED", EMPLOYEE_ID)))
                     .isInstanceOf(LaboratoryTestNotFoundException.class)
@@ -188,6 +194,46 @@ class ChangeLaboratoryTestStatusServiceTest {
 
             verify(repository, never()).save(any());
             verifyNoInteractions(employeeQueryPort);
+        }
+    }
+
+    /**
+     * BE-31. El {@code id} de la muestra lo escribe el cliente en la URL y el
+     * permiso {@code laboratoryTest.update} no dice de quién es la fila: antes de
+     * acotar la carga, un empleado con ese permiso movía de estado —y firmaba la
+     * validación de— la orden de laboratorio de otra empresa.
+     */
+    @Nested
+    @DisplayName("Aislamiento multi-tenant")
+    class Aislamiento {
+
+        @Test
+        @DisplayName("la muestra de otra empresa es un 404 y no escribe nada")
+        void la_muestra_de_otra_empresa_no_escribe_nada() {
+            when(repository.findByIdAndCompanyId(ID, OTRA_EMPRESA)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(new ChangeLaboratoryTestStatusCommand(ID,
+                    "PENDING_VALIDATION", EMPLOYEE_ID, OTRA_EMPRESA)))
+                    .isInstanceOf(LaboratoryTestNotFoundException.class)
+                    .hasMessageContaining("LaboratoryTest not found: 42");
+
+            verify(repository, never()).save(any());
+            verify(repository, never()).findById(any());
+            verifyNoInteractions(employeeQueryPort);
+        }
+
+        @Test
+        @DisplayName("el principal SYSTEM (sin empresa) carga por la via ancha")
+        void el_principal_system_carga_por_la_via_ancha() {
+            when(repository.findById(ID))
+                    .thenReturn(Optional.of(LaboratoryTestMother.pendienteDeToma()));
+            devuelveLoQueGuarda();
+
+            service.execute(new ChangeLaboratoryTestStatusCommand(ID, "COMPLETED", null, null));
+
+            verify(repository).save(guardada.capture());
+            assertThat(guardada.getValue().getStatus()).isEqualTo(LaboratoryTestStatus.COMPLETED);
+            verify(repository, never()).findByIdAndCompanyId(any(), any());
         }
     }
 }

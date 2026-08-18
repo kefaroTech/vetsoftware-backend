@@ -82,7 +82,8 @@ class InviteEmployeeServiceTest {
         lenient().when(companyQueryPort.findById(COMPANY)).thenReturn(Optional.of(company()));
         lenient().when(passwordHasher.hash("Temporal123*")).thenReturn("$2a$10$hashed");
         lenient().when(repository.save(any())).thenReturn(persisted());
-        lenient().when(roleAssigner.assign(anyLong(), anyLong())).thenReturn("Veterinario");
+        lenient().when(roleAssigner.assign(anyLong(), anyLong(), anyLong()))
+                .thenReturn("Veterinario");
     }
 
     @Nested
@@ -110,12 +111,17 @@ class InviteEmployeeServiceTest {
             assertThat(captor.getValue().getStatus()).isEqualTo(EmployeeStatus.INVITED);
         }
 
+        /**
+         * La empresa del alta viaja con cada asignación: es con lo que
+         * {@code employeerole} acota la resolución del empleado y del rol. Sin ella un
+         * admin podía colgarle a su staff un rol de otro tenant.
+         */
         @Test
-        void asigna_todos_los_roles_recibidos() {
+        void asigna_todos_los_roles_recibidos_con_la_empresa_del_alta() {
             service.execute(command(List.of(3L, 4L), List.of(7L)));
 
-            verify(roleAssigner).assign(55L, 3L);
-            verify(roleAssigner).assign(55L, 4L);
+            verify(roleAssigner).assign(55L, COMPANY, 3L);
+            verify(roleAssigner).assign(55L, COMPANY, 4L);
         }
 
         @Test
@@ -127,8 +133,8 @@ class InviteEmployeeServiceTest {
 
         @Test
         void envia_la_invitacion_con_la_clave_temporal_en_claro_solo_al_correo() {
-            when(roleAssigner.assign(55L, 3L)).thenReturn("Veterinario");
-            when(roleAssigner.assign(55L, 4L)).thenReturn("Cajero");
+            when(roleAssigner.assign(55L, COMPANY, 3L)).thenReturn("Veterinario");
+            when(roleAssigner.assign(55L, COMPANY, 4L)).thenReturn("Cajero");
 
             service.execute(command(List.of(3L, 4L), List.of(7L)));
 
@@ -146,7 +152,7 @@ class InviteEmployeeServiceTest {
             InOrder order = inOrder(repository, roleAssigner, branchAssigner,
                     invitationEmailSender);
             order.verify(repository).save(any());
-            order.verify(roleAssigner).assign(55L, 3L);
+            order.verify(roleAssigner).assign(55L, COMPANY, 3L);
             order.verify(branchAssigner).assign(55L, COMPANY, List.of(7L));
             order.verify(invitationEmailSender).send(anyString(), anyString(), anyString(),
                     anyString(), anyString(), anyString());

@@ -170,6 +170,35 @@ class InventoryCsvTest {
 
             assertThat(csv).contains("\"Ajuste \"\"urgente\"\"\"");
         }
+
+        @Test
+        @DisplayName("una referencia nula se escribe como celda vacia, no como \"null\"")
+        void una_referencia_nula_se_escribe_vacia() {
+            String csv = csvKardex(
+                    kardex(List.of(linea("Ajuste entrada", null, LOT_ID, 3, "0", 33)), 30, 33));
+
+            assertThat(csv).contains(",Ajuste entrada,,700,3,0,33\r\n");
+        }
+
+        @Test
+        @DisplayName("una referencia con salto de linea se entrecomilla")
+        void una_referencia_con_salto_de_linea_se_entrecomilla() {
+            String csv = csvKardex(
+                    kardex(List.of(linea("Ajuste entrada", "Ajuste\nurgente", LOT_ID, 3, "0", 33)),
+                            30, 33));
+
+            assertThat(csv).contains("\"Ajuste\nurgente\"");
+        }
+
+        @Test
+        @DisplayName("una referencia con retorno de carro se entrecomilla")
+        void una_referencia_con_retorno_de_carro_se_entrecomilla() {
+            String csv = csvKardex(
+                    kardex(List.of(linea("Ajuste entrada", "Ajuste\rurgente", LOT_ID, 3, "0", 33)),
+                            30, 33));
+
+            assertThat(csv).contains("\"Ajuste\rurgente\"");
+        }
     }
 
     @Nested

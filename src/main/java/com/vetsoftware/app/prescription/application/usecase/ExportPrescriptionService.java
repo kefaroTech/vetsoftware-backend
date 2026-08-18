@@ -40,8 +40,11 @@ public class ExportPrescriptionService implements ExportPrescriptionUseCase {
     @Override
     @Transactional(readOnly = true)
     public byte[] execute(Long prescriptionId, Long companyId, Long employeeId) {
-        Prescription prescription = repository.findById(prescriptionId)
-                .filter(p -> p.getCompany() != null && companyId.equals(p.getCompany().id()))
+        // El filtro va en la consulta, no en Java: el .filter() posterior rechazaba
+        // igual, pero la fila ajena se cargaba entera antes de descartarse. El
+        // companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId()), asi que nunca es null aqui.
+        Prescription prescription = repository.findByIdAndCompanyId(prescriptionId, companyId)
                 .orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 
         PrescriptionSignalment signalment = reportQueryPort

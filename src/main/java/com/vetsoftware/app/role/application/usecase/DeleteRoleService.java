@@ -33,7 +33,7 @@ public class DeleteRoleService implements DeleteRoleUseCase {
         if (employeeRoleChildrenQueryPort.existsActiveByRoleId(id)) {
             throw new RoleHasActiveChildrenException(id, "employeeRole");
         }
-        rolePermissionChildrenCascadePort.deactivateAllByRoleId(id);
+        rolePermissionChildrenCascadePort.deactivateAllByRoleId(id, companyId);
         repository.delete(id);
     }
 }

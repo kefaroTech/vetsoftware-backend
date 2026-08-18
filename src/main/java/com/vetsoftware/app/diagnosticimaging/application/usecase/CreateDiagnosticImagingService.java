@@ -38,15 +38,21 @@ public class CreateDiagnosticImagingService implements CreateDiagnosticImagingUs
 
     @Override
     public DiagnosticImagingDto execute(CreateDiagnosticImagingCommand command) {
+        // Mismos puertos acotados que el update: nacer apuntando al animal de otro
+        // tenant es la misma fuga que reapuntarse a el despues.
         DiagnosticImagingTypeRef type = diagnosticImagingTypeQueryPort
-                .findById(command.diagnosticImagingTypeId())
+                .findAvailableByIdAndCompanyId(command.diagnosticImagingTypeId(),
+                        command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "DiagnosticImagingType not found: " + command.diagnosticImagingTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

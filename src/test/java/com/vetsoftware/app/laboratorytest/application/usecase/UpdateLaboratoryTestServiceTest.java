@@ -87,12 +87,15 @@ class UpdateLaboratoryTestServiceTest {
     }
 
     private void muestraExistente() {
-        when(repository.findById(ID)).thenReturn(Optional.of(LaboratoryTestMother.validada()));
+        when(repository.findByIdAndCompanyId(ID, COMPANY_ID))
+                .thenReturn(Optional.of(LaboratoryTestMother.validada()));
     }
 
     private void resolucionesBasicas() {
-        when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(UROANALISIS));
-        when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(MICHI));
+        when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                .thenReturn(Optional.of(UROANALISIS));
+        when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                .thenReturn(Optional.of(MICHI));
         when(companyQueryPort.findById(COMPANY_ID)).thenReturn(Optional.of(CLINICA));
     }
 
@@ -109,7 +112,8 @@ class UpdateLaboratoryTestServiceTest {
         void guarda_la_muestra_con_los_campos_reemplazados() {
             muestraExistente();
             resolucionesBasicas();
-            when(consultationQueryPort.findById(CONSULTATION_ID)).thenReturn(Optional.of(CONSULTA));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CONSULTA));
             when(employeeQueryPort.findById(EMPLOYEE_ID)).thenReturn(Optional.of(BACTERIOLOGA));
             devuelveLoQueGuarda();
 
@@ -230,7 +234,7 @@ class UpdateLaboratoryTestServiceTest {
         @Test
         @DisplayName("una muestra inexistente corta antes de resolver referencias")
         void una_muestra_inexistente_corta_antes() {
-            when(repository.findById(ID)).thenReturn(Optional.empty());
+            when(repository.findByIdAndCompanyId(ID, COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(LaboratoryTestNotFoundException.class)
@@ -245,7 +249,8 @@ class UpdateLaboratoryTestServiceTest {
         @DisplayName("un tipo de examen inexistente no edita la muestra")
         void un_tipo_de_examen_inexistente_no_edita() {
             muestraExistente();
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -260,8 +265,10 @@ class UpdateLaboratoryTestServiceTest {
         @DisplayName("un animal inexistente no edita la muestra")
         void un_animal_inexistente_no_edita() {
             muestraExistente();
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(UROANALISIS));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(UROANALISIS));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -275,9 +282,12 @@ class UpdateLaboratoryTestServiceTest {
         @DisplayName("una consulta inexistente no edita la muestra")
         void una_consulta_inexistente_no_edita() {
             muestraExistente();
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(UROANALISIS));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(MICHI));
-            when(consultationQueryPort.findById(CONSULTATION_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(UROANALISIS));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(MICHI));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -291,8 +301,10 @@ class UpdateLaboratoryTestServiceTest {
         @DisplayName("una empresa inexistente no edita la muestra")
         void una_empresa_inexistente_no_edita() {
             muestraExistente();
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(UROANALISIS));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(MICHI));
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(UROANALISIS));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(MICHI));
             when(companyQueryPort.findById(COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comando(1, "NORMAL", null, null)))
@@ -328,6 +340,103 @@ class UpdateLaboratoryTestServiceTest {
                     .hasMessageContaining("quantity must be at least 1");
 
             verify(repository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("aislamiento entre empresas")
+    class Tenancy {
+
+        /**
+         * El {@code @authz.isMyCompany(#command.companyId)} del puerto solo prueba que
+         * el actor declara SU empresa. Si la carga no acotara por empresa, el
+         * {@code update(...)} posterior reescribiria el company de la fila ajena: la
+         * fuga no seria un rechazo sino una apropiacion.
+         */
+        @Test
+        @DisplayName("una muestra de otra empresa es un 404 y no se guarda nada")
+        void muestra_de_otra_empresa_no_se_apropia() {
+            when(repository.findByIdAndCompanyId(ID, COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCompleto()))
+                    .isInstanceOf(LaboratoryTestNotFoundException.class)
+                    .hasMessageContaining("LaboratoryTest not found: 42");
+
+            verify(repository, never()).save(any());
+            verify(repository, never()).findById(any());
+            verifyNoInteractions(testTypeQueryPort, animalQueryPort, consultationQueryPort,
+                    companyQueryPort, employeeQueryPort);
+        }
+
+        /**
+         * La cuarta forma del defecto, y la que sobrevive a la de arriba: aqui la orden
+         * <b>si es mia</b> y lo ajeno es la <b>referencia</b>. Nadie puede robarme la
+         * fila, pero si se podia colgarla del animal de otro tenant: un laboratorio de
+         * mi empresa en la historia clinica de la vecina. La referencia se resolvia con
+         * {@code findById(animalId)}, sin empresa; el {@code verify} de la empresa es
+         * la asercion que lo caza.
+         */
+        @Test
+        @DisplayName("no puede reapuntar la muestra propia al animal de otra empresa")
+        void no_puede_reapuntar_al_animal_de_otra_empresa() {
+            muestraExistente();
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(UROANALISIS));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCompleto()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Animal not found: " + ANIMAL_ID);
+
+            verify(animalQueryPort).findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(consultationQueryPort, companyQueryPort, employeeQueryPort);
+        }
+
+        /**
+         * El catalogo de tipos mezcla filas generales con las privadas de cada empresa,
+         * asi que la variante acotada es «general O mia»: el tipo general sigue
+         * sirviendo y el privado del vecino deja de servir.
+         */
+        @Test
+        @DisplayName("no puede reapuntar la muestra propia a un tipo privado de otra empresa")
+        void no_puede_reapuntar_a_un_tipo_de_otra_empresa() {
+            muestraExistente();
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCompleto()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("LaboratoryTestType not found: " + TEST_TYPE_ID);
+
+            verify(testTypeQueryPort).findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(animalQueryPort, consultationQueryPort, companyQueryPort,
+                    employeeQueryPort);
+        }
+
+        /**
+         * La consulta es el otro padre por el que se colaba la misma fuga.
+         */
+        @Test
+        @DisplayName("no puede reapuntar la muestra propia a la consulta de otra empresa")
+        void no_puede_reapuntar_a_la_consulta_de_otra_empresa() {
+            muestraExistente();
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(UROANALISIS));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(MICHI));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCompleto()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Consultation not found: " + CONSULTATION_ID);
+
+            verify(consultationQueryPort).findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(companyQueryPort, employeeQueryPort);
         }
     }
 }

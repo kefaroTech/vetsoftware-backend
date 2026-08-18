@@ -42,6 +42,11 @@ public class JpaMedicamentRepository implements MedicamentRepository {
 
     @Override
     public Optional<Medicament> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Medicament> findAvailableByIdAndCompanyId(Long id, Long companyId) {
         return jpaRepository.findAvailableById(id, companyId).map(mapper::toDomain);
     }
 
@@ -72,7 +77,7 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

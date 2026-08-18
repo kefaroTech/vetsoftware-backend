@@ -32,20 +32,37 @@ public class UpdateDewormingService implements UpdateDewormingUseCase {
         this.companyQueryPort = companyQueryPort;
     }
 
+    /**
+     * La carga va acotada a la empresa. El {@code isMyCompany} del puerto solo
+     * prueba que el llamante declara SU empresa; con un {@code findById} pelado el
+     * efecto no era un rechazo sino una apropiacion: la desparasitacion de otro
+     * tenant se reescribia con {@code company} = la del atacante.
+     * {@code companyId == null} es el camino SYSTEM.
+     */
     @Override
     @Transactional
     public DewormingDto execute(UpdateDewormingCommand command) {
-        Deworming deworming = repository.findById(command.id())
+        Deworming deworming = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new DewormingNotFoundException(command.id()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        // La empresa efectiva: la del command, o la de la fila ya cargada cuando el
+        // caller es SYSTEM. Con ella se acotan las dos referencias, que es la fuga que
+        // sobrevive a la carga propia ya acotada: no se apropia de la desparasitacion
+        // ajena, la cuelga del animal (o la consulta) de otro tenant.
+        Long companyId = command.companyId() == null
+                ? deworming.getCompany().id()
+                : command.companyId();
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort.findByIdAndCompanyId(command.consultationId(), companyId)
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
-                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
 
         deworming.update(command.date(), command.lastDeworming(), command.type(), command.product(),
                 command.dosage(), command.nextControl(), command.observations(), animal,

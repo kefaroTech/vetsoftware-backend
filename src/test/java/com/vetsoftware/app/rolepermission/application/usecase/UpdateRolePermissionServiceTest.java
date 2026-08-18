@@ -200,4 +200,37 @@ class UpdateRolePermissionServiceTest {
                     .isInstanceOf(RolePermissionNotFoundException.class);
         }
     }
+
+    @Nested
+    @DisplayName("sin companyId — principal SYSTEM, cross-tenant por diseno")
+    class SinCompanyId {
+
+        /**
+         * Cubre las dos ramas del ternario companyId==null que
+         * "sin_company_id_resuelve_sin_filtro" no llega a ejercitar porque corta en el
+         * primer findById: aqui el rol y el permiso tambien se resuelven por
+         * roleQueryPort.findById/permissionQueryPort.findById, no por sus variantes
+         * *AndCompanyId.
+         */
+        @Test
+        @DisplayName("guarda usando findById en los tres puertos, sin ninguna variante *AndCompanyId")
+        void guarda_usando_find_by_id_en_los_tres_puertos() {
+            when(repository.findById(1L)).thenReturn(Optional.of(RolePermissionMother.activa()));
+            when(roleQueryPort.findById(4L))
+                    .thenReturn(Optional.of(RolePermissionMother.RECEPCION));
+            when(permissionQueryPort.findById(8L))
+                    .thenReturn(Optional.of(RolePermissionMother.CREAR_ANIMALES));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            RolePermissionDto dto = service
+                    .execute(new UpdateRolePermissionCommand(1L, 4L, 8L, null));
+
+            assertThat(dto.role().id()).isEqualTo(4L);
+            assertThat(dto.permission().id()).isEqualTo(8L);
+            verify(repository).save(guardado.capture());
+            assertThat(guardado.getValue().getRole()).isEqualTo(RolePermissionMother.RECEPCION);
+            verify(permissionCachePort).evictByRoleId(3L);
+            verify(permissionCachePort).evictByRoleId(4L);
+        }
+    }
 }

@@ -30,7 +30,8 @@ public class SuspendHospitalizationMedicationService
     @Override
     @Transactional
     public HospitalizationMedicationDto execute(SuspendHospitalizationMedicationCommand command) {
-        HospitalizationMedication medication = repository.findById(command.id())
+        HospitalizationMedication medication = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
         EmployeeRef by = employeeQueryPort.findById(command.suspendedById())
                 .orElseThrow(() -> new IllegalArgumentException(

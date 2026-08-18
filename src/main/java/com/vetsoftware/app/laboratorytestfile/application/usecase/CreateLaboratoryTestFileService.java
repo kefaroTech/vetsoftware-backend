@@ -42,10 +42,16 @@ public class CreateLaboratoryTestFileService implements CreateLaboratoryTestFile
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Employee not found: " + command.uploadedById()));
 
+        // El examen ya se confirmo arriba: si la ruta no se resuelve, lo que falta es
+        // alguno de los eslabones que la componen (empresa, animal o propietario del
+        // animal), no el examen. Reusar el mensaje de "no encontrado" atribuia el
+        // fallo a la causa equivocada y mandaba a buscar donde no era.
         LaboratoryTestStoragePathRef storagePath = laboratoryTestQueryPort
                 .findStoragePath(command.laboratoryTestId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "LaboratoryTest not found: " + command.laboratoryTestId()));
+                        "LaboratoryTest storage path could not be resolved (company, animal or"
+                                + " animal owner missing) for laboratoryTestId: "
+                                + command.laboratoryTestId()));
 
         String storageKey = StorageKeyFactory.build(storagePath, command.originalFileName());
 

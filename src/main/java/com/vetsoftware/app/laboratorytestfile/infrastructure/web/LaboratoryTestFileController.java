@@ -86,7 +86,8 @@ public class LaboratoryTestFileController {
 
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(@PathVariable Long id) {
-        LaboratoryTestFileDownloadDto dto = downloadUseCase.download(id);
+        LaboratoryTestFileDownloadDto dto = downloadUseCase.download(id,
+                authz.currentCompanyIdOrNull());
         ContentDisposition disposition = ContentDisposition.attachment().filename(dto.fileName())
                 .build();
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
@@ -97,7 +98,7 @@ public class LaboratoryTestFileController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     private LaboratoryTestFileResponse toResponse(LaboratoryTestFileDto dto) {

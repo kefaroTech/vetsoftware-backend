@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.employee.application.command.ChangeMyPasswordCommand;
@@ -47,10 +48,10 @@ class ChangeMyPasswordServiceTest {
 
     @Test
     void hashea_la_nueva_contrasena_antes_de_persistirla() {
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 
-        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
+        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*", 9L));
 
         ArgumentCaptor<Employee> captor = ArgumentCaptor.forClass(Employee.class);
         verify(repository).save(captor.capture());
@@ -59,32 +60,32 @@ class ChangeMyPasswordServiceTest {
 
     @Test
     void devuelve_true_cuando_el_cambio_acepta_la_invitacion() {
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 
         boolean acceptedInvitation = service
-                .execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
+                .execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*", 9L));
 
         assertThat(acceptedInvitation).isTrue();
     }
 
     @Test
     void devuelve_false_en_un_cambio_voluntario_posterior() {
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(false)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(false)));
         when(passwordHasher.hash("OtraClave123*")).thenReturn("$2a$10$new");
 
         boolean acceptedInvitation = service
-                .execute(new ChangeMyPasswordCommand(55L, "OtraClave123*"));
+                .execute(new ChangeMyPasswordCommand(55L, "OtraClave123*", 9L));
 
         assertThat(acceptedInvitation).isFalse();
     }
 
     @Test
     void limpia_la_obligacion_de_cambiar_la_contrasena() {
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 
-        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
+        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*", 9L));
 
         ArgumentCaptor<Employee> captor = ArgumentCaptor.forClass(Employee.class);
         verify(repository).save(captor.capture());
@@ -96,10 +97,10 @@ class ChangeMyPasswordServiceTest {
         // Diseño explícito: el empleado pasa directo al panel sin re-login, así que
         // authVersion no
         // cambia.
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("NuevaClave123*")).thenReturn("$2a$10$new");
 
-        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*"));
+        service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*", 9L));
 
         ArgumentCaptor<Employee> captor = ArgumentCaptor.forClass(Employee.class);
         verify(repository).save(captor.capture());
@@ -108,20 +109,36 @@ class ChangeMyPasswordServiceTest {
 
     @Test
     void un_empleado_inexistente_no_puede_cambiar_contrasena() {
-        when(repository.findById(404L)).thenReturn(Optional.empty());
+        when(repository.findByIdAndCompanyId(404L, 9L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(new ChangeMyPasswordCommand(404L, "x")))
+        assertThatThrownBy(() -> service.execute(new ChangeMyPasswordCommand(404L, "x", 9L)))
                 .isInstanceOf(EmployeeNotFoundException.class);
 
         verify(repository, never()).save(any());
     }
 
     @Test
+    void un_empleado_de_otra_empresa_no_se_carga_y_no_escribe_nada() {
+        // La lectura va acotada: con la empresa del principal, la fila del empleado de
+        // otro tenant ni siquiera se devuelve, asi que no hay contrasena que
+        // reescribir.
+        when(repository.findByIdAndCompanyId(55L, 77L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> service.execute(new ChangeMyPasswordCommand(55L, "NuevaClave123*", 77L)))
+                .isInstanceOf(EmployeeNotFoundException.class);
+
+        verify(repository, never()).findById(any());
+        verify(repository, never()).save(any());
+        verifyNoInteractions(passwordHasher);
+    }
+
+    @Test
     void una_contrasena_vacia_no_llega_a_persistirse() {
-        when(repository.findById(55L)).thenReturn(Optional.of(employee(true)));
+        when(repository.findByIdAndCompanyId(55L, 9L)).thenReturn(Optional.of(employee(true)));
         when(passwordHasher.hash("   ")).thenReturn("   ");
 
-        assertThatThrownBy(() -> service.execute(new ChangeMyPasswordCommand(55L, "   ")))
+        assertThatThrownBy(() -> service.execute(new ChangeMyPasswordCommand(55L, "   ", 9L)))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(repository, never()).save(any());

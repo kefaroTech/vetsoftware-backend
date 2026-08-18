@@ -34,7 +34,7 @@ class DeletePurchaseOrderServiceTest {
 
         service.execute(1L, PurchaseOrderMother.COMPANY_ID);
 
-        verify(repository).delete(1L);
+        verify(repository).delete(1L, PurchaseOrderMother.COMPANY_ID);
     }
 
     @Test
@@ -46,7 +46,7 @@ class DeletePurchaseOrderServiceTest {
                 .isInstanceOf(PurchaseOrderNotFoundException.class)
                 .hasMessageContaining("Purchase order not found: 1");
 
-        verify(repository, never()).delete(any());
+        verify(repository, never()).delete(any(), any());
         verify(repository, never()).save(any());
     }
 }

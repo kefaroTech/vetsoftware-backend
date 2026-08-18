@@ -84,8 +84,10 @@ class CreateLaboratoryTestServiceTest {
     }
 
     private void resolucionesBasicas() {
-        when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(HEMOGRAMA));
-        when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(FIRULAIS));
+        when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                .thenReturn(Optional.of(HEMOGRAMA));
+        when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                .thenReturn(Optional.of(FIRULAIS));
         when(companyQueryPort.findById(COMPANY_ID)).thenReturn(Optional.of(CLINICA));
     }
 
@@ -101,7 +103,8 @@ class CreateLaboratoryTestServiceTest {
         @DisplayName("persiste la muestra con las referencias resueltas por cada puerto")
         void persiste_la_muestra_con_las_referencias_resueltas() {
             resolucionesBasicas();
-            when(consultationQueryPort.findById(CONSULTATION_ID)).thenReturn(Optional.of(CONSULTA));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CONSULTA));
             when(employeeQueryPort.findById(EMPLOYEE_ID)).thenReturn(Optional.of(BACTERIOLOGA));
             when(branchQueryPort.findActiveIdByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
                     .thenReturn(Optional.of(BRANCH_ID));
@@ -128,7 +131,8 @@ class CreateLaboratoryTestServiceTest {
         @DisplayName("devuelve el DTO de lo que quedo persistido")
         void devuelve_el_dto_de_lo_persistido() {
             resolucionesBasicas();
-            when(consultationQueryPort.findById(CONSULTATION_ID)).thenReturn(Optional.of(CONSULTA));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CONSULTA));
             when(employeeQueryPort.findById(EMPLOYEE_ID)).thenReturn(Optional.of(BACTERIOLOGA));
             when(branchQueryPort.findActiveIdByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
                     .thenReturn(Optional.of(BRANCH_ID));
@@ -311,7 +315,8 @@ class CreateLaboratoryTestServiceTest {
         @Test
         @DisplayName("un tipo de examen inexistente corta antes de mirar el animal")
         void un_tipo_de_examen_inexistente_corta_antes() {
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -324,8 +329,10 @@ class CreateLaboratoryTestServiceTest {
         @Test
         @DisplayName("un animal inexistente no crea la muestra")
         void un_animal_inexistente_no_crea_la_muestra() {
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(HEMOGRAMA));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(HEMOGRAMA));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -338,9 +345,12 @@ class CreateLaboratoryTestServiceTest {
         @Test
         @DisplayName("una consulta inexistente no crea la muestra")
         void una_consulta_inexistente_no_crea_la_muestra() {
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(HEMOGRAMA));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(FIRULAIS));
-            when(consultationQueryPort.findById(CONSULTATION_ID)).thenReturn(Optional.empty());
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(HEMOGRAMA));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(FIRULAIS));
+            when(consultationQueryPort.findByIdAndCompanyId(CONSULTATION_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCompleto()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -352,8 +362,10 @@ class CreateLaboratoryTestServiceTest {
         @Test
         @DisplayName("una empresa inexistente no crea la muestra")
         void una_empresa_inexistente_no_crea_la_muestra() {
-            when(testTypeQueryPort.findById(TEST_TYPE_ID)).thenReturn(Optional.of(HEMOGRAMA));
-            when(animalQueryPort.findById(ANIMAL_ID)).thenReturn(Optional.of(FIRULAIS));
+            when(testTypeQueryPort.findAvailableByIdAndCompanyId(TEST_TYPE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(HEMOGRAMA));
+            when(animalQueryPort.findByIdAndCompanyId(ANIMAL_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(FIRULAIS));
             when(companyQueryPort.findById(COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service

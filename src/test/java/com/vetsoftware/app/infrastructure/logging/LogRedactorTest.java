@@ -247,4 +247,42 @@ class LogRedactorTest {
         assertThat(LogRedactor.redactKeyValuePairs(null)).isNull();
         assertThat(LogRedactor.redactKeyValuePairs(List.of())).isEmpty();
     }
+
+    @Test
+    @DisplayName("un valor permitido pero de texto libre en un KeyValuePair también pasa por el enmascarado")
+    void scansAllowedFreeTextKeyValuePairs() {
+        List<KeyValuePair> redacted = LogRedactor
+                .redactKeyValuePairs(List.of(new KeyValuePair("company.name",
+                        "Veterinaria de " + DECOY_EMAIL_LOCAL + "@gmail.com")));
+
+        assertThat(redacted.get(0).value).isEqualTo("Veterinaria de ***@gmail.com");
+    }
+
+    @Test
+    @DisplayName("un número con longitud de tarjeta que no pasa Luhn se enmascara completo, no por los "
+            + "últimos 4")
+    void masksNonLuhnDigitRunCompletely() {
+        // 4111111111111112 tiene longitud de tarjeta (16) pero no pasa Luhn: no lo toma
+        // maskCardNumbers como tarjeta válida, así que cae en LONG_DIGIT_RUN y se
+        // enmascara entero, sin dejar los últimos 4 visibles.
+        String redacted = LogRedactor.redact("referencia 4111111111111112");
+
+        assertThat(redacted).doesNotContain("4111111111111112");
+        assertThat(redacted).isEqualTo("referencia " + LogRedactor.MASK);
+    }
+
+    @Test
+    @DisplayName("un valor entre comillas simples conserva las comillas y enmascara solo el contenido")
+    void masksSingleQuotedKeyedValue() {
+        assertThat(LogRedactor.redact("password: '" + DECOY_PASSWORD + "'"))
+                .isEqualTo("password: '" + LogRedactor.MASK + "'");
+    }
+
+    @Test
+    @DisplayName("un valor sensible al final de la cadena, sin delimitador de cierre, también se "
+            + "enmascara")
+    void masksKeyedValueAtTheEndOfTheString() {
+        assertThat(LogRedactor.redact("clave=" + DECOY_PASSWORD))
+                .isEqualTo("clave=" + LogRedactor.MASK);
+    }
 }

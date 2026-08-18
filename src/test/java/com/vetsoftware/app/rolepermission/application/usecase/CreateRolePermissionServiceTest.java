@@ -3,6 +3,7 @@ package com.vetsoftware.app.rolepermission.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -142,11 +143,12 @@ class CreateRolePermissionServiceTest {
             when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
             when(repository.findDisabledIdByRoleAndPermission(3L, 7L)).thenReturn(Optional.of(1L));
-            when(repository.findById(1L)).thenReturn(Optional.of(RolePermissionMother.activa()));
+            when(repository.findByIdAndCompanyId(1L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.activa()));
 
             RolePermissionDto dto = service.execute(comandoConEmpresa());
 
-            verify(repository).reactivate(1L);
+            verify(repository).reactivate(1L, COMPANY_ID);
             verify(repository, never()).save(any());
             assertThat(dto.id()).isEqualTo(1L);
             assertThat(dto.enabled()).isTrue();
@@ -160,11 +162,61 @@ class CreateRolePermissionServiceTest {
             when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
             when(repository.findDisabledIdByRoleAndPermission(3L, 7L)).thenReturn(Optional.of(1L));
-            when(repository.findById(1L)).thenReturn(Optional.of(RolePermissionMother.activa()));
+            when(repository.findByIdAndCompanyId(1L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.activa()));
 
             service.execute(comandoConEmpresa());
 
             verify(permissionCachePort).evictByRoleId(3L);
+        }
+
+        /**
+         * En la reactivacion no hay lectura previa que valide la propiedad: el
+         * {@code AND company_id} del UPDATE es toda la barrera. Aqui se fija que el
+         * servicio pasa la empresa y que la sobrecarga ancha —la que revivia la
+         * asignacion de cualquier tenant— no se toca por el camino del empleado.
+         */
+        @Test
+        @DisplayName("la reactivacion va acotada: nunca usa la sobrecarga sin empresa")
+        void la_reactivacion_va_acotada() {
+            when(roleQueryPort.findByIdAndCompanyId(3L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.VETERINARIO));
+            when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
+            when(repository.findDisabledIdByRoleAndPermission(3L, 7L)).thenReturn(Optional.of(1L));
+            when(repository.findByIdAndCompanyId(1L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.activa()));
+
+            service.execute(comandoConEmpresa());
+
+            verify(repository).reactivate(1L, COMPANY_ID);
+            verify(repository, never()).reactivate(anyLong());
+            verify(repository, never()).findById(anyLong());
+        }
+
+        /**
+         * La fila desactivada existe pero es de otra empresa: el UPDATE acotado no
+         * afecta ninguna fila y la relectura acotada no la encuentra, asi que el caso
+         * de uso falla con 404 y no invalida ninguna cache de permisos. Antes de la
+         * campana esto reactivaba el permiso del rol ajeno y le vaciaba la cache.
+         */
+        @Test
+        @DisplayName("fila desactivada de otra empresa: 404 y no invalida ninguna cache")
+        void fila_desactivada_de_otra_empresa_no_revive() {
+            when(roleQueryPort.findByIdAndCompanyId(3L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.VETERINARIO));
+            when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
+            when(repository.findDisabledIdByRoleAndPermission(3L, 7L)).thenReturn(Optional.of(1L));
+            when(repository.findByIdAndCompanyId(1L, COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoConEmpresa()))
+                    .isInstanceOf(RolePermissionNotFoundException.class);
+
+            verify(repository).reactivate(1L, COMPANY_ID);
+            verify(repository, never()).reactivate(anyLong());
+            verify(repository, never()).save(any());
+            verifyNoInteractions(permissionCachePort);
         }
 
         @Test
@@ -175,7 +227,7 @@ class CreateRolePermissionServiceTest {
             when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
             when(repository.findDisabledIdByRoleAndPermission(3L, 7L)).thenReturn(Optional.of(1L));
-            when(repository.findById(1L)).thenReturn(Optional.empty());
+            when(repository.findByIdAndCompanyId(1L, COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoConEmpresa()))
                     .isInstanceOf(RolePermissionNotFoundException.class)

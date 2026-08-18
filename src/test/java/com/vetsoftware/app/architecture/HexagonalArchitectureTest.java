@@ -103,6 +103,159 @@ class HexagonalArchitectureTest {
                     + " solo puede servirlo un principal cross-tenant");
 
     /**
+     * La tercera pieza del trío de tenancy, y el cierre de BE-COV.
+     * {@link #TENANT_DEFENSA_EN_PROFUNDIDAD} mira los puertos que <em>reciben</em>
+     * un {@code companyId}; {@link #LISTADOS_SIN_EMPRESA_SOLO_SYSTEM}, los que no
+     * reciben ninguno y devuelven <em>varias</em> filas. Entre las dos quedaba el
+     * hueco por el que pasó una campaña entera: las operaciones que no reciben
+     * empresa y actúan sobre <em>una</em> fila, señalada por un id que el cliente
+     * escribe en la URL.
+     *
+     * <p>
+     * La auditoría de cobertura encontró ~65 de esas en 27 de 94 features
+     * —{@code DELETE /employee-roles/{id}} revocando el rol del administrador de
+     * otra empresa, {@code PATCH /employees/{id}/enable} devolviéndole el acceso a
+     * quien otro tenant despidió, {@code GET /laboratory-test-files/{id}/download}
+     * entregando el PDF de un resultado de laboratorio ajeno— y ArchUnit pasó 13/13
+     * en verde mientras todas existían. Esa es la razón de la regla: la lección de
+     * BE-29 fue que tapar la fuga sin tocar el mecanismo que la dejó pasar la trae
+     * de vuelta.
+     */
+    @ArchTest
+    static final ArchRule OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM = methods().that()
+            .areDeclaredInClassesThat().resideInAPackage("..application.port.in..").and()
+            .areDeclaredInClassesThat().areInterfaces().and().areDeclaredInClassesThat()
+            .areNotAnnotatedWith(NoAuthorizationRequired.class)
+            .should(VetSoftwareConditions.acotarPorEmpresaLasOperacionesPorId())
+            .because("un id lo escribe el cliente en la URL: si la fila es de una empresa,"
+                    + " el puerto tiene que recibir cual");
+
+    /**
+     * La misma familia de fugas vista desde el SQL, y su variante más grave. En un
+     * {@code delete} o un {@code update} corriente hay una lectura previa que
+     * valida la propiedad; en un {@code reactivate} no la hay —el servicio decide
+     * si la fila existe mirando cuántas actualizó—, así que el {@code WHERE} es
+     * toda la seguridad que hay.
+     *
+     * <p>
+     * Un {@code UPDATE employee_roles SET enabled = true WHERE id = :id} reactivaba
+     * una asignación de rol revocada a un empleado de otra empresa y le vaciaba la
+     * caché de permisos: escalada de privilegios cross-tenant en cuatro líneas de
+     * SQL, invisible para las otras dos reglas porque el puerto sí recibía su
+     * {@code companyId} —y lo ignoraba.
+     */
+    @ArchTest
+    static final ArchRule MUTACIONES_SQL_ACOTADAS_POR_EMPRESA = classes().that()
+            .areAssignableTo(JpaRepository.class).and().haveSimpleNameEndingWith("JpaRepository")
+            .should(VetSoftwareConditions.acotarPorEmpresaElSqlQueEscribe())
+            .because("en un reactivate no hay lectura previa: el WHERE es la unica barrera");
+
+    /**
+     * La fuga que ninguna revisión humana ve, porque la anotación «se ve bien».
+     * Doce {@code Update…UseCase} llevaban
+     * {@code @authz.isMyCompany(#command.companyId)} y eran vulnerables igualmente:
+     * esa anotación solo prueba que el atacante declara <em>su propia</em> empresa,
+     * no de quién es la fila que el servicio está a punto de cargar. Con
+     * {@code findById(command.id())} seguido de {@code entidad.update(…, company)},
+     * el efecto no es un rechazo sino una <b>apropiación</b>: la fila de la empresa
+     * B pasa a ser de A.
+     *
+     * <p>
+     * No prohíbe {@code findById}: el camino SYSTEM legítimo es el ternario
+     * {@code companyId == null ? findById(id) : findByIdAndCompanyId(id, companyId)},
+     * que llama a las dos variantes. Lo que exige es que la clase llame
+     * <em>también</em> a la acotada cuando el puerto la ofrece; la fuga es la clase
+     * que solo conoce la variante ancha. Referencia: {@code UpdateSpaService}.
+     *
+     * <p>
+     * <b>«La acotada» es una familia, no un nombre.</b> Los cuatro catálogos por
+     * empresa declaran <em>dos</em> finders acotados con propósitos distintos:
+     * {@code findByIdAndCompanyId} para leer (la fila propia o cualquiera de las
+     * generales) y {@code findOwnedByIdAndCompanyId} para escribir (SOLO la propia,
+     * porque editar una general la cambiaría para todos los tenants). Sus ocho
+     * {@code Update…}/{@code Delete…} usan el segundo —el estrictamente más fuerte—
+     * y la condición los marcaba por no llamar al primero: pedía cambiar código
+     * correcto por código menos seguro. Ahora empareja por la cláusula {@code By…}
+     * y el tipo de retorno, así que vale cualquier hermana que cargue lo mismo por
+     * el mismo criterio con la empresa encima.
+     *
+     * <p>
+     * <b>También está exento el servicio sin autorización de empleado.</b> Un
+     * puerto anotado {@code @NoAuthorizationRequired} declara por escrito que su
+     * autorización no es un JWT —el token de un solo uso del flujo público de
+     * verificación, la firma HMAC del webhook del proveedor—, así que no hay
+     * principal del que sacar una empresa; en el webhook la empresa es incluso una
+     * <em>salida</em> de la búsqueda.
+     * {@link #OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM} ya lo trataba como
+     * exención en su {@code .that()}: no mirarlo aquí era una asimetría entre dos
+     * reglas de la misma familia, no una decisión.
+     */
+    @ArchTest
+    static final ArchRule CARGA_POR_ID_ACOTADA_POR_EMPRESA = classes().that()
+            .resideInAPackage("..application.usecase..")
+            .should(VetSoftwareConditions.cargarPorIdAcotandoLaEmpresa())
+            .because("cargar por id sin acotar y reescribir la empresa no rechaza: se apropia"
+                    + " de la fila ajena");
+
+    /**
+     * La cuarta forma del defecto, y la que sobrevive a las otras tres. Con la
+     * carga propia ya acotada, un {@code UpdateSurgeryService} no puede apropiarse
+     * de una cirugía ajena; lo que sí puede es <b>reapuntar la suya a una entidad
+     * de otro tenant</b>, porque resuelve el animal con
+     * {@code animalQueryPort.findById(command.animalId())} y ese puerto no filtra
+     * nada: una cirugía de mi empresa colgada del animal de la vecina, con su
+     * historia clínica contaminada. Afecta a {@code laboratorytest},
+     * {@code surgery}, {@code diagnosticimaging} y {@code daycare}; {@code spa},
+     * {@code prescription} y {@code consultation} son el modelo.
+     *
+     * <p>
+     * Es regla aparte y no una ampliación de
+     * {@link #CARGA_POR_ID_ACOTADA_POR_EMPRESA} porque aquella ya mira estos
+     * puertos —su filtro es el paquete, no el nombre del tipo— y no le sirve de
+     * nada: el problema es que <b>no declaran</b> ninguna variante acotada que
+     * exigirles llamar. «Declárala» y «llámala» son dos afirmaciones distintas y el
+     * mensaje de fallo tiene que decir cuál es. Las dos quedan disjuntas por
+     * construcción y se comprobó que no comparten ni un punto.
+     *
+     * <p>
+     * <b>Solo mira servicios que ya tienen el {@code companyId} en la mano</b> —los
+     * que llaman a alguna variante acotada en otra parte— y solo las llamadas que
+     * <em>resuelven la referencia</em> ({@code find…} que devuelve un
+     * {@code XxxRef}), no los predicados del mismo puerto ({@code isOpen},
+     * {@code lockForUpdate}, {@code outstandingAmount}). Sin esos dos cortes la
+     * condición marcaba 89 puntos en vez de 38, casi todos {@code Create…Service}:
+     * ahí el defecto es el mismo pero la regla no puede distinguir un id que llega
+     * del cliente de uno que llega del principal.
+     *
+     * <p>
+     * <b>El falso positivo que se dejó visible, y cómo se cerró sin enumerar
+     * puertos.</b> Siete servicios resolvían {@code EmployeeQueryPort.findById}
+     * para guardar el <em>empleado autenticado</em> como {@code createdBy} /
+     * {@code processedBy} / {@code suspendedBy}. Ahí el id viene del principal y no
+     * hay nada que acotar, pero la primera versión de la regla los dejó dentro a
+     * propósito: excluirlos exigía enumerar un puerto por su nombre —lo que este
+     * fichero evita en todas las demás reglas— y eso taparía también el día que un
+     * {@code employeeId} llegue de verdad en el request.
+     *
+     * <p>
+     * La señal que los separa no es el nombre del puerto sino la <b>ausencia del
+     * nombre de recurso</b>: si la referencia es a {@code EmployeeJpaEntity} y
+     * ningún command ni parámetro del servicio declara un {@code employeeId}, el
+     * servicio no tiene por dónde recibir «sobre qué empleado actúo». La condición
+     * lo comprueba en {@code nombraLaReferenciaComoAutor}, y el día que alguien
+     * añada ese campo al command la regla vuelve a marcarlo — la preocupación
+     * original queda intacta. Discrimina de verdad: en
+     * {@code CreateOpenAccountService} exime el {@code createdById} y deja rojo el
+     * {@code OwnerQueryPort}, porque su command sí declara {@code ownerId}.
+     */
+    @ArchTest
+    static final ArchRule REFERENCIAS_CROSS_FEATURE_ACOTADAS_POR_EMPRESA = classes().that()
+            .resideInAPackage("..application.usecase..")
+            .should(VetSoftwareConditions.acotarPorEmpresaLasReferenciasCrossFeature())
+            .because("una referencia sin acotar no se apropia de la fila ajena: cuelga la propia"
+                    + " de un padre de otro tenant");
+
+    /**
      * El cierre de BE-21, y la regla sin la cual el hallazgo vuelve a crecer.
      *
      * <p>

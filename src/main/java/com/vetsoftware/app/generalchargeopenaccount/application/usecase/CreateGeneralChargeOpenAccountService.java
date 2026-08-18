@@ -45,23 +45,33 @@ public class CreateGeneralChargeOpenAccountService
     @Override
     @Transactional
     public GeneralChargeOpenAccountDto execute(CreateGeneralChargeOpenAccountCommand command) {
-        // Lock pesimista como PRIMERA sentencia: serializa cargos/abonos concurrentes
-        // desde la
-        // validación de
-        // estado hasta el recálculo (cierra el TOCTOU del isOpen/recálculo), no solo
-        // durante el
-        // recálculo final.
-        openAccountQueryPort.lockForUpdate(command.openAccountId());
-        // Idempotencia: si el cargo ya se registró con esta clave
-        // (reintento/doble-submit), devolverlo
-        // sin
-        // duplicar. Va DESPUÉS del lock (no antes): así un reintento concurrente que
-        // llega segundo lee
-        // —ya dentro
-        // del lock— el cargo committeado por el rival y lo devuelve, en vez de chocar
-        // con la constraint
-        // única
-        // (500). Mismo orden que el abono (CreateDebtOpenAccountService).
+        // Lock pesimista ACOTADO por empresa como PRIMERA sentencia: serializa
+        // cargos/abonos concurrentes desde la validacion de estado hasta el recalculo
+        // (cierra el TOCTOU del isOpen/recalculo), no solo durante el recalculo final.
+        // Acotado porque la variante ancha tomaba un PESSIMISTIC_WRITE sobre la fila de
+        // OTRO tenant antes de cualquier comprobacion: lo soltaba el rollback, pero se
+        // concedia.
+        openAccountQueryPort.lockForUpdate(command.openAccountId(), command.companyId());
+        // Carga ACOTADA por empresa: la cuenta de otro tenant no se resuelve, asi que
+        // el
+        // cargo no puede colgarse de ella. Antes se cargaba ancha y la empresa se
+        // comparaba despues en Java: ese if era toda la barrera entre un cargo propio y
+        // un importe escrito en la cuenta de un cliente ajeno.
+        OpenAccountRef openAccount = openAccountQueryPort
+                .findByIdAndCompanyId(command.openAccountId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "OpenAccount not found: " + command.openAccountId()));
+        // Idempotencia: si el cargo ya se registro con esta clave
+        // (reintento/doble-submit), devolverlo sin duplicar. Sigue DESPUES del lock (un
+        // reintento concurrente que llega segundo lee, ya dentro del lock, el cargo
+        // committeado por el rival y lo devuelve en vez de chocar con la constraint
+        // unica) y ahora tambien DESPUES de la resolucion acotada: el cargo no tiene
+        // company_id propio —el tenant se alcanza navegando open_account.company_id—,
+        // asi que con el id de una cuenta ajena y la clave exacta este finder devolvia
+        // el DTO del cargo del otro tenant sin pasar por ninguna comprobacion de
+        // empresa. Va ANTES del versionGuard para que el reintento legitimo devuelva el
+        // mismo cargo en vez de fallar por version. Mismo orden que el abono
+        // (CreateDebtOpenAccountService).
         if (command.clientRequestId() != null && !command.clientRequestId().isBlank()) {
             Optional<GeneralChargeOpenAccount> existing = repository
                     .findByOpenAccountIdAndClientRequestId(command.openAccountId(),
@@ -69,12 +79,6 @@ public class CreateGeneralChargeOpenAccountService
             if (existing.isPresent()) {
                 return GeneralChargeOpenAccountDto.from(existing.get());
             }
-        }
-        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "OpenAccount not found: " + command.openAccountId()));
-        if (!openAccount.companyId().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto: dentro del lock, antes de crear el cargo.
         versionGuard.assertVersion(command.companyId(), command.openAccountId(),

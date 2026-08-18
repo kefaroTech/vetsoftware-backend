@@ -53,7 +53,10 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         // a
         // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen), no solo en
         // el recálculo.
-        openAccountQueryPort.lockForUpdate(openAccountId);
+        // Acotado por empresa como en el alta: aqui la cuenta ya se demostro propia (el
+        // abono se cargo acotado), asi que el companyId no cambia el resultado, pero el
+        // puerto no ofrece variante ancha para que no vuelva a colarse una.
+        openAccountQueryPort.lockForUpdate(openAccountId, command.companyId());
         // Detección temprana de conflicto sobre la cuenta del abono.
         versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {

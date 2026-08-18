@@ -514,6 +514,34 @@ class OpenAccountPersistenceIT extends AbstractDataJpaTest {
             return repository.search(new SearchOpenAccountsCommand(COMPANY, null, null, List.of(),
                     termino, 0, 20, null));
         }
+
+        @Test
+        @DisplayName("la busqueda filtra por ownerId cuando se especifica")
+        void la_busqueda_filtra_por_owner_id_cuando_se_especifica() {
+            OpenAccount deMarta = cuentaAbierta();
+            guardar(JORGE, EMPRESA, SEDE, CAJERA, OpenAccountStatus.OPEN, "0.00", "0.00", CREADA,
+                    true);
+
+            PageResult<OpenAccount> resultado = repository.search(new SearchOpenAccountsCommand(
+                    COMPANY, OWNER, null, List.of(), null, 0, 20, null));
+
+            assertThat(resultado.content()).extracting(OpenAccount::getId)
+                    .containsExactly(deMarta.getId());
+        }
+
+        @Test
+        @DisplayName("la busqueda filtra por sede cuando se especifica")
+        void la_busqueda_filtra_por_sede_cuando_se_especifica() {
+            OpenAccount enCentro = cuentaAbierta();
+            guardar(JORGE, EMPRESA, SEDE_NORTE, CAJERA, OpenAccountStatus.OPEN, "0.00", "0.00",
+                    CREADA, true);
+
+            PageResult<OpenAccount> resultado = repository.search(new SearchOpenAccountsCommand(
+                    COMPANY, null, null, List.of(), null, 0, 20, BRANCH));
+
+            assertThat(resultado.content()).extracting(OpenAccount::getId)
+                    .containsExactly(enCentro.getId());
+        }
     }
 
     @Nested
@@ -546,7 +574,7 @@ class OpenAccountPersistenceIT extends AbstractDataJpaTest {
             entityManager.flush();
             entityManager.clear();
 
-            int reactivadas = repository.reactivate(cuenta.getId());
+            int reactivadas = repository.reactivate(cuenta.getId(), COMPANY);
 
             assertThat(reactivadas).isEqualTo(1);
             assertThat(repository.findByIdAndCompanyId(cuenta.getId(), COMPANY)).isPresent();
@@ -555,7 +583,25 @@ class OpenAccountPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("reactivar una cuenta inexistente no toca ninguna fila")
         void reactivar_una_cuenta_inexistente_no_toca_ninguna_fila() {
-            assertThat(repository.reactivate(-1L)).isZero();
+            assertThat(repository.reactivate(-1L, COMPANY)).isZero();
+        }
+
+        @Test
+        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y la deja oculta")
+        void reactivar_con_la_empresa_ajena_no_toca_ninguna_fila() {
+            // Antes el service reactivaba primero y comparaba la empresa despues: solo el
+            // rollback deshacia la escritura ajena. Ahora la empresa esta en el WHERE, asi
+            // que no hay escritura que deshacer.
+            OpenAccount cuenta = cuentaAbierta();
+            entityManager.flush();
+            repository.delete(cuenta.getId());
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.reactivate(cuenta.getId(), OTRA_COMPANY)).isZero();
+            entityManager.clear();
+
+            assertThat(repository.findById(cuenta.getId())).isEmpty();
         }
 
         private long filasCrudas(Long id) {

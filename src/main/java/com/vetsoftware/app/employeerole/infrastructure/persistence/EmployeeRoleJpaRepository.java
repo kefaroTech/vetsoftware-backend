@@ -16,6 +16,12 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
     @EntityGraph(attributePaths = {"employee", "role"})
     Optional<EmployeeRoleJpaEntity> findById(Long id);
 
+    // La asignacion no tiene company_id propio: su empresa es la del empleado
+    // titular. Por eso el acotado por tenant navega el @ManyToOne
+    // (employee.company.id) en vez de una columna local.
+    @EntityGraph(attributePaths = {"employee", "role"})
+    Optional<EmployeeRoleJpaEntity> findByIdAndEmployee_Company_Id(Long id, Long companyId);
+
     @EntityGraph(attributePaths = "role")
     List<EmployeeRoleJpaEntity> findByEmployeeId(Long employeeId);
 
@@ -53,6 +59,26 @@ public interface EmployeeRoleJpaRepository extends JpaRepository<EmployeeRoleJpa
             WHERE id = :id
             """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+
+    /**
+     * Reactivacion acotada al tenant. {@code employee_roles} no tiene
+     * {@code company_id}, asi que el filtro va por EXISTS sobre la tabla padre —
+     * mismo patron que {@code DebtOpenAccountJpaRepository.reactivate}. Sin el, la
+     * reactivacion no tiene ninguna barrera: no hay lectura previa que valide la
+     * propiedad y el servicio decide si existe mirando las filas afectadas, asi que
+     * este WHERE es la unica linea que separa a un tenant de devolverle privilegios
+     * a un empleado de otra empresa.
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE employee_roles
+            SET enabled = true
+            WHERE id = :id
+              AND EXISTS (SELECT 1 FROM employees e WHERE e.id = employee_roles.employee_id AND e.company_id = :companyId)
+            """, nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @org.springframework.data.jpa.repository.Query(value = """
             SELECT id

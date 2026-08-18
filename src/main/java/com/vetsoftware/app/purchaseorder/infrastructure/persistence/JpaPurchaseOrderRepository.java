@@ -66,11 +66,6 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     }
 
     @Override
-    public Optional<PurchaseOrder> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
-
-    @Override
     public Optional<PurchaseOrder> findByIdAndCompanyId(Long id, Long companyId) {
         return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
@@ -135,8 +130,8 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     // Baja lógica = UPDATE nativo. Con deleteById() el cascade de la colección
     // borraba las líneas antes de que el @SQLDelete pausara la cabecera.
     @Override
-    public void delete(Long id) {
-        jpaRepository.softDelete(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.softDelete(id, companyId);
     }
 
     @Override

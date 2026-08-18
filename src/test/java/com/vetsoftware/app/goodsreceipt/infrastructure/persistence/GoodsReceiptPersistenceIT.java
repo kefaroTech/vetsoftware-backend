@@ -476,7 +476,7 @@ class GoodsReceiptPersistenceIT extends AbstractDataJpaTest {
             GoodsReceipt guardada = guardar(FECHA, GoodsReceiptStatus.DRAFT);
             GoodsReceipt viva = guardar(FECHA, GoodsReceiptStatus.DRAFT);
 
-            repository.delete(guardada.getId());
+            repository.delete(guardada.getId(), SchemaSeed.COMPANY_ID);
             releerDesdeLaBase();
 
             assertThat(repository.findByIdAndCompanyId(guardada.getId(), SchemaSeed.COMPANY_ID))
@@ -499,7 +499,7 @@ class GoodsReceiptPersistenceIT extends AbstractDataJpaTest {
                             linea(JERINGA, "LOTE-B", 4, new BigDecimal("3.00"))));
             releerDesdeLaBase();
 
-            repository.delete(guardada.getId());
+            repository.delete(guardada.getId(), SchemaSeed.COMPANY_ID);
             releerDesdeLaBase();
 
             assertThat(filasDeLinea(guardada.getId())).isEqualTo(2L);
@@ -515,11 +515,30 @@ class GoodsReceiptPersistenceIT extends AbstractDataJpaTest {
                     List.of(linea(VACUNA, "LOTE-C", 2, COSTO), linea(JERINGA, "LOTE-D", 5, COSTO)));
             releerDesdeLaBase();
 
-            repository.delete(anulada.getId());
+            repository.delete(anulada.getId(), SchemaSeed.COMPANY_ID);
             releerDesdeLaBase();
 
             assertThat(filasDeLinea(viva.getId())).isEqualTo(2L);
             assertThat(repository.findByIdAndCompanyId(viva.getId(), SchemaSeed.COMPANY_ID))
+                    .isPresent();
+        }
+
+        @Test
+        @DisplayName("la recepcion de otra empresa no se da de baja: el UPDATE no toca ninguna fila")
+        void la_recepcion_de_otra_empresa_no_se_da_de_baja() {
+            // El AND company_id del softDelete es lo que se comprueba aqui: sin el, este
+            // UPDATE por id a secas deshabilitaba la recepcion del otro tenant para quien
+            // conociera el id, y la lectura previa del caso de uso no lo impide si alguien
+            // reordena el servicio o llama al adaptador desde otro sitio.
+            GoodsReceipt ajena = guardar(OTRA_EMPRESA, SEDE_AJENA, PROVEEDOR_AJENO, FECHA,
+                    GoodsReceiptStatus.DRAFT, List.of(linea(VACUNA, "LOTE-X", 7, COSTO)));
+            releerDesdeLaBase();
+
+            repository.delete(ajena.getId(), SchemaSeed.COMPANY_ID);
+            releerDesdeLaBase();
+
+            assertThat(cabecerasDeshabilitadas(ajena.getId())).isZero();
+            assertThat(repository.findByIdAndCompanyId(ajena.getId(), SchemaSeed.OTRA_COMPANY_ID))
                     .isPresent();
         }
     }

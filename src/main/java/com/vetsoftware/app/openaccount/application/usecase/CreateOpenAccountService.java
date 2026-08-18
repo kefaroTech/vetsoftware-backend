@@ -75,8 +75,11 @@ public class CreateOpenAccountService implements CreateOpenAccountUseCase {
             return OpenAccountDto.from(existing.get());
         }
 
-        OwnerRef owner = ownerQueryPort.findById(command.ownerId()).orElseThrow(
-                () -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
+        // El ownerId llega en el request: acotado por empresa, o la cuenta quedaria
+        // colgada del propietario de otro tenant.
+        OwnerRef owner = ownerQueryPort.findByIdAndCompanyId(command.ownerId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Owner not found: " + command.ownerId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(

@@ -100,7 +100,7 @@ public class SpaController {
 
     @PatchMapping("/{id}/enable")
     public SpaResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     @PatchMapping("/{id}/status")

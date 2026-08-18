@@ -36,13 +36,21 @@ public class UpdateHospitalizationService implements UpdateHospitalizationUseCas
     @Override
     @Transactional
     public HospitalizationDto execute(UpdateHospitalizationCommand command) {
-        Hospitalization hospitalization = repository.findById(command.id())
+        Hospitalization hospitalization = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new HospitalizationNotFoundException(command.id()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        // Las referencias entrantes se resuelven acotadas por la MISMA empresa que la
+        // fila. Sin eso el update ya no se apropia de nada ajeno, pero si cuelga lo
+        // propio de un padre de otro tenant: un paciente ingresado en mi empresa
+        // colgado del animal —y de la consulta— de la vecina.
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

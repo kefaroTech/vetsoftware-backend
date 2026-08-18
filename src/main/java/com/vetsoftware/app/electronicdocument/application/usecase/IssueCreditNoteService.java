@@ -51,12 +51,13 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
     }
 
     private ElectronicDocument buildPending(IssueCreditNoteCommand command) {
-        ElectronicDocument original = repository.findById(command.documentId())
+        // El filtro por empresa va EN la consulta, no en un if posterior: el
+        // companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId(), nunca null). No filtrar documentos de otra
+        // empresa.
+        ElectronicDocument original = repository
+                .findByIdAndCompanyId(command.documentId(), command.companyId())
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));
-        if (!command.companyId().equals(original.getCompanyId())) {
-            // No filtrar documentos de otra empresa.
-            throw new ElectronicDocumentNotFoundException(command.documentId());
-        }
         if (original.isNote()) {
             throw new IllegalArgumentException(
                     "No se puede emitir una nota credito sobre otra nota.");

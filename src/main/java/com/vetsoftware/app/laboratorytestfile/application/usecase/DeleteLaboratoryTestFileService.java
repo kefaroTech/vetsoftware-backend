@@ -21,10 +21,18 @@ public class DeleteLaboratoryTestFileService implements DeleteLaboratoryTestFile
         this.fileStoragePort = fileStoragePort;
     }
 
+    /**
+     * La lectura previa va acotada por empresa: es la que decide si la fila existe
+     * «para este actor», y su fallo es lo unico que impide borrar el objeto en S3
+     * de otro tenant — un borrado que ninguna transaccion puede deshacer. Un
+     * {@code companyId} nulo es el actor global (SYSTEM).
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        LaboratoryTestFile file = repository.findById(id)
+    public void execute(Long id, Long companyId) {
+        LaboratoryTestFile file = (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
                 .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
         // se borra primero la fila (dentro de la tx) y luego el objeto en S3:
         // si S3 falla, la tx hace rollback y la metadata se conserva.

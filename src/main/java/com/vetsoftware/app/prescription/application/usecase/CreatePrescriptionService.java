@@ -33,9 +33,16 @@ public class CreatePrescriptionService implements CreatePrescriptionUseCase {
 
     @Override
     public PrescriptionDto execute(CreatePrescriptionCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
-        ConsultationRef consultation = consultationQueryPort.findById(command.consultationId())
+        // Las dos referencias se resuelven acotadas: sin el companyId, un animalId o
+        // un consultationId de otro tenant colgaba una receta de esta empresa de la
+        // historia clinica de la vecina. El companyId lo inyecta el controller desde
+        // el principal (authz.currentCompanyId()), asi que nunca es null aqui.
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
+        ConsultationRef consultation = consultationQueryPort
+                .findByIdAndCompanyId(command.consultationId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

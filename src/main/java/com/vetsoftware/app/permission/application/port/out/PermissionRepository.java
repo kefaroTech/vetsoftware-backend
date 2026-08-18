@@ -9,6 +9,9 @@ public interface PermissionRepository {
 
     Optional<Permission> findById(Long id);
 
+    /** Lectura acotada al tenant. */
+    Optional<Permission> findByIdAndCompanyId(Long id, Long companyId);
+
     List<Permission> findAll();
 
     List<Permission> findAllByCompanyId(Long companyId);
@@ -16,4 +19,10 @@ public interface PermissionRepository {
     void delete(Long id);
 
     int reactivate(Long id);
+
+    /**
+     * Reactivacion acotada al tenant; devuelve las filas afectadas. Cero significa
+     * «no existe en esa empresa».
+     */
+    int reactivate(Long id, Long companyId);
 }

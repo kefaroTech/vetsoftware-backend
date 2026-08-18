@@ -290,5 +290,61 @@ class EmployeeTest {
 
             assertThat(employee.getCompany().id()).isEqualTo(9L);
         }
+
+        @Test
+        void no_permite_un_codigo_de_mas_de_50_caracteres() {
+            Employee employee = valid();
+
+            assertThatThrownBy(() -> employee.update("X".repeat(51), "n", "e@e.co"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("50 chars or less");
+
+            assertThatCode(() -> employee.update("X".repeat(50), "n", "e@e.co"))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        void no_permite_un_nombre_de_mas_de_100_caracteres() {
+            Employee employee = valid();
+
+            assertThatThrownBy(() -> employee.update("C", "N".repeat(101), "e@e.co"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("100 chars or less");
+
+            assertThatCode(() -> employee.update("C", "N".repeat(100), "e@e.co"))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        void no_permite_un_correo_de_mas_de_100_caracteres() {
+            Employee employee = valid();
+
+            assertThatThrownBy(() -> employee.update("C", "n", "e".repeat(101)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("100 chars or less");
+
+            assertThatCode(() -> employee.update("C", "n", "e".repeat(100)))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    class ValoresPorDefectoDelConstructor {
+
+        @Test
+        void un_status_nulo_se_normaliza_a_active() {
+            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, true,
+                    true, false, null, 0L);
+
+            assertThat(employee.getStatus()).isEqualTo(EmployeeStatus.ACTIVE);
+        }
+
+        @Test
+        void un_auth_version_nulo_se_normaliza_a_cero() {
+            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, true,
+                    true, false, EmployeeStatus.ACTIVE, null);
+
+            assertThat(employee.getAuthVersion()).isZero();
+        }
     }
 }

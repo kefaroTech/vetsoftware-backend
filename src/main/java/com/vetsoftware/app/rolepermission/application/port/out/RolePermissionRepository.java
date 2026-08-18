@@ -22,13 +22,25 @@ public interface RolePermissionRepository {
 
     void delete(Long id);
 
+    /** Sin acotar: solo el camino SYSTEM ({@code companyId == null}). */
     void deleteAllByIds(List<Long> ids);
+
+    /** Acotada a la empresa: los ids de otro tenant se ignoran. */
+    void deleteAllByIds(List<Long> ids, Long companyId);
 
     int reactivate(Long id);
 
     int reactivate(Long id, Long companyId);
 
+    /** Sin acotar: solo el camino SYSTEM ({@code companyId == null}). */
     int reactivateAllByIds(Collection<Long> ids);
+
+    /**
+     * Acotada a la empresa. Devuelve las filas afectadas, que es como el servicio
+     * sabe cuantas revivieron de verdad: un id de otro tenant colado en el lote
+     * suma cero.
+     */
+    int reactivateAllByIds(Collection<Long> ids, Long companyId);
 
     Optional<Long> findDisabledIdByRoleAndPermission(Long roleId, Long permissionId);
 

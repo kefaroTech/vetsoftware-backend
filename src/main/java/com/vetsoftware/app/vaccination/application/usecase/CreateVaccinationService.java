@@ -37,15 +37,20 @@ public class CreateVaccinationService implements CreateVaccinationUseCase {
 
     @Override
     public VaccinationDto execute(CreateVaccinationCommand command) {
+        // Mismos puertos acotados que el update: nacer apuntando al animal de otro
+        // tenant es la misma fuga que reapuntarse a el despues.
         VaccinationTypeRef vaccinationType = vaccinationTypeQueryPort
-                .findById(command.vaccinationTypeId())
+                .findAvailableByIdAndCompanyId(command.vaccinationTypeId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "VaccinationType not found: " + command.vaccinationTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

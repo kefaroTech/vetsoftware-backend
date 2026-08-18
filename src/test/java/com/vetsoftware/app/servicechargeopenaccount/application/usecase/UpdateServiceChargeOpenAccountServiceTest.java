@@ -4,7 +4,6 @@ import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceCh
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.CHARGE_ID;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.COMPANY_ID;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.CUENTA;
-import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.CUENTA_AJENA;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.OPEN_ACCOUNT_ID;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.OTRA_CUENTA;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.OTRA_CUENTA_ID;
@@ -78,7 +77,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void aplica_las_referencias_nuevas() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             referenciasResueltas();
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -96,7 +96,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void no_recalcula_el_precio_congelado() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             referenciasResueltas();
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -111,7 +112,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void refresca_solo_la_cuenta_destino_cuando_no_se_mueve() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             referenciasResueltas();
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -132,7 +134,7 @@ class UpdateServiceChargeOpenAccountServiceTest {
             // El cargo vive hoy en CUENTA (50) y el comando lo mueve a OTRA_CUENTA (51).
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OTRA_CUENTA_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(OTRA_CUENTA_ID, COMPANY_ID))
                     .thenReturn(Optional.of(OTRA_CUENTA));
             referenciasResueltas();
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -169,7 +171,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void cuenta_destino_inexistente() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -180,17 +183,21 @@ class UpdateServiceChargeOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("cuenta destino de otra empresa")
+        @DisplayName("cuenta destino de otra empresa: el cargo no se mueve a otro tenant")
         void cuenta_destino_de_otra_empresa() {
+            // La cuenta destino existe pero es de otra empresa: la consulta acotada no la
+            // resuelve y el traslado se rechaza. Antes la cuenta ajena SI se cargaba y
+            // solo un if posterior impedia colgarle el importe.
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(CUENTA_AJENA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
 
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(refresher, versionGuard);
         }
@@ -200,7 +207,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void animal_inexistente() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                     .thenReturn(Optional.empty());
 
@@ -217,7 +225,8 @@ class UpdateServiceChargeOpenAccountServiceTest {
         void servicio_inexistente() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                     .thenReturn(Optional.of(ANIMAL));
             when(serviceQueryPort.findByIdAndCompanyId(SERVICIO.id(), COMPANY_ID))

@@ -27,7 +27,8 @@ public class UpdateHospitalizationMedicationService
     @Override
     @Transactional
     public HospitalizationMedicationDto execute(UpdateHospitalizationMedicationCommand command) {
-        HospitalizationMedication medication = repository.findById(command.id())
+        HospitalizationMedication medication = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new HospitalizationMedicationNotFoundException(command.id()));
         medication.update(command.name(), command.dose(), parseFrequency(command.frequency()),
                 parseGuidelineType(command.guidelineType()),

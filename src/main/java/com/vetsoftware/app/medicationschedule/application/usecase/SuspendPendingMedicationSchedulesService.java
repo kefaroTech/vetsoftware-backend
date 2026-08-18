@@ -19,12 +19,27 @@ public class SuspendPendingMedicationSchedulesService
         this.repository = repository;
     }
 
+    /**
+     * No hay lectura previa que valide la propiedad —se escribe primero y se
+     * devuelve lo que quedó vivo—, así que el {@code AND company_id} del UPDATE es
+     * la única barrera. Con una orden de otro tenant el UPDATE acotado no toca
+     * ninguna fila y la lectura acotada devuelve vacío: ni se suspende nada ni se
+     * filtra que la orden existe. {@code companyId == null} es el camino SYSTEM.
+     */
     @Override
     @Transactional
-    public List<MedicationScheduleDto> execute(Long hospitalizationMedicationId) {
-        repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId);
+    public List<MedicationScheduleDto> execute(Long hospitalizationMedicationId, Long companyId) {
+        if (companyId == null) {
+            repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId);
+        } else {
+            repository.disablePendingByHospitalizationMedicationId(hospitalizationMedicationId,
+                    companyId);
+        }
         // Quedan solo las aplicadas (enabled=true).
-        return repository.findByHospitalizationMedicationId(hospitalizationMedicationId).stream()
-                .map(MedicationScheduleDto::from).toList();
+        return (companyId == null
+                ? repository.findByHospitalizationMedicationId(hospitalizationMedicationId)
+                : repository.findByHospitalizationMedicationIdAndCompanyId(
+                        hospitalizationMedicationId, companyId))
+                .stream().map(MedicationScheduleDto::from).toList();
     }
 }

@@ -47,14 +47,21 @@ public interface PurchaseOrderJpaRepository
     // deleteById() dejaba la cabecera pausada y el detalle borrado de la base
     // (producto, cantidad pedida, coste y cantidad recibida). Mismo choque que
     // documenta AppointmentJpaRepository.softDelete.
+    //
+    // El AND company_id es simétrico al de reactivate(id, companyId) de abajo: sin
+    // él, un UPDATE por id a secas pausaba la orden de cualquier tenant para quien
+    // conociera el id. No hay sobrecarga ancha porque no hay camino SYSTEM: el
+    // controller resuelve la empresa con authz.currentCompanyId(), que ya rechaza
+    // al principal sin empresa.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE purchase_orders
             SET enabled = false
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int softDelete(@Param("id") Long id);
+    int softDelete(@Param("id") Long id, @Param("companyId") Long companyId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional

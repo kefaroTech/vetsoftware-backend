@@ -30,7 +30,12 @@ public class UpdatePromotionService implements UpdatePromotionUseCase {
     @Override
     @Transactional
     public PromotionDto execute(UpdatePromotionCommand command) {
-        Promotion promotion = repository.findById(command.id())
+        // El @PreAuthorize solo prueba que el caller declara SU empresa; sin acotar
+        // aqui la lectura, un id ajeno se cargaba y el update posterior reescribia su
+        // company: apropiacion de la promocion de otro tenant.
+        Promotion promotion = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new PromotionNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));

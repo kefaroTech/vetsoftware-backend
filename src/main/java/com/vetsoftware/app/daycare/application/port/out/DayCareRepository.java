@@ -19,5 +19,5 @@ public interface DayCareRepository {
 
     void delete(Long id);
 
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }

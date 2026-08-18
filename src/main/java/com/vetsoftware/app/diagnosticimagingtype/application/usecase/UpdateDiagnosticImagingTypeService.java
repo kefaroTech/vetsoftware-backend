@@ -27,7 +27,13 @@ public class UpdateDiagnosticImagingTypeService implements UpdateDiagnosticImagi
     @Override
     @Transactional
     public DiagnosticImagingTypeDto execute(UpdateDiagnosticImagingTypeCommand command) {
-        DiagnosticImagingType type = repository.findById(command.id())
+        // El @PreAuthorize solo prueba que el caller declara SU empresa; sin acotar
+        // aqui la lectura, un id ajeno se cargaba y el update posterior reescribia su
+        // company: el tipo de otro tenant pasaba a tener el company_id del atacante.
+        // Finder ESTRICTO a proposito: una fila general tampoco se puede apropiar.
+        DiagnosticImagingType type = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findOwnedByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new DiagnosticImagingTypeNotFoundException(command.id()));
         CompanyRef company = command.companyId() == null
                 ? null

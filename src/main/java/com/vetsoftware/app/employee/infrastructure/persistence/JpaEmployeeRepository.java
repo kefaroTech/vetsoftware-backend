@@ -49,6 +49,12 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
+    public Optional<Employee> findByIdIncludingDisabledAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdIncludingDisabledAndCompanyId(id, companyId)
+                .map(mapper::toDomain);
+    }
+
+    @Override
     public List<Employee> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
@@ -77,7 +83,7 @@ public class JpaEmployeeRepository implements EmployeeRepository {
     }
 
     @Override
-    public void delete(Long id) {
+    public void delete(Long id, Long companyId) {
         // Soft-delete vía UPDATE nativo (equivalente al @SQLDelete). No usamos
         // deleteById para no
         // disparar
@@ -85,12 +91,23 @@ public class JpaEmployeeRepository implements EmployeeRepository {
         // sesión,
         // provocaría un
         // TransientObjectException. El UPDATE nativo + clearAutomatically lo evita.
-        jpaRepository.deactivate(id);
+        // companyId null = camino SYSTEM (cross-tenant por diseño); con empresa, el
+        // UPDATE lleva su AND company_id.
+        if (companyId == null) {
+            jpaRepository.deactivate(id);
+        } else {
+            jpaRepository.deactivate(id, companyId);
+        }
     }
 
     @Override
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
+    }
+
+    @Override
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 
     @Override

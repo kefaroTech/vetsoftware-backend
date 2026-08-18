@@ -10,6 +10,7 @@ import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPo
 import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPort.PaymentLineView;
 import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPort.SalesDocumentView;
 import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPort.TaxLineView;
+import com.vetsoftware.app.salesreport.domain.ReportDateRange;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,10 +32,18 @@ public class GetSalesBookService implements GetSalesBookUseCase {
         this.queryPort = queryPort;
     }
 
+    /**
+     * El periodo se valida antes de consultar nada: {@link ReportDateRange} rechaza
+     * un rango invertido, que sin la invariante producia un libro con todo en cero
+     * indistinguible de un periodo real sin ventas. La
+     * {@code IllegalArgumentException} sale como 400 por el
+     * {@code GlobalExceptionHandler}.
+     */
     @Override
     public SalesBookDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
-        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to,
-                branchId);
+        ReportDateRange range = new ReportDateRange(from, to);
+        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, range.from(),
+                range.to(), branchId);
 
         List<EntryDto> entries = new ArrayList<>();
         Map<String, TaxByRateDto> taxByRate = new LinkedHashMap<>();

@@ -84,6 +84,21 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             """, nativeQuery = true)
     Optional<EmployeeJpaEntity> findByIdIncludingDisabled(@Param("id") Long id);
 
+    /**
+     * Igual que {@link #findByIdIncludingDisabled} pero acotada al tenant. La usa
+     * la baja logica: sin ella, un empleado con {@code employee.delete} desactivaba
+     * al empleado de cualquier empresa con solo escribir su id en la URL, porque la
+     * lectura previa no miraba de quien era la fila.
+     */
+    @Query(value = """
+            SELECT *
+            FROM employees
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
+    Optional<EmployeeJpaEntity> findByIdIncludingDisabledAndCompanyId(@Param("id") Long id,
+            @Param("companyId") Long companyId);
+
     boolean existsByEmployeeCode(String employeeCode);
 
     // Disponibilidad real del código: cuenta TODAS las filas (incluidas las de
@@ -144,6 +159,23 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
 
+    /**
+     * Reactivacion acotada al tenant. En la reactivacion no hay lectura previa que
+     * valide la propiedad —el servicio decide si existe mirando las filas
+     * afectadas—, asi que este {@code AND company_id} es la unica barrera: sin el,
+     * un empleado podia devolverle el login (y subirle la {@code auth_version}) a
+     * alguien a quien otra empresa habia despedido.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            UPDATE employees
+            SET enabled = true, auth_version = auth_version + 1
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
+    int reactivate(@Param("id") Long id, @Param("companyId") Long companyId);
+
     // Soft-delete por UPDATE nativo (mismo efecto que el @SQLDelete de la entidad).
     // Evita pasar por
     // el ciclo
@@ -162,8 +194,29 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             """, nativeQuery = true)
     int deactivate(@Param("id") Long id);
 
-    // Invalida los access tokens vivos del empleado (usado en logout) sin tocar
-    // `enabled`.
+    /**
+     * Baja logica acotada al tenant, simetrica de {@link #reactivate(Long, Long)}.
+     * Este {@code AND company_id} es la segunda barrera del borrado: la primera es
+     * la lectura previa del servicio, que ya va al finder acotado. Sin ninguna de
+     * las dos, un empleado con {@code employee.delete} dejaba sin acceso al
+     * personal de otra empresa —y le subia la {@code auth_version}, tumbandole las
+     * sesiones vivas— con solo conocer un id.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            UPDATE employees
+            SET enabled = false, auth_version = auth_version + 1
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
+    int deactivate(@Param("id") Long id, @Param("companyId") Long companyId);
+
+    // Invalida los access tokens vivos del empleado sin tocar `enabled`.
+    //
+    // Sin acotar: es el camino del refresh (RefreshTokenUseCase, que es
+    // @NoAuthorizationRequired), donde el sujeto sale del refresh token ya validado
+    // y no hay empresa en el contexto. El logout usa la sobrecarga acotada.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
@@ -173,20 +226,46 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             """, nativeQuery = true)
     int bumpAuthVersion(@Param("id") Long id);
 
+    /**
+     * Invalidacion acotada al tenant, para el camino de logout. Su puerto
+     * ({@code LogoutUseCase}) es {@code @PreAuthorize("isAuthenticated()")}, el
+     * gate mas debil del proyecto: no dice nada sobre de quien es la fila, solo que
+     * hay alguien autenticado. El {@code companyId} sale del
+     * {@code EmployeeContext} del principal, asi que el {@code AND} exige que el
+     * empleado cuyas sesiones se tumban sea de la empresa de quien pide el logout.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            UPDATE employees
+            SET auth_version = auth_version + 1
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
+    int bumpAuthVersion(@Param("id") Long id, @Param("companyId") Long companyId);
+
     // Primer login del staff invitado: INVITED → ACTIVE. Solo toca filas invitadas
     // (idempotente y sin
     // pisar
     // empleados ya activos). Nativa para saltar el @SQLRestriction y actualizar por
     // id directamente.
+    //
+    // El companyId NO sale de esta misma fila: viene de EmployeeCredentials, que
+    // LoginEmployeeService leyo antes con findByCode. Son dos consultas distintas,
+    // asi que el AND compara dos lecturas independientes y no es una tautologia.
+    // Sin sobrecarga ancha a proposito: el unico llamador tiene la empresa en la
+    // mano, y dejar viva la version sin filtro solo servia para que la copiara el
+    // siguiente.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
             SET status = 'ACTIVE'
             WHERE id = :id
+              AND company_id = :companyId
               AND status = 'INVITED'
             """, nativeQuery = true)
-    int activateInvited(@Param("id") Long id);
+    int activateInvited(@Param("id") Long id, @Param("companyId") Long companyId);
 
     boolean existsByCompany_Id(Long companyId);
 }

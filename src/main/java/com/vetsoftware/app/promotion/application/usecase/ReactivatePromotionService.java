@@ -17,13 +17,19 @@ public class ReactivatePromotionService implements ReactivatePromotionUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aquí no hay un
+     * findById previo que valide la propiedad, así que sin filtrar por empresa se
+     * revivía la promoción de otro tenant y con ella los precios que cobra. Cero
+     * filas afectadas significa «no existe en TU empresa» → 404.
+     */
     @Override
     @Transactional
-    public PromotionDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public PromotionDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new PromotionNotFoundException(id);
-        return PromotionDto.from(
-                repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id)));
+        return PromotionDto.from(repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new PromotionNotFoundException(id)));
     }
 }

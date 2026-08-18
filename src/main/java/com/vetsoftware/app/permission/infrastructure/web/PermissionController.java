@@ -89,7 +89,7 @@ public class PermissionController {
 
     @PatchMapping("/{id}/enable")
     public PermissionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     private PermissionResponse toResponse(PermissionDto dto) {

@@ -50,14 +50,17 @@ class UpdateHospitalizationServiceTest {
     private ArgumentCaptor<Hospitalization> guardada;
 
     private void existeLaHospitalizacion() {
-        when(repository.findById(HospitalizationMother.HOSPITALIZATION_ID))
+        when(repository.findByIdAndCompanyId(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.internado()));
     }
 
     private void todasLasReferenciasExisten() {
-        when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+        when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-        when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
+        when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.CONSULTA));
         when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.CLINICA));
@@ -107,7 +110,8 @@ class UpdateHospitalizationServiceTest {
         @DisplayName("quitar la consulta no consulta el puerto y deja la referencia nula")
         void quitar_la_consulta_deja_la_referencia_nula() {
             existeLaHospitalizacion();
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
             when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.CLINICA));
@@ -128,8 +132,8 @@ class UpdateHospitalizationServiceTest {
         @Test
         @DisplayName("hospitalizacion inexistente: 404 de dominio y cero escrituras")
         void hospitalizacion_inexistente() {
-            when(repository.findById(HospitalizationMother.HOSPITALIZATION_ID))
-                    .thenReturn(Optional.empty());
+            when(repository.findByIdAndCompanyId(HospitalizationMother.HOSPITALIZATION_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoActualizar()))
                     .isInstanceOf(HospitalizationNotFoundException.class)
@@ -144,8 +148,8 @@ class UpdateHospitalizationServiceTest {
         @DisplayName("animal inexistente: no persiste ni resuelve las referencias siguientes")
         void animal_inexistente() {
             existeLaHospitalizacion();
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
-                    .thenReturn(Optional.empty());
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -159,10 +163,11 @@ class UpdateHospitalizationServiceTest {
         @DisplayName("consulta inexistente: no persiste")
         void consulta_inexistente() {
             existeLaHospitalizacion();
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-            when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
-                    .thenReturn(Optional.empty());
+            when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
@@ -176,9 +181,11 @@ class UpdateHospitalizationServiceTest {
         @DisplayName("empresa inexistente: no persiste")
         void empresa_inexistente() {
             existeLaHospitalizacion();
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-            when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
+            when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.CONSULTA));
             when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.empty());
@@ -207,6 +214,82 @@ class UpdateHospitalizationServiceTest {
                     .hasMessageContaining("reason must be 500 chars or less");
 
             verify(repository, never()).save(any());
+        }
+    }
+
+    /**
+     * El {@code @PreAuthorize} de {@code UpdateHospitalizationUseCase} solo prueba
+     * que el atacante declara SU propia empresa: {@code command.companyId()} lo
+     * pone el controller con {@code authz.currentCompanyId()}, nunca es la empresa
+     * de la entidad. Mientras la carga fue {@code findById(command.id())} el gate
+     * era vacuo y el efecto no era un rechazo sino una APROPIACION — la fila de la
+     * empresa B pasaba a ser de A al reescribir {@code company}. La carga acotada
+     * es lo que cierra esa via.
+     */
+    @Nested
+    @DisplayName("aislamiento multi-tenant")
+    class Tenencia {
+
+        @Test
+        @DisplayName("una hospitalizacion de otra empresa no se actualiza: 404 y no persiste nada")
+        void una_hospitalizacion_de_otra_empresa_no_se_actualiza() {
+            when(repository.findByIdAndCompanyId(HospitalizationMother.HOSPITALIZATION_ID,
+                    HospitalizationMother.OTRA_COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(
+                    HospitalizationMother.comandoActualizar(HospitalizationMother.OTRA_COMPANY_ID)))
+                    .isInstanceOf(HospitalizationNotFoundException.class)
+                    .hasMessageContaining("Hospitalization not found: "
+                            + HospitalizationMother.HOSPITALIZATION_ID);
+
+            verify(repository, never()).save(any());
+            verifyNoInteractions(animalQueryPort, consultationQueryPort, companyQueryPort);
+        }
+
+        /**
+         * La cuarta forma del defecto, y la que sobrevive a la de arriba: aqui la
+         * hospitalizacion <b>si es mia</b> y lo ajeno es la <b>referencia</b>. Nadie
+         * puede robarme la fila —eso ya lo cierra la carga acotada—, pero si se podia
+         * colgarla del animal de otro tenant, porque la referencia se resolvia con
+         * {@code findById(animalId)} y ese metodo no llevaba empresa. El {@code verify}
+         * de la empresa es la asercion que lo caza.
+         */
+        @Test
+        @DisplayName("no puede reapuntar la hospitalizacion propia al animal de otra empresa")
+        void no_puede_reapuntar_al_animal_de_otra_empresa() {
+            existeLaHospitalizacion();
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoActualizar()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Animal not found: " + HospitalizationMother.ANIMAL_ID);
+
+            verify(animalQueryPort).findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(consultationQueryPort, companyQueryPort);
+        }
+
+        /** La misma fuga con el otro padre: la consulta. */
+        @Test
+        @DisplayName("no puede reapuntar la hospitalizacion propia a la consulta de otra empresa")
+        void no_puede_reapuntar_a_la_consulta_de_otra_empresa() {
+            existeLaHospitalizacion();
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
+                    .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
+            when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoActualizar()))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
+                            "Consultation not found: " + HospitalizationMother.CONSULTATION_ID);
+
+            verify(consultationQueryPort).findByIdAndCompanyId(
+                    HospitalizationMother.CONSULTATION_ID, HospitalizationMother.COMPANY_ID);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(companyQueryPort);
         }
     }
 }

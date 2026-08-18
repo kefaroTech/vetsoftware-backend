@@ -87,6 +87,16 @@ public final class EmployeeMother {
                 OTRA_CLINICA, CREADO, true, true, false, EmployeeStatus.ACTIVE, 0L);
     }
 
+    /**
+     * Invitado de otro tenant: para el escenario cross-tenant de
+     * {@code ResendInvitationService} (mismo id, empresa distinta a la del
+     * solicitante).
+     */
+    public static Employee invitadoDeOtraEmpresa() {
+        return new Employee(EMPLOYEE_ID, "CN-PEDRO", HASH, "Pedro Diaz", "pedro@norte.co",
+                OTRA_CLINICA, CREADO, true, true, true, EmployeeStatus.INVITED, 0L);
+    }
+
     public static CreateEmployeeCommand comandoCrear() {
         return comandoCrear(true);
     }
@@ -96,8 +106,19 @@ public final class EmployeeMother {
                 "mariana@vetrina.co", COMPANY_ID, emailVerified);
     }
 
+    /**
+     * Comando de edicion sellado con la empresa del contexto (nunca del cliente).
+     */
     public static UpdateEmployeeCommand comandoActualizar() {
         return new UpdateEmployeeCommand(EMPLOYEE_ID, "VV-NUEVO", "Mariana Rojas Perez",
-                "mariana.rojas@vetrina.co");
+                "mariana.rojas@vetrina.co", COMPANY_ID);
+    }
+
+    /**
+     * DTO de salida con roles y sedes ya resueltos, para stubs de controller/tests.
+     */
+    public static com.vetsoftware.app.employee.application.dto.EmployeeDto dto() {
+        return com.vetsoftware.app.employee.application.dto.EmployeeDto.from(activo(),
+                java.util.List.of(VETERINARIO), java.util.List.of(SEDE_NORTE));
     }
 }

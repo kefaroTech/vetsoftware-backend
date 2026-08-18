@@ -5,6 +5,36 @@
 # reales y Hibernate valida las entidades contra el schema resultante, que es
 # justo lo que estos tests vienen a comprobar.
 spring:
+  # ---------------------------------------------------------------------------
+  # Pool acotado a proposito. NO es una optimizacion: es lo que mantiene la suite
+  # de integracion en pie.
+  #
+  # Cada clase *IT -y cada @Nested dentro de ella- produce un
+  # MergedContextConfiguration distinto, porque el @Import de su adaptador entra
+  # en la clave del ImportsContextCustomizer. Las ~93 rodajas generan asi cientos
+  # de contextos, de los que el DefaultContextCache de Spring mantiene vivos 32 a
+  # la vez, y CADA uno levanta su propio HikariCP contra el UNICO contenedor
+  # MySQL de AbstractDataJpaTest.
+  #
+  # Con los valores de application.yml (minimum-idle: 5) eso son 32 x 5 = 160
+  # conexiones ociosas contra un max_connections de 151: a partir de cierta
+  # rodaja aparece "Too many connections", Liquibase no arranca, el
+  # entityManagerFactory falla y caen en cascada cientos de
+  # 'Failed to load ApplicationContext'.
+  #
+  # Una rodaja @DataJpaTest es monohilo y transaccional: le basta 1 conexion; se
+  # dejan 2 por el arranque (Liquibase + Hibernate). minimum-idle: 0 con
+  # idle-timeout al minimo que admite Hikari (10 s) hace que un contexto cacheado
+  # pero dormido devuelva sus conexiones en vez de acapararlas.
+  datasource:
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
+      idle-timeout: 10000
+      # Mas holgado que los 3 s de produccion: aqui se compite con el arranque de
+      # los demas contextos y fallar por impaciencia seria un falso rojo.
+      connection-timeout: 10000
+      pool-name: vetsoftware-hikari-test
   jpa:
     hibernate:
       # 'validate' es el contrato: si una entidad no cuadra con la migracion, el

@@ -90,19 +90,19 @@ public class MedicamentController {
     @PutMapping("/{id}")
     public MedicamentResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateMedicamentRequest request) {
-        return toResponse(updateUseCase
-                .execute(new UpdateMedicamentCommand(id, request.name(), request.description())));
+        return toResponse(updateUseCase.execute(new UpdateMedicamentCommand(id, request.name(),
+                request.description(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public MedicamentResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private MedicamentResponse toResponse(MedicamentDto dto) {

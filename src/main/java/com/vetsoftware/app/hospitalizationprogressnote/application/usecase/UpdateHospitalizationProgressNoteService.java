@@ -26,7 +26,8 @@ public class UpdateHospitalizationProgressNoteService
     @Transactional
     public HospitalizationProgressNoteDto execute(
             UpdateHospitalizationProgressNoteCommand command) {
-        HospitalizationProgressNote progressNote = repository.findById(command.id())
+        HospitalizationProgressNote progressNote = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new HospitalizationProgressNoteNotFoundException(command.id()));
         progressNote.update(command.description());
         return HospitalizationProgressNoteDto.from(repository.save(progressNote));

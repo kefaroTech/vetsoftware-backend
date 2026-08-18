@@ -20,9 +20,9 @@ public class EmployeeRoleAssignerAdapter implements EmployeeRoleAssigner {
     }
 
     @Override
-    public String assign(Long employeeId, Long roleId) {
+    public String assign(Long employeeId, Long companyId, Long roleId) {
         EmployeeRoleDto dto = createEmployeeRoleUseCase
-                .execute(new CreateEmployeeRoleCommand(employeeId, roleId));
+                .execute(new CreateEmployeeRoleCommand(employeeId, roleId, companyId));
         return dto.role().name();
     }
 }

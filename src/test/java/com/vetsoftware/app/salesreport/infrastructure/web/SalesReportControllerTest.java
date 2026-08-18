@@ -14,6 +14,8 @@ import com.vetsoftware.app.salesreport.application.dto.ReconciliationDto;
 import com.vetsoftware.app.salesreport.application.dto.SalesBookDto;
 import com.vetsoftware.app.salesreport.application.port.in.GetReconciliationUseCase;
 import com.vetsoftware.app.salesreport.application.port.in.GetSalesBookUseCase;
+import com.vetsoftware.app.salesreport.application.usecase.GetReconciliationService;
+import com.vetsoftware.app.salesreport.application.usecase.GetSalesBookService;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -148,14 +150,39 @@ class SalesReportControllerTest {
             verify(salesBookUseCase, never()).get(anyLong(), any(), any(), any());
         }
 
+        /**
+         * Este test ejercita la validacion <b>real</b>. Antes stubeaba un
+         * {@code thenThrow} escrito a mano, asi que pasaba en verde aunque nadie
+         * validase el rango — y durante un tiempo nadie lo hizo. Ahora el doble delega
+         * en {@link GetSalesBookService} de produccion (con un puerto que devuelve
+         * vacio), de modo que el 400 solo aparece si {@code ReportDateRange} rechaza de
+         * verdad el rango invertido.
+         */
         @Test
-        @DisplayName("un rango invertido rechazado por el caso de uso responde 400")
+        @DisplayName("un rango invertido responde 400 con la validacion real del caso de uso")
         void rango_invertido_responde_400() throws Exception {
-            when(salesBookUseCase.get(anyLong(), any(), any(), any())).thenThrow(
-                    new IllegalArgumentException("'from' no puede ser posterior a 'to'"));
+            GetSalesBookService real = new GetSalesBookService(
+                    (empresa, from, to, sede) -> List.of());
+            when(salesBookUseCase.get(anyLong(), any(), any(), any())).thenAnswer(
+                    invocation -> real.get(invocation.getArgument(0), invocation.getArgument(1),
+                            invocation.getArgument(2), invocation.getArgument(3)));
 
             mockMvc.perform(get("/sales-reports/sales-book").param("from", "2026-01-31").param("to",
                     "2026-01-01")).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("con la misma validacion real, un rango correcto sigue respondiendo 200")
+        void rango_correcto_responde_200_con_la_validacion_real() throws Exception {
+            GetSalesBookService real = new GetSalesBookService(
+                    (empresa, from, to, sede) -> List.of());
+            when(salesBookUseCase.get(anyLong(), any(), any(), any())).thenAnswer(
+                    invocation -> real.get(invocation.getArgument(0), invocation.getArgument(1),
+                            invocation.getArgument(2), invocation.getArgument(3)));
+
+            mockMvc.perform(get("/sales-reports/sales-book").param("from", "2026-01-01").param("to",
+                    "2026-01-31")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totals.documentCount").value(0));
         }
     }
 
@@ -186,6 +213,20 @@ class SalesReportControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(reconciliationUseCase, never()).get(anyLong(), any(), any(), any());
+        }
+
+        /** Mismo montaje que el libro: el doble delega en el servicio real. */
+        @Test
+        @DisplayName("un rango invertido responde 400 con la validacion real del caso de uso")
+        void rango_invertido_responde_400() throws Exception {
+            GetReconciliationService real = new GetReconciliationService(
+                    (empresa, from, to, sede) -> List.of());
+            when(reconciliationUseCase.get(anyLong(), any(), any(), any())).thenAnswer(
+                    invocation -> real.get(invocation.getArgument(0), invocation.getArgument(1),
+                            invocation.getArgument(2), invocation.getArgument(3)));
+
+            mockMvc.perform(get("/sales-reports/reconciliation").param("from", "2026-01-31")
+                    .param("to", "2026-01-01")).andExpect(status().isBadRequest());
         }
     }
 }

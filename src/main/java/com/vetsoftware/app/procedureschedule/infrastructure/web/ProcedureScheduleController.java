@@ -47,14 +47,15 @@ public class ProcedureScheduleController {
     public List<ProcedureScheduleResponse> generate(@PathVariable Long hospitalizationProcedureId) {
         return generateUseCase
                 .execute(new GenerateProcedureScheduleCommand(hospitalizationProcedureId,
-                        authz.currentEmployeeId()))
+                        authz.currentEmployeeId(), authz.currentCompanyIdOrNull()))
                 .stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")
     public List<ProcedureScheduleResponse> listByHospitalization(
             @PathVariable Long hospitalizationId) {
-        return listByHospitalizationUseCase.listByHospitalization(hospitalizationId).stream()
+        return listByHospitalizationUseCase
+                .listByHospitalization(hospitalizationId, authz.currentCompanyIdOrNull()).stream()
                 .map(this::toResponse).toList();
     }
 
@@ -64,8 +65,9 @@ public class ProcedureScheduleController {
      */
     @PatchMapping("/{id}/apply")
     public List<ProcedureScheduleResponse> apply(@PathVariable Long id) {
-        return applyUseCase.execute(new ApplyProcedureScheduleCommand(id)).stream()
-                .map(this::toResponse).toList();
+        return applyUseCase
+                .execute(new ApplyProcedureScheduleCommand(id, authz.currentCompanyIdOrNull()))
+                .stream().map(this::toResponse).toList();
     }
 
     /**
@@ -75,8 +77,9 @@ public class ProcedureScheduleController {
     @PatchMapping("/{id}/reschedule")
     public List<ProcedureScheduleResponse> reschedule(@PathVariable Long id,
             @Valid @RequestBody RescheduleProcedureScheduleRequest request) {
-        return rescheduleUseCase.execute(
-                new RescheduleProcedureScheduleCommand(id, request.newDateTime(), request.mode()))
+        return rescheduleUseCase
+                .execute(new RescheduleProcedureScheduleCommand(id, request.newDateTime(),
+                        request.mode(), authz.currentCompanyIdOrNull()))
                 .stream().map(this::toResponse).toList();
     }
 
@@ -87,7 +90,8 @@ public class ProcedureScheduleController {
     @PatchMapping("/by-procedure/{hospitalizationProcedureId}/suspend-pending")
     public List<ProcedureScheduleResponse> suspendPending(
             @PathVariable Long hospitalizationProcedureId) {
-        return suspendPendingUseCase.execute(hospitalizationProcedureId).stream()
+        return suspendPendingUseCase
+                .execute(hospitalizationProcedureId, authz.currentCompanyIdOrNull()).stream()
                 .map(this::toResponse).toList();
     }
 

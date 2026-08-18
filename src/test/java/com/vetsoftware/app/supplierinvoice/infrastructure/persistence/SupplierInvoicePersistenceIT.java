@@ -418,7 +418,7 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
             Long id = factura("FAC-BAJA", VENCE_FEBRERO).getId();
             factura("FAC-VIVA", VENCE_FEBRERO);
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             entityManager.flush();
             entityManager.clear();
 
@@ -484,7 +484,7 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
             // numero quemado para siempre.
             Long id = factura("FAC-100", VENCE_FEBRERO).getId();
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             entityManager.flush();
 
             assertThat(
@@ -652,7 +652,7 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
             // pero ninguna consulta del adaptador vuelve a verla.
             Long id = factura("FAC-BAJA", VENCE_FEBRERO).getId();
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             entityManager.flush();
             entityManager.clear();
 
@@ -662,6 +662,24 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
                     """).setParameter("id", id).getSingleResult();
             assertThat(((Number) filas).longValue()).isEqualTo(1L);
             assertThat(repository.findByIdAndCompanyId(id, COMPANY)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("la factura de otra empresa no se da de baja: el UPDATE no toca ninguna fila")
+        void la_factura_de_otra_empresa_no_se_da_de_baja() {
+            // El AND company_id del softDelete es lo que se comprueba aqui: sin el, este
+            // UPDATE por id a secas deshabilitaba la factura del otro tenant para quien
+            // conociera el id — y con ella su cartera y sus abonos.
+            Long ajena = facturaDeLaOtraEmpresa("FAC-AJENA-BAJA").getId();
+            entityManager.flush();
+            entityManager.clear();
+
+            repository.delete(ajena, COMPANY);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(facturasDeshabilitadas(ajena)).isZero();
+            assertThat(repository.findByIdAndCompanyId(ajena, OTRA_COMPANY)).isPresent();
         }
 
         @Test
@@ -685,7 +703,7 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
             entityManager.flush();
             entityManager.clear();
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             entityManager.flush();
             entityManager.clear();
 
@@ -710,7 +728,7 @@ class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
             entityManager.flush();
             entityManager.clear();
 
-            repository.delete(anulada);
+            repository.delete(anulada, COMPANY);
             entityManager.flush();
             entityManager.clear();
 

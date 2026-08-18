@@ -42,6 +42,11 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
     }
 
     @Override
+    public Optional<LaboratoryTestType> findOwnedByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<LaboratoryTestType> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
@@ -58,7 +63,7 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
     }
 
     @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

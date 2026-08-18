@@ -138,19 +138,20 @@ public class LaboratoryTestController {
     @PatchMapping("/{id}/status")
     public LaboratoryTestResponse changeStatus(@PathVariable Long id,
             @Valid @RequestBody ChangeLaboratoryTestStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(new ChangeLaboratoryTestStatusCommand(id,
-                request.status(), authz.currentEmployeeIdOrNull())));
+        return toResponse(changeStatusUseCase
+                .execute(new ChangeLaboratoryTestStatusCommand(id, request.status(),
+                        authz.currentEmployeeIdOrNull(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")
     public LaboratoryTestResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private LaboratoryTestResponse toResponse(LaboratoryTestDto dto) {

@@ -16,10 +16,16 @@ public class DeleteHospitalizationService implements DeleteHospitalizationUseCas
         this.repository = repository;
     }
 
+    /**
+     * La existencia se comprueba acotada por empresa: una hospitalizacion de otro
+     * tenant es indistinguible de una inexistente y sale como 404, sin llegar al
+     * delete.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new HospitalizationNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new HospitalizationNotFoundException(id));
         repository.delete(id);
     }
 }

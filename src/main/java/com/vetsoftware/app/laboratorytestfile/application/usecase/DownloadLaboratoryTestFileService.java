@@ -21,9 +21,17 @@ public class DownloadLaboratoryTestFileService implements DownloadLaboratoryTest
         this.fileStoragePort = fileStoragePort;
     }
 
+    /**
+     * La lectura acotada por empresa es lo unico que separa a un empleado del PDF
+     * de otro tenant: si el archivo no es de su empresa el metodo lanza antes de
+     * tocar S3, asi que ni siquiera se llega a leer el objeto. Un {@code companyId}
+     * nulo es el actor global (SYSTEM), que si puede leer cualquier fila.
+     */
     @Override
-    public LaboratoryTestFileDownloadDto download(Long id) {
-        LaboratoryTestFile file = repository.findById(id)
+    public LaboratoryTestFileDownloadDto download(Long id, Long companyId) {
+        LaboratoryTestFile file = (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
                 .orElseThrow(() -> new LaboratoryTestFileNotFoundException(id));
         byte[] content = fileStoragePort.retrieve(file.getStorageKey());
         return new LaboratoryTestFileDownloadDto(file.getOriginalFileName(), file.getContentType(),

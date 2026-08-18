@@ -19,10 +19,22 @@ public class UpdateMedicamentService implements UpdateMedicamentUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La carga va acotada a la empresa. El {@code isMyCompany} del puerto solo
+     * prueba que el llamante declara SU empresa; con un {@code findById} pelado el
+     * efecto no era un rechazo sino una edicion del vademecum de otro tenant.
+     *
+     * <p>
+     * Se usa el finder de lo PROPIO, no el de lo disponible: un medicamento general
+     * es de la plataforma y no lo edita ningun tenant. {@code companyId == null} es
+     * el camino SYSTEM.
+     */
     @Override
     @Transactional
     public MedicamentDto execute(UpdateMedicamentCommand command) {
-        Medicament medicament = repository.findById(command.id())
+        Medicament medicament = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new MedicamentNotFoundException(command.id()));
         // Solo nombre/descripción; se conserva el scope (general/empresa) del
         // medicamento.

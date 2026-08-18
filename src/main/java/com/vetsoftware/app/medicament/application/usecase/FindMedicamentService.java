@@ -16,9 +16,14 @@ public class FindMedicamentService implements FindMedicamentUseCase {
         this.repository = repository;
     }
 
+    /**
+     * Lectura, no escritura: aqui si valen los generales de la plataforma ademas de
+     * los propios, que es lo que la pantalla de receta necesita ver. Las escrituras
+     * usan {@code findByIdAndCompanyId}, que solo alcanza lo propio.
+     */
     @Override
     public MedicamentDto findById(Long id, Long companyId) {
-        return MedicamentDto.from(repository.findByIdAndCompanyId(id, companyId)
+        return MedicamentDto.from(repository.findAvailableByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new MedicamentNotFoundException(id)));
     }
 }

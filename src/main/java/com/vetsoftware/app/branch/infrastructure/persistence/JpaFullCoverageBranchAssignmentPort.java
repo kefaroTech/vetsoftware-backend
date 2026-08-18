@@ -29,7 +29,7 @@ public class JpaFullCoverageBranchAssignmentPort implements FullCoverageBranchAs
         List<Long> employeeIds = employeeBranchJpaRepository.findFullCoverageEmployeeIds(companyId,
                 newBranchId);
         for (Long employeeId : employeeIds) {
-            employeeBranchJpaRepository.insert(employeeId, newBranchId);
+            employeeBranchJpaRepository.insert(employeeId, newBranchId, companyId);
         }
     }
 }

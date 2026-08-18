@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface GenerateProcedureScheduleUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.create')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('hospitalization.create')"
+            + " and @authz.isMyCompany(#command.companyId))")
     List<ProcedureScheduleDto> execute(GenerateProcedureScheduleCommand command);
 }

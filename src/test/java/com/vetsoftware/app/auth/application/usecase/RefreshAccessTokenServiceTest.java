@@ -230,6 +230,10 @@ class RefreshAccessTokenServiceTest {
         // El bump invalida ademas los access tokens ya emitidos, que sin el
         // seguirian sirviendo hasta 15 minutos en el navegador del atacante.
         verify(authEmployeeRepository).bumpAuthVersion(7L);
+        // El refresh sigue por la variante ANCHA a proposito: aqui el sujeto sale del
+        // token ya validado y no hay empresa en el contexto (RefreshTokenUseCase es
+        // @NoAuthorizationRequired). La acotada es la del logout.
+        verify(authEmployeeRepository, never()).bumpAuthVersion(anyLong(), anyLong());
         verify(securityEventPort).refreshTokenReuseDetected(eq(7L), eq("EMPLOYEE"), anyLong());
     }
 

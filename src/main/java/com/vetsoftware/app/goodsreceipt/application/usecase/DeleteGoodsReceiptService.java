@@ -29,6 +29,6 @@ public class DeleteGoodsReceiptService implements DeleteGoodsReceiptUseCase {
                     "Only DRAFT goods receipts can be deleted, current status: "
                             + receipt.getStatus());
         }
-        repository.delete(id);
+        repository.delete(id, companyId);
     }
 }

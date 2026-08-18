@@ -51,14 +51,16 @@ public final class SchemaSeed {
     /** Inserta la cadena completa. Idempotente dentro de la misma transaccion. */
     public static void seed(EntityManager em) {
         insert(em, """
-                INSERT IGNORE INTO countries (id, name) VALUES (:id, 'Colombia')
+                INSERT IGNORE INTO countries (id, name, created_date, enabled)
+                VALUES (:id, 'Pais de prueba', NOW(), true)
                 """, COUNTRY_ID);
         insert(em, """
-                INSERT IGNORE INTO states (id, name, country_id)
-                VALUES (:id, 'Antioquia', %d)
+                INSERT IGNORE INTO states (id, name, country_id, created_date, enabled)
+                VALUES (:id, 'Antioquia', %d, NOW(), true)
                 """.formatted(COUNTRY_ID), STATE_ID);
         insert(em, """
-                INSERT IGNORE INTO cities (id, name, state_id) VALUES (:id, 'Medellin', %d)
+                INSERT IGNORE INTO cities (id, name, state_id, created_date, enabled)
+                VALUES (:id, 'Medellin', %d, NOW(), true)
                 """.formatted(STATE_ID), CITY_ID);
         insert(em,
                 """

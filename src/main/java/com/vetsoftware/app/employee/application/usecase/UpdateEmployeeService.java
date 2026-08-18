@@ -19,10 +19,19 @@ public class UpdateEmployeeService implements UpdateEmployeeUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La carga va acotada al tenant. El {@code @authz.isMyCompany} del puerto solo
+     * prueba que quien llama declara SU empresa; es la lectura la que decide sobre
+     * que fila se escribe, y por id a secas un empleado podia editar el codigo, el
+     * nombre y el correo de un empleado de otra empresa. {@code companyId} nulo es
+     * el principal cross-tenant (SYSTEM).
+     */
     @Override
     @Transactional
     public EmployeeDto execute(UpdateEmployeeCommand command) {
-        Employee employee = repository.findById(command.id())
+        Employee employee = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new EmployeeNotFoundException(command.id()));
         employee.update(command.employeeCode(), command.name(), command.email());
         return EmployeeDto.from(repository.save(employee));

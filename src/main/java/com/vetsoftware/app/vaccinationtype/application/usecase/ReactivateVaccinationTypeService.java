@@ -17,13 +17,20 @@ public class ReactivateVaccinationTypeService implements ReactivateVaccinationTy
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aquí no hay un
+     * findById previo que valide la propiedad, así que sin filtrar por empresa se
+     * revivía el tipo de otro tenant. La relectura usa el finder ESTRICTO —lo
+     * reactivado es siempre propio— y no el de disponibles, que incluye las
+     * generales.
+     */
     @Override
     @Transactional
-    public VaccinationTypeDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public VaccinationTypeDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new VaccinationTypeNotFoundException(id);
-        return VaccinationTypeDto.from(repository.findById(id)
+        return VaccinationTypeDto.from(repository.findOwnedByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new VaccinationTypeNotFoundException(id)));
     }
 }

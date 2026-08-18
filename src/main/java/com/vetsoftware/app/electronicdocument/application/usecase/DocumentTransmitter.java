@@ -161,7 +161,10 @@ public class DocumentTransmitter {
             if (providerKey == null)
                 return document; // nunca se transmitió: nada que reconciliar
 
-            Optional<ProviderResult> maybeResult = provider.fetchStatus(providerKey, config);
+            // El documento viaja al adaptador porque el sello reconciliado se guarda como
+            // CUFE o como CUDE según su tipo, y el proveedor no lo devuelve.
+            Optional<ProviderResult> maybeResult = provider.fetchStatus(document, providerKey,
+                    config);
             if (maybeResult.isEmpty())
                 return document; // proveedor síncrono / sin polling
             ProviderResult result = maybeResult.get();

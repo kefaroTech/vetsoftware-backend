@@ -11,7 +11,7 @@ public interface PasswordResetTokenRepository {
 
     /**
      * Marca como consumidos todos los tokens vivos del empleado (al pedir uno nuevo
-     * o al usar uno).
+     * o al usar uno), dentro de {@code companyId}.
      */
-    void consumeActiveForEmployee(Long employeeId, LocalDateTime now);
+    void consumeActiveForEmployee(Long employeeId, Long companyId, LocalDateTime now);
 }

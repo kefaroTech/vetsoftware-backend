@@ -6,5 +6,11 @@ package com.vetsoftware.app.auth.application.port.out;
  * {@code LoginEmployeeService} tras autenticar con éxito.
  */
 public interface EmployeeActivationPort {
-    void activateOnLogin(Long employeeId);
+    /**
+     * @param companyId
+     *            la empresa que trae la credencial ya verificada, no la de la fila
+     *            que se va a actualizar: acota el UPDATE a la empresa que devolvio
+     *            la lectura de credenciales.
+     */
+    void activateOnLogin(Long employeeId, Long companyId);
 }

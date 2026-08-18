@@ -69,7 +69,11 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
         toAddPermIds.removeAll(existingPermToRpId.keySet());
 
         if (!toRemoveRpIds.isEmpty()) {
-            repository.deleteAllByIds(toRemoveRpIds);
+            if (command.companyId() == null) {
+                repository.deleteAllByIds(toRemoveRpIds);
+            } else {
+                repository.deleteAllByIds(toRemoveRpIds, command.companyId());
+            }
         }
 
         if (!toAddPermIds.isEmpty()) {
@@ -80,7 +84,13 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
             if (!disabled.isEmpty()) {
                 List<Long> idsToReactivate = disabled.stream().map(DisabledRolePermissionLookup::id)
                         .toList();
-                repository.reactivateAllByIds(idsToReactivate);
+                // Reactivacion en bloque: no hay lectura previa que valide la propiedad de
+                // cada id, asi que el filtro de empresa del UPDATE es la unica barrera.
+                if (command.companyId() == null) {
+                    repository.reactivateAllByIds(idsToReactivate);
+                } else {
+                    repository.reactivateAllByIds(idsToReactivate, command.companyId());
+                }
                 disabled.forEach(d -> reactivatedPermIds.add(d.permissionId()));
             }
 
@@ -89,8 +99,11 @@ public class SyncRolePermissionsService implements SyncRolePermissionsUseCase {
             toCreatePermIds.removeAll(reactivatedPermIds);
             if (!toCreatePermIds.isEmpty()) {
                 List<RolePermission> nuevos = toCreatePermIds.stream().map(pid -> {
-                    PermissionRef permission = permissionQueryPort.findById(pid).orElseThrow(
-                            () -> new IllegalArgumentException("Permission not found: " + pid));
+                    PermissionRef permission = (command.companyId() == null
+                            ? permissionQueryPort.findById(pid)
+                            : permissionQueryPort.findByIdAndCompanyId(pid, command.companyId()))
+                            .orElseThrow(() -> new IllegalArgumentException(
+                                    "Permission not found: " + pid));
                     return RolePermission.create(role, permission);
                 }).toList();
                 repository.saveAll(nuevos);

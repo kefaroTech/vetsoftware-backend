@@ -16,9 +16,85 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class BusinessGaugeMetricsTest {
+
+    @Test
+    @DisplayName("antes del primer refresh, la edad del snapshot es NaN en vez de un número engañoso")
+    void reportsNanSnapshotAgeBeforeTheFirstRefresh() {
+        BusinessGaugeMetrics metrics = new BusinessGaugeMetrics(
+                mock(ElectronicDocumentJpaRepository.class), mock(StockBalanceJpaRepository.class),
+                mock(StockLotJpaRepository.class),
+                Clock.fixed(Instant.parse("2026-07-28T15:00:00Z"), ZoneOffset.UTC));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        registry.config().meterFilter(new BusinessMetricCardinalityFilter());
+
+        metrics.bindTo(registry);
+
+        assertThat(registry.get(BusinessMetricNames.SNAPSHOT_AGE).gauge().value()).isNaN();
+    }
+
+    @Test
+    @DisplayName("un fallo de consulta al refrescar conserva el último snapshot en vez de propagar")
+    void keepsLastSnapshotWhenRefreshFails() {
+        ElectronicDocumentJpaRepository documents = mock(ElectronicDocumentJpaRepository.class);
+        StockBalanceJpaRepository balances = mock(StockBalanceJpaRepository.class);
+        StockLotJpaRepository lots = mock(StockLotJpaRepository.class);
+        when(balances.countLowStock())
+                .thenThrow(new RuntimeException("la base de datos no responde"));
+
+        BusinessGaugeMetrics metrics = new BusinessGaugeMetrics(documents, balances, lots,
+                Clock.fixed(Instant.parse("2026-07-28T15:00:00Z"), ZoneOffset.UTC));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        registry.config().meterFilter(new BusinessMetricCardinalityFilter());
+        metrics.bindTo(registry);
+
+        metrics.refresh();
+
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_LOW_STOCK).gauge().value()).isZero();
+        assertThat(registry.get(BusinessMetricNames.SNAPSHOT_AGE).gauge().value()).isNaN();
+    }
+
+    @Test
+    @DisplayName("el listener de arranque de la aplicación dispara el primer refresh")
+    void applicationReadyListenerTriggersTheFirstRefresh() {
+        ElectronicDocumentJpaRepository documents = mock(ElectronicDocumentJpaRepository.class);
+        StockBalanceJpaRepository balances = mock(StockBalanceJpaRepository.class);
+        StockLotJpaRepository lots = mock(StockLotJpaRepository.class);
+        when(balances.countLowStock()).thenReturn(9L);
+
+        BusinessGaugeMetrics metrics = new BusinessGaugeMetrics(documents, balances, lots,
+                Clock.fixed(Instant.parse("2026-07-28T15:00:00Z"), ZoneOffset.UTC));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        registry.config().meterFilter(new BusinessMetricCardinalityFilter());
+        metrics.bindTo(registry);
+
+        metrics.refreshWhenReady();
+
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_LOW_STOCK).gauge().value())
+                .isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("el constructor público usado por Spring arranca con el reloj real del sistema")
+    void publicConstructorUsesTheSystemClock() {
+        StockBalanceJpaRepository balances = mock(StockBalanceJpaRepository.class);
+        when(balances.countLowStock()).thenReturn(3L);
+        BusinessGaugeMetrics metrics = new BusinessGaugeMetrics(
+                mock(ElectronicDocumentJpaRepository.class), balances,
+                mock(StockLotJpaRepository.class));
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        registry.config().meterFilter(new BusinessMetricCardinalityFilter());
+        metrics.bindTo(registry);
+
+        metrics.refresh();
+
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_LOW_STOCK).gauge().value())
+                .isEqualTo(3);
+        assertThat(registry.get(BusinessMetricNames.SNAPSHOT_AGE).gauge().value()).isNotNaN();
+    }
 
     @Test
     void refreshesCachedBacklogAndInventoryValues() {

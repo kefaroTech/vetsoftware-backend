@@ -21,10 +21,18 @@ public class DeleteMedicamentService implements DeleteMedicamentUseCase {
         this.childrenQueryPort = childrenQueryPort;
     }
 
+    /**
+     * La comprobacion de existencia va acotada a la empresa: es lo unico que separa
+     * un 404 de borrar el vademecum de otro tenant. {@code companyId == null} es el
+     * camino SYSTEM.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new MedicamentNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new MedicamentNotFoundException(id));
         if (childrenQueryPort.existsActiveByMedicamentId(id)) {
             throw new MedicamentHasActiveChildrenException(id, "medicamentPrescription");
         }

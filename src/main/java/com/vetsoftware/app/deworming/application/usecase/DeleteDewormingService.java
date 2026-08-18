@@ -16,10 +16,18 @@ public class DeleteDewormingService implements DeleteDewormingUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La comprobacion de existencia va acotada a la empresa: es lo unico que separa
+     * un 404 de borrar la desparasitacion de otro tenant. {@code companyId == null}
+     * es el camino SYSTEM.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new DewormingNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new DewormingNotFoundException(id));
         repository.delete(id);
     }
 }

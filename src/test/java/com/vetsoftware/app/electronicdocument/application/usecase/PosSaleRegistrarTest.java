@@ -19,9 +19,11 @@ import com.vetsoftware.app.electronicdocument.application.port.out.InventoryLedg
 import com.vetsoftware.app.electronicdocument.domain.CustomerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentLine;
+import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentPayment;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.PaymentForm;
+import com.vetsoftware.app.electronicdocument.domain.PaymentMeans;
 import com.vetsoftware.app.electronicdocument.domain.StockDiscountMismatchException;
 import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
@@ -100,6 +102,44 @@ class PosSaleRegistrarTest {
                         new BigDecimal("11900"))),
                 List.of(), PaymentForm.CONTADO, false, null, null, null, new BigDecimal("49799"),
                 "req-1", EMPLOYEE, BRANCH);
+    }
+
+    /**
+     * Documento con un pago: ejercita el registro de caja de {@code registerCash}.
+     */
+    private static ElectronicDocument documentoConPago() {
+        return ElectronicDocument.createPending(
+                COMPANY, null, ElectronicDocumentType.FE_VENTA, new IssuerSnapshot("NIT",
+                        "900123456", "7", "Vet SAS", "RESPONSABLE", "vet@x.co", List.of("O-13")),
+                CustomerSnapshot.finalConsumer(),
+                List.of(new ElectronicDocumentLine(null, 1, "producto", BigDecimal.ONE, "94",
+                        new BigDecimal("10000"), new BigDecimal("10000"), TaxCategory.GRAVADO,
+                        TaxScheme.IVA, new BigDecimal("19"), new BigDecimal("1900"),
+                        new BigDecimal("11900"))),
+                List.of(new ElectronicDocumentPayment(null, PaymentMeans.EFECTIVO,
+                        new BigDecimal("11900.00"))),
+                PaymentForm.CONTADO, false, null, null, null, new BigDecimal("49799"), "req-1",
+                EMPLOYEE, BRANCH);
+    }
+
+    /**
+     * Documento con cuenta abierta (emitido al cerrar una cuenta): el cobro ya se
+     * registro en caja al cerrar, asi que {@code registerCash} no debe repetirlo
+     * aqui aunque el documento traiga pagos.
+     */
+    private static ElectronicDocument documentoDeCuentaAbierta() {
+        return ElectronicDocument.createPending(
+                COMPANY, 500L, ElectronicDocumentType.FE_VENTA, new IssuerSnapshot("NIT",
+                        "900123456", "7", "Vet SAS", "RESPONSABLE", "vet@x.co", List.of("O-13")),
+                CustomerSnapshot.finalConsumer(),
+                List.of(new ElectronicDocumentLine(null, 1, "producto", BigDecimal.ONE, "94",
+                        new BigDecimal("10000"), new BigDecimal("10000"), TaxCategory.GRAVADO,
+                        TaxScheme.IVA, new BigDecimal("19"), new BigDecimal("1900"),
+                        new BigDecimal("11900"))),
+                List.of(new ElectronicDocumentPayment(null, PaymentMeans.EFECTIVO,
+                        new BigDecimal("11900.00"))),
+                PaymentForm.CONTADO, false, null, null, null, new BigDecimal("49799"), "req-1",
+                EMPLOYEE, BRANCH);
     }
 
     private void ventaConstruida() {
@@ -235,6 +275,42 @@ class PosSaleRegistrarTest {
             orden.verify(cashPort).requireOpenSession(COMPANY, BRANCH, EMPLOYEE);
             orden.verify(inventoryLedger).recordPosSale(eq(COMPANY), any(), eq(CHAMPU), eq(1),
                     any(), eq(EMPLOYEE));
+        }
+    }
+
+    @Nested
+    @DisplayName("registro de caja")
+    class RegistroDeCaja {
+
+        @Test
+        @DisplayName("una venta directa de POS con pagos registra el cobro en caja")
+        void venta_directa_con_pagos_registra_el_cobro() {
+            ElectronicDocument doc = documentoConPago();
+            when(documentBuilder.build(any())).thenReturn(doc);
+            ledgerFiel();
+
+            registrar.registerPending(comando(producto(CHAMPU, "1")));
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<CashPort.PaymentLine>> paymentsCaptor = ArgumentCaptor
+                    .forClass(List.class);
+            verify(cashPort).registerSale(eq(COMPANY), eq(BRANCH), eq(doc.getId()),
+                    paymentsCaptor.capture(), eq(EMPLOYEE));
+            assertThat(paymentsCaptor.getValue()).hasSize(1);
+            assertThat(paymentsCaptor.getValue().getFirst().amount())
+                    .isEqualByComparingTo("11900.00");
+        }
+
+        @Test
+        @DisplayName("una venta emitida desde una cuenta abierta no repite el cobro en caja")
+        void venta_desde_cuenta_abierta_no_repite_el_cobro() {
+            ElectronicDocument doc = documentoDeCuentaAbierta();
+            when(documentBuilder.build(any())).thenReturn(doc);
+            ledgerFiel();
+
+            registrar.registerPending(comando(producto(CHAMPU, "1")));
+
+            verify(cashPort, never()).registerSale(any(), any(), any(), any(), any());
         }
     }
 

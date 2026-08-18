@@ -40,17 +40,31 @@ public class UpdateVaccinationService implements UpdateVaccinationUseCase {
     @Override
     @Transactional
     public VaccinationDto execute(UpdateVaccinationCommand command) {
-        Vaccination vaccination = repository.findById(command.id())
+        // Por (id, empresa) y no por id: el @PreAuthorize valida el companyId del
+        // COMANDO, que lo pone el controller desde el token, no el de la entidad
+        // cargada. Con un findById a secas el gate comprobaba una cosa y el
+        // servicio actualizaba otra: la vacuna de otro tenant.
+        Vaccination vaccination = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new VaccinationNotFoundException(command.id()));
+        // Las referencias entrantes se resuelven acotadas por la MISMA empresa que la
+        // fila. Sin eso el update ya no se apropia de nada ajeno, pero si cuelga lo
+        // propio de un padre de otro tenant: una dosis puesta por mi empresa en el
+        // carne
+        // de vacunacion de la vecina. El tipo va por la variante «general O mia»,
+        // porque
+        // ese catalogo mezcla filas globales con las privadas de cada empresa.
         VaccinationTypeRef vaccinationType = vaccinationTypeQueryPort
-                .findById(command.vaccinationTypeId())
+                .findAvailableByIdAndCompanyId(command.vaccinationTypeId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "VaccinationType not found: " + command.vaccinationTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

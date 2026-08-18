@@ -53,9 +53,11 @@ class CreateHospitalizationServiceTest {
     private ArgumentCaptor<Hospitalization> guardada;
 
     private void todasLasReferenciasExisten() {
-        when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+        when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-        when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
+        when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.CONSULTA));
         when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.CLINICA));
@@ -106,7 +108,8 @@ class CreateHospitalizationServiceTest {
         @Test
         @DisplayName("sin consultationId no consulta el puerto de consultas y guarda null")
         void sin_consultation_id_no_consulta_el_puerto() {
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
             when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.CLINICA));
@@ -172,8 +175,8 @@ class CreateHospitalizationServiceTest {
         @Test
         @DisplayName("animal inexistente: no consulta los puertos siguientes ni persiste")
         void animal_inexistente() {
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
-                    .thenReturn(Optional.empty());
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -186,10 +189,11 @@ class CreateHospitalizationServiceTest {
         @Test
         @DisplayName("consulta inexistente: aborta antes de resolver la empresa")
         void consulta_inexistente() {
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-            when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
-                    .thenReturn(Optional.empty());
+            when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                    HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
@@ -201,9 +205,11 @@ class CreateHospitalizationServiceTest {
         @Test
         @DisplayName("empresa inexistente: cero escrituras")
         void empresa_inexistente() {
-            when(animalQueryPort.findById(HospitalizationMother.ANIMAL_ID))
+            when(animalQueryPort.findByIdAndCompanyId(HospitalizationMother.ANIMAL_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.FIRULAIS));
-            when(consultationQueryPort.findById(HospitalizationMother.CONSULTATION_ID))
+            when(consultationQueryPort.findByIdAndCompanyId(HospitalizationMother.CONSULTATION_ID,
+                    HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMother.CONSULTA));
             when(companyQueryPort.findById(HospitalizationMother.COMPANY_ID))
                     .thenReturn(Optional.empty());

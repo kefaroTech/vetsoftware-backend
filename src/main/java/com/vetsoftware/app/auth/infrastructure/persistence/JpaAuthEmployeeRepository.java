@@ -36,4 +36,9 @@ public class JpaAuthEmployeeRepository implements AuthEmployeeRepository {
     public void bumpAuthVersion(Long employeeId) {
         employeeJpaRepository.bumpAuthVersion(employeeId);
     }
+
+    @Override
+    public void bumpAuthVersion(Long employeeId, Long companyId) {
+        employeeJpaRepository.bumpAuthVersion(employeeId, companyId);
+    }
 }

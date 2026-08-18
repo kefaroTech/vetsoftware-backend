@@ -37,14 +37,20 @@ public class CreateSurgeryService implements CreateSurgeryUseCase {
 
     @Override
     public SurgeryDto execute(CreateSurgeryCommand command) {
-        SurgeryTypeRef surgeryType = surgeryTypeQueryPort.findById(command.surgeryTypeId())
+        // Mismos puertos acotados que el update: nacer apuntando al animal de otro
+        // tenant es la misma fuga que reapuntarse a el despues.
+        SurgeryTypeRef surgeryType = surgeryTypeQueryPort
+                .findAvailableByIdAndCompanyId(command.surgeryTypeId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "SurgeryType not found: " + command.surgeryTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

@@ -28,18 +28,22 @@ public class UpdateOpenAccountService implements UpdateOpenAccountUseCase {
     @Override
     @Transactional
     public OpenAccountDto execute(UpdateOpenAccountCommand command) {
-        OpenAccount openAccount = repository.findById(command.id())
+        // El filtro por empresa va EN la consulta, no en un if posterior: el
+        // companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId(), nunca null), asi que la cuenta de otro tenant
+        // ni se carga. Un 404 no revela que la fila existe en otra empresa.
+        OpenAccount openAccount = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new OpenAccountNotFoundException(command.id()));
-        if (!openAccount.getCompany().id().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
         if (command.expectedVersion() != null
                 && !command.expectedVersion().equals(openAccount.getVersion())) {
             throw new OpenAccountVersionConflictException(command.id(), command.expectedVersion(),
                     openAccount.getVersion());
         }
-        OwnerRef owner = ownerQueryPort.findById(command.ownerId()).orElseThrow(
-                () -> new IllegalArgumentException("Owner not found: " + command.ownerId()));
+        // El ownerId llega en el request: acotado por empresa, o la cuenta quedaria
+        // reapuntada al propietario de otro tenant.
+        OwnerRef owner = ownerQueryPort.findByIdAndCompanyId(command.ownerId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Owner not found: " + command.ownerId()));
 
         openAccount.update(owner);
         return OpenAccountDto.from(repository.save(openAccount));

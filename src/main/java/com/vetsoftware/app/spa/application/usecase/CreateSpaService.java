@@ -34,8 +34,14 @@ public class CreateSpaService implements CreateSpaUseCase {
     public SpaDto execute(CreateSpaCommand command) {
         SpaTypeRef spaType = spaTypeQueryPort.findById(command.spaTypeId()).orElseThrow(
                 () -> new IllegalArgumentException("SpaType not found: " + command.spaTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        // Referencia acotada, igual que UpdateSpaService: sin el companyId, un
+        // animalId de otro tenant colgaba esta estancia de spa de la historia clinica
+        // de la vecina. El companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId()), asi que nunca es null aqui.
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 

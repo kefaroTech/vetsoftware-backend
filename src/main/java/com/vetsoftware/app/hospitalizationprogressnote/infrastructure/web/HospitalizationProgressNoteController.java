@@ -73,19 +73,19 @@ public class HospitalizationProgressNoteController {
     @PutMapping("/{id}")
     public HospitalizationProgressNoteResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateHospitalizationProgressNoteRequest request) {
-        return toResponse(updateUseCase
-                .execute(new UpdateHospitalizationProgressNoteCommand(id, request.description())));
+        return toResponse(updateUseCase.execute(new UpdateHospitalizationProgressNoteCommand(id,
+                request.description(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public HospitalizationProgressNoteResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private HospitalizationProgressNoteResponse toResponse(HospitalizationProgressNoteDto dto) {

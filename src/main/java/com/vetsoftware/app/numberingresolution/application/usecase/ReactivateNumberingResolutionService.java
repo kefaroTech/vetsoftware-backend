@@ -17,13 +17,20 @@ public class ReactivateNumberingResolutionService implements ReactivateNumbering
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aquí no hay un
+     * findById previo que valide la propiedad, así que si la consulta no filtra por
+     * empresa se revive la numeración fiscal de otro tenant. Cero filas afectadas
+     * significa «no existe en TU empresa» y se responde 404, sin revelar que el id
+     * existe.
+     */
     @Override
     @Transactional
-    public NumberingResolutionDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public NumberingResolutionDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new NumberingResolutionNotFoundException(id);
-        return NumberingResolutionDto.from(repository.findById(id)
+        return NumberingResolutionDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new NumberingResolutionNotFoundException(id)));
     }
 }

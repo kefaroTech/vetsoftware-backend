@@ -116,8 +116,8 @@ public class EmployeeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changeMyPassword(@Valid @RequestBody ChangeMyPasswordRequest request) {
         Long employeeId = authz.currentEmployeeId();
-        boolean acceptedInvitation = changeMyPasswordUseCase
-                .execute(new ChangeMyPasswordCommand(employeeId, request.newPassword()));
+        boolean acceptedInvitation = changeMyPasswordUseCase.execute(new ChangeMyPasswordCommand(
+                employeeId, request.newPassword(), authz.currentCompanyIdOrNull()));
         // Si era el cambio forzado de primer login, el empleado acaba de aceptar su
         // invitación.
         if (acceptedInvitation) {
@@ -177,19 +177,20 @@ public class EmployeeController {
     @PutMapping("/{id}")
     public EmployeeResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateEmployeeRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateEmployeeCommand(id,
-                request.employeeCode(), request.name(), request.email())));
+        return toResponse(
+                updateUseCase.execute(new UpdateEmployeeCommand(id, request.employeeCode(),
+                        request.name(), request.email(), authz.currentCompanyIdOrNull())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
     }
 
     @PatchMapping("/{id}/enable")
     public EmployeeResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     private EmployeeResponse toResponse(EmployeeDto dto) {

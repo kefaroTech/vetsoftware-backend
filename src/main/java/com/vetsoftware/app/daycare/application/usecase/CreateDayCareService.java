@@ -28,8 +28,12 @@ public class CreateDayCareService implements CreateDayCareUseCase {
 
     @Override
     public DayCareDto execute(CreateDayCareCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        // Mismo puerto acotado que el update: nacer apuntando al animal de otro tenant
+        // es la misma fuga que reapuntarse a el despues.
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));
 

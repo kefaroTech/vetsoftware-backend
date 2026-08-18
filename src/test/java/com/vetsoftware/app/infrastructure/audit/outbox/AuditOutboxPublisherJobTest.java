@@ -16,6 +16,7 @@ import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -155,6 +156,48 @@ class AuditOutboxPublisherJobTest {
         Duration delay = job.retryDelay(30);
 
         assertThat(delay).isPositive().isLessThanOrEqualTo(Duration.ofMinutes(1));
+    }
+
+    @Test
+    void retryDelayIsCappedWhenTheExponentialCalculationOverflows() {
+        properties.setBaseRetryDelay(Duration.ofDays(300));
+        properties.setMaxRetryDelay(Duration.ofMinutes(30));
+
+        Duration delay = job.retryDelay(30);
+
+        assertThat(delay).isPositive().isLessThanOrEqualTo(Duration.ofMinutes(30));
+    }
+
+    @Test
+    void aResponseWithFewerEntriesThanRecordsMarksTheMissingOnesAsFailed() {
+        List<AuditOutboxRecord> records = List.of(record(1L, "event-1", "{}", 1),
+                record(2L, "event-2", "{}", 2));
+        when(repository.claim(eq(100), any(Instant.class), any(Duration.class)))
+                .thenReturn(records);
+        when(firehose.putRecordBatch(any(PutRecordBatchRequest.class)))
+                .thenReturn(PutRecordBatchResponse.builder().failedPutCount(0)
+                        .requestResponses(
+                                PutRecordBatchResponseEntry.builder().recordId("ok").build())
+                        .build());
+
+        ScheduledJobTelemetry.Outcome outcome = job.publishBatch();
+
+        assertThat(outcome).isEqualTo(ScheduledJobTelemetry.Outcome.PARTIAL_FAILURE);
+        verify(repository).markPublished(eq(List.of(1L)), any(Instant.class));
+        verify(repository).markFailed(eq(2L), any(Instant.class), eq("missing_firehose_response"));
+    }
+
+    @Test
+    void publishDelegaEnLaTelemetriaDelJobProgramado() {
+        when(repository.claim(eq(100), any(Instant.class), any(Duration.class)))
+                .thenReturn(List.of());
+
+        job.publish();
+
+        ArgumentCaptor<Supplier<ScheduledJobTelemetry.Outcome>> actionCaptor = ArgumentCaptor
+                .forClass(Supplier.class);
+        verify(telemetry).observe(eq("audit.outbox.publish"), actionCaptor.capture());
+        assertThat(actionCaptor.getValue().get()).isEqualTo(ScheduledJobTelemetry.Outcome.NO_WORK);
     }
 
     private static AuditOutboxRecord record(long id, String eventId, String payload,

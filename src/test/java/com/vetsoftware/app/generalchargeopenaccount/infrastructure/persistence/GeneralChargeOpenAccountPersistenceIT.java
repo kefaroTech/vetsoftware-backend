@@ -1,6 +1,7 @@
 package com.vetsoftware.app.generalchargeopenaccount.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.generalchargeopenaccount.domain.EmployeeRef;
@@ -38,7 +39,8 @@ import org.springframework.dao.DataIntegrityViolationException;
  * de idempotencia y el {@code @SQLDelete} que convierte el borrado en un
  * {@code UPDATE}.
  */
-@Import({JpaGeneralChargeOpenAccountRepository.class, GeneralChargeOpenAccountJpaMapper.class})
+@Import({JpaGeneralChargeOpenAccountRepository.class, GeneralChargeOpenAccountJpaMapper.class,
+        JpaOpenAccountQueryPort.class})
 @DisplayName("JpaGeneralChargeOpenAccountRepository — impuesto congelado y scope contra MySQL real")
 class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
 
@@ -66,6 +68,9 @@ class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
 
     @Autowired
     private JpaGeneralChargeOpenAccountRepository repository;
+
+    @Autowired
+    private JpaOpenAccountQueryPort openAccountQueryPort;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -295,6 +300,22 @@ class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
         }
 
         @Test
+        @DisplayName("el finder por clave NO acota empresa: la barrera es el orden del servicio")
+        void el_finder_por_clave_no_acota_por_empresa() {
+            GeneralChargeOpenAccount ajeno = cargo(LA_CUENTA_AJENA, "70000.00", null,
+                    "7c4a8d09-ca37-4b1e-9b40-000000000009");
+
+            // La fila del cargo no tiene company_id y esta consulta no navega a
+            // open_accounts: con el id de una cuenta AJENA y la clave exacta devuelve el
+            // cargo del otro tenant. Por eso el servicio resuelve la cuenta ACOTADA antes
+            // de llamar aqui —ese orden es toda la barrera— y este test es la razon por la
+            // que no se puede volver a invertir.
+            assertThat(repository.findByOpenAccountIdAndClientRequestId(CUENTA_AJENA,
+                    "7c4a8d09-ca37-4b1e-9b40-000000000009")).map(GeneralChargeOpenAccount::getId)
+                    .contains(ajeno.getId());
+        }
+
+        @Test
         @DisplayName("la misma clave en otra cuenta no es el mismo cargo")
         void la_misma_clave_en_otra_cuenta_no_es_el_mismo_cargo() {
             cargo(LA_CUENTA, "100000.00", IVA, "7c4a8d09-ca37-4b1e-9b40-000000000002");
@@ -366,6 +387,61 @@ class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
             assertThat(pagina.totalPages()).isEqualTo(2);
             assertThat(repository.findAllByCompanyId(COMPANY, 1, 1).content())
                     .extracting(GeneralChargeOpenAccount::getId).containsExactly(primero.getId());
+        }
+
+        @Test
+        @DisplayName("findAll sin filtro trae los cargos de todas las empresas")
+        void find_all_sin_filtro_trae_los_cargos_de_todas_las_empresas() {
+            GeneralChargeOpenAccount propio = cargoConIva();
+            GeneralChargeOpenAccount ajeno = cargo(LA_CUENTA_AJENA, "70000.00", null, null);
+
+            assertThat(repository.findAll()).extracting(GeneralChargeOpenAccount::getId)
+                    .containsExactlyInAnyOrder(propio.getId(), ajeno.getId());
+        }
+    }
+
+    /**
+     * El otro adaptador de esta feature: el que resuelve la cuenta a la que se le
+     * cuelga el cargo. Se prueba aqui porque la semilla ya tiene dos empresas con
+     * cuenta propia, y porque lo que hay que ver es la consulta —el
+     * {@code findByIdAndCompany_Id} de {@code open_accounts}— y no un doble que
+     * responderia lo que el test le diga.
+     */
+    @Nested
+    @DisplayName("la cuenta destino se resuelve acotada por empresa")
+    class CuentaDestinoAcotada {
+
+        @Test
+        @DisplayName("la cuenta propia se resuelve con la empresa de su fila")
+        void la_cuenta_propia_se_resuelve() {
+            assertThat(openAccountQueryPort.findByIdAndCompanyId(CUENTA, COMPANY))
+                    .contains(LA_CUENTA);
+        }
+
+        @Test
+        @DisplayName("la cuenta de otra empresa no se resuelve: no hay donde colgar el cargo")
+        void la_cuenta_de_otra_empresa_no_se_resuelve() {
+            assertThat(openAccountQueryPort.findByIdAndCompanyId(CUENTA_AJENA, COMPANY)).isEmpty();
+            assertThat(openAccountQueryPort.findByIdAndCompanyId(CUENTA_AJENA, OTRA_COMPANY))
+                    .contains(LA_CUENTA_AJENA);
+            // La variante ancha SI la devuelve: era la puerta por la que un cargo
+            // terminaba en la cuenta de un cliente del otro tenant.
+            assertThat(openAccountQueryPort.findById(CUENTA_AJENA)).contains(LA_CUENTA_AJENA);
+        }
+
+        @Test
+        @DisplayName("el bloqueo pesimista tambien va acotado y se ejecuta contra MySQL")
+        void el_bloqueo_pesimista_va_acotado() {
+            // El FOR UPDATE se ejecuta de verdad aqui: la version ancha tomaba el
+            // PESSIMISTIC_WRITE sobre la fila del OTRO tenant antes de cualquier
+            // comprobacion. Que el lock se conceda o no solo se ve desde una segunda
+            // conexion —eso ya lo cubre OpenAccountPersistenceIT sobre la consulta
+            // acotada—; lo que se fija aqui es que el adaptador cuelga de esa consulta y
+            // que la cuenta ajena no devuelve fila, asi que no hay nada que bloquear.
+            assertThatCode(() -> openAccountQueryPort.lockForUpdate(CUENTA, COMPANY))
+                    .doesNotThrowAnyException();
+            assertThatCode(() -> openAccountQueryPort.lockForUpdate(CUENTA_AJENA, COMPANY))
+                    .doesNotThrowAnyException();
         }
     }
 }

@@ -29,7 +29,7 @@ public class JpaPasswordResetTokenRepository implements PasswordResetTokenReposi
     }
 
     @Override
-    public void consumeActiveForEmployee(Long employeeId, LocalDateTime now) {
-        jpaRepository.consumeActiveForEmployee(employeeId, now);
+    public void consumeActiveForEmployee(Long employeeId, Long companyId, LocalDateTime now) {
+        jpaRepository.consumeActiveForEmployee(employeeId, companyId, now);
     }
 }

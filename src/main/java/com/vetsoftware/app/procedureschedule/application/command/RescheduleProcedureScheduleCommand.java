@@ -7,5 +7,5 @@ import java.time.LocalDateTime;
  * pauta INTERVALO).
  */
 public record RescheduleProcedureScheduleCommand(Long scheduleId, LocalDateTime newDateTime,
-        String mode) {
+        String mode, Long companyId) {
 }

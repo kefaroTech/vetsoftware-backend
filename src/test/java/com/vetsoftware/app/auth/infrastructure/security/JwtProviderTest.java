@@ -5,8 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.WeakKeyException;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Date;
+import javax.crypto.SecretKey;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -149,6 +157,45 @@ class JwtProviderTest {
             assertThatThrownBy(() -> provider.extractId(corto))
                     .isInstanceOf(ExpiredJwtException.class);
             assertThat(provider.extractId(largo)).isEqualTo(7L);
+        }
+    }
+
+    /**
+     * {@code extractAuthVersion} acepta el claim tanto si llega como número (el
+     * camino normal, generado por {@code generate}) como si llega como texto —
+     * defensa ante tokens antiguos o construidos a mano. Un token propio no puede
+     * forzar ese segundo camino: se firma con la misma clave que usa
+     * {@code provider} por fuera de la clase, igual que en producción.
+     */
+    @Nested
+    @DisplayName("authVersion como claim alternativo")
+    class ClaimAuthVersionAlternativo {
+
+        private final SecretKey secretKey = Keys
+                .hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+
+        private String tokenConAuthVersion(Object authVersionClaim) {
+            Instant now = Instant.now();
+            return Jwts.builder().subject("7").claim("type", "EMPLOYEE")
+                    .claim("authVersion", authVersionClaim).issuedAt(Date.from(now))
+                    .expiration(Date.from(now.plus(15, ChronoUnit.MINUTES))).signWith(secretKey)
+                    .compact();
+        }
+
+        @Test
+        @DisplayName("un authVersion como texto numérico se interpreta igual que un número")
+        void authVersion_como_texto_numerico_se_interpreta() {
+            String token = tokenConAuthVersion("42");
+
+            assertThat(provider.extractAuthVersion(token)).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("un authVersion en blanco no se confunde con un número: queda ausente")
+        void authVersion_en_blanco_queda_ausente() {
+            String token = tokenConAuthVersion("   ");
+
+            assertThat(provider.extractAuthVersion(token)).isNull();
         }
     }
 }

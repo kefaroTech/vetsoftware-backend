@@ -63,4 +63,19 @@ public final class ProcedureScheduleMother {
         return new ProcedureOrderParams(PROCEDURE_ID, "Curacion de herida", HOSPITALIZATION_ID,
                 "EVERY_8H", "FIXED", "DAYS", 3, null, HORA_INICIO);
     }
+
+    /**
+     * Toma con id, hora y estado explicitos — para listas de plan con varias tomas.
+     */
+    public static ProcedureSchedule toma(Long id, LocalDateTime cuando, AppliedStatus status) {
+        return new ProcedureSchedule(id, ORDEN, cuando, cuando, null, status, false, EMPLEADO,
+                CREADO, true);
+    }
+
+    /** Toma ya aplicada, con su hora real. */
+    public static ProcedureSchedule tomaAplicada(Long id, LocalDateTime cuando,
+            LocalDateTime horaReal) {
+        return new ProcedureSchedule(id, ORDEN, cuando, cuando, horaReal, AppliedStatus.APPLIED,
+                false, EMPLEADO, CREADO, true);
+    }
 }

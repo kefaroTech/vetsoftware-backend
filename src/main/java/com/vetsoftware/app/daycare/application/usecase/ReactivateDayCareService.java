@@ -17,13 +17,20 @@ public class ReactivateDayCareService implements ReactivateDayCareUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aqui no hay un
+     * findById previo que valide la propiedad, asi que si la consulta no filtra por
+     * empresa, un id ajeno se reactiva sin mas. Cero filas afectadas significa «no
+     * existe en TU empresa», que es tambien la respuesta correcta para el registro
+     * de otro tenant: un 404, sin revelar que el id existe.
+     */
     @Override
     @Transactional
-    public DayCareDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public DayCareDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new DayCareNotFoundException(id);
-        return DayCareDto
-                .from(repository.findById(id).orElseThrow(() -> new DayCareNotFoundException(id)));
+        return DayCareDto.from(repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new DayCareNotFoundException(id)));
     }
 }

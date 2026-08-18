@@ -63,4 +63,19 @@ public final class MedicationScheduleMother {
         return new MedicationOrderParams(MEDICATION_ID, "Amoxicilina 500mg", HOSPITALIZATION_ID,
                 "EVERY_8H", "FIXED", "DAYS", 3, null, HORA_INICIO);
     }
+
+    /**
+     * Toma con id, hora y estado explicitos — para listas de plan con varias tomas.
+     */
+    public static MedicationSchedule toma(Long id, LocalDateTime cuando, AppliedStatus status) {
+        return new MedicationSchedule(id, ORDEN, cuando, cuando, null, status, false, EMPLEADO,
+                CREADO, true);
+    }
+
+    /** Toma ya aplicada, con su hora real. */
+    public static MedicationSchedule tomaAplicada(Long id, LocalDateTime cuando,
+            LocalDateTime horaReal) {
+        return new MedicationSchedule(id, ORDEN, cuando, cuando, horaReal, AppliedStatus.APPLIED,
+                false, EMPLEADO, CREADO, true);
+    }
 }

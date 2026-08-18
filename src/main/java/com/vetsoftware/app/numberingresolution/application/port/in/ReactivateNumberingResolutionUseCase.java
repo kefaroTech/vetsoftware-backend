@@ -4,6 +4,7 @@ import com.vetsoftware.app.numberingresolution.application.dto.NumberingResoluti
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReactivateNumberingResolutionUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('electronicbilling.delete')")
-    NumberingResolutionDto execute(Long id);
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('electronicbilling.delete')"
+            + " and @authz.isMyCompany(#companyId))")
+    NumberingResolutionDto execute(Long id, Long companyId);
 }

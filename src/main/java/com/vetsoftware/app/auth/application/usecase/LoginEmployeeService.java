@@ -61,7 +61,7 @@ public class LoginEmployeeService implements LoginEmployeeUseCase {
 
         // Primer login del staff invitado: INVITED → ACTIVE (idempotente si ya estaba
         // activo).
-        employeeActivationPort.activateOnLogin(credentials.id());
+        employeeActivationPort.activateOnLogin(credentials.id(), credentials.companyId());
 
         // El bloqueo dentro de rotateAuthVersion serializa logins concurrentes de la
         // misma cuenta.

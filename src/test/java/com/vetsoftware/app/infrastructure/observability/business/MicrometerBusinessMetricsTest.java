@@ -1,6 +1,7 @@
 package com.vetsoftware.app.infrastructure.observability.business;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.domain.AppointmentStatus;
@@ -16,8 +17,13 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class MicrometerBusinessMetricsTest {
 
@@ -90,5 +96,110 @@ class MicrometerBusinessMetricsTest {
             org.springframework.transaction.support.TransactionSynchronizationManager
                     .setActualTransactionActive(false);
         }
+    }
+
+    @Test
+    @DisplayName("un intento de venta fallido se cuenta de inmediato, sin esperar al commit")
+    void recordsFailedSalesAttemptImmediately() {
+        metrics.failed(SalesMetrics.Channel.POS, ElectronicDocumentType.FE_VENTA,
+                SalesMetrics.Result.REJECTED);
+
+        assertThat(registry.get(BusinessMetricNames.SALES_OPERATIONS)
+                .tags("result", "rejected", "channel", "pos", "document.type", "fe_venta").counter()
+                .count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("un tipo de documento nulo se reporta como unknown en vez de fallar")
+    void reportsUnknownDocumentTypeWhenMissing() {
+        metrics.failed(SalesMetrics.Channel.POS, null, SalesMetrics.Result.ERROR);
+
+        assertThat(registry.get(BusinessMetricNames.SALES_OPERATIONS)
+                .tags("result", "error", "channel", "pos", "document.type", "unknown").counter()
+                .count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("un fallo de transmisión DIAN se cuenta de inmediato con resultado error")
+    void recordsFailedDianTransmissionImmediately() {
+        metrics.failed(BillingMetrics.Origin.RETRY, ElectronicDocumentType.NOTA_CREDITO,
+                Duration.ofMillis(500));
+
+        assertThat(registry.get(BusinessMetricNames.DIAN_TRANSMISSIONS)
+                .tags("result", "error", "origin", "retry", "document.type", "nota_credito")
+                .counter().count()).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dianStatusResultMapping")
+    @DisplayName("cada estado DIAN transmisible mapea al resultado de negocio esperado")
+    void mapsDianStatusToBusinessResult(DianStatus status, String expectedResult) {
+        metrics.finished(status, BillingMetrics.Origin.INITIAL, ElectronicDocumentType.FE_VENTA,
+                Duration.ofMillis(100));
+
+        assertThat(registry.get(BusinessMetricNames.DIAN_TRANSMISSIONS)
+                .tags("result", expectedResult, "origin", "initial", "document.type", "fe_venta")
+                .counter().count()).isEqualTo(1);
+    }
+
+    private static Stream<Arguments> dianStatusResultMapping() {
+        return Stream.of(Arguments.of(DianStatus.VALIDADO, "validated"),
+                Arguments.of(DianStatus.RECHAZADO, "rejected"),
+                Arguments.of(DianStatus.CONTINGENCIA, "contingency"),
+                Arguments.of(DianStatus.PENDIENTE, "pending"));
+    }
+
+    @Test
+    @DisplayName("un estado DIAN no electrónico no es una transmisión: el fallo de mapeo no se "
+            + "propaga (las métricas son best-effort) ni deja una serie a medio registrar")
+    void doesNotRecordAndDoesNotPropagateForANonElectronicDianStatus() {
+        assertThatCode(
+                () -> metrics.finished(DianStatus.NO_ELECTRONICO, BillingMetrics.Origin.INITIAL,
+                        ElectronicDocumentType.FE_VENTA, Duration.ofMillis(100)))
+                .doesNotThrowAnyException();
+
+        assertThat(registry.find(BusinessMetricNames.DIAN_TRANSMISSIONS).counters()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("un movimiento de inventario fallido se cuenta de inmediato sin registrar unidades")
+    void recordsFailedInventoryMovementImmediatelyWithoutUnits() {
+        metrics.movement(StockMovementType.SALE, InventoryMetrics.Result.INSUFFICIENT_STOCK, 5);
+
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_MOVEMENTS)
+                .tags("movement.type", "sale", "result", "insufficient_stock").counter().count())
+                .isEqualTo(1);
+        assertThat(registry.find(BusinessMetricNames.INVENTORY_UNITS).summary()).isNull();
+    }
+
+    @Test
+    @DisplayName("un movimiento exitoso con cero unidades no registra unidades, solo el conteo")
+    void recordsSuccessfulMovementWithZeroUnitsWithoutRecordingUnits() {
+        metrics.movement(StockMovementType.ADJUSTMENT_IN, InventoryMetrics.Result.SUCCESS, 0);
+
+        assertThat(registry.get(BusinessMetricNames.INVENTORY_MOVEMENTS)
+                .tags("movement.type", "adjustment_in", "result", "success").counter().count())
+                .isEqualTo(1);
+        assertThat(registry.find(BusinessMetricNames.INVENTORY_UNITS).summary()).isNull();
+    }
+
+    @Test
+    @DisplayName("un cierre de caja sin diferencias registra un único valor balanceado")
+    void recordsBalancedCashClosingWhenThereAreNoDifferences() {
+        metrics.closed(List.of());
+
+        assertThat(registry.get(BusinessMetricNames.CASH_SESSIONS)
+                .tags("event", "closed", "result", "success").counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.CASH_CLOSING_DIFFERENCE)
+                .tag("direction", "balanced").summary().totalAmount()).isZero();
+    }
+
+    @Test
+    @DisplayName("un excedente de caja se etiqueta como superávit, no como faltante")
+    void tagsCashSurplusAsSurplus() {
+        metrics.closed(List.of(new BigDecimal("5000")));
+
+        assertThat(registry.get(BusinessMetricNames.CASH_CLOSING_DIFFERENCE)
+                .tag("direction", "surplus").summary().totalAmount()).isEqualTo(5000);
     }
 }

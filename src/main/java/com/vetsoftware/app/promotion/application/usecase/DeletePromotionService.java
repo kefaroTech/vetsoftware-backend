@@ -16,10 +16,18 @@ public class DeletePromotionService implements DeletePromotionUseCase {
         this.repository = repository;
     }
 
+    /**
+     * {@code companyId} null = caller sin empresa (SYSTEM); con empresa, la lectura
+     * previa va acotada para que borrar la promoción de otro tenant sea un 404 y no
+     * un borrado.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new PromotionNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new PromotionNotFoundException(id));
         repository.delete(id);
     }
 }

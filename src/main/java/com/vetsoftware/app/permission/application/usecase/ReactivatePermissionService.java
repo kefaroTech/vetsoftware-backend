@@ -17,13 +17,23 @@ public class ReactivatePermissionService implements ReactivatePermissionUseCase 
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: en la reactivacion no
+     * hay findById previo que valide la propiedad, asi que el WHERE es la unica
+     * barrera. {@code companyId} nulo es el principal cross-tenant (SYSTEM), que si
+     * opera global.
+     */
     @Override
     @Transactional
-    public PermissionDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public PermissionDto execute(Long id, Long companyId) {
+        int rows = companyId == null
+                ? repository.reactivate(id)
+                : repository.reactivate(id, companyId);
         if (rows == 0)
             throw new PermissionNotFoundException(id);
-        return PermissionDto.from(
-                repository.findById(id).orElseThrow(() -> new PermissionNotFoundException(id)));
+        return PermissionDto.from((companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new PermissionNotFoundException(id)));
     }
 }

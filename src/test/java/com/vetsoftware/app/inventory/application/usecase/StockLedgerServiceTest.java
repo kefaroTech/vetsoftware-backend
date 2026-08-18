@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -421,6 +422,49 @@ class StockLedgerServiceTest {
             });
         }
 
+        @Test
+        @DisplayName("con tres lotes en FEFO, el tercero queda intacto si los dos primeros alcanzan")
+        void tres_lotes_en_fefo_el_tercero_queda_intacto_si_los_dos_primeros_alcanzan() {
+            seedLot(A, 5, "30", LocalDate.of(2027, 1, 1), "L-1");
+            seedLot(A, 5, "30", LocalDate.of(2027, 2, 1), "L-2");
+            StockLot tercero = seedLot(A, 5, "30", LocalDate.of(2027, 3, 1), "L-3");
+            movements.clear();
+
+            // Ejercita la rama `remaining <= 0 => break` de consumeFefo: al terminar
+            // con el segundo lote no queda nada por descontar y el tercero ni se toca.
+            List<StockConsumptionDto> result = service.recordSale(sale(10, false));
+
+            assertThat(result).as("solo se consumen dos lotes").hasSize(2);
+            assertThat(tercero.getQuantityAvailable()).as("el tercer lote de FEFO no se toca")
+                    .isEqualTo(5);
+            assertThat(movements.ofType(StockMovementType.SALE)).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("un lote agotado en medio del FEFO se salta sin generar consumo")
+        void un_lote_agotado_en_medio_del_fefo_se_salta() {
+            // Simula que la query real coló un lote sin existencia disponible entre dos
+            // que si tienen: ejercita la rama defensiva `take <= 0 => continue` de
+            // consumeFefo. El saldo materializado (10) es el que decide si la venta se
+            // permite; los lotes son la fuente real del descuento.
+            StockLot agotado = new StockLot(1L, CO, A, P, "L-CERO", LocalDate.of(2027, 1, 1), 0,
+                    bd("30"), null, null, true);
+            StockLot conStock = new StockLot(2L, CO, A, P, "L-CON-STOCK", LocalDate.of(2027, 2, 1),
+                    10, bd("30"), null, null, true);
+            FakeLotRepositoryFefoFijo lotsFijo = new FakeLotRepositoryFefoFijo(
+                    List.of(agotado, conStock));
+            StockBalance balance = balances.save(StockBalance.create(CO, A, P, 0));
+            balance.add(10);
+            balances.save(balance);
+            StockLedgerService svc = new StockLedgerService(lotsFijo, balances, movements, policy,
+                    mock(InventoryMetrics.class));
+
+            List<StockConsumptionDto> result = svc.recordSale(sale(6, false));
+
+            assertThat(result).as("el lote sin existencia no genera consumo").hasSize(1);
+            assertThat(result.get(0).lotId()).isEqualTo(conStock.getId());
+        }
+
         private RecordSaleCommand sale(int qty, boolean allowNegative) {
             return new RecordSaleCommand(CO, A, P, qty, StockReferenceType.POS_DOCUMENT, 555L, USER,
                     allowNegative);
@@ -738,6 +782,48 @@ class StockLedgerServiceTest {
                     .hasMessageContaining("Lotes insuficientes");
         }
 
+        @Test
+        @DisplayName("con tres lotes de origen, el tercero queda intacto si los dos primeros alcanzan")
+        void tres_lotes_de_origen_el_tercero_queda_intacto_si_los_dos_primeros_alcanzan() {
+            seedLot(A, 5, "30", LocalDate.of(2027, 1, 1), "L-1");
+            seedLot(A, 5, "30", LocalDate.of(2027, 2, 1), "L-2");
+            StockLot tercero = seedLot(A, 5, "30", LocalDate.of(2027, 3, 1), "L-3");
+            movements.clear();
+
+            // Ejercita la rama `remaining <= 0 => break` del propio bucle FEFO de
+            // transfer(): el tercer lote de origen ni se toca.
+            service.transfer(transfer(A, B, 10));
+
+            assertThat(tercero.getQuantityAvailable()).as("el tercer lote de origen no se toca")
+                    .isEqualTo(5);
+            assertThat(balances.qty(P, B)).isEqualTo(10);
+            assertThat(movements.ofType(StockMovementType.TRANSFER_OUT)).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("un lote de origen agotado en medio del FEFO se salta sin replicarlo en destino")
+        void un_lote_de_origen_agotado_en_medio_del_fefo_se_salta() {
+            // Misma rama defensiva `take <= 0 => continue`, ahora dentro del bucle FEFO
+            // propio de transfer().
+            StockLot agotado = new StockLot(1L, CO, A, P, "L-CERO", LocalDate.of(2027, 1, 1), 0,
+                    bd("30"), null, null, true);
+            StockLot conStock = new StockLot(2L, CO, A, P, "L-CON-STOCK", LocalDate.of(2027, 2, 1),
+                    10, bd("30"), null, null, true);
+            FakeLotRepositoryFefoFijo lotsFijo = new FakeLotRepositoryFefoFijo(
+                    List.of(agotado, conStock));
+            StockBalance balance = balances.save(StockBalance.create(CO, A, P, 0));
+            balance.add(10);
+            balances.save(balance);
+            StockLedgerService svc = new StockLedgerService(lotsFijo, balances, movements, policy,
+                    mock(InventoryMetrics.class));
+
+            svc.transfer(new TransferStockCommand(CO, A, B, P, 6, "traslado", USER));
+
+            assertThat(balances.qty(P, B)).isEqualTo(6);
+            assertThat(movements.ofType(StockMovementType.TRANSFER_OUT))
+                    .as("un solo lote replicado").hasSize(1);
+        }
+
         private TransferStockCommand transfer(long from, long to, int qty) {
             return new TransferStockCommand(CO, from, to, P, qty, "traslado", USER);
         }
@@ -988,6 +1074,51 @@ class StockLedgerServiceTest {
         public boolean allowsNegative(Long companyId) {
             this.queried = true;
             return allow;
+        }
+    }
+
+    /**
+     * Variante de repositorio de lotes que devuelve un orden FEFO FIJO, tal cual,
+     * sin filtrar por existencia disponible &gt; 0 (a diferencia de
+     * {@link FakeLotRepository#findAvailableFefo}). Simula una fila que la query
+     * real coló con el lote ya en cero — la defensa contra eso vive en
+     * {@code StockLedgerService} (`take <= 0 -&gt; continue`), y es lo único que
+     * este doble necesita ejercitar.
+     */
+    private static final class FakeLotRepositoryFefoFijo implements StockLotRepository {
+        private final Map<Long, StockLot> store = new LinkedHashMap<>();
+        private final List<StockLot> fefoOrder;
+        private long seq = 100;
+
+        private FakeLotRepositoryFefoFijo(List<StockLot> fefoOrder) {
+            this.fefoOrder = fefoOrder;
+            for (StockLot lot : fefoOrder) {
+                store.put(lot.getId(), lot);
+            }
+        }
+
+        @Override
+        public StockLot save(StockLot lot) {
+            if (lot.getId() == null)
+                lot.assignId(++seq);
+            store.put(lot.getId(), lot);
+            return lot;
+        }
+
+        @Override
+        public Optional<StockLot> findById(Long id) {
+            return Optional.ofNullable(store.get(id));
+        }
+
+        @Override
+        public List<StockLot> findAvailableFefo(Long productId, Long branchId) {
+            return new ArrayList<>(fefoOrder);
+        }
+
+        @Override
+        public Optional<StockLot> findByIdentity(Long companyId, Long branchId, Long productId,
+                String lotNumber, LocalDate expireDate, BigDecimal unitCost) {
+            return Optional.empty();
         }
     }
 }

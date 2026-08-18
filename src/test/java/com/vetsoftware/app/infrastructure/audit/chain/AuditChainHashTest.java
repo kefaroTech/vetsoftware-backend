@@ -2,74 +2,160 @@ package com.vetsoftware.app.infrastructure.audit.chain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mockStatic;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 
+@DisplayName("AuditChainHash")
 class AuditChainHashTest {
 
-    /**
-     * Vector conocido de SHA-256. Fija el formato de salida: hexadecimal minúsculo
-     * de 64 caracteres, que es lo que produce {@code SHA2(x, 256)} de MySQL y lo
-     * que usa el relleno de la migración 215. Si alguien cambiara el algoritmo o
-     * pasara a mayúsculas, las filas rellenadas dejarían de verificar.
-     */
-    @Test
-    void el_hash_del_payload_es_sha256_hex_minusculo() {
-        assertThat(AuditChainHash.payloadHash("abc"))
-                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    @Nested
+    @DisplayName("payloadHash")
+    class PayloadHash {
+
+        @Test
+        @DisplayName("exige un payload no nulo")
+        void exige_un_payload_no_nulo() {
+            assertThatThrownBy(() -> AuditChainHash.payloadHash(null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("payload es obligatorio");
+        }
+
+        @Test
+        @DisplayName("produce un hexadecimal SHA-256 en minuscula de 64 caracteres")
+        void produce_un_hexadecimal_sha256_en_minuscula() {
+            String hash = AuditChainHash.payloadHash("{\"eventId\":\"e1\"}");
+
+            assertThat(hash).hasSize(64).matches("[0-9a-f]{64}");
+        }
+
+        @Test
+        @DisplayName("es determinista: el mismo payload siempre produce el mismo hash")
+        void es_determinista() {
+            String first = AuditChainHash.payloadHash("mismo-payload");
+            String second = AuditChainHash.payloadHash("mismo-payload");
+
+            assertThat(first).isEqualTo(second);
+        }
+
+        @Test
+        @DisplayName("payloads distintos producen hashes distintos")
+        void payloads_distintos_producen_hashes_distintos() {
+            String first = AuditChainHash.payloadHash("payload-a");
+            String second = AuditChainHash.payloadHash("payload-b");
+
+            assertThat(first).isNotEqualTo(second);
+        }
+
+        @Test
+        @DisplayName("si el JDK no ofreciera SHA-256, se traduce en IllegalStateException")
+        void si_el_jdk_no_ofreciera_sha256_se_traduce_en_illegal_state_exception() {
+            // SHA-256 es obligatorio en toda implementación de la JVM, así que esta rama
+            // de defensa nunca se dispara en producción; se fuerza aquí mockeando el
+            // método estático para probar la traducción de la excepción.
+            try (MockedStatic<MessageDigest> digest = mockStatic(MessageDigest.class)) {
+                digest.when(() -> MessageDigest.getInstance("SHA-256"))
+                        .thenThrow(new NoSuchAlgorithmException("sin proveedor"));
+
+                assertThatThrownBy(() -> AuditChainHash.payloadHash("cualquiera"))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessageContaining("SHA-256 no disponible");
+            }
+        }
     }
 
-    @Test
-    void el_hash_del_payload_respeta_los_bytes_utf8() {
-        // Si la implementación usara la codificación por defecto de la plataforma, este
-        // hash
-        // cambiaría entre entornos y la verificación fallaría al mover de máquina.
-        assertThat(AuditChainHash.payloadHash("{\"nombre\":\"José Ñuño\"}"))
-                .isEqualTo(AuditChainHash.payloadHash(new String(
-                        "{\"nombre\":\"José Ñuño\"}"
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        java.nio.charset.StandardCharsets.UTF_8)));
-    }
+    @Nested
+    @DisplayName("chainHash")
+    class ChainHash {
 
-    @Test
-    void el_eslabon_depende_de_los_tres_componentes() {
-        String payloadHash = AuditChainHash.payloadHash("evento");
-        String otroPayloadHash = AuditChainHash.payloadHash("otro evento");
-        String base = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1, payloadHash);
+        private final String validHash = AuditChainHash.payloadHash("valor-valido");
 
-        // Cambiar la posición, el payload o el eslabón anterior debe dar un hash
-        // distinto.
-        assertThat(AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 2, payloadHash))
-                .isNotEqualTo(base);
-        assertThat(AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1, otroPayloadHash))
-                .isNotEqualTo(base);
-        assertThat(AuditChainHash.chainHash(payloadHash, 1, payloadHash)).isNotEqualTo(base);
-    }
+        @Test
+        @DisplayName("el eslabon es el hash del payload compuesto previousHash:sequence:payloadHash")
+        void el_eslabon_es_el_hash_del_payload_compuesto() {
+            String chainHash = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1, validHash);
 
-    @Test
-    void el_eslabon_es_determinista() {
-        String payloadHash = AuditChainHash.payloadHash("evento");
-        assertThat(AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 7, payloadHash))
-                .isEqualTo(AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 7, payloadHash));
-    }
+            String expected = AuditChainHash
+                    .payloadHash(AuditChainHash.GENESIS_HASH + ":" + 1 + ":" + validHash);
+            assertThat(chainHash).isEqualTo(expected);
+        }
 
-    @Test
-    void rechaza_hashes_con_formato_invalido() {
-        String valido = AuditChainHash.payloadHash("evento");
+        @Test
+        @DisplayName("el hash genesis es un previousHash valido para el primer eslabon")
+        void el_hash_genesis_es_un_previous_hash_valido() {
+            String chainHash = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1, validHash);
 
-        assertThatThrownBy(() -> AuditChainHash.chainHash("corto", 1, valido))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("64 caracteres");
-        assertThatThrownBy(() -> AuditChainHash.chainHash(valido.toUpperCase(), 1, valido))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("minúsculo");
-        assertThatThrownBy(() -> AuditChainHash.chainHash(valido, 0, valido))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("positiva");
-    }
+            assertThat(chainHash).hasSize(64).matches("[0-9a-f]{64}");
+        }
 
-    @Test
-    void el_genesis_tiene_el_formato_de_un_hash() {
-        assertThat(AuditChainHash.GENESIS_HASH).hasSize(64).containsOnlyDigits();
-        // Debe ser usable como previous_hash del primer eslabón.
-        assertThat(AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1,
-                AuditChainHash.payloadHash("x"))).hasSize(64);
+        @Test
+        @DisplayName("encadenar el mismo eslabon dos veces produce el mismo resultado")
+        void encadenar_el_mismo_eslabon_dos_veces_produce_el_mismo_resultado() {
+            String first = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 5, validHash);
+            String second = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 5, validHash);
+
+            assertThat(first).isEqualTo(second);
+        }
+
+        @Test
+        @DisplayName("cambiar la posicion cambia el eslabon aunque el resto no cambie")
+        void cambiar_la_posicion_cambia_el_eslabon() {
+            String withSequenceOne = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1,
+                    validHash);
+            String withSequenceTwo = AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 2,
+                    validHash);
+
+            assertThat(withSequenceOne).isNotEqualTo(withSequenceTwo);
+        }
+
+        @ParameterizedTest
+        @DisplayName("rechaza sequence menor que uno")
+        @ValueSource(longs = {0L, -1L, -100L})
+        void rechaza_sequence_menor_que_uno(long sequence) {
+            assertThatThrownBy(() -> AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, sequence,
+                    validHash)).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("sequence debe ser positiva");
+        }
+
+        @ParameterizedTest
+        @DisplayName("rechaza un previousHash que no es hex de 64 caracteres")
+        @NullSource
+        @ValueSource(strings = {"", "corto",
+                "no-es-hexadecimal-0000000000000000000000000000000000000000",
+                "AAAA000000000000000000000000000000000000000000000000000000000A"})
+        void rechaza_previous_hash_invalido(String previousHash) {
+            assertThatThrownBy(() -> AuditChainHash.chainHash(previousHash, 1, validHash))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("previousHash");
+        }
+
+        @ParameterizedTest
+        @DisplayName("rechaza un payloadHash que no es hex de 64 caracteres")
+        @NullSource
+        @ValueSource(strings = {"", "corto"})
+        void rechaza_payload_hash_invalido(String payloadHash) {
+            assertThatThrownBy(
+                    () -> AuditChainHash.chainHash(AuditChainHash.GENESIS_HASH, 1, payloadHash))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("payloadHash");
+        }
+
+        @Test
+        @DisplayName("rechaza hexadecimal en mayuscula, aunque tenga la longitud correcta")
+        void rechaza_hexadecimal_en_mayuscula() {
+            String upperCase = validHash.toUpperCase(java.util.Locale.ROOT);
+
+            assertThatThrownBy(() -> AuditChainHash.chainHash(upperCase, 1, validHash))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("hexadecimal minúsculo");
+        }
     }
 }

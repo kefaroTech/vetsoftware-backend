@@ -123,4 +123,29 @@ class JpaBranchQueryPortTest {
 
         assertThat(port.findDefaultActiveByCompanyId(COMPANY)).isEmpty();
     }
+
+    @Test
+    void findAddressById_devuelve_la_direccion_de_la_sede_encontrada() {
+        BranchJpaEntity sede = mock(BranchJpaEntity.class);
+        when(sede.getAddress()).thenReturn("Calle 1 #2-3");
+        when(branchJpaRepository.findById(1L)).thenReturn(Optional.of(sede));
+
+        assertThat(port.findAddressById(1L)).contains("Calle 1 #2-3");
+    }
+
+    @Test
+    void findAddressById_una_direccion_nula_colapsa_a_vacio_en_vez_de_optional_de_null() {
+        BranchJpaEntity sede = mock(BranchJpaEntity.class);
+        when(sede.getAddress()).thenReturn(null);
+        when(branchJpaRepository.findById(1L)).thenReturn(Optional.of(sede));
+
+        assertThat(port.findAddressById(1L)).isEmpty();
+    }
+
+    @Test
+    void findAddressById_vacio_si_la_sede_no_existe() {
+        when(branchJpaRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThat(port.findAddressById(1L)).isEmpty();
+    }
 }

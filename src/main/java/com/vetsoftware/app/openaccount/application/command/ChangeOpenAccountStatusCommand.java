@@ -1,6 +1,16 @@
 package com.vetsoftware.app.openaccount.application.command;
 
-public record ChangeOpenAccountStatusCommand(Long id, String status, Long employeeId, String reason,
+/**
+ * El {@code closedById} es <b>quien cierra</b>, no un recurso que elija el
+ * cliente: lo rellena el controller con {@code authz.currentEmployeeId()} y el
+ * request REST no lo transporta. Se llama asi —y no {@code employeeId}— porque
+ * ese nombre lo hacia indistinguible de un id de empleado elegido por el
+ * atacante, que es justo lo que las reglas de la familia «por id» tienen que
+ * poder seguir marcando. Mismo criterio que
+ * {@code CreateOpenAccountCommand.createdById} y
+ * {@code SuspendHospitalizationMedicationCommand.suspendedById}.
+ */
+public record ChangeOpenAccountStatusCommand(Long id, String status, Long closedById, String reason,
         Long companyId,
         // Solo relevantes al cerrar (CLOSE): qué documento electrónico auto-emitir.
         // `documentType` =

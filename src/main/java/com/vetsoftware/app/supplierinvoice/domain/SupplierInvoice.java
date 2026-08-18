@@ -116,6 +116,7 @@ public class SupplierInvoice {
         this.subtotal = subtotal;
         this.taxAmount = taxAmount;
         this.withholdingAmount = withholdingAmount;
+        this.notes = notes;
         this.total = subtotal.add(taxAmount);
         this.updatedDate = LocalDateTime.now();
         this.updatedBy = updatedBy;

@@ -92,6 +92,14 @@ class PromotionControllerTest {
     @MockitoBean
     private ReactivatePromotionUseCase reactivateUseCase;
 
+    /**
+     * El doble de {@code Authz} lo aporta {@link WebMvcSliceConfig}; se inyecta
+     * aqui para afirmar que el borrado propaga la empresa del contexto, que es la
+     * mitad del arreglo de aislamiento (la otra mitad vive en el service).
+     */
+    @Autowired
+    private com.vetsoftware.app.auth.infrastructure.security.Authz authz;
+
     private static PromotionDto eneroPerruno() {
         return new PromotionDto(PROMOTION_ID, "Enero perruno", PromotionType.DISCOUNT,
                 ApplicationType.CATEGORY, 3L, ValueType.PERCENTAGE, new BigDecimal("15.00"), INICIO,
@@ -300,37 +308,43 @@ class PromotionControllerTest {
         }
 
         @Test
-        @DisplayName("DELETE /promotions/{id} responde 204 sin cuerpo")
+        @DisplayName("DELETE /promotions/{id} responde 204 y propaga la empresa del contexto")
         void delete_responde_204() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
+
             mockMvc.perform(delete("/promotions/44")).andExpect(status().isNoContent());
 
-            // OJO: este endpoint no pasa la empresa al caso de uso —el gate es solo
-            // hasAuthority('promotion.delete')—, asi que el aislamiento entre tenants
-            // depende por completo del service. Se afirma tal cual esta hoy.
-            verify(deleteUseCase).execute(PROMOTION_ID);
+            // La empresa la pone el controller desde el contexto, nunca el cliente: es
+            // lo que permite al service acotar la lectura previa al borrado.
+            verify(deleteUseCase).execute(PROMOTION_ID, COMPANY_ID);
         }
 
         @Test
         @DisplayName("DELETE de una promocion inexistente responde 404")
         void delete_inexistente_responde_404() throws Exception {
-            doThrow(new PromotionNotFoundException(99L)).when(deleteUseCase).execute(99L);
+            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
+            doThrow(new PromotionNotFoundException(99L)).when(deleteUseCase).execute(99L,
+                    COMPANY_ID);
 
             mockMvc.perform(delete("/promotions/99")).andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("PATCH /promotions/{id}/enable reactiva y responde 200")
+        @DisplayName("PATCH /promotions/{id}/enable reactiva y responde 200 propagando la empresa")
         void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(PROMOTION_ID)).thenReturn(eneroPerruno());
+            when(reactivateUseCase.execute(PROMOTION_ID, COMPANY_ID)).thenReturn(eneroPerruno());
 
             mockMvc.perform(patch("/promotions/44/enable")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.enabled").value(true));
+
+            verify(reactivateUseCase).execute(PROMOTION_ID, COMPANY_ID);
         }
 
         @Test
         @DisplayName("PATCH enable de una promocion inexistente responde 404")
         void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L)).thenThrow(new PromotionNotFoundException(99L));
+            when(reactivateUseCase.execute(99L, COMPANY_ID))
+                    .thenThrow(new PromotionNotFoundException(99L));
 
             mockMvc.perform(patch("/promotions/99/enable")).andExpect(status().isNotFound());
         }
