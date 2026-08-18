@@ -6,6 +6,23 @@
         </encoder>
     </appender>
 
+    <!--
+      Consola de dev y prod: JSON de una línea por evento. En ECS lo que va a stdout es lo que
+      llega a CloudWatch, que pasa a ser la fuente durable de logs; en texto plano esa ruta solo
+      llevaba el mensaje y el traceId, mientras que por OTLP viajaba el MDC completo. Con este
+      encoder las dos rutas transportan lo mismo.
+
+      El formato es una clase propia (no 'ecs' ni 'logstash') porque necesitamos el nombre exacto
+      trace_id/span_id: es lo que casa con el derived field del datasource de Loki que enlaza a
+      Tempo. Ver StructuredConsoleLogFormatter.
+    -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>com.vetsoftware.app.infrastructure.logging.StructuredConsoleLogFormatter</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
     <!-- Producción envía los eventos directamente al SDK de logs de OpenTelemetry. -->
     <appender name="OTEL"
               class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
@@ -27,6 +44,10 @@
               class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
         <appender-ref ref="CONSOLE"/>
     </appender>
+    <appender name="REDACTED_JSON_CONSOLE"
+              class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
+        <appender-ref ref="JSON_CONSOLE"/>
+    </appender>
     <appender name="REDACTED_OTEL"
               class="com.vetsoftware.app.infrastructure.logging.RedactingAppender">
         <appender-ref ref="OTEL"/>
@@ -45,10 +66,15 @@
       llega a CloudWatch. Sin ella, un fallo de arranque anterior a la instalacion del SDK de
       OpenTelemetry no deja rastro en ningun lado. Sigue envuelta en RedactingAppender, de modo
       que la politica de redaccion no se debilita.
+
+      Alli va en JSON y no en texto: CloudWatch es la fuente durable y necesita los atributos
+      estructurados, no solo el mensaje. En local se mantiene el patron legible (JSON en una
+      terminal de desarrollo es ilegible), que es justo lo que separa este <springProfile> del
+      de abajo. El pipeline OTLP no cambia: sigue exportando igual por ambos perfiles.
     -->
     <springProfile name="prod | dev">
         <root level="INFO">
-            <appender-ref ref="REDACTED_CONSOLE"/>
+            <appender-ref ref="REDACTED_JSON_CONSOLE"/>
             <appender-ref ref="REDACTED_OTEL"/>
         </root>
     </springProfile>
