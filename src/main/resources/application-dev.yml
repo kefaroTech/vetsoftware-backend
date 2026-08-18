@@ -27,6 +27,12 @@ management:
       export:
         enabled: true
         url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+  # Ver nota en application-prod.yml: los logs van por stdout -> CloudWatch -> Firehose, y stdout
+  # es la ruta de entrega, no un respaldo. Se apaga también aquí para que este perfil no reviva la
+  # doble entrega a Loki si alguna vez llega a activarse (hoy dev arranca con SPRING_PROFILES_ACTIVE=prod).
+  logging:
+    export:
+      enabled: ${OTEL_LOGS_EXPORT_ENABLED:false}
   opentelemetry:
     resource-attributes:
       service.name: vetsoftware

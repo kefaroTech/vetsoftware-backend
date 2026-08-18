@@ -29,6 +29,24 @@ management:
       export:
         enabled: true
         url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT}
+  # Los logs NO se exportan por OTLP. Su ruta es: appender JSON a stdout -> CloudWatch Logs ->
+  # Firehose -> Grafana Cloud. Mientras las dos rutas convivieron —fase 2 del plan, para poder
+  # compararlas— cada evento llegaba dos veces a Loki: 38 entradas en 30 minutos, de las que 19
+  # llevaban telemetry_source="firehose" y las otras 19 eran esta copia. Comparadas ya (formato,
+  # MDC, severidad, correlación con trazas y cero pérdidas), se retira la vieja.
+  #
+  # stdout NO es un respaldo: es LA ruta de entrega de los logs de este servicio. El appender de
+  # consola de logback-spring.xml no es redundante y apagarlo deja al servicio sin logs en ningún
+  # sitio.
+  #
+  # Alcance: solo la señal de logs. Las trazas (management.opentelemetry.tracing.export) y las
+  # métricas (management.otlp.metrics.export) siguen saliendo por OTLP y no se tocan.
+  #
+  # Reversible sin recompilar: OTEL_LOGS_EXPORT_ENABLED=true reactiva la ruta OTLP con la misma
+  # configuración de lotes de abajo, que se conserva intacta a tal efecto.
+  logging:
+    export:
+      enabled: ${OTEL_LOGS_EXPORT_ENABLED:false}
   opentelemetry:
     resource-attributes:
       service.name: vetsoftware
@@ -39,6 +57,12 @@ management:
       export:
         otlp:
           endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT}
+    # Inerte mientras management.logging.export.enabled sea false; se conserva para que
+    # reactivar la ruta OTLP sea solo la variable de entorno y no volver a decidir el lote.
+    #
+    # No borrar el endpoint: RemoteConnectionValidator lo exige presente y remoto en dev/prod
+    # (REQUIRED_REMOTE_URLS), así que quitarlo —o dejar de pasar OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+    # desde el IaC— impide arrancar, exportación apagada o no.
     logging:
       export:
         schedule-delay: 5s

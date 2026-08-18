@@ -12,7 +12,16 @@ target/
 
 # Logs
 *.log
-logs/
+# Anclado a la raiz A PROPOSITO. Sin la barra inicial, "logs/" casa con CUALQUIER
+# directorio llamado logs a cualquier profundidad: se comio el paquete Java
+# infrastructure/observability/logs/ y sus cinco clases nunca llegaron a estar en
+# git, aunque compilaban en local. Un paquete que se llame como un artefacto de
+# build no deberia desaparecer por ello.
+#
+# Las reglas target/ y secrets/ de este fichero SI van sin anclar, y es correcto:
+# ahi lo ancho protege -un directorio de secretos anidado queda ignorado, y los
+# target/ de cualquier modulo tambien-. La asimetria es deliberada.
+/logs/
 
 # Environment / secrets
 .env

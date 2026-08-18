@@ -206,7 +206,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             log.error("Server error {} on {}", statusCode.value(), request.getDescription(false),
                     ex);
         } else if (statusCode.is4xxClientError()) {
-            log.warn("Client error {} on {}: {}", statusCode.value(), request.getDescription(false),
+            // INFO y no WARN: un 4xx es funcionamiento normal de una API —contraseña
+            // equivocada, recurso inexistente, cuerpo mal formado— y la culpa es del
+            // cliente, no del servidor. En WARN copaban el nivel (15 warn contra 6 info en
+            // Loki, casi todos de aquí) y enterraban lo que sí exige mirar.
+            //
+            // No se pierde señal de seguridad: los eventos que la llevan —access_denied,
+            // unauthenticated, login_failure— los emite AuditLogger en WARN y con contexto
+            // (actor, ip, motivo). Esta línea solo los duplicaba sin ese contexto.
+            log.info("Client error {} on {}: {}", statusCode.value(), request.getDescription(false),
                     ex.getMessage());
         }
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
