@@ -310,8 +310,15 @@
                          el momento de ejecutar, que es cuando jacoco:prepare-agent ya la ha
                          reescrito con su -javaagent. Por eso conviven los dos agentes y por
                          eso la propiedad argLine se declara vacia arriba: sin declararla,
-                         @{argLine} quedaria literal cuando jacoco no corre. -->
-                    <argLine>@{argLine} -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                         @{argLine} quedaria literal cuando jacoco no corre.
+
+                         -Xmx explicito porque sin el la JVM del fork se queda con el default de
+                         ~25% de la RAM del runner (unos 2 GB de 7,9 GB) y eso no da para la suite:
+                         el volcado a disco esta para que un OOM futuro deje evidencia y no un stack
+                         sin contexto. maxSize baja de 32 a 8 porque retener contextos solo compensa
+                         si se reutilizan, y aqui las rodajas @WebMvcTest comparten WebMvcSliceConfig:
+                         con 8 la cache sigue acertando y se deja de pagar memoria por el resto. -->
+                    <argLine>@{argLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=8 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
                         <!-- EncryptedStringConverter lo instancia Hibernate, no Spring, asi
                              que lee la clave del ENTORNO de forma estatica y sin default: sin
@@ -336,8 +343,15 @@
                          @{failsafeArgLine} lo escribe jacoco:prepare-agent-integration, de
                          modo que la cobertura de estas pruebas tambien cuenta (ver el merge
                          de los dos .exec mas abajo). El agente de Mockito va igual que en
-                         surefire, con la ruta entrecomillada por los espacios del .m2. -->
-                    <argLine>@{failsafeArgLine} -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                         surefire, con la ruta entrecomillada por los espacios del .m2.
+
+                         -Xmx explicito por lo mismo que en surefire, pero aqui ya medido: el fork
+                         moria con OutOfMemoryError tras 314 s y solo 203 de las ~1.130 pruebas.
+                         maxSize baja a 2 porque en integracion la cache de contextos NO acierta
+                         nunca: cada *IT declara su propio @Import y ningun contexto se reutiliza, asi
+                         que los 32 por defecto -cada uno arrastrando los metadatos Hibernate de las
+                         104 *JpaEntity- son memoria retenida a cambio de cero reutilizacion. -->
+                    <argLine>@{failsafeArgLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=2 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
                         <!-- Mismo motivo que en surefire: EncryptedStringConverter lo
                              instancia Hibernate y lee la clave del entorno sin default. -->
