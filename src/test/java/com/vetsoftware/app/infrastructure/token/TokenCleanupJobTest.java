@@ -8,13 +8,22 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.function.Supplier;
+import org.mockito.ArgumentCaptor;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.token.TokenCleanupMetrics.PurgedTokens;
 import com.vetsoftware.app.infrastructure.token.TokenCleanupRepository.TokenCounts;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 class TokenCleanupJobTest {
 
@@ -63,5 +72,35 @@ class TokenCleanupJobTest {
         verify(repository, times(2)).purgeEmailVerificationTokens(any(LocalDateTime.class),
                 eq(100));
         verify(repository, times(2)).purgePasswordResetTokens(any(LocalDateTime.class), eq(100));
+    }
+
+    @Test
+    @DisplayName("advierte cuando el número de filas restantes supera el umbral de crecimiento")
+    void warnsWhenRowCountExceedsTheGrowthThreshold() {
+        Logger logger = (Logger) LoggerFactory.getLogger(TokenCleanupJob.class);
+        ListAppender<ILoggingEvent> sink = new ListAppender<>();
+        sink.setContext((LoggerContext) LoggerFactory.getILoggerFactory());
+        sink.start();
+        logger.addAppender(sink);
+        when(repository.countRows()).thenReturn(new TokenCounts(60_000, 0, 0));
+
+        job.cleanupTokens();
+
+        assertThat(sink.list).anyMatch(
+                event -> event.getFormattedMessage().contains("Crecimiento anormal de tokens"));
+        logger.detachAppender(sink);
+    }
+
+    @Test
+    @DisplayName("cleanup delega en la telemetría del job programado con el nombre esperado")
+    void cleanup_delega_en_la_telemetria_del_job_programado() {
+        when(repository.countRows()).thenReturn(new TokenCounts(1, 2, 3));
+
+        job.cleanup();
+
+        ArgumentCaptor<Supplier<ScheduledJobTelemetry.Outcome>> actionCaptor = ArgumentCaptor
+                .forClass(Supplier.class);
+        verify(telemetry).observe(eq("security.tokens.cleanup"), actionCaptor.capture());
+        assertThat(actionCaptor.getValue().get()).isEqualTo(ScheduledJobTelemetry.Outcome.NO_WORK);
     }
 }

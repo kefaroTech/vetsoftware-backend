@@ -19,5 +19,9 @@ public interface MedicamentPrescriptionRepository {
 
     void delete(Long id);
 
+    /** Sin acotar: solo el camino SYSTEM ({@code companyId == null}). */
     int reactivate(Long id);
+
+    /** Acotado a la empresa de la receta padre. */
+    int reactivate(Long id, Long companyId);
 }

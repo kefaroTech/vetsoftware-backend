@@ -122,7 +122,7 @@ public class JpaGoodsReceiptRepository implements GoodsReceiptRepository {
     // Baja lógica = UPDATE nativo. Con deleteById() el cascade de la colección
     // borraba las líneas antes de que el @SQLDelete deshabilitara la cabecera.
     @Override
-    public void delete(Long id) {
-        jpaRepository.softDelete(id);
+    public void delete(Long id, Long companyId) {
+        jpaRepository.softDelete(id, companyId);
     }
 }

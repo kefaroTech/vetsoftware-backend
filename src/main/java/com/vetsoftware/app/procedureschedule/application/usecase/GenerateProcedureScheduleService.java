@@ -35,11 +35,21 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
         this.employeeQueryPort = employeeQueryPort;
     }
 
+    /**
+     * La orden se resuelve acotada por empresa. Sin ese filtro, generar el plan de
+     * una orden ajena no era una lectura inocua: acto seguido
+     * {@code disableByHospitalizationProcedureId} deshabilita las ejecuciones de
+     * esa orden y se reescriben, es decir, se borra y rehace la hoja de un paciente
+     * de otro tenant. {@code companyId == null} es el camino SYSTEM.
+     */
     @Override
     @Transactional
     public List<ProcedureScheduleDto> execute(GenerateProcedureScheduleCommand command) {
-        ProcedureOrderParams params = procedureQueryPort
-                .findById(command.hospitalizationProcedureId()).orElseThrow(
+        ProcedureOrderParams params = (command.companyId() == null
+                ? procedureQueryPort.findById(command.hospitalizationProcedureId())
+                : procedureQueryPort.findByIdAndCompanyId(command.hospitalizationProcedureId(),
+                        command.companyId()))
+                .orElseThrow(
                         () -> new IllegalArgumentException("Hospitalization procedure not found: "
                                 + command.hospitalizationProcedureId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
@@ -48,19 +58,31 @@ public class GenerateProcedureScheduleService implements GenerateProcedureSchedu
         // Regla de integridad: las ejecuciones APLICADAS son histórico inmutable; solo
         // se
         // recalculan las pendientes.
-        List<ProcedureSchedule> applied = repository.findByHospitalizationProcedureId(params.id())
+        List<ProcedureSchedule> applied = (command.companyId() == null
+                ? repository.findByHospitalizationProcedureId(params.id())
+                : repository.findByHospitalizationProcedureIdAndCompanyId(params.id(),
+                        command.companyId()))
                 .stream().filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED).toList();
 
         List<ProcedureSchedule> result = new ArrayList<>();
         if (applied.isEmpty()) {
             // Alta nueva o sin aplicadas: regeneración completa (idempotente).
-            repository.disableByHospitalizationProcedureId(params.id());
+            if (command.companyId() == null) {
+                repository.disableByHospitalizationProcedureId(params.id());
+            } else {
+                repository.disableByHospitalizationProcedureId(params.id(), command.companyId());
+            }
             for (ProcedureSchedule s : ProcedureScheduleGenerator.generate(params, createdBy)) {
                 result.add(repository.save(s));
             }
         } else {
             // Conserva las aplicadas; reconstruye solo las pendientes.
-            repository.disablePendingByHospitalizationProcedureId(params.id());
+            if (command.companyId() == null) {
+                repository.disablePendingByHospitalizationProcedureId(params.id());
+            } else {
+                repository.disablePendingByHospitalizationProcedureId(params.id(),
+                        command.companyId());
+            }
             LocalDateTime lastApplied = applied.stream().map(ProcedureSchedule::getRealDateTime)
                     .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
             List<ProcedureSchedule> pending = ProcedureScheduleGenerator.generatePending(params,

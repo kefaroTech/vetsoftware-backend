@@ -26,9 +26,17 @@ public interface ElectronicInvoiceProviderPort {
      * los PENDIENTE cuando el webhook de un proveedor asíncrono se pierde. Devuelve
      * el {@link ProviderResult} normalizado, o vacío si el proveedor no soporta
      * polling (resuelve ya en {@link #transmit}).
+     *
+     * <p>
+     * Recibe el {@code document} —no solo su clave— porque el sello fiscal que
+     * devuelve la reconciliación depende del <b>tipo</b>: una factura de venta
+     * sella CUFE y un documento equivalente POS o una nota sellan CUDE. La
+     * respuesta del proveedor no trae el tipo, así que sin este parámetro el
+     * adaptador tendría que asumir uno (defecto real: todo lo reconciliado se
+     * guardaba como CUFE).
      */
-    default Optional<ProviderResult> fetchStatus(String providerDocumentKey,
-            ProviderConfigSnapshot config) {
+    default Optional<ProviderResult> fetchStatus(ElectronicDocument document,
+            String providerDocumentKey, ProviderConfigSnapshot config) {
         return Optional.empty();
     }
 }

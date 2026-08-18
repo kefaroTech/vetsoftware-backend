@@ -21,5 +21,5 @@ public interface HospitalizationRepository {
 
     void delete(Long id);
 
-    int reactivate(Long id);
+    int reactivate(Long id, Long companyId);
 }

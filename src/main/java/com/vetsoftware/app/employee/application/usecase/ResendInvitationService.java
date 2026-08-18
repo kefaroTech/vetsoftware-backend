@@ -44,14 +44,13 @@ public class ResendInvitationService implements ResendInvitationUseCase {
     @Override
     @Transactional
     public EmployeeDto execute(ResendInvitationCommand command) {
-        Employee employee = repository.findById(command.employeeId())
-                .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
-
         // El empleado debe pertenecer a la company del solicitante (cross-tenant → 404
-        // sin filtrar
-        // datos).
-        if (!employee.getCompany().id().equals(command.companyId()))
-            throw new EmployeeNotFoundException(command.employeeId());
+        // sin filtrar datos). El filtro va EN LA CONSULTA, no en un if posterior: la
+        // fila ajena no llega a cargarse. companyId null = caller sin empresa (SYSTEM).
+        Employee employee = (command.companyId() == null
+                ? repository.findById(command.employeeId())
+                : repository.findByIdAndCompanyId(command.employeeId(), command.companyId()))
+                .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
 
         // Solo se reenvía a quien sigue invitado (nunca inició sesión). Un empleado ya
         // activo no se

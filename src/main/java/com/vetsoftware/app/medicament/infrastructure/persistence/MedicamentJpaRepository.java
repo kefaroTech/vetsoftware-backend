@@ -32,6 +32,16 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
             @org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
+    /**
+     * Estrictamente el medicamento PROPIO de la empresa. Distinto de
+     * {@link #findAvailableById}, que ademas devuelve los generales: para leer y
+     * recetar sirve el catalogo disponible, pero escribir —editar, borrar,
+     * reactivar— solo puede alcanzar lo que la empresa creo. Un general
+     * ({@code company_id} NULL) es de la plataforma y no lo toca ningun tenant.
+     */
+    @EntityGraph(attributePaths = "company")
+    Optional<MedicamentJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
     @EntityGraph(attributePaths = "company")
     List<MedicamentJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
@@ -46,12 +56,20 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
             """, nativeQuery = true)
     List<MedicamentJpaEntity> findAllDisabledForCompany(@Param("companyId") Long companyId);
 
+    /**
+     * El filtro por {@code company_id} no es defensa en profundidad: es LA defensa.
+     * En la reactivacion no hay lectura previa que valide la propiedad —el servicio
+     * decide si existe mirando las filas afectadas—, asi que un UPDATE por id a
+     * secas resucitaba el medicamento pausado de cualquier tenant para quien
+     * conociera el id.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medicaments
             SET enabled = true
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int reactivate(@Param("id") Long id);
+    int reactivate(@Param("id") Long id, @Param("companyId") Long companyId);
 }

@@ -57,7 +57,7 @@ public class SetEmployeeBranchesService implements SetEmployeeBranchesUseCase {
             throw new IllegalArgumentException("At least one branch is required");
         }
 
-        repository.replaceBranches(command.employeeId(), target);
+        repository.replaceBranches(command.employeeId(), command.companyId(), target);
         cachePort.evictByEmployeeId(command.employeeId());
         return new EmployeeBranchesDto(command.employeeId(), List.copyOf(target));
     }

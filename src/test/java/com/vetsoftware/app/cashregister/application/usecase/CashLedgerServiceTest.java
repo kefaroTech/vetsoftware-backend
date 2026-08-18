@@ -183,6 +183,85 @@ class CashLedgerServiceTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    void reverse_is_noop_when_no_open_session() {
+        ReverseCashMovementsCommand cmd = new ReverseCashMovementsCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+
+        assertThatCode(() -> service.reverse(cmd)).doesNotThrowAnyException();
+        assertThat(repo.findOpen(CO, BR, "principal")).isEmpty();
+    }
+
+    @Test
+    void register_inflow_without_an_actor_resolves_by_the_default_terminal() {
+        CashSession s = seedOpen(BR); // terminal "principal" (resolveTerminal por defecto)
+        RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), null);
+
+        service.registerInflow(cmd);
+
+        assertThat(cashMovements(s, CashMovementType.SALE_IN)).isEqualTo(1);
+    }
+
+    @Test
+    void register_inflow_without_an_actor_resolves_by_a_custom_terminal() {
+        CashSession s = repo.save(CashSession.open(CO, BR, 300L, "caja-3", null, bd("100"), null));
+        RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, "caja-3",
+                CashReferenceType.POS_DOCUMENT, 9L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("40"))), null);
+
+        service.registerInflow(cmd);
+
+        assertThat(cashMovements(s, CashMovementType.SALE_IN)).isEqualTo(1);
+    }
+
+    @Test
+    void register_inflow_ignores_payment_lines_without_a_positive_amount() {
+        CashSession s = seedOpen(BR);
+        RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(null, bd("10")),
+                        new CashPaymentLine(CashPaymentMethod.CASH, null),
+                        new CashPaymentLine(CashPaymentMethod.CASH, BigDecimal.ZERO),
+                        new CashPaymentLine(CashPaymentMethod.CASH, bd("-5"))),
+                USER);
+
+        service.registerInflow(cmd);
+
+        assertThat(s.getMovements()).isEmpty();
+    }
+
+    @Test
+    void register_inflow_ignores_a_cash_session_from_another_company() {
+        // Misma sede/terminal/empleado, pero la caja abierta es de OTRA empresa: el
+        // repositorio (real o fake) siempre scoped por companyId, así que un
+        // companyId equivocado nunca debe encontrar ni tocar la caja ajena.
+        CashSession ajena = repo
+                .save(CashSession.open(999L, BR, TERMINAL, "principal", USER, bd("100"), null));
+        RegisterCashInflowCommand cmd = new RegisterCashInflowCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+
+        service.registerInflow(cmd);
+
+        assertThat(ajena.getMovements()).isEmpty();
+    }
+
+    @Test
+    void reverse_ignores_a_cash_session_from_another_company() {
+        CashSession ajena = repo
+                .save(CashSession.open(999L, BR, TERMINAL, "principal", USER, bd("100"), null));
+        ReverseCashMovementsCommand cmd = new ReverseCashMovementsCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 5L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER);
+
+        service.reverse(cmd);
+
+        assertThat(ajena.getMovements()).isEmpty();
+    }
+
     /** Fake del flag por empresa. */
     static class FakeCashRequiredPolicy implements CashRequiredPolicyPort {
         boolean required;

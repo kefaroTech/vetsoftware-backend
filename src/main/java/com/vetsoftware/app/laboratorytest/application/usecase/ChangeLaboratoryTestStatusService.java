@@ -29,7 +29,14 @@ public class ChangeLaboratoryTestStatusService implements ChangeLaboratoryTestSt
     @Override
     @Transactional
     public LaboratoryTestDto execute(ChangeLaboratoryTestStatusCommand command) {
-        LaboratoryTest laboratoryTest = repository.findById(command.id())
+        // El companyId null es el principal SYSTEM, cross-tenant por diseno; un
+        // empleado
+        // solo alcanza las muestras de su empresa. Sin acotar aqui, el permiso
+        // laboratoryTest.update bastaba para mover de estado —y firmar— la orden de
+        // laboratorio de otro tenant (BE-31).
+        LaboratoryTest laboratoryTest = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new LaboratoryTestNotFoundException(command.id()));
         LaboratoryTestStatus newStatus = LaboratoryTestStatus
                 .valueOf(command.status().toUpperCase());

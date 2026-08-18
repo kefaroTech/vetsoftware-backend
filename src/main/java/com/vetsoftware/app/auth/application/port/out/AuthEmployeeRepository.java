@@ -14,9 +14,17 @@ public interface AuthEmployeeRepository {
 
     /**
      * Incrementa authVersion: invalida de inmediato todos los access tokens vivos
-     * del empleado.
+     * del empleado. Sin acotar — es el camino del refresh, donde el sujeto sale del
+     * token ya validado y no hay empresa en el contexto.
      */
     void bumpAuthVersion(Long employeeId);
+
+    /**
+     * Igual que {@link #bumpAuthVersion(Long)} pero acotado a la empresa, para el
+     * logout: ahi el {@code companyId} viene del principal y el gate del puerto
+     * ({@code isAuthenticated()}) no dice nada sobre de quien es la fila.
+     */
+    void bumpAuthVersion(Long employeeId, Long companyId);
 
     record AuthEmployee(Long id, Long companyId, Long authVersion) {
     }

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -86,5 +87,29 @@ class AppointmentStatusTest {
     @DisplayName("ningun estado puede volver a REQUESTED: la agenda no retrocede")
     void ningun_estado_puede_volver_a_requested(AppointmentStatus origen) {
         assertThat(origen.canTransitionTo(AppointmentStatus.REQUESTED)).isFalse();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"CANCELLED", "NO_SHOW"})
+    @DisplayName("cancelada y no-asistio no ocupan la agenda del veterinario")
+    void cancelada_y_no_asistio_no_ocupan_agenda(AppointmentStatus libera) {
+        assertThat(libera.occupiesSchedule()).isFalse();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AppointmentStatus.class, names = {"CANCELLED",
+            "NO_SHOW"}, mode = EnumSource.Mode.EXCLUDE)
+    @DisplayName("todos los demas estados, incluida COMPLETED, si ocupan la agenda")
+    void los_demas_estados_ocupan_agenda(AppointmentStatus ocupa) {
+        // COMPLETED es terminal pero sí ocupó el hueco: no es lo mismo que
+        // isTerminal().
+        assertThat(ocupa.occupiesSchedule()).isTrue();
+    }
+
+    @Test
+    @DisplayName("namesNotOccupyingSchedule expone exactamente CANCELLED y NO_SHOW por nombre")
+    void names_not_occupying_schedule_expone_cancelled_y_no_show() {
+        assertThat(AppointmentStatus.namesNotOccupyingSchedule())
+                .containsExactlyInAnyOrder("CANCELLED", "NO_SHOW");
     }
 }

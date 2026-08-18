@@ -1,10 +1,12 @@
 package com.vetsoftware.app.appointment.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -525,6 +527,22 @@ class CreateAppointmentServiceTest {
             revertirLaTransaccion();
 
             verifyNoInteractions(confirmationEmailSender);
+        }
+
+        @Test
+        @DisplayName("una excepcion del sender dentro del afterCommit no se propaga: la transaccion ya confirmo")
+        void una_excepcion_del_sender_en_el_after_commit_no_se_propaga() {
+            stubEmpleadoYSede();
+            stubDatosDelCorreo();
+            stubGuardadoSinSolapes();
+            doThrow(new RuntimeException("Resend caido")).when(confirmationEmailSender).send(any());
+
+            service.execute(contactoLibre("walkin@example.com"));
+
+            // El callback la atrapa y solo la registra: una excepcion aqui se propagaria al
+            // caller aunque la transaccion ya haya confirmado, y convertiria una cita
+            // agendada correctamente en un 500.
+            assertThatCode(this::confirmarLaTransaccion).doesNotThrowAnyException();
         }
     }
 

@@ -17,13 +17,20 @@ public class ReactivateDewormingService implements ReactivateDewormingUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aqui no hay un
+     * findById previo que valide la propiedad, asi que si la consulta no filtra por
+     * empresa, un id ajeno se reactiva sin mas. Cero filas afectadas significa «no
+     * existe en TU empresa», que es tambien la respuesta correcta para el registro
+     * de otro tenant: un 404, sin revelar que el id existe.
+     */
     @Override
     @Transactional
-    public DewormingDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public DewormingDto execute(Long id, Long companyId) {
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new DewormingNotFoundException(id);
-        return DewormingDto.from(
-                repository.findById(id).orElseThrow(() -> new DewormingNotFoundException(id)));
+        return DewormingDto.from(repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new DewormingNotFoundException(id)));
     }
 }

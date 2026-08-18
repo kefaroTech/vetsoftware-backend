@@ -83,18 +83,18 @@ public class HospitalizationMedicationController {
         return toResponse(updateUseCase.execute(new UpdateHospitalizationMedicationCommand(id,
                 request.name(), request.dose(), request.frequency(), request.guidelineType(),
                 request.durationMeasure(), request.durationQuantity(), request.startDate(),
-                request.startTime(), request.notes())));
+                request.startTime(), request.notes(), authz.currentCompanyId())));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id);
+        deleteUseCase.execute(id, authz.currentCompanyId());
     }
 
     @PatchMapping("/{id}/enable")
     public HospitalizationMedicationResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     /**
@@ -103,8 +103,8 @@ public class HospitalizationMedicationController {
      */
     @PatchMapping("/{id}/suspend")
     public HospitalizationMedicationResponse suspend(@PathVariable Long id) {
-        return toResponse(suspendUseCase.execute(
-                new SuspendHospitalizationMedicationCommand(id, authz.currentEmployeeId())));
+        return toResponse(suspendUseCase.execute(new SuspendHospitalizationMedicationCommand(id,
+                authz.currentEmployeeId(), authz.currentCompanyId())));
     }
 
     private HospitalizationMedicationResponse toResponse(HospitalizationMedicationDto dto) {

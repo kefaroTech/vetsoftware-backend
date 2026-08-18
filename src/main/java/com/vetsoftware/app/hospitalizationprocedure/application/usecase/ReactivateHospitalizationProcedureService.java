@@ -20,13 +20,20 @@ public class ReactivateHospitalizationProcedureService
         this.repository = repository;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aqui no hay un
+     * findById previo que valide la propiedad, asi que si la consulta no filtra por
+     * empresa, un id ajeno se reactiva sin mas. Cero filas afectadas significa «no
+     * existe en TU empresa», que es tambien la respuesta correcta para la orden de
+     * otro tenant: un 404, sin revelar que el id existe.
+     */
     @Override
     @Transactional
-    public HospitalizationProcedureDto execute(Long id) {
-        int updated = repository.reactivate(id);
+    public HospitalizationProcedureDto execute(Long id, Long companyId) {
+        int updated = repository.reactivate(id, companyId);
         if (updated == 0)
             throw new HospitalizationProcedureNotFoundException(id);
-        return HospitalizationProcedureDto.from(repository.findById(id)
+        return HospitalizationProcedureDto.from(repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new HospitalizationProcedureNotFoundException(id)));
     }
 }

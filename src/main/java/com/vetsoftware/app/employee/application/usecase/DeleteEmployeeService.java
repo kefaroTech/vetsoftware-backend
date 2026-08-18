@@ -26,10 +26,18 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
         this.employeeRolesQueryPort = employeeRolesQueryPort;
     }
 
+    /**
+     * {@code companyId} null = caller sin empresa (SYSTEM), cross-tenant por
+     * diseño. Con empresa, la lectura previa va al finder acotado: el empleado de
+     * otro tenant es un 404, no una baja. El {@code AND company_id} del UPDATE
+     * cierra la misma puerta desde el SQL.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        Employee employee = repository.findByIdIncludingDisabled(id)
+    public void execute(Long id, Long companyId) {
+        Employee employee = (companyId == null
+                ? repository.findByIdIncludingDisabled(id)
+                : repository.findByIdIncludingDisabledAndCompanyId(id, companyId))
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
         // Idempotente: si ya está desactivado, no hacemos nada (evita 404 en reintentos
         // / estado viejo
@@ -48,6 +56,6 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
         // sus
         // employee_roles
         // activos no tiene efecto de seguridad.
-        repository.delete(id);
+        repository.delete(id, companyId);
     }
 }

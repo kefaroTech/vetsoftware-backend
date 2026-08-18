@@ -1,0 +1,101 @@
+package com.vetsoftware.app.module.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.vetsoftware.app.module.domain.Module;
+import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+
+/**
+ * Rodaja de persistencia del catalogo global de modulos contra MySQL real.
+ * {@code ModuleJpaEntity} no tiene FKs: no hace falta {@code SchemaSeed}.
+ */
+@Import({JpaModuleRepository.class, ModuleJpaMapper.class})
+@DisplayName("JpaModuleRepository — catalogo de modulos contra MySQL real")
+class ModulePersistenceIT extends AbstractDataJpaTest {
+
+    @Autowired
+    private JpaModuleRepository repository;
+
+    private Module nuevoModulo(String nombre, String codigo) {
+        return repository.save(Module.create(nombre, codigo));
+    }
+
+    @Nested
+    @DisplayName("guardar y releer")
+    class GuardarYReleer {
+
+        @Test
+        @DisplayName("guarda el modulo y lo relee con cada campo intacto")
+        void guarda_y_relee_con_cada_campo_intacto() {
+            Module guardado = nuevoModulo("Inventario-IT", "INV-IT");
+
+            Optional<Module> releido = repository.findById(guardado.getId());
+
+            assertThat(releido).isPresent();
+            assertThat(releido.get().getName()).isEqualTo("Inventario-IT");
+            assertThat(releido.get().getCode()).isEqualTo("INV-IT");
+            assertThat(releido.get().isEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("un id inexistente devuelve vacio")
+        void un_id_inexistente_devuelve_vacio() {
+            assertThat(repository.findById(999_999L)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAll")
+    class FindAll {
+
+        @Test
+        @DisplayName("incluye los modulos guardados")
+        void incluye_los_modulos_guardados() {
+            Module guardado = nuevoModulo("Caja-IT", "CAJA-IT");
+
+            List<Module> todos = repository.findAll();
+
+            assertThat(todos).extracting(Module::getId).contains(guardado.getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("borrado logico y reactivacion")
+    class BorradoYReactivacion {
+
+        @Test
+        @DisplayName("delete deshabilita la fila: deja de aparecer por id")
+        void delete_deshabilita_la_fila() {
+            Module guardado = nuevoModulo("Reportes-IT", "REP-IT");
+
+            repository.delete(guardado.getId());
+
+            assertThat(repository.findById(guardado.getId())).isEmpty();
+        }
+
+        @Test
+        @DisplayName("reactivate vuelve a habilitar la fila borrada")
+        void reactivate_vuelve_a_habilitar_la_fila() {
+            Module guardado = nuevoModulo("Compras-IT", "COMP-IT");
+            repository.delete(guardado.getId());
+
+            int filas = repository.reactivate(guardado.getId());
+
+            assertThat(filas).isEqualTo(1);
+            assertThat(repository.findById(guardado.getId())).isPresent();
+        }
+
+        @Test
+        @DisplayName("reactivate sobre un id inexistente no afecta ninguna fila")
+        void reactivate_sobre_id_inexistente_no_afecta_filas() {
+            assertThat(repository.reactivate(999_999L)).isZero();
+        }
+    }
+}

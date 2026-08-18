@@ -3,7 +3,6 @@ package com.vetsoftware.app.servicechargeopenaccount.application.usecase;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.ANIMAL;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.COMPANY_ID;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.CUENTA;
-import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.CUENTA_AJENA;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.EMPLEADO;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.OPEN_ACCOUNT_ID;
 import static com.vetsoftware.app.servicechargeopenaccount.testsupport.ServiceChargeOpenAccountMother.SERVICIO;
@@ -69,7 +68,8 @@ class CreateServiceChargeOpenAccountServiceTest {
      * Cuenta abierta, de la empresa correcta y con todas las referencias resueltas.
      */
     private void todoEnOrden() {
-        when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+        when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                .thenReturn(Optional.of(CUENTA));
         when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
         when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                 .thenReturn(Optional.of(ANIMAL));
@@ -138,8 +138,8 @@ class CreateServiceChargeOpenAccountServiceTest {
             // El lock tiene que ir ANTES de la lectura: si se toma despues, dos cargos
             // concurrentes leen el mismo saldo y el total de la cuenta queda mal.
             InOrder orden = Mockito.inOrder(openAccountQueryPort, repository, refresher);
-            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID);
-            orden.verify(openAccountQueryPort).findById(OPEN_ACCOUNT_ID);
+            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(openAccountQueryPort).findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
             orden.verify(repository).save(any());
             orden.verify(refresher).refresh(COMPANY_ID, OPEN_ACCOUNT_ID);
         }
@@ -163,11 +163,15 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("con una clave ya usada devuelve el cargo anterior sin volver a guardar")
         void con_una_clave_ya_usada_devuelve_el_cargo_anterior() {
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID, "req-1"))
                     .thenReturn(Optional.of(cargoConClave("req-1")));
 
             ServiceChargeOpenAccountDto dto = service.execute(comandoCrear("req-1"));
 
+            // El reintento legitimo del mismo cliente sigue devolviendo EL MISMO cargo:
+            // acotar la via de idempotencia no puede costar la idempotencia.
             assertThat(dto.id()).isEqualTo(cargoConClave("req-1").getId());
             // Un reintento no puede cobrar dos veces ni mover el total de la cuenta.
             verify(repository, never()).save(any());
@@ -176,14 +180,46 @@ class CreateServiceChargeOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("aun asi bloquea la cuenta: el chequeo de la clave tiene que ser serio")
-        void aun_asi_bloquea_la_cuenta() {
+        @DisplayName("un reintento con la clave de otra empresa no devuelve su cargo")
+        void un_reintento_con_la_clave_de_otra_empresa_no_devuelve_su_cargo() {
+            // La cuenta del comando es de otro tenant, asi que la resolucion acotada no
+            // la encuentra. Con el chequeo de idempotencia por delante —como estaba— el
+            // finder no lleva empresa (el cargo no tiene company_id propio) y bastaba
+            // acertar el clientRequestId para que el servicio devolviera el DTO del cargo
+            // ajeno sin pasar por ninguna comprobacion.
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCrear("req-1")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
+
+            verify(repository, never()).findByOpenAccountIdAndClientRequestId(any(), any());
+            verify(repository, never()).save(any());
+            verifyNoInteractions(refresher, versionGuard, animalQueryPort, serviceQueryPort,
+                    employeeQueryPort);
+        }
+
+        @Test
+        @DisplayName("bloquea y resuelve la cuenta ANTES de mirar la clave de idempotencia")
+        void bloquea_y_resuelve_la_cuenta_antes_de_mirar_la_clave() {
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID, "req-1"))
                     .thenReturn(Optional.of(cargoConClave("req-1")));
 
             service.execute(comandoCrear("req-1"));
 
-            verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID);
+            // El lock sigue siendo la primera sentencia (el reintento que llega segundo
+            // tiene que leer el cargo ya committeado por el rival) y la resolucion acotada
+            // va antes del finder: es lo unico que demuestra que la cuenta es de esta
+            // empresa antes de leer sus cargos.
+            InOrder orden = Mockito.inOrder(openAccountQueryPort, repository);
+            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(openAccountQueryPort).findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(repository).findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID,
+                    "req-1");
+            verifyNoInteractions(versionGuard);
         }
 
         @Test
@@ -219,7 +255,8 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta inexistente")
         void cuenta_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -230,15 +267,21 @@ class CreateServiceChargeOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("cuenta de otra empresa: no se filtra el cargo a un tenant ajeno")
+        @DisplayName("cuenta de otra empresa: no se carga contra un tenant ajeno")
         void cuenta_de_otra_empresa() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(CUENTA_AJENA));
+            // La cuenta existe, pero es de otra empresa: la consulta acotada no la
+            // resuelve, asi que el cargo se rechaza igual que si no existiera. Antes la
+            // cuenta ajena SI se cargaba y solo un if posterior evitaba el cargo.
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
 
+            // Si el servicio volviera a la variante ancha, la cuenta ajena entraria de
+            // nuevo en el flujo: el importe quedaria en la cuenta del otro tenant.
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(refresher, versionGuard);
         }
@@ -246,7 +289,8 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta que ya no esta abierta")
         void cuenta_que_ya_no_esta_abierta() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(false);
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
@@ -260,7 +304,8 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("animal inexistente")
         void animal_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
             when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                     .thenReturn(Optional.empty());
@@ -276,7 +321,8 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("servicio inexistente")
         void servicio_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
             when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                     .thenReturn(Optional.of(ANIMAL));
@@ -294,7 +340,8 @@ class CreateServiceChargeOpenAccountServiceTest {
         @Test
         @DisplayName("empleado inexistente")
         void empleado_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
             when(animalQueryPort.findByIdAndCompanyId(ANIMAL.id(), COMPANY_ID))
                     .thenReturn(Optional.of(ANIMAL));

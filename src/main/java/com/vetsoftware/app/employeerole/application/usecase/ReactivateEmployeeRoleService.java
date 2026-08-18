@@ -22,13 +22,31 @@ public class ReactivateEmployeeRoleService implements ReactivateEmployeeRoleUseC
         this.permissionCachePort = permissionCachePort;
     }
 
+    /**
+     * La empresa viaja hasta el UPDATE y hasta la relectura: aqui no hay un
+     * findById previo que valide la propiedad, asi que si la consulta no filtra por
+     * empresa, un id ajeno se reactiva sin mas. Y lo que se reactiva no es un dato
+     * de negocio sino un privilegio: devolver una asignacion revocada le regresa al
+     * empleado permisos que su propio administrador le quito, y el evict de la
+     * cache lo hace efectivo en el acto. Cero filas afectadas significa «no existe
+     * en TU empresa», que es tambien la respuesta correcta para la asignacion de
+     * otro tenant: un 404, sin revelar que el id existe.
+     *
+     * <p>
+     * {@code companyId} nulo es el principal cross-tenant (SYSTEM), que si opera
+     * global.
+     */
     @Override
     @Transactional
-    public EmployeeRoleDto execute(Long id) {
-        int rows = repository.reactivate(id);
+    public EmployeeRoleDto execute(Long id, Long companyId) {
+        int rows = companyId == null
+                ? repository.reactivate(id)
+                : repository.reactivate(id, companyId);
         if (rows == 0)
             throw new EmployeeRoleNotFoundException(id);
-        EmployeeRole employeeRole = repository.findById(id)
+        EmployeeRole employeeRole = (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
                 .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
         permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());
         return EmployeeRoleDto.from(employeeRole);

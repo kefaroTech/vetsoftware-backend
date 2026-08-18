@@ -7,5 +7,5 @@ import java.time.LocalDateTime;
  * INTERVALO).
  */
 public record RescheduleMedicationScheduleCommand(Long scheduleId, LocalDateTime newDateTime,
-        String mode) {
+        String mode, Long companyId) {
 }

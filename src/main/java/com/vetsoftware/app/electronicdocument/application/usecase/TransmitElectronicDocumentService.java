@@ -34,12 +34,13 @@ public class TransmitElectronicDocumentService implements TransmitElectronicDocu
      */
     @Override
     public ElectronicDocumentDto execute(TransmitElectronicDocumentCommand command) {
-        ElectronicDocument document = repository.findById(command.documentId())
+        // El filtro por empresa va EN la consulta, no en un if posterior: el
+        // companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId(), nunca null). No filtrar documentos de otra
+        // empresa.
+        ElectronicDocument document = repository
+                .findByIdAndCompanyId(command.documentId(), command.companyId())
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(command.documentId()));
-        if (!command.companyId().equals(document.getCompanyId())) {
-            // No filtrar documentos de otra empresa.
-            throw new ElectronicDocumentNotFoundException(command.documentId());
-        }
         return ElectronicDocumentDto.from(transmitter.transmit(document));
     }
 }

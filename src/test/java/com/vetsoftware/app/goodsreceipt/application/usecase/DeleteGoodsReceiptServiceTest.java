@@ -40,7 +40,7 @@ class DeleteGoodsReceiptServiceTest {
 
         service.execute(GoodsReceiptMother.RECEIPT_ID, GoodsReceiptMother.COMPANY_ID);
 
-        verify(repository).delete(GoodsReceiptMother.RECEIPT_ID);
+        verify(repository).delete(GoodsReceiptMother.RECEIPT_ID, GoodsReceiptMother.COMPANY_ID);
     }
 
     @Test
@@ -54,7 +54,7 @@ class DeleteGoodsReceiptServiceTest {
                 .isInstanceOf(GoodsReceiptNotFoundException.class)
                 .hasMessageContaining("Goods receipt not found: " + GoodsReceiptMother.RECEIPT_ID);
 
-        verify(repository, never()).delete(anyLong());
+        verify(repository, never()).delete(anyLong(), anyLong());
     }
 
     @ParameterizedTest(name = "estado {0}")
@@ -71,6 +71,6 @@ class DeleteGoodsReceiptServiceTest {
                 .hasMessageContaining("Only DRAFT goods receipts can be deleted")
                 .hasMessageContaining(status.name());
 
-        verify(repository, never()).delete(anyLong());
+        verify(repository, never()).delete(anyLong(), anyLong());
     }
 }

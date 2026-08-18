@@ -60,7 +60,7 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
         }
 
         LocalDateTime now = LocalDateTime.now();
-        tokenRepository.consumeActiveForEmployee(account.id(), now);
+        tokenRepository.consumeActiveForEmployee(account.id(), account.companyId(), now);
 
         String rawToken = PasswordResetTokens.generateRawToken();
         tokenRepository.save(PasswordResetToken.issue(account.id(), account.companyId(),

@@ -14,6 +14,6 @@ public interface ChangeMyPasswordUseCase {
      *         <b>aceptar su invitación</b>; {@code false} si era un cambio
      *         voluntario.
      */
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('SYSTEM') or (isAuthenticated() and @authz.isMyCompany(#command.companyId))")
     boolean execute(ChangeMyPasswordCommand command);
 }

@@ -1,10 +1,22 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.auth.infrastructure.config.PublicRoutes;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import io.github.bucket4j.distributed.BucketProxy;
+import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,10 +26,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -121,5 +135,288 @@ class LoginRateLimitFilterTest {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setServletPath(path);
         return request;
+    }
+
+    private static MockHttpServletRequest requestConCuerpo(String method, String path,
+            String body) {
+        MockHttpServletRequest request = request(method, path);
+        request.setContent(body.getBytes(StandardCharsets.UTF_8));
+        return request;
+    }
+
+    /**
+     * Consumo real del cupo: sustituye el proxy de Redis por un bucket doblado. Lo
+     * que se prueba aquí es la <b>orquestación</b> del filtro —qué claves consume,
+     * en qué orden, y qué hace con el resultado—, no el algoritmo de bucket4j en
+     * sí.
+     */
+    @Nested
+    @DisplayName("consumo del cupo")
+    class ConsumoDelCupo {
+
+        @Mock
+        private RemoteBucketBuilder<String> remoteBucketBuilder;
+        @Mock
+        private BucketProxy bucket;
+        @Mock
+        private FilterChain chain;
+
+        @BeforeEach
+        void enrutarElProxyHaciaElBucketDoblado() {
+            // lenient(): el caso "ruta sin límite" no consume ningún cupo, así que este
+            // doblado queda sin usar ahí — es scaffolding compartido, no un contrato del
+            // caso concreto.
+            org.mockito.Mockito.lenient().when(proxyManager.builder())
+                    .thenReturn(remoteBucketBuilder);
+            // build(K, Supplier) y build(K, BucketConfiguration) son ambiguos para any():
+            // se fija el tipo del matcher para que el compilador elija el overload
+            // correcto.
+            org.mockito.Mockito.lenient().when(remoteBucketBuilder.build(anyString(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any()))
+                    .thenReturn(bucket);
+        }
+
+        @Test
+        @DisplayName("sin cupo por IP responde 429 y no llega a la cadena")
+        void sin_cupo_por_ip_responde_429() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(false);
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    "{\"employeeCode\":\"EMP-1\",\"password\":\"x\"}");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            assertThat(response.getHeader("Retry-After")).isNotNull();
+            verify(auditLogger).rateLimited("LOGIN_RATE_LIMITED");
+            verifyNoInteractions(chain);
+        }
+
+        @Test
+        @DisplayName("con cupo de IP pero sin cupo por cuenta responde 429 igual")
+        void sin_cupo_por_cuenta_responde_429() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true, false);
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    "{\"employeeCode\":\"EMP-1\",\"password\":\"x\"}");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            verifyNoInteractions(chain);
+        }
+
+        @Test
+        @DisplayName("con cupo de sobra la request llega a la cadena con el cuerpo cacheado y legible")
+        void con_cupo_llega_a_la_cadena_con_el_cuerpo_cacheado() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            String cuerpo = "{\"employeeCode\":\"EMP-1\",\"password\":\"x\"}";
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    cuerpo);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            ArgumentCaptor<HttpServletRequest> captor = ArgumentCaptor
+                    .forClass(HttpServletRequest.class);
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(captor.capture(), eq(response));
+            HttpServletRequest wrapped = captor.getValue();
+            int bytes = cuerpo.getBytes(StandardCharsets.UTF_8).length;
+            assertThat(wrapped.getContentLength()).isEqualTo(bytes);
+            assertThat(wrapped.getContentLengthLong()).isEqualTo((long) bytes);
+            ServletInputStream stream = wrapped.getInputStream();
+            stream.setReadListener(null);
+            assertThat(stream.isReady()).isTrue();
+            byte[] leido = stream.readAllBytes();
+            assertThat(new String(leido, StandardCharsets.UTF_8)).isEqualTo(cuerpo);
+            assertThat(stream.isFinished()).isTrue();
+            assertThat(wrapped.getReader().readLine()).isEqualTo(cuerpo);
+        }
+
+        @Test
+        @DisplayName("un cuerpo mayor al límite responde 413 antes de tocar la cadena")
+        void cuerpo_demasiado_grande_responde_413() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            String enorme = "a".repeat(16 * 1024 + 1);
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    enorme);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(413);
+            verifyNoInteractions(chain);
+        }
+
+        @Test
+        @DisplayName("un cuerpo JSON inválido no revienta el filtro: sigue con el límite de IP ya consumido")
+        void cuerpo_json_invalido_no_revienta_el_filtro() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    "{no-es-json");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(any(), eq(response));
+        }
+
+        @Test
+        @DisplayName("un webhook de DIAN sin proveedor en la ruta no genera clave de cuenta")
+        void webhook_sin_proveedor_no_genera_clave_de_cuenta() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletRequest request = request("POST", "/dian/webhooks/");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(any(), eq(response));
+        }
+
+        @Test
+        @DisplayName("un webhook de DIAN con proveedor también limita por proveedor")
+        void webhook_con_proveedor_limita_por_proveedor() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(false);
+            MockHttpServletRequest request = request("POST", "/dian/webhooks/matias");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+        }
+
+        @Test
+        @DisplayName("una ruta sin límite no consume cupo y pasa directo a la cadena")
+        void ruta_sin_limite_pasa_directo() throws Exception {
+            MockHttpServletRequest request = request("GET", "/animals");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(request, response);
+            verifyNoInteractions(proxyManager);
+        }
+
+        @Test
+        @DisplayName("un proveedor válido en el webhook agota su propio cupo, aunque el de IP tenga margen")
+        void webhook_con_proveedor_valido_agota_su_propio_cupo() throws Exception {
+            // IP con margen (true), cupo del proveedor agotado (false): la única forma
+            // de distinguir esta rama de "sin cupo por IP" es que el primer tryConsume
+            // pase.
+            when(bucket.tryConsume(1)).thenReturn(true, false);
+            MockHttpServletRequest request = request("POST", "/dian/webhooks/matias");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            verify(auditLogger).rateLimited("DIAN_WEBHOOK_RATE_LIMITED");
+            verifyNoInteractions(chain);
+        }
+
+        @Test
+        @DisplayName("una subruta tras el proveedor no genera una clave de cuenta propia: solo limita por IP")
+        void subruta_tras_el_proveedor_no_genera_clave_de_cuenta() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletRequest request = request("POST", "/dian/webhooks/matias/extra");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(any(), eq(response));
+            verify(remoteBucketBuilder, org.mockito.Mockito.times(1)).build(anyString(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+        }
+
+        @Test
+        @DisplayName("un cuerpo vacío en una ruta con campos de cuenta no genera ninguna clave: solo limita por IP")
+        void cuerpo_vacio_no_genera_claves_de_cuenta() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletRequest request = request("POST", "/register");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(any(), eq(response));
+            verify(remoteBucketBuilder, org.mockito.Mockito.times(1)).build(anyString(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+        }
+
+        @Test
+        @DisplayName("un campo no-string o vacío en el cuerpo se ignora sin romper el filtro")
+        void campos_invalidos_en_el_cuerpo_se_ignoran() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletRequest request = requestConCuerpo("POST", "/register",
+                    "{\"employeeEmail\":123,\"companyIdentifier\":\"   \"}");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(any(), eq(response));
+            verify(remoteBucketBuilder, org.mockito.Mockito.times(1)).build(anyString(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+        }
+
+        @Test
+        @DisplayName("un campo opaco no se normaliza a minúsculas: mayúsculas y minúsculas son cuentas distintas")
+        void campo_opaco_no_se_normaliza_a_minusculas() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/auth/refresh", "{\"refreshToken\":\"ABC\"}"),
+                    new MockHttpServletResponse(), chain);
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/auth/refresh", "{\"refreshToken\":\"abc\"}"),
+                    new MockHttpServletResponse(), chain);
+
+            verify(remoteBucketBuilder, org.mockito.Mockito.atLeastOnce()).build(keys.capture(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+            List<String> clavesDeCuenta = keys.getAllValues().stream()
+                    .filter(k -> k.contains("account:")).distinct().toList();
+            assertThat(clavesDeCuenta).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("un campo normal sí se normaliza a minúsculas: mayúsculas y minúsculas son la misma cuenta")
+        void campo_normal_se_normaliza_a_minusculas() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/register",
+                            "{\"employeeEmail\":\"a@b.com\",\"companyIdentifier\":\"ABC\"}"),
+                    new MockHttpServletResponse(), chain);
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/register",
+                            "{\"employeeEmail\":\"a@b.com\",\"companyIdentifier\":\"abc\"}"),
+                    new MockHttpServletResponse(), chain);
+
+            verify(remoteBucketBuilder, org.mockito.Mockito.atLeastOnce()).build(keys.capture(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+            List<String> clavesDeCuenta = keys.getAllValues().stream()
+                    .filter(k -> k.contains("account:")).distinct().toList();
+            assertThat(clavesDeCuenta).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("el flujo cacheado se puede leer byte a byte y sabe si aún no ha terminado")
+        void el_flujo_cacheado_se_lee_byte_a_byte_y_sabe_si_no_ha_terminado() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            String cuerpo = "{\"employeeCode\":\"EMP-1\",\"password\":\"x\"}";
+            MockHttpServletRequest request = requestConCuerpo("POST", "/auth/login/employee",
+                    cuerpo);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            ArgumentCaptor<HttpServletRequest> captor = ArgumentCaptor
+                    .forClass(HttpServletRequest.class);
+
+            filter.doFilterInternal(request, response, chain);
+
+            verify(chain).doFilter(captor.capture(), eq(response));
+            ServletInputStream stream = captor.getValue().getInputStream();
+
+            assertThat(stream.isFinished()).isFalse();
+            assertThat(stream.read()).isEqualTo((int) cuerpo.charAt(0));
+        }
     }
 }

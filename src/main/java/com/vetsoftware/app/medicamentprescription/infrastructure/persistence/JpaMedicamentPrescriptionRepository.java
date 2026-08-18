@@ -72,4 +72,9 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
+    }
 }

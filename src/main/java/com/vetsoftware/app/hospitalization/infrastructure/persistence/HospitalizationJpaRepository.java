@@ -38,14 +38,23 @@ public interface HospitalizationJpaRepository
     Page<HospitalizationJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
             @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
+    /**
+     * El filtro por empresa no es defensa en profundidad: es LA defensa. Un UPDATE
+     * por id a secas resucitaba la hospitalizacion borrada de cualquier tenant para
+     * quien conociera el id, porque en este caso de uso no hay ninguna lectura
+     * previa que valide la propiedad — el servicio decide si existe mirando las
+     * filas afectadas.
+     */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE hospitalizations
             SET enabled = true
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     boolean existsByAnimal_Id(Long animalId);
 

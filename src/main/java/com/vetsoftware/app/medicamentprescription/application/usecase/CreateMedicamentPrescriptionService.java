@@ -26,12 +26,30 @@ public class CreateMedicamentPrescriptionService implements CreateMedicamentPres
         this.medicamentQueryPort = medicamentQueryPort;
     }
 
+    /**
+     * Las dos referencias se resuelven acotadas por empresa, igual que hace
+     * {@link UpdateMedicamentPrescriptionService}. Sin ese filtro, cualquiera con
+     * la autoridad {@code medicamentPrescription.create} podia colgar un
+     * medicamento de la receta de otro tenant adivinando el id: el caso de uso no
+     * carga ninguna entidad propia que valide la empresa, la receta ajena resolvia,
+     * y el registro quedaba escrito en la receta de otra empresa.
+     *
+     * <p>
+     * {@code companyId == null} es el camino SYSTEM (el controller lo pone con
+     * {@code currentCompanyIdOrNull()}), que si puede operar sin acotar.
+     */
     @Override
     public MedicamentPrescriptionDto execute(CreateMedicamentPrescriptionCommand command) {
-        PrescriptionRef prescription = prescriptionQueryPort.findById(command.prescriptionId())
+        PrescriptionRef prescription = (command.companyId() == null
+                ? prescriptionQueryPort.findById(command.prescriptionId())
+                : prescriptionQueryPort.findByIdAndCompanyId(command.prescriptionId(),
+                        command.companyId()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Prescription not found: " + command.prescriptionId()));
-        MedicamentRef medicamentRef = medicamentQueryPort.findById(command.medicamentId())
+        MedicamentRef medicamentRef = (command.companyId() == null
+                ? medicamentQueryPort.findById(command.medicamentId())
+                : medicamentQueryPort.findAvailableById(command.medicamentId(),
+                        command.companyId()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Medicament not found: " + command.medicamentId()));
 

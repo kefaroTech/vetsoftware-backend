@@ -15,8 +15,9 @@ public class JpaSurgeryTypeQueryPort implements SurgeryTypeQueryPort {
     }
 
     @Override
-    public Optional<SurgeryTypeRef> findById(Long surgeryTypeId) {
-        return surgeryTypeJpaRepository.findById(surgeryTypeId)
+    public Optional<SurgeryTypeRef> findAvailableByIdAndCompanyId(Long surgeryTypeId,
+            Long companyId) {
+        return surgeryTypeJpaRepository.findAvailableById(surgeryTypeId, companyId)
                 .map(e -> new SurgeryTypeRef(e.getId(), e.getName()));
     }
 }

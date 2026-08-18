@@ -40,12 +40,14 @@ public class UpdateDebtOpenAccountService implements UpdateDebtOpenAccountUseCas
                 .orElseThrow(() -> new DebtOpenAccountNotFoundException(command.id()));
         Long previousOpenAccountId = debtOpenAccount.getOpenAccount().id();
 
-        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
+        // Carga ACOTADA por empresa: la cuenta destino de otro tenant no se resuelve,
+        // asi
+        // que trasladar el abono a la cartera de la empresa vecina deja de ser posible.
+        // Antes se cargaba ancha y la empresa se comparaba despues en Java.
+        OpenAccountRef openAccount = openAccountQueryPort
+                .findByIdAndCompanyId(command.openAccountId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "OpenAccount not found: " + command.openAccountId()));
-        if (!openAccount.companyId().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
         // Detección temprana de conflicto sobre la cuenta destino del abono.
         versionGuard.assertVersion(command.companyId(), command.openAccountId(),
                 command.expectedVersion());

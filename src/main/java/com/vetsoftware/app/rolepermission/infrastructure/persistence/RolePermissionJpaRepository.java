@@ -50,15 +50,31 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
+    /**
+     * Baja en cascada de todos los permisos vigentes de un rol, acotada a la
+     * empresa. No existe la variante sin {@code companyId}: el {@code role_id} es
+     * una FK ajena y no acota nada por si mismo — el rol es de alguien—, asi que un
+     * {@code WHERE role_id = :roleId} a secas deshabilitaba en bloque los permisos
+     * del rol de cualquier tenant para quien conociera el id.
+     *
+     * <p>
+     * El {@code DeleteRoleService} que la invoca ya valida la propiedad del rol
+     * antes de llegar aqui, pero esa comprobacion vive en Java y esta en el
+     * {@code WHERE}: es una mutacion en bloque, la clase de operacion donde una
+     * lectura previa que se caiga de un refactor no deja rastro.
+     */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
-            UPDATE role_permissions
-            SET enabled = false
-            WHERE role_id = :roleId
-              AND enabled = true
+            UPDATE role_permissions rp
+            JOIN roles r ON r.id = rp.role_id
+            SET rp.enabled = false
+            WHERE rp.role_id = :roleId
+              AND rp.enabled = true
+              AND r.company_id = :companyId
             """, nativeQuery = true)
-    int disableAllByRoleId(@org.springframework.data.repository.query.Param("roleId") Long roleId);
+    int disableAllByRoleId(@org.springframework.data.repository.query.Param("roleId") Long roleId,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     @org.springframework.data.jpa.repository.Query(value = """
             SELECT id
@@ -92,6 +108,62 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
             """, nativeQuery = true)
     int reactivateAllByIds(
             @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
+
+    /**
+     * Reactivacion en bloque acotada al tenant. Es la peor variante de la familia y
+     * por partida doble: en una reactivacion no hay lectura previa que valide la
+     * propiedad —el servicio decide si la fila existe mirando cuantas actualizo— y
+     * ademas entra una <em>lista</em> de ids, asi que un solo id ajeno colado en el
+     * lote devolvia un permiso revocado al rol de otra empresa. El {@code JOIN
+     * roles} es toda la barrera que hay.
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE role_permissions rp
+            JOIN roles r ON r.id = rp.role_id
+            SET rp.enabled = true
+            WHERE rp.id IN (:ids)
+              AND r.company_id = :companyId
+            """, nativeQuery = true)
+    int reactivateAllByIds(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
+
+    /**
+     * Baja en bloque, simetrica de {@link #reactivateAllByIds}. No se usa
+     * {@code deleteAllByIdInBatch}: ese emite un DELETE en bloque que Hibernate NO
+     * pasa por el {@code @SQLDelete} de la entidad, asi que borraba fisicamente
+     * filas que la via individual ({@code delete(id)}) solo deshabilita — y con la
+     * fila fisica se perdia el id que
+     * {@code findDisabledByRoleAndPermissions}/{@code reactivateAllByIds} usan para
+     * reactivar el permiso si vuelve a asignarse.
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE role_permissions
+            SET enabled = false
+            WHERE id IN (:ids)
+            """, nativeQuery = true)
+    int disableAllByIds(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
+
+    /**
+     * Baja en bloque acotada al tenant, simetrica de {@link #reactivateAllByIds}.
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE role_permissions rp
+            JOIN roles r ON r.id = rp.role_id
+            SET rp.enabled = false
+            WHERE rp.id IN (:ids)
+              AND r.company_id = :companyId
+            """, nativeQuery = true)
+    int disableAllByIds(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
     boolean existsByRole_Id(Long roleId);
 

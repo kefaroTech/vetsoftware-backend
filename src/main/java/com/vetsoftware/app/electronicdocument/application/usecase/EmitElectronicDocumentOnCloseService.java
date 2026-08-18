@@ -63,11 +63,15 @@ public class EmitElectronicDocumentOnCloseService implements EmitElectronicDocum
         // revertir el
         // cierre.
         Long documentId = document.getId();
+        // La empresa se resuelve AQUI, dentro de la transaccion: despues del commit
+        // la conexion volvio al pool y el completer necesita el companyId para
+        // releer el documento con el finder acotado.
+        Long companyId = command.companyId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 try {
-                    emissionCompleter.complete(documentId);
+                    emissionCompleter.complete(documentId, companyId);
                 } catch (Exception e) {
                     log.error(
                             "Emisión DIAN post-cierre falló para el documento {} "

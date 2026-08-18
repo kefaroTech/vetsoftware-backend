@@ -169,6 +169,22 @@ class MedicationScheduleGeneratorTest {
             assertThat(MedicationScheduleGenerator.generate(orden("EVERY_24H", "FIXED", "DAYS", 1),
                     EMPLEADO)).hasSize(1);
         }
+
+        @Test
+        @DisplayName("DOSES sin cantidad especificada cae al horizonte, no revienta")
+        void doses_sin_cantidad_cae_al_horizonte() {
+            // durationQuantity=null corta el "&&" del primer if antes de mirar el
+            // signo: sin este caso esa rama del cortocircuito no la ejercita nadie.
+            assertThat(MedicationScheduleGenerator
+                    .generate(orden("EVERY_24H", "FIXED", "DOSES", null), EMPLEADO)).hasSize(14);
+        }
+
+        @Test
+        @DisplayName("DAYS sin cantidad especificada cae al horizonte, no revienta")
+        void days_sin_cantidad_cae_al_horizonte() {
+            assertThat(MedicationScheduleGenerator
+                    .generate(orden("EVERY_24H", "FIXED", "DAYS", null), EMPLEADO)).hasSize(14);
+        }
     }
 
     @Nested
@@ -250,6 +266,17 @@ class MedicationScheduleGeneratorTest {
             assertThat(MedicationScheduleGenerator
                     .generatePending(orden("SINGLE", "FIXED", "DOSES", 1), 0, null, EMPLEADO))
                     .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("sin hora de inicio tambien arranca a las ocho de la manana")
+        void sin_hora_de_inicio_tambien_arranca_a_las_ocho() {
+            // El mismo default que generate(), pero es una linea propia de
+            // generatePending: sin este caso queda sin ejercitar.
+            List<MedicationSchedule> pendientes = MedicationScheduleGenerator
+                    .generatePending(sinHoraDeInicio("EVERY_24H"), 0, null, EMPLEADO);
+
+            assertThat(horasDe(pendientes)).containsExactly(PRIMERA_TOMA);
         }
 
         @Test

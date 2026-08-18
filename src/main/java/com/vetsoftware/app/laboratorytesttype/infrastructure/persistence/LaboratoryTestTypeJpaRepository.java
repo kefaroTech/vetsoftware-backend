@@ -33,12 +33,31 @@ public interface LaboratoryTestTypeJpaRepository
     @EntityGraph(attributePaths = "company")
     List<LaboratoryTestTypeJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
+    /**
+     * Lectura ESTRICTA por propiedad, para los caminos de ESCRITURA. A diferencia
+     * de {@link #findAvailableById}, que incluye a propósito las filas generales
+     * porque sirve a los {@code find}/{@code list}, esta excluye lo que la empresa
+     * solo puede consultar: editar, borrar o reactivar una fila general la
+     * cambiaría para todos los tenants, y una fila general ajena la reasignaría.
+     */
+    @EntityGraph(attributePaths = "company")
+    Optional<LaboratoryTestTypeJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    /**
+     * El filtro por {@code company_id} no es defensa en profundidad: es LA defensa.
+     * En reactivación no hay lectura previa que valide la propiedad — el servicio
+     * decide si existe mirando las filas afectadas —, así que un UPDATE por id a
+     * secas revivía el tipo retirado de cualquier tenant. Cero filas = «no existe
+     * en TU empresa» → 404.
+     */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE laboratory_test_types
             SET enabled = true
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 }

@@ -2,7 +2,6 @@ package com.vetsoftware.app.debtopenaccount.application.usecase;
 
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.COMPANY_ID;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.CUENTA;
-import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.CUENTA_AJENA;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.MONTO;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.OPEN_ACCOUNT_ID;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.OTRA_CUENTA;
@@ -67,7 +66,8 @@ class UpdateDebtOpenAccountServiceTest {
         void aplica_los_valores_nuevos() {
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.execute(comandoActualizar());
@@ -84,7 +84,8 @@ class UpdateDebtOpenAccountServiceTest {
         void comprueba_la_version_y_refresca_solo_la_cuenta_destino() {
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.execute(comandoActualizar());
@@ -99,7 +100,8 @@ class UpdateDebtOpenAccountServiceTest {
         void editar_un_abono_no_comprueba_el_saldo_pendiente() {
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.execute(comandoActualizar());
@@ -109,7 +111,7 @@ class UpdateDebtOpenAccountServiceTest {
             // abono si puede dejar el saldo negativo. Queda escrito para que el dia que
             // se cierre, el test falle y obligue a actualizarlo en vez de pasar callando.
             verify(openAccountQueryPort, never()).outstandingAmount(any());
-            verify(openAccountQueryPort, never()).lockForUpdate(any());
+            verify(openAccountQueryPort, never()).lockForUpdate(any(), any());
         }
     }
 
@@ -123,7 +125,7 @@ class UpdateDebtOpenAccountServiceTest {
             // El abono vive hoy en CUENTA (50) y el comando lo mueve a OTRA_CUENTA (51).
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OTRA_CUENTA_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(OTRA_CUENTA_ID, COMPANY_ID))
                     .thenReturn(Optional.of(OTRA_CUENTA));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -160,7 +162,8 @@ class UpdateDebtOpenAccountServiceTest {
         void cuenta_destino_inexistente() {
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -171,17 +174,21 @@ class UpdateDebtOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("cuenta destino de otra empresa")
+        @DisplayName("cuenta destino de otra empresa: el abono no se traslada a otro tenant")
         void cuenta_destino_de_otra_empresa() {
+            // La cuenta destino existe pero es de otra empresa: la consulta acotada no la
+            // resuelve, asi que el traslado se rechaza. Antes la cuenta ajena SI se
+            // cargaba y solo un if posterior impedia mover el abono a su cartera.
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(CUENTA_AJENA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
 
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(refresher, versionGuard);
         }
@@ -192,7 +199,8 @@ class UpdateDebtOpenAccountServiceTest {
             DebtOpenAccount existente = abono();
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(existente));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
 
             assertThatThrownBy(() -> service.execute(new UpdateDebtOpenAccountCommand(PAYMENT_ID,
                     BigDecimal.ZERO, "CASH", OPEN_ACCOUNT_ID, COMPANY_ID, null)))
@@ -209,7 +217,8 @@ class UpdateDebtOpenAccountServiceTest {
         void un_medio_de_pago_que_no_existe() {
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
 
             assertThatThrownBy(() -> service.execute(new UpdateDebtOpenAccountCommand(PAYMENT_ID,
                     MONTO, "CHEQUE", OPEN_ACCOUNT_ID, COMPANY_ID, null)))

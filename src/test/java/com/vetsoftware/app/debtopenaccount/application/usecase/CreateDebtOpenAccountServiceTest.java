@@ -2,7 +2,6 @@ package com.vetsoftware.app.debtopenaccount.application.usecase;
 
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.COMPANY_ID;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.CUENTA;
-import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.CUENTA_AJENA;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.EMPLEADO;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.MONTO;
 import static com.vetsoftware.app.debtopenaccount.testsupport.DebtOpenAccountMother.OPEN_ACCOUNT_ID;
@@ -72,7 +71,8 @@ class CreateDebtOpenAccountServiceTest {
      * resuelto.
      */
     private void todoEnOrden() {
-        when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+        when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                .thenReturn(Optional.of(CUENTA));
         when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
         when(openAccountQueryPort.outstandingAmount(OPEN_ACCOUNT_ID))
                 .thenReturn(new BigDecimal(SALDO_PENDIENTE));
@@ -170,8 +170,8 @@ class CreateDebtOpenAccountServiceTest {
             // El lock tiene que ir ANTES de leer el saldo: si se toma despues, dos abonos
             // concurrentes leen el mismo pendiente y entre los dos lo dejan negativo.
             InOrder orden = Mockito.inOrder(openAccountQueryPort, repository, refresher, cashPort);
-            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID);
-            orden.verify(openAccountQueryPort).findById(OPEN_ACCOUNT_ID);
+            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(openAccountQueryPort).findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
             orden.verify(openAccountQueryPort).outstandingAmount(OPEN_ACCOUNT_ID);
             orden.verify(repository).save(any());
             orden.verify(refresher).refresh(COMPANY_ID, OPEN_ACCOUNT_ID);
@@ -186,7 +186,8 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("un abono mayor que el pendiente se rechaza")
         void un_abono_mayor_que_el_pendiente_se_rechaza() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
             when(openAccountQueryPort.outstandingAmount(OPEN_ACCOUNT_ID))
                     .thenReturn(new BigDecimal(SALDO_PENDIENTE));
@@ -222,11 +223,15 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("con una clave ya usada devuelve el abono anterior sin volver a cobrar")
         void con_una_clave_ya_usada_devuelve_el_abono_anterior() {
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID, "req-1"))
                     .thenReturn(Optional.of(abonoConClave("req-1")));
 
             DebtOpenAccountDto dto = service.execute(comandoCrear("req-1"));
 
+            // El reintento legitimo del mismo cliente sigue devolviendo EL MISMO abono:
+            // acotar la via de idempotencia no puede costar la idempotencia.
             assertThat(dto.id()).isEqualTo(PAYMENT_ID);
             // Un reintento no puede cobrar dos veces ni meter el mismo dinero en caja.
             verify(repository, never()).save(any());
@@ -234,21 +239,48 @@ class CreateDebtOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("la deduplicacion va DESPUES del lock y ANTES del guard de sobrepago")
-        void la_deduplicacion_va_despues_del_lock_y_antes_del_guard() {
+        @DisplayName("un reintento con la clave de otra empresa no devuelve su abono")
+        void un_reintento_con_la_clave_de_otra_empresa_no_devuelve_su_abono() {
+            // La cuenta del comando es de otro tenant, asi que la resolucion acotada no
+            // la encuentra. Con el chequeo de idempotencia por delante —como estaba— el
+            // finder no lleva empresa (el abono no tiene company_id propio) y bastaba
+            // acertar el clientRequestId para que el servicio devolviera el DTO del abono
+            // ajeno sin pasar por ninguna comprobacion.
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(comandoCrear("req-1")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
+
+            verify(repository, never()).findByOpenAccountIdAndClientRequestId(any(), any());
+            verify(repository, never()).save(any());
+            verifyNoInteractions(refresher, versionGuard, employeeQueryPort, cashPort);
+        }
+
+        @Test
+        @DisplayName("la deduplicacion va DESPUES de la resolucion acotada y ANTES del guard")
+        void la_deduplicacion_va_despues_de_la_resolucion_acotada() {
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID, "req-1"))
                     .thenReturn(Optional.of(abonoConClave("req-1")));
 
             service.execute(comandoCrear("req-1"));
 
             // Despues del lock: el reintento que llega segundo tiene que leer el abono ya
-            // committeado por el rival. Antes del guard: tras el primer abono el saldo ya
-            // bajo, y el reintento fallaria por sobrepago en vez de devolver el original.
+            // committeado por el rival. Despues de la resolucion acotada: es lo unico que
+            // demuestra que la cuenta es de esta empresa antes de leer sus abonos. Antes
+            // del guard de sobrepago y del versionGuard: tras el primer abono el saldo ya
+            // bajo y la version subio, y el reintento fallaria en vez de devolver el
+            // original.
             InOrder orden = Mockito.inOrder(openAccountQueryPort, repository);
-            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID);
+            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(openAccountQueryPort).findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID);
             orden.verify(repository).findByOpenAccountIdAndClientRequestId(OPEN_ACCOUNT_ID,
                     "req-1");
             verify(openAccountQueryPort, never()).outstandingAmount(any());
+            verifyNoInteractions(versionGuard);
         }
 
         @Test
@@ -284,7 +316,8 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta inexistente")
         void cuenta_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -297,13 +330,19 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta de otra empresa: no se cobra contra un tenant ajeno")
         void cuenta_de_otra_empresa() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(CUENTA_AJENA));
+            // La cuenta existe, pero es de otra empresa: la consulta acotada no la
+            // resuelve, asi que el abono se rechaza igual que si no existiera. Antes la
+            // cuenta ajena SI se cargaba y solo un if posterior evitaba el cobro.
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
 
+            // Si el servicio volviera a la variante ancha, la cuenta ajena entraria de
+            // nuevo en el flujo: el abono quedaria escrito en la cartera del otro tenant.
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(refresher, versionGuard, cashPort);
         }
@@ -311,7 +350,8 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta que ya no esta abierta")
         void cuenta_que_ya_no_esta_abierta() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(false);
 
             assertThatThrownBy(() -> service.execute(comandoCrear()))
@@ -325,7 +365,8 @@ class CreateDebtOpenAccountServiceTest {
         @Test
         @DisplayName("empleado inexistente")
         void empleado_inexistente() {
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
             when(openAccountQueryPort.outstandingAmount(OPEN_ACCOUNT_ID))
                     .thenReturn(new BigDecimal(SALDO_PENDIENTE));

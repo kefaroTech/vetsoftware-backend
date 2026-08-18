@@ -25,7 +25,8 @@ public class UpdateHospitalizationObservationService
     @Override
     @Transactional
     public HospitalizationObservationDto execute(UpdateHospitalizationObservationCommand command) {
-        HospitalizationObservation observation = repository.findById(command.id())
+        HospitalizationObservation observation = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new HospitalizationObservationNotFoundException(command.id()));
         observation.update(command.description());
         return HospitalizationObservationDto.from(repository.save(observation));

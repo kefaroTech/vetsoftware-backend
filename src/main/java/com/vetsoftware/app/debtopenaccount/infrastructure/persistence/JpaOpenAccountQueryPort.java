@@ -24,8 +24,17 @@ public class JpaOpenAccountQueryPort implements OpenAccountQueryPort {
     }
 
     @Override
-    public void lockForUpdate(Long openAccountId) {
-        openAccountJpaRepository.findByIdForUpdate(openAccountId);
+    public Optional<OpenAccountRef> findByIdAndCompanyId(Long openAccountId, Long companyId) {
+        return openAccountJpaRepository.findByIdAndCompany_Id(openAccountId, companyId)
+                .map(e -> new OpenAccountRef(e.getId(), e.getCompany().getId()));
+    }
+
+    @Override
+    public void lockForUpdate(Long openAccountId, Long companyId) {
+        // Variante scoped: el FOR UPDATE solo toma el lock si la fila pertenece a la
+        // empresa. Con findByIdForUpdate (ancha) se bloqueaba la cuenta de otro tenant
+        // durante lo que durara la transaccion, antes de cualquier comprobacion.
+        openAccountJpaRepository.findByIdForUpdateAndCompanyId(openAccountId, companyId);
     }
 
     @Override

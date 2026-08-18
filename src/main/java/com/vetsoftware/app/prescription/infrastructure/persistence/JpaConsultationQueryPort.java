@@ -15,12 +15,6 @@ public class JpaConsultationQueryPort implements ConsultationQueryPort {
     }
 
     @Override
-    public Optional<ConsultationRef> findById(Long consultationId) {
-        return consultationJpaRepository.findById(consultationId)
-                .map(e -> new ConsultationRef(e.getId(), e.getDate()));
-    }
-
-    @Override
     public Optional<ConsultationRef> findByIdAndCompanyId(Long consultationId, Long companyId) {
         return consultationJpaRepository.findByIdAndCompany_Id(consultationId, companyId)
                 .map(e -> new ConsultationRef(e.getId(), e.getDate()));

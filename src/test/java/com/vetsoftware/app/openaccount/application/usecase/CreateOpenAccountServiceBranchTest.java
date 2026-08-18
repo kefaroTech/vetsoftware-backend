@@ -69,7 +69,7 @@ class CreateOpenAccountServiceBranchTest {
     }
 
     private void stubNewAccountLookups() {
-        when(ownerQueryPort.findById(2L)).thenReturn(Optional.of(owner));
+        when(ownerQueryPort.findByIdAndCompanyId(2L, COMPANY)).thenReturn(Optional.of(owner));
         when(companyQueryPort.findById(COMPANY)).thenReturn(Optional.of(company));
         when(employeeQueryPort.findById(4L)).thenReturn(Optional.of(createdBy));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -194,5 +194,27 @@ class CreateOpenAccountServiceBranchTest {
         assertThat(saved.getStatus()).as("una cuenta cerrada no se reutiliza")
                 .isEqualTo(OpenAccountStatus.OPEN);
         assertThat(saved.getBranch()).isEqualTo(requested);
+    }
+
+    /**
+     * El {@code ownerId} llega en el request, asi que es el cliente quien lo elige:
+     * si apunta al propietario de otra empresa, el puerto acotado no lo resuelve y
+     * la cuenta no se abre. Sin el filtro se creaba una cuenta de mi empresa
+     * colgada del propietario de la vecina.
+     */
+    @Test
+    void un_owner_de_otra_empresa_se_rechaza_y_no_escribe() {
+        when(repository.search(any())).thenReturn(page());
+        when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY))
+                .thenReturn(Optional.of(requested));
+        when(ownerQueryPort.findByIdAndCompanyId(2L, COMPANY)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> service.execute(new CreateOpenAccountCommand(2L, 11L, COMPANY, 4L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Owner not found: 2");
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(companyQueryPort, employeeQueryPort);
     }
 }

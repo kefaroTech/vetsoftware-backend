@@ -9,7 +9,15 @@ public interface SurgeryTypeRepository {
 
     Optional<SurgeryType> findById(Long id);
 
+    /** Lectura: la fila propia de la empresa o cualquiera de las generales. */
     Optional<SurgeryType> findByIdAndCompanyId(Long id, Long companyId);
+
+    /**
+     * Escritura: SOLO la fila propia de la empresa. Las generales quedan fuera a
+     * propósito — editarlas, borrarlas o reactivarlas las cambiaría para todos los
+     * tenants.
+     */
+    Optional<SurgeryType> findOwnedByIdAndCompanyId(Long id, Long companyId);
 
     List<SurgeryType> findAll();
 
@@ -17,5 +25,9 @@ public interface SurgeryTypeRepository {
 
     void delete(Long id);
 
-    int reactivate(Long id);
+    /**
+     * Reactiva el tipo SOLO si pertenece a {@code companyId}. Devuelve las filas
+     * afectadas: 0 = no existe en esa empresa.
+     */
+    int reactivate(Long id, Long companyId);
 }

@@ -21,10 +21,18 @@ public class DeleteEmployeeRoleService implements DeleteEmployeeRoleUseCase {
         this.permissionCachePort = permissionCachePort;
     }
 
+    /**
+     * La lectura previa es la que decide si existe, asi que tiene que ir acotada:
+     * cargando por id a secas, un empleado podia revocarle el rol al administrador
+     * de otra empresa. {@code companyId} nulo es el principal cross-tenant
+     * (SYSTEM).
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        EmployeeRole employeeRole = repository.findById(id)
+    public void execute(Long id, Long companyId) {
+        EmployeeRole employeeRole = (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
                 .orElseThrow(() -> new EmployeeRoleNotFoundException(id));
         repository.delete(id);
         permissionCachePort.evictByEmployeeId(employeeRole.getEmployee().id());

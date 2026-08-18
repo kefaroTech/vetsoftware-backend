@@ -16,6 +16,7 @@ import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.testsupport.CashSessionMother;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,23 @@ class CashArqueoCsvTest {
         @DisplayName("una sesion sin cerrar deja la fecha de cierre en blanco")
         void una_sesion_sin_cerrar_deja_el_cierre_en_blanco() {
             assertThat(csvDe(sesionAbierta())).contains("Cierre,\r\n").contains("Estado,OPEN");
+        }
+
+        @Test
+        @DisplayName("un reporte sin sesion, sede, estado ni apertura deja esas celdas en blanco")
+        void un_reporte_sin_datos_de_cabecera_deja_las_celdas_en_blanco() {
+            // CashArqueoReport es un record sin invariantes: estos campos nunca los deja
+            // null el dominio real (CashSession siempre trae companyId/branchId/status),
+            // pero el CSV los defiende igual. Sin este caso el `? "" : …` de cada uno
+            // nunca ejercita la rama vacia.
+            CashArqueoReport sinCabecera = new CashArqueoReport(null, null, "principal", null,
+                    CashSessionMother.EMPLEADO_ID, null, null, null, null, CashSessionMother.BASE,
+                    CashSessionMother.MOVIDA, List.of(), List.of(), BigDecimal.ZERO, null, null);
+
+            String csv = new String(CashArqueoCsv.arqueo(sinCabecera), StandardCharsets.UTF_8);
+
+            assertThat(csv).contains("Sesión,\r\n").contains("Sede,\r\n").contains("Estado,\r\n")
+                    .contains("Apertura,\r\n");
         }
     }
 

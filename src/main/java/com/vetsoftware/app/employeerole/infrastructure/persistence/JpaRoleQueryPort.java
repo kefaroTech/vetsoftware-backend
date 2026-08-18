@@ -2,6 +2,7 @@ package com.vetsoftware.app.employeerole.infrastructure.persistence;
 
 import com.vetsoftware.app.employeerole.application.port.out.RoleQueryPort;
 import com.vetsoftware.app.employeerole.domain.RoleRef;
+import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,16 @@ public class JpaRoleQueryPort implements RoleQueryPort {
 
     @Override
     public Optional<RoleRef> findById(Long roleId) {
-        return roleJpaRepository.findById(roleId)
-                .map(e -> new RoleRef(e.getId(), e.getName(), e.getCode()));
+        return roleJpaRepository.findById(roleId).map(JpaRoleQueryPort::toRef);
+    }
+
+    @Override
+    public Optional<RoleRef> findByIdAndCompanyId(Long roleId, Long companyId) {
+        return roleJpaRepository.findByIdAndCompany_Id(roleId, companyId)
+                .map(JpaRoleQueryPort::toRef);
+    }
+
+    private static RoleRef toRef(RoleJpaEntity entity) {
+        return new RoleRef(entity.getId(), entity.getName(), entity.getCode());
     }
 }

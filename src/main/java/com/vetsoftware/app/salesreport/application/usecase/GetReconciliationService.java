@@ -5,6 +5,7 @@ import com.vetsoftware.app.salesreport.application.dto.ReconciliationDto.Pending
 import com.vetsoftware.app.salesreport.application.port.in.GetReconciliationUseCase;
 import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPort;
 import com.vetsoftware.app.salesreport.application.port.out.SalesDocumentQueryPort.SalesDocumentView;
+import com.vetsoftware.app.salesreport.domain.ReportDateRange;
 import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,10 +22,17 @@ public class GetReconciliationService implements GetReconciliationUseCase {
         this.queryPort = queryPort;
     }
 
+    /**
+     * Igual que el libro de ventas: {@link ReportDateRange} valida el periodo antes
+     * de consultar. Una conciliacion DIAN con todos los contadores en cero por un
+     * rango invertido es indistinguible de un periodo sin documentos, y eso es lo
+     * que la invariante impide.
+     */
     @Override
     public ReconciliationDto get(Long companyId, LocalDate from, LocalDate to, Long branchId) {
-        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, from, to,
-                branchId);
+        ReportDateRange range = new ReportDateRange(from, to);
+        List<SalesDocumentView> docs = queryPort.findByCompanyAndDateRange(companyId, range.from(),
+                range.to(), branchId);
         long validados = 0;
         long rechazados = 0;
         long contingencia = 0;

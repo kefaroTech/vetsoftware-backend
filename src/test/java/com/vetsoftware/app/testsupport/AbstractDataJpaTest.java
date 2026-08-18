@@ -28,6 +28,20 @@ import org.testcontainers.containers.MySQLContainer;
  * Que verifica de regalo, sin escribir un solo caso: que las migraciones
  * aplican en limpio sobre una base vacia y que las entidades JPA validan contra
  * el schema resultante. Hoy ese desajuste solo se descubre desplegando.
+ *
+ * <p>
+ * <b>Por que se sube {@code max_connections}.</b> Ese contenedor unico atiende
+ * a TODOS los contextos de Spring que la suite mantiene vivos a la vez: cada
+ * clase {@code *IT} y cada {@code @Nested} produce un
+ * {@code MergedContextConfiguration} distinto —el {@code @Import} del adaptador
+ * entra en la clave del {@code ImportsContextCustomizer}— y el
+ * {@code DefaultContextCache} conserva 32 en paralelo, cada uno con su propio
+ * HikariCP. Con el {@code max_connections} de fabrica (151) la suite se quedaba
+ * sin conexiones a mitad de camino: Liquibase no arrancaba, el
+ * {@code entityManagerFactory} fallaba y caian en cascada cientos de
+ * {@code Failed to load ApplicationContext}. El arreglo de fondo es el pool
+ * acotado de {@code application-test.yml}; esto es el margen que evita volver a
+ * rozar el techo cuando se sumen rodajas.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -35,7 +49,8 @@ import org.testcontainers.containers.MySQLContainer;
 public abstract class AbstractDataJpaTest {
 
     @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
+            .withCommand("--max-connections=500");
 
     static {
         MYSQL.start();

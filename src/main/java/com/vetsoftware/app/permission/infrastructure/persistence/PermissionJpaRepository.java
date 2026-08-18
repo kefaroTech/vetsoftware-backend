@@ -32,6 +32,24 @@ public interface PermissionJpaRepository extends JpaRepository<PermissionJpaEnti
             """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
+    /**
+     * Reactivacion acotada al tenant. El gate del puerto ya es
+     * {@code hasRole('SYSTEM')}, pero la reactivacion no tiene lectura previa que
+     * valide la propiedad: este {@code AND company_id} es lo que impide que una
+     * empresa seleccionada por error alcance el permiso de otra, y lo que deja la
+     * barrera en el SQL si algun dia se reabre el gate al tenant.
+     */
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query(value = """
+            UPDATE permissions
+            SET enabled = true
+            WHERE id = :id
+              AND company_id = :companyId
+            """, nativeQuery = true)
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
+
     boolean existsByCompany_Id(Long companyId);
 
     boolean existsBySubModule_Id(Long subModuleId);

@@ -225,7 +225,8 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             PurchaseOrder guardada = ordenPropia(PurchaseOrderStatus.DRAFT, lineas);
             sincronizar();
 
-            PurchaseOrder leida = repository.findById(guardada.getId()).orElseThrow();
+            PurchaseOrder leida = repository.findByIdAndCompanyId(guardada.getId(), COMPANY)
+                    .orElseThrow();
 
             assertThat(leida.getCompany()).isEqualTo(clinica());
             assertThat(leida.getBranch()).isEqualTo(sedeCentro());
@@ -250,7 +251,8 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             PurchaseOrder guardada = ordenPropia(PurchaseOrderStatus.DRAFT, List.of(conCentavos));
             sincronizar();
 
-            PurchaseOrder leida = repository.findById(guardada.getId()).orElseThrow();
+            PurchaseOrder leida = repository.findByIdAndCompanyId(guardada.getId(), COMPANY)
+                    .orElseThrow();
 
             assertThat(leida.getLines().get(0).getUnitCost()).isEqualByComparingTo("1234.56");
         }
@@ -263,7 +265,8 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
                     List.of(linea(amoxicilina(), 2)), CREADA, EMPLEADO, null, null, null, true));
             sincronizar();
 
-            PurchaseOrder leida = repository.findById(pelada.getId()).orElseThrow();
+            PurchaseOrder leida = repository.findByIdAndCompanyId(pelada.getId(), COMPANY)
+                    .orElseThrow();
 
             assertThat(leida.getExpectedDate()).isNull();
             assertThat(leida.getNotes()).isNull();
@@ -278,8 +281,8 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             PurchaseOrder guardada = ordenPropia(estado, List.of(linea(amoxicilina(), 10)));
             sincronizar();
 
-            assertThat(repository.findById(guardada.getId()).orElseThrow().getStatus())
-                    .isEqualTo(estado);
+            assertThat(repository.findByIdAndCompanyId(guardada.getId(), COMPANY).orElseThrow()
+                    .getStatus()).isEqualTo(estado);
         }
     }
 
@@ -428,12 +431,28 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
                     .getId();
             sincronizar();
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             sincronizar();
 
             assertThat(filasPausadas(id)).isEqualTo(1);
             assertThat(repository.findByIdAndCompanyId(id, COMPANY)).isEmpty();
             assertThat(repository.findAllByCompanyId(COMPANY)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("la orden de otra empresa no se pausa: el UPDATE no toca ninguna fila")
+        void la_orden_de_otra_empresa_no_se_pausa() {
+            // Simetrico del AND company_id que ya lleva reactivate(id, companyId): sin el
+            // en softDelete, un UPDATE por id a secas pausaba la orden del otro tenant
+            // para quien conociera el id.
+            Long ajena = ordenAjena().getId();
+            sincronizar();
+
+            repository.delete(ajena, COMPANY);
+            sincronizar();
+
+            assertThat(filasPausadas(ajena)).isZero();
+            assertThat(repository.findByIdAndCompanyId(ajena, OTRA_COMPANY)).isPresent();
         }
 
         @Test
@@ -444,7 +463,7 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             Long id = ordenPropia(PurchaseOrderStatus.DRAFT, lineas).getId();
             sincronizar();
 
-            repository.delete(id);
+            repository.delete(id, COMPANY);
             sincronizar();
 
             assertThat(filasDeLinea(id)).isEqualTo(1 + 1);

@@ -21,6 +21,6 @@ public class DeleteSupplierInvoiceService implements DeleteSupplierInvoiceUseCas
     public void execute(Long id, Long companyId) {
         repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new SupplierInvoiceNotFoundException(id));
-        repository.delete(id);
+        repository.delete(id, companyId);
     }
 }

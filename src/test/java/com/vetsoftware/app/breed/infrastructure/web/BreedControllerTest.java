@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,6 +120,16 @@ class BreedControllerTest {
     }
 
     @Test
+    @DisplayName("GET /breeds/{id} existente responde 200 con el recurso")
+    void get_por_id_responde_200() throws Exception {
+        when(findUseCase.findById(2L)).thenReturn(labrador());
+
+        mockMvc.perform(get("/breeds/2")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.name").value("Labrador"));
+    }
+
+    @Test
     @DisplayName("GET /breeds/{id} inexistente responde 404, no 500")
     void get_inexistente_responde_404() throws Exception {
         when(findUseCase.findById(99L)).thenThrow(new BreedNotFoundException(99L));
@@ -141,5 +152,16 @@ class BreedControllerTest {
         mockMvc.perform(delete("/breeds/2")).andExpect(status().isNoContent());
 
         verify(deleteUseCase).execute(2L);
+    }
+
+    @Test
+    @DisplayName("PATCH /breeds/{id}/enable responde 200 con la raza reactivada")
+    void patch_enable_responde_200_con_la_raza_reactivada() throws Exception {
+        when(reactivateUseCase.execute(2L)).thenReturn(labrador());
+
+        mockMvc.perform(patch("/breeds/2/enable")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(2)).andExpect(jsonPath("$.enabled").value(true));
+
+        verify(reactivateUseCase).execute(2L);
     }
 }

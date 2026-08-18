@@ -44,33 +44,40 @@ public class CreateDebtOpenAccountService implements CreateDebtOpenAccountUseCas
     @Override
     @Transactional
     public DebtOpenAccountDto execute(CreateDebtOpenAccountCommand command) {
-        // Lock pesimista como PRIMERA sentencia: serializa abonos/cargos concurrentes
-        // sobre la cuenta
-        // desde
-        // el read-modify-write completo. Debe ir antes de cualquier lectura consistente
-        // (incluida la
-        // idempotencia) para que el guard de sobrepago lea el saldo ya committeado por
-        // una operación
-        // rival.
-        openAccountQueryPort.lockForUpdate(command.openAccountId());
-        // Idempotencia: si el cobro ya se registró con esta clave
-        // (reintento/doble-submit), devolverlo
-        // sin
-        // duplicar. Va ANTES del guard de sobrepago: tras el 1er abono el saldo bajó y
-        // el reintento
-        // fallaría.
+        // Lock pesimista ACOTADO por empresa como PRIMERA sentencia: serializa
+        // abonos/cargos concurrentes sobre la cuenta desde el read-modify-write
+        // completo, y va antes de cualquier lectura consistente para que el guard de
+        // sobrepago lea el saldo ya committeado por una operacion rival. Acotado porque
+        // la variante ancha tomaba un PESSIMISTIC_WRITE sobre la fila de OTRO tenant
+        // antes de cualquier comprobacion: lo soltaba el rollback, pero se concedia.
+        openAccountQueryPort.lockForUpdate(command.openAccountId(), command.companyId());
+        // Carga ACOTADA por empresa: la cuenta de otro tenant no se resuelve, asi que
+        // el
+        // abono no puede colgarse de ella. Antes se cargaba ancha y la empresa se
+        // comparaba despues en Java: ese if era toda la barrera entre un cobro propio y
+        // un importe escrito en la cuenta de un cliente ajeno.
+        OpenAccountRef openAccount = openAccountQueryPort
+                .findByIdAndCompanyId(command.openAccountId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "OpenAccount not found: " + command.openAccountId()));
+        // Idempotencia: si el cobro ya se registro con esta clave
+        // (reintento/doble-submit), devolverlo sin duplicar. Va DESPUES de la
+        // resolucion
+        // acotada, y eso es aislamiento, no estilo: el abono no tiene company_id propio
+        // —el tenant se alcanza navegando open_account.company_id—, asi que con el id
+        // de
+        // una cuenta ajena y la clave exacta este finder devolvia el DTO del abono del
+        // otro tenant sin pasar por ninguna comprobacion de empresa. Sigue ANTES del
+        // versionGuard y del guard de sobrepago: tras el 1er abono el saldo bajo y la
+        // version subio, y el reintento legitimo del mismo cliente tiene que devolver
+        // el
+        // mismo abono en vez de fallar o duplicarlo.
         if (command.clientRequestId() != null && !command.clientRequestId().isBlank()) {
             Optional<DebtOpenAccount> existing = repository.findByOpenAccountIdAndClientRequestId(
                     command.openAccountId(), command.clientRequestId());
             if (existing.isPresent()) {
                 return DebtOpenAccountDto.from(existing.get());
             }
-        }
-        OpenAccountRef openAccount = openAccountQueryPort.findById(command.openAccountId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "OpenAccount not found: " + command.openAccountId()));
-        if (!openAccount.companyId().equals(command.companyId())) {
-            throw new IllegalArgumentException("open account does not belong to company");
         }
         // Detección temprana de conflicto: dentro del lock, antes de registrar el
         // abono.

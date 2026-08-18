@@ -3,7 +3,10 @@ package com.vetsoftware.app.infrastructure.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Base64;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -145,6 +148,92 @@ class EncryptedStringConverterTest {
 
             assertThatThrownBy(() -> converter.convertToEntityAttribute(manipulado))
                     .isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    /**
+     * {@code loadKeys()} solo se ejecuta una vez, al cargar la clase (campo
+     * {@code static final MATERIAL}), leyendo variables de entorno reales: no se
+     * puede re-ejercitar con distintos escenarios de {@code DIAN_ENC_KEY} /
+     * {@code DIAN_ENC_KEY_PREVIOUS} dentro de la misma JVM sin manipular el entorno
+     * del proceso (fuera de alcance de un test unitario). En cambio
+     * {@code resolveVersion} y {@code toKey} son funciones puras — no leen
+     * {@code MATERIAL} ni el entorno — y sí se pueden ejercitar directamente por
+     * reflexion, cazando las ramas de validacion que ese arranque unico deja sin
+     * cubrir.
+     */
+    @Nested
+    @DisplayName("metodos privados deterministas (resolveVersion / toKey)")
+    class MetodosPrivadosDeterministas {
+
+        @Test
+        @DisplayName("usa la version configurada cuando viene informada")
+        void usa_la_version_configurada_cuando_viene_informada() throws Exception {
+            assertThat(invokeResolveVersion("v2", "v1")).isEqualTo("v2");
+        }
+
+        @Test
+        @DisplayName("recorta espacios de la version configurada")
+        void recorta_espacios_de_la_version_configurada() throws Exception {
+            assertThat(invokeResolveVersion("  v3  ", "v1")).isEqualTo("v3");
+        }
+
+        @Test
+        @DisplayName("usa el fallback si la version configurada es null")
+        void usa_el_fallback_si_la_version_configurada_es_null() throws Exception {
+            assertThat(invokeResolveVersion(null, "v1")).isEqualTo("v1");
+        }
+
+        @Test
+        @DisplayName("usa el fallback si la version configurada esta en blanco")
+        void usa_el_fallback_si_la_version_configurada_esta_en_blanco() throws Exception {
+            assertThat(invokeResolveVersion("   ", "v1")).isEqualTo("v1");
+        }
+
+        @ParameterizedTest(name = "\"{0}\" contiene el separador de version")
+        @ValueSource(strings = {"v1:extra", "a:b", ":"})
+        @DisplayName("una version con el separador ':' no se acepta")
+        void una_version_con_el_separador_no_se_acepta(String versionInvalida) {
+            assertThatThrownBy(() -> invokeResolveVersion(versionInvalida, "v1"))
+                    .isInstanceOf(InvocationTargetException.class).cause()
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("no puede contener");
+        }
+
+        @Test
+        @DisplayName("una clave que no decodifica a 32 bytes no se acepta")
+        void una_clave_que_no_decodifica_a_32_bytes_no_se_acepta() {
+            String claveCorta = Base64.getEncoder().encodeToString("demasiado-corta".getBytes());
+
+            assertThatThrownBy(() -> invokeToKey(claveCorta))
+                    .isInstanceOf(InvocationTargetException.class).cause()
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("must decode to 32 bytes");
+        }
+
+        @Test
+        @DisplayName("una clave de 32 bytes en base64 produce una SecretKeySpec AES")
+        void una_clave_de_32_bytes_produce_una_secret_key_spec_aes() throws Exception {
+            String clave32Bytes = Base64.getEncoder().encodeToString(
+                    "0123456789012345678901234567890123456789".substring(0, 32).getBytes());
+
+            SecretKeySpec secretKeySpec = (SecretKeySpec) invokeToKey(clave32Bytes);
+
+            assertThat(secretKeySpec.getAlgorithm()).isEqualTo("AES");
+            assertThat(secretKeySpec.getEncoded()).hasSize(32);
+        }
+
+        private String invokeResolveVersion(String configured, String fallback) throws Exception {
+            Method resolveVersion = EncryptedStringConverter.class
+                    .getDeclaredMethod("resolveVersion", String.class, String.class);
+            resolveVersion.setAccessible(true);
+            return (String) resolveVersion.invoke(null, configured, fallback);
+        }
+
+        private Object invokeToKey(String base64) throws Exception {
+            Method toKey = EncryptedStringConverter.class.getDeclaredMethod("toKey", String.class);
+            toKey.setAccessible(true);
+            return toKey.invoke(null, base64);
         }
     }
 }

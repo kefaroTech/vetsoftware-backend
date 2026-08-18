@@ -52,8 +52,16 @@ public class CreateRolePermissionService implements CreateRolePermissionUseCase 
                 command.permissionId());
         if (disabledId.isPresent()) {
             Long id = disabledId.get();
-            repository.reactivate(id);
-            RolePermission refreshed = repository.findById(id)
+            // La reactivacion es el punto sin lectura previa: el UPDATE es la unica
+            // barrera. El companyId null es el principal SYSTEM, cross-tenant por diseno.
+            if (command.companyId() == null) {
+                repository.reactivate(id);
+            } else {
+                repository.reactivate(id, command.companyId());
+            }
+            RolePermission refreshed = (command.companyId() == null
+                    ? repository.findById(id)
+                    : repository.findByIdAndCompanyId(id, command.companyId()))
                     .orElseThrow(() -> new RolePermissionNotFoundException(id));
             RolePermissionDto dto = RolePermissionDto.from(refreshed);
             permissionCachePort.evictByRoleId(command.roleId());

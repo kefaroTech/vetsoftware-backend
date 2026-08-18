@@ -230,6 +230,38 @@ class ResendEmailClientTest {
         }
     }
 
+    @Nested
+    @DisplayName("sin una observación activa (fuera de un @Observed real)")
+    class SinObservacionActiva {
+
+        @Test
+        @DisplayName("un envío exitoso no falla al intentar anotar una observación inexistente")
+        void un_envio_exitoso_no_falla_sin_observacion_activa() {
+            ResendEmailClient client = clientRespondingWith(accepted());
+
+            assertThatCode(
+                    () -> client.send("due@correo.co", null, "Su factura", "<p>Ok</p>", List.of()))
+                    .doesNotThrowAnyException();
+
+            assertThat(sent).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("un fallo del proveedor no falla al intentar anotar el error en una "
+                + "observación inexistente")
+        void un_fallo_del_proveedor_no_falla_sin_observacion_activa() {
+            ResendEmailClient client = clientRespondingWith(() -> new MockClientHttpResponse(
+                    "{\"message\":\"error\"}".getBytes(StandardCharsets.UTF_8),
+                    HttpStatus.INTERNAL_SERVER_ERROR));
+
+            assertThatCode(
+                    () -> client.send("due@correo.co", null, "Su factura", "<p>Ok</p>", List.of()))
+                    .doesNotThrowAnyException();
+
+            assertThat(sent).hasSize(1);
+        }
+    }
+
     private ResendEmailClient clientRespondingWith(Responder responder) {
         return new ResendEmailClient(true, FROM, API_KEY, BASE_URL, recordingBuilder(responder),
                 observationRegistry);

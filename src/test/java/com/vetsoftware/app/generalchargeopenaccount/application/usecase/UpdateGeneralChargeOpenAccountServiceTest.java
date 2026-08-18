@@ -3,7 +3,6 @@ package com.vetsoftware.app.generalchargeopenaccount.application.usecase;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.CHARGE_ID;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.COMPANY_ID;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.CUENTA;
-import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.CUENTA_AJENA;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.IVA_19;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.OPEN_ACCOUNT_ID;
 import static com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother.OTRA_CUENTA;
@@ -70,7 +69,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void aplica_los_valores_nuevos() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.of(IVA_19));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -89,7 +89,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void recalcula_el_total_y_su_desglose() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.of(IVA_19));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -109,7 +110,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void quitar_el_impuesto_no_consulta_el_catalogo() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.execute(comandoActualizarSinImpuesto());
@@ -128,7 +130,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void comprueba_la_version_y_refresca_solo_la_cuenta_destino() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.of(IVA_19));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -150,7 +153,7 @@ class UpdateGeneralChargeOpenAccountServiceTest {
             // El cargo vive hoy en CUENTA (50) y el comando lo mueve a OTRA_CUENTA (51).
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OTRA_CUENTA_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(OTRA_CUENTA_ID, COMPANY_ID))
                     .thenReturn(Optional.of(OTRA_CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.of(IVA_19));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -187,7 +190,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void cuenta_destino_inexistente() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -198,17 +202,21 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("cuenta destino de otra empresa")
+        @DisplayName("cuenta destino de otra empresa: el cargo no se mueve a otro tenant")
         void cuenta_destino_de_otra_empresa() {
+            // La cuenta destino existe pero es de otra empresa: la consulta acotada no la
+            // resuelve y el traslado se rechaza. Antes la cuenta ajena SI se cargaba y
+            // solo un if posterior impedia colgarle el importe.
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(CUENTA_AJENA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: " + OPEN_ACCOUNT_ID);
 
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(refresher, versionGuard, taxQueryPort);
         }
@@ -218,7 +226,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
         void impuesto_inexistente() {
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(cargo()));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoActualizar()))
@@ -235,7 +244,8 @@ class UpdateGeneralChargeOpenAccountServiceTest {
             GeneralChargeOpenAccount existente = cargo();
             when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
                     .thenReturn(Optional.of(existente));
-            when(openAccountQueryPort.findById(OPEN_ACCOUNT_ID)).thenReturn(Optional.of(CUENTA));
+            when(openAccountQueryPort.findByIdAndCompanyId(OPEN_ACCOUNT_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(CUENTA));
             when(taxQueryPort.findById(IVA_19.id(), COMPANY_ID)).thenReturn(Optional.of(IVA_19));
 
             assertThatThrownBy(() -> service.execute(

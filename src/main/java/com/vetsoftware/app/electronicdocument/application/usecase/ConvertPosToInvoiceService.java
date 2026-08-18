@@ -55,11 +55,14 @@ public class ConvertPosToInvoiceService implements ConvertPosToInvoiceUseCase {
     }
 
     private ElectronicDocument buildPending(ConvertPosToInvoiceCommand command) {
-        ElectronicDocument pos = repository.findById(command.posDocumentId()).orElseThrow(
-                () -> new ElectronicDocumentNotFoundException(command.posDocumentId()));
-        if (!command.companyId().equals(pos.getCompanyId())) {
-            throw new ElectronicDocumentNotFoundException(command.posDocumentId());
-        }
+        // El filtro por empresa va EN la consulta, no en un if posterior: el
+        // companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId(), nunca null), asi que el documento POS de otro
+        // tenant no llega a cargarse. Un 404 no revela que la fila existe en otra
+        // empresa.
+        ElectronicDocument pos = repository
+                .findByIdAndCompanyId(command.posDocumentId(), command.companyId()).orElseThrow(
+                        () -> new ElectronicDocumentNotFoundException(command.posDocumentId()));
         if (pos.getDocumentType() != ElectronicDocumentType.DOC_EQUIV_POS) {
             throw new IllegalStateException(
                     "Solo un documento equivalente POS puede convertirse a factura.");

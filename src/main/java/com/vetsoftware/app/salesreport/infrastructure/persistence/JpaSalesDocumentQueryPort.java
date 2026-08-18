@@ -22,6 +22,14 @@ public class JpaSalesDocumentQueryPort implements SalesDocumentQueryPort {
         this.documentJpaRepository = documentJpaRepository;
     }
 
+    /**
+     * El rango llega ya validado: los dos casos de uso lo construyen como
+     * {@code ReportDateRange} antes de llamar aqui. Este adaptador no revalida —la
+     * invariante de negocio vive en el dominio, no en la infraestructura—, pero
+     * conviene saber que {@link #inRange} trata {@code from > to} como «ningun
+     * documento encaja», sin distinguirlo de un periodo vacio: por eso la
+     * validacion tiene que estar aguas arriba y no aqui.
+     */
     @Override
     public List<SalesDocumentView> findByCompanyAndDateRange(Long companyId, LocalDate from,
             LocalDate to, Long branchId) {

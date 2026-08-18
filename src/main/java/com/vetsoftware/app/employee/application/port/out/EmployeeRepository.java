@@ -15,9 +15,16 @@ public interface EmployeeRepository {
 
     /**
      * Busca por id incluyendo empleados desactivados (para operaciones idempotentes
-     * como desactivar).
+     * como desactivar). Sin acotar: solo el camino SYSTEM
+     * ({@code companyId == null}).
      */
     Optional<Employee> findByIdIncludingDisabled(Long id);
+
+    /**
+     * Igual que {@link #findByIdIncludingDisabled} pero acotada a la empresa: el
+     * empleado de otro tenant es un 404, no una fila que se pueda desactivar.
+     */
+    Optional<Employee> findByIdIncludingDisabledAndCompanyId(Long id, Long companyId);
 
     List<Employee> findAll();
 
@@ -35,9 +42,21 @@ public interface EmployeeRepository {
      */
     PageResult<Employee> search(SearchEmployeesCommand command);
 
-    void delete(Long id);
+    /**
+     * Baja logica acotada a la empresa. {@code companyId} null es el camino SYSTEM,
+     * cross-tenant por diseno; con empresa, el UPDATE lleva su
+     * {@code AND company_id} y la fila ajena no se toca.
+     */
+    void delete(Long id, Long companyId);
 
     int reactivate(Long id);
+
+    /**
+     * Reactivacion acotada al tenant; devuelve las filas afectadas. Cero significa
+     * «no existe en esa empresa», que es tambien la respuesta correcta para el
+     * empleado de otro tenant.
+     */
+    int reactivate(Long id, Long companyId);
 
     /**
      * ¿Existe ya ese código de empleado? Cuenta TODAS las filas (incluidas las

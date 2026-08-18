@@ -365,14 +365,15 @@ class HospitalizationControllerTest {
         void delete_responde_204() throws Exception {
             mockMvc.perform(delete("/hospitalizations/55")).andExpect(status().isNoContent());
 
-            verify(deleteUseCase).execute(55L);
+            // La empresa la pone el controller desde el contexto: nunca viaja en la ruta.
+            verify(deleteUseCase).execute(55L, WebMvcSliceConfig.COMPANY_ID);
         }
 
         @Test
         @DisplayName("DELETE de una hospitalizacion inexistente responde 404")
         void delete_inexistente_responde_404() throws Exception {
             org.mockito.Mockito.doThrow(new HospitalizationNotFoundException(99L))
-                    .when(deleteUseCase).execute(99L);
+                    .when(deleteUseCase).execute(99L, WebMvcSliceConfig.COMPANY_ID);
 
             mockMvc.perform(delete("/hospitalizations/99")).andExpect(status().isNotFound());
         }
@@ -380,17 +381,20 @@ class HospitalizationControllerTest {
         @Test
         @DisplayName("PATCH /enable responde 200 con el recurso reactivado")
         void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(55L)).thenReturn(internado());
+            when(reactivateUseCase.execute(55L, WebMvcSliceConfig.COMPANY_ID))
+                    .thenReturn(internado());
 
             mockMvc.perform(patch("/hospitalizations/55/enable")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(55))
                     .andExpect(jsonPath("$.enabled").value(true));
+
+            verify(reactivateUseCase).execute(55L, WebMvcSliceConfig.COMPANY_ID);
         }
 
         @Test
         @DisplayName("PATCH /enable de una hospitalizacion inexistente responde 404")
         void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L))
+            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
                     .thenThrow(new HospitalizationNotFoundException(99L));
 
             mockMvc.perform(patch("/hospitalizations/99/enable")).andExpect(status().isNotFound());

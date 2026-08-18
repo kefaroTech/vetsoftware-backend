@@ -107,12 +107,22 @@ public interface OpenAccountJpaRepository
     boolean existsByOwnerIdAndBranchIdAndStatusAndEnabledTrue(Long ownerId, Long branchId,
             OpenAccountStatus status);
 
+    /**
+     * El filtro por {@code company_id} no es defensa en profundidad: es LA defensa.
+     * El servicio comprobaba la empresa DESPUES del UPDATE y solo el rollback de la
+     * transaccion deshacia la escritura ajena; cualquier cambio en el
+     * {@code @Transactional} o en el manejo de la excepcion la habria convertido en
+     * fuga silenciosa. Con el filtro, cero filas ya significa «no existe en TU
+     * empresa» y no se escribe nada.
+     */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE open_accounts
             SET enabled = true
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
+    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 }

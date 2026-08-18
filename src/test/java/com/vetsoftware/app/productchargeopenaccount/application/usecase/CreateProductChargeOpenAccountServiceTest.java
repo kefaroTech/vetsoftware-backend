@@ -65,7 +65,9 @@ class CreateProductChargeOpenAccountServiceTest {
 
     /** Deja la cuenta abierta, propia, y todas las referencias resueltas. */
     private void todoResuelto() {
-        when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+        when(openAccountQueryPort.findByIdAndCompanyId(
+                ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                ProductChargeOpenAccountMother.COMPANY_ID))
                 .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
         when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                 .thenReturn(true);
@@ -182,8 +184,9 @@ class CreateProductChargeOpenAccountServiceTest {
             // El lock es un efecto (FOR UPDATE), no una consulta: si cae despues del
             // isOpen vuelve a abrirse el TOCTOU que cierra.
             InOrder orden = inOrder(openAccountQueryPort);
-            orden.verify(openAccountQueryPort)
-                    .lockForUpdate(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
+            orden.verify(openAccountQueryPort).lockForUpdate(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID);
             orden.verify(openAccountQueryPort)
                     .isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
         }
@@ -215,6 +218,10 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("con la misma clave devuelve el cargo ya registrado sin duplicarlo")
         void con_la_misma_clave_devuelve_el_cargo_ya_registrado() {
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
+                    .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(repository.findByOpenAccountIdAndClientRequestId(
                     ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID, "req-1"))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargoConClave("req-1")));
@@ -222,10 +229,64 @@ class CreateProductChargeOpenAccountServiceTest {
             ProductChargeOpenAccountDto dto = service
                     .execute(ProductChargeOpenAccountMother.comandoCrear("req-1"));
 
+            // El reintento legitimo del mismo cliente sigue devolviendo EL MISMO cargo:
+            // acotar la via de idempotencia no puede costar la idempotencia.
             assertThat(dto.id()).isEqualTo(ProductChargeOpenAccountMother.CHARGE_ID);
             verify(repository, never()).save(any());
             verifyNoInteractions(animalQueryPort, productQueryPort, employeeQueryPort,
                     branchResolver, inventoryLedger, refresher, versionGuard);
+        }
+
+        @Test
+        @DisplayName("un reintento con la clave de otra empresa no devuelve su cargo")
+        void un_reintento_con_la_clave_de_otra_empresa_no_devuelve_su_cargo() {
+            // La cuenta del comando es de otro tenant, asi que la resolucion acotada no
+            // la encuentra. Con el chequeo de idempotencia por delante —como estaba— el
+            // finder no lleva empresa (el cargo no tiene company_id propio) y bastaba
+            // acertar el clientRequestId para que el servicio devolviera el DTO del cargo
+            // ajeno sin pasar por ninguna comprobacion.
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.execute(ProductChargeOpenAccountMother.comandoCrear("req-1")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("OpenAccount not found: "
+                            + ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
+
+            verify(repository, never()).findByOpenAccountIdAndClientRequestId(any(), any());
+            verifyNoInteractions(inventoryLedger, refresher, versionGuard, animalQueryPort,
+                    productQueryPort, employeeQueryPort, branchResolver);
+        }
+
+        @Test
+        @DisplayName("bloquea y resuelve la cuenta ANTES de mirar la clave de idempotencia")
+        void bloquea_y_resuelve_la_cuenta_antes_de_mirar_la_clave() {
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
+                    .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
+            when(repository.findByOpenAccountIdAndClientRequestId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID, "req-1"))
+                    .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargoConClave("req-1")));
+
+            service.execute(ProductChargeOpenAccountMother.comandoCrear("req-1"));
+
+            // El lock sigue siendo la primera sentencia (el reintento que llega segundo
+            // tiene que leer el cargo ya committeado por el rival) y la resolucion acotada
+            // va antes del finder: es lo unico que demuestra que la cuenta es de esta
+            // empresa antes de leer sus cargos.
+            InOrder orden = inOrder(openAccountQueryPort, repository);
+            orden.verify(openAccountQueryPort).lockForUpdate(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID);
+            orden.verify(openAccountQueryPort).findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID);
+            orden.verify(repository).findByOpenAccountIdAndClientRequestId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID, "req-1");
+            verifyNoInteractions(versionGuard);
         }
 
         @Test
@@ -248,8 +309,9 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta inexistente")
         void cuenta_inexistente() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(ProductChargeOpenAccountMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -263,20 +325,30 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("cuenta de otra empresa: aislamiento por tenant")
         void cuenta_de_otra_empresa() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA_AJENA));
+            // La cuenta existe, pero es de otra empresa: la consulta acotada no la
+            // resuelve, asi que el cargo se rechaza igual que si no existiera. Antes la
+            // cuenta ajena SI se cargaba y solo un if posterior evitaba el cargo.
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(ProductChargeOpenAccountMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: "
+                            + ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
 
+            // Si el servicio volviera a la variante ancha, la cuenta ajena entraria de
+            // nuevo en el flujo: el importe quedaria en la cuenta del otro tenant.
+            verify(openAccountQueryPort, never()).findById(any());
             verifyNoInteractions(repository, inventoryLedger, refresher, versionGuard);
         }
 
         @Test
         @DisplayName("cuenta que ya no esta abierta")
         void cuenta_que_ya_no_esta_abierta() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                     .thenReturn(false);
@@ -291,7 +363,9 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("animal de otra empresa o inexistente")
         void animal_inexistente() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                     .thenReturn(true);
@@ -309,7 +383,9 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("producto de otra empresa o inexistente")
         void producto_inexistente() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                     .thenReturn(true);
@@ -330,7 +406,9 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("empleado de otra empresa o inexistente")
         void empleado_inexistente() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                     .thenReturn(true);
@@ -354,7 +432,9 @@ class CreateProductChargeOpenAccountServiceTest {
         @Test
         @DisplayName("sin sede resoluble no se descuenta inventario a ciegas")
         void sin_sede_resoluble() {
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(openAccountQueryPort.isOpen(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
                     .thenReturn(true);

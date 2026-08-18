@@ -16,10 +16,16 @@ public class DeleteVaccinationService implements DeleteVaccinationUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La comprobacion previa de existencia es la que decide si se borra, asi que
+     * tiene que ser por (id, empresa): con un findById a secas, la vacuna de otro
+     * tenant existia, pasaba la guarda y se borraba.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new VaccinationNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new VaccinationNotFoundException(id));
         repository.delete(id);
     }
 }

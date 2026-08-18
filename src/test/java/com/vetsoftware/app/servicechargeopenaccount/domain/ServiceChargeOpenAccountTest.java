@@ -208,6 +208,20 @@ class ServiceChargeOpenAccountTest {
             assertThat(charge.isHasTax()).isFalse();
             assertThat(charge.getTaxAmount()).isEqualByComparingTo("0.00");
         }
+
+        @Test
+        @DisplayName("un servicio null recorre las ramas de congelacion antes de que el constructor lo rechace")
+        void un_servicio_null_recorre_las_ramas_antes_de_que_el_constructor_lo_rechace() {
+            // create() calcula unitPrice, hasTax y taxTreatment con ternarios que miran
+            // "service == null" antes de delegar en el constructor: ese camino solo lo
+            // ejercita un servicio null, aunque el constructor termine rechazandolo.
+            assertThatThrownBy(
+                    () -> ServiceChargeOpenAccount.create(ServiceChargeOpenAccountMother.ANIMAL,
+                            null, ServiceChargeOpenAccountMother.CUENTA,
+                            ServiceChargeOpenAccountMother.EMPLEADO, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("service is required");
+        }
     }
 
     @Nested

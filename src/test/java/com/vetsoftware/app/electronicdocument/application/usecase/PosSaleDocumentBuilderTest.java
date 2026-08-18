@@ -186,6 +186,23 @@ class PosSaleDocumentBuilderTest {
         }
 
         @Test
+        void una_linea_de_servicio_del_catalogo_extrae_base_e_iva_igual_que_un_producto() {
+            when(catalogLineQueryPort.findService(2L, COMPANY))
+                    .thenReturn(Optional.of(new CatalogItem("Consulta general", TaxCategory.GRAVADO,
+                            TaxScheme.IVA, bd("19"), bd("119000"), 30L)));
+
+            ElectronicDocument doc = builder.build(sale(
+                    List.of(new SaleLine(SaleLineKind.SERVICE, 2L, null, BigDecimal.ONE,
+                            bd("119000"))),
+                    List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("119000.00")))));
+
+            ElectronicDocumentLine line = doc.getLines().getFirst();
+            assertThat(line.getDescription()).isEqualTo("Consulta general");
+            assertThat(line.getLineExtensionAmount()).isEqualByComparingTo("100000.00");
+            assertThat(line.getTaxAmount()).isEqualByComparingTo("19000.00");
+        }
+
+        @Test
         void una_linea_general_del_pos_es_excluida_y_sin_esquema() {
             ElectronicDocument doc = builder.build(sale(
                     List.of(new SaleLine(SaleLineKind.GENERAL, null, "Cargo libre", BigDecimal.ONE,
@@ -278,6 +295,23 @@ class PosSaleDocumentBuilderTest {
                     List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))))))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("no pertenece a la empresa");
+        }
+
+        @Test
+        void un_adquiriente_identificado_que_no_existe_rechaza_la_venta() {
+            when(saleCustomerQueryPort.findOwner(55L, COMPANY)).thenReturn(Optional.empty());
+            RegisterPosSaleCommand command = new RegisterPosSaleCommand(COMPANY,
+                    ElectronicDocumentType.FE_VENTA, false, 55L,
+                    List.of(new SaleLine(SaleLineKind.GENERAL, null, "x", BigDecimal.ONE,
+                            bd("1000"))),
+                    List.of(new SalePayment(PaymentMeans.EFECTIVO, bd("1000.00"))), "req-1", 4L,
+                    null);
+
+            assertThatThrownBy(() -> builder.build(command))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Adquiriente (owner) no encontrado");
+
+            verify(repository, never()).save(any());
         }
     }
 

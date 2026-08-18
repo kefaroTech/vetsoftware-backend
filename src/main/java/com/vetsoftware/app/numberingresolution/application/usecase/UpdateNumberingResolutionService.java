@@ -32,7 +32,12 @@ public class UpdateNumberingResolutionService implements UpdateNumberingResoluti
     @Override
     @Transactional
     public NumberingResolutionDto execute(UpdateNumberingResolutionCommand command) {
-        NumberingResolution resolution = repository.findById(command.id())
+        // El @PreAuthorize solo prueba que el caller declara SU empresa; sin acotar
+        // aqui la lectura, un id ajeno se cargaba y el update posterior reescribia su
+        // company: apropiacion de la resolucion fiscal de otro tenant.
+        NumberingResolution resolution = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new NumberingResolutionNotFoundException(command.id()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));

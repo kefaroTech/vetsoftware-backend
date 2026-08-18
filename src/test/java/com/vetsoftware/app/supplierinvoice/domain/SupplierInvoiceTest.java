@@ -5,7 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Stream;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Tests del agregado {@link SupplierInvoice}: matemática de dinero
@@ -102,5 +112,213 @@ class SupplierInvoiceTest {
     void retencion_mayor_al_total_es_invalida() {
         assertThatThrownBy(() -> invoice("100", "19", "200"))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /**
+     * Construye una factura variando un solo campo, para la matriz de invariantes.
+     */
+    private static SupplierInvoice construir(CompanyRef company, BranchRef branch,
+            SupplierRef supplier, String invoiceNumber, LocalDate issueDate, LocalDate dueDate,
+            BigDecimal subtotal, BigDecimal taxAmount, BigDecimal withholdingAmount,
+            SupplierInvoiceStatus status, String notes) {
+        return new SupplierInvoice(null, company, branch, supplier, null, null, invoiceNumber,
+                issueDate, dueDate, subtotal, taxAmount, withholdingAmount, status, notes,
+                List.of(), LocalDateTime.of(2026, 1, 15, 10, 30), 7L, null, null, null, true);
+    }
+
+    static Stream<Arguments> invariantesInvalidas() {
+        LocalDate emision = LocalDate.of(2026, 7, 1);
+        LocalDate vencimiento = LocalDate.of(2026, 7, 31);
+        return Stream.of(
+                Arguments.of("company nula",
+                        (ThrowingCallable) () -> construir(null, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "company is required"),
+                Arguments.of("branch nula",
+                        (ThrowingCallable) () -> construir(CO, null, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "branch is required"),
+                Arguments.of("supplier nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, null, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "supplier is required"),
+                Arguments.of("invoiceNumber nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, null, emision, vencimiento,
+                                bd("100"), bd("0"), bd("0"), SupplierInvoiceStatus.PENDING, null),
+                        "invoiceNumber is required"),
+                Arguments.of("invoiceNumber en blanco",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "   ", emision, vencimiento,
+                                bd("100"), bd("0"), bd("0"), SupplierInvoiceStatus.PENDING, null),
+                        "invoiceNumber is required"),
+                Arguments.of("invoiceNumber excede 60 caracteres",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "F".repeat(61), emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "invoiceNumber must be 60 chars or less"),
+                Arguments.of("issueDate nula",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", null, vencimiento,
+                                bd("100"), bd("0"), bd("0"), SupplierInvoiceStatus.PENDING, null),
+                        "issueDate is required"),
+                Arguments.of("dueDate nula",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision, null,
+                                bd("100"), bd("0"), bd("0"), SupplierInvoiceStatus.PENDING, null),
+                        "dueDate is required"),
+                Arguments.of("subtotal nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, null, bd("0"), bd("0"), SupplierInvoiceStatus.PENDING,
+                                null),
+                        "subtotal cannot be negative"),
+                Arguments.of("subtotal negativo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("-1"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "subtotal cannot be negative"),
+                Arguments.of("taxAmount nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), null, bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "taxAmount cannot be negative"),
+                Arguments.of("taxAmount negativo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("-1"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "taxAmount cannot be negative"),
+                Arguments.of("withholdingAmount nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), null,
+                                SupplierInvoiceStatus.PENDING, null),
+                        "withholdingAmount cannot be negative"),
+                Arguments.of("withholdingAmount negativo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("-1"),
+                                SupplierInvoiceStatus.PENDING, null),
+                        "withholdingAmount cannot be negative"),
+                Arguments.of("status nulo",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"), null, null),
+                        "status is required"),
+                Arguments.of("notes excede 500 caracteres",
+                        (ThrowingCallable) () -> construir(CO, BR, SUP, "FV-1", emision,
+                                vencimiento, bd("100"), bd("0"), bd("0"),
+                                SupplierInvoiceStatus.PENDING, "N".repeat(501)),
+                        "notes must be 500 chars or less"));
+    }
+
+    @Nested
+    @DisplayName("validaciones del constructor")
+    class Validaciones {
+
+        @ParameterizedTest(name = "{0}")
+        @DisplayName("cada invariante de cabecera se rechaza con su mensaje")
+        @MethodSource("com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceTest#invariantesInvalidas")
+        void invariante_de_constructor_es_rechazada(String descripcion, ThrowingCallable invocacion,
+                String mensajeEsperado) {
+            assertThatThrownBy(invocacion).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining(mensajeEsperado);
+        }
+    }
+
+    @Nested
+    @DisplayName("actualizacion")
+    class Actualizacion {
+
+        @Test
+        @DisplayName("aplica los campos nuevos y recalcula el total bruto")
+        void aplica_los_campos_nuevos_y_recalcula_el_total() {
+            SupplierInvoice inv = invoice("1000", "190", "10");
+            BranchRef otraSede = new BranchRef(20L, "Sede Norte");
+            SupplierRef otroProveedor = new SupplierRef(6L, "Otro Proveedor", "900999888-1");
+
+            inv.update(otraSede, otroProveedor, 100L, 200L, "FV-9", LocalDate.of(2026, 8, 1),
+                    LocalDate.of(2026, 8, 31), bd("2000"), bd("380"), bd("20"), "nota nueva", 8L,
+                    3L);
+
+            assertThat(inv.getBranch()).isEqualTo(otraSede);
+            assertThat(inv.getSupplier()).isEqualTo(otroProveedor);
+            assertThat(inv.getPurchaseOrderId()).isEqualTo(100L);
+            assertThat(inv.getGoodsReceiptId()).isEqualTo(200L);
+            assertThat(inv.getInvoiceNumber()).isEqualTo("FV-9");
+            assertThat(inv.getIssueDate()).isEqualTo(LocalDate.of(2026, 8, 1));
+            assertThat(inv.getDueDate()).isEqualTo(LocalDate.of(2026, 8, 31));
+            assertThat(inv.getTotal()).isEqualByComparingTo("2380");
+            assertThat(inv.getUpdatedBy()).isEqualTo(8L);
+            assertThat(inv.getVersion()).isEqualTo(3L);
+        }
+
+        /**
+         * BE-fix3: {@code update(...)} validaba {@code notes} (lo pasaba a
+         * {@code validate(...)}) pero nunca hacia {@code this.notes = notes} — el campo
+         * quedaba congelado en el valor de creacion pasara lo que pasara en la edicion.
+         * Ahora la asignacion existe y las notas nuevas se persisten.
+         */
+        @Test
+        @DisplayName("las notas nuevas se validan y se asignan al campo")
+        void las_notas_nuevas_se_asignan() {
+            SupplierInvoice inv = SupplierInvoice.create(CO, BR, SUP, null, null, "FV-1",
+                    LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), bd("1000"), bd("190"),
+                    bd("10"), "nota original", 7L);
+
+            inv.update(BR, SUP, null, null, "FV-1", LocalDate.of(2026, 7, 1),
+                    LocalDate.of(2026, 7, 31), bd("1000"), bd("190"), bd("10"), "nota nueva", 7L,
+                    1L);
+
+            assertThat(inv.getNotes()).isEqualTo("nota nueva");
+        }
+
+        /**
+         * Factura en el estado indicado, con abonos "de mentira" para simular el
+         * escenario.
+         */
+        private SupplierInvoice invoiceEnEstado(SupplierInvoiceStatus estado) {
+            return new SupplierInvoice(1L, CO, BR, SUP, null, null, "FV-1",
+                    LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), bd("1000"), bd("190"),
+                    bd("10"), estado, null, List.of(), LocalDateTime.of(2026, 1, 1, 0, 0), 7L, null,
+                    null, 1L, true);
+        }
+
+        @ParameterizedTest(name = "no se puede editar en estado {0}")
+        @DisplayName("solo una factura PENDING (sin abonos) admite edicion")
+        @EnumSource(value = SupplierInvoiceStatus.class, names = "PENDING", mode = EnumSource.Mode.EXCLUDE)
+        void solo_una_factura_pending_admite_edicion(SupplierInvoiceStatus estadoNoPending) {
+            SupplierInvoice inv = invoiceEnEstado(estadoNoPending);
+
+            assertThatThrownBy(() -> inv.update(BR, SUP, null, null, "FV-2",
+                    LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), bd("1000"), bd("190"),
+                    bd("10"), null, 7L, 2L))
+                    .isInstanceOf(InvalidSupplierInvoiceStateException.class)
+                    .hasMessageContaining("can only be edited while PENDING");
+        }
+    }
+
+    @Nested
+    @DisplayName("habilitacion y atributos secundarios")
+    class HabilitacionYAtributosSecundarios {
+
+        @Test
+        @DisplayName("nace habilitada y admite deshabilitarse/rehabilitarse")
+        void nace_habilitada_y_admite_deshabilitarse_rehabilitarse() {
+            SupplierInvoice inv = invoice("100", "0", "0");
+            assertThat(inv.isEnabled()).isTrue();
+
+            inv.disable();
+            assertThat(inv.isEnabled()).isFalse();
+
+            inv.enable();
+            assertThat(inv.isEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("conserva las referencias opcionales de orden de compra y recepcion")
+        void conserva_las_referencias_opcionales() {
+            SupplierInvoice inv = SupplierInvoice.create(CO, BR, SUP, 55L, 66L, "FV-3",
+                    LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), bd("100"), bd("0"),
+                    bd("0"), null, 7L);
+
+            assertThat(inv.getPurchaseOrderId()).isEqualTo(55L);
+            assertThat(inv.getGoodsReceiptId()).isEqualTo(66L);
+        }
     }
 }

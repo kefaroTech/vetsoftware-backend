@@ -46,20 +46,35 @@ public class UpdateLaboratoryTestService implements UpdateLaboratoryTestUseCase 
     @Override
     @Transactional
     public LaboratoryTestDto execute(UpdateLaboratoryTestCommand command) {
-        LaboratoryTest laboratoryTest = repository.findById(command.id())
+        // Sin acotar por empresa, el @authz.isMyCompany(#command.companyId) del puerto
+        // es vacuo: solo prueba que el atacante declara SU empresa, y el update
+        // posterior reescribe el company de la fila ajena — apropiacion, no rechazo.
+        LaboratoryTest laboratoryTest = (command.companyId() == null
+                ? repository.findById(command.id())
+                : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new LaboratoryTestNotFoundException(command.id()));
-        LaboratoryTestTypeRef testType = testTypeQueryPort.findById(command.testTypeId())
+        Long companyId = command.companyId() == null
+                ? laboratoryTest.getCompany().id()
+                : command.companyId();
+        // Las referencias entrantes se resuelven acotadas por la MISMA empresa que la
+        // fila. Sin eso el update ya no se apropia de nada ajeno, pero si cuelga lo
+        // propio de un padre de otro tenant: una orden de laboratorio de mi empresa en
+        // la historia clinica de la vecina. El tipo va por la variante «general O mia»,
+        // porque ese catalogo mezcla filas globales con las privadas de cada empresa.
+        LaboratoryTestTypeRef testType = testTypeQueryPort
+                .findAvailableByIdAndCompanyId(command.testTypeId(), companyId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "LaboratoryTestType not found: " + command.testTypeId()));
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        AnimalRef animal = animalQueryPort.findByIdAndCompanyId(command.animalId(), companyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort.findByIdAndCompanyId(command.consultationId(), companyId)
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
-        CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
-                () -> new IllegalArgumentException("Company not found: " + command.companyId()));
+        CompanyRef company = companyQueryPort.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found: " + companyId));
         EmployeeRef processedBy = command.processedById() == null
                 ? null
                 : employeeQueryPort.findById(command.processedById())

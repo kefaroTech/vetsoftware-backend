@@ -21,10 +21,18 @@ public class DeleteLaboratoryTestTypeService implements DeleteLaboratoryTestType
         this.laboratoryTestChildrenQueryPort = laboratoryTestChildrenQueryPort;
     }
 
+    /**
+     * {@code companyId} null = caller sin empresa (SYSTEM), único que puede borrar
+     * una fila general. Con empresa, la lectura previa va al finder ESTRICTO: el
+     * tipo de otro tenant y el general compartido son ambos un 404, no un borrado.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findOwnedByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new LaboratoryTestTypeNotFoundException(id));
         if (laboratoryTestChildrenQueryPort.existsActiveByLaboratoryTestTypeId(id)) {
             throw new LaboratoryTestTypeHasActiveChildrenException(id, "laboratoryTest");
         }

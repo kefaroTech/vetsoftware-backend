@@ -44,7 +44,7 @@ public class LogoutService implements LogoutUseCase {
                 refreshTokenRepository.revokeAllForSubject(me.employeeId(), "EMPLOYEE");
                 // Invalida de inmediato los access tokens vivos (todas las sesiones del
                 // empleado).
-                authEmployeeRepository.bumpAuthVersion(me.employeeId());
+                authEmployeeRepository.bumpAuthVersion(me.employeeId(), me.companyId());
             }
             case SystemUserContext me -> {
                 refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");

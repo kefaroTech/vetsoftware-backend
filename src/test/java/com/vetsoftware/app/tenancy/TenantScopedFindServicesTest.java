@@ -30,7 +30,14 @@ class TenantScopedFindServicesTest {
     private static final Long COMPANY_ID = 7L;
 
     private static final List<FindCase> FIND_CASES = List.of(
-            new FindCase("prescription", "Prescription"), new FindCase("medicament", "Medicament"),
+            new FindCase("prescription", "Prescription"),
+            // El catalogo de medicamentos mezcla generales de plataforma con propios de
+            // la empresa, asi que su LECTURA acota con findAvailableByIdAndCompanyId (ve
+            // ambos) y no con findByIdAndCompanyId, que es la vista de ESCRITURA y solo
+            // alcanza lo propio. Sigue siendo tenant-scoped: lo de otra empresa no entra.
+            // Ver FindMedicamentService y el @Nested "Disponibilidad" de
+            // MedicamentPersistenceIT.
+            new FindCase("medicament", "Medicament", "findAvailableByIdAndCompanyId"),
             new FindCase("medicamentprescription", "MedicamentPrescription"),
             new FindCase("hospitalization", "Hospitalization"),
             new FindCase("hospitalizationmedication", "HospitalizationMedication"),
@@ -80,7 +87,7 @@ class TenantScopedFindServicesTest {
         Object service = constructor.newInstance(dependencies);
 
         Class<?> repositoryType = constructor.getParameterTypes()[0];
-        Method repositoryMethod = repositoryType.getMethod("findByIdAndCompanyId", Long.class,
+        Method repositoryMethod = repositoryType.getMethod(findCase.scopedFinder(), Long.class,
                 Long.class);
         Method serviceMethod = serviceType.getMethod("findById", Long.class, Long.class);
 
@@ -107,7 +114,8 @@ class TenantScopedFindServicesTest {
                 "Find" + findCase.name() + "Service.java"));
         String serviceSource = Files.readString(serviceFile);
         String compactServiceSource = serviceSource.replaceAll("\\s+", "");
-        assertThat(compactServiceSource).contains("repository.findByIdAndCompanyId(id,companyId)");
+        assertThat(compactServiceSource)
+                .contains("repository." + findCase.scopedFinder() + "(id,companyId)");
         assertThat(compactServiceSource).doesNotContain("repository.findById(id)");
 
         Path controllerFile = SOURCE_ROOT.resolve(Path.of(findCase.feature(), "infrastructure",
@@ -122,7 +130,20 @@ class TenantScopedFindServicesTest {
         return (T) org.mockito.Mockito.mock(type);
     }
 
-    private record FindCase(String feature, String name) {
+    /**
+     * {@code scopedFinder} es el metodo del puerto de salida con el que ese
+     * servicio acota por empresa. Casi siempre es {@code findByIdAndCompanyId}; una
+     * feature cuyo catalogo mezcla filas globales con propias declara el suyo,
+     * porque su lectura acotada tiene otro nombre y otra semantica.
+     */
+    private record FindCase(String feature, String name, String scopedFinder) {
+
+        private static final String FINDER_POR_DEFECTO = "findByIdAndCompanyId";
+
+        FindCase(String feature, String name) {
+            this(feature, name, FINDER_POR_DEFECTO);
+        }
+
         String className(String prefix, String suffix) {
             return BASE_PACKAGE + feature + '.' + prefix + name + suffix;
         }

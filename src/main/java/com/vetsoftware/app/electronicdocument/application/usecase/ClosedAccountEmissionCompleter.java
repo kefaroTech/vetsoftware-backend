@@ -45,9 +45,17 @@ public class ClosedAccountEmissionCompleter {
      * Cada paso abre ahora la suya, corta: la numeración en {@link NumberAssigner}
      * ({@code REQUIRES_NEW}) y el desenlace en {@link TransmissionResultPersister}.
      * La lectura inicial no necesita ninguna.
+     *
+     * <p>
+     * El {@code companyId} viaja desde {@link EmitElectronicDocumentOnCloseService}
+     * —donde ya venía en el command— para que la relectura del documento sea la
+     * acotada. Esta clase no implementa ningún {@code port/in}, así que su única
+     * barrera es la empresa que le pasa su llamador: sin ella, un id de documento
+     * equivocado (o un llamador futuro) emitiría y entregaría el documento de otro
+     * tenant.
      */
-    public void complete(Long documentId) {
-        ElectronicDocument document = repository.findById(documentId)
+    public void complete(Long documentId, Long companyId) {
+        ElectronicDocument document = repository.findByIdAndCompanyId(documentId, companyId)
                 .orElseThrow(() -> new ElectronicDocumentNotFoundException(documentId));
         ElectronicDocument emitted = emitter.emit(document);
         deliverService.deliverIfValidated(emitted);

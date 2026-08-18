@@ -1,0 +1,53 @@
+package com.vetsoftware.app.deworming.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
+import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
+import com.vetsoftware.app.deworming.domain.CompanyRef;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("JpaCompanyQueryPort — deworming")
+class JpaCompanyQueryPortTest {
+
+    @Mock
+    private CompanyJpaRepository companyJpaRepository;
+    @InjectMocks
+    private JpaCompanyQueryPort port;
+
+    private static CompanyJpaEntity empresaEncontrada(long id, String name, String identifier) {
+        CompanyJpaEntity entity = mock(CompanyJpaEntity.class);
+        when(entity.getId()).thenReturn(id);
+        when(entity.getName()).thenReturn(name);
+        when(entity.getIdentifier()).thenReturn(identifier);
+        return entity;
+    }
+
+    @Test
+    @DisplayName("mapea la empresa encontrada a su companion VO")
+    void mapea_la_empresa_encontrada_a_su_companion_vo() {
+        CompanyJpaEntity empresa = empresaEncontrada(9L, "Clinica Norte", "NIT-900");
+        when(companyJpaRepository.findById(9L)).thenReturn(Optional.of(empresa));
+
+        Optional<CompanyRef> ref = port.findById(9L);
+
+        assertThat(ref).contains(new CompanyRef(9L, "Clinica Norte", "NIT-900"));
+    }
+
+    @Test
+    @DisplayName("devuelve vacio si la empresa no existe")
+    void devuelve_vacio_si_la_empresa_no_existe() {
+        when(companyJpaRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThat(port.findById(99L)).isEmpty();
+    }
+}

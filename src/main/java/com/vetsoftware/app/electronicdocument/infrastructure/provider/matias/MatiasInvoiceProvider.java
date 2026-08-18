@@ -219,10 +219,16 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
      * cuando el webhook no llegó. Ante una respuesta no concluyente
      * (4xx/5xx/timeout) devuelve PENDIENTE para reintentar, nunca un terminal
      * especulativo.
+     *
+     * <p>
+     * El {@code document} es obligatorio: de él sale el tipo con el que se decide
+     * si el sello reconciliado se guarda como CUFE (factura de venta) o como CUDE
+     * (POS/notas). La respuesta del {@code /status} no lo trae.
      */
     @Override
-    public Optional<ProviderResult> fetchStatus(String trackId, ProviderConfigSnapshot config) {
-        if (trackId == null || trackId.isBlank())
+    public Optional<ProviderResult> fetchStatus(ElectronicDocument document, String trackId,
+            ProviderConfigSnapshot config) {
+        if (document == null || trackId == null || trackId.isBlank())
             return Optional.empty();
         try {
             String token = authenticate(config);
@@ -232,7 +238,7 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                     .retrieve().toEntity(JsonNode.class);
             // En reconciliación el sello es el trackId consultado (el /status no reenvía
             // XmlDocumentKey).
-            ProviderResult result = parseDocumentResult(response.getBody(), null,
+            ProviderResult result = parseDocumentResult(response.getBody(), document,
                     response.getStatusCode().value(), trackId);
             // Conserva el trackId mientras siga PENDIENTE para reintentar en el siguiente
             // ciclo.
@@ -762,8 +768,13 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
      * "02"=duplicado), {@code
      * success}, {@code XmlDocumentKey}=CUFE/CUDE, objetos
      * {@code qr/pdf/AttachedDocument}. HTTP 201 / send_to_queue=1 = encolado
-     * (async). {@code doc} puede ser null (polling sin contexto de tipo): el sello
-     * va en cufe.
+     * (async).
+     *
+     * <p>
+     * {@code doc} es obligatorio en los dos caminos (emisión y reconciliación por
+     * polling): su tipo decide si el sello se guarda como CUFE o como CUDE, y la
+     * respuesta del proveedor no lo trae. Cuando aceptaba null asumía factura de
+     * venta, así que todo POS reconciliado guardaba su CUDE en el campo cufe.
      */
     private ProviderResult parseDocumentResult(JsonNode body, ElectronicDocument doc, int http,
             String fallbackKey) {
@@ -793,14 +804,13 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                 log.warn(
                         "MATIAS reportó StatusCode 00 sin sello CUFE/CUDE válido (esperado SHA-384, 96 hex):"
                                 + " '{}'. Documento {} se deja PENDIENTE para reconciliar. Respuesta: {}",
-                        key, doc == null ? "(polling)" : doc.getId(), safe(body));
+                        key, doc.getId(), safe(body));
                 return pending(
                         firstNonNull(key, text(response, "XmlFileName"), extractTrackId(body)));
             }
             JsonNode qr = at(body, "qr");
             JsonNode attached = at(body, "AttachedDocument");
-            boolean isInvoice = doc == null
-                    || doc.getDocumentType() == ElectronicDocumentType.FE_VENTA;
+            boolean isInvoice = doc.getDocumentType() == ElectronicDocumentType.FE_VENTA;
             String cufe = isInvoice ? key : null; // FE → CUFE
             String cude = isInvoice ? null : key; // POS/notas → CUDE
             // En POS (auto-increment) el consecutivo lo asigna MATIAS; lo extraemos del

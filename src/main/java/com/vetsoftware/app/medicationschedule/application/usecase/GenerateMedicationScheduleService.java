@@ -35,11 +35,21 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
         this.employeeQueryPort = employeeQueryPort;
     }
 
+    /**
+     * La orden se resuelve acotada por empresa. Sin ese filtro, generar el plan de
+     * una orden ajena no era una lectura inocua: acto seguido
+     * {@code disableByHospitalizationMedicationId} deshabilita las tomas de esa
+     * orden y se reescriben, es decir, se borra y rehace la hoja de medicacion de
+     * un paciente de otro tenant. {@code companyId == null} es el camino SYSTEM.
+     */
     @Override
     @Transactional
     public List<MedicationScheduleDto> execute(GenerateMedicationScheduleCommand command) {
-        MedicationOrderParams params = medicationQueryPort
-                .findById(command.hospitalizationMedicationId()).orElseThrow(
+        MedicationOrderParams params = (command.companyId() == null
+                ? medicationQueryPort.findById(command.hospitalizationMedicationId())
+                : medicationQueryPort.findByIdAndCompanyId(command.hospitalizationMedicationId(),
+                        command.companyId()))
+                .orElseThrow(
                         () -> new IllegalArgumentException("Hospitalization medication not found: "
                                 + command.hospitalizationMedicationId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(
@@ -47,19 +57,31 @@ public class GenerateMedicationScheduleService implements GenerateMedicationSche
 
         // Regla de integridad: las tomas APLICADAS son histórico inmutable; solo se
         // recalculan las pendientes.
-        List<MedicationSchedule> applied = repository.findByHospitalizationMedicationId(params.id())
+        List<MedicationSchedule> applied = (command.companyId() == null
+                ? repository.findByHospitalizationMedicationId(params.id())
+                : repository.findByHospitalizationMedicationIdAndCompanyId(params.id(),
+                        command.companyId()))
                 .stream().filter(s -> s.getAppliedStatus() == AppliedStatus.APPLIED).toList();
 
         List<MedicationSchedule> result = new ArrayList<>();
         if (applied.isEmpty()) {
             // Alta nueva o sin aplicadas: regeneración completa (idempotente).
-            repository.disableByHospitalizationMedicationId(params.id());
+            if (command.companyId() == null) {
+                repository.disableByHospitalizationMedicationId(params.id());
+            } else {
+                repository.disableByHospitalizationMedicationId(params.id(), command.companyId());
+            }
             for (MedicationSchedule s : MedicationScheduleGenerator.generate(params, createdBy)) {
                 result.add(repository.save(s));
             }
         } else {
             // Conserva las aplicadas; reconstruye solo las pendientes.
-            repository.disablePendingByHospitalizationMedicationId(params.id());
+            if (command.companyId() == null) {
+                repository.disablePendingByHospitalizationMedicationId(params.id());
+            } else {
+                repository.disablePendingByHospitalizationMedicationId(params.id(),
+                        command.companyId());
+            }
             LocalDateTime lastApplied = applied.stream().map(MedicationSchedule::getRealDateTime)
                     .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
             List<MedicationSchedule> pending = MedicationScheduleGenerator.generatePending(params,

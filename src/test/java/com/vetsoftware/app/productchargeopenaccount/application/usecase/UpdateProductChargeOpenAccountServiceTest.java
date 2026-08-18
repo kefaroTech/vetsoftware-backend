@@ -55,7 +55,9 @@ class UpdateProductChargeOpenAccountServiceTest {
     private ArgumentCaptor<ProductChargeOpenAccount> cargoCaptor;
 
     private void referenciasResueltas() {
-        when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+        when(openAccountQueryPort.findByIdAndCompanyId(
+                ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                ProductChargeOpenAccountMother.COMPANY_ID))
                 .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
         when(animalQueryPort.findByIdAndCompanyId(ProductChargeOpenAccountMother.ANIMAL.id(),
                 ProductChargeOpenAccountMother.COMPANY_ID))
@@ -187,8 +189,9 @@ class UpdateProductChargeOpenAccountServiceTest {
             when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
                     ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargo()));
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.empty());
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(
                     () -> service.execute(ProductChargeOpenAccountMother.comandoActualizar()))
@@ -201,19 +204,25 @@ class UpdateProductChargeOpenAccountServiceTest {
         }
 
         @Test
-        @DisplayName("cuenta destino de otra empresa: aislamiento por tenant")
+        @DisplayName("cuenta destino de otra empresa: el cargo no se mueve a otro tenant")
         void cuenta_destino_de_otra_empresa() {
+            // La cuenta destino existe pero es de otra empresa: la consulta acotada no la
+            // resuelve y el traslado se rechaza. Antes la cuenta ajena SI se cargaba y
+            // solo un if posterior impedia colgarle el importe.
             when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
                     ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargo()));
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
-                    .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA_AJENA));
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(
                     () -> service.execute(ProductChargeOpenAccountMother.comandoActualizar()))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("open account does not belong to company");
+                    .hasMessageContaining("OpenAccount not found: "
+                            + ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
 
+            verify(openAccountQueryPort, never()).findById(any());
             verify(repository, never()).save(any());
             verifyNoInteractions(animalQueryPort, productQueryPort, refresher, versionGuard);
         }
@@ -224,7 +233,9 @@ class UpdateProductChargeOpenAccountServiceTest {
             when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
                     ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargo()));
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(animalQueryPort.findByIdAndCompanyId(ProductChargeOpenAccountMother.ANIMAL.id(),
                     ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
@@ -244,7 +255,9 @@ class UpdateProductChargeOpenAccountServiceTest {
             when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
                     ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargo()));
-            when(openAccountQueryPort.findById(ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID))
+            when(openAccountQueryPort.findByIdAndCompanyId(
+                    ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID,
+                    ProductChargeOpenAccountMother.COMPANY_ID))
                     .thenReturn(Optional.of(ProductChargeOpenAccountMother.CUENTA));
             when(animalQueryPort.findByIdAndCompanyId(ProductChargeOpenAccountMother.ANIMAL.id(),
                     ProductChargeOpenAccountMother.COMPANY_ID))

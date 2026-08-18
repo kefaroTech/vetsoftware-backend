@@ -18,17 +18,22 @@ public class ReactivateOpenAccountService implements ReactivateOpenAccountUseCas
         this.repository = repository;
     }
 
+    /**
+     * La comprobacion de empresa precede a la escritura, y ademas viaja dentro del
+     * UPDATE. Antes se reactivaba primero y se comparaba la empresa despues: la
+     * unica barrera era el rollback de la transaccion al lanzar la excepcion, asi
+     * que un cambio de propagacion o un manejo distinto de la excepcion habria
+     * dejado escrita la cuenta de otro tenant. Cero filas afectadas es «no existe
+     * en TU empresa» y se responde 404 sin revelar que el id exista.
+     */
     @Override
     @Transactional
     public OpenAccountDto execute(Long id, Long companyId) {
-        int rows = repository.reactivate(id);
+        int rows = repository.reactivate(id, companyId);
         if (rows == 0)
             throw new OpenAccountNotFoundException(id);
-        OpenAccount openAccount = repository.findById(id)
+        OpenAccount openAccount = repository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new OpenAccountNotFoundException(id));
-        if (!openAccount.getCompany().id().equals(companyId)) {
-            throw new IllegalArgumentException("open account does not belong to company");
-        }
         return OpenAccountDto.from(openAccount);
     }
 }

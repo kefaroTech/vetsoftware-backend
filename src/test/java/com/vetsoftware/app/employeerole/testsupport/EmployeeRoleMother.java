@@ -19,6 +19,9 @@ public final class EmployeeRoleMother {
 
     public static final Long EMPLOYEE_ROLE_ID = 500L;
 
+    /** Empresa del principal que asigna. La misma que usan delete y reactivate. */
+    public static final Long EMPRESA = 9L;
+
     public static final EmployeeRef EMPLEADO = new EmployeeRef(7L, "EMP-007", "Ana Ruiz");
     public static final EmployeeRef OTRO_EMPLEADO = new EmployeeRef(8L, "EMP-008", "Luis Paz");
 
@@ -49,9 +52,20 @@ public final class EmployeeRoleMother {
         return new EmployeeRole(EMPLOYEE_ROLE_ID, OTRO_EMPLEADO, ROL_RECEPCION, CREADO, true);
     }
 
-    /** Comando de creacion coherente con las refs de arriba. */
+    /**
+     * Comando de creacion coherente con las refs de arriba, acotado a
+     * {@link #EMPRESA}.
+     */
     public static CreateEmployeeRoleCommand comandoCrear() {
-        return new CreateEmployeeRoleCommand(EMPLEADO.id(), ROL_VETERINARIO.id());
+        return new CreateEmployeeRoleCommand(EMPLEADO.id(), ROL_VETERINARIO.id(), EMPRESA);
+    }
+
+    /**
+     * Mismo comando por el camino SYSTEM: {@code companyId} nulo, que es como entra
+     * el registro de una empresa nueva.
+     */
+    public static CreateEmployeeRoleCommand comandoCrearSinEmpresa() {
+        return new CreateEmployeeRoleCommand(EMPLEADO.id(), ROL_VETERINARIO.id(), null);
     }
 
     /** Comando que reasigna la fila al otro empleado y al otro rol. */

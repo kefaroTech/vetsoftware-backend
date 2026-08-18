@@ -16,8 +16,10 @@ public class JpaDiagnosticImagingTypeQueryPort implements DiagnosticImagingTypeQ
     }
 
     @Override
-    public Optional<DiagnosticImagingTypeRef> findById(Long diagnosticImagingTypeId) {
-        return diagnosticImagingTypeJpaRepository.findById(diagnosticImagingTypeId)
+    public Optional<DiagnosticImagingTypeRef> findAvailableByIdAndCompanyId(
+            Long diagnosticImagingTypeId, Long companyId) {
+        return diagnosticImagingTypeJpaRepository
+                .findAvailableById(diagnosticImagingTypeId, companyId)
                 .map(e -> new DiagnosticImagingTypeRef(e.getId(), e.getName()));
     }
 }

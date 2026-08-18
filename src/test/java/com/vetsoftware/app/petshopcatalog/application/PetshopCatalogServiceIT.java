@@ -159,6 +159,30 @@ class PetshopCatalogServiceIT extends AbstractDataJpaTest {
                     SchemaSeed.OTRA_COMPANY_ID, ACTOR))
                     .isInstanceOf(PetshopCatalogNotFoundException.class);
         }
+
+        @Test
+        @DisplayName("sin productId no se puede crear la presentacion")
+        void sin_product_id_no_se_puede_crear() {
+            assertThatThrownBy(
+                    () -> service.createPresentation(new PresentationWrite(null, "Unidad", "UN", 1,
+                            new BigDecimal("3500"), false, List.of(), null), COMPANY, ACTOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("productId is required");
+        }
+
+        @Test
+        @DisplayName("un codigo de barras ya asignado a otra presentacion no se puede repetir")
+        void un_codigo_ya_asignado_a_otra_presentacion_no_se_repite() {
+            crearUnidadBase();
+
+            // El codigo de barras es unico en toda la empresa, no solo dentro de la
+            // presentacion que se esta creando: si dos presentaciones lo compartieran, el
+            // POS no sabria cual vender al escanearlo.
+            assertThatThrownBy(() -> service.createPresentation(
+                    presentacion("Caja x12", 12, "36000", false, List.of("7701234567890"), null),
+                    COMPANY, ACTOR)).isInstanceOf(PetshopCatalogConflictException.class)
+                    .hasMessageContaining("El código de barras ya está asignado");
+        }
     }
 
     @Nested
@@ -216,6 +240,22 @@ class PetshopCatalogServiceIT extends AbstractDataJpaTest {
                             true, List.of(), creada.version()),
                     COMPANY, ACTOR)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("cannot be moved to another product");
+        }
+
+        @Test
+        @DisplayName("sin productId en el comando no se intenta mover la presentacion")
+        void sin_product_id_en_el_comando_no_se_mueve() {
+            PresentationDto creada = crearUnidadBase();
+
+            // El front puede omitir productId cuando no cambia: el servicio no debe
+            // interpretarlo como "mover a ningun producto" y debe conservar el original.
+            PresentationDto actualizada = service.updatePresentation(creada.id(),
+                    new PresentationWrite(null, "Unidad renombrada", "UN", 1,
+                            new BigDecimal("3600"), true, List.of(), creada.version()),
+                    COMPANY, ACTOR);
+
+            assertThat(actualizada.productName()).isEqualTo("Amoxicilina 500mg");
+            assertThat(actualizada.name()).isEqualTo("Unidad renombrada");
         }
 
         @Test
@@ -306,6 +346,16 @@ class PetshopCatalogServiceIT extends AbstractDataJpaTest {
                 assertThat(linea.productName()).isEqualTo("Amoxicilina 500mg");
                 assertThat(linea.quantity()).isEqualTo(2);
             });
+        }
+
+        @Test
+        @DisplayName("una linea nula en el combo se rechaza")
+        void una_linea_nula_se_rechaza() {
+            assertThatThrownBy(() -> service.createBundle(new BundleWrite("Combo con nula",
+                    "COMBO-NULL", "UN", new BigDecimal("1000"),
+                    java.util.Arrays.asList(new BundleItemWrite(1L, 1, 0), null), List.of(), null),
+                    COMPANY, ACTOR)).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("presentationId is required");
         }
 
         @Test

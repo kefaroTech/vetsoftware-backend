@@ -87,11 +87,28 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
         jpaRepository.deleteById(id);
     }
 
+    /**
+     * Baja en bloque con la MISMA semantica que {@link #delete(Long)}: soft delete.
+     * Antes llamaba a {@code deleteAllByIdInBatch}, que Hibernate no pasa por el
+     * {@code @SQLDelete} de la entidad y borraba la fila fisicamente; convivian dos
+     * borrados con semantica distinta en la misma clase. El efecto visible estaba
+     * en {@code SyncRolePermissionsService}: un permiso quitado y vuelto a asignar
+     * despues estrenaba id y fecha de creacion en vez de reactivar su fila, que es
+     * justo lo que el propio servicio intenta hacer con
+     * {@code findDisabledByRoleAndPermissions} + {@code reactivateAllByIds}.
+     */
     @Override
     public void deleteAllByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty())
             return;
-        jpaRepository.deleteAllByIdInBatch(ids);
+        jpaRepository.disableAllByIds(ids);
+    }
+
+    @Override
+    public void deleteAllByIds(List<Long> ids, Long companyId) {
+        if (ids == null || ids.isEmpty())
+            return;
+        jpaRepository.disableAllByIds(ids, companyId);
     }
 
     @Override
@@ -109,6 +126,13 @@ public class JpaRolePermissionRepository implements RolePermissionRepository {
         if (ids == null || ids.isEmpty())
             return 0;
         return jpaRepository.reactivateAllByIds(ids);
+    }
+
+    @Override
+    public int reactivateAllByIds(Collection<Long> ids, Long companyId) {
+        if (ids == null || ids.isEmpty())
+            return 0;
+        return jpaRepository.reactivateAllByIds(ids, companyId);
     }
 
     @Override

@@ -297,6 +297,32 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             assertThat(pagina.content()).extracting(v -> v.quantity()).containsExactly(-2, 10);
             assertThat(pagina.totalElements()).isEqualTo(2L);
         }
+
+        @Test
+        @DisplayName("solo con fecha desde: trae lo posterior, sin limite superior")
+        void solo_con_fecha_desde() {
+            Long lot = lote(PRODUCT, BRANCH, null, 10, COSTO);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 10, ENERO_10);
+            movimiento(PRODUCT, BRANCH, lot, "SALE", -2, FEBRERO_5);
+
+            var pagina = adapter.searchKardex(new SearchKardexCommand(COMPANY, BRANCH, PRODUCT,
+                    LocalDate.of(2026, 1, 15), null, 0, 20));
+
+            assertThat(pagina.content()).extracting(v -> v.quantity()).containsExactly(-2);
+        }
+
+        @Test
+        @DisplayName("solo con fecha hasta: trae lo anterior, sin limite inferior")
+        void solo_con_fecha_hasta() {
+            Long lot = lote(PRODUCT, BRANCH, null, 10, COSTO);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 10, ENERO_10);
+            movimiento(PRODUCT, BRANCH, lot, "SALE", -2, FEBRERO_5);
+
+            var pagina = adapter.searchKardex(new SearchKardexCommand(COMPANY, BRANCH, PRODUCT,
+                    null, LocalDate.of(2026, 1, 31), 0, 20));
+
+            assertThat(pagina.content()).extracting(v -> v.quantity()).containsExactly(10);
+        }
     }
 
     @Nested
@@ -389,6 +415,17 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
 
             assertThat(adapter.alerts(COMPANY, null, 3650).expiring()).isEmpty();
         }
+
+        @Test
+        @DisplayName("un numero de dias negativo no agranda la ventana hacia atras")
+        void dias_negativos_no_agranda_la_ventana() {
+            lote(PRODUCT, BRANCH, LocalDate.now().plusDays(5), 5, COSTO);
+
+            // Math.max(0, expiringInDays) es lo que evita que un negativo mueva el
+            // limite antes de hoy: con -10 el limite sigue siendo HOY, y un lote que
+            // vence en 5 dias queda fuera de la ventana.
+            assertThat(adapter.alerts(COMPANY, null, -10).expiring()).isEmpty();
+        }
     }
 
     @Nested
@@ -464,6 +501,31 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
                     .purchasesForExport(new SearchPurchasesQuery(COMPANY, null, null, null, 0, 1)))
                     .hasSize(2);
         }
+
+        @Test
+        @DisplayName("un rango de fechas deja fuera las compras anteriores o posteriores")
+        void un_rango_de_fechas_filtra_las_compras_fuera_de_el() {
+            Long lot = lote(PRODUCT, BRANCH, null, 10, COSTO);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 10, ENERO_10);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 4, FEBRERO_5);
+
+            List<PurchaseView> compras = adapter.purchases(new SearchPurchasesQuery(COMPANY, null,
+                    LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 20)).content();
+
+            assertThat(compras).singleElement()
+                    .satisfies(c -> assertThat(c.quantity()).isEqualTo(10));
+        }
+
+        @Test
+        @DisplayName("la version de exportacion tambien respeta el rango de fechas")
+        void la_version_de_exportacion_respeta_el_rango() {
+            Long lot = lote(PRODUCT, BRANCH, null, 10, COSTO);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 10, ENERO_10);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 4, FEBRERO_5);
+
+            assertThat(adapter.purchasesForExport(new SearchPurchasesQuery(COMPANY, null,
+                    LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 20))).hasSize(1);
+        }
     }
 
     @Nested
@@ -485,6 +547,19 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             assertThat(filas).extracting(KardexExportRow::quantity).containsExactly(10, -2);
             assertThat(filas.getFirst().productName()).isEqualTo("Amoxicilina 500mg");
             assertThat(filas.getFirst().branchName()).isEqualTo("Sede Centro");
+        }
+
+        @Test
+        @DisplayName("respeta el rango de fechas igual que la version paginada")
+        void respeta_el_rango_de_fechas() {
+            Long lot = lote(PRODUCT, BRANCH, null, 10, COSTO);
+            movimiento(PRODUCT, BRANCH, lot, "PURCHASE", 10, ENERO_10);
+            movimiento(PRODUCT, BRANCH, lot, "SALE", -2, FEBRERO_5);
+
+            List<KardexExportRow> filas = adapter.kardexForExport(new SearchKardexCommand(COMPANY,
+                    BRANCH, PRODUCT, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 0));
+
+            assertThat(filas).extracting(KardexExportRow::quantity).containsExactly(10);
         }
     }
 }

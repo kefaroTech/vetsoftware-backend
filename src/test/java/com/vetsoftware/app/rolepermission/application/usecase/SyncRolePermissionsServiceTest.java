@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -92,6 +93,25 @@ class SyncRolePermissionsServiceTest {
 
             verifyNoInteractions(repository, permissionQueryPort, permissionCachePort);
         }
+
+        /**
+         * El companyId null es el principal SYSTEM (comentario del propio service): sin
+         * este caso, la rama companyId==null del ternario de roleQueryPort.findById
+         * nunca se ejercitaba y el otro test de la clase solo cubre la rama
+         * companyId!=null.
+         */
+        @Test
+        @DisplayName("sin companyId resuelve el rol con findById, no con findByIdAndCompanyId")
+        void sin_company_id_resuelve_el_rol_con_find_by_id() {
+            when(roleQueryPort.findById(ROLE_ID))
+                    .thenReturn(Optional.of(RolePermissionMother.VETERINARIO));
+            when(repository.findAllByRoleId(ROLE_ID)).thenReturn(
+                    List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
+
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), null));
+
+            verify(roleQueryPort, never()).findByIdAndCompanyId(anyLong(), anyLong());
+        }
     }
 
     @Nested
@@ -106,7 +126,7 @@ class SyncRolePermissionsServiceTest {
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
             when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
                     .thenReturn(List.of());
-            when(permissionQueryPort.findById(7L))
+            when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
@@ -119,14 +139,20 @@ class SyncRolePermissionsServiceTest {
                     .isEqualTo(RolePermissionMother.VETERINARIO);
         }
 
+        /**
+         * Mismo caso, leido desde tenancy: un permiso de otra empresa es indistinguible
+         * de uno inexistente porque el puerto se consulta acotado. Antes se resolvia
+         * con {@code findById} a secas y la asignacion se creaba igual.
+         */
         @Test
-        @DisplayName("un permiso inexistente aborta la sincronizacion")
+        @DisplayName("un permiso inexistente (o de otra empresa) aborta la sincronizacion")
         void un_permiso_inexistente_aborta() {
             elRolExiste();
             when(repository.findAllByRoleId(ROLE_ID)).thenReturn(List.of());
             when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
                     .thenReturn(List.of());
-            when(permissionQueryPort.findById(99L)).thenReturn(Optional.empty());
+            when(permissionQueryPort.findByIdAndCompanyId(99L, COMPANY_ID))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service
                     .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(99L), COMPANY_ID)))
@@ -134,6 +160,7 @@ class SyncRolePermissionsServiceTest {
                     .hasMessageContaining("Permission not found: 99");
 
             verify(repository, never()).saveAll(anyList());
+            verify(permissionQueryPort, never()).findById(anyLong());
             verifyNoInteractions(permissionCachePort);
         }
     }
@@ -153,10 +180,33 @@ class SyncRolePermissionsServiceTest {
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
-            verify(repository).reactivateAllByIds(idsReactivados.capture());
+            verify(repository).reactivateAllByIds(idsReactivados.capture(), eq(COMPANY_ID));
             assertThat(idsReactivados.getValue()).containsExactly(1L);
             verify(repository, never()).saveAll(anyList());
             verifyNoInteractions(permissionQueryPort);
+        }
+
+        /**
+         * La reactivacion en bloque es el punto sin lectura previa: el servicio no
+         * comprueba de quien es cada id, asi que el filtro de empresa del UPDATE es
+         * toda la barrera. Aqui se fija que el companyId llega hasta el puerto — y que
+         * la variante ancha, la que reactivaba el permiso del rol de cualquier tenant,
+         * no se llama nunca por el camino del empleado.
+         */
+        @Test
+        @DisplayName("la reactivacion en bloque va acotada: nunca usa la variante sin empresa")
+        void la_reactivacion_en_bloque_va_acotada() {
+            elRolExiste();
+            when(repository.findAllByRoleId(ROLE_ID)).thenReturn(List.of(),
+                    List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
+            when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
+                    .thenReturn(List.of(new DisabledRolePermissionLookup(1L, 7L)));
+
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
+
+            verify(repository).reactivateAllByIds(idsReactivados.capture(), eq(COMPANY_ID));
+            assertThat(idsReactivados.getValue()).containsExactly(1L);
+            verify(repository, never()).reactivateAllByIds(anyCollection());
         }
 
         @Test
@@ -167,12 +217,12 @@ class SyncRolePermissionsServiceTest {
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
             when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
                     .thenReturn(List.of(new DisabledRolePermissionLookup(1L, 7L)));
-            when(permissionQueryPort.findById(8L))
+            when(permissionQueryPort.findByIdAndCompanyId(8L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.CREAR_ANIMALES));
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L, 8L), COMPANY_ID));
 
-            verify(repository).reactivateAllByIds(idsReactivados.capture());
+            verify(repository).reactivateAllByIds(idsReactivados.capture(), eq(COMPANY_ID));
             assertThat(idsReactivados.getValue()).containsExactly(1L);
             verify(repository).saveAll(nuevos.capture());
             assertThat(nuevos.getValue()).singleElement()
@@ -195,9 +245,25 @@ class SyncRolePermissionsServiceTest {
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
-            verify(repository).deleteAllByIds(idsBorrados.capture());
+            verify(repository).deleteAllByIds(idsBorrados.capture(), eq(COMPANY_ID));
             assertThat(idsBorrados.getValue()).containsExactly(2L);
             verify(repository, never()).saveAll(anyList());
+        }
+
+        @Test
+        @DisplayName("la baja en bloque va acotada: nunca usa la variante sin empresa")
+        void la_baja_en_bloque_va_acotada() {
+            elRolExiste();
+            when(repository.findAllByRoleId(ROLE_ID)).thenReturn(
+                    List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES),
+                            RolePermissionMother.conId(2L, RolePermissionMother.CREAR_ANIMALES)),
+                    List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
+
+            service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
+
+            verify(repository).deleteAllByIds(idsBorrados.capture(), eq(COMPANY_ID));
+            assertThat(idsBorrados.getValue()).containsExactly(2L);
+            verify(repository, never()).deleteAllByIds(anyList());
         }
 
         @Test
@@ -211,7 +277,7 @@ class SyncRolePermissionsServiceTest {
             List<RolePermissionDto> resultado = service
                     .execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(), COMPANY_ID));
 
-            verify(repository).deleteAllByIds(idsBorrados.capture());
+            verify(repository).deleteAllByIds(idsBorrados.capture(), eq(COMPANY_ID));
             assertThat(idsBorrados.getValue()).containsExactly(1L);
             assertThat(resultado).isEmpty();
         }
@@ -226,7 +292,7 @@ class SyncRolePermissionsServiceTest {
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, null, COMPANY_ID));
 
-            verify(repository).deleteAllByIds(idsBorrados.capture());
+            verify(repository).deleteAllByIds(idsBorrados.capture(), eq(COMPANY_ID));
             assertThat(idsBorrados.getValue()).containsExactly(1L);
             verifyNoInteractions(permissionQueryPort);
         }
@@ -245,9 +311,9 @@ class SyncRolePermissionsServiceTest {
 
             service.execute(new SyncRolePermissionsCommand(ROLE_ID, List.of(7L), COMPANY_ID));
 
-            verify(repository, never()).deleteAllByIds(anyList());
+            verify(repository, never()).deleteAllByIds(anyList(), anyLong());
             verify(repository, never()).saveAll(anyList());
-            verify(repository, never()).reactivateAllByIds(anyCollection());
+            verify(repository, never()).reactivateAllByIds(anyCollection(), anyLong());
         }
 
         @Test
@@ -258,7 +324,7 @@ class SyncRolePermissionsServiceTest {
                     List.of(RolePermissionMother.conId(1L, RolePermissionMother.VER_ANIMALES)));
             when(repository.findDisabledByRoleAndPermissions(eq(ROLE_ID), anyCollection()))
                     .thenReturn(List.of());
-            when(permissionQueryPort.findById(7L))
+            when(permissionQueryPort.findByIdAndCompanyId(7L, COMPANY_ID))
                     .thenReturn(Optional.of(RolePermissionMother.VER_ANIMALES));
 
             service.execute(

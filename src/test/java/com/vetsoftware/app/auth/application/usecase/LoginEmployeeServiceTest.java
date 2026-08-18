@@ -111,7 +111,7 @@ class LoginEmployeeServiceTest {
                 .isInstanceOf(
                         com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException.class);
 
-        verify(employeeActivationPort, never()).activateOnLogin(7L);
+        verify(employeeActivationPort, never()).activateOnLogin(7L, 3L);
         verify(authEmployeeRepository, never()).rotateAuthVersion(7L);
     }
 
@@ -142,7 +142,7 @@ class LoginEmployeeServiceTest {
 
         service.execute(new LoginEmployeeCommand("EMP-1", "secret"));
 
-        verify(employeeActivationPort).activateOnLogin(7L);
+        verify(employeeActivationPort).activateOnLogin(7L, 3L);
     }
 
     @Test

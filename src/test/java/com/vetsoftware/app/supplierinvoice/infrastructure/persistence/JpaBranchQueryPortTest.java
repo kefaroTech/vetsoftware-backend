@@ -1,0 +1,59 @@
+package com.vetsoftware.app.supplierinvoice.infrastructure.persistence;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaEntity;
+import com.vetsoftware.app.branch.infrastructure.persistence.BranchJpaRepository;
+import com.vetsoftware.app.supplierinvoice.domain.BranchRef;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("JpaBranchQueryPort (supplierinvoice)")
+class JpaBranchQueryPortTest {
+
+    private static final Long BRANCH_ID = 3L;
+    private static final Long COMPANY_ID = 1L;
+
+    @Mock
+    private BranchJpaRepository branchJpaRepository;
+
+    @InjectMocks
+    private JpaBranchQueryPort port;
+
+    @Nested
+    @DisplayName("findByIdAndCompanyId")
+    class FindByIdAndCompanyId {
+
+        @Test
+        @DisplayName("mapea la sede encontrada a su BranchRef")
+        void mapea_la_sede_encontrada() {
+            BranchJpaEntity entidad = mock(BranchJpaEntity.class);
+            when(entidad.getId()).thenReturn(BRANCH_ID);
+            when(entidad.getName()).thenReturn("Sede Centro");
+            when(branchJpaRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(entidad));
+
+            Optional<BranchRef> ref = port.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID);
+
+            assertThat(ref).contains(new BranchRef(BRANCH_ID, "Sede Centro"));
+        }
+
+        @Test
+        @DisplayName("devuelve vacio si la sede no existe en la empresa")
+        void devuelve_vacio_si_no_existe() {
+            when(branchJpaRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThat(port.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).isEmpty();
+        }
+    }
+}

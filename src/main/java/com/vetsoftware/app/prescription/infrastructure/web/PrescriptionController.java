@@ -92,7 +92,7 @@ public class PrescriptionController {
 
     @PatchMapping("/{id}/enable")
     public PrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     @GetMapping("/{id}/export.pdf")

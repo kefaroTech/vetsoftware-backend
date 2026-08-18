@@ -32,11 +32,16 @@ public class CreateDewormingService implements CreateDewormingUseCase {
 
     @Override
     public DewormingDto execute(CreateDewormingCommand command) {
-        AnimalRef animal = animalQueryPort.findById(command.animalId()).orElseThrow(
-                () -> new IllegalArgumentException("Animal not found: " + command.animalId()));
+        // Referencias acotadas: el companyId lo inyecta el controller desde el
+        // principal (authz.currentCompanyId()), asi que nunca es null aqui.
+        AnimalRef animal = animalQueryPort
+                .findByIdAndCompanyId(command.animalId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Animal not found: " + command.animalId()));
         ConsultationRef consultation = command.consultationId() == null
                 ? null
-                : consultationQueryPort.findById(command.consultationId())
+                : consultationQueryPort
+                        .findByIdAndCompanyId(command.consultationId(), command.companyId())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Consultation not found: " + command.consultationId()));
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(

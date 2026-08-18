@@ -30,12 +30,19 @@ public interface GoodsReceiptJpaRepository
     // goods_receipt_lines lo emite Hibernate antes y sin interceptar, así que
     // deleteById() dejaba la cabecera deshabilitada y el detalle borrado de la
     // base. Mismo choque que documenta AppointmentJpaRepository.softDelete.
+    //
+    // El AND company_id no es defensa en profundidad redundante con la lectura
+    // previa del servicio: es la barrera que sobrevive a que alguien reordene el
+    // caso de uso o llame al adaptador desde otro sitio. No hay sobrecarga ancha
+    // porque no hay camino SYSTEM: el controller resuelve la empresa con
+    // authz.currentCompanyId(), que ya rechaza al principal sin empresa.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE goods_receipts
             SET enabled = false
             WHERE id = :id
+              AND company_id = :companyId
             """, nativeQuery = true)
-    int softDelete(@Param("id") Long id);
+    int softDelete(@Param("id") Long id, @Param("companyId") Long companyId);
 }

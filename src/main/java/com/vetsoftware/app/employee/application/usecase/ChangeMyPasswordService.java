@@ -31,7 +31,13 @@ public class ChangeMyPasswordService implements ChangeMyPasswordUseCase {
     @Override
     @Transactional
     public boolean execute(ChangeMyPasswordCommand command) {
-        Employee employee = repository.findById(command.employeeId())
+        // El id sale del principal, no del request, pero la lectura se acota igual:
+        // asi la fila cargada es necesariamente la del empleado autenticado DENTRO de
+        // su empresa, y el dia que este command lo rellene otro caller no hay
+        // apropiacion posible. companyId null = caller sin empresa (SYSTEM).
+        Employee employee = (command.companyId() == null
+                ? repository.findById(command.employeeId())
+                : repository.findByIdAndCompanyId(command.employeeId(), command.companyId()))
                 .orElseThrow(() -> new EmployeeNotFoundException(command.employeeId()));
         // Antes de cambiar: si estaba obligado a cambiarla, este cambio ES la
         // aceptación de la

@@ -14,7 +14,7 @@ public class JpaEmployeeActivationPort implements EmployeeActivationPort {
     }
 
     @Override
-    public void activateOnLogin(Long employeeId) {
-        employeeJpaRepository.activateInvited(employeeId);
+    public void activateOnLogin(Long employeeId, Long companyId) {
+        employeeJpaRepository.activateInvited(employeeId, companyId);
     }
 }

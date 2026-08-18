@@ -26,6 +26,15 @@ class AuditOutboxConfigTest {
     }
 
     @Test
+    void usesDefaultCredentialsProviderWhenNoStaticCredentialsAreConfigured() {
+        AuditOutboxProperties properties = new AuditOutboxProperties();
+
+        try (FirehoseClient client = new AuditOutboxConfig().auditFirehoseClient(properties)) {
+            assertThat(client.serviceClientConfiguration().endpointOverride()).isEmpty();
+        }
+    }
+
+    @Test
     void fails_fast_when_delivery_stream_placeholder_was_not_resolved() {
         AuditOutboxProperties properties = new AuditOutboxProperties();
         properties.setPublisherEnabled(true);

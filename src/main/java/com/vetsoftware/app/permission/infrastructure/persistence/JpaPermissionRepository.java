@@ -43,6 +43,11 @@ public class JpaPermissionRepository implements PermissionRepository {
     }
 
     @Override
+    public Optional<Permission> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<Permission> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
     }
@@ -60,5 +65,10 @@ public class JpaPermissionRepository implements PermissionRepository {
     @Override
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
+    }
+
+    @Override
+    public int reactivate(Long id, Long companyId) {
+        return jpaRepository.reactivate(id, companyId);
     }
 }

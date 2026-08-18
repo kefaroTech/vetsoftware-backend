@@ -29,6 +29,18 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
         this.procedureQueryPort = procedureQueryPort;
     }
 
+    /**
+     * La ejecucion no tiene empresa propia, asi que la propiedad se comprueba
+     * subiendo a la orden de procedimiento y de ahi a la hospitalizacion, que si la
+     * tiene. El chequeo va <em>antes</em> del primer {@code reschedule}/
+     * {@code save}: en modo cascada esto no movia una fila sino toda la pauta
+     * pendiente de un paciente de otro tenant.
+     *
+     * <p>
+     * Una vez validada la orden, el resto del plan es suyo por construccion: todas
+     * las ejecuciones cuelgan de la misma orden. {@code companyId == null} es el
+     * camino SYSTEM.
+     */
     @Override
     @Transactional
     public List<ProcedureScheduleDto> execute(RescheduleProcedureScheduleCommand command) {
@@ -36,12 +48,16 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
             throw new IllegalArgumentException("newDateTime is required");
 
         ProcedureSchedule probe = repository.findById(command.scheduleId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Procedure schedule not found: " + command.scheduleId()));
+                .orElseThrow(() -> notFound(command.scheduleId()));
         Long procedureId = probe.getHospitalizationProcedure().id();
+        ProcedureOrderParams owned = requireOwnedByCompany(procedureId, command.companyId(),
+                command.scheduleId());
 
-        List<ProcedureSchedule> all = new ArrayList<>(
-                repository.findByHospitalizationProcedureId(procedureId));
+        // Orden previo al movimiento (define "las siguientes").
+        List<ProcedureSchedule> all = new ArrayList<>(command.companyId() == null
+                ? repository.findByHospitalizationProcedureId(procedureId)
+                : repository.findByHospitalizationProcedureIdAndCompanyId(procedureId,
+                        command.companyId()));
         all.sort(Comparator.comparing(ProcedureSchedule::getCurrentDateTime));
         int idx = indexOfId(all, command.scheduleId());
 
@@ -50,7 +66,9 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
         repository.save(target);
 
         if ("cascade".equalsIgnoreCase(command.mode())) {
-            ProcedureOrderParams params = procedureQueryPort.findById(procedureId).orElse(null);
+            ProcedureOrderParams params = owned != null
+                    ? owned
+                    : procedureQueryPort.findById(procedureId).orElse(null);
             if (params != null && "INTERVAL".equalsIgnoreCase(params.guidelineType())) {
                 Integer interval = ProcedureScheduleGenerator.intervalHours(params.frequency());
                 if (interval != null)
@@ -59,6 +77,25 @@ public class RescheduleProcedureScheduleService implements RescheduleProcedureSc
         }
 
         return all.stream().map(ProcedureScheduleDto::from).toList();
+    }
+
+    /**
+     * Devuelve la orden ya resuelta para no repetir la consulta en el modo cascada.
+     * {@code null} solo en el camino SYSTEM, donde no hay empresa que acotar y la
+     * orden se resuelve mas tarde si hace falta. Mismo mensaje que el id
+     * inexistente: a un tenant ajeno no se le confirma que la ejecucion existe.
+     */
+    private ProcedureOrderParams requireOwnedByCompany(Long procedureId, Long companyId,
+            Long scheduleId) {
+        if (companyId == null) {
+            return null;
+        }
+        return procedureQueryPort.findByIdAndCompanyId(procedureId, companyId)
+                .orElseThrow(() -> notFound(scheduleId));
+    }
+
+    private static IllegalArgumentException notFound(Long scheduleId) {
+        return new IllegalArgumentException("Procedure schedule not found: " + scheduleId);
     }
 
     private static int indexOfId(List<ProcedureSchedule> all, Long id) {

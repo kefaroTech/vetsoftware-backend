@@ -32,11 +32,14 @@ class ReactivateHospitalizationServiceTest {
     @Test
     @DisplayName("reactiva y devuelve el DTO releido de base")
     void reactiva_y_devuelve_el_dto_releido() {
-        when(repository.reactivate(HospitalizationMother.HOSPITALIZATION_ID)).thenReturn(1);
-        when(repository.findById(HospitalizationMother.HOSPITALIZATION_ID))
+        when(repository.reactivate(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID)).thenReturn(1);
+        when(repository.findByIdAndCompanyId(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMother.internado()));
 
-        HospitalizationDto dto = service.execute(HospitalizationMother.HOSPITALIZATION_ID);
+        HospitalizationDto dto = service.execute(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID);
 
         assertThat(dto.id()).isEqualTo(HospitalizationMother.HOSPITALIZATION_ID);
         assertThat(dto.enabled()).isTrue();
@@ -45,25 +48,48 @@ class ReactivateHospitalizationServiceTest {
     @Test
     @DisplayName("cero filas actualizadas: excepcion de dominio y no se relee")
     void cero_filas_actualizadas_no_relee() {
-        when(repository.reactivate(404L)).thenReturn(0);
+        when(repository.reactivate(404L, HospitalizationMother.COMPANY_ID)).thenReturn(0);
 
-        assertThatThrownBy(() -> service.execute(404L))
+        assertThatThrownBy(() -> service.execute(404L, HospitalizationMother.COMPANY_ID))
                 .isInstanceOf(HospitalizationNotFoundException.class)
                 .hasMessageContaining("Hospitalization not found: 404");
 
-        verify(repository, never()).findById(any());
+        verify(repository, never()).findByIdAndCompanyId(any(), any());
     }
 
     @Test
     @DisplayName("reactivada pero desaparecida entre las dos consultas: excepcion de dominio")
     void reactivada_pero_desaparecida() {
         // Carrera real: otro proceso la borra entre el UPDATE y el SELECT.
-        when(repository.reactivate(HospitalizationMother.HOSPITALIZATION_ID)).thenReturn(1);
-        when(repository.findById(HospitalizationMother.HOSPITALIZATION_ID))
-                .thenReturn(Optional.empty());
+        when(repository.reactivate(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID)).thenReturn(1);
+        when(repository.findByIdAndCompanyId(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute(HospitalizationMother.HOSPITALIZATION_ID))
+        assertThatThrownBy(() -> service.execute(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.COMPANY_ID))
                 .isInstanceOf(HospitalizationNotFoundException.class).hasMessageContaining(
                         "Hospitalization not found: " + HospitalizationMother.HOSPITALIZATION_ID);
+    }
+
+    /**
+     * Antes de BE-COV el UPDATE nativo era {@code WHERE id = :id} a secas y el
+     * puerto no recibia companyId: en reactivacion no hay lectura previa que valide
+     * la propiedad, asi que el SQL era la unica barrera y no existia. Ahora el
+     * filtro por empresa viaja hasta el UPDATE: cero filas afectadas es «no existe
+     * en TU empresa» y sale como 404, sin releer nada.
+     */
+    @Test
+    @DisplayName("una hospitalizacion de otra empresa no se reactiva: 404 y no relee nada")
+    void una_hospitalizacion_de_otra_empresa_no_se_reactiva() {
+        when(repository.reactivate(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.OTRA_COMPANY_ID)).thenReturn(0);
+
+        assertThatThrownBy(() -> service.execute(HospitalizationMother.HOSPITALIZATION_ID,
+                HospitalizationMother.OTRA_COMPANY_ID))
+                .isInstanceOf(HospitalizationNotFoundException.class).hasMessageContaining(
+                        "Hospitalization not found: " + HospitalizationMother.HOSPITALIZATION_ID);
+
+        verify(repository, never()).findByIdAndCompanyId(any(), any());
     }
 }

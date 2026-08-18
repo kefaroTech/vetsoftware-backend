@@ -19,11 +19,28 @@ public class SuspendPendingProcedureSchedulesService
         this.repository = repository;
     }
 
+    /**
+     * No hay lectura previa que valide la propiedad —se escribe primero y se
+     * devuelve lo que quedó vivo—, así que el {@code AND company_id} del UPDATE es
+     * la única barrera. Con un procedimiento de otro tenant el UPDATE acotado no
+     * toca ninguna fila y la lectura acotada devuelve vacío: ni se suspende nada ni
+     * se filtra que el procedimiento existe. {@code companyId == null} es el camino
+     * SYSTEM.
+     */
     @Override
     @Transactional
-    public List<ProcedureScheduleDto> execute(Long hospitalizationProcedureId) {
-        repository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId);
-        return repository.findByHospitalizationProcedureId(hospitalizationProcedureId).stream()
-                .map(ProcedureScheduleDto::from).toList();
+    public List<ProcedureScheduleDto> execute(Long hospitalizationProcedureId, Long companyId) {
+        if (companyId == null) {
+            repository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId);
+        } else {
+            repository.disablePendingByHospitalizationProcedureId(hospitalizationProcedureId,
+                    companyId);
+        }
+        // Quedan solo las aplicadas (enabled=true).
+        return (companyId == null
+                ? repository.findByHospitalizationProcedureId(hospitalizationProcedureId)
+                : repository.findByHospitalizationProcedureIdAndCompanyId(
+                        hospitalizationProcedureId, companyId))
+                .stream().map(ProcedureScheduleDto::from).toList();
     }
 }

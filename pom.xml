@@ -40,21 +40,20 @@
         <checkstyle.version>13.9.0</checkstyle.version>
         <archunit.version>1.4.1</archunit.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
-        <!-- Suelo de cobertura global: solo puede SUBIR. Medido 33,44 % el 2026-08-12
-             tras la campana de cobertura y las rodajas de persistencia; se fija un par
-             de decimas por debajo para dejar margen a refactors que muevan el
-             denominador. Ver "Cobertura" en CLAUDE.md.
+        <!-- Suelo de cobertura global: solo puede SUBIR. Medido 98,83 % el 2026-08-17 tras
+             la campana BE-COV; se fija un par de decimas por debajo para dejar margen a
+             refactors que muevan el denominador. Ver "Cobertura" en CLAUDE.md.
 
              Estuvo un rato en 0.90 como objetivo declarado, con el build rojo a
-             proposito, y se devuelve al valor medido: un umbral que nadie puede poner
-             en verde no protege nada y acaba desactivandose, que es justo lo que
-             advierte la seccion "Cobertura". El 0.90 sigue siendo la meta, pero como
-             meta y no como puerta.
+             proposito, y se devolvio al valor medido: un umbral que nadie puede poner en
+             verde no protege nada y acaba desactivandose. Ahora 0.98 SI es alcanzable,
+             porque es lo que mide la suite de verdad.
 
              Historico de lo MEDIDO: 12,73 % (2026-08-08), 14,24 % (modulo animal),
              25,64 % (2026-08-09, +17 features), 33,44 % (2026-08-12, campana de
-             cobertura + rodajas de persistencia). -->
-        <jacoco.line.minimum>0.33</jacoco.line.minimum>
+             cobertura + rodajas de persistencia), 53,15 % (2026-08-16, BE-10),
+             98,83 % (2026-08-17, BE-COV: 10.771 unitarias + 1.130 de integracion). -->
+        <jacoco.line.minimum>0.98</jacoco.line.minimum>
     </properties>
 
     <dependencyManagement>
@@ -362,12 +361,36 @@
                 <configuration>
                     <excludes>
                         <!-- Sin logica propia: solo estructura o arranque. Medirlos infla
-                             la cobertura sin decir nada sobre el riesgo real. -->
-                        <exclude>**/VetsoftwareApplication.class</exclude>
+                             la cobertura sin decir nada sobre el riesgo real.
+
+                             El criterio para admitir un glob nuevo, que es el que dejo
+                             fuera a los candidatos evidentes (excepciones, enums,
+                             *Properties, los *Ref del dominio): se leen TODAS las clases
+                             que el glob captura, y si una sola tiene una rama, un throw,
+                             una factoria o una traduccion, el glob se rechaza. Medido: las
+                             exclusiones "obvias" que se descartaron por eso BAJABAN la
+                             cifra, porque retiraban mas linea cubierta que sin cubrir. -->
+                        <!-- Arranque. Ojo a la S de Software: hasta 2026-08-17 este glob
+                             decia VetsoftwareApplication y no casaba con la clase real
+                             (com.vetsoftware.app.VetSoftwareApplication), asi que la
+                             exclusion declarada no se aplicaba. -->
+                        <exclude>**/VetSoftwareApplication.class</exclude>
                         <exclude>**/*JpaEntity.class</exclude>
                         <exclude>**/config/**</exclude>
                         <exclude>**/*Request.class</exclude>
+                        <!-- La forma del JSON de salida. El paquete entero, no solo el
+                             sufijo *Response: dentro solo viven *Response y los 136
+                             *Summary companion (comprobado: ni un fichero mas, ni un
+                             throw, ni un return, ni una factoria, cero ramas). El glob
+                             por paquete ademas alcanza a los records anidados
+                             (AccountsPayableAgingResponse$Bucket), que **/*Response.class
+                             dejaba midiendo.
+
+                             Y tiene que ir anclado al paquete: **/*Summary*.class se
+                             tragaria los 134 *SummaryDto de application/dto, que SI son
+                             logica de proyeccion (el from(...) decide que campos salen). -->
                         <exclude>**/*Response.class</exclude>
+                        <exclude>**/infrastructure/web/response/*.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>

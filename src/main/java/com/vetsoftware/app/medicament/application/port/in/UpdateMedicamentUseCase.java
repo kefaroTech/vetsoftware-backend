@@ -5,6 +5,7 @@ import com.vetsoftware.app.medicament.application.dto.MedicamentDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface UpdateMedicamentUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('prescription.update')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('prescription.update')"
+            + " and @authz.isMyCompany(#command.companyId))")
     MedicamentDto execute(UpdateMedicamentCommand command);
 }

@@ -16,10 +16,18 @@ public class DeleteSurgeryService implements DeleteSurgeryUseCase {
         this.repository = repository;
     }
 
+    /**
+     * La lectura previa acotada por empresa es lo que convierte un id ajeno en un
+     * 404 en vez de en un borrado. Un {@code companyId} nulo es el actor global
+     * (SYSTEM), que si puede borrar cualquier fila.
+     */
     @Override
     @Transactional
-    public void execute(Long id) {
-        repository.findById(id).orElseThrow(() -> new SurgeryNotFoundException(id));
+    public void execute(Long id, Long companyId) {
+        (companyId == null
+                ? repository.findById(id)
+                : repository.findByIdAndCompanyId(id, companyId))
+                .orElseThrow(() -> new SurgeryNotFoundException(id));
         repository.delete(id);
     }
 }

@@ -52,7 +52,8 @@ public class MedicamentPrescriptionController {
             @Valid @RequestBody CreateMedicamentPrescriptionRequest request) {
         return toResponse(createUseCase.execute(new CreateMedicamentPrescriptionCommand(
                 request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId())));
+                request.posology(), request.observation(), request.prescriptionId(),
+                authz.currentCompanyIdOrNull())));
     }
 
     @GetMapping
@@ -84,7 +85,7 @@ public class MedicamentPrescriptionController {
 
     @PatchMapping("/{id}/enable")
     public MedicamentPrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
+        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {

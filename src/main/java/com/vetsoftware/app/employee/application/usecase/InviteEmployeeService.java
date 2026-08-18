@@ -72,9 +72,13 @@ public class InviteEmployeeService implements InviteEmployeeUseCase {
         // enviar correo).
         Employee saved = repository.save(employee);
 
+        // La empresa viaja con la asignación: el detalle (empleado y rol ∈ empresa) lo
+        // revalida el assigner en la misma transacción, igual que las sedes. Sin ella
+        // un
+        // admin podía colgarle a su staff un rol de otro tenant.
         List<String> roleNames = new ArrayList<>();
         for (Long roleId : command.roleIds()) {
-            roleNames.add(roleAssigner.assign(saved.getId(), roleId));
+            roleNames.add(roleAssigner.assign(saved.getId(), command.companyId(), roleId));
         }
 
         // Sedes en la misma transacción: si algo falla (sede inexistente/ajena),
