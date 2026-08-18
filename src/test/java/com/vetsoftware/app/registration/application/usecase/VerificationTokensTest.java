@@ -62,7 +62,7 @@ class VerificationTokensTest {
         // SHA-256 es obligatorio en toda implementacion de la JVM, asi que esta rama de
         // defensa nunca se dispara en produccion; se fuerza aqui mockeando el metodo
         // estatico para probar la traduccion de la excepcion (mismo patron que
-        // AuditChainHashTest.si_el_jdk_no_ofreciera_sha256_se_traduce_en_illegal_state_exception).
+        // Sha256RefreshTokenSecretTest.si_el_jdk_no_ofreciera_sha256_se_traduce_en_illegal_state_exception).
         try (MockedStatic<MessageDigest> digest = mockStatic(MessageDigest.class)) {
             digest.when(() -> MessageDigest.getInstance("SHA-256"))
                     .thenThrow(new NoSuchAlgorithmException("sin proveedor"));

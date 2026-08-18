@@ -391,12 +391,11 @@ services:
     ports:
       - "${LOCAL_BIND_HOST:-127.0.0.1}:${LOCALSTACK_PORT:-4566}:4566"
     environment:
-      SERVICES: s3,firehose,iam,sts
+      SERVICES: s3,iam,sts
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       S3_BUCKET: ${S3_BUCKET:-vetsoftware-local}
-      FIREHOSE_STREAM: ${AUDIT_FIREHOSE_DELIVERY_STREAM:-vetsoftware-audit-local}
       PERSISTENCE: "1"
     volumes:
       - ./docker/localstack/ready.d:/etc/localstack/init/ready.d

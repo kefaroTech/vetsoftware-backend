@@ -82,8 +82,7 @@ class RemoteConnectionValidatorTest {
             "vetsoftware.password-reset.reset-base-url, http://localhost:5173/reset-password",
             "vetsoftware.code-recovery.login-url, http://localhost:5173/login",
             "vetsoftware.employee.login-url, http://127.0.0.1:5173/login",
-            "vetsoftware.storage.s3.endpoint, http://127.0.0.1:9000",
-            "vetsoftware.audit.outbox.endpoint, http://localhost:4566"})
+            "vetsoftware.storage.s3.endpoint, http://127.0.0.1:9000"})
     void rejectsLoopbackOnEveryConnectionOutsideTheSidecarAllowList(String property,
             String localUrl) {
         RemoteConnectionValidator validator = validatorFor(

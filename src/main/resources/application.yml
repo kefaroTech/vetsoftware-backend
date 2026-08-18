@@ -228,29 +228,6 @@ vetsoftware:
     # ID de la plantilla de Resend del correo de invitación (variables EMPLOYEE_NAME, COMPANY_NAME,
     # EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL). Vacío = no se envía (warning).
     invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:cbf57a10-3f2c-439a-8fe1-fc0935778d52}
-  audit:
-    outbox:
-      enabled: false
-      publisher-enabled: false
-      batch-size: ${AUDIT_OUTBOX_BATCH_SIZE:100}
-      lease-duration: ${AUDIT_OUTBOX_LEASE_DURATION:PT2M}
-      publish-interval: ${AUDIT_OUTBOX_PUBLISH_INTERVAL:PT5S}
-      publish-initial-delay: ${AUDIT_OUTBOX_PUBLISH_INITIAL_DELAY:PT10S}
-      base-retry-delay: ${AUDIT_OUTBOX_BASE_RETRY_DELAY:PT5S}
-      max-retry-delay: ${AUDIT_OUTBOX_MAX_RETRY_DELAY:PT15M}
-      retention: ${AUDIT_OUTBOX_RETENTION:P7D}
-      cleanup-interval: ${AUDIT_OUTBOX_CLEANUP_INTERVAL:PT24H}
-      cleanup-initial-delay: ${AUDIT_OUTBOX_CLEANUP_INITIAL_DELAY:PT1H}
-      cleanup-batch-size: ${AUDIT_OUTBOX_CLEANUP_BATCH_SIZE:10000}
-      # Cadena de hash e integridad (ver docs/AUDITORIA_INTEGRIDAD.md).
-      sequence-batch-size: ${AUDIT_CHAIN_SEQUENCE_BATCH_SIZE:1000}
-      verify-batch-size: ${AUDIT_CHAIN_VERIFY_BATCH_SIZE:1000}
-      # Cada checkpoint ancla la cabeza de la cadena en el bucket WORM. Más frecuente = menos
-      # ventana de historia no anclada, a cambio de más objetos en el archivo.
-      checkpoint-interval: ${AUDIT_CHAIN_CHECKPOINT_INTERVAL:PT1H}
-      checkpoint-initial-delay: ${AUDIT_CHAIN_CHECKPOINT_INITIAL_DELAY:PT2M}
-      verify-interval: ${AUDIT_CHAIN_VERIFY_INTERVAL:PT5M}
-      verify-initial-delay: ${AUDIT_CHAIN_VERIFY_INITIAL_DELAY:PT1M}
   # Confirmación de cita: al agendar una cita nueva se notifica por correo al propietario (plantilla de Resend).
   appointment:
     # ID de la plantilla de Resend del correo de confirmación (variables RECIPIENT_NAME, RECIPIENT_EMAIL,

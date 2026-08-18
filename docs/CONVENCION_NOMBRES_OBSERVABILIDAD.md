@@ -44,7 +44,7 @@ conserva como identificador estable para métricas, paneles y alertas.
 `job.name` también usa `lowercase.dot.notation`, por ejemplo:
 
 ```text
-audit.outbox.publish
+security.tokens.cleanup
 dian.contingency.retry
 ```
 

@@ -13,9 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lease sobre {@code electronic_documents} con {@code FOR UPDATE SKIP LOCKED},
- * el mismo mecanismo que {@code AuditOutboxRepository} usa para el outbox de
- * auditoría.
+ * Lease sobre {@code electronic_documents} con {@code FOR UPDATE SKIP LOCKED}.
  *
  * <p>
  * {@code SKIP LOCKED} es lo que hace que las réplicas no se estorben: en vez de

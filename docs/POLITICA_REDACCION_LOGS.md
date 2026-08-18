@@ -154,8 +154,13 @@ mvn test -Dtest='LogRedactor*,LogRedaction*,LogbackRedaction*,AuditFieldsSurvive
 
 - **No cubre lo que ya salió.** La política aplica a eventos nuevos; los logs históricos en Loki no
   se reescriben.
-- **No cubre otros destinos de datos.** Solo logs. La tabla de auditoría (`AuditEventStore`), las
-  respuestas HTTP y los correos tienen sus propias reglas.
+- **No cubre otros destinos de datos.** Solo logs. Las respuestas HTTP y los correos tienen sus
+  propias reglas.
+- **La auditoría depende hoy por completo de esta política.** Desde que se retiró el outbox, el
+  canal `AUDIT` es el único destino de los eventos de auditoría: no hay una copia en base de datos
+  que quede al margen del enmascarado. Una allowlist demasiado estrecha ya no ciega solo una vista,
+  ciega el registro entero — de ahí que `AuditFieldsSurviveRedactionTest` sea contra-prueba
+  obligatoria y no un extra.
 - **Coste.** Un barrido de caracteres por evento para decidir qué reglas pueden casar, y solo las
   necesarias se ejecutan. Los mensajes operativos típicos no disparan ninguna.
 - **Prosa clínica sin clave** no se detecta (§2.2).
@@ -163,5 +168,4 @@ mvn test -Dtest='LogRedactor*,LogRedaction*,LogbackRedaction*,AuditFieldsSurvive
 ## 8. Documentos relacionados
 
 - `docs/CONVENCION_NOMBRES_OBSERVABILIDAD.md` — nombres de observaciones, spans y jobs.
-- `docs/AUDITORIA_INTEGRIDAD.md` — cadena de hash y archivo WORM de la auditoría.
 - `docs/OBSERVABILIDAD_PROD_GRAFANA_S3.md` — pipeline de exportación a Grafana Cloud y S3.

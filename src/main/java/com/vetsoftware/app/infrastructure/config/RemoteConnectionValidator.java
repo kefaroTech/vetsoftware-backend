@@ -101,8 +101,6 @@ final class RemoteConnectionValidator
         }
         validateOptionalRemoteUrl("vetsoftware.storage.s3.endpoint",
                 environment.getProperty("vetsoftware.storage.s3.endpoint"));
-        validateOptionalRemoteUrl("vetsoftware.audit.outbox.endpoint",
-                environment.getProperty("vetsoftware.audit.outbox.endpoint"));
         required("OTEL_EXPORTER_OTLP_HEADERS");
     }
 

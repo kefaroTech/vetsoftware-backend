@@ -100,18 +100,6 @@ vetsoftware:
   recaptcha:
     enabled: ${RECAPTCHA_ENABLED:true}
     secret: ${RECAPTCHA_SECRET}
-  audit:
-    outbox:
-      # Ambientes sin Firehose desplegado (dev usa este mismo perfil) apagan el publicador con
-      # AUDIT_OUTBOX_PUBLISHER_ENABLED=false; sin eso el job golpea Firehose cada 5s y falla con
-      # AccessDenied. Con enabled=false el store cae al NoOp y la auditoria sigue yendo al logger AUDIT.
-      enabled: ${AUDIT_OUTBOX_ENABLED:true}
-      publisher-enabled: ${AUDIT_OUTBOX_PUBLISHER_ENABLED:true}
-      delivery-stream-name: ${AUDIT_FIREHOSE_DELIVERY_STREAM:}
-      region: ${AWS_REGION}
-      endpoint: ""
-      access-key: ""
-      secret-key: ""
   storage:
     s3:
       bucket: ${S3_BUCKET}
