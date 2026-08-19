@@ -1,3 +1,7 @@
+# GEMELO CLOUD: este fichero tiene un gemelo en VetSoftwareIaC/observability/mimir-rules/ con
+# unidades y labels traducidos (timers en ms, job="mainvet/vetsoftware", bordes `le` enteros),
+# porque el scrape local y el push OTLP a Grafana Cloud son dos mundos de métricas distintos.
+# Un cambio aquí debe evaluarse también allí; el porqué completo, en el README de ese directorio.
 groups:
   - name: vetsoftware-business
     interval: 30s
