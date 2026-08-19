@@ -29,6 +29,11 @@ import org.springframework.stereotype.Component;
  * proveedor sin polling devolvería vacío y sería no-op).
  *
  * <p>
+ * <b>El ciclo es de 12h</b> ({@code dian.reconciliation.poll-delay-ms}),
+ * contadas desde que TERMINA la pasada anterior. Es el techo de cuanto puede
+ * quedarse un documento en PENDIENTE cuando su webhook se perdio.
+ *
+ * <p>
  * El lote se reclama con {@link DianJobLeasePort}: este job corre en todas las
  * réplicas del backend a la vez, y sin reparto todas consultarían el estado de
  * los mismos documentos al proveedor.
@@ -58,7 +63,7 @@ public class PendingReconciliationJob {
         this.lease = lease;
     }
 
-    @Scheduled(initialDelayString = "${dian.reconciliation.initial-delay-ms:120000}", fixedDelayString = "${dian.reconciliation.poll-delay-ms:600000}")
+    @Scheduled(initialDelayString = "${dian.reconciliation.initial-delay-ms:120000}", fixedDelayString = "${dian.reconciliation.poll-delay-ms:43200000}")
     public void reconcilePending() {
         telemetry.observe(JOB_NAME, this::executeReconciliation);
     }

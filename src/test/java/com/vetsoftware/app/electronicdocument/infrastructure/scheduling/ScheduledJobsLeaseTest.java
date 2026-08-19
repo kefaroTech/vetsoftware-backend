@@ -50,7 +50,7 @@ class ScheduledJobsLeaseTest {
         when(repository.findById(101L)).thenReturn(Optional.of(mine));
         when(transmissionLog.countAttempts(101L)).thenReturn(0);
 
-        new ContingencyRetryJob(repository, leasePort, transmitter, transmissionLog, TELEMETRY, 12,
+        new ContingencyRetryJob(repository, leasePort, transmitter, transmissionLog, TELEMETRY, 4,
                 48, 25, Duration.ofMinutes(30)).retryContingencies();
 
         verify(transmitter).transmit(mine, Origin.RETRY);
