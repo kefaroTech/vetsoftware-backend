@@ -18,12 +18,26 @@ public interface PrescriptionJpaRepository extends JpaRepository<PrescriptionJpa
     @EntityGraph(attributePaths = {"animal", "consultation", "company"})
     Optional<PrescriptionJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    /** Camino SYSTEM: sin empresa que acotar. Nunca desde un empleado. */
+    /**
+     * Camino SYSTEM: sin empresa que acotar. Nunca desde un empleado.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes de la reactivacion reescribe
+     * {@code enabled} con su valor viejo —el mapper lo copia desde el dominio— y su
+     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * vuelve a apagar en silencio lo que la reactivacion acababa de encender.
+     * Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
+     * reactivar es una operacion deliberada y debe ejecutarse siempre, no competir
+     * con una edicion.
+     */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE prescriptions
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
             """, nativeQuery = true)
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
@@ -34,12 +48,24 @@ public interface PrescriptionJpaRepository extends JpaRepository<PrescriptionJpa
      * decide si existe mirando las filas afectadas—, asi que un UPDATE por id a
      * secas resucitaba la receta anulada de cualquier tenant para quien conociera
      * el id. El resto de la feature ya pasaba la empresa; solo esto quedo fuera.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes de la reactivacion reescribe
+     * {@code enabled} con su valor viejo —el mapper lo copia desde el dominio— y su
+     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * vuelve a apagar en silencio lo que la reactivacion acababa de encender.
+     * Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
+     * reactivar es una operacion deliberada y debe ejecutarse siempre, no competir
+     * con una edicion.
      */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE prescriptions
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

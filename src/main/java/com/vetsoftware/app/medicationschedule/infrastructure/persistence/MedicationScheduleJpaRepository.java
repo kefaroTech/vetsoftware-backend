@@ -56,11 +56,39 @@ public interface MedicationScheduleJpaRepository
     List<MedicationScheduleJpaEntity> findByHospitalizationIdAndCompanyId(
             @Param("hospitalizationId") Long hospitalizationId, @Param("companyId") Long companyId);
 
+    /**
+     * Regeneración completa: deshabilita todas las tomas vivas de la orden antes de
+     * reescribirlas. Camino SYSTEM; la variante acotada al tenant es
+     * {@link #disableByHospitalizationMedicationId(Long, Long)}.
+     *
+     * <p>
+     * <strong>El UPDATE mueve también {@code version}, la del bloqueo
+     * optimista.</strong> Un {@code @Version} solo protege el ciclo
+     * leer→modificar→guardar de una entidad gestionada por Hibernate; esta consulta
+     * va directa a la base de datos, así que ni comprueba la versión ni la
+     * incrementa, y el candado queda ciego por este camino. El escenario que eso
+     * permitía es real y no teórico: el auxiliar A carga una toma para marcarla
+     * como aplicada ({@code ApplyMedicationScheduleService} hace {@code findById} →
+     * {@code apply} → {@code save}), entretanto un
+     * {@code GenerateMedicationSchedule} concurrente ejecuta este UPDATE y deja la
+     * fila en {@code enabled = false}, y el {@code save} de A —que reescribe la
+     * entidad entera desde el dominio, {@code enabled} incluido— encuentra su
+     * {@code WHERE version = ?} intacto y <em>resucita</em> la toma deshabilitada.
+     * El plan borrado reaparece a medias, sin excepción y sin log. Movida la
+     * versión, ese {@code save} ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} → 409
+     * {@code CONCURRENT_MODIFICATION}, que es lo que el front necesita para
+     * recargar y reintentar sobre datos frescos.
+     *
+     * <p>
+     * {@code version} NO va en el {@code WHERE}: deshabilitar en cascada es una
+     * operación deliberada y debe ejecutarse siempre, no competir con una edición.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medication_schedules
-            SET enabled = false
+            SET enabled = false, version = version + 1
             WHERE hospitalization_medication_id = :medicationId
               AND enabled = true
             """, nativeQuery = true)
@@ -78,12 +106,19 @@ public interface MedicationScheduleJpaRepository
      * {@code EXISTS} contra {@code hospitalization_medications} unido a
      * {@code hospitalizations} — la misma ruta que usa
      * {@code findByHospitalizationMedicationIdAndCompanyId}.
+     *
+     * <p>
+     * Mueve {@code version} por lo mismo que la sobrecarga ancha —ver
+     * {@link #disableByHospitalizationMedicationId(Long)}—: sin eso un {@code save}
+     * cargado antes resucita la toma deshabilitada en silencio. El {@code EXISTS}
+     * del {@code WHERE} es el gate de tenant y es cosa aparte; la versión no entra
+     * en el {@code WHERE}.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medication_schedules s
-            SET s.enabled = false
+            SET s.enabled = false, s.version = s.version + 1
             WHERE s.hospitalization_medication_id = :medicationId
               AND s.enabled = true
               AND EXISTS (SELECT 1
@@ -95,11 +130,37 @@ public interface MedicationScheduleJpaRepository
     int disableByHospitalizationMedicationId(@Param("medicationId") Long medicationId,
             @Param("companyId") Long companyId);
 
+    /**
+     * Suspende solo las tomas pendientes; las aplicadas son histórico inmutable.
+     * Camino SYSTEM de {@code SuspendPendingMedicationSchedulesService}; la
+     * variante acotada al tenant es
+     * {@link #disablePendingByHospitalizationMedicationId(Long, Long)}.
+     *
+     * <p>
+     * <strong>Este par de casos de uso es el que motivó BE-53</strong>, y por eso
+     * el UPDATE mueve {@code version}. {@code SuspendPendingMedicationSchedules} y
+     * {@code ApplyMedicationSchedule} pueden caer sobre la <em>misma fila</em>: la
+     * toma que A está marcando como aplicada es exactamente una de las pendientes
+     * que el segundo suspende. Antes no había conflicto alguno —esta consulta no
+     * tocaba la versión, así que la copia de A seguía siendo la vigente— y el
+     * {@code save} de A reponía {@code enabled = true} sobre la fila recién
+     * suspendida, porque el mapper reescribe la entidad entera desde el dominio. La
+     * suspensión desaparecía sin excepción y sin log, y la hoja de medicación
+     * quedaba mostrando como viva una toma que el veterinario había cancelado.
+     * Movida la versión, ese {@code save} ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} → 409
+     * {@code CONCURRENT_MODIFICATION}: A recarga y decide sobre datos frescos, que
+     * es la resolución correcta de esa carrera.
+     *
+     * <p>
+     * {@code version} NO va en el {@code WHERE}: suspender es una operación
+     * deliberada y debe ejecutarse siempre, no competir con una edición.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medication_schedules
-            SET enabled = false
+            SET enabled = false, version = version + 1
             WHERE hospitalization_medication_id = :medicationId
               AND enabled = true
               AND (applied_status IS NULL OR applied_status <> 'APPLIED')
@@ -113,12 +174,21 @@ public interface MedicationScheduleJpaRepository
      * filtro cualquiera con {@code hospitalization.update} suspendía las tomas
      * pendientes de un paciente de otro tenant. Mismo {@code EXISTS} que
      * {@link #disableByHospitalizationMedicationId(Long, Long)}.
+     *
+     * <p>
+     * Es la consulta que ejecuta de verdad el caso de uso del tenant, así que la
+     * carrera contra {@code ApplyMedicationSchedule} descrita en
+     * {@link #disablePendingByHospitalizationMedicationId(Long)} es <em>esta</em>:
+     * sin el {@code version = version + 1}, el {@code save} del auxiliar reponía
+     * {@code enabled = true} sobre la toma recién suspendida y la suspensión se
+     * perdía en silencio. La versión no entra en el {@code WHERE} —suspender debe
+     * ejecutarse siempre—, y el {@code EXISTS} de tenant queda intacto.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medication_schedules s
-            SET s.enabled = false
+            SET s.enabled = false, s.version = s.version + 1
             WHERE s.hospitalization_medication_id = :medicationId
               AND s.enabled = true
               AND (s.applied_status IS NULL OR s.applied_status <> 'APPLIED')

@@ -53,21 +53,46 @@ public interface PurchaseOrderJpaRepository
     // conociera el id. No hay sobrecarga ancha porque no hay camino SYSTEM: el
     // controller resuelve la empresa con authz.currentCompanyId(), que ya rechaza
     // al principal sin empresa.
+    //
+    // El UPDATE mueve tambien `version`, la del bloqueo
+    // optimista, a proposito: sin eso, un save cargado antes
+    // de la pausa reescribe `enabled` con su valor viejo —el
+    // mapper lo copia desde el dominio— y su
+    // WHERE version = ? casa igual, con lo que una edicion
+    // concurrente resucita en silencio la orden que la baja
+    // acababa de pausar, con sus lineas. Movida la version,
+    // ese save ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE:
+    // dar de baja es una operacion deliberada y debe
+    // ejecutarse siempre, no competir con una edicion.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE purchase_orders
-            SET enabled = false
+            SET enabled = false, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)
     int softDelete(@Param("id") Long id, @Param("companyId") Long companyId);
 
+    // El UPDATE mueve tambien `version`, la del bloqueo
+    // optimista, a proposito: sin eso, un save cargado antes
+    // de la reactivacion reescribe `enabled` con su valor
+    // viejo —el mapper lo copia desde el dominio— y su
+    // WHERE version = ? casa igual, con lo que una edicion
+    // concurrente vuelve a apagar en silencio lo que la
+    // reactivacion acababa de encender. Movida la version,
+    // ese save ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE:
+    // reactivar es una operacion deliberada y debe
+    // ejecutarse siempre, no competir con una edicion.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE purchase_orders
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

@@ -38,12 +38,23 @@ public interface SurgeryJpaRepository extends JpaRepository<SurgeryJpaEntity, Lo
      * Un UPDATE por id a secas reactivaba el registro borrado de cualquier tenant
      * para quien conociera el id, porque no hay ninguna lectura previa que valide
      * la propiedad — el servicio decide si existe mirando las filas afectadas.
+     * <p>
+     * Y sube {@code version} porque este UPDATE nativo va directo a la base: no
+     * comprueba ni incrementa la version, que {@code @Version} solo protege en el
+     * ciclo leer-modificar-guardar. Un {@code save} concurrente cargado antes
+     * reescribe la fila entera desde el dominio, con su {@code enabled = false}, y
+     * su {@code WHERE version = ?} casa igual, deshaciendo la reactivacion en
+     * silencio. Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. La {@code version} NO va en el
+     * {@code WHERE}: reactivar es deliberado y debe ejecutarse siempre, no competir
+     * con una edicion.
      */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE surgeries
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

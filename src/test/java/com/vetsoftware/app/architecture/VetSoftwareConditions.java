@@ -12,7 +12,9 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
+import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.lang.reflect.Parameter;
 import java.util.ArrayDeque;
@@ -22,6 +24,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1868,5 +1871,281 @@ final class VetSoftwareConditions {
     private static Map<String, ExencionDeVersion> indexar(List<ExencionDeVersion> exenciones) {
         return exenciones.stream().collect(Collectors.toMap(ExencionDeVersion::entidad,
                 exencion -> exencion, (primera, repetida) -> primera, LinkedHashMap::new));
+    }
+
+    // ── #53: la puerta de atrás del bloqueo optimista ─────────────────────────
+
+    /**
+     * Solo actualizaciones. Un {@code DELETE} se lleva la fila entera: no queda
+     * versión que mover ni {@code save} que pueda pisar nada.
+     */
+    private static final Pattern SENTENCIA_QUE_ACTUALIZA = Pattern.compile("^update\\s",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final String SET = " set ";
+
+    /**
+     * El objetivo de una asignación: {@code columna} o {@code alias.columna}. El
+     * lookbehind implícito lo da el anclaje —el fragmento ya viene recortado por el
+     * primer {@code =}—, así que {@code auth_version} cae por sí solo: su columna
+     * es {@code auth_version}, no {@code version}.
+     */
+    private static final Pattern OBJETIVO_ASIGNADO = Pattern
+            .compile("^(?:([a-z][a-z0-9_]*)\\.)?([a-z][a-z0-9_]*)$");
+
+    /** La columna del bloqueo optimista. */
+    private static final String COLUMNA_VERSION = "version";
+
+    /**
+     * {@code version} usada como <em>filtro</em>. Misma idea de lookbehind que
+     * {@link #CONDICION_DE_VERSION} —{@code auth_version} no cuenta—, pero aquí
+     * encontrarla es el defecto y no el arreglo: en un {@code UPDATE} de conjunto,
+     * condicionar por la versión lo deja actualizando cero filas y el servicio lo
+     * lee como «no existe».
+     */
+    private static final Pattern VERSION_EN_EL_FILTRO = Pattern
+            .compile("(?<![a-z0-9_])(?:[a-z][a-z0-9_]*\\.)?version\\s*=");
+
+    /**
+     * Lo que puede seguir al nombre de una tabla en la cláusula de actualización
+     * sin ser su alias. {@code as} no está: ese sí introduce alias y se salta.
+     */
+    private static final Set<String> NO_ES_UN_ALIAS = Set.of("set", "join", "inner", "left",
+            "right", "full", "outer", "cross", "straight_join", "on", "using", ",");
+
+    /**
+     * Cierre de la incidencia #53: toda {@code @Query} de {@code UPDATE} sobre una
+     * tabla cuya entidad lleva {@code @Version} tiene que mover {@code version} en
+     * su {@code SET}.
+     *
+     * <p>
+     * <b>El mapa tabla → ¿versionada? se levanta del propio censo de
+     * {@code @Entity}</b>, en {@code init(…)}: cada entidad aporta dos claves —su
+     * {@code @Table(name = …)} para el SQL nativo y su nombre simple para el JPQL—
+     * apuntando al mismo booleano. Deliberadamente <b>no</b> hay lista literal de
+     * tablas versionadas: BE-26 ya dejó escrito lo que le pasa a una lista que
+     * nadie mantiene, y aquí sería peor todavía, porque bastaría añadir
+     * {@code @Version} a una entidad para que su tabla dejara de estar vigilada sin
+     * que nada lo dijera. Hoy la cuenta es 71 de 104; mañana la que sea.
+     *
+     * <p>
+     * <b>Las dos formas de {@code UPDATE} se resuelven contra el mismo censo.</b>
+     * El nativo nombra la tabla ({@code UPDATE medication_schedules s SET …}) y el
+     * JPQL nombra la entidad ({@code UPDATE RefreshTokenJpaEntity r SET …}); son
+     * tres los JPQL del repositorio y los tres caen sobre entidades exentas, pero
+     * la regla no lo da por hecho: mira el nombre que venga y lo busca en las dos
+     * claves. Por eso tampoco necesita leer {@code nativeQuery}.
+     *
+     * <p>
+     * <b>Y mira el {@code SET}, no la sentencia entera.</b> Un {@code version} en
+     * el {@code WHERE} no es el arreglo —sería un {@code UPDATE} condicional que
+     * falla en silencio devolviendo cero filas—, y el {@code SET} de
+     * {@code employees} y {@code system_users} lleva {@code auth_version =
+     * auth_version + 1}, que es invalidación de sesión y no bloqueo optimista: una
+     * subcadena ingenua los daría por buenos. La cláusula se trocea por comas a
+     * profundidad de paréntesis cero, de cada trozo se toma lo que hay antes del
+     * primer {@code =} y solo eso cuenta como columna escrita.
+     *
+     * <p>
+     * <b>El alias decide a qué tabla se le escribe.</b>
+     * {@code UPDATE role_permissions rp JOIN roles r ON … SET rp.enabled = true}
+     * toca {@code role_permissions} —exenta, tabla puente— y no {@code roles}, que
+     * sí va versionada pero aquí solo se lee. Sin resolver el alias, esas cuatro
+     * consultas de {@code RolePermissionJpaRepository} serían cuatro falsos
+     * positivos y la regla se habría muerto de ruido el primer día.
+     *
+     * <p>
+     * Una tabla que no corresponda a ninguna {@code @Entity} no se juzga: sin
+     * entidad no hay {@code @Version} que saltarse.
+     */
+    static ArchCondition<JavaClass> moverLaVersionEnElUpdateMasivo() {
+        return new ArchCondition<>("mover version en el SET —y no filtrar por ella en el"
+                + " WHERE— en toda @Query de UPDATE sobre una tabla versionada") {
+            private final Map<String, Boolean> versionadaPorNombre = new LinkedHashMap<>();
+
+            @Override
+            public void init(Collection<JavaClass> repositorios) {
+                versionadaPorNombre.clear();
+                repositorios.stream().findFirst().flatMap(VetSoftwareConditions::paqueteRaiz)
+                        .ifPresent(raiz -> raiz.getClassesInPackageTree().stream()
+                                .filter(clase -> clase.isAnnotatedWith(Entity.class))
+                                .forEach(entidad -> censar(entidad, versionadaPorNombre)));
+            }
+
+            @Override
+            public void check(JavaClass repositorio, ConditionEvents events) {
+                for (JavaMethod metodo : repositorio.getMethods()) {
+                    Optional<String> sentencia = sentenciaQueActualiza(metodo);
+                    if (sentencia.isEmpty()) {
+                        continue;
+                    }
+                    List<String> hallazgos = hallazgosDelUpdate(sentencia.get(),
+                            versionadaPorNombre);
+                    events.add(new SimpleConditionEvent(metodo, hallazgos.isEmpty(),
+                            repositorio.getSimpleName() + "." + metodo.getName() + "(): "
+                                    + String.join("; ", hallazgos)
+                                    + ". @Version solo protege el ciclo leer-modificar-guardar"
+                                    + " de una entidad gestionada, y esta @Query va directa a la"
+                                    + " base: el bump va en el SET (version = version + 1) y"
+                                    + " nunca en el WHERE, que convertiría el UPDATE en"
+                                    + " condicional y lo dejaría actualizando cero filas."
+                                    + " SQL actual: " + unaLinea(sentencia.get())));
+                }
+            }
+        };
+    }
+
+    /** El statement de una {@code @Query} de UPDATE, si el método declara una. */
+    private static Optional<String> sentenciaQueActualiza(JavaMethod method) {
+        return method.tryGetAnnotationOfType(Query.class).map(Query::value).map(String::strip)
+                .filter(sql -> SENTENCIA_QUE_ACTUALIZA.matcher(sql).find());
+    }
+
+    /** Las dos claves con las que una entidad se deja encontrar desde el SQL. */
+    private static void censar(JavaClass entidad, Map<String, Boolean> censo) {
+        boolean versionada = tieneCampoVersion(entidad);
+        censo.put(entidad.getSimpleName().toLowerCase(Locale.ROOT), versionada);
+        entidad.tryGetAnnotationOfType(Table.class).map(Table::name)
+                .filter(nombre -> !nombre.isBlank())
+                .ifPresent(nombre -> censo.put(nombre.toLowerCase(Locale.ROOT), versionada));
+    }
+
+    /**
+     * Lo que le falta —o le sobra— a una sentencia de {@code UPDATE}: las tablas
+     * versionadas a las que escribe sin tocarles {@code version}, y el filtro por
+     * {@code version} si lo hubiera. Lista vacía = la consulta cumple.
+     */
+    private static List<String> hallazgosDelUpdate(String sentencia, Map<String, Boolean> censo) {
+        String normalizada = unaLinea(sentencia).toLowerCase(Locale.ROOT);
+        int set = normalizada.indexOf(SET);
+        if (set < 0) {
+            return List.of();
+        }
+        Map<String, String> porAlias = tablasDeLaClausula(
+                normalizada.substring("update".length(), set));
+        String principal = porAlias.values().stream().findFirst().orElse("");
+        String desdeSet = normalizada.substring(set + SET.length());
+        int filtro = comienzoDelFiltro(desdeSet);
+
+        Set<String> escritas = new LinkedHashSet<>();
+        Set<String> conVersion = new HashSet<>();
+        String clausulaSet = filtro < 0 ? desdeSet : desdeSet.substring(0, filtro);
+        for (String objetivo : objetivosDelSet(clausulaSet)) {
+            Matcher asignacion = OBJETIVO_ASIGNADO.matcher(objetivo);
+            if (!asignacion.matches()) {
+                continue;
+            }
+            String alias = asignacion.group(1);
+            String tabla = alias == null ? principal : porAlias.getOrDefault(alias, principal);
+            escritas.add(tabla);
+            if (COLUMNA_VERSION.equals(asignacion.group(2))) {
+                conVersion.add(tabla);
+            }
+        }
+
+        List<String> hallazgos = new ArrayList<>(escritas.stream()
+                .filter(tabla -> Boolean.TRUE.equals(censo.get(tabla)))
+                .filter(tabla -> !conVersion.contains(tabla))
+                .map(tabla -> "escribe en " + tabla + " (versionada) sin mover version en el SET")
+                .toList());
+        if (filtro >= 0 && VERSION_EN_EL_FILTRO.matcher(desdeSet.substring(filtro)).find()) {
+            hallazgos.add("condiciona por version en el WHERE, que es el defecto contrario:"
+                    + " un UPDATE de conjunto no lo lee nadie antes y actualizaría cero filas");
+        }
+        return hallazgos;
+    }
+
+    /**
+     * Dónde acaba el {@code SET} y empieza el filtro: el primer {@code WHERE} a
+     * profundidad de paréntesis cero, para que el de una subconsulta no corte antes
+     * de tiempo. {@code -1} si la sentencia no filtra.
+     */
+    private static int comienzoDelFiltro(String desdeSet) {
+        int profundidad = 0;
+        for (int i = 0; i < desdeSet.length(); i++) {
+            char caracter = desdeSet.charAt(i);
+            if (caracter == '(') {
+                profundidad++;
+            } else if (caracter == ')') {
+                profundidad--;
+            } else if (profundidad == 0 && desdeSet.startsWith(WHERE, i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Alias y nombres de tabla de la cláusula que va entre {@code UPDATE} y
+     * {@code SET}, cada uno apuntando a su tabla. El primer valor es la tabla
+     * principal, la que recibe las asignaciones sin prefijo.
+     */
+    private static Map<String, String> tablasDeLaClausula(String clausula) {
+        Map<String, String> porAlias = new LinkedHashMap<>();
+        String[] tokens = clausula.replace(",", " , ").strip().split("\\s+");
+        boolean esperaTabla = true;
+        for (int i = 0; i < tokens.length; i++) {
+            if (!esperaTabla) {
+                esperaTabla = "join".equals(tokens[i]) || ",".equals(tokens[i]);
+                continue;
+            }
+            String tabla = tokens[i];
+            porAlias.putIfAbsent(tabla, tabla);
+            int siguiente = i + 1;
+            if (siguiente < tokens.length && "as".equals(tokens[siguiente])) {
+                siguiente++;
+            }
+            if (siguiente < tokens.length && !NO_ES_UN_ALIAS.contains(tokens[siguiente])) {
+                porAlias.putIfAbsent(tokens[siguiente], tabla);
+                i = siguiente;
+            }
+            esperaTabla = false;
+        }
+        return porAlias;
+    }
+
+    /**
+     * Lo que hay a la izquierda del {@code =} en cada asignación del {@code SET}.
+     * Trocea por comas a profundidad de paréntesis cero, para que ni una
+     * subconsulta ni un {@code CASE WHEN x = 1} cuelen su comparación como si fuera
+     * una columna escrita. El recorte del {@code WHERE} ya viene hecho por
+     * {@link #comienzoDelFiltro(String)}.
+     */
+    private static List<String> objetivosDelSet(String clausulaSet) {
+        List<String> fragmentos = new ArrayList<>();
+        StringBuilder actual = new StringBuilder();
+        int profundidad = 0;
+        for (int i = 0; i < clausulaSet.length(); i++) {
+            char caracter = clausulaSet.charAt(i);
+            if (caracter == '(') {
+                profundidad++;
+            } else if (caracter == ')') {
+                profundidad--;
+            }
+            if (profundidad == 0 && caracter == ',') {
+                fragmentos.add(actual.toString());
+                actual.setLength(0);
+            } else {
+                actual.append(caracter);
+            }
+        }
+        fragmentos.add(actual.toString());
+        return fragmentos.stream().map(fragmento -> {
+            int igual = fragmento.indexOf('=');
+            return igual < 0 ? "" : fragmento.substring(0, igual).strip();
+        }).filter(objetivo -> !objetivo.isEmpty()).toList();
+    }
+
+    /** El paquete raíz de la aplicación, desde cualquier clase suya. */
+    private static Optional<JavaPackage> paqueteRaiz(JavaClass clazz) {
+        JavaPackage paquete = clazz.getPackage();
+        while (!paquete.getName().equals(APP_PACKAGE)) {
+            Optional<JavaPackage> padre = paquete.getParent();
+            if (padre.isEmpty()) {
+                return Optional.empty();
+            }
+            paquete = padre.get();
+        }
+        return Optional.of(paquete);
     }
 }

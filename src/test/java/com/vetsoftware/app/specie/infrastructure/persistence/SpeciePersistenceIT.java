@@ -58,6 +58,23 @@ class SpeciePersistenceIT extends AbstractDataJpaTest {
     }
 
     /**
+     * La columna {@code version} tal cual esta en el motor. Es la unica forma de
+     * ver lo que hizo un {@code UPDATE} nativo: no pasa por Hibernate, asi que
+     * ninguna entidad gestionada refleja su efecto.
+     */
+    private long versionEnLaBase(Long id) {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT CAST(version AS SIGNED) FROM species WHERE id = :id")
+                .setParameter("id", id).getSingleResult()).longValue();
+    }
+
+    /** El nombre por SQL nativo: la fila puede estar tapada por el filtro. */
+    private String nombreEnLaBase(Long id) {
+        return (String) entityManager.createNativeQuery("SELECT name FROM species WHERE id = :id")
+                .setParameter("id", id).getSingleResult();
+    }
+
+    /**
      * Todas las filas que esta rodaja pudo crear, vistas por fuera de Hibernate.
      */
     private List<?> idsDeLasEspeciesDeLaPrueba() {
@@ -227,6 +244,102 @@ class SpeciePersistenceIT extends AbstractDataJpaTest {
             Specie releida = repository.findById(id).orElseThrow();
             assertThat(releida.getName()).isEqualTo("Gato");
             assertThat(releida.getVersion()).isEqualTo(1L);
+        }
+
+        /**
+         * Incidencia #53 — el {@code reactivate} nativo tiene que mover tambien
+         * {@code version}. Es el patron dominante de la campaña (~55 consultas del
+         * mismo corte), asi que este caso es su modelo.
+         *
+         * <p>
+         * Ojo con el contraste que hay dentro del propio caso: el {@code @SQLDelete} de
+         * la baja <b>no</b> mueve la version —un {@code DELETE} versionado solo la LEE,
+         * en su {@code WHERE id = ? AND version = ?}— mientras que el {@code UPDATE} de
+         * la reactivacion si tiene que moverla. Los dos son SQL escrito a mano sobre la
+         * misma tabla y hacen cosas distintas con la misma columna; confundirlos es
+         * exactamente el error que este caso cierra.
+         */
+        @Test
+        @DisplayName("reactivate sube la version de bloqueo, mientras que la baja logica solo la lee")
+        void reactivate_sube_la_version_y_la_baja_logica_solo_la_lee() {
+            Long id = nuevaEspecie("Perro").getId();
+            releerDesdeLaBase();
+
+            repository.delete(id);
+            releerDesdeLaBase();
+            assertThat(versionEnLaBase(id))
+                    .as("el @SQLDelete no incrementa la version de bloqueo, solo la casa").isZero();
+
+            repository.reactivate(id);
+            releerDesdeLaBase();
+
+            assertThat(versionEnLaBase(id)).as(
+                    "el UPDATE nativo va directo al motor: si no sube la version, nadie lo hace")
+                    .isEqualTo(1L);
+            assertThat(repository.findById(id)).map(Specie::isEnabled).contains(true);
+        }
+
+        /**
+         * La carrera que el incremento cierra: una copia cargada <b>antes</b> de la
+         * reactivacion llega tarde a escribir. Sin el {@code version = version + 1}, su
+         * {@code WHERE version = 0} seguia casando y el {@code save} —que reescribe la
+         * fila entera desde el dominio, campo a campo por el mapper— dejaba la foto
+         * anterior a la reactivacion, en silencio y sin log. Con el incremento pierde
+         * la carrera y el llamador recibe un 409 {@code CONCURRENT_MODIFICATION} con el
+         * que recargar y reintentar sobre datos frescos.
+         */
+        @Test
+        @DisplayName("una copia cargada antes de la reactivacion choca al guardar en vez de deshacerla")
+        void una_copia_cargada_antes_de_la_reactivacion_choca_al_guardar() {
+            Long id = nuevaEspecie("Perro").getId();
+            releerDesdeLaBase();
+
+            // 1. Quien edita carga la especie mientras sigue viva: version 0.
+            Specie copiaDelEditor = repository.findById(id).orElseThrow();
+            assertThat(copiaDelEditor.getVersion()).isZero();
+
+            // 2. Entretanto la especie se da de baja y otro la reactiva. La baja no
+            // mueve la version; el UPDATE de la reactivacion si, y esa es la unica
+            // señal que le queda al candado.
+            repository.delete(id);
+            releerDesdeLaBase();
+            repository.reactivate(id);
+            releerDesdeLaBase();
+            assertThat(versionEnLaBase(id)).isEqualTo(1L);
+
+            // 3. La copia llega tarde con su renombrado.
+            copiaDelEditor.update("Gato");
+
+            assertThatThrownBy(() -> {
+                repository.save(copiaDelEditor);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("SpecieJpaEntity");
+
+            // Constancia de que habria quedado mal: la fila reactivada intacta, con su
+            // nombre original. Sin el incremento, el UPDATE de la copia habria pasado y
+            // reescrito la fila entera con lo que ella traia de antes de la baja.
+            entityManager.clear();
+            assertThat(nombreEnLaBase(id))
+                    .as("la reactivacion sobrevive: la copia perdedora no llego a escribir")
+                    .isEqualTo("Perro");
+            assertThat(versionEnLaBase(id)).isEqualTo(1L);
+            assertThat(idsDeLasEspeciesDeLaPrueba())
+                    .as("y el merge perdedor no se convirtio en un INSERT duplicado").hasSize(1);
+        }
+
+        @Test
+        @DisplayName("reactivate sobre un id inexistente no mueve ninguna version")
+        void reactivate_sobre_un_id_inexistente_no_mueve_ninguna_version() {
+            Long id = nuevaEspecie("Perro").getId();
+            releerDesdeLaBase();
+
+            // El incremento vive en el SET: no puede alcanzar a una fila que el WHERE
+            // no selecciona.
+            assertThat(repository.reactivate(999999L)).isZero();
+            releerDesdeLaBase();
+
+            assertThat(versionEnLaBase(id)).isZero();
         }
     }
 }

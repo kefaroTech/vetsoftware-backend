@@ -47,12 +47,23 @@ public interface SurgeryTypeJpaRepository extends JpaRepository<SurgeryTypeJpaEn
      * decide si existe mirando las filas afectadas —, así que un UPDATE por id a
      * secas revivía el tipo retirado de cualquier tenant. Cero filas = «no existe
      * en TU empresa» → 404.
+     * <p>
+     * Y sube {@code version} porque este UPDATE nativo va directo a la base: no
+     * comprueba ni incrementa la version, que {@code @Version} solo protege en el
+     * ciclo leer-modificar-guardar. Un {@code save} concurrente cargado antes
+     * reescribe la fila entera desde el dominio, con su {@code enabled = false}, y
+     * su {@code WHERE version = ?} casa igual, deshaciendo la reactivacion en
+     * silencio. Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. La {@code version} NO va en el
+     * {@code WHERE}: reactivar es deliberado y debe ejecutarse siempre, no competir
+     * con una edicion.
      */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE surgery_types
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)
