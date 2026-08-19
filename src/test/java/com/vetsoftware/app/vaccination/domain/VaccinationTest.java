@@ -39,7 +39,7 @@ class VaccinationTest {
     private static Vaccination nueva(LocalDate date, VaccinationTypeRef type, String lot,
             String notes, String route, String site, AnimalRef animal, CompanyRef company) {
         return new Vaccination(1L, date, type, lot, notes, route, site, PROXIMA, animal, CONSULTA,
-                company, CREADO, true);
+                company, CREADO, null, true);
     }
 
     @Nested

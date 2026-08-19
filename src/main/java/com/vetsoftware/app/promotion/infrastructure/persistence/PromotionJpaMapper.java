@@ -21,6 +21,7 @@ public class PromotionJpaMapper {
         entity.setPromotionStatus(promotion.getPromotionStatus());
         entity.setCompany(company);
         entity.setCreatedDate(promotion.getCreatedDate());
+        entity.setVersion(promotion.getVersion());
         entity.setEnabled(promotion.isEnabled());
         return entity;
     }
@@ -36,6 +37,6 @@ public class PromotionJpaMapper {
                 entity.getApplicationType(), entity.getApplicationItem(), entity.getValueType(),
                 entity.getValue(), entity.getStartDate(), entity.getEndDate(),
                 entity.getPromotionStatus(), companyRef, entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

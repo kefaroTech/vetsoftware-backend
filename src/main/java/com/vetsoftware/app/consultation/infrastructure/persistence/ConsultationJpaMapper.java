@@ -38,6 +38,7 @@ public class ConsultationJpaMapper {
         entity.setAnimal(animal);
         entity.setCompany(company);
         entity.setCreatedDate(consultation.getCreatedDate());
+        entity.setVersion(consultation.getVersion());
         entity.setEnabled(consultation.isEnabled());
         return entity;
     }
@@ -60,6 +61,6 @@ public class ConsultationJpaMapper {
         return new Consultation(entity.getId(), entity.getDate(), consultationTypeRef,
                 entity.getAnamnesis(), entity.getDiagnosis(), entity.getPrognosis(), exam,
                 entity.getNextControl(), animalRef, companyRef, entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

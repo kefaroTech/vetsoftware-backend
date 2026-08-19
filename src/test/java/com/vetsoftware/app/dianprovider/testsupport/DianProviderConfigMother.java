@@ -42,7 +42,7 @@ public final class DianProviderConfigMother {
     public static DianProviderConfig configValida(Long id) {
         return new DianProviderConfig(id, CLINICA, ProviderType.MATIAS, "https://api.matias.test",
                 "client-id", "client-secret", "user@test.com", "secret-pass", null,
-                "webhook-secret", null, null, "RES-001", CREADO, true);
+                "webhook-secret", null, null, "RES-001", CREADO, null, true);
     }
 
     /** Config con el token de acceso ya cacheado (post-login). */
@@ -50,21 +50,21 @@ public final class DianProviderConfigMother {
         return new DianProviderConfig(CONFIG_ID, CLINICA, ProviderType.MATIAS,
                 "https://api.matias.test", "client-id", "client-secret", "user@test.com",
                 "secret-pass", null, "webhook-secret", "cached-access-token", TOKEN_EXPIRA,
-                "RES-001", CREADO, true);
+                "RES-001", CREADO, null, true);
     }
 
     /** Config autenticada solo con PAT estatico, sin login. */
     public static DianProviderConfig configConApiToken() {
         return new DianProviderConfig(CONFIG_ID, CLINICA, ProviderType.MATIAS,
                 "https://api.matias.test", null, null, null, null, "static-pat-token",
-                "webhook-secret", null, null, "RES-001", CREADO, true);
+                "webhook-secret", null, null, "RES-001", CREADO, null, true);
     }
 
     /** Config deshabilitada. */
     public static DianProviderConfig configDeshabilitada() {
         return new DianProviderConfig(CONFIG_ID, CLINICA, ProviderType.MATIAS,
                 "https://api.matias.test", "client-id", "client-secret", "user@test.com",
-                "secret-pass", null, "webhook-secret", null, null, "RES-001", CREADO, false);
+                "secret-pass", null, "webhook-secret", null, null, "RES-001", CREADO, null, false);
     }
 
     /** Comando de creacion coherente con {@link #CLINICA}. */

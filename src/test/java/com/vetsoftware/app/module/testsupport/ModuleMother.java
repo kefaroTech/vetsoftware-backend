@@ -11,6 +11,6 @@ public final class ModuleMother {
     }
 
     public static Module moduloValido() {
-        return new Module(1L, "Inventario", "INV", CREADO, true);
+        return new Module(1L, "Inventario", "INV", CREADO, null, true);
     }
 }

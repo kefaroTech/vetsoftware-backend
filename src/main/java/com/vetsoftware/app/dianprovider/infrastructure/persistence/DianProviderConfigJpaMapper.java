@@ -24,6 +24,7 @@ public class DianProviderConfigJpaMapper {
         entity.setTokenExpiresAt(config.getTokenExpiresAt());
         entity.setNumberingProviderRef(config.getNumberingProviderRef());
         entity.setCreatedDate(config.getCreatedDate());
+        entity.setVersion(config.getVersion());
         entity.setEnabled(config.isEnabled());
         return entity;
     }
@@ -41,6 +42,7 @@ public class DianProviderConfigJpaMapper {
                 entity.getBaseUrl(), entity.getClientId(), entity.getClientSecret(),
                 entity.getUsername(), entity.getPassword(), entity.getApiToken(),
                 entity.getWebhookSecret(), entity.getAccessToken(), entity.getTokenExpiresAt(),
-                entity.getNumberingProviderRef(), entity.getCreatedDate(), entity.isEnabled());
+                entity.getNumberingProviderRef(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

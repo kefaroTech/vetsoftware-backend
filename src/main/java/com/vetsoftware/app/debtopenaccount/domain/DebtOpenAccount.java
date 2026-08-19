@@ -10,6 +10,7 @@ public class DebtOpenAccount {
     private OpenAccountRef openAccount;
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private boolean voided;
     private EmployeeRef voidedBy;
@@ -24,8 +25,8 @@ public class DebtOpenAccount {
 
     public DebtOpenAccount(Long id, BigDecimal amount, PaymentMethod paymentMethod,
             OpenAccountRef openAccount, EmployeeRef createdBy, LocalDateTime createdDate,
-            boolean enabled, boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
-            String voidReason, String clientRequestId) {
+            Long version, boolean enabled, boolean voided, EmployeeRef voidedBy,
+            LocalDateTime voidedAt, String voidReason, String clientRequestId) {
         validate(amount, paymentMethod, openAccount);
         this.id = id;
         this.amount = amount;
@@ -33,6 +34,7 @@ public class DebtOpenAccount {
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.voided = voided;
         this.voidedBy = voidedBy;
@@ -44,7 +46,7 @@ public class DebtOpenAccount {
     public static DebtOpenAccount create(BigDecimal amount, PaymentMethod paymentMethod,
             OpenAccountRef openAccount, EmployeeRef createdBy, String clientRequestId) {
         return new DebtOpenAccount(null, amount, paymentMethod, openAccount, createdBy,
-                LocalDateTime.now(), true, false, null, null, null, clientRequestId);
+                LocalDateTime.now(), null, true, false, null, null, null, clientRequestId);
     }
 
     public void update(BigDecimal amount, PaymentMethod paymentMethod, OpenAccountRef openAccount) {
@@ -106,6 +108,10 @@ public class DebtOpenAccount {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

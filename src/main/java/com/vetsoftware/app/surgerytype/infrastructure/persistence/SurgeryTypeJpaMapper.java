@@ -15,6 +15,7 @@ public class SurgeryTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(surgeryType.isGeneral());
         entity.setCreatedDate(surgeryType.getCreatedDate());
+        entity.setVersion(surgeryType.getVersion());
         entity.setEnabled(surgeryType.isEnabled());
         return entity;
     }
@@ -28,6 +29,6 @@ public class SurgeryTypeJpaMapper {
     public SurgeryType toDomain(SurgeryTypeJpaEntity entity, CompanyRef companyRef) {
         return new SurgeryType(entity.getId(), entity.getName(), entity.getDescription(),
                 companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

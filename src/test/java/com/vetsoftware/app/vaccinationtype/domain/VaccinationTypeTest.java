@@ -60,7 +60,7 @@ class VaccinationTypeTest {
 
         private VaccinationType build() {
             return new VaccinationType(id, name, description, company, general,
-                    VaccinationTypeMother.CREADO, true);
+                    VaccinationTypeMother.CREADO, null, true);
         }
 
         private void applyTo(VaccinationType vaccinationType) {

@@ -50,7 +50,7 @@ public final class HospitalizationObservationMother {
 
     public static HospitalizationObservation observacionValida(Long id) {
         return new HospitalizationObservation(id, DESCRIPCION, HOSPITALIZACION, VETERINARIO, CREADO,
-                true);
+                null, true);
     }
 
     public static CreateHospitalizationObservationCommand comandoCrear() {

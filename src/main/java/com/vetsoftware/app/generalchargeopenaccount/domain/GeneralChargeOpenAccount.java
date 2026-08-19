@@ -38,6 +38,7 @@ public class GeneralChargeOpenAccount {
     private OpenAccountRef openAccount;
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private boolean voided;
     private EmployeeRef voidedBy;
@@ -54,8 +55,9 @@ public class GeneralChargeOpenAccount {
             BigDecimal quantity, TaxRef tax, boolean hasTax, BigDecimal taxPercentage,
             String taxName, String taxScheme, BigDecimal baseAmount, BigDecimal taxAmount,
             BigDecimal totalAmount, OpenAccountRef openAccount, EmployeeRef createdBy,
-            LocalDateTime createdDate, boolean enabled, boolean voided, EmployeeRef voidedBy,
-            LocalDateTime voidedAt, String voidReason, String clientRequestId) {
+            LocalDateTime createdDate, Long version, boolean enabled, boolean voided,
+            EmployeeRef voidedBy, LocalDateTime voidedAt, String voidReason,
+            String clientRequestId) {
         validate(name, unitAmount, quantity, openAccount);
         this.id = id;
         this.name = name;
@@ -72,6 +74,7 @@ public class GeneralChargeOpenAccount {
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.voided = voided;
         this.voidedBy = voidedBy;
@@ -90,8 +93,8 @@ public class GeneralChargeOpenAccount {
         BigDecimal base = Money.extractBase(total, pct);
         return new GeneralChargeOpenAccount(null, name, unitAmount, quantity, tax, hasTax, pct,
                 snapshotTaxName(tax, hasTax), snapshotTaxScheme(tax, hasTax), base,
-                total.subtract(base), total, openAccount, createdBy, LocalDateTime.now(), true,
-                false, null, null, null, clientRequestId);
+                total.subtract(base), total, openAccount, createdBy, LocalDateTime.now(), null,
+                true, false, null, null, null, clientRequestId);
     }
 
     /**
@@ -236,6 +239,10 @@ public class GeneralChargeOpenAccount {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

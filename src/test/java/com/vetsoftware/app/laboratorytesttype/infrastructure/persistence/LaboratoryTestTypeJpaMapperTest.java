@@ -35,7 +35,7 @@ class LaboratoryTestTypeJpaMapperTest {
         @DisplayName("copia cada campo del dominio a la entidad, incluida la company")
         void copia_cada_campo_a_la_entidad() throws ReflectiveOperationException {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
             CompanyJpaEntity company = nuevaCompanyJpaEntity();
             company.setId(9L);
 
@@ -54,7 +54,7 @@ class LaboratoryTestTypeJpaMapperTest {
         @DisplayName("un tipo general se mapea sin company")
         void un_tipo_general_se_mapea_sin_company() {
             LaboratoryTestType general = new LaboratoryTestType(71L, "Perfil renal",
-                    "Perfil renal basico", null, true, CREADO, true);
+                    "Perfil renal basico", null, true, CREADO, null, true);
 
             LaboratoryTestTypeJpaEntity entity = mapper.toJpa(general, null);
 

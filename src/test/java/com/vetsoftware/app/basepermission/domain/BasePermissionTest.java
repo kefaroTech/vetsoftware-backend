@@ -59,7 +59,7 @@ class BasePermissionTest {
         }
 
         private BasePermission build() {
-            return new BasePermission(id, name, code, subModule, createdDate, enabled);
+            return new BasePermission(id, name, code, subModule, createdDate, null, enabled);
         }
     }
 

@@ -34,6 +34,7 @@ public class HospitalizationProcedureJpaMapper {
         entity.setHospitalization(hospitalization);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(procedure.getCreatedDate());
+        entity.setVersion(procedure.getVersion());
         entity.setEnabled(procedure.isEnabled());
         entity.setSuspensionDate(procedure.getSuspensionDate());
         entity.setSuspensionBy(suspensionBy);
@@ -67,6 +68,7 @@ public class HospitalizationProcedureJpaMapper {
                         : DurationMeasure.valueOf(entity.getDurationMeasure()),
                 entity.getDurationQuantity(), entity.getStartDate(), entity.getStartTime(),
                 entity.getNotes(), hospitalizationRef, createdByRef, entity.getCreatedDate(),
-                entity.isEnabled(), entity.getSuspensionDate(), suspensionByRef);
+                entity.getVersion(), entity.isEnabled(), entity.getSuspensionDate(),
+                suspensionByRef);
     }
 }

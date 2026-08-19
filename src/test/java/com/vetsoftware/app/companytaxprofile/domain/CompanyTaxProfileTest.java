@@ -33,7 +33,7 @@ class CompanyTaxProfileTest {
         return new CompanyTaxProfile(CompanyTaxProfileMother.PROFILE_ID, company, tipo, documentId,
                 dv, legalName, regimen, email, CompanyTaxProfileMother.NOMBRE_COMERCIAL,
                 CompanyTaxProfileMother.VETERINARIA, List.of(CompanyTaxProfileMother.O13),
-                CompanyTaxProfileMother.CREADO, true);
+                CompanyTaxProfileMother.CREADO, null, true);
     }
 
     private static CompanyTaxProfile perfilValido() {
@@ -95,7 +95,7 @@ class CompanyTaxProfileTest {
         void acepta_perfil_sin_nombre_comercial_ni_actividad() {
             CompanyTaxProfile profile = new CompanyTaxProfile(null, CompanyTaxProfileMother.CLINICA,
                     CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA, EMAIL,
-                    null, null, null, CompanyTaxProfileMother.CREADO, true);
+                    null, null, null, CompanyTaxProfileMother.CREADO, null, true);
 
             assertThat(profile.getCommercialName()).isNull();
             assertThat(profile.getEconomicActivity()).isNull();
@@ -331,7 +331,7 @@ class CompanyTaxProfileTest {
         void una_lista_nula_se_guarda_como_lista_vacia() {
             CompanyTaxProfile profile = new CompanyTaxProfile(null, CompanyTaxProfileMother.CLINICA,
                     CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA, EMAIL,
-                    null, null, null, CompanyTaxProfileMother.CREADO, true);
+                    null, null, null, CompanyTaxProfileMother.CREADO, null, true);
 
             assertThat(profile.getResponsibilities()).isEmpty();
         }
@@ -343,7 +343,7 @@ class CompanyTaxProfileTest {
                     List.of(CompanyTaxProfileMother.O13));
             CompanyTaxProfile profile = new CompanyTaxProfile(null, CompanyTaxProfileMother.CLINICA,
                     CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA, EMAIL,
-                    null, null, origen, CompanyTaxProfileMother.CREADO, true);
+                    null, null, origen, CompanyTaxProfileMother.CREADO, null, true);
 
             origen.add(CompanyTaxProfileMother.O15);
 
@@ -366,7 +366,7 @@ class CompanyTaxProfileTest {
             CompanyTaxProfile profile = new CompanyTaxProfile(null, CompanyTaxProfileMother.CLINICA,
                     CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA, EMAIL,
                     null, null, List.of(CompanyTaxProfileMother.O15, CompanyTaxProfileMother.O13),
-                    CompanyTaxProfileMother.CREADO, true);
+                    CompanyTaxProfileMother.CREADO, null, true);
 
             assertThat(profile.getResponsibilities()).containsExactly(CompanyTaxProfileMother.O15,
                     CompanyTaxProfileMother.O13);

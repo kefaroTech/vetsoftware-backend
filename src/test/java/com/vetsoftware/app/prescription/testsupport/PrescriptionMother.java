@@ -41,7 +41,7 @@ public final class PrescriptionMother {
 
     public static Prescription persistida() {
         return new Prescription(PRESCRIPTION_ID, FECHA, "Otitis externa", "Control en 7 dias",
-                MASCOTA, CONSULTA, CLINICA, CREADO, true);
+                MASCOTA, CONSULTA, CLINICA, CREADO, null, true);
     }
 
     public static CreatePrescriptionCommand comandoCrear() {

@@ -87,7 +87,7 @@ class SpaTest {
 
         private Spa build() {
             return new Spa(id, date, spaType, reason, details, observations, status, animal,
-                    company, createdDate, enabled);
+                    company, createdDate, null, enabled);
         }
 
         private void applyTo(Spa spa) {

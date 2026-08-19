@@ -18,10 +18,11 @@ public class Branch {
     private CityRef city;
     private final CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean active;
 
     public Branch(Long id, String name, String code, String address, String phone, CityRef city,
-            CompanyRef company, LocalDateTime createdDate, boolean active) {
+            CompanyRef company, LocalDateTime createdDate, Long version, boolean active) {
         validate(name, code, address, phone, city, company);
         this.id = id;
         this.name = name;
@@ -31,13 +32,14 @@ public class Branch {
         this.city = city;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.active = active;
     }
 
     public static Branch create(String name, String code, String address, String phone,
             CityRef city, CompanyRef company) {
         return new Branch(null, name, code, address, phone, city, company, LocalDateTime.now(),
-                true);
+                null, true);
     }
 
     public void update(String name, String code, String address, String phone, CityRef city) {
@@ -112,6 +114,10 @@ public class Branch {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isActive() {

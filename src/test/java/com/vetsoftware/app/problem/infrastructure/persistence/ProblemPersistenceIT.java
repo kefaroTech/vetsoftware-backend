@@ -112,7 +112,7 @@ class ProblemPersistenceIT extends AbstractDataJpaTest {
     private Problem nuevoProblema(AnimalRef animal, CompanyRef empresa, String descripcion,
             ProblemStatus estado, LocalDateTime creado) {
         return new Problem(null, animal, empresa, descripcion, estado, INICIO, null,
-                "Revisar en dos semanas", creado, true);
+                "Revisar en dos semanas", creado, null, true);
     }
 
     @Nested

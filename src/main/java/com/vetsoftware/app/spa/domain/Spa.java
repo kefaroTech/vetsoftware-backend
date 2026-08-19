@@ -14,11 +14,12 @@ public class Spa {
     private AnimalRef animal;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Spa(Long id, LocalDate date, SpaTypeRef spaType, String reason, String details,
             String observations, SpaStatus status, AnimalRef animal, CompanyRef company,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, spaType, reason, details, observations, status, animal, company);
         this.id = id;
         this.date = date;
@@ -30,13 +31,14 @@ public class Spa {
         this.animal = animal;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Spa create(LocalDate date, SpaTypeRef spaType, String reason, String details,
             String observations, AnimalRef animal, CompanyRef company) {
         return new Spa(null, date, spaType, reason, details, observations, SpaStatus.AGENDADA,
-                animal, company, LocalDateTime.now(), true);
+                animal, company, LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, SpaTypeRef spaType, String reason, String details,
@@ -129,6 +131,10 @@ public class Spa {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

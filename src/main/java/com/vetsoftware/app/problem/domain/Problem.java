@@ -13,11 +13,12 @@ public class Problem {
     private LocalDate resolvedDate;
     private String notes;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Problem(Long id, AnimalRef animal, CompanyRef company, String description,
             ProblemStatus status, LocalDate onsetDate, LocalDate resolvedDate, String notes,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(description, status, notes, animal, company);
         this.id = id;
         this.animal = animal;
@@ -28,13 +29,14 @@ public class Problem {
         this.resolvedDate = resolvedDate;
         this.notes = blankToNull(notes);
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Problem create(AnimalRef animal, CompanyRef company, String description,
             ProblemStatus status, LocalDate onsetDate, LocalDate resolvedDate, String notes) {
         return new Problem(null, animal, company, description, status, onsetDate, resolvedDate,
-                notes, LocalDateTime.now(), true);
+                notes, LocalDateTime.now(), null, true);
     }
 
     public void update(String description, ProblemStatus status, LocalDate onsetDate,
@@ -102,6 +104,10 @@ public class Problem {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

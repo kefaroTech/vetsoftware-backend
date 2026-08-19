@@ -22,7 +22,7 @@ class HospitalizationObservationTest {
             HospitalizationRef hospitalization, EmployeeRef createdBy) {
         return new HospitalizationObservation(HospitalizationObservationMother.OBSERVATION_ID,
                 description, hospitalization, createdBy, HospitalizationObservationMother.CREADO,
-                true);
+                null, true);
     }
 
     @Nested

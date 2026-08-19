@@ -24,16 +24,16 @@ public final class BranchMother {
 
     public static Branch sedeActiva() {
         return new Branch(BRANCH_ID, "Sede Norte", "NORTE", "Cra 1 #2-3", "3001112233", BOGOTA,
-                CLINICA, CREADO, true);
+                CLINICA, CREADO, null, true);
     }
 
     public static Branch sedeInactiva() {
         return new Branch(BRANCH_ID, "Sede Norte", "NORTE", "Cra 1 #2-3", "3001112233", BOGOTA,
-                CLINICA, CREADO, false);
+                CLINICA, CREADO, null, false);
     }
 
     public static Branch sinDireccionNiTelefono() {
         return new Branch(BRANCH_ID, "Sede Norte", "NORTE", null, null, BOGOTA, CLINICA, CREADO,
-                true);
+                null, true);
     }
 }

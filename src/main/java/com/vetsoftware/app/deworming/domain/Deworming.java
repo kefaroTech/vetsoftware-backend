@@ -16,12 +16,13 @@ public class Deworming {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Deworming(Long id, LocalDate date, LocalDate lastDeworming, DewormingType type,
             String product, String dosage, LocalDate nextControl, String observations,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, type, product, dosage, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -35,6 +36,7 @@ public class Deworming {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -42,7 +44,7 @@ public class Deworming {
             String product, String dosage, LocalDate nextControl, String observations,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Deworming(null, date, lastDeworming, type, product, dosage, nextControl,
-                observations, animal, consultation, company, LocalDateTime.now(), true);
+                observations, animal, consultation, company, LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, LocalDate lastDeworming, DewormingType type, String product,
@@ -129,6 +131,10 @@ public class Deworming {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

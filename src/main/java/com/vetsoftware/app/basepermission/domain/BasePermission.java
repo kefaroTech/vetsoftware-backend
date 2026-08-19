@@ -8,10 +8,11 @@ public class BasePermission {
     private String code;
     private SubModuleRef subModule;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public BasePermission(Long id, String name, String code, SubModuleRef subModule,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -27,11 +28,12 @@ public class BasePermission {
         this.code = code;
         this.subModule = subModule;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static BasePermission create(String name, String code, SubModuleRef subModule) {
-        return new BasePermission(null, name, code, subModule, LocalDateTime.now(), true);
+        return new BasePermission(null, name, code, subModule, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String code, SubModuleRef subModule) {
@@ -68,6 +70,10 @@ public class BasePermission {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -56,7 +56,7 @@ class DiagnosticImagingTypeTest {
 
         private DiagnosticImagingType build() {
             return new DiagnosticImagingType(id, name, description, company, general, createdDate,
-                    enabled);
+                    null, enabled);
         }
     }
 

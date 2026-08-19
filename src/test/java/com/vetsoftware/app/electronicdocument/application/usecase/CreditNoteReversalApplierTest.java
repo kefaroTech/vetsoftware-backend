@@ -72,7 +72,7 @@ class CreditNoteReversalApplierTest {
                 ElectronicDocumentMother.bd("1000.00"), ElectronicDocumentMother.bd("1190.00"),
                 ElectronicDocumentMother.bd("1190.00"), PaymentForm.CONTADO,
                 ElectronicDocumentMother.unaLineaGravada(), List.of(),
-                LocalDateTime.of(2026, 3, 10, 10, 15), true, null, null, null, false,
+                LocalDateTime.of(2026, 3, 10, 10, 15), null, true, null, null, null, false,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null,
                 ElectronicDocumentMother.EMPLOYEE_ID, ElectronicDocumentMother.BRANCH_ID);
     }

@@ -56,7 +56,7 @@ class SystemUserTest {
         }
 
         private SystemUser build() {
-            return new SystemUser(id, code, hashPassword, createdDate, enabled, authVersion);
+            return new SystemUser(id, code, hashPassword, createdDate, null, enabled, authVersion);
         }
     }
 

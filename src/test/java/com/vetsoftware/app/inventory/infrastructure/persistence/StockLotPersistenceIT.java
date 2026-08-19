@@ -58,7 +58,7 @@ class StockLotPersistenceIT extends AbstractDataJpaTest {
             Long branchId, boolean habilitado) {
         LocalDateTime ahora = LocalDateTime.of(2026, 1, 15, 10, 30);
         return repository.save(new StockLot(null, COMPANY, branchId, PRODUCT, numero, vence,
-                disponible, costo, ahora, ahora, habilitado));
+                disponible, costo, ahora, ahora, null, habilitado));
     }
 
     @Nested

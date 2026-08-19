@@ -25,18 +25,18 @@ public final class SurgeryTypeMother {
     /** Tipo propio de una empresa, activo. El caso por defecto. */
     public static SurgeryType propioDeEmpresa() {
         return new SurgeryType(SURGERY_TYPE_ID, "Castracion", "Cirugia de esterilizacion", EMPRESA,
-                false, CREADO, true);
+                false, CREADO, null, true);
     }
 
     /** Tipo global, sin empresa, disponible para todos los tenants. */
     public static SurgeryType general() {
         return new SurgeryType(GENERAL_SURGERY_TYPE_ID, "Cirugia general", "Procedimiento estandar",
-                null, true, CREADO, true);
+                null, true, CREADO, null, true);
     }
 
     public static SurgeryType deshabilitado() {
         return new SurgeryType(SURGERY_TYPE_ID, "Castracion", "Cirugia de esterilizacion", EMPRESA,
-                false, CREADO, false);
+                false, CREADO, null, false);
     }
 
     public static CreateSurgeryTypeCommand comandoCrearPropio() {

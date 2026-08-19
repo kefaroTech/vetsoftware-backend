@@ -29,21 +29,21 @@ public final class MembershipMother {
     }
 
     public static Membership activa(Long id) {
-        return new Membership(id, "Plan Oro", MembershipStatus.ACTIVE, false, CREADO, true);
+        return new Membership(id, "Plan Oro", MembershipStatus.ACTIVE, false, CREADO, null, true);
     }
 
     public static Membership obligatoria() {
         return new Membership(MEMBERSHIP_ID, "Plan Oro", MembershipStatus.ACTIVE, true, CREADO,
-                true);
+                null, true);
     }
 
     public static Membership deshabilitada() {
         return new Membership(MEMBERSHIP_ID, "Plan Oro", MembershipStatus.ACTIVE, false, CREADO,
-                false);
+                null, false);
     }
 
     public static Membership conEstado(MembershipStatus status) {
-        return new Membership(MEMBERSHIP_ID, "Plan Oro", status, false, CREADO, true);
+        return new Membership(MEMBERSHIP_ID, "Plan Oro", status, false, CREADO, null, true);
     }
 
     /** Comando de creacion coherente con la fixture de arriba. */

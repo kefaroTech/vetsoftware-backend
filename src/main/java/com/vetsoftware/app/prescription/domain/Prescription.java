@@ -12,11 +12,12 @@ public class Prescription {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Prescription(Long id, LocalDate date, String diagnosis, String observations,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, diagnosis, observations, animal, consultation, company);
         this.id = id;
         this.date = date;
@@ -26,13 +27,14 @@ public class Prescription {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Prescription create(LocalDate date, String diagnosis, String observations,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company) {
         return new Prescription(null, date, diagnosis, observations, animal, consultation, company,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, String diagnosis, String observations, AnimalRef animal,
@@ -107,6 +109,10 @@ public class Prescription {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -31,6 +31,7 @@ public class GeneralChargeOpenAccountJpaMapper {
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(charge.getCreatedDate());
+        entity.setVersion(charge.getVersion());
         entity.setEnabled(charge.isEnabled());
         entity.setVoided(charge.isVoided());
         entity.setVoidedBy(voidedBy);
@@ -62,8 +63,8 @@ public class GeneralChargeOpenAccountJpaMapper {
                 entity.getUnitAmount(), entity.getQuantity(), taxRef, entity.isHasTax(),
                 entity.getTaxPercentage(), entity.getTaxName(), entity.getTaxScheme(),
                 entity.getBaseAmount(), entity.getTaxAmount(), entity.getTotalAmount(),
-                openAccountRef, createdByRef, entity.getCreatedDate(), entity.isEnabled(),
-                entity.isVoided(), voidedByRef, entity.getVoidedAt(), entity.getVoidReason(),
-                entity.getClientRequestId());
+                openAccountRef, createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled(), entity.isVoided(), voidedByRef, entity.getVoidedAt(),
+                entity.getVoidReason(), entity.getClientRequestId());
     }
 }

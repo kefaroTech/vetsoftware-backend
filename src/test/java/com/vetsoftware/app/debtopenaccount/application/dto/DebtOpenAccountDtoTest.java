@@ -54,7 +54,7 @@ class DebtOpenAccountDtoTest {
         void un_abono_sin_creador_no_revienta() {
             DebtOpenAccount sinCreador = new DebtOpenAccount(1L, DebtOpenAccountMother.MONTO,
                     PaymentMethod.CASH, DebtOpenAccountMother.CUENTA, null,
-                    DebtOpenAccountMother.CREADO, true, false, null, null, null, null);
+                    DebtOpenAccountMother.CREADO, null, true, false, null, null, null, null);
 
             DebtOpenAccountDto dto = DebtOpenAccountDto.from(sinCreador);
 

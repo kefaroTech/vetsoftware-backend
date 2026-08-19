@@ -12,10 +12,10 @@ public final class BaseRoleMother {
     }
 
     public static BaseRole veterinario() {
-        return new BaseRole(BASE_ROLE_ID, "Veterinario", "VET", false, CREADO, true);
+        return new BaseRole(BASE_ROLE_ID, "Veterinario", "VET", false, CREADO, null, true);
     }
 
     public static BaseRole administrador() {
-        return new BaseRole(2L, "Administrador", "ADMIN", true, CREADO, true);
+        return new BaseRole(2L, "Administrador", "ADMIN", true, CREADO, null, true);
     }
 }

@@ -40,18 +40,18 @@ public final class ProblemMother {
 
     public static Problem activo(Long id) {
         return new Problem(id, FIRULAIS, CLINICA, "Dermatitis alergica", ProblemStatus.ACTIVE,
-                INICIO, null, "Revisar en dos semanas", CREADO, true);
+                INICIO, null, "Revisar en dos semanas", CREADO, null, true);
     }
 
     public static Problem resuelto(LocalDate fechaResolucion) {
         return new Problem(PROBLEM_ID, FIRULAIS, CLINICA, "Dermatitis alergica",
                 ProblemStatus.RESOLVED, INICIO, fechaResolucion, "Tratamiento completo", CREADO,
-                true);
+                null, true);
     }
 
     public static Problem deshabilitado() {
         return new Problem(PROBLEM_ID, FIRULAIS, CLINICA, "Dermatitis alergica",
-                ProblemStatus.ACTIVE, INICIO, null, "Revisar en dos semanas", CREADO, false);
+                ProblemStatus.ACTIVE, INICIO, null, "Revisar en dos semanas", CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

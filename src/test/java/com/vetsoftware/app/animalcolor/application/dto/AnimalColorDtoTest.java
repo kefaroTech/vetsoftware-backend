@@ -15,7 +15,8 @@ class AnimalColorDtoTest {
     @DisplayName("from() copia cada campo, incluida la especie resumida")
     void from_copia_cada_campo() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
-        AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"), creado, true);
+        AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"), creado, null,
+                true);
 
         AnimalColorDto dto = AnimalColorDto.from(color);
 
@@ -30,7 +31,7 @@ class AnimalColorDtoTest {
     @DisplayName("from() conserva enabled=false de un color deshabilitado")
     void from_conserva_enabled_false_de_un_color_deshabilitado() {
         AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), false);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, false);
 
         assertThat(AnimalColorDto.from(color).enabled()).isFalse();
     }

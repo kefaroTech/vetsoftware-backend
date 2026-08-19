@@ -69,7 +69,7 @@ public final class ProductChargeOpenAccountMother {
         return new ProductChargeOpenAccount(id, ANIMAL, PRODUCTO, PRECIO, 1, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", new BigDecimal("10000.00"),
                 new BigDecimal("1900.00"), new BigDecimal("11900.00"), CUENTA, EMPLEADO, CREADO,
-                true, false, null, null, null, null);
+                null, true, false, null, null, null, null);
     }
 
     /** Cargo con la idempotency key ya usada por un intento anterior. */
@@ -77,14 +77,14 @@ public final class ProductChargeOpenAccountMother {
         return new ProductChargeOpenAccount(CHARGE_ID, ANIMAL, PRODUCTO, PRECIO, 1, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", new BigDecimal("10000.00"),
                 new BigDecimal("1900.00"), new BigDecimal("11900.00"), CUENTA, EMPLEADO, CREADO,
-                true, false, null, null, null, clientRequestId);
+                null, true, false, null, null, null, clientRequestId);
     }
 
     public static ProductChargeOpenAccount cargoAnulado() {
         return new ProductChargeOpenAccount(CHARGE_ID, ANIMAL, PRODUCTO, PRECIO, 1, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", new BigDecimal("10000.00"),
                 new BigDecimal("1900.00"), new BigDecimal("11900.00"), CUENTA, EMPLEADO, CREADO,
-                true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
+                null, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
     }
 
     /** Cargo cuya cuenta pertenece a OTRA empresa: dispara el guard de tenancy. */
@@ -92,7 +92,7 @@ public final class ProductChargeOpenAccountMother {
         return new ProductChargeOpenAccount(CHARGE_ID, ANIMAL, PRODUCTO, PRECIO, 1, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", new BigDecimal("10000.00"),
                 new BigDecimal("1900.00"), new BigDecimal("11900.00"), CUENTA_AJENA, EMPLEADO,
-                CREADO, true, false, null, null, null, null);
+                CREADO, null, true, false, null, null, null, null);
     }
 
     /**
@@ -102,7 +102,7 @@ public final class ProductChargeOpenAccountMother {
         return new ProductChargeOpenAccount(CHARGE_ID, ANIMAL, PRODUCTO, PRECIO, 1, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", new BigDecimal("10000.00"),
                 new BigDecimal("1900.00"), new BigDecimal("11900.00"), OTRA_CUENTA, EMPLEADO,
-                CREADO, true, false, null, null, null, null);
+                CREADO, null, true, false, null, null, null, null);
     }
 
     public static CreateProductChargeOpenAccountCommand comandoCrear() {

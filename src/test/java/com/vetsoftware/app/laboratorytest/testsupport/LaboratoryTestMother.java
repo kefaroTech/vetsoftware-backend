@@ -42,27 +42,27 @@ public final class LaboratoryTestMother {
     public static LaboratoryTest pendienteDeToma() {
         return new LaboratoryTest(ID, FECHA, HEMOGRAMA, 1, "Sospecha de anemia",
                 LaboratoryTestStatus.PENDING_COLLECTION, LaboratoryTestPriority.NORMAL, FIRULAIS,
-                CONSULTA, CLINICA, BRANCH_ID, null, null, CREADO, true);
+                CONSULTA, CLINICA, BRANCH_ID, null, null, CREADO, null, true);
     }
 
     /** Muestra ya validada: lleva firma de quien la proceso y cuando. */
     public static LaboratoryTest validada() {
         return new LaboratoryTest(ID, FECHA, HEMOGRAMA, 2, "Anemia regenerativa",
                 LaboratoryTestStatus.COMPLETED, LaboratoryTestPriority.URGENTE, FIRULAIS, CONSULTA,
-                CLINICA, BRANCH_ID, BACTERIOLOGA, PROCESADO, CREADO, true);
+                CLINICA, BRANCH_ID, BACTERIOLOGA, PROCESADO, CREADO, null, true);
     }
 
     /** Minima: sin consulta, sin diagnostico y sin procesador. */
     public static LaboratoryTest sinAsociacionesOpcionales() {
         return new LaboratoryTest(ID, FECHA, HEMOGRAMA, 1, null,
                 LaboratoryTestStatus.PENDING_PROCESSING, LaboratoryTestPriority.NORMAL, FIRULAIS,
-                null, CLINICA, BRANCH_ID, null, null, CREADO, true);
+                null, CLINICA, BRANCH_ID, null, null, CREADO, null, true);
     }
 
     /** Deshabilitada por borrado logico. */
     public static LaboratoryTest deshabilitada() {
         return new LaboratoryTest(ID, FECHA, HEMOGRAMA, 1, "Sospecha de anemia",
                 LaboratoryTestStatus.CANCELLED, LaboratoryTestPriority.NORMAL, FIRULAIS, CONSULTA,
-                CLINICA, BRANCH_ID, null, null, CREADO, false);
+                CLINICA, BRANCH_ID, null, null, CREADO, null, false);
     }
 }

@@ -39,12 +39,13 @@ public class JpaCompanySettingRepository implements CompanySettingRepository {
         e.setPropertyName(s.getPropertyName());
         e.setValue(s.getValue());
         e.setCreatedDate(s.getCreatedDate());
+        e.setVersion(s.getVersion());
         e.setEnabled(s.isEnabled());
         return e;
     }
 
     private static CompanySetting toDomain(CompanySettingJpaEntity e) {
         return new CompanySetting(e.getId(), e.getCompanyId(), e.getPropertyName(), e.getValue(),
-                e.getCreatedDate(), e.isEnabled());
+                e.getCreatedDate(), e.getVersion(), e.isEnabled());
     }
 }

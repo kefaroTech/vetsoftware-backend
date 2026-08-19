@@ -273,7 +273,7 @@ class ElectronicDocumentTotalsTest {
                     null, null, null, DianStatus.PENDIENTE, null, issuer(),
                     CustomerSnapshot.finalConsumer(), bd("100"), bd("100"), bd("119"), bd("119"),
                     PaymentForm.CONTADO, List.of(ivaLine(1, "100", "19", "19")), List.of(),
-                    java.time.LocalDateTime.now(), true,
+                    java.time.LocalDateTime.now(), null, true,
                     new DocumentReference("CUFE-X", "SETP", 1L, java.time.LocalDate.of(2026, 6, 1)),
                     null, null, false, null, null, null, null, 4L, 7L))
                     .isInstanceOf(IllegalArgumentException.class)

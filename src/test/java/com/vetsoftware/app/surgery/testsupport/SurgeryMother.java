@@ -54,25 +54,25 @@ public final class SurgeryMother {
     public static Surgery cirugiaValida(Long id) {
         return new Surgery(id, FECHA, OVARIOHISTERECTOMIA, "Ovariohisterectomia electiva",
                 "Ketamina 10mg", "Recuperacion normal", null, SurgeryStatus.PROGRAMADA, FIRULAIS,
-                CONSULTA_PREVIA, CLINICA, CREADO, true);
+                CONSULTA_PREVIA, CLINICA, CREADO, null, true);
     }
 
     public static Surgery cirugiaSinConsulta() {
         return new Surgery(SURGERY_ID, FECHA, OVARIOHISTERECTOMIA, "Ovariohisterectomia electiva",
                 "Ketamina 10mg", "Recuperacion normal", null, SurgeryStatus.PROGRAMADA, FIRULAIS,
-                null, CLINICA, CREADO, true);
+                null, CLINICA, CREADO, null, true);
     }
 
     public static Surgery cirugiaEnEstado(SurgeryStatus status) {
         return new Surgery(SURGERY_ID, FECHA, OVARIOHISTERECTOMIA, "Ovariohisterectomia electiva",
                 "Ketamina 10mg", "Recuperacion normal", null, status, FIRULAIS, CONSULTA_PREVIA,
-                CLINICA, CREADO, true);
+                CLINICA, CREADO, null, true);
     }
 
     public static Surgery cirugiaDeshabilitada() {
         return new Surgery(SURGERY_ID, FECHA, OVARIOHISTERECTOMIA, "Ovariohisterectomia electiva",
                 "Ketamina 10mg", "Recuperacion normal", null, SurgeryStatus.PROGRAMADA, FIRULAIS,
-                CONSULTA_PREVIA, CLINICA, CREADO, false);
+                CONSULTA_PREVIA, CLINICA, CREADO, null, false);
     }
 
     /**

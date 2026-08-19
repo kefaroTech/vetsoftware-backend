@@ -15,6 +15,7 @@ public class RoleJpaMapper {
         entity.setCode(role.getCode());
         entity.setCompany(company);
         entity.setCreatedDate(role.getCreatedDate());
+        entity.setVersion(role.getVersion());
         entity.setEnabled(role.isEnabled());
         return entity;
     }
@@ -26,6 +27,6 @@ public class RoleJpaMapper {
 
     public Role toDomain(RoleJpaEntity entity, CompanyRef companyRef) {
         return new Role(entity.getId(), entity.getName(), entity.getCode(), companyRef,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

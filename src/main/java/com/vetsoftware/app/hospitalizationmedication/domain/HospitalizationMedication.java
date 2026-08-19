@@ -18,6 +18,7 @@ public class HospitalizationMedication {
     private HospitalizationRef hospitalization;
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private LocalDateTime suspensionDate;
     private EmployeeRef suspensionBy;
@@ -26,7 +27,7 @@ public class HospitalizationMedication {
             GuidelineType guidelineType, DurationMeasure durationMeasure, Integer durationQuantity,
             LocalDate startDate, LocalTime startTime, String notes,
             HospitalizationRef hospitalization, EmployeeRef createdBy, LocalDateTime createdDate,
-            boolean enabled, LocalDateTime suspensionDate, EmployeeRef suspensionBy) {
+            Long version, boolean enabled, LocalDateTime suspensionDate, EmployeeRef suspensionBy) {
         validate(name, hospitalization, createdBy);
         this.id = id;
         this.name = name;
@@ -41,6 +42,7 @@ public class HospitalizationMedication {
         this.hospitalization = hospitalization;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.suspensionDate = suspensionDate;
         this.suspensionBy = suspensionBy;
@@ -52,7 +54,7 @@ public class HospitalizationMedication {
             HospitalizationRef hospitalization, EmployeeRef createdBy) {
         return new HospitalizationMedication(null, name, dose, frequency, guidelineType,
                 durationMeasure, durationQuantity, startDate, startTime, notes, hospitalization,
-                createdBy, LocalDateTime.now(), true, null, null);
+                createdBy, LocalDateTime.now(), null, true, null, null);
     }
 
     /**
@@ -152,6 +154,10 @@ public class HospitalizationMedication {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

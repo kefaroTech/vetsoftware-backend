@@ -30,12 +30,13 @@ public class DianProviderConfig {
     private LocalDateTime tokenExpiresAt;
     private String numberingProviderRef;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public DianProviderConfig(Long id, CompanyRef company, ProviderType provider, String baseUrl,
             String clientId, String clientSecret, String username, String password, String apiToken,
             String webhookSecret, String accessToken, LocalDateTime tokenExpiresAt,
-            String numberingProviderRef, LocalDateTime createdDate, boolean enabled) {
+            String numberingProviderRef, LocalDateTime createdDate, Long version, boolean enabled) {
         validate(company, provider, baseUrl);
         this.id = id;
         this.company = company;
@@ -51,6 +52,7 @@ public class DianProviderConfig {
         this.tokenExpiresAt = tokenExpiresAt;
         this.numberingProviderRef = numberingProviderRef;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -59,7 +61,7 @@ public class DianProviderConfig {
             String apiToken, String webhookSecret, String numberingProviderRef) {
         return new DianProviderConfig(null, company, provider, baseUrl, clientId, clientSecret,
                 username, password, apiToken, webhookSecret, null, null, numberingProviderRef,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(ProviderType provider, String baseUrl, String clientId, String clientSecret,
@@ -148,6 +150,10 @@ public class DianProviderConfig {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -13,6 +13,7 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Version;
 import java.lang.reflect.Parameter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -20,7 +21,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -28,6 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -1679,5 +1684,189 @@ final class VetSoftwareConditions {
         return javaClass.getPackage().getClasses().stream()
                 .filter(hermana -> hermana.getEnclosingClass().isEmpty())
                 .filter(hermana -> !hermana.equals(javaClass)).map(JavaClass::getSimpleName);
+    }
+
+    // ── BE-26: bloqueo optimista ─────────────────────────────────────────────
+
+    /**
+     * Códigos de exención de {@code @Version}. Nombran la razón
+     * <em>estructural</em> por la que una entidad no necesita bloqueo optimista; el
+     * motivo concreto va entrada por entrada en
+     * {@code HexagonalArchitectureTest.ENTIDADES_EXENTAS_DE_VERSION}. Esa es toda
+     * la gracia del mecanismo: el diff de un PR enseña a quién se le perdona y por
+     * qué, en vez de dejar la ausencia como un olvido indistinguible de una
+     * decisión.
+     */
+    enum CodigoDeExencion {
+        /** Se inserta y no se vuelve a modificar. */
+        E1_APPEND_ONLY,
+        /** Relación N:M pura: insert + delete, sin campo propio mutable. */
+        E2_TABLA_PUENTE,
+        /** Token de un solo uso o de vida corta. */
+        E3_TOKEN,
+        /** Vista de solo lectura o entidad {@code @Immutable}. */
+        E4_VISTA,
+        /**
+         * Dato de referencia sembrado, sin pantalla que dos operadores editen a la vez.
+         */
+        E5_SEMILLA,
+        /**
+         * La concurrencia la resuelve un mecanismo más fuerte, nombrado en el motivo.
+         */
+        E6_YA_PROTEGIDO
+    }
+
+    /** Una línea de la lista de exenciones: a quién, con qué código y por qué. */
+    record ExencionDeVersion(String entidad, CodigoDeExencion codigo, String motivo) {
+    }
+
+    /** {@code version = ?} como condición, con {@code auth_version = ?} fuera. */
+    private static final Pattern CONDICION_DE_VERSION = Pattern
+            .compile("(?<![a-z0-9_])version\\s*=\\s*\\?");
+
+    private static final String WHERE = " where ";
+
+    /**
+     * BE-26, primera mitad: toda {@code @Entity} decide por escrito si lleva
+     * bloqueo optimista. O declara un campo {@code @Version}, o aparece en la lista
+     * de exenciones con su código y su motivo. No hay tercera salida silenciosa.
+     */
+    static ArchCondition<JavaClass> declararBloqueoOptimistaOEstarExenta(
+            List<ExencionDeVersion> exenciones) {
+        Map<String, ExencionDeVersion> porEntidad = indexar(exenciones);
+        return new ArchCondition<>(
+                "declarar un campo @Version, o figurar en la lista de exenciones") {
+            @Override
+            public void check(JavaClass entidad, ConditionEvents events) {
+                String nombre = entidad.getSimpleName();
+                boolean decidido = tieneCampoVersion(entidad) || porEntidad.containsKey(nombre);
+                events.add(new SimpleConditionEvent(entidad, decidido, nombre
+                        + " no declara ningún campo @Version: o le das bloqueo optimista, o la"
+                        + " añades a ENTIDADES_EXENTAS_DE_VERSION con su código"
+                        + " (E1_APPEND_ONLY … E6_YA_PROTEGIDO) y el motivo escrito"));
+            }
+        };
+    }
+
+    /**
+     * BE-26, segunda mitad: el fallo silencioso. Cuando una entidad lleva
+     * {@code @Version}, Hibernate liga <b>dos</b> parámetros al SQL del
+     * {@code @SQLDelete} —primero el {@code id}, después la {@code version}—, así
+     * que un {@code WHERE id = ?} con un solo {@code ?} deja el borrado lógico roto
+     * en ejecución. No lo ve ninguna revisión: la anotación se lee perfecta.
+     *
+     * <p>
+     * <strong>Por qué mira el {@code WHERE} y no el SQL entero.</strong> El
+     * {@code SET} de {@code employees} y {@code system_users} lleva
+     * {@code auth_version = auth_version + 1} —invalidación de sesión, otra cosa—,
+     * y una subcadena ingenua {@code "version"} las daría por buenas sin mirar
+     * nada. El lookbehind del patrón es la segunda red: descarta
+     * {@code auth_version = ?} aunque alguien lo escriba dentro del {@code WHERE}.
+     * Por lo mismo la condición se fija en la columna y no en el nombre del filtro:
+     * {@code unit_measure_catalog} borra por {@code code} en vez de por {@code id}
+     * y cumpliría igual el día que se le ponga {@code @Version}.
+     */
+    static ArchCondition<JavaClass> ligarLaVersionEnElBorradoLogico() {
+        return new ArchCondition<>("acotar por la columna version el WHERE de su @SQLDelete") {
+            @Override
+            public void check(JavaClass entidad, ConditionEvents events) {
+                if (!tieneCampoVersion(entidad)) {
+                    return;
+                }
+                String sql = entidad.getAnnotationOfType(SQLDelete.class).sql();
+                events.add(new SimpleConditionEvent(entidad, condicionaPorVersion(sql),
+                        entidad.getSimpleName() + " lleva @Version, así que Hibernate liga DOS"
+                                + " parámetros a su @SQLDelete (id y luego version); este WHERE"
+                                + " solo nombra uno y el borrado lógico queda roto en ejecución."
+                                + " Añádele AND version = ? al final. SQL actual: " + sql));
+            }
+        };
+    }
+
+    /**
+     * BE-26, la parte que impide que la lista mienta. Una lista de exenciones que
+     * nadie limpia acaba perdonando a entidades que ya no existen y —peor— tapando
+     * a entidades que sí se versionaron: el día que alguien le ponga
+     * {@code @Version} a una exenta y no borre su línea, la lista seguirá afirmando
+     * por escrito algo falso y nadie se enterará.
+     *
+     * <p>
+     * El sujeto real de la regla es la lista, no cada entidad, así que el censo se
+     * levanta en {@code init(…)} y las violaciones se emiten en {@code finish(…)},
+     * una por entrada podrida: entrada duplicada, entidad borrada o entidad ya
+     * versionada.
+     */
+    static ArchCondition<JavaClass> mantenerLaListaDeExencionesAlDia(
+            List<ExencionDeVersion> exenciones) {
+        return new ArchCondition<>(
+                "corresponder a una entidad que existe y que sigue sin @Version") {
+            private final Set<String> existentes = new HashSet<>();
+            private final Set<String> versionadas = new HashSet<>();
+
+            @Override
+            public void init(Collection<JavaClass> entidades) {
+                existentes.clear();
+                versionadas.clear();
+                for (JavaClass entidad : entidades) {
+                    existentes.add(entidad.getSimpleName());
+                    if (tieneCampoVersion(entidad)) {
+                        versionadas.add(entidad.getSimpleName());
+                    }
+                }
+            }
+
+            @Override
+            public void check(JavaClass entidad, ConditionEvents events) {
+                // Nada por entidad: lo que se juzga es la lista, y para eso hace
+                // falta el censo completo. Ver finish().
+            }
+
+            @Override
+            public void finish(ConditionEvents events) {
+                Set<String> vistas = new HashSet<>();
+                for (ExencionDeVersion exencion : exenciones) {
+                    String nombre = exencion.entidad();
+                    if (!vistas.add(nombre)) {
+                        events.add(SimpleConditionEvent.violated(exencion, nombre
+                                + " aparece dos veces en ENTIDADES_EXENTAS_DE_VERSION: deja una"
+                                + " sola entrada, con el motivo que de verdad aplica"));
+                    } else if (!existentes.contains(nombre)) {
+                        events.add(SimpleConditionEvent.violated(exencion, nombre
+                                + " figura en ENTIDADES_EXENTAS_DE_VERSION y ya no es ninguna"
+                                + " clase @Entity: bórralo de la lista"));
+                    } else if (versionadas.contains(nombre)) {
+                        events.add(SimpleConditionEvent.violated(exencion, nombre
+                                + " ya declara @Version y sigue exento como " + exencion.codigo()
+                                + ": sácalo de ENTIDADES_EXENTAS_DE_VERSION para que la lista"
+                                + " siga diciendo la verdad"));
+                    }
+                }
+            }
+        };
+    }
+
+    /** Un {@code @Version} declarado en la propia entidad o heredado. */
+    private static boolean tieneCampoVersion(JavaClass entidad) {
+        return entidad.getAllFields().stream()
+                .anyMatch(campo -> campo.isAnnotatedWith(Version.class));
+    }
+
+    /**
+     * Busca la condición sobre la columna {@code version} dentro del {@code WHERE}.
+     */
+    private static boolean condicionaPorVersion(String sql) {
+        String normalizado = sql.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        int where = normalizado.indexOf(WHERE);
+        return where >= 0 && CONDICION_DE_VERSION
+                .matcher(normalizado.substring(where + WHERE.length())).find();
+    }
+
+    /**
+     * Índice por nombre simple; el duplicado no revienta aquí, lo denuncia la
+     * regla.
+     */
+    private static Map<String, ExencionDeVersion> indexar(List<ExencionDeVersion> exenciones) {
+        return exenciones.stream().collect(Collectors.toMap(ExencionDeVersion::entidad,
+                exencion -> exencion, (primera, repetida) -> primera, LinkedHashMap::new));
     }
 }

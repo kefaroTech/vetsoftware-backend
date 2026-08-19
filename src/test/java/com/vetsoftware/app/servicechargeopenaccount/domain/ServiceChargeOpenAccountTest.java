@@ -64,8 +64,8 @@ class ServiceChargeOpenAccountTest {
                     ServiceChargeOpenAccountMother.IVA_19, true, new BigDecimal("19.00"), "IVA 19%",
                     "IVA", "GRAVADO", ServiceChargeOpenAccountMother.BASE,
                     ServiceChargeOpenAccountMother.IMPUESTO, ServiceChargeOpenAccountMother.TOTAL,
-                    openAccount, createdBy, ServiceChargeOpenAccountMother.CREADO, true, false,
-                    null, null, null, null);
+                    openAccount, createdBy, ServiceChargeOpenAccountMother.CREADO, null, true,
+                    false, null, null, null, null);
         }
 
         private void applyTo(ServiceChargeOpenAccount charge) {

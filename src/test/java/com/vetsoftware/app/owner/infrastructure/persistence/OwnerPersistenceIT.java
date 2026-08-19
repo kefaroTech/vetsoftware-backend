@@ -81,7 +81,7 @@ class OwnerPersistenceIT extends AbstractDataJpaTest {
                 OwnerDocumentType.CEDULA_CIUDADANIA, PersonType.NATURAL, null, null,
                 "Calle 1 # 2-3", "3001112233", new CityRef(CIUDAD, nombreDeLaCiudadSembrada),
                 new CompanyRef(companyId, "Veterinaria de prueba", "900123456"), false,
-                TaxRegime.NO_RESPONSABLE_IVA, FiscalResponsibility.NO_APLICA, CREADO, true);
+                TaxRegime.NO_RESPONSABLE_IVA, FiscalResponsibility.NO_APLICA, CREADO, null, true);
     }
 
     private Owner guardar(String nombre, String documento) {

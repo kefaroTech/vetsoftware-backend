@@ -97,7 +97,7 @@ class HospitalizationTest {
 
         private Hospitalization build() {
             return new Hospitalization(id, date, startDate, endDate, type, reasonLeaving, reason,
-                    observations, animal, consultation, company, HospitalizationMother.CREADO,
+                    observations, animal, consultation, company, HospitalizationMother.CREADO, null,
                     true);
         }
 

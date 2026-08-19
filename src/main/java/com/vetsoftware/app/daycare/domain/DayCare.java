@@ -14,11 +14,12 @@ public class DayCare {
     private AnimalRef animal;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public DayCare(Long id, LocalDate date, LocalDate startDate, LocalDate endDate,
             DayCareType type, String objects, String observations, AnimalRef animal,
-            CompanyRef company, LocalDateTime createdDate, boolean enabled) {
+            CompanyRef company, LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, startDate, endDate, type, objects, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -30,6 +31,7 @@ public class DayCare {
         this.animal = animal;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -37,7 +39,7 @@ public class DayCare {
             DayCareType type, String objects, String observations, AnimalRef animal,
             CompanyRef company) {
         return new DayCare(null, date, startDate, endDate, type, objects, observations, animal,
-                company, LocalDateTime.now(), true);
+                company, LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, LocalDate startDate, LocalDate endDate, DayCareType type,
@@ -120,6 +122,10 @@ public class DayCare {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

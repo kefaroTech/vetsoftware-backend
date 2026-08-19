@@ -92,6 +92,7 @@ public class ElectronicDocument {
     private boolean reversed;
 
     private final LocalDateTime createdDate;
+    private Long version;
     private final boolean enabled;
 
     // Idempotencia de la venta POS: UUID que el cliente genera por apertura del
@@ -121,11 +122,11 @@ public class ElectronicDocument {
             IssuerSnapshot issuer, CustomerSnapshot customer, BigDecimal lineExtensionAmount,
             BigDecimal taxExclusiveAmount, BigDecimal taxInclusiveAmount, BigDecimal payableAmount,
             PaymentForm paymentForm, List<ElectronicDocumentLine> lines,
-            List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, boolean enabled,
-            DocumentReference reference, String noteReasonCode, String noteReasonText,
-            boolean reversed, BigDecimal reteFuenteAmount, BigDecimal reteIvaAmount,
-            BigDecimal reteIcaAmount, String clientRequestId, Long issuedByEmployeeId,
-            Long branchId) {
+            List<ElectronicDocumentPayment> payments, LocalDateTime createdDate, Long version,
+            boolean enabled, DocumentReference reference, String noteReasonCode,
+            String noteReasonText, boolean reversed, BigDecimal reteFuenteAmount,
+            BigDecimal reteIvaAmount, BigDecimal reteIcaAmount, String clientRequestId,
+            Long issuedByEmployeeId, Long branchId) {
         validate(companyId, documentType, issueDate, issueTime, dianStatus, issuer, customer,
                 lineExtensionAmount, taxExclusiveAmount, taxInclusiveAmount, payableAmount,
                 paymentForm, lines);
@@ -168,6 +169,7 @@ public class ElectronicDocument {
         this.reteIvaAmount = reteIvaAmount == null ? BigDecimal.ZERO : reteIvaAmount;
         this.reteIcaAmount = reteIcaAmount == null ? BigDecimal.ZERO : reteIcaAmount;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.clientRequestId = clientRequestId;
         this.issuedByEmployeeId = issuedByEmployeeId;
@@ -215,8 +217,8 @@ public class ElectronicDocument {
         return new ElectronicDocument(null, companyId, openAccountId, documentType, null, null,
                 null, now.toLocalDate(), issueTime, null, null, null, null, null, null, null,
                 DianStatus.PENDIENTE, null, issuer, customer, base, base, totalWithTax,
-                totalWithTax, paymentForm, lines, payments, LocalDateTime.now(), true, null, null,
-                null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca(), clientRequestId,
+                totalWithTax, paymentForm, lines, payments, LocalDateTime.now(), null, true, null,
+                null, null, false, wh.reteFuente(), wh.reteIva(), wh.reteIca(), clientRequestId,
                 issuedByEmployeeId, branchId);
     }
 
@@ -299,8 +301,8 @@ public class ElectronicDocument {
                 null, null, now.toLocalDate(), issueTime, null, null, null, null, null, null, null,
                 DianStatus.PENDIENTE, null, original.issuer, original.customer, noteLineExtension,
                 noteLineExtension, noteTaxInclusive, noteTaxInclusive, original.paymentForm,
-                noteLines, notePayments, LocalDateTime.now(), true, ref, reasonCode, reasonText,
-                false, Money.scaled(original.reteFuenteAmount.multiply(ratio)),
+                noteLines, notePayments, LocalDateTime.now(), null, true, ref, reasonCode,
+                reasonText, false, Money.scaled(original.reteFuenteAmount.multiply(ratio)),
                 Money.scaled(original.reteIvaAmount.multiply(ratio)),
                 Money.scaled(original.reteIcaAmount.multiply(ratio)), null, issuedByEmployeeId,
                 original.branchId);
@@ -780,6 +782,10 @@ public class ElectronicDocument {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

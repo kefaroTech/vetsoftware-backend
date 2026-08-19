@@ -16,12 +16,13 @@ public class Hospitalization {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Hospitalization(Long id, LocalDate date, LocalDate startDate, LocalDate endDate,
             HospitalizationType type, ReasonLeaving reasonLeaving, String reason,
             String observations, AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, startDate, endDate, type, reason, observations, animal, company);
         this.id = id;
         this.date = date;
@@ -35,6 +36,7 @@ public class Hospitalization {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -43,7 +45,7 @@ public class Hospitalization {
             String observations, AnimalRef animal, ConsultationRef consultation,
             CompanyRef company) {
         return new Hospitalization(null, date, startDate, endDate, type, reasonLeaving, reason,
-                observations, animal, consultation, company, LocalDateTime.now(), true);
+                observations, animal, consultation, company, LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, LocalDate startDate, LocalDate endDate,
@@ -132,6 +134,10 @@ public class Hospitalization {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

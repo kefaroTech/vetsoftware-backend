@@ -18,6 +18,7 @@ public class HospitalizationObservationJpaMapper {
         entity.setHospitalization(hospitalization);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(observation.getCreatedDate());
+        entity.setVersion(observation.getVersion());
         entity.setEnabled(observation.isEnabled());
         return entity;
     }
@@ -35,6 +36,7 @@ public class HospitalizationObservationJpaMapper {
     public HospitalizationObservation toDomain(HospitalizationObservationJpaEntity entity,
             HospitalizationRef hospitalizationRef, EmployeeRef createdByRef) {
         return new HospitalizationObservation(entity.getId(), entity.getDescription(),
-                hospitalizationRef, createdByRef, entity.getCreatedDate(), entity.isEnabled());
+                hospitalizationRef, createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

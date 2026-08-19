@@ -46,7 +46,7 @@ class UpdateBranchServiceTest {
     private final LocalDateTime created = LocalDateTime.of(2020, 1, 1, 10, 0);
 
     private Branch existing() {
-        return new Branch(3L, "Old", "OLD", "addr", "phone", city, company, created, true);
+        return new Branch(3L, "Old", "OLD", "addr", "phone", city, company, created, null, true);
     }
 
     @Test

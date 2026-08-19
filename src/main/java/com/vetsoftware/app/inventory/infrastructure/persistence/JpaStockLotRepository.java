@@ -53,6 +53,7 @@ public class JpaStockLotRepository implements StockLotRepository {
         e.setUnitCost(lot.getUnitCost());
         e.setReceivedDate(lot.getReceivedDate());
         e.setCreatedDate(lot.getCreatedDate());
+        e.setVersion(lot.getVersion());
         e.setEnabled(lot.isEnabled());
         return e;
     }
@@ -60,6 +61,6 @@ public class JpaStockLotRepository implements StockLotRepository {
     private static StockLot toDomain(StockLotJpaEntity e) {
         return new StockLot(e.getId(), e.getCompanyId(), e.getBranchId(), e.getProductId(),
                 e.getLotNumber(), e.getExpireDate(), e.getQuantityAvailable(), e.getUnitCost(),
-                e.getReceivedDate(), e.getCreatedDate(), e.isEnabled());
+                e.getReceivedDate(), e.getCreatedDate(), e.getVersion(), e.isEnabled());
     }
 }

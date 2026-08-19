@@ -57,7 +57,7 @@ class CompanyTaxProfileJpaMapperTest {
                 CompanyDocumentType.NIT, CompanyTaxProfileMother.NIT,
                 CompanyTaxProfileMother.NIT_DV, CompanyTaxProfileMother.RAZON_SOCIAL,
                 TaxRegime.RESPONSABLE_IVA, CompanyTaxProfileMother.EMAIL_FISCAL, null, null,
-                List.of(CompanyTaxProfileMother.O13), null, true);
+                List.of(CompanyTaxProfileMother.O13), null, null, true);
 
         CompanyTaxProfileJpaEntity entity = mapper.toJpa(profile, null, null);
 

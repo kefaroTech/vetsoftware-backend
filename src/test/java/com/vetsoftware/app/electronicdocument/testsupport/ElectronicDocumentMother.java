@@ -174,7 +174,7 @@ public final class ElectronicDocumentMother {
                 payable.subtract(bd("190.00")).max(BigDecimal.ZERO),
                 payable.subtract(bd("190.00")).max(BigDecimal.ZERO), payable, payable,
                 PaymentForm.CONTADO, unaLineaGravada(), efectivo("1190.00"),
-                LocalDateTime.of(2026, 3, 12, 11, 0), true, reference, "2",
+                LocalDateTime.of(2026, 3, 12, 11, 0), null, true, reference, "2",
                 "Anulacion de factura electronica", false, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, null, EMPLOYEE_ID, BRANCH_ID);
     }
@@ -194,7 +194,7 @@ public final class ElectronicDocumentMother {
                 status == DianStatus.VALIDADO ? LocalDateTime.of(2026, 3, 10, 10, 16) : null,
                 issuer(), customer(), bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"),
                 PaymentForm.CONTADO, unaLineaGravada(), efectivo("1190.00"),
-                LocalDateTime.of(2026, 3, 10, 10, 15), true, null, null, null, reversed,
+                LocalDateTime.of(2026, 3, 10, 10, 15), null, true, null, null, null, reversed,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, EMPLOYEE_ID, BRANCH_ID);
     }
 }

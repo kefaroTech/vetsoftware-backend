@@ -36,6 +36,7 @@ public class AnimalJpaMapper {
         entity.setDeceasedDate(animal.getDeceasedDate());
         entity.setCompany(company);
         entity.setCreatedDate(animal.getCreatedDate());
+        entity.setVersion(animal.getVersion());
         entity.setEnabled(animal.isEnabled());
         return entity;
     }
@@ -59,6 +60,6 @@ public class AnimalJpaMapper {
                 ownerRef, entity.getGender(), entity.getWeightType(), entity.getAnimalType(),
                 entity.getReproductiveState(), colorRef, entity.getBod(), entity.getSize(),
                 entity.isDeceased(), entity.getDeceasedDate(), companyRef, entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

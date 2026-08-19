@@ -16,6 +16,7 @@ public class VaccinationTypeJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(vaccinationType.isGeneral());
         entity.setCreatedDate(vaccinationType.getCreatedDate());
+        entity.setVersion(vaccinationType.getVersion());
         entity.setEnabled(vaccinationType.isEnabled());
         return entity;
     }
@@ -29,6 +30,6 @@ public class VaccinationTypeJpaMapper {
     public VaccinationType toDomain(VaccinationTypeJpaEntity entity, CompanyRef companyRef) {
         return new VaccinationType(entity.getId(), entity.getName(), entity.getDescription(),
                 companyRef, Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

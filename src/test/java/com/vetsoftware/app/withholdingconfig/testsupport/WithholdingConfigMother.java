@@ -17,11 +17,11 @@ public final class WithholdingConfigMother {
 
     public static WithholdingConfig configValida() {
         return new WithholdingConfig(10L, VETERINARIA_CENTRAL, new BigDecimal("2.5"),
-                new BigDecimal("15.0"), new BigDecimal("1.0"), CREADO, true);
+                new BigDecimal("15.0"), new BigDecimal("1.0"), CREADO, null, true);
     }
 
     public static WithholdingConfig deshabilitada() {
         return new WithholdingConfig(11L, VETERINARIA_CENTRAL, new BigDecimal("2.5"),
-                new BigDecimal("15.0"), new BigDecimal("1.0"), CREADO, false);
+                new BigDecimal("15.0"), new BigDecimal("1.0"), CREADO, null, false);
     }
 }

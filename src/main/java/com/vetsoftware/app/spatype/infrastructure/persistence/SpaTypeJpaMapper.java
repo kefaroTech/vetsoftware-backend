@@ -11,12 +11,13 @@ public class SpaTypeJpaMapper {
         entity.setName(spaType.getName());
         entity.setDescription(spaType.getDescription());
         entity.setCreatedDate(spaType.getCreatedDate());
+        entity.setVersion(spaType.getVersion());
         entity.setEnabled(spaType.isEnabled());
         return entity;
     }
 
     public SpaType toDomain(SpaTypeJpaEntity entity) {
         return new SpaType(entity.getId(), entity.getName(), entity.getDescription(),
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

@@ -22,6 +22,7 @@ public class Animal {
     private LocalDate deceasedDate;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     // Peso actual DERIVADO del último WeightRecord habilitado (no es una columna).
@@ -37,7 +38,7 @@ public class Animal {
             OwnerRef owner, Gender gender, WeightType weightType, AnimalType animalType,
             ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod, Integer size,
             boolean deceased, LocalDate deceasedDate, CompanyRef company, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(name, code, specie, breed, owner, gender, weightType, animalType,
                 reproductiveState, color, size, deceased, deceasedDate, company);
         this.id = id;
@@ -57,6 +58,7 @@ public class Animal {
         this.deceasedDate = deceasedDate;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -66,7 +68,7 @@ public class Animal {
             boolean deceased, LocalDate deceasedDate, CompanyRef company) {
         return new Animal(null, name, code, specie, breed, owner, gender, weightType, animalType,
                 reproductiveState, color, bod, size, deceased, deceasedDate, company,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String code, SpecieRef specie, BreedRef breed, OwnerRef owner,
@@ -204,6 +206,10 @@ public class Animal {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

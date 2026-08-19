@@ -27,6 +27,7 @@ public class CompanyTaxProfileJpaMapper {
         entity.setCommercialName(profile.getCommercialName());
         entity.setEconomicActivity(economicActivity);
         entity.setCreatedDate(profile.getCreatedDate());
+        entity.setVersion(profile.getVersion());
         entity.setEnabled(profile.isEnabled());
 
         List<CompanyTaxProfileResponsibilityJpaEntity> children = profile.getResponsibilities()
@@ -66,6 +67,6 @@ public class CompanyTaxProfileJpaMapper {
                 entity.getCompanyDocumentId(), entity.getCompanyDocumentVerificationDigit(),
                 entity.getLegalName(), entity.getTaxRegime(), entity.getFiscalEmail(),
                 entity.getCommercialName(), economicActivityRef, responsibilities,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

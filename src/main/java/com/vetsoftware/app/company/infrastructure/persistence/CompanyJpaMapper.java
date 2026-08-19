@@ -21,6 +21,7 @@ public class CompanyJpaMapper {
         entity.setCity(city);
         entity.setMembership(membership);
         entity.setCreatedDate(company.getCreatedDate());
+        entity.setVersion(company.getVersion());
         entity.setEnabled(company.isEnabled());
         return entity;
     }
@@ -35,6 +36,6 @@ public class CompanyJpaMapper {
     public Company toDomain(CompanyJpaEntity entity, CityRef cityRef, MembershipRef membershipRef) {
         return new Company(entity.getId(), entity.getName(), entity.getIdentifier(),
                 entity.getAddress(), entity.getContactNumber(), cityRef, membershipRef,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

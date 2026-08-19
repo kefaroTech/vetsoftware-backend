@@ -8,24 +8,26 @@ public class HospitalizationProgressNote {
     private HospitalizationRef hospitalization;
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public HospitalizationProgressNote(Long id, String description,
             HospitalizationRef hospitalization, EmployeeRef createdBy, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(description, hospitalization, createdBy);
         this.id = id;
         this.description = description;
         this.hospitalization = hospitalization;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static HospitalizationProgressNote create(String description,
             HospitalizationRef hospitalization, EmployeeRef createdBy) {
         return new HospitalizationProgressNote(null, description, hospitalization, createdBy,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(String description) {
@@ -71,6 +73,10 @@ public class HospitalizationProgressNote {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

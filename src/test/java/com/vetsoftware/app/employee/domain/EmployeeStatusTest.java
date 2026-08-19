@@ -27,7 +27,7 @@ class EmployeeStatusTest {
     private static Employee conEstado(EmployeeStatus status) {
         return new Employee(EmployeeMother.EMPLOYEE_ID, "VV-MARIANA", EmployeeMother.HASH,
                 "Mariana Rojas", "mariana@vetrina.co", EmployeeMother.VETRINA,
-                EmployeeMother.CREADO, true, true, false, status, 0L);
+                EmployeeMother.CREADO, null, true, true, false, status, 0L);
     }
 
     @Nested
@@ -85,7 +85,7 @@ class EmployeeStatusTest {
             // Filas viejas y mapeos parciales pueden traer null: el agregado no puede
             // quedar sin estado porque el DTO hace status.name().
             Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", EmployeeMother.VETRINA,
-                    LocalDateTime.of(2026, 1, 1, 0, 0), true, true, false, null, 0L);
+                    LocalDateTime.of(2026, 1, 1, 0, 0), null, true, true, false, null, 0L);
 
             assertThat(employee.getStatus()).isEqualTo(EmployeeStatus.ACTIVE);
         }
@@ -114,7 +114,7 @@ class EmployeeStatusTest {
             // cuando cambia efectivamente la clave.
             Employee employee = new Employee(EmployeeMother.EMPLOYEE_ID, "VV-MARIANA",
                     EmployeeMother.HASH, "Mariana Rojas", "mariana@vetrina.co",
-                    EmployeeMother.VETRINA, EmployeeMother.CREADO, true, true, true,
+                    EmployeeMother.VETRINA, EmployeeMother.CREADO, null, true, true, true,
                     EmployeeStatus.INVITED, 0L);
 
             employee.activate();

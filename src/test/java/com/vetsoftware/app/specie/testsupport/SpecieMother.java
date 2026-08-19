@@ -28,11 +28,11 @@ public final class SpecieMother {
     }
 
     public static Specie perro(Long id) {
-        return new Specie(id, "Perro", CREADO, true);
+        return new Specie(id, "Perro", CREADO, null, true);
     }
 
     public static Specie deshabilitada() {
-        return new Specie(SPECIE_ID, "Perro", CREADO, false);
+        return new Specie(SPECIE_ID, "Perro", CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las fixtures de arriba. */

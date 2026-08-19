@@ -7,11 +7,12 @@ public class SystemUser {
     private String code;
     private String hashPassword;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private Long authVersion;
 
     public SystemUser(Long id, String code, String hashPassword, LocalDateTime createdDate,
-            boolean enabled, Long authVersion) {
+            Long version, boolean enabled, Long authVersion) {
         if (code == null || code.isBlank())
             throw new IllegalArgumentException("code is required");
         if (code.length() > 50)
@@ -22,12 +23,13 @@ public class SystemUser {
         this.code = code;
         this.hashPassword = hashPassword;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.authVersion = authVersion == null ? 0L : authVersion;
     }
 
     public static SystemUser create(String code, String hashPassword) {
-        return new SystemUser(null, code, hashPassword, LocalDateTime.now(), true, 0L);
+        return new SystemUser(null, code, hashPassword, LocalDateTime.now(), null, true, 0L);
     }
 
     public void update(String code) {
@@ -60,6 +62,10 @@ public class SystemUser {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -16,6 +16,7 @@ public class EmployeeJpaMapper {
         entity.setEmail(employee.getEmail());
         entity.setCompany(company);
         entity.setCreatedDate(employee.getCreatedDate());
+        entity.setVersion(employee.getVersion());
         entity.setEnabled(employee.isEnabled());
         entity.setEmailVerified(employee.isEmailVerified());
         entity.setMustChangePassword(employee.isMustChangePassword());
@@ -32,7 +33,7 @@ public class EmployeeJpaMapper {
     public Employee toDomain(EmployeeJpaEntity entity, CompanyRef companyRef) {
         return new Employee(entity.getId(), entity.getEmployeeCode(), entity.getHashPassword(),
                 entity.getName(), entity.getEmail(), companyRef, entity.getCreatedDate(),
-                entity.isEnabled(), entity.isEmailVerified(), entity.isMustChangePassword(),
-                entity.getStatus(), entity.getAuthVersion());
+                entity.getVersion(), entity.isEnabled(), entity.isEmailVerified(),
+                entity.isMustChangePassword(), entity.getStatus(), entity.getAuthVersion());
     }
 }

@@ -145,7 +145,7 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
                 CompanyTaxProfileMother.NIT, CompanyTaxProfileMother.NIT_DV,
                 CompanyTaxProfileMother.RAZON_SOCIAL, regimen, CompanyTaxProfileMother.EMAIL_FISCAL,
                 CompanyTaxProfileMother.NOMBRE_COMERCIAL, actividad, responsabilidades, CREADO,
-                true);
+                null, true);
     }
 
     /**

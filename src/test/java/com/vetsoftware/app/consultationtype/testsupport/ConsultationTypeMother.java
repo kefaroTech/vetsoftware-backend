@@ -30,11 +30,11 @@ public final class ConsultationTypeMother {
     }
 
     public static ConsultationType consultaGeneral(Long id) {
-        return new ConsultationType(id, NOMBRE, DESCRIPCION, CREADO, true);
+        return new ConsultationType(id, NOMBRE, DESCRIPCION, CREADO, null, true);
     }
 
     public static ConsultationType deshabilitada() {
-        return new ConsultationType(ID, NOMBRE, DESCRIPCION, CREADO, false);
+        return new ConsultationType(ID, NOMBRE, DESCRIPCION, CREADO, null, false);
     }
 
     public static CreateConsultationTypeCommand comandoCrear() {

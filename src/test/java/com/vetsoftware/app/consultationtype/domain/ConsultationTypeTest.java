@@ -38,7 +38,7 @@ class ConsultationTypeTest {
         @DisplayName("el constructor publico conserva cada campo tal cual se le pasa")
         void constructor_publico_conserva_cada_campo() {
             ConsultationType tipo = new ConsultationType(7L, "Consulta general", DESCRIPCION_VALIDA,
-                    CREADO, false);
+                    CREADO, null, false);
 
             assertThat(tipo.getId()).isEqualTo(7L);
             assertThat(tipo.getName()).isEqualTo("Consulta general");
@@ -58,7 +58,7 @@ class ConsultationTypeTest {
         void nombre_invalido_lanza_excepcion(String nombreInvalido, String descripcionCaso,
                 String mensajeEsperado) {
             assertThatThrownBy(() -> new ConsultationType(null, nombreInvalido, DESCRIPCION_VALIDA,
-                    CREADO, true)).isInstanceOf(IllegalArgumentException.class)
+                    CREADO, null, true)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining(mensajeEsperado);
         }
 
@@ -74,7 +74,7 @@ class ConsultationTypeTest {
             String nombreLimite = "a".repeat(100);
 
             ConsultationType tipo = new ConsultationType(null, nombreLimite, DESCRIPCION_VALIDA,
-                    CREADO, true);
+                    CREADO, null, true);
 
             assertThat(tipo.getName()).hasSize(100);
         }
@@ -90,7 +90,8 @@ class ConsultationTypeTest {
         void descripcion_invalida_lanza_excepcion(String descripcionInvalida,
                 String descripcionCaso, String mensajeEsperado) {
             assertThatThrownBy(() -> new ConsultationType(null, "Consulta general",
-                    descripcionInvalida, CREADO, true)).isInstanceOf(IllegalArgumentException.class)
+                    descripcionInvalida, CREADO, null, true))
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining(mensajeEsperado);
         }
 
@@ -106,7 +107,7 @@ class ConsultationTypeTest {
             String descripcionLimite = "a".repeat(500);
 
             ConsultationType tipo = new ConsultationType(null, "Consulta general",
-                    descripcionLimite, CREADO, true);
+                    descripcionLimite, CREADO, null, true);
 
             assertThat(tipo.getDescription()).hasSize(500);
         }
@@ -120,7 +121,7 @@ class ConsultationTypeTest {
         @DisplayName("update reemplaza nombre y descripcion tras validar")
         void update_reemplaza_nombre_y_descripcion_tras_validar() {
             ConsultationType tipo = new ConsultationType(7L, "Original", DESCRIPCION_VALIDA, CREADO,
-                    true);
+                    null, true);
 
             tipo.update("Actualizado", "Nueva descripcion de la consulta");
 
@@ -132,7 +133,7 @@ class ConsultationTypeTest {
         @DisplayName("update con nombre invalido lanza y no deja el estado a medias")
         void update_con_nombre_invalido_lanza_y_no_deja_estado_a_medias() {
             ConsultationType tipo = new ConsultationType(7L, "Original", DESCRIPCION_VALIDA, CREADO,
-                    true);
+                    null, true);
 
             assertThatThrownBy(() -> tipo.update(null, "Nueva descripcion de la consulta"))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -145,7 +146,7 @@ class ConsultationTypeTest {
         @DisplayName("update con descripcion invalida lanza y no deja el estado a medias")
         void update_con_descripcion_invalida_lanza_y_no_deja_estado_a_medias() {
             ConsultationType tipo = new ConsultationType(7L, "Original", DESCRIPCION_VALIDA, CREADO,
-                    true);
+                    null, true);
 
             assertThatThrownBy(() -> tipo.update("Nuevo nombre", ""))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -158,7 +159,7 @@ class ConsultationTypeTest {
         @DisplayName("enable y disable cambian el estado")
         void enable_y_disable_cambian_el_estado() {
             ConsultationType tipo = new ConsultationType(7L, "Original", DESCRIPCION_VALIDA, CREADO,
-                    false);
+                    null, false);
 
             tipo.enable();
             assertThat(tipo.isEnabled()).isTrue();

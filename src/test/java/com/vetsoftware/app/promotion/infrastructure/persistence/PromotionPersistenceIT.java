@@ -83,7 +83,7 @@ class PromotionPersistenceIT extends AbstractDataJpaTest {
     private Promotion guardar(String nombre, CompanyRef empresa, PromotionStatus estado) {
         return repository.save(new Promotion(null, nombre, PromotionType.DISCOUNT,
                 ApplicationType.CATEGORY, SchemaSeed.CATEGORY_ID, ValueType.PERCENTAGE,
-                new BigDecimal("15.00"), INICIO, FIN, estado, empresa, CREADA, true));
+                new BigDecimal("15.00"), INICIO, FIN, estado, empresa, CREADA, null, true));
     }
 
     private Promotion eneroPerruno() {

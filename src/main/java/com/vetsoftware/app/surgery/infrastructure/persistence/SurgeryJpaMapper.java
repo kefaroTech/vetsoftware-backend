@@ -30,6 +30,7 @@ public class SurgeryJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(surgery.getCreatedDate());
+        entity.setVersion(surgery.getVersion());
         entity.setEnabled(surgery.isEnabled());
         return entity;
     }
@@ -50,6 +51,7 @@ public class SurgeryJpaMapper {
         return new Surgery(entity.getId(), entity.getDate(), surgeryTypeRef,
                 entity.getDescription(), entity.getMedicament(), entity.getObservations(),
                 entity.getComplications(), SurgeryStatus.valueOf(entity.getStatus()), animalRef,
-                consultationRef, companyRef, entity.getCreatedDate(), entity.isEnabled());
+                consultationRef, companyRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

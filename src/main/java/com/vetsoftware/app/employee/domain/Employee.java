@@ -10,6 +10,7 @@ public class Employee {
     private String email;
     private final CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private boolean emailVerified;
     private boolean mustChangePassword;
@@ -17,8 +18,9 @@ public class Employee {
     private Long authVersion;
 
     public Employee(Long id, String employeeCode, String hashPassword, String name, String email,
-            CompanyRef company, LocalDateTime createdDate, boolean enabled, boolean emailVerified,
-            boolean mustChangePassword, EmployeeStatus status, Long authVersion) {
+            CompanyRef company, LocalDateTime createdDate, Long version, boolean enabled,
+            boolean emailVerified, boolean mustChangePassword, EmployeeStatus status,
+            Long authVersion) {
         if (employeeCode == null || employeeCode.isBlank())
             throw new IllegalArgumentException("employeeCode is required");
         if (employeeCode.length() > 50)
@@ -42,6 +44,7 @@ public class Employee {
         this.email = email;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.emailVerified = emailVerified;
         this.mustChangePassword = mustChangePassword;
@@ -61,7 +64,7 @@ public class Employee {
             String email, CompanyRef company, boolean emailVerified, boolean mustChangePassword) {
         EmployeeStatus status = mustChangePassword ? EmployeeStatus.INVITED : EmployeeStatus.ACTIVE;
         return new Employee(null, employeeCode, hashPassword, name, email, company,
-                LocalDateTime.now(), true, emailVerified, mustChangePassword, status, 0L);
+                LocalDateTime.now(), null, true, emailVerified, mustChangePassword, status, 0L);
     }
 
     public void update(String employeeCode, String name, String email) {
@@ -187,6 +190,10 @@ public class Employee {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public Long getAuthVersion() {

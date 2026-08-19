@@ -52,7 +52,7 @@ class AnimalColorTest {
         }
 
         private AnimalColor build() {
-            return new AnimalColor(id, name, specie, createdDate, enabled);
+            return new AnimalColor(id, name, specie, createdDate, null, enabled);
         }
     }
 

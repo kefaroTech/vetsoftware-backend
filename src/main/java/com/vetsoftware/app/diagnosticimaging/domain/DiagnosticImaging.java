@@ -16,13 +16,14 @@ public class DiagnosticImaging {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public DiagnosticImaging(Long id, LocalDate date,
             DiagnosticImagingTypeRef diagnosticImagingType, String clinicalSigns, String studyType,
             String diagnosis, String observations, DiagnosticImagingStatus status, AnimalRef animal,
             ConsultationRef consultation, CompanyRef company, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(date, diagnosticImagingType, clinicalSigns, studyType, diagnosis, observations,
                 status, animal, company);
         this.id = id;
@@ -37,6 +38,7 @@ public class DiagnosticImaging {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -46,7 +48,7 @@ public class DiagnosticImaging {
             CompanyRef company) {
         return new DiagnosticImaging(null, date, diagnosticImagingType, clinicalSigns, studyType,
                 diagnosis, observations, DiagnosticImagingStatus.PENDIENTE, animal, consultation,
-                company, LocalDateTime.now(), true);
+                company, LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, DiagnosticImagingTypeRef diagnosticImagingType,
@@ -146,6 +148,10 @@ public class DiagnosticImaging {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -15,10 +15,11 @@ public class WithholdingConfig {
     private BigDecimal reteIvaRate;
     private BigDecimal reteIcaRate;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public WithholdingConfig(Long id, CompanyRef company, BigDecimal reteFuenteRate,
-            BigDecimal reteIvaRate, BigDecimal reteIcaRate, LocalDateTime createdDate,
+            BigDecimal reteIvaRate, BigDecimal reteIcaRate, LocalDateTime createdDate, Long version,
             boolean enabled) {
         validate(company, reteFuenteRate, reteIvaRate, reteIcaRate);
         this.id = id;
@@ -27,13 +28,14 @@ public class WithholdingConfig {
         this.reteIvaRate = reteIvaRate;
         this.reteIcaRate = reteIcaRate;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static WithholdingConfig create(CompanyRef company, BigDecimal reteFuenteRate,
             BigDecimal reteIvaRate, BigDecimal reteIcaRate) {
         return new WithholdingConfig(null, company, reteFuenteRate, reteIvaRate, reteIcaRate,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(BigDecimal reteFuenteRate, BigDecimal reteIvaRate, BigDecimal reteIcaRate) {
@@ -80,6 +82,10 @@ public class WithholdingConfig {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -50,7 +50,8 @@ class CompanySettingTest {
         }
 
         private CompanySetting build() {
-            return new CompanySetting(id, companyId, propertyName, value, createdDate, enabled);
+            return new CompanySetting(id, companyId, propertyName, value, createdDate, null,
+                    enabled);
         }
     }
 

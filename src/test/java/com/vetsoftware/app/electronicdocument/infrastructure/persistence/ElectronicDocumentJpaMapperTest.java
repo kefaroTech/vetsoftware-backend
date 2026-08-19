@@ -60,7 +60,7 @@ class ElectronicDocumentJpaMapperTest {
                 null, null, DianStatus.VALIDADO, LocalDateTime.of(2026, 3, 10, 10, 16), issuer,
                 customer, bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"),
                 PaymentForm.CONTADO, unaLineaGravada(), efectivo("1190.00"),
-                LocalDateTime.of(2026, 3, 10, 10, 15), true, null, null, null, false,
+                LocalDateTime.of(2026, 3, 10, 10, 15), null, true, null, null, null, false,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, EMPLOYEE_ID, BRANCH_ID);
     }
 

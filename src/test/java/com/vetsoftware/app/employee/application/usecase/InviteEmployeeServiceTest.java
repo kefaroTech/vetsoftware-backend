@@ -73,7 +73,7 @@ class InviteEmployeeServiceTest {
 
     private static Employee persisted() {
         return new Employee(55L, "VV-MARIANA", "$2a$10$hashed", "Mariana Rojas",
-                "mariana@vetrina.co", company(), LocalDateTime.now(), true, true, true,
+                "mariana@vetrina.co", company(), LocalDateTime.now(), null, true, true, true,
                 EmployeeStatus.INVITED, 0L);
     }
 

@@ -29,7 +29,7 @@ class SurgeryTest {
     private static Surgery cirugiaValida() {
         return new Surgery(300L, FECHA, OVARIOHISTERECTOMIA, "Ovariohisterectomia electiva",
                 "Ketamina 10mg", "Recuperacion normal", null, SurgeryStatus.PROGRAMADA, FIRULAIS,
-                CONSULTA, CLINICA, CREADO, true);
+                CONSULTA, CLINICA, CREADO, null, true);
     }
 
     @Nested
@@ -235,7 +235,7 @@ class SurgeryTest {
                 + " al constructor directamente, create() siempre pasa PROGRAMADA")
         void un_estado_nulo_en_el_constructor_publico_se_rechaza() {
             assertThatThrownBy(() -> new Surgery(null, FECHA, OVARIOHISTERECTOMIA, "Descripcion",
-                    null, null, null, null, FIRULAIS, null, CLINICA, CREADO, true))
+                    null, null, null, null, FIRULAIS, null, CLINICA, CREADO, null, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("status is required");
         }

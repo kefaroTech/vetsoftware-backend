@@ -84,7 +84,7 @@ class HospitalizationMedicationTest {
         private HospitalizationMedication build() {
             return new HospitalizationMedication(id, name, dose, frequency, guidelineType,
                     durationMeasure, durationQuantity, startDate, startTime, notes, hospitalization,
-                    createdBy, createdDate, enabled, suspensionDate, suspensionBy);
+                    createdBy, createdDate, null, enabled, suspensionDate, suspensionBy);
         }
 
         private void applyTo(HospitalizationMedication medication) {

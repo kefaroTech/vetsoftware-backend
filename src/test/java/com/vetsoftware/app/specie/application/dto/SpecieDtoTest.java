@@ -15,7 +15,7 @@ class SpecieDtoTest {
     @Test
     @DisplayName("from copia cada campo de la especie, campo por campo")
     void from_copia_cada_campo() {
-        Specie specie = new Specie(1L, "Perro", CREADO, true);
+        Specie specie = new Specie(1L, "Perro", CREADO, null, true);
 
         SpecieDto dto = SpecieDto.from(specie);
 
@@ -28,7 +28,7 @@ class SpecieDtoTest {
     @Test
     @DisplayName("from conserva una especie deshabilitada")
     void from_conserva_una_especie_deshabilitada() {
-        Specie specie = new Specie(1L, "Perro", CREADO, false);
+        Specie specie = new Specie(1L, "Perro", CREADO, null, false);
 
         assertThat(SpecieDto.from(specie).enabled()).isFalse();
     }

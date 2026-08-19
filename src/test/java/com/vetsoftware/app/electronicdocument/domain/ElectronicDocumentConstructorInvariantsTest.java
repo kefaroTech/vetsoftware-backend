@@ -46,8 +46,8 @@ class ElectronicDocumentConstructorInvariantsTest {
         return new ElectronicDocument(null, companyId, null, type, null, null, null, issueDate,
                 issueTime, null, null, null, null, null, null, null, status, null, issuer, customer,
                 lineExtension, taxExclusive, taxInclusive, payable, paymentForm, lines,
-                efectivo("1190.00"), LocalDateTime.of(2026, 3, 10, 10, 15), true, null, null, null,
-                false, null, null, null, null, null, branchId);
+                efectivo("1190.00"), LocalDateTime.of(2026, 3, 10, 10, 15), null, true, null, null,
+                null, false, null, null, null, null, null, branchId);
     }
 
     private static ElectronicDocument valido() {
@@ -194,8 +194,8 @@ class ElectronicDocumentConstructorInvariantsTest {
                     null, null, null, null, null, null, null, DianStatus.PENDIENTE, null, issuer(),
                     customer(), bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"),
                     PaymentForm.CONTADO, unaLineaGravada(), efectivo("1190.00"),
-                    LocalDateTime.of(2026, 3, 10, 10, 15), true, reference, reasonCode, "texto",
-                    false, null, null, null, null, null, 7L);
+                    LocalDateTime.of(2026, 3, 10, 10, 15), null, true, reference, reasonCode,
+                    "texto", false, null, null, null, null, null, 7L);
         }
 
         @ParameterizedTest
@@ -284,8 +284,8 @@ class ElectronicDocumentConstructorInvariantsTest {
                     ElectronicDocumentType.FE_VENTA, null, null, null, EMISION, HORA, null, null,
                     null, null, null, null, null, DianStatus.PENDIENTE, null, issuer(), customer(),
                     bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"), PaymentForm.CONTADO,
-                    unaLineaGravada(), null, LocalDateTime.of(2026, 3, 10, 10, 15), true, null,
-                    null, null, false, null, null, null, null, null, 7L);
+                    unaLineaGravada(), null, LocalDateTime.of(2026, 3, 10, 10, 15), null, true,
+                    null, null, null, false, null, null, null, null, null, 7L);
 
             assertThat(documento.getPayments()).isEmpty();
         }
@@ -297,8 +297,8 @@ class ElectronicDocumentConstructorInvariantsTest {
                     ElectronicDocumentType.FE_VENTA, null, null, null, EMISION, HORA, null, null,
                     null, null, null, null, null, DianStatus.PENDIENTE, null, issuer(), customer(),
                     bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"), PaymentForm.CONTADO,
-                    unaLineaGravada(), null, LocalDateTime.of(2026, 3, 10, 10, 15), true, null,
-                    null, null, false, null, null, null, null, null, 7L);
+                    unaLineaGravada(), null, LocalDateTime.of(2026, 3, 10, 10, 15), null, true,
+                    null, null, null, false, null, null, null, null, null, 7L);
 
             assertThat(documento.primaryPaymentMeansCode())
                     .isEqualTo(PaymentMeans.EFECTIVO.dianCode());
@@ -326,7 +326,7 @@ class ElectronicDocumentConstructorInvariantsTest {
                     DianStatus.VALIDADO, LocalDateTime.of(2026, 3, 10, 10, 16), issuer(),
                     customer(), bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"),
                     PaymentForm.CONTADO, unaLineaGravada(), efectivo("1190.00"),
-                    LocalDateTime.of(2026, 3, 10, 10, 15), true, null, null, null, false,
+                    LocalDateTime.of(2026, 3, 10, 10, 15), null, true, null, null, null, false,
                     bd("25.00"), bd("28.50"), bd("9.66"), "req-1", 4L, 7L);
 
             assertThat(documento.getId()).isEqualTo(55L);

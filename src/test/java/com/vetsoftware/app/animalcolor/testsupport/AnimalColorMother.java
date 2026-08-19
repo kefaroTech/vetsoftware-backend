@@ -32,11 +32,11 @@ public final class AnimalColorMother {
     }
 
     public static AnimalColor negro(Long id) {
-        return new AnimalColor(id, "Negro", PERRO, CREADO, true);
+        return new AnimalColor(id, "Negro", PERRO, CREADO, null, true);
     }
 
     public static AnimalColor deshabilitado() {
-        return new AnimalColor(ANIMAL_COLOR_ID, "Negro", PERRO, CREADO, false);
+        return new AnimalColor(ANIMAL_COLOR_ID, "Negro", PERRO, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

@@ -64,34 +64,34 @@ public final class GeneralChargeOpenAccountMother {
     public static GeneralChargeOpenAccount cargo(Long id) {
         return new GeneralChargeOpenAccount(id, NOMBRE, UNITARIO, CANTIDAD, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", BASE, IMPUESTO, TOTAL, CUENTA, EMPLEADO,
-                CREADO, true, false, null, null, null, null);
+                CREADO, null, true, false, null, null, null, null);
     }
 
     /** Cargo con la idempotency key ya usada por un intento anterior. */
     public static GeneralChargeOpenAccount cargoConClave(String clientRequestId) {
         return new GeneralChargeOpenAccount(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", BASE, IMPUESTO, TOTAL, CUENTA, EMPLEADO,
-                CREADO, true, false, null, null, null, clientRequestId);
+                CREADO, null, true, false, null, null, null, clientRequestId);
     }
 
     public static GeneralChargeOpenAccount cargoAnulado() {
         return new GeneralChargeOpenAccount(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", BASE, IMPUESTO, TOTAL, CUENTA, EMPLEADO,
-                CREADO, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
+                CREADO, null, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
     }
 
     /** Cargo cuya cuenta pertenece a OTRA empresa: dispara el guard de tenancy. */
     public static GeneralChargeOpenAccount cargoDeOtraEmpresa() {
         return new GeneralChargeOpenAccount(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", BASE, IMPUESTO, TOTAL, CUENTA_AJENA,
-                EMPLEADO, CREADO, true, false, null, null, null, null);
+                EMPLEADO, CREADO, null, true, false, null, null, null, null);
     }
 
     /** Cargo sin impuesto: base = total = importe, impuesto en cero. */
     public static GeneralChargeOpenAccount cargoSinImpuesto() {
         return new GeneralChargeOpenAccount(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD, null, false,
                 null, null, null, TOTAL, new BigDecimal("0.00"), TOTAL, CUENTA, EMPLEADO, CREADO,
-                true, false, null, null, null, null);
+                null, true, false, null, null, null, null);
     }
 
     public static CreateGeneralChargeOpenAccountCommand comandoCrear() {

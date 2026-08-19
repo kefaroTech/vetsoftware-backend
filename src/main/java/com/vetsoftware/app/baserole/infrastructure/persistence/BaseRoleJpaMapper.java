@@ -13,12 +13,14 @@ public class BaseRoleJpaMapper {
         entity.setCode(baseRole.getCode());
         entity.setMandatory(baseRole.getMandatory());
         entity.setCreatedDate(baseRole.getCreatedDate());
+        entity.setVersion(baseRole.getVersion());
         entity.setEnabled(baseRole.isEnabled());
         return entity;
     }
 
     public BaseRole toDomain(BaseRoleJpaEntity entity) {
         return new BaseRole(entity.getId(), entity.getName(), entity.getCode(),
-                entity.getMandatory(), entity.getCreatedDate(), entity.isEnabled());
+                entity.getMandatory(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

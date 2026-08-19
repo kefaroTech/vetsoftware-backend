@@ -8,10 +8,11 @@ public class SubModule {
     private String code;
     private ModuleRef module;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public SubModule(Long id, String name, String code, ModuleRef module, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -27,11 +28,12 @@ public class SubModule {
         this.code = code;
         this.module = module;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static SubModule create(String name, String code, ModuleRef module) {
-        return new SubModule(null, name, code, module, LocalDateTime.now(), true);
+        return new SubModule(null, name, code, module, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String code, ModuleRef module) {
@@ -80,5 +82,9 @@ public class SubModule {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

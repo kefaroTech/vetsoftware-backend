@@ -35,7 +35,8 @@ class AnimalColorJpaMapperTest {
     @DisplayName("toJpa copia cada campo del dominio, incluida la especie dada")
     void to_jpa_copia_cada_campo_del_dominio() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
-        AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"), creado, true);
+        AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"), creado, null,
+                true);
 
         AnimalColorJpaEntity entity = mapper.toJpa(color, specieEntity);
 
@@ -50,7 +51,7 @@ class AnimalColorJpaMapperTest {
     @DisplayName("toJpa conserva enabled=false de un color deshabilitado")
     void to_jpa_conserva_enabled_false() {
         AnimalColor color = new AnimalColor(2L, "Negro", new SpecieRef(1L, "Perro"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), false);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, false);
 
         AnimalColorJpaEntity entity = mapper.toJpa(color, specieEntity);
 

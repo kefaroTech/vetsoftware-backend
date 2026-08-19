@@ -49,7 +49,7 @@ class HospitalizationProgressNoteTest {
             LocalDateTime creada = LocalDateTime.of(2026, 3, 1, 9, 15);
 
             HospitalizationProgressNote nota = new HospitalizationProgressNote(500L, DESCRIPCION,
-                    HOSPITALIZACION, VETERINARIO, creada, true);
+                    HOSPITALIZACION, VETERINARIO, creada, null, true);
 
             assertThat(nota.getId()).isEqualTo(500L);
             assertThat(nota.getCreatedDate()).isEqualTo(creada);

@@ -90,7 +90,7 @@ class DiagnosticImagingTest {
         private DiagnosticImaging build() {
             return new DiagnosticImaging(id, date, type, clinicalSigns, studyType, diagnosis,
                     observations, status, animal, consultation, company,
-                    DiagnosticImagingMother.CREADO, true);
+                    DiagnosticImagingMother.CREADO, null, true);
         }
 
         private void applyTo(DiagnosticImaging imaging) {

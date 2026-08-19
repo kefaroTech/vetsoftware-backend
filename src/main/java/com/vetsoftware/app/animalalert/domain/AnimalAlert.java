@@ -10,10 +10,11 @@ public class AnimalAlert {
     private String description;
     private AlertSeverity severity;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public AnimalAlert(Long id, AnimalRef animal, CompanyRef company, AlertType type,
-            String description, AlertSeverity severity, LocalDateTime createdDate,
+            String description, AlertSeverity severity, LocalDateTime createdDate, Long version,
             boolean enabled) {
         validate(type, description, animal, company);
         this.id = id;
@@ -23,13 +24,14 @@ public class AnimalAlert {
         this.description = description;
         this.severity = severity;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static AnimalAlert create(AnimalRef animal, AlertType type, String description,
             AlertSeverity severity, CompanyRef company) {
         return new AnimalAlert(null, animal, company, type, description, severity,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(AlertType type, String description, AlertSeverity severity) {
@@ -80,6 +82,10 @@ public class AnimalAlert {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

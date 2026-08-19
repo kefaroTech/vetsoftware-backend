@@ -20,6 +20,7 @@ public class AnimalAlertJpaMapper {
         entity.setDescription(alert.getDescription());
         entity.setSeverity(alert.getSeverity());
         entity.setCreatedDate(alert.getCreatedDate());
+        entity.setVersion(alert.getVersion());
         entity.setEnabled(alert.isEnabled());
         return entity;
     }
@@ -35,6 +36,6 @@ public class AnimalAlertJpaMapper {
             CompanyRef companyRef) {
         return new AnimalAlert(entity.getId(), animalRef, companyRef, entity.getType(),
                 entity.getDescription(), entity.getSeverity(), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

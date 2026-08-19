@@ -83,7 +83,7 @@ public final class InventoryMother {
 
     public static StockLot lote(int disponible) {
         return new StockLot(LOT_ID, COMPANY_ID, BRANCH_ID, PRODUCT_ID, "L-2026-01", VENCE,
-                disponible, COSTO, CREADO, CREADO, true);
+                disponible, COSTO, CREADO, CREADO, null, true);
     }
 
     // ── Filas de reporte ────────────────────────────────────────────────────

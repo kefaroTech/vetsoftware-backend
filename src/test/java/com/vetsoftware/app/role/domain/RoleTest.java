@@ -51,7 +51,7 @@ class RoleTest {
         }
 
         private Role build() {
-            return new Role(id, name, code, company, createdDate, enabled);
+            return new Role(id, name, code, company, createdDate, null, enabled);
         }
 
         private void applyTo(Role role) {

@@ -10,7 +10,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "dian_provider_configs")
-@SQLDelete(sql = "UPDATE dian_provider_configs SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE dian_provider_configs SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class DianProviderConfigJpaEntity {
     @Id
@@ -64,6 +64,10 @@ public class DianProviderConfigJpaEntity {
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
@@ -181,6 +185,14 @@ public class DianProviderConfigJpaEntity {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public boolean isEnabled() {

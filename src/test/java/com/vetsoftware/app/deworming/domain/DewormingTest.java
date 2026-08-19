@@ -87,7 +87,8 @@ class DewormingTest {
 
         private Deworming build() {
             return new Deworming(id, date, lastDeworming, type, product, dosage, nextControl,
-                    observations, animal, consultation, company, DewormingMother.CREADO, true);
+                    observations, animal, consultation, company, DewormingMother.CREADO, null,
+                    true);
         }
 
         private void applyTo(Deworming deworming) {

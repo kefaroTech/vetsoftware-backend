@@ -46,7 +46,7 @@ class AnimalAlertTest {
         void la_severidad_es_opcional() {
             assertThatCode(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, AnimalAlertMother.CLINICA, AlertType.OTHER,
-                    "Sin severidad asignada", null, AnimalAlertMother.CREADO, true))
+                    "Sin severidad asignada", null, AnimalAlertMother.CREADO, null, true))
                     .doesNotThrowAnyException();
         }
 
@@ -55,7 +55,7 @@ class AnimalAlertTest {
         void rechaza_type_null() {
             assertThatThrownBy(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, AnimalAlertMother.CLINICA, null, "Descripcion",
-                    AlertSeverity.LOW, AnimalAlertMother.CREADO, true))
+                    AlertSeverity.LOW, AnimalAlertMother.CREADO, null, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("type is required");
         }
@@ -67,7 +67,7 @@ class AnimalAlertTest {
         void rechaza_descripcion_vacia(String descripcion) {
             assertThatThrownBy(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, AnimalAlertMother.CLINICA, AlertType.ALLERGY,
-                    descripcion, AlertSeverity.LOW, AnimalAlertMother.CREADO, true))
+                    descripcion, AlertSeverity.LOW, AnimalAlertMother.CREADO, null, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("description is required");
         }
@@ -79,7 +79,7 @@ class AnimalAlertTest {
 
             assertThatThrownBy(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, AnimalAlertMother.CLINICA, AlertType.ALLERGY,
-                    muyLarga, AlertSeverity.LOW, AnimalAlertMother.CREADO, true))
+                    muyLarga, AlertSeverity.LOW, AnimalAlertMother.CREADO, null, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("description must be 255 chars or less");
         }
@@ -91,7 +91,7 @@ class AnimalAlertTest {
 
             assertThatCode(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, AnimalAlertMother.CLINICA, AlertType.ALLERGY,
-                    limite, AlertSeverity.LOW, AnimalAlertMother.CREADO, true))
+                    limite, AlertSeverity.LOW, AnimalAlertMother.CREADO, null, true))
                     .doesNotThrowAnyException();
         }
 
@@ -100,7 +100,8 @@ class AnimalAlertTest {
         void rechaza_animal_null() {
             assertThatThrownBy(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID, null,
                     AnimalAlertMother.CLINICA, AlertType.ALLERGY, "Descripcion", AlertSeverity.LOW,
-                    AnimalAlertMother.CREADO, true)).isInstanceOf(IllegalArgumentException.class)
+                    AnimalAlertMother.CREADO, null, true))
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("animal is required");
         }
 
@@ -109,7 +110,7 @@ class AnimalAlertTest {
         void rechaza_company_null() {
             assertThatThrownBy(() -> new AnimalAlert(AnimalAlertMother.ALERT_ID,
                     AnimalAlertMother.FIRULAIS, null, AlertType.ALLERGY, "Descripcion",
-                    AlertSeverity.LOW, AnimalAlertMother.CREADO, true))
+                    AlertSeverity.LOW, AnimalAlertMother.CREADO, null, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("company is required");
         }
@@ -204,7 +205,7 @@ class AnimalAlertTest {
         LocalDateTime fecha = LocalDateTime.of(2020, 1, 1, 0, 0);
         AnimalAlert alert = new AnimalAlert(1L, AnimalAlertMother.FIRULAIS,
                 AnimalAlertMother.CLINICA, AlertType.OTHER, "Otra alerta", AlertSeverity.LOW, fecha,
-                true);
+                null, true);
 
         assertThat(alert.getCreatedDate()).isEqualTo(fecha);
     }

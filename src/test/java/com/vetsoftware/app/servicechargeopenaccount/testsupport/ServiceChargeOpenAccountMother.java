@@ -72,27 +72,28 @@ public final class ServiceChargeOpenAccountMother {
     public static ServiceChargeOpenAccount cargo(Long id) {
         return new ServiceChargeOpenAccount(id, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL, CUENTA,
-                EMPLEADO, CREADO, true, false, null, null, null, null);
+                EMPLEADO, CREADO, null, true, false, null, null, null, null);
     }
 
     /** Cargo con la idempotency key ya usada por un intento anterior. */
     public static ServiceChargeOpenAccount cargoConClave(String clientRequestId) {
         return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL, CUENTA,
-                EMPLEADO, CREADO, true, false, null, null, null, clientRequestId);
+                EMPLEADO, CREADO, null, true, false, null, null, null, clientRequestId);
     }
 
     public static ServiceChargeOpenAccount cargoAnulado() {
         return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL, CUENTA,
-                EMPLEADO, CREADO, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
+                EMPLEADO, CREADO, null, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error",
+                null);
     }
 
     /** Cargo cuya cuenta pertenece a OTRA empresa: dispara el guard de tenancy. */
     public static ServiceChargeOpenAccount cargoDeOtraEmpresa() {
         return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL,
-                CUENTA_AJENA, EMPLEADO, CREADO, true, false, null, null, null, null);
+                CUENTA_AJENA, EMPLEADO, CREADO, null, true, false, null, null, null, null);
     }
 
     /**
@@ -101,7 +102,7 @@ public final class ServiceChargeOpenAccountMother {
     public static ServiceChargeOpenAccount cargoEnOtraCuenta() {
         return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
                 new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL,
-                OTRA_CUENTA, EMPLEADO, CREADO, true, false, null, null, null, null);
+                OTRA_CUENTA, EMPLEADO, CREADO, null, true, false, null, null, null, null);
     }
 
     /** Cargo sin impuesto: base = total = precio, impuesto en cero. */

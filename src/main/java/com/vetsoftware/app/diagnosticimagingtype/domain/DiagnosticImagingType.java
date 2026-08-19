@@ -9,10 +9,11 @@ public class DiagnosticImagingType {
     private CompanyRef company;
     private boolean general;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public DiagnosticImagingType(Long id, String name, String description, CompanyRef company,
-            boolean general, LocalDateTime createdDate, boolean enabled) {
+            boolean general, LocalDateTime createdDate, Long version, boolean enabled) {
         validate(name, description, company, general);
         this.id = id;
         this.name = name;
@@ -20,13 +21,14 @@ public class DiagnosticImagingType {
         this.company = company;
         this.general = general;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static DiagnosticImagingType create(String name, String description, CompanyRef company,
             boolean general) {
         return new DiagnosticImagingType(null, name, description, company, general,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String description, CompanyRef company, boolean general) {
@@ -73,6 +75,10 @@ public class DiagnosticImagingType {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

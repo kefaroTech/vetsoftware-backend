@@ -13,10 +13,11 @@ public class CompanySetting {
     private final String propertyName;
     private String value;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public CompanySetting(Long id, Long companyId, String propertyName, String value,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         if (companyId == null)
             throw new IllegalArgumentException("companyId is required");
         if (propertyName == null || propertyName.isBlank())
@@ -32,11 +33,13 @@ public class CompanySetting {
         this.propertyName = propertyName;
         this.value = value;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static CompanySetting create(Long companyId, String propertyName, String value) {
-        return new CompanySetting(null, companyId, propertyName, value, LocalDateTime.now(), true);
+        return new CompanySetting(null, companyId, propertyName, value, LocalDateTime.now(), null,
+                true);
     }
 
     public void updateValue(String value) {
@@ -69,6 +72,10 @@ public class CompanySetting {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

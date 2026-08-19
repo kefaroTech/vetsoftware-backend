@@ -16,6 +16,7 @@ public class BasePermissionJpaMapper {
         entity.setCode(basePermission.getCode());
         entity.setSubModule(subModule);
         entity.setCreatedDate(basePermission.getCreatedDate());
+        entity.setVersion(basePermission.getVersion());
         entity.setEnabled(basePermission.isEnabled());
         return entity;
     }
@@ -27,6 +28,6 @@ public class BasePermissionJpaMapper {
 
     public BasePermission toDomain(BasePermissionJpaEntity entity, SubModuleRef subModuleRef) {
         return new BasePermission(entity.getId(), entity.getName(), entity.getCode(), subModuleRef,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

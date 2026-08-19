@@ -20,6 +20,7 @@ public class BranchJpaMapper {
         entity.setCity(city);
         entity.setCompany(company);
         entity.setCreatedDate(branch.getCreatedDate());
+        entity.setVersion(branch.getVersion());
         entity.setActive(branch.isActive());
         return entity;
     }
@@ -33,6 +34,7 @@ public class BranchJpaMapper {
 
     public Branch toDomain(BranchJpaEntity entity, CityRef cityRef, CompanyRef companyRef) {
         return new Branch(entity.getId(), entity.getName(), entity.getCode(), entity.getAddress(),
-                entity.getPhone(), cityRef, companyRef, entity.getCreatedDate(), entity.isActive());
+                entity.getPhone(), cityRef, companyRef, entity.getCreatedDate(),
+                entity.getVersion(), entity.isActive());
     }
 }

@@ -44,7 +44,7 @@ class SystemConfigurationTest {
         }
 
         private SystemConfiguration build() {
-            return new SystemConfiguration(id, propertyName, value, createdDate, enabled);
+            return new SystemConfiguration(id, propertyName, value, createdDate, null, enabled);
         }
     }
 

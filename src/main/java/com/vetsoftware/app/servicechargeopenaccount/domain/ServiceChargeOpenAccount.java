@@ -49,6 +49,7 @@ public class ServiceChargeOpenAccount {
     private OpenAccountRef openAccount;
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private boolean voided;
     private EmployeeRef voidedBy;
@@ -65,8 +66,8 @@ public class ServiceChargeOpenAccount {
             BigDecimal unitPrice, TaxRef tax, boolean hasTax, BigDecimal taxPercentage,
             String taxName, String taxScheme, String taxTreatment, BigDecimal baseAmount,
             BigDecimal taxAmount, BigDecimal totalAmount, OpenAccountRef openAccount,
-            EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled, boolean voided,
-            EmployeeRef voidedBy, LocalDateTime voidedAt, String voidReason,
+            EmployeeRef createdBy, LocalDateTime createdDate, Long version, boolean enabled,
+            boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt, String voidReason,
             String clientRequestId) {
         validate(animal, service, openAccount, unitPrice);
         this.id = id;
@@ -85,6 +86,7 @@ public class ServiceChargeOpenAccount {
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.voided = voided;
         this.voidedBy = voidedBy;
@@ -100,7 +102,8 @@ public class ServiceChargeOpenAccount {
             LocalDateTime voidedAt, String voidReason) {
         this(id, animal, service, unitPrice, null, false, null, null, null, null,
                 Money.scaled(unitPrice), Money.zero(), Money.scaled(unitPrice), openAccount,
-                createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason, null);
+                createdBy, createdDate, null, enabled, voided, voidedBy, voidedAt, voidReason,
+                null);
     }
 
     /** Compat (cargo activo sin anular ni impuesto). */
@@ -136,7 +139,8 @@ public class ServiceChargeOpenAccount {
         BigDecimal taxAmount = total.subtract(base);
         return new ServiceChargeOpenAccount(null, animal, service, unitPrice, tax, hasTax,
                 percentage, taxName, taxScheme, taxTreatment, base, taxAmount, total, openAccount,
-                createdBy, LocalDateTime.now(), true, false, null, null, null, clientRequestId);
+                createdBy, LocalDateTime.now(), null, true, false, null, null, null,
+                clientRequestId);
     }
 
     public void update(AnimalRef animal, ServiceRef service, OpenAccountRef openAccount) {
@@ -241,6 +245,10 @@ public class ServiceChargeOpenAccount {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

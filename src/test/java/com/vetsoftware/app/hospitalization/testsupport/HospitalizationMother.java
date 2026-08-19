@@ -44,14 +44,14 @@ public final class HospitalizationMother {
         return new Hospitalization(HOSPITALIZATION_ID, FECHA, INICIO, FIN,
                 HospitalizationType.HOSPITALIZATION, ReasonLeaving.MEDICAL_DISCHARGE,
                 "Gastroenteritis aguda", "Sin complicaciones", FIRULAIS, CONSULTA, CLINICA, CREADO,
-                true);
+                null, true);
     }
 
     /** Variante ambulatoria: sin consulta, sin motivo de salida y sin fecha fin. */
     public static Hospitalization ambulatorioSinConsulta() {
         return new Hospitalization(HOSPITALIZATION_ID, FECHA, INICIO, null,
                 HospitalizationType.OUTPATIENT, null, "Control post quirurgico", null, FIRULAIS,
-                null, CLINICA, CREADO, true);
+                null, CLINICA, CREADO, null, true);
     }
 
     /** Misma hospitalizacion pero deshabilitada (soft delete aplicado). */
@@ -71,7 +71,7 @@ public final class HospitalizationMother {
         return new Hospitalization(HOSPITALIZATION_ID, FECHA, INICIO, FIN,
                 HospitalizationType.HOSPITALIZATION, ReasonLeaving.MEDICAL_DISCHARGE,
                 "Gastroenteritis aguda", "Sin complicaciones", FIRULAIS, CONSULTA, CLINICA_AJENA,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     public static CreateHospitalizationCommand comandoCrear() {

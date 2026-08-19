@@ -51,14 +51,14 @@ public final class DiagnosticImagingMother {
     public static DiagnosticImaging persistida() {
         return new DiagnosticImaging(IMAGING_ID, FECHA, TIPO, "Cojera pata trasera",
                 "Radiografia de cadera", "Displasia leve", "Control en 30 dias",
-                DiagnosticImagingStatus.PENDIENTE, MASCOTA, CONSULTA, EMPRESA, CREADO, true);
+                DiagnosticImagingStatus.PENDIENTE, MASCOTA, CONSULTA, EMPRESA, CREADO, null, true);
     }
 
     /** Imagen ya persistida, cancelada y deshabilitada. */
     public static DiagnosticImaging deshabilitada() {
         return new DiagnosticImaging(IMAGING_ID, FECHA, TIPO, "Cojera pata trasera",
                 "Radiografia de cadera", "Displasia leve", "Control en 30 dias",
-                DiagnosticImagingStatus.CANCELADO, MASCOTA, CONSULTA, EMPRESA, CREADO, false);
+                DiagnosticImagingStatus.CANCELADO, MASCOTA, CONSULTA, EMPRESA, CREADO, null, false);
     }
 
     public static CreateDiagnosticImagingCommand comandoCrear() {

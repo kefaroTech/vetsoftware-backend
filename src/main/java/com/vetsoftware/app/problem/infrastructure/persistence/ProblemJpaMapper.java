@@ -22,6 +22,7 @@ public class ProblemJpaMapper {
         entity.setResolvedDate(problem.getResolvedDate());
         entity.setNotes(problem.getNotes());
         entity.setCreatedDate(problem.getCreatedDate());
+        entity.setVersion(problem.getVersion());
         entity.setEnabled(problem.isEnabled());
         return entity;
     }
@@ -36,6 +37,7 @@ public class ProblemJpaMapper {
     public Problem toDomain(ProblemJpaEntity entity, AnimalRef animalRef, CompanyRef companyRef) {
         return new Problem(entity.getId(), animalRef, companyRef, entity.getDescription(),
                 entity.getStatus(), entity.getOnsetDate(), entity.getResolvedDate(),
-                entity.getNotes(), entity.getCreatedDate(), entity.isEnabled());
+                entity.getNotes(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

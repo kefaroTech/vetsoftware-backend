@@ -9,10 +9,11 @@ public class Medicament {
     private CompanyRef company;
     private boolean general;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Medicament(Long id, String name, String description, CompanyRef company, boolean general,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(name, description, company, general);
         this.id = id;
         this.name = name;
@@ -20,12 +21,14 @@ public class Medicament {
         this.company = company;
         this.general = general;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Medicament create(String name, String description, CompanyRef company,
             boolean general) {
-        return new Medicament(null, name, description, company, general, LocalDateTime.now(), true);
+        return new Medicament(null, name, description, company, general, LocalDateTime.now(), null,
+                true);
     }
 
     public void update(String name, String description, CompanyRef company, boolean general) {
@@ -72,6 +75,10 @@ public class Medicament {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

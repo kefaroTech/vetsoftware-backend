@@ -63,11 +63,13 @@ class VaccinationTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     private VaccinationType propia(String nombre, CompanyRef empresa) {
-        return new VaccinationType(null, nombre, "Vacuna de prueba", empresa, false, CREADO, true);
+        return new VaccinationType(null, nombre, "Vacuna de prueba", empresa, false, CREADO, null,
+                true);
     }
 
     private VaccinationType general(String nombre) {
-        return new VaccinationType(null, nombre, "Vacuna de prueba", null, true, CREADO, true);
+        return new VaccinationType(null, nombre, "Vacuna de prueba", null, true, CREADO, null,
+                true);
     }
 
     private VaccinationType guardar(String nombre) {

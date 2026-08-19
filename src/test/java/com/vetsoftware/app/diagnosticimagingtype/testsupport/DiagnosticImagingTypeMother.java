@@ -21,18 +21,18 @@ public final class DiagnosticImagingTypeMother {
     /** Tipo global, disponible para todas las empresas (sin company asociada). */
     public static DiagnosticImagingType general() {
         return new DiagnosticImagingType(TYPE_ID, "Radiografia", "Radiografia simple digital", null,
-                true, CREATED_DATE, true);
+                true, CREATED_DATE, null, true);
     }
 
     /** Tipo privado de una empresa concreta. */
     public static DiagnosticImagingType propiaDeEmpresa() {
         return new DiagnosticImagingType(TYPE_ID, "Ecografia abdominal", "Ecografia de rutina",
-                EMPRESA, false, CREATED_DATE, true);
+                EMPRESA, false, CREATED_DATE, null, true);
     }
 
     public static DiagnosticImagingType deshabilitada() {
         return new DiagnosticImagingType(TYPE_ID, "Tomografia", "Tomografia computarizada", EMPRESA,
-                false, CREATED_DATE, false);
+                false, CREATED_DATE, null, false);
     }
 
     public static CreateDiagnosticImagingTypeCommand comandoCrearGeneral() {

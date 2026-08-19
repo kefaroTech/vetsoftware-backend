@@ -26,6 +26,7 @@ public class SpaJpaMapper {
         entity.setAnimal(animal);
         entity.setCompany(company);
         entity.setCreatedDate(spa.getCreatedDate());
+        entity.setVersion(spa.getVersion());
         entity.setEnabled(spa.isEnabled());
         return entity;
     }
@@ -44,6 +45,6 @@ public class SpaJpaMapper {
         return new Spa(entity.getId(), entity.getDate(), spaTypeRef, entity.getReason(),
                 entity.getDetails(), entity.getObservations(),
                 SpaStatus.valueOf(entity.getStatus()), animalRef, companyRef,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

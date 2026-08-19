@@ -169,7 +169,7 @@ class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
                 null, null, EMISION, HORA, null, null, null, null, null, null, null, estado, null,
                 EMISOR, ADQUIRIENTE, new BigDecimal("100000.00"), new BigDecimal("100000.00"),
                 new BigDecimal("119000.00"), new BigDecimal("119000.00"), PaymentForm.CONTADO,
-                lineas, pagos, CREADO, true, null, null, null, false, BigDecimal.ZERO,
+                lineas, pagos, CREADO, null, true, null, null, null, false, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO, clientRequestId, EMPLEADO, branchId));
     }
 
@@ -503,8 +503,9 @@ class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
                     null, null, null, null, null, DianStatus.PENDIENTE, null, EMISOR, ADQUIRIENTE,
                     new BigDecimal("100000.00"), new BigDecimal("100000.00"),
                     new BigDecimal("119000.00"), new BigDecimal("119000.00"), PaymentForm.CONTADO,
-                    List.of(lineaConsulta()), List.of(), CREADO, true, null, null, null, false,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, EMPLEADO, BRANCH);
+                    List.of(lineaConsulta()), List.of(), CREADO, null, true, null, null, null,
+                    false, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, EMPLEADO,
+                    BRANCH);
 
             assertThatThrownBy(() -> repository.updateDianResult(fantasma))
                     .isInstanceOf(ElectronicDocumentNotFoundException.class)
