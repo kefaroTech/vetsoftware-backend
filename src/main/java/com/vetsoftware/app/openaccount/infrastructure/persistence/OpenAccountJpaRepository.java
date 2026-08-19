@@ -114,12 +114,24 @@ public interface OpenAccountJpaRepository
      * {@code @Transactional} o en el manejo de la excepcion la habria convertido en
      * fuga silenciosa. Con el filtro, cero filas ya significa «no existe en TU
      * empresa» y no se escribe nada.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes de la reactivacion reescribe
+     * {@code enabled} con su valor viejo —el mapper lo copia desde el dominio— y su
+     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * vuelve a apagar en silencio lo que la reactivacion acababa de encender.
+     * Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
+     * reactivar es una operacion deliberada y debe ejecutarse siempre, no competir
+     * con una edicion.
      */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE open_accounts
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

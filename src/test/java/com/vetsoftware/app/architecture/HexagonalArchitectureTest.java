@@ -539,6 +539,118 @@ class HexagonalArchitectureTest {
             .because("una exencion que nadie limpia deja de ser una decision y pasa a ser"
                     + " una mentira firmada");
 
+    // ── #53: la puerta de atrás del bloqueo optimista ────────────────────────
+
+    /**
+     * El cierre de la incidencia #53, y la grieta que BE-26 dejó abierta sin
+     * saberlo. {@code @Version} protege <b>un</b> camino: el ciclo
+     * leer-modificar-guardar de una entidad gestionada, donde Hibernate compara la
+     * versión en el {@code WHERE} y la incrementa en el {@code SET}. Una
+     * {@code @Query} de {@code UPDATE} no pasa por ahí: va directa a la base, ni
+     * comprueba ni incrementa nada, y deja la fila modificada con su versión
+     * intacta. El {@code save} concurrente que llegue después con la versión vieja
+     * <b>casa igual</b> y pisa el cambio —sin excepción, sin log y sin 409—, que es
+     * exactamente el fallo silencioso que las tres reglas de BE-26 creían haber
+     * cerrado.
+     *
+     * <p>
+     * <b>No es un riesgo teórico: ya cobró dos veces.</b> La revocación de sesión
+     * que se deshacía sola (#54, arreglado) y la suspensión de programaciones de
+     * medicación que se perdía. En los dos casos el {@code UPDATE} masivo hizo su
+     * trabajo y un {@code save} que venía de una lectura anterior lo deshizo, y en
+     * los dos el rastro en los logs fue ninguno. La campaña que acompaña a esta
+     * regla añadió {@code version = version + 1} al {@code SET} de las ~70
+     * consultas afectadas; la regla es lo que impide que entre la 71.
+     *
+     * <p>
+     * <b>La versión va en el {@code SET}, nunca en el {@code WHERE}</b> —al revés
+     * que en {@link #BORRADO_LOGICO_RESPETA_LA_VERSION}, y la diferencia es toda la
+     * intención—. Aquel es el SQL <em>de</em> Hibernate para una entidad concreta
+     * que alguien acaba de leer, y ahí la versión es el candado. Este es un
+     * {@code UPDATE} de conjunto que nadie leyó antes: condicionarlo por versión
+     * solo conseguiría que actualizara cero filas y que el servicio lo interpretara
+     * como «no existe». Lo que hace falta no es rechazar la escritura, es
+     * <em>invalidar</em> la copia que otros tengan en la mano. Por eso la regla
+     * denuncia <b>las dos</b> mitades: la versión que falta en el {@code SET} y la
+     * versión que sobra en el {@code WHERE}. La segunda no se da hoy en ninguna
+     * consulta, y está vigilada precisamente porque es el error natural de quien
+     * viene de leer {@code BORRADO_LOGICO_RESPETA_LA_VERSION} y aplica su receta
+     * aquí.
+     *
+     * <p>
+     * <b>Qué mira y qué no.</b> El mapa tabla → ¿versionada? sale del censo de
+     * {@code @Entity} —{@code @Table(name = …)} para el SQL nativo, nombre simple
+     * para el JPQL—, nunca de una lista literal: BE-26 ya enseñó lo que le pasa a
+     * una lista que nadie mantiene, y aquí bastaría versionar una entidad para que
+     * su tabla saliera de la vigilancia en silencio. Los {@code DELETE} quedan
+     * fuera a propósito: se llevan la fila, no hay versión que proteger. Ver
+     * {@code VetSoftwareConditions.moverLaVersionEnElUpdateMasivo()} para el
+     * troceado del {@code SET} y la resolución de alias, que es lo que separa
+     * {@code auth_version} de {@code version} y {@code role_permissions} de los
+     * {@code roles} con los que hace {@code JOIN}.
+     *
+     * <p>
+     * <b>Hoy no hay ninguna {@code @Query} perdonada, y por eso no hay lista de
+     * exenciones.</b> No es un descuido: es que la única escritura masiva exenta
+     * del repositorio no lleva anotación —ver la limitación de abajo—. Si algún día
+     * hiciera falta perdonar una {@code @Query}, el código sería
+     * {@code E6_YA_PROTEGIDO} del vocabulario de BE-26 —la concurrencia la resuelve
+     * un mecanismo más fuerte, nombrado en el motivo— y la exención iría escrita
+     * con el mismo formato que {@code ENTIDADES_EXENTAS_DE_VERSION}: entidad,
+     * código y motivo al lado del nombre.
+     *
+     * <p>
+     * <b>Limitación conocida, con nombre y apellido: el SQL crudo por
+     * {@code JdbcTemplate}.</b> Esta regla escanea {@code @Query} y solo
+     * {@code @Query}. {@code JdbcDianJobLeasePort.leaseByDianStatus} hace
+     * {@code UPDATE electronic_documents SET dian_leased_until = ?} con
+     * {@code jdbcTemplate.update(…)}, sin anotación ninguna, sobre una tabla que
+     * <b>sí</b> va versionada — y la regla no lo ve ni lo verá. Ese caso concreto
+     * es además una exención legítima: las filas vienen de un
+     * {@code SELECT … FOR UPDATE SKIP LOCKED} en la misma transacción, o sea que ya
+     * están serializadas por bloqueo pesimista y el optimista sobra.
+     *
+     * <p>
+     * <b>¿Se puede cubrir ese camino? Por contenido, no</b>, y no por esfuerzo sino
+     * por el modelo. ArchUnit expone el <em>valor</em> de una anotación —de ahí que
+     * {@code @Query} sea automatizable— pero no los argumentos constantes de un
+     * punto de llamada: el literal de {@code jdbcTemplate.update("UPDATE …")} vive
+     * en el pool de constantes del llamador y {@code JavaMethodCall} solo modela
+     * origen, destino y línea. Sacarlo a un {@code static final String} tampoco
+     * ayuda. Se puede exigir que una escritura cruda esté <b>declarada</b>; jamás
+     * que esté <b>bien escrita</b>.
+     *
+     * <p>
+     * <b>La propuesta, medida y sin implementar a la espera de que se decida</b>:
+     * un tripwire estructural al estilo BE-26 —nadie llama a
+     * {@code JdbcTemplate.update}/{@code batchUpdate}/{@code execute} salvo las
+     * clases de una lista, cada una con su código y su motivo al lado del nombre, y
+     * con su gemela anti-podredumbre como {@link #EXENCIONES_DE_VERSION_AL_DIA}—.
+     * Hoy tendría exactamente <b>dos</b> entradas, porque solo dos clases de
+     * {@code src/main} usan {@code JdbcTemplate}: {@code JdbcDianJobLeasePort}
+     * ({@code E6_YA_PROTEGIDO}, el lease con {@code SKIP LOCKED}) y
+     * {@code TokenCleanupRepository} (solo {@code DELETE}). Ni
+     * {@code createNativeQuery}, ni {@code JdbcClient}, ni
+     * {@code NamedParameterJdbcTemplate}, ni {@code DataSource} directo en ningún
+     * otro sitio. Eso no valida SQL, pero convierte un agujero invisible en uno
+     * visible: la tercera escritura cruda rompe el build hasta que alguien escriba
+     * por qué. Y si además se quisiera el chequeo <em>de contenido</em> sobre SQL
+     * crudo, la herramienta no es ArchUnit sino un {@code RegexpMultiline} de
+     * Checkstyle, que sí ve el literal esté donde esté y ya corre en
+     * {@code mvn verify}.
+     *
+     * <p>
+     * Mientras nada de eso exista, estos párrafos son la red: la regla dice lo que
+     * no ve.
+     */
+    @ArchTest
+    static final ArchRule UPDATE_MASIVO_MUEVE_LA_VERSION = classes().that()
+            .areAssignableTo(JpaRepository.class).and().haveSimpleNameEndingWith("JpaRepository")
+            .should(VetSoftwareConditions.moverLaVersionEnElUpdateMasivo())
+            .because("una @Query de UPDATE va directa a la base: ni comprueba ni incrementa"
+                    + " @Version, y el save concurrente que llega con la version vieja casa"
+                    + " igual y pisa el cambio sin dejar rastro");
+
     // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
 
     @ArchTest

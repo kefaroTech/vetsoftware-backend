@@ -41,6 +41,38 @@ public class JdbcDianJobLeasePort implements DianJobLeasePort {
      * {@code SELECT … FOR UPDATE} mantiene el bloqueo sobre las filas elegidas
      * hasta el commit, así que ninguna otra réplica puede reclamarlas entre la
      * lectura y la marca.
+     *
+     * <p>
+     * <strong>Bloqueo optimista: {@code E6_YA_PROTEGIDO} — exención deliberada, no
+     * un olvido.</strong> {@code electronic_documents} es una tabla versionada y
+     * este {@code UPDATE} la muta, así que por la regla de BE-53 —todo UPDATE
+     * nativo sobre tabla versionada mueve también {@code version}— entraría. No lo
+     * hace, y es la única excepción viva a esa regla en todo el árbol. Tres
+     * razones, y hacen falta las tres:
+     * <ul>
+     * <li><strong>El mecanismo que ya lo protege es más fuerte.</strong> Las filas
+     * se toman con {@code SELECT … FOR UPDATE SKIP LOCKED}: quedan serializadas por
+     * un lock pesimista sostenido hasta el commit, que es justo la garantía que el
+     * bloqueo optimista aproxima. Añadir {@code version} no cerraría ninguna
+     * carrera que este lock deje abierta.</li>
+     * <li><strong>{@code dian_leased_until} no es estado de negocio.</strong> Es
+     * metadato de coordinación entre trabajos —quién reclamó qué y hasta cuándo—,
+     * ni se mapea en {@code ElectronicDocumentJpaEntity} ni viaja al dominio, así
+     * que ningún {@code save} cargado antes puede pisarlo: no hay nada que un
+     * mapper pueda reescribir desde una copia obsoleta. El defecto que la regla
+     * previene no tiene por dónde ocurrir aquí.</li>
+     * <li><strong>Subir la versión rompería algo que hoy funciona.</strong> Un
+     * {@code updateDianResult} concurrente sobre el mismo documento —en mitad de
+     * una transmisión— vería su versión invalidada por un mero renovar del lease y
+     * moriría con un 409 {@code CONCURRENT_MODIFICATION} espurio, sobre un
+     * conflicto que no existe.</li>
+     * </ul>
+     * Es el mismo razonamiento que dejó fuera a {@code numbering_resolutions} en
+     * BE-26. Y hay un motivo extra para que quede escrito justo aquí: al ir por
+     * {@code JdbcTemplate} crudo y no por una {@code @Query} de Spring Data, esta
+     * sentencia es <em>invisible</em> a cualquier regla de ArchUnit que escanee
+     * anotaciones. Nadie la va a marcar; su única defensa contra un «se nos olvidó»
+     * futuro es este párrafo.
      */
     @Override
     @Transactional

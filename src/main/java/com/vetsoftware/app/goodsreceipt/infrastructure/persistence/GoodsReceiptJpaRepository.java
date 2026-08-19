@@ -36,11 +36,20 @@ public interface GoodsReceiptJpaRepository
     // caso de uso o llame al adaptador desde otro sitio. No hay sobrecarga ancha
     // porque no hay camino SYSTEM: el controller resuelve la empresa con
     // authz.currentCompanyId(), que ya rechaza al principal sin empresa.
+    //
+    // El UPDATE mueve tambien `version`, la del bloqueo optimista, a proposito:
+    // una consulta nativa no la comprueba ni la incrementa, asi que un save
+    // cargado antes de la baja reescribia la fila entera desde el dominio —el
+    // mapper la copia— y su WHERE version = ? casaba igual, resucitando en
+    // silencio la remision recien dada de baja. Movida la version, ese save ya
+    // no encuentra fila y salta ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE: dar de baja es
+    // deliberado y debe ejecutarse siempre, no competir con una edicion.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE goods_receipts
-            SET enabled = false
+            SET enabled = false, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

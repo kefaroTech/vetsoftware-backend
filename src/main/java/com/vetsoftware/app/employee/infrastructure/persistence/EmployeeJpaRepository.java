@@ -329,11 +329,25 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // Sin sobrecarga ancha a proposito: el unico llamador tiene la empresa en la
     // mano, y dejar viva la version sin filtro solo servia para que la copiara el
     // siguiente.
+    //
+    // El UPDATE mueve tambien `version`, la del bloqueo optimista, por la misma
+    // razon que los de auth_version de arriba, aunque la columna que escribe sea
+    // otra: `status` tampoco esta protegido por el @Version cuando se escribe desde
+    // una query nativa, porque esta va directa a la base de datos y ni comprueba la
+    // version ni la incrementa. Sin el bump, un save cargado antes de la activacion
+    // reescribe la fila entera desde el dominio —el mapper copia `status` igual que
+    // copia todo lo demas— y su WHERE version = ? casa sin problema, con lo que el
+    // empleado recien activado vuelve a INVITED en silencio y no puede entrar.
+    // Movida la version, ese save ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409 CONCURRENT_MODIFICATION.
+    // `version` NO va en el WHERE: activar en el primer login es deliberado y debe
+    // ejecutarse siempre, no competir con una edicion. El AND status = 'INVITED'
+    // sigue siendo el que da la idempotencia y no se toca.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET status = 'ACTIVE'
+            SET status = 'ACTIVE', version = version + 1
             WHERE id = :id
               AND company_id = :companyId
               AND status = 'INVITED'

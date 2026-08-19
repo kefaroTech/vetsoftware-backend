@@ -62,12 +62,24 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
      * decide si existe mirando las filas afectadas—, asi que un UPDATE por id a
      * secas resucitaba el medicamento pausado de cualquier tenant para quien
      * conociera el id.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: una consulta nativa no la comprueba ni la incrementa, asi que un
+     * save cargado antes de la reactivacion reescribia la fila entera desde el
+     * dominio —el mapper la copia— y su {@code WHERE version = ?} casaba igual,
+     * deshaciendo en silencio el {@code enabled = true}. Movida la version, ese
+     * save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
+     * reactivar es deliberado y debe ejecutarse siempre, no competir con una
+     * edicion.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE medicaments
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

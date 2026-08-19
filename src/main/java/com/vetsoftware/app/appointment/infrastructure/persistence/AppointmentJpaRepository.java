@@ -104,13 +104,38 @@ public interface AppointmentJpaRepository extends JpaRepository<AppointmentJpaEn
         Long getBranchId();
     }
 
-    // Soft-delete por query nativa (evita el conflicto @SQLDelete + @Version en
-    // em.remove).
+    /**
+     * Baja lógica por query nativa, mismo efecto que el {@code @SQLDelete} de la
+     * entidad. Sigue sin pasar por {@code em.remove} por la razón de siempre —evita
+     * el conflicto {@code @SQLDelete} + {@code @Version}, que obliga a Hibernate a
+     * ligar dos parámetros (id y versión) tomados de una entidad gestionada que
+     * aquí no se carga—, pero desde BE-53 hace además una segunda cosa:
+     * <strong>mantiene vivo el candado optimista.</strong>
+     *
+     * <p>
+     * Las dos razones son independientes y conviene no confundirlas. Un
+     * {@code @Version} solo protege el ciclo leer→modificar→guardar de una entidad
+     * gestionada; este UPDATE va directo a la base de datos, así que por sí mismo
+     * ni comprueba la versión ni la incrementa. Sin el
+     * {@code version = version + 1}, un {@code save} cargado antes de la baja
+     * reescribe la fila entera desde el dominio —el mapper la copia campo a campo,
+     * {@code enabled} incluido— y su {@code WHERE version = ?} casa igual, con lo
+     * que la cita borrada <em>reaparece</em> sin excepción y sin log. Movida la
+     * versión, ese {@code save} ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} → 409
+     * {@code CONCURRENT_MODIFICATION}, que es lo que el front necesita para
+     * recargar y reintentar sobre datos frescos.
+     *
+     * <p>
+     * {@code version} NO va en el {@code WHERE}: borrar es una operación deliberada
+     * y debe ejecutarse siempre, no competir con una edición. El
+     * {@code AND company_id} sí es el gate de tenant y no se toca.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE appointments
-            SET enabled = false
+            SET enabled = false, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

@@ -38,12 +38,25 @@ public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Lo
      * Un UPDATE por id a secas reactivaba el registro borrado de cualquier tenant
      * para quien conociera el id, porque no hay ninguna lectura previa que valide
      * la propiedad — el servicio decide si existe mirando las filas afectadas.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: una consulta nativa va directa a la base de datos, asi que ni
+     * comprueba ni incrementa la version, y el candado queda ciego ante este
+     * camino. Sin el bump, un save cargado antes reescribe {@code enabled} con su
+     * valor viejo (el mapper copia la fila entera desde el dominio) y su
+     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * deshace la reactivacion en silencio. Movida la version, ese save ya no
+     * encuentra fila y salta {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}, para que el front recargue y reintente sobre
+     * datos frescos. {@code version} NO va en el {@code WHERE}: reactivar es una
+     * operacion deliberada y debe ejecutarse siempre, no competir con una edicion.
      */
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """
             UPDATE daycares
-            SET enabled = true
+            SET enabled = true, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

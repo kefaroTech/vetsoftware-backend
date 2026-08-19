@@ -1,6 +1,7 @@
 package com.vetsoftware.app.medicationschedule.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.medicationschedule.domain.AppliedStatus;
 import com.vetsoftware.app.medicationschedule.domain.EmployeeRef;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Rodaja de persistencia del plan de tomas contra MySQL real (BE-10).
@@ -351,6 +353,213 @@ class MedicationSchedulePersistenceIT extends AbstractDataJpaTest {
             entityManager.clear();
 
             assertThat(repository.findByHospitalizationMedicationId(MEDICATION_AJENA)).isEmpty();
+        }
+    }
+
+    /**
+     * Lee una columna de la fila saltandose el mapper, el contexto de persistencia
+     * y —lo que aqui importa— el {@code @SQLRestriction("enabled = true")}, que a
+     * partir de la suspension taparia la fila entera. Sin SQL nativo no hay forma
+     * de afirmar que la toma sigue deshabilitada ni en que version quedo.
+     */
+    private long columna(String nombre, Long id) {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT CAST(" + nombre
+                        + " AS SIGNED) FROM medication_schedules WHERE id = :id")
+                .setParameter("id", id).getSingleResult()).longValue();
+    }
+
+    /** Todas las tomas de la orden, habilitadas o no. */
+    private long filasDeLaOrden(Long medicationId) {
+        return ((Number) entityManager.createNativeQuery("""
+                SELECT COUNT(*) FROM medication_schedules
+                 WHERE hospitalization_medication_id = :orden
+                """).setParameter("orden", medicationId).getSingleResult()).longValue();
+    }
+
+    /**
+     * Incidencia #53 — el UPDATE nativo tiene que mover tambien {@code version}.
+     *
+     * <p>
+     * Este es el caso que motivo la incidencia, y no es una hipotesis: un
+     * {@code @Version} solo protege el ciclo leer→modificar→guardar de una entidad
+     * gestionada, y estas suspensiones en bloque son {@code @Query} nativas que van
+     * directas al motor — ni comprueban la version ni la incrementan. El candado
+     * queda ciego justo por el camino que mas se usa.
+     *
+     * <p>
+     * El orden de los hechos se lee dentro de cada caso: <b>quien carga</b> (el
+     * auxiliar, que va a marcar la toma como aplicada), <b>quien deshabilita</b>
+     * (la suspension en bloque, que no pasa por Hibernate) y <b>quien guarda
+     * tarde</b> (el auxiliar otra vez, con su copia de version obsoleta). Sin el
+     * incremento, ese ultimo {@code save} reescribe la fila entera desde el dominio
+     * —{@code enabled = true} incluido— y <i>resucita</i> la toma suspendida sin
+     * excepcion y sin log.
+     */
+    @Nested
+    @DisplayName("bloqueo optimista de las suspensiones en bloque (#53)")
+    class BloqueoOptimista {
+
+        @Test
+        @DisplayName("una toma recien insertada nace con version 0")
+        void una_toma_recien_insertada_nace_con_version_cero() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            assertThat(columna("version", id)).isZero();
+        }
+
+        @Test
+        @DisplayName("disableByHospitalizationMedicationId sube la version de las tomas que deshabilita")
+        void disable_by_hospitalization_medication_id_sube_la_version() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            repository.disableByHospitalizationMedicationId(MEDICATION);
+            entityManager.clear();
+
+            assertThat(columna("enabled", id)).isZero();
+            assertThat(columna("version", id))
+                    .as("el UPDATE nativo mueve la version o el candado optimista no ve nada")
+                    .isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("la toma cargada antes de la regeneracion choca al guardar en vez de resucitar")
+        void la_toma_cargada_antes_de_la_regeneracion_choca_al_guardar() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            // 1. El auxiliar A carga la toma para marcarla como aplicada. Es el
+            // findById de ApplyMedicationScheduleService: se queda con una copia de
+            // version 0 y enabled = true, y todavia no ha escrito nada.
+            MedicationSchedule laQueCargaElAuxiliar = repository.findById(id).orElseThrow();
+            assertThat(laQueCargaElAuxiliar.getVersion()).isZero();
+            assertThat(laQueCargaElAuxiliar.isEnabled()).isTrue();
+
+            // 2. Entretanto, una regeneracion del plan deshabilita la orden entera.
+            repository.disableByHospitalizationMedicationId(MEDICATION);
+            entityManager.clear();
+            assertThat(columna("enabled", id)).isZero();
+
+            // 3. A guarda su copia, tarde. El mapper reescribe la fila campo a campo
+            // desde el dominio, asi que su enabled = true viajaria de vuelta.
+            laQueCargaElAuxiliar.apply(PRIMERA_TOMA.plusMinutes(5));
+
+            assertThatThrownBy(() -> {
+                repository.save(laQueCargaElAuxiliar);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("MedicationScheduleJpaEntity");
+
+            // Constancia de que estado habria quedado mal: sin el incremento el save
+            // encontraba su WHERE version = ? intacto, dejaba la fila en enabled = true
+            // y el plan borrado reaparecia a medias.
+            entityManager.clear();
+            assertThat(columna("enabled", id))
+                    .as("la suspension sobrevive: la copia perdedora no llego a escribir").isZero();
+            assertThat(filasDeLaOrden(MEDICATION))
+                    .as("y tampoco se colo una toma nueva por la puerta de atras").isOne();
+        }
+
+        @Test
+        @DisplayName("disablePendingByHospitalizationMedicationId sube la version de las pendientes")
+        void disable_pending_by_hospitalization_medication_id_sube_la_version() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            repository.disablePendingByHospitalizationMedicationId(MEDICATION);
+            entityManager.clear();
+
+            assertThat(columna("enabled", id)).isZero();
+            assertThat(columna("version", id))
+                    .as("mismo motivo que la regeneracion: sin esto el candado no ve el conflicto")
+                    .isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("la suspension no toca la version de una toma ya aplicada, que ni deshabilita")
+        void la_suspension_no_toca_la_version_de_una_toma_ya_aplicada() {
+            MedicationSchedule aplicada = repository.save(MedicationSchedule.create(ORDEN,
+                    PRIMERA_TOMA, PRIMERA_TOMA, AppliedStatus.APPLIED, false, EMPLEADO));
+            entityManager.flush();
+            entityManager.clear();
+
+            repository.disablePendingByHospitalizationMedicationId(MEDICATION);
+            entityManager.clear();
+
+            // El incremento va en el SET, asi que solo alcanza a las filas del WHERE.
+            // Subir la version de una toma que el UPDATE no cambia seria invalidar por
+            // nada la copia que alguien tuviera cargada.
+            assertThat(columna("enabled", aplicada.getId())).isOne();
+            assertThat(columna("version", aplicada.getId())).isZero();
+        }
+
+        @Test
+        @DisplayName("la toma cargada antes de la suspension choca al guardar en vez de resucitar")
+        void la_toma_cargada_antes_de_la_suspension_choca_al_guardar() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            // 1. El auxiliar A carga la toma pendiente para marcarla como aplicada.
+            MedicationSchedule laQueCargaElAuxiliar = repository.findById(id).orElseThrow();
+            assertThat(laQueCargaElAuxiliar.getVersion()).isZero();
+
+            // 2. El veterinario suspende en bloque las tomas pendientes de la orden.
+            repository.disablePendingByHospitalizationMedicationId(MEDICATION);
+            entityManager.clear();
+            assertThat(columna("enabled", id)).isZero();
+
+            // 3. A guarda. Antes no habia conflicto y la suspension se perdia en
+            // silencio; ahora la version movida deja su UPDATE sin fila que casar.
+            laQueCargaElAuxiliar.apply(PRIMERA_TOMA.plusMinutes(5));
+
+            assertThatThrownBy(() -> {
+                repository.save(laQueCargaElAuxiliar);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("MedicationScheduleJpaEntity");
+
+            entityManager.clear();
+            assertThat(columna("enabled", id))
+                    .as("la suspension sobrevive: la copia perdedora no llego a escribir").isZero();
+            assertThat(filasDeLaOrden(MEDICATION)).as("y no aparecio una toma duplicada").isOne();
+        }
+
+        @Test
+        @DisplayName("la regeneracion acotada al tenant tambien sube la version")
+        void la_regeneracion_acotada_al_tenant_tambien_sube_la_version() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            repository.disableByHospitalizationMedicationId(MEDICATION, SchemaSeed.COMPANY_ID);
+            entityManager.clear();
+
+            // El EXISTS del WHERE es el gate de tenant y es cosa aparte; lo que se fija
+            // aqui es que acotar por empresa no deja fuera el incremento de version.
+            assertThat(columna("enabled", id)).isZero();
+            assertThat(columna("version", id)).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("la suspension acotada al tenant tambien sube la version")
+        void la_suspension_acotada_al_tenant_tambien_sube_la_version() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            repository.disablePendingByHospitalizationMedicationId(MEDICATION,
+                    SchemaSeed.COMPANY_ID);
+            entityManager.clear();
+
+            assertThat(columna("enabled", id)).isZero();
+            assertThat(columna("version", id)).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("un UPDATE que no toca ninguna fila no mueve ninguna version")
+        void un_update_que_no_toca_ninguna_fila_no_mueve_ninguna_version() {
+            Long id = guardar(PRIMERA_TOMA).getId();
+
+            // Empresa equivocada: el EXISTS no casa y el UPDATE se queda en cero filas.
+            repository.disableByHospitalizationMedicationId(MEDICATION, SchemaSeed.OTRA_COMPANY_ID);
+            entityManager.clear();
+
+            assertThat(columna("enabled", id)).isOne();
+            assertThat(columna("version", id))
+                    .as("el incremento vive en el SET, no puede escaparse del WHERE").isZero();
         }
     }
 }

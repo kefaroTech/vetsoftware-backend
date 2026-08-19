@@ -23,6 +23,7 @@ import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -64,7 +65,8 @@ import org.springframework.dao.DataIntegrityViolationException;
  * la paginacion siempre parece correcta.</li>
  * </ul>
  */
-@Import({JpaElectronicDocumentRepository.class, ElectronicDocumentJpaMapper.class})
+@Import({JpaElectronicDocumentRepository.class, ElectronicDocumentJpaMapper.class,
+        JdbcDianJobLeasePort.class})
 @DisplayName("JpaElectronicDocumentRepository — inmutabilidad, idempotencia y detalle contra MySQL real")
 class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
 
@@ -105,8 +107,14 @@ class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
             "1020304050", "3", "NATURAL", "Ana Ruiz", "Ana Ruiz", "ana@test.local", "05001",
             TaxRegime.NO_RESPONSABLE_IVA, FiscalResponsibility.NO_APLICA);
 
+    /** Duracion del lease de los jobs DIAN; su valor exacto da igual aqui. */
+    private static final Duration LEASE = Duration.ofMinutes(5);
+
     @Autowired
     private JpaElectronicDocumentRepository repository;
+
+    @Autowired
+    private JdbcDianJobLeasePort leasePort;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -602,6 +610,107 @@ class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(pagina.content()).isEmpty();
             assertThat(pagina.totalElements()).isEqualTo(1L);
+        }
+    }
+
+    /** La columna {@code version} tal cual, sin pasar por Hibernate. */
+    private long versionEnLaBase(Long id) {
+        return ((Number) entityManager
+                .createNativeQuery(
+                        "SELECT CAST(version AS SIGNED) FROM electronic_documents WHERE id = :id")
+                .setParameter("id", id).getSingleResult()).longValue();
+    }
+
+    /**
+     * {@code dian_leased_until} no esta mapeada en
+     * {@code ElectronicDocumentJpaEntity} —es andamiaje de los jobs, no estado de
+     * negocio—, asi que no hay forma de leerla que no sea SQL nativo.
+     */
+    private Object leaseEnLaBase(Long id) {
+        return entityManager
+                .createNativeQuery(
+                        "SELECT dian_leased_until FROM electronic_documents WHERE id = :id")
+                .setParameter("id", id).getSingleResult();
+    }
+
+    /**
+     * Incidencia #53 — {@code JdbcDianJobLeasePort} es la <b>exencion</b>, y esta
+     * fijada aqui a proposito.
+     *
+     * <p>
+     * La campaña añade {@code version = version + 1} a los UPDATE nativos que mutan
+     * tablas versionadas. {@code electronic_documents} lo es y el UPDATE del lease
+     * la muta, asi que por la regla entraria — y deliberadamente no lo hace: sus
+     * filas vienen de un {@code SELECT … FOR UPDATE SKIP LOCKED}, o sea ya
+     * serializadas por un lock pesimista sostenido hasta el commit, y
+     * {@code dian_leased_until} ni siquiera viaja al dominio, asi que ningun
+     * {@code save} cargado antes puede pisarla.
+     *
+     * <p>
+     * Lo que este nido impide es que alguien «arregle» la exencion dentro de seis
+     * meses creyendo que fue un olvido. Y hay un motivo extra para escribirlo como
+     * test y no solo como comentario: al ir por {@code JdbcTemplate} crudo, esa
+     * sentencia es invisible a cualquier regla de ArchUnit que escanee anotaciones.
+     * El segundo caso es la consecuencia medible de subir la version ahi: un
+     * {@code updateDianResult} en curso moriria con un 409 espurio.
+     */
+    @Nested
+    @DisplayName("el lease de la DIAN esta exento del bump de version, a proposito (#53)")
+    class LeaseExentoDelBumpDeVersion {
+
+        @Test
+        @DisplayName("tomar el lease marca el documento pero no mueve su version")
+        void tomar_el_lease_no_mueve_la_version_del_documento() {
+            ElectronicDocument documento = ventaPos();
+            Long id = documento.getId();
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(versionEnLaBase(id)).isZero();
+
+            assertThat(leasePort.leaseByDianStatus(DianStatus.PENDIENTE, 10, LEASE)).contains(id);
+            entityManager.clear();
+
+            assertThat(leaseEnLaBase(id)).as("el UPDATE si escribio: la marca esta puesta")
+                    .isNotNull();
+            assertThat(versionEnLaBase(id))
+                    .as("E6_YA_PROTEGIDO: el FOR UPDATE SKIP LOCKED ya serializa estas filas")
+                    .isZero();
+        }
+
+        @Test
+        @DisplayName("renovar el lease no invalida un updateDianResult en curso")
+        void renovar_el_lease_no_invalida_un_update_dian_result_en_curso() {
+            ElectronicDocument documento = ventaPos();
+            Long id = documento.getId();
+            entityManager.flush();
+            entityManager.clear();
+
+            // 1. Una replica esta transmitiendo: carga el documento y lo deja vivo en
+            // el contexto de persistencia, con la version que tenia al leerlo.
+            ElectronicDocument enTransmision = repository.findById(id).orElseThrow();
+
+            // 2. El ciclo de jobs vuelve a pasar y renueva el lease sobre esa fila.
+            leasePort.leaseByDianStatus(DianStatus.PENDIENTE, 10, LEASE);
+
+            // 3. Llega el resultado de la DIAN y se persiste. Si el lease hubiera
+            // subido la version, este UPDATE no encontraria fila que casar y moriria
+            // con un 409 CONCURRENT_MODIFICATION sobre un conflicto que no existe,
+            // en mitad de una transmision fiscal.
+            enTransmision.assignNumber("18760000001", "SETP", 991L);
+            enTransmision.markValidated(null, null, "CUFE-LEASE-001", null, null, null, null, null,
+                    null, LocalDateTime.of(2026, 1, 15, 11, 30, 0));
+            ElectronicDocument actualizado = repository.updateDianResult(enTransmision);
+            entityManager.flush();
+
+            assertThat(actualizado.getDianStatus()).isEqualTo(DianStatus.VALIDADO);
+            assertThat(actualizado.getCufe()).isEqualTo("CUFE-LEASE-001");
+
+            entityManager.clear();
+            assertThat(versionEnLaBase(id))
+                    .as("una sola escritura versionada: la del resultado DIAN, no la del lease")
+                    .isEqualTo(1L);
+            assertThat(leaseEnLaBase(id)).as("y el lease sigue puesto, que es su trabajo")
+                    .isNotNull();
         }
     }
 }
