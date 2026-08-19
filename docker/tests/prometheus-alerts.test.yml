@@ -29,7 +29,7 @@ tests:
             exp_annotations:
               summary: "El backend de VetSoftware no responde"
               description: "Prometheus no puede extraer las métricas del backend desde hace al menos dos minutos."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarebackenddown"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarebackenddown"
 
   - name: sustained five hundred rate with enough traffic becomes critical
     interval: 1m
@@ -50,7 +50,7 @@ tests:
             exp_annotations:
               summary: "La tasa HTTP 5xx supera el 5 %"
               description: "El backend superó el 5 % de respuestas 5xx con al menos 20 solicitudes en cinco minutos."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttp5xxratehigh"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarehttp5xxratehigh"
 
   - name: observability target down fires and then resolves
     interval: 1m
@@ -71,7 +71,7 @@ tests:
             exp_annotations:
               summary: "Un componente de observabilidad no responde"
               description: "El target indicado por las etiquetas job e instance no puede ser consultado por Prometheus."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareobservabilitytargetdown"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareobservabilitytargetdown"
       - eval_time: 4m
         alertname: VetSoftwareObservabilityTargetDown
         exp_alerts: []
@@ -96,7 +96,7 @@ tests:
             exp_annotations:
               summary: "Se agotó el tiempo esperando una conexión"
               description: "HikariCP registró al menos un timeout de conexión durante los últimos cinco minutos."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectiontimeouts"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaredatabaseconnectiontimeouts"
 
   # Con `retry_on_failure` activo (OBS-027), un envío fallido es un reintento en curso, no pérdida.
   # La alerta exige 10 minutos de fallo sostenido y es warning, no critical.
@@ -123,7 +123,7 @@ tests:
             exp_annotations:
               summary: "El Collector lleva minutos sin poder exportar logs"
               description: "Los envíos a Loki fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo; si se llena, empezará a descartar."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailing"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotellogexportfailing"
 
   # El descarte por cola llena sí es pérdida consumada y sí es crítico.
   - name: queue overflow drops telemetry and becomes critical
@@ -143,7 +143,7 @@ tests:
             exp_annotations:
               summary: "El Collector está descartando telemetría por cola llena"
               description: "La cola de envío se llenó y se perdieron datos. Es pérdida consumada, no un reintento pendiente."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuedroppingtelemetry"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotelqueuedroppingtelemetry"
 
   - name: queue near capacity warns before dropping
     interval: 1m
@@ -166,7 +166,7 @@ tests:
             exp_annotations:
               summary: "La cola de envío del Collector supera el 80 %"
               description: "El destino no drena al ritmo de entrada. Si la cola se llena, la telemetría se descartará."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuenearcapacity"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotelqueuenearcapacity"
 
   - name: security token table growth remains above its configured threshold
     interval: 5m
@@ -193,4 +193,48 @@ tests:
             exp_annotations:
               summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
               description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresecuritytokentablegrowth"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresecuritytokentablegrowth"
+
+  # Contraprueba del `group_left()` de la regla. Con un solo token_type el emparejamiento es
+  # uno-a-uno y la regla evalúa igual sin el modificador; con dos pasa a ser muchos-a-uno y sin
+  # `group_left()` PromQL aborta la evaluación, así que la alerta deja de saltar del todo. El
+  # caso anterior, con una sola serie, no distingue las dos versiones: este sí.
+  - name: security token growth keeps token_type with several token tables
+    interval: 5m
+    input_series:
+      - series: 'vetsoftware_security_tokens_rows{job="vetsoftware",instance="backend:8080",token_type="refresh"}'
+        values: '60000x10'
+      - series: 'vetsoftware_security_tokens_rows{job="vetsoftware",instance="backend:8080",token_type="password_reset"}'
+        values: '70000x10'
+      - series: 'vetsoftware_security_tokens_rows{job="vetsoftware",instance="backend:8080",token_type="email_verification"}'
+        values: '10x10'
+      - series: 'vetsoftware_security_tokens_growth_threshold{job="vetsoftware",instance="backend:8080"}'
+        values: '50000x10'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: VetSoftwareSecurityTokenTableGrowth
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareSecurityTokenTableGrowth
+              domain: database
+              instance: backend:8080
+              job: vetsoftware
+              service: vetsoftware
+              severity: warning
+              token_type: password_reset
+            exp_annotations:
+              summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
+              description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresecuritytokentablegrowth"
+          - exp_labels:
+              alertname: VetSoftwareSecurityTokenTableGrowth
+              domain: database
+              instance: backend:8080
+              job: vetsoftware
+              service: vetsoftware
+              severity: warning
+              token_type: refresh
+            exp_annotations:
+              summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
+              description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresecuritytokentablegrowth"

@@ -52,7 +52,7 @@ no por defectuoso.
 ## Alertas
 
 Las reglas de plataforma viven en `docker/prometheus-platform-alerts.yml` y las de SLO en
-`docker/prometheus-slo-alerts.yml`, con runbooks en `docs/ALERTAMIENTO_OPERATIVO.md`.
+`docker/prometheus-slo-alerts.yml`, con runbooks en `docs/ALERTAS_STACK_LOCAL.md`.
 
 La entrega OTLP directa usa colas en memoria. Ante una caída prolongada de Grafana **se puede
 perder telemetría, y ahora también auditoría**: al ser el log su único destino, un descarte del
