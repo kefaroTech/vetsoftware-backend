@@ -1,0 +1,139 @@
+# BE-27. Hasta ahora ninguna dependencia de este repositorio se renovaba sola: ni las
+# de Maven -que son las que viajan dentro del jar desplegado-, ni las ~111 acciones
+# clavadas por SHA en los workflows, ni las dos imagenes base del Dockerfile. Un SHA
+# clavado es reproducible, pero tambien es una foto que envejece: sin nadie que la
+# renueve, un parche de seguridad de la accion no llega jamas.
+#
+# target-branch: develop en TODOS los ecosistemas. main solo recibe releases (ver
+# gitflow-guard.yml); un pull request de Dependabot contra main seria un salto de
+# GitFlow que ademas se saltaria la verificacion de develop.
+#
+# Las ramas que crea Dependabot se llaman dependabot/<ecosistema>/<paquete>-<version>,
+# que NO es un prefijo de GitFlow. gitflow-guard.yml admite ese prefijo unicamente
+# cuando el autor del pull request es dependabot[bot]; sin esa excepcion estos pull
+# requests naceran en rojo. Los dos ficheros van juntos.
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # Maven: el arbol que acaba en el artefacto desplegable. Es el ecosistema que
+  # importa y el unico que nunca se habia auditado.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "maven"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Bogota"
+    # Cinco a la vez es lo que una persona revisa de verdad. Con las agrupaciones de
+    # abajo, cinco pull requests cubren practicamente todo el arbol.
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "⬆️ chore(deps)"
+      prefix-development: "⬆️ chore(deps-dev)"
+      include: "scope"
+    groups:
+      # Menor y parche van en un solo pull request por ambito. El CI completo
+      # (mvn verify: pruebas, JaCoCo, ArchUnit, contrato OpenAPI) es la evidencia
+      # de que el grupo entero es seguro de mezclar.
+      maven-produccion:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      maven-desarrollo:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Un parche de seguridad no espera a la cola de las actualizaciones de version:
+      # va en su propio pull request agrupado y se mezcla primero. (Requiere que
+      # Dependabot alerts este habilitado en el repositorio; hoy no lo esta.)
+      maven-seguridad:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    # Los saltos de major NO se agrupan a proposito: cada uno se revisa solo, porque
+    # cada uno puede traer una migracion. Spring Boot es el caso extremo -es el
+    # parent del pom y arrastra todo el arbol gestionado-, asi que se le exige
+    # revision explicita.
+
+  # ---------------------------------------------------------------------------
+  # npm: solo el tooling de los hooks y de los scripts de version. No viaja al
+  # despliegue, pero corre en CI con el codigo delante, que ya es motivo suficiente.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:15"
+      timezone: "America/Bogota"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "⬆️ chore(deps)"
+      prefix-development: "⬆️ chore(deps-dev)"
+      include: "scope"
+    groups:
+      npm-tooling:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions: los SHA clavados en los seis workflows. Dependabot actualiza el
+  # SHA y el comentario de version que va al lado, que es exactamente la convencion
+  # del repositorio.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:30"
+      timezone: "America/Bogota"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "⬆️ ci(actions)"
+      include: "scope"
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
+  # ---------------------------------------------------------------------------
+  # Docker: las dos imagenes base del Dockerfile (maven:...-temurin-25-alpine para la
+  # etapa de build y eclipse-temurin:25-jre-noble para la de runtime), ambas clavadas
+  # por digest. El CVE de una imagen base es el que se despliega a produccion sin que
+  # ninguna dependencia Java haya cambiado.
+  #
+  # OJO: esto NO cubre docker-compose.yml ni docker/image-versions.lock, que fijan las
+  # imagenes del stack local por digest a mano.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:45"
+      timezone: "America/Bogota"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "⬆️ build(docker)"
+      include: "scope"
+    groups:
+      imagenes-base:
+        applies-to: version-updates
+        patterns:
+          - "*"

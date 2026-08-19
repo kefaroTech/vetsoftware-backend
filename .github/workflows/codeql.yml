@@ -1,0 +1,97 @@
+name: CodeQL
+
+# BE-27. Analisis estatico del codigo propio con el motor de GitHub.
+#
+# ESTE WORKFLOW NO SE EJECUTA TODAVIA, Y NO ES UN DESCUIDO. Comprobado contra la API
+# el 2026-08-19:
+#
+#   GET /repos/kefaroTech/vetsoftware-backend  -> "code_security": {"status": "disabled"}
+#   GET /repos/kefaroTech/vetsoftware-backend/code-scanning/alerts
+#       403 "Code Security must be enabled for this repository to use code scanning."
+#   GET /orgs/kefaroTech -> plan "team",
+#                           advanced_security_enabled_for_new_repositories: false
+#
+# El repositorio es privado, y en repositorios privados el code scanning exige GitHub
+# Code Security, que no esta contratado. Sin el, codeql-action falla al subir el SARIF
+# con ese mismo 403. Por eso el trabajo esta condicionado a la variable de repositorio
+# CODE_SECURITY_ENABLED y hoy queda SIN EJECUTAR (visible como "skipped"), no en
+# verde: taparlo con continue-on-error lo pintaria de verde mintiendo, y dejarlo
+# corriendo lo dejaria en rojo permanente en cada pull request, que es como se enseña
+# a un equipo a ignorar los checks rojos.
+#
+# QUE HAY QUE HACER PARA ACTIVARLO (dos pasos, ningun cambio de codigo):
+#   1. Contratar y habilitar GitHub Code Security en kefaroTech/vetsoftware-backend.
+#   2. Crear la variable de repositorio CODE_SECURITY_ENABLED = true
+#      (Settings > Secrets and variables > Actions > Variables).
+# Ese dia, este workflow entra en servicio tal cual esta y el trabajo `sast` de
+# security.yml (Semgrep, que si corre hoy) puede retirarse o quedarse como segunda
+# opinion.
+#
+# Sobre Java 25: NO es un impedimento. El extractor de Java de CodeQL soporta Java 25
+# desde CodeQL 2.23.1 (septiembre de 2025) y el rango declarado hoy es Java 7-26; el
+# proyecto no usa caracteristicas preview ni incubator, que son lo unico que el
+# extractor no admite. build-mode: none analiza el arbol de fuentes sin compilar, con
+# lo que no arrastra los minutos de un `mvn package` ni necesita Docker.
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  # Las consultas de CodeQL se actualizan aunque el codigo no cambie.
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze Java
+    # El interruptor descrito arriba. Mientras no exista la variable, el trabajo no
+    # arranca; el dia que exista, corre completo sin tocar este fichero.
+    if: vars.CODE_SECURITY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # La escritura de alertas de code scanning: es exactamente el permiso que hoy
+      # devuelve 403 por falta de licencia.
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Con build-mode: none CodeQL no compila, pero si invoca Maven para resolver el
+      # arbol de dependencias y afinar la resolucion de tipos. Sin un JDK 25 esa
+      # resolucion se degrada y el analisis pierde precision en silencio.
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: java-kotlin
+          build-mode: none
+          # security-extended añade consultas de precision media sobre el conjunto por
+          # defecto. Es asumible aqui porque el resultado no bloquea el pull request:
+          # publica alertas.
+          queries: security-extended
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: "/language:java-kotlin"

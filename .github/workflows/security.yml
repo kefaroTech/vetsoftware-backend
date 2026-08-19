@@ -1,0 +1,213 @@
+name: Security scan
+
+# BE-27. Antes de esto, la unica dependencia auditada del repositorio eran los tres
+# devDependencies de tooling que mira `npm audit` en ci.yml. Las ~200 dependencias
+# Java que SI viajan dentro del jar desplegado no las miraba nadie, y no habia
+# analisis estatico de ninguna clase.
+#
+# Dos trabajos, deliberadamente separados porque fallan por motivos distintos:
+#
+#   sca  -> vulnerabilidades conocidas de las dependencias (CVE de terceros).
+#   sast -> defectos en el codigo propio (inyeccion, criptografia, secretos).
+#
+# Por que NO hay aqui OWASP dependency-check: su primera ejecucion descarga la base
+# completa del NVD (decenas de miles de CVE, del orden de 10-15 minutos) y sin cache
+# de la base lo hace en CADA ejecucion. El escaneo del SBOM con Trivy resuelve lo
+# mismo en segundos.
+#
+# Por que el SAST de aqui es Semgrep y no CodeQL: CodeQL SI soporta Java 25
+# (extractor desde CodeQL 2.23.1, septiembre de 2025; el rango declarado es Java
+# 7-26), asi que el motor no es el problema. El problema es la licencia: este
+# repositorio es privado y el code scanning de GitHub exige GitHub Code Security, hoy
+# deshabilitado tanto en el repositorio como en la organizacion. Comprobado contra la
+# API el 2026-08-19:
+#
+#   GET /repos/kefaroTech/vetsoftware-backend/code-scanning/alerts
+#   403 "Code Security must be enabled for this repository to use code scanning."
+#
+# El workflow de CodeQL SI se entrega, en .github/workflows/codeql.yml, listo para el
+# dia en que se active (ver el issue #65). Semgrep OSS es lo que cubre el hueco
+# MIENTRAS TANTO, porque no depende de ninguna licencia: falla el trabajo
+# directamente en vez de publicar alertas.
+#
+# Por la misma razon, ningun paso de aqui sube SARIF: sin Code Security, la API de
+# code scanning devuelve 403 y el paso quedaria en rojo permanente.
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  # Las dependencias no cambian, pero los CVE si: un arbol verde el lunes puede estar
+  # rojo el martes sin que nadie haya tocado una linea. Sin esta ejecucion periodica,
+  # un repositorio sin actividad deja de auditarse.
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # SCA: SBOM del artefacto real y escaneo de ese SBOM.
+  # ---------------------------------------------------------------------------
+  sca:
+    name: Dependency vulnerabilities (SBOM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Trivy descarga su base de vulnerabilidades de ghcr.io. Autenticado, no le
+      # aplica el limite de descargas anonimas por IP del runner, que es la causa
+      # habitual de que este trabajo falle sin que nada haya cambiado.
+      packages: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # El objetivo suelto, sin compilar ni ejecutar pruebas: el SBOM sale del arbol
+      # de dependencias resuelto, no de las clases. Segundos, no minutos. La misma
+      # configuracion del pom que usa `mvn verify` al empaquetar.
+      - name: Generate CycloneDX SBOM
+        run: mvn --batch-mode --no-transfer-progress cyclonedx:makeBom
+
+      - name: Verify the SBOM is not empty
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Un SBOM vacio o ausente pasaria el escaneo en verde sin haber mirado
+          # nada. Es el modo de fallo silencioso que hace inutil a un gate.
+          [ -s target/bom.json ] || {
+            echo "::error::No se genero target/bom.json"
+            exit 1
+          }
+          componentes="$(grep -o '"purl"' target/bom.json | wc -l)"
+          echo "Componentes en el SBOM: $componentes"
+          if [ "$componentes" -lt 50 ]; then
+            echo "::error::El SBOM declara $componentes componentes; el arbol real supera los 150. El escaneo estaria pasando en vacio."
+            exit 1
+          fi
+
+      # Se retiene SIEMPRE, tambien cuando el escaneo falla: el SBOM del arbol que
+      # disparo la alerta es justo lo que hace falta para investigarla.
+      - name: Retain the SBOM
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-cyclonedx-${{ github.sha }}
+          path: target/bom.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Scan the SBOM for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: sbom
+          scan-ref: target/bom.json
+          format: table
+          # El umbral arranca en HIGH y CRITICAL a proposito: es lo que se puede
+          # sostener en verde desde el primer dia. Bajarlo a MEDIUM sin haber
+          # saneado antes el arbol produce un gate que se acaba desactivando, que
+          # es peor que no tenerlo. Solo puede endurecerse.
+          severity: HIGH,CRITICAL
+          # Sin version corregida no hay nada que este pull request pueda hacer:
+          # esas se persiguen por issue, no bloqueando a quien pasaba por ahi.
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # ---------------------------------------------------------------------------
+  # SAST: analisis estatico del codigo propio.
+  # ---------------------------------------------------------------------------
+  sast:
+    name: Static analysis (Semgrep)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Semgrep va en `docker run` y NO como `container:` del trabajo. Con
+      # `container:`, el runner inyecta su propio Node dentro de la imagen para
+      # ejecutar actions/checkout; ese binario esta compilado contra glibc y las
+      # imagenes de Semgrep son Alpine (musl), asi que el checkout puede fallar por
+      # un motivo que no tiene nada que ver con el analisis. Corriendo el contenedor
+      # como un paso mas, el checkout se hace en el runner y Semgrep solo ve un
+      # directorio montado.
+      - name: Run Semgrep
+        shell: bash
+        env:
+          # Clavada por digest, igual que las imagenes del Dockerfile. La etiqueta va
+          # en el comentario para que Dependabot (ecosistema docker) pueda proponer
+          # el salto.
+          SEMGREP_IMAGE: semgrep/semgrep@sha256:67319956da3dcb58baf5b322899c15458e3963e7018a86aeeb5cd224e69cb77a # v1.173.0
+        run: |
+          set -euo pipefail
+
+          # --error: un hallazgo de severidad ERROR deja el trabajo en rojo. Los
+          # WARNING quedan en el registro sin bloquear, que es la unica forma de que
+          # esto arranque en verde y suba el liston despues.
+          #
+          # GIT_CONFIG_*: el contenedor corre como root sobre un arbol que pertenece
+          # al usuario del runner. Sin declarar el directorio como seguro, git se
+          # niega a leerlo, Semgrep pierde el .gitignore y acaba analizando ficheros
+          # generados. Se inyecta por entorno para no escribir un fichero de
+          # configuracion dentro del workspace.
+          #
+          # Los packs p/ del registro son publicos: no hacen falta cuenta ni token, y
+          # con --metrics=off no sale nada del runner salvo la peticion de reglas.
+          #
+          # NO se incluye p/secrets a proposito: los secretos son competencia de
+          # gitleaks (secret-scan.yml), que ademas mira el historico completo y tiene
+          # su triaje en .gitleaks.toml. Al probarlo con p/secrets, los cuatro unicos
+          # hallazgos bloqueantes fueron el mismo hash BCrypt de los changesets 220 y
+          # 221 de BE-07 -que estan ahi para localizar y BORRAR esa cuenta sembrada,
+          # ya eliminada por el 221-. Dos escaneres de secretos con triajes separados
+          # significan revisar dos veces el mismo falso positivo y desactivar uno.
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src" \
+            -w /src \
+            -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0=/src \
+            "$SEMGREP_IMAGE" \
+            semgrep scan \
+              --config p/java \
+              --config p/owasp-top-ten \
+              --metrics=off \
+              --severity=ERROR \
+              --error \
+              --json-output=/src/semgrep.json \
+              --exclude=target \
+              --exclude=node_modules \
+              .
+
+      - name: Retain the Semgrep report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: semgrep-${{ github.sha }}
+          path: semgrep.json
+          if-no-files-found: warn
+          retention-days: 30
