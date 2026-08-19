@@ -42,7 +42,7 @@ class ContingencyRetryJobTest {
 
     private static final ScheduledJobTelemetry TELEMETRY = new ScheduledJobTelemetry(
             ObservationRegistry.create());
-    private static final int MAX_ATTEMPTS = 12;
+    private static final int MAX_ATTEMPTS = 4;
     private static final long DEADLINE_HOURS = 48;
 
     @Mock

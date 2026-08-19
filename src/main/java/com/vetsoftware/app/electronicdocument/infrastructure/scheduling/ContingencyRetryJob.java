@@ -26,6 +26,13 @@ import org.springframework.stereotype.Component;
  * en CONTINGENCIA y se reintenta en el siguiente ciclo.
  *
  * <p>
+ * <b>El ciclo es de 12h</b> ({@code dian.contingency.retry-delay-ms}), contadas
+ * desde que TERMINA la pasada anterior; no es una hora fija del dia. El reloj
+ * se reinicia en cada despliegue, y el {@code initial-delay-ms} de 60s es la
+ * unica pasada rapida que queda: un documento que cae en contingencia justo
+ * despues de una corrida espera hasta 12h a su primer reintento automatico.
+ *
+ * <p>
  * El reintento se acota por dos límites (configurables): un <b>cap de
  * intentos</b> ({@code
  * dian.contingency.max-attempts}) y una <b>ventana de plazo</b> desde la
@@ -59,7 +66,7 @@ public class ContingencyRetryJob {
     public ContingencyRetryJob(ElectronicDocumentRepository repository, DianJobLeasePort leasePort,
             DocumentTransmitter transmitter, TransmissionLogPort transmissionLog,
             ScheduledJobTelemetry telemetry,
-            @Value("${dian.contingency.max-attempts:12}") int maxAttempts,
+            @Value("${dian.contingency.max-attempts:4}") int maxAttempts,
             @Value("${dian.contingency.deadline-hours:48}") long deadlineHours,
             @Value("${dian.contingency.batch-size:25}") int batchSize,
             @Value("${dian.contingency.lease:PT30M}") Duration lease) {
@@ -74,7 +81,7 @@ public class ContingencyRetryJob {
         this.lease = lease;
     }
 
-    @Scheduled(initialDelayString = "${dian.contingency.initial-delay-ms:60000}", fixedDelayString = "${dian.contingency.retry-delay-ms:300000}")
+    @Scheduled(initialDelayString = "${dian.contingency.initial-delay-ms:60000}", fixedDelayString = "${dian.contingency.retry-delay-ms:43200000}")
     public void retryContingencies() {
         telemetry.observe(JOB_NAME, this::executeRetries);
     }

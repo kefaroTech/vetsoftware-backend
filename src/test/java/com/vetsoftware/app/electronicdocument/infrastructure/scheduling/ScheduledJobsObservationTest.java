@@ -48,7 +48,7 @@ class ScheduledJobsObservationTest {
         ObservationCapture capture = new ObservationCapture();
 
         ContingencyRetryJob job = new ContingencyRetryJob(repository, leasePort, transmitter,
-                transmissionLog, capture.telemetry(), 12, 48, 25, Duration.ofMinutes(30));
+                transmissionLog, capture.telemetry(), 4, 48, 25, Duration.ofMinutes(30));
 
         runAsSpringScheduledTask(job, "retryContingencies", capture.registry());
 

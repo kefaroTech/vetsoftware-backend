@@ -250,3 +250,28 @@ vetsoftware:
       owner-name: ${DIAN_SOFTWARE_OWNER_NAME:VetSoftware}
       company-name: ${DIAN_SOFTWARE_COMPANY_NAME:VetSoftware}
       name: ${DIAN_SOFTWARE_NAME:VetSoftware}
+
+# Jobs @Scheduled de documento electronico. Van en la raiz `dian` (no bajo `vetsoftware.dian`)
+# porque asi los declaran los @Value de ContingencyRetryJob y PendingReconciliationJob.
+#
+# Los dos ciclos son fixedDelay de 12h: el reloj corre desde que TERMINA la pasada anterior, no
+# desde una hora fija del dia. El initial-delay se deja corto a proposito —cada despliegue dispara
+# una pasada al minuto o dos—, que es la unica ventana de reintento rapido que queda con 12h.
+dian:
+  contingency:
+    initial-delay-ms: ${DIAN_CONTINGENCY_INITIAL_DELAY_MS:60000}
+    retry-delay-ms: ${DIAN_CONTINGENCY_RETRY_DELAY_MS:43200000}
+    batch-size: ${DIAN_CONTINGENCY_BATCH_SIZE:25}
+    # El lease NO acompaña al ciclo: acota cuanto retiene una replica el lote mientras lo procesa.
+    # Corto a proposito, para que un documento no espere 12h si la replica que lo reclamo muere.
+    lease: ${DIAN_CONTINGENCY_LEASE:PT30M}
+    # Los dos limites estan cuadrados con el ciclo de 12h: la ventana de 48h da para 4 pasadas,
+    # y el cap son esas mismas 4. Si cambias uno, recalcula el otro (deadline-hours / 12) o uno
+    # de los dos deja de tener efecto.
+    max-attempts: ${DIAN_CONTINGENCY_MAX_ATTEMPTS:4}
+    deadline-hours: ${DIAN_CONTINGENCY_DEADLINE_HOURS:48}
+  reconciliation:
+    initial-delay-ms: ${DIAN_RECONCILIATION_INITIAL_DELAY_MS:120000}
+    poll-delay-ms: ${DIAN_RECONCILIATION_POLL_DELAY_MS:43200000}
+    batch-size: ${DIAN_RECONCILIATION_BATCH_SIZE:50}
+    lease: ${DIAN_RECONCILIATION_LEASE:PT15M}
