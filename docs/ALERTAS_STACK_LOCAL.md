@@ -1,4 +1,19 @@
-# Alertamiento operativo de VetSoftware
+# Alertas del stack local de VetSoftware
+
+Runbook de las alertas que evalúa el **stack Docker local**:
+`docker/prometheus-platform-alerts.yml`, `docker/prometheus-business-alerts.yml` y
+`docker/prometheus-slo-alerts.yml`, con entrega por Alertmanager a Mailpit. Este plano es un
+banco de pruebas de expresiones: **no pagina a nadie**.
+
+> **Las alertas de `dev` y `prod` son otro plano y tienen otro runbook:**
+> <https://github.com/kefaroTech/vetsoftware-infrastructure/blob/develop/docs/ALERTAMIENTO_OPERATIVO.md>
+>
+> Viven en `VetSoftwareIaC/observability/`, se evalúan en Grafana Cloud y sus métricas llegan por
+> push OTLP, no por scrape: los timers van en **milisegundos** y el selector es
+> `job="mainvet/vetsoftware"`. **Copiar una consulta de un documento al otro devuelve vacío**, y
+> un resultado vacío se confunde con "no hay problema". Las reglas locales tienen gemelos allí
+> (ver la cabecera `GEMELO CLOUD` de cada fichero `docker/prometheus-*.yml`); las alertas que
+> solo existen en Cloud se documentan **solo** en ese runbook.
 
 ## Objetivo
 
@@ -14,6 +29,11 @@ Backend y componentes
       Mailpit
 ```
 
+**Unidad única.** Todo este documento habla la lengua del scrape local de Prometheus: los timers
+son de la familia `_seconds_`. Una consulta de aquí que mencione milisegundos es un error de este
+documento y debe reportarse; esa familia pertenece al plano de Grafana Cloud. El job
+`observability-rules` de CI falla si aparece.
+
 Prometheus decide cuándo una condición es anómala. Alertmanager agrupa, deduplica,
 inhibe, silencia y entrega notificaciones. Mailpit permite comprobar localmente los
 correos en `http://localhost:8025` sin enviar mensajes reales.
@@ -22,32 +42,29 @@ correos en `http://localhost:8025` sin enviar mensajes reales.
 
 El entorno local monta `docker/alertmanager.yml`, que entrega los avisos a Mailpit.
 
-Producción debe suministrar un archivo externo mediante:
+`ALERTMANAGER_CONFIG_PATH` permite apuntar este mismo stack a otro fichero de configuración
+(correo real, Amazon SNS, PagerDuty, Slack, Teams o Discord) cuando se quiere ensayar un canal de
+entrega distinto:
 
 ```text
-ALERTMANAGER_CONFIG_PATH=./ruta-segura/alertmanager-prod.yml
+ALERTMANAGER_CONFIG_PATH=./ruta-segura/alertmanager-local-alterno.yml
 ```
 
-Ese archivo puede configurar correo, Amazon SNS, PagerDuty, Slack, Teams, Discord u
-otro receptor soportado. No se deben guardar tokens, contraseñas ni webhooks en Git.
-Los secretos deben referenciarse mediante archivos o el gestor de secretos del
-entorno de despliegue.
+No se deben guardar tokens, contraseñas ni webhooks en Git: los secretos se referencian mediante
+archivos o el gestor de secretos del entorno.
 
-## Alertas en Grafana Cloud
-
-El stack local descrito arriba evalúa los ficheros `docker/prometheus-*.yml`. Los ambientes
-`dev` y `prod` evalúan además sus propias reglas en el **ruler de Mimir** del stack de
-Grafana Cloud de cada ambiente, sincronizadas con `mimirtool` desde
-`VetSoftwareIaC/observability/mimir-rules/`. Esos ficheros son **gemelos traducidos** de los
-locales, no copias: las métricas llegan por OTLP push y no por scrape, así que los timers van
-en milisegundos, el selector es `job="mainvet/vetsoftware"` y los bordes `le` son enteros. Un
-cambio en un fichero local debe evaluarse también en su gemelo (y viceversa); el detalle de la
-traducción, lo que no se portó y por qué, está en el README de ese directorio. Producción
-añade un heartbeat de ingesta (`VetSoftwareBackendTelemetryAbsent`) que sustituye a
-`VetSoftwareBackendDown` en un mundo sin scrape; no se sincroniza a dev porque el apagado
-programado del ambiente lo haría sonar cada noche.
+**La notificación de `dev` y `prod` no pasa por este Alertmanager.** Se define en las políticas de
+notificación de Grafana Cloud, en el otro plano, y su runbook es el enlazado en la cabecera.
 
 ## Validación
+
+Las dos primeras comprobaciones ya no dependen de que alguien se acuerde: el job
+`observability-rules` de `.github/workflows/ci.yml` las ejecuta en cada pull request, y además
+verifica que **toda anotación `runbook:` de `docker/prometheus-*.yml` resuelva a un encabezado de
+este documento** y que no aparezcan unidades del otro plano. Un enlace de runbook roto rompe el
+build, no la guardia.
+
+En local:
 
 ```powershell
 docker run --rm `
@@ -232,104 +249,90 @@ ajuste con prudencia `TOKEN_CLEANUP_BATCH_SIZE` o `TOKEN_CLEANUP_MAX_BATCHES_PER
 filas elegibles, el crecimiento corresponde a sesiones o solicitudes todavía vigentes y debe
 investigarse antes de reducir la retención.
 
-## VetSoftwareScheduledJobFailing
+## Alertas de negocio
 
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-Un job programado acumula ejecuciones con `job_outcome` en `failure` o `error`: la variante
-warning exige fallos sostenidos durante treinta minutos; la critical, que **todas** las
-ejecuciones de las últimas dos horas hayan fallado sin un solo éxito — fallo determinista que
-ningún ciclo posterior va a recuperar.
+Las cuatro alertas siguientes viven en `docker/prometheus-business-alerts.yml` y no vigilan la
+plataforma sino el **resultado de una operación de negocio**. Todas llevan la etiqueta `domain`.
 
-1. Identificar el trabajo con la etiqueta `job_name` de la alerta.
-2. Buscar en Loki los logs del job y seguir el `trace_id` de una ejecución fallida en Tempo.
-3. Distinguir fallo transitorio (dependencia caída, timeout puntual) de determinista (dato
-   atascado, configuración inválida). Si la variante critical está activa, asumir determinista.
-4. Un job que falla no tiene usuario delante que reintente: el trabajo pendiente se acumula en
-   silencio mientras la alerta siga activa.
+Sus etiquetas están acotadas por `BusinessMetricCardinalityFilter`: un valor fuera de la allowlist
+se descarta antes de llegar al registro. Eso significa que **la serie nunca identifica el
+documento, el producto ni la empresa concretos**; esa identidad se busca en Loki y en Tempo, no en
+la métrica.
 
-Caso conocido: `dian.pending.reconciliation` falla de forma sostenida por un documento
-atascado (el documento 44). Ese patrón — mismo `job_name`, mismo error, cada ciclo — es un
-dato envenenado, no un problema de infraestructura: se corrige el dato, no el job.
+## VetSoftwareDianContingencyRateHigh
 
-## VetSoftwareEmailSendFailing
+Más del 5 % de las transmisiones a la DIAN de los últimos 15 minutos terminó en contingencia, con
+al menos 10 transmisiones en la ventana. La guarda de volumen evita que 1 de cada 3 dispare la
+alerta.
 
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-El envío de correo es fire-and-forget: cada `email_outcome="failure"` es un correo que el
-destinatario no recibió, aunque la petición HTTP del usuario respondiera 200. La variante
-warning es tasa parcial (más del 10 % de fallos con volumen mínimo); la critical es fallo
-total: hay fallos y **cero** éxitos durante media hora — determinista y sistémico.
+Contingencia no es pérdida: el documento queda registrado para reintento posterior, y por eso esto
+es `warning` y no `critical`. Lo que se pierde si se ignora es el **plazo fiscal**.
 
-1. Buscar en Loki el error del cliente de correo y el código de respuesta del proveedor.
-2. Un 4xx del proveedor (401/403/422) es determinista: fallará el 100 % de los envíos hasta
-   que alguien cambie configuración. Un 429/5xx/timeout es transitorio y aislado.
-3. Caso vivo que motivó la alerta: Resend responde `403` porque el dominio remitente no está
-   verificado. El arreglo es **verificar el dominio `kefaro.tech` en Resend** (o cambiar el
-   remitente a un dominio ya verificado), no reintentar.
-4. Tras corregir, confirmar que aparecen envíos con `email_outcome="success"` y que la
-   variante critical se resuelve sola.
+1. Desglosar `vetsoftware_business_dian_transmissions_total` por `result` y `origin`. Con
+   `origin="retry"` u `origin="reconciliation"` dominando, el reintento ya está actuando.
+2. Distinguir las dos poblaciones: una contingencia masiva y simultánea suele ser indisponibilidad
+   del proveedor (transitoria, se recupera sola); una tasa sostenida con volumen bajo apunta a
+   documentos concretos que fallan siempre, que es un problema de dato.
+3. Correlacionar la ventana en Loki y seguir el `trace_id` de una transmisión fallida en Tempo.
+4. Comprobar que el backlog drena después: si no lo hace, saltará
+   `VetSoftwareDianBacklogOlderThanOneHour`, que ya no es transitorio.
 
-## VetSoftwareAuthFailureSpike
+## VetSoftwareDianBacklogOlderThanOneHour
 
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-Más de 0,5 rechazos por segundo sostenidos diez minutos en `/auth/login/*`. El selector es
-preciso a propósito: en este backend los 401/403 solo aparecen en esas dos rutas, así que la
-alerta no arrastra el ruido de los tokens de acceso caducados del ciclo de refresco del front.
+Hay al menos un documento con más de una hora sin resolver
+(`vetsoftware_business_dian_backlog_documents{age="gt_1h"}`). La contingencia dejó de ser
+transitoria: **nadie está reintentando con éxito**.
 
-1. Agrupar en Loki los eventos `event="login_failure"` del canal AUDIT por `client.ip` y
-   `user_agent.original`.
-2. **Una sola IP con muchos identificadores distintos** es enumeración de códigos de empleado.
-   **Muchas IP contra un solo identificador** es fuerza bruta dirigida. **Una IP con un solo
-   identificador repetido** suele ser un cliente mal configurado en bucle, no un ataque.
-3. Comprobar si el rate limiting está actuando (respuestas 429). Si no aparece ninguna,
-   verificar la salud de Valkey: bucket4j se apoya en él y una caché degradada puede dejar el
-   control abierto — ver `VetSoftwareValkeyCommandsFailing`.
-4. No bloquear una IP sin el paso 2: un NAT corporativo concentra usuarios legítimos.
+1. Confirmar que el trabajo de reconciliación corre y con qué resultado: la métrica
+   `tasks_scheduled_execution_seconds_count` filtrada por su `job_name`, y sus logs en Loki.
+2. Un trabajo que corre y falla en cada ciclo con el mismo error es un **dato envenenado**, no un
+   problema de infraestructura: se corrige el dato, no el trabajo. Caso observado en `dev`: un
+   único documento atascado bastó para que `dian.pending.reconciliation` fallara de forma sostenida
+   ciclo tras ciclo.
+3. Un trabajo que **no corre** deja el backlog creciendo en silencio; comprobar primero que la
+   aplicación esté viva y el planificador activo.
+4. Esta métrica es un gauge de snapshot: si `VetSoftwareBusinessMetricsSnapshotStale` está activa a
+   la vez, el valor que se está leyendo puede ser antiguo. Resolver esa primero.
 
-## VetSoftwareValkeyCommandsFailing
+## VetSoftwareInventoryInsufficientStockRateHigh
 
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-El cliente Lettuce registra comandos con `error` distinto de `none` durante cinco minutos.
+Más del 5 % de los movimientos de inventario de los últimos 15 minutos se rechazó por existencias
+insuficientes, con al menos 10 movimientos en la ventana.
 
-**Valkey no es solo caché.** Sostiene la caché de permisos y sedes *y* el rate limiting de
-bucket4j. Degradado, el control de fuerza bruta deja de ser fiable justo cuando más falta hace.
+**Esto no es un fallo del sistema**: el sistema hizo exactamente lo que debía. Es una señal de
+negocio con dos lecturas posibles, y distinguirlas es el trabajo:
 
-1. Estado de la instancia ElastiCache: CPU, memoria, evictions, conexiones.
-2. Conectividad desde la task de ECS (grupos de seguridad, cambio de endpoint).
-3. Revisar el valor concreto de la etiqueta `error` en la serie
-   `lettuce_milliseconds_count{error!="none"}`: distingue timeout de conexión rechazada.
-4. Mientras dure, asumir que la autorización responde más lento y que el rate limiting puede
-   no estar aplicándose.
+1. Desglosar `vetsoftware_business_inventory_movements_total` por `movement_type` y `result`. Si
+   los rechazos se concentran en `sale` o `clinical_use`, hay desabastecimiento real de cara al
+   cliente.
+2. Existencias que la aplicación cree agotadas pero que físicamente están en sede apuntan a
+   descuadre del inventario (lotes vencidos, movimientos no registrados, un ajuste pendiente), no a
+   falta de compra.
+3. Contrastar con `vetsoftware_business_inventory_low_stock` y con los lotes por vencer: un pico de
+   rechazos precedido de bajo stock sostenido es previsible y evitable.
+4. La serie no dice **qué** producto. Ese dato se obtiene de los logs de la ventana y de las trazas
+   de las operaciones rechazadas.
 
-## VetSoftwareValkeyLatencyHigh
+## VetSoftwareBusinessMetricsSnapshotStale
 
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-El p99 de los comandos Lettuce supera 50 ms durante diez minutos. Valkey está en el camino
-caliente de la autorización: su latencia se suma a la de **cada** petición autenticada.
+`vetsoftware_business_metrics_snapshot_age_seconds` supera 180 segundos: el snapshot periódico que
+alimenta los gauges de backlog DIAN e inventario lleva más de tres refrescos sin completarse (el
+intervalo por defecto es de 60 s,
+`vetsoftware.observability.business-metrics.snapshot-refresh-ms`).
 
-Revisar CPU y memoria de ElastiCache, la tasa de eviction y el tamaño de las entradas
-cacheadas. Correlacionar con `VetSoftwareHttpP95LatencyHigh`: si ambas están activas, la causa
-raíz probable es la caché, no la aplicación.
+**Es la alerta que protege a las otras tres.** Cuando el refresco falla, `BusinessGaugeMetrics`
+conserva deliberadamente el último valor conocido en lugar de dejar la serie ausente: los gauges se
+**congelan**, no desaparecen. Un backlog que crece se ve plano y sano. Sin esta alerta, la ceguera
+sería indistinguible de la normalidad.
 
-## VetSoftwareIngestionNearLimit
-
-**No es una regla del ruler**: es una alerta Grafana-managed
-(`VetSoftwareIaC/observability/grafana-managed/vetsoftware-cost-guard.yml`), porque consulta
-métricas de uso que viven en otro tenant. Ver el README de ese directorio.
-
-Las series activas del stack superan el 80 % del límite del plan. **Al llegar al 100 %,
-Grafana Cloud rechaza la ingesta**: se pierde telemetría en silencio y con ella la capacidad de
-ver cualquier otro incidente — incluidas todas las demás alertas, que se quedan sin datos que
-evaluar.
-
-1. Identificar la familia culpable:
-   `topk(10, count by (__name__) ({__name__=~".+"}))`.
-2. Dentro de esa familia, buscar la etiqueta que explotó:
-   `count by (<etiqueta>) (<metrica>)`.
-3. Causa más probable: una etiqueta sin acotar. `BusinessMetricCardinalityFilter` solo cubre el
-   prefijo `vetsoftware.business.`; las familias `email.*` y `lettuce.*` quedan fuera de esa
-   allowlist y llevan una etiqueta `error` derivada del nombre de la excepción.
-4. El arreglo es acotar la etiqueta en el código (allowlist o `error.type` normalizado), no
-   subir el plan.
+1. Buscar en Loki el `WARN` de `BusinessGaugeMetrics` ("No se pudo actualizar el snapshot de
+   métricas de negocio"): trae la causa del fallo.
+2. La causa habitual es la base de datos: indisponibilidad, saturación del pool o una consulta de
+   conteo que se ha vuelto lenta. Correlacionar con `VetSoftwareDatabasePoolSaturated` y
+   `VetSoftwareDatabaseConnectionTimeouts`.
+3. **Mientras esta alerta esté activa, tratar como no fiables** el estado de
+   `VetSoftwareDianBacklogOlderThanOneHour` y las series de inventario. Resolverla antes de sacar
+   conclusiones de ellas.
 
 ## Alertas de SLO
 

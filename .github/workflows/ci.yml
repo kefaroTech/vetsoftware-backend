@@ -3,14 +3,17 @@ name: Backend CI
 # Solo pull_request. El evento evalua refs/pull/N/merge, que es exactamente el
 # arbol que queda en develop despues del merge: revalidarlo en el push posterior
 # es correr dos veces la misma verificacion sobre el mismo codigo.
+# Aqui se ignoraban "**/*.md" y "docs/**". Eso dejaba fuera del CI exactamente el cambio
+# que observability-rules existe para atrapar: renombrar o borrar un encabezado de
+# docs/ALERTAS_STACK_LOCAL.md al que apunta una anotacion runbook. El workflow arranca
+# ahora siempre y es el trabajo caro (Maven) el que se salta cuando el pull request solo
+# toca documentacion.
 on:
   pull_request:
     branches:
       - develop
       - main
     paths-ignore:
-      - "**/*.md"
-      - "docs/**"
       - ".gitignore"
       - "LICENSE"
   workflow_dispatch:
@@ -29,6 +32,7 @@ jobs:
     timeout-minutes: 45
     outputs:
       container-image: ${{ steps.changes.outputs.docker }}
+      code: ${{ steps.changes.outputs.code }}
     env:
       CI: true
       HUSKY: 0
@@ -55,7 +59,8 @@ jobs:
           # un Dockerfile roto en una ejecucion manual.
           if [ -z "$BASE_SHA" ]; then
             echo "docker=true" >> "$GITHUB_OUTPUT"
-            echo "Ejecucion sin base de comparacion; se construye la imagen."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Ejecucion sin base de comparacion; se construye la imagen y se verifica todo."
             exit 0
           fi
 
@@ -68,7 +73,19 @@ jobs:
             echo "Ni Dockerfile ni .dockerignore cambian; no se construye la imagen."
           fi
 
+          # Un pull request que solo toca documentacion no compila ni ejecuta pruebas, pero
+          # sigue pasando por observability-rules, que es el gate que le corresponde.
+          nondoc="$(git diff --name-only "$BASE_SHA" HEAD | grep -Ev '^docs/|\.md$' || true)"
+          if [ -n "$nondoc" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "El pull request toca codigo; se verifica con Maven."
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "El pull request solo toca documentacion; se omite la verificacion con Maven."
+          fi
+
       - name: Set up Java
+        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -76,24 +93,207 @@ jobs:
           cache: maven
 
       - name: Set up Node.js
+        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
 
       - name: Install workflow tooling
+        if: steps.changes.outputs.code == 'true'
         run: npm ci --ignore-scripts
 
       - name: Audit workflow tooling dependencies
+        if: steps.changes.outputs.code == 'true'
         run: npm audit --audit-level=high
 
       # Los scripts de .github/scripts deciden que version lleva cada artefacto;
       # un error ahi se paga en el despliegue, no en el build.
       - name: Verify workflow tooling
+        if: steps.changes.outputs.code == 'true'
         run: npm test
 
       - name: Verify with Maven
+        if: steps.changes.outputs.code == 'true'
         run: mvn --batch-mode --no-transfer-progress verify
+
+  # Las reglas de alerta y su runbook son un solo contrato. Una expresion que no compila, una
+  # prueba de regla rota o un enlace de runbook muerto no fallan aqui: fallan a las 3 de la
+  # manana, con la alerta ya sonando y sin nadie que sepa que hacer. El job es de segundos y
+  # corre tambien en pull requests que solo tocan documentacion, porque el defecto tipico es
+  # justamente renombrar un encabezado del runbook sin tocar ninguna regla.
+  observability-rules:
+    name: Verify alerting rules and runbook
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    env:
+      RUNBOOK: docs/ALERTAS_STACK_LOCAL.md
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve pinned promtool image
+        id: promtool
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # La misma imagen que evalua las reglas en el stack local (OBS-024). Tag y digest
+          # salen del lock, no de un literal que se desincroniza en silencio.
+          image="$(awk '$1 == "prometheus" { print $2 "@" $3 }' docker/image-versions.lock)"
+          if [ -z "$image" ]; then
+            echo "::error::No hay linea 'prometheus' en docker/image-versions.lock"
+            exit 1
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "promtool: $image"
+
+      - name: Check Prometheus rules
+        shell: bash
+        env:
+          IMAGE: ${{ steps.promtool.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          # El glob se expande en el host: promtool no expande comodines, y una ruta
+          # /workspace/prometheus-*.yml sin expandir se le pasaria literal.
+          files=""
+          for f in docker/prometheus-*.yml; do
+            [ -e "$f" ] || continue
+            files="$files /workspace/$(basename "$f")"
+          done
+          if [ -z "$files" ]; then
+            echo "::error::No hay ficheros docker/prometheus-*.yml que verificar"
+            exit 1
+          fi
+          echo "Verificando:$files"
+          # shellcheck disable=SC2086  # files es deliberadamente una lista de argumentos
+          docker run --rm -v "$PWD/docker:/workspace:ro" --entrypoint /bin/promtool \
+            "$IMAGE" check rules $files
+
+      - name: Test Prometheus rules
+        shell: bash
+        env:
+          IMAGE: ${{ steps.promtool.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          files=""
+          for f in docker/tests/*.test.yml; do
+            [ -e "$f" ] || continue
+            files="$files /workspace/tests/$(basename "$f")"
+          done
+          if [ -z "$files" ]; then
+            echo "::error::No hay ficheros docker/tests/*.test.yml que ejecutar"
+            exit 1
+          fi
+          echo "Ejecutando:$files"
+          # shellcheck disable=SC2086  # files es deliberadamente una lista de argumentos
+          docker run --rm -v "$PWD/docker:/workspace:ro" --entrypoint /bin/promtool \
+            "$IMAGE" test rules $files
+
+      - name: Check runbook links resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$RUNBOOK" ]; then
+            echo "::error::No existe $RUNBOOK"
+            exit 1
+          fi
+
+          # Slug de un encabezado: minusculas y solo alfanumericos. Se aplica identico a los
+          # dos lados de la comparacion para que la comprobacion no dependa de como los
+          # renderice GitHub.
+          slug() { tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]//g'; }
+
+          anchors="$(mktemp)"
+          grep -E '^#{2,6} ' "$RUNBOOK" | sed -E 's/^#+[[:space:]]+//' | slug | sort -u > "$anchors"
+          echo "Encabezados en $RUNBOOK: $(wc -l < "$anchors")"
+
+          failed=0
+          total=0
+          while IFS= read -r line; do
+            file="${line%%:*}"
+            value="${line#*runbook: \"}"
+            value="${value%\"}"
+            total=$((total + 1))
+
+            target="${value%%#*}"
+            fragment="${value#*#}"
+
+            if [ "$target" != "$RUNBOOK" ]; then
+              echo "::error file=$file::La anotacion runbook apunta a '$target' y no a $RUNBOOK"
+              failed=$((failed + 1))
+              continue
+            fi
+            if [ "$fragment" = "$value" ] || [ -z "$fragment" ]; then
+              echo "::error file=$file::La anotacion runbook '$value' no lleva ancla"
+              failed=$((failed + 1))
+              continue
+            fi
+            if ! grep -qxF "$(printf '%s' "$fragment" | slug)" "$anchors"; then
+              echo "::error file=$file::El ancla '#$fragment' no corresponde a ningun encabezado de $RUNBOOK"
+              failed=$((failed + 1))
+            fi
+          done < <(grep -nH -oE 'runbook: "[^"]+"' docker/prometheus-*.yml)
+
+          echo "Anotaciones runbook verificadas: $total (rotas: $failed)"
+          if [ "$total" -eq 0 ]; then
+            echo "::error::Ninguna anotacion runbook encontrada; la comprobacion estaria pasando en vacio"
+            exit 1
+          fi
+          [ "$failed" -eq 0 ]
+
+      - name: Check every alert has a runbook
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Sin esto, borrar la anotacion es la forma mas facil de poner el gate anterior en
+          # verde. Cuatro alertas de negocio vivieron asi hasta agosto de 2026.
+          # Un fichero por invocacion: ENDFILE es de gawk y el awk de Ubuntu es mawk.
+          missing=""
+          for f in docker/prometheus-*.yml; do
+            [ -e "$f" ] || continue
+            out="$(awk -v file="$f" '
+              /^[[:space:]]*-[[:space:]]*alert:[[:space:]]*/ {
+                if (name != "" && !seen) print file ": " name
+                name = $NF; seen = 0; next
+              }
+              /^[[:space:]]*runbook:/ { seen = 1 }
+              END { if (name != "" && !seen) print file ": " name }
+            ' "$f")"
+            if [ -n "$out" ]; then
+              missing="$missing$out"$'\n'
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::error::Alertas sin anotacion runbook:"
+            printf '%s\n' "$missing"
+            exit 1
+          fi
+          echo "Todas las alertas de docker/prometheus-*.yml declaran runbook."
+
+      - name: Check the runbook stays single-unit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # El stack local se raspa con Prometheus y sus timers son _seconds_. La familia
+          # _milliseconds pertenece al plano de Grafana Cloud, que tiene su propio runbook.
+          # Mezclarlas produce consultas que devuelven vacio, y un vacio se lee como "no hay
+          # problema".
+          if grep -n '_milliseconds' "$RUNBOOK"; then
+            echo "::error file=$RUNBOOK::Unidades del plano de Grafana Cloud en el runbook local; los timers de aqui son _seconds_"
+            exit 1
+          fi
+          echo "$RUNBOOK usa una sola familia de unidades."
 
   # Solo cuando el pull request toca la imagen. Fuera de ese caso este job
   # reconstruia lo mismo que publish-dev-image publica minutos despues sobre el
