@@ -19,10 +19,6 @@
 
     <properties>
         <java.version>25</java.version>
-        <sonar.host.url>http://localhost:9000</sonar.host.url>
-        <sonar.projectKey>vetsoftware</sonar.projectKey>
-        <sonar.projectName>VetSoftware</sonar.projectName>
-        <sonar.java.source>25</sonar.java.source>
         <argLine></argLine>
         <!-- Mismo motivo que argLine: la reescribe jacoco:prepare-agent-integration, y
              declararla vacia evita que @{failsafeArgLine} quede literal si jacoco no corre. -->
@@ -40,6 +36,31 @@
         <checkstyle.version>13.9.0</checkstyle.version>
         <archunit.version>1.4.1</archunit.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
+        <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
+
+        <!-- BE-27. Sobrescriben lo que gestiona spring-boot-dependencies 4.1.0 (netty
+             4.2.15.Final, httpcore5 5.4.2). El primer escaneo del SBOM encontro 7
+             vulnerabilidades HIGH con correccion publicada en ese arbol:
+
+               netty  4.2.15.Final -> CVE-2026-59901 (bucle infinito en bzip2),
+                                      CVE-2026-55831, CVE-2026-55833, CVE-2026-56745
+                                      (denegacion de servicio en SPDY),
+                                      CVE-2026-56819 (fuga de memoria en HTTP/2)
+               httpcore5 5.4.2     -> CVE-2026-54399, CVE-2026-54428 (denegacion de
+                                      servicio por cabeceras HTTP y HPACK)
+
+             Netty entra por Lettuce (Redis) y httpcore5 por el cliente HTTP: los dos
+             viajan dentro del jar desplegado.
+
+             OJO AL CADUCAR: una version fijada aqui GANA a la del parent. Cuando
+             Spring Boot publique una version que ya incluya estas correcciones, estas
+             dos lineas pasan de proteger a frenar, y lo haran en silencio porque
+             Dependabot no ve una propiedad que no respalda ninguna declaracion de
+             dependencia. Se revisan al subir de version el parent y se borran en
+             cuanto la gestionada iguale o supere a esta. -->
+        <netty.version>4.2.17.Final</netty.version>
+        <httpcore5.version>5.4.3</httpcore5.version>
         <!-- Suelo de cobertura global: solo puede SUBIR. Medido 98,83 % el 2026-08-17 tras
              la campana BE-COV; se fija un par de decimas por debajo para dejar margen a
              refactors que muevan el denominador. Ver "Cobertura" en CLAUDE.md.
@@ -552,10 +573,78 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- BE-27. Higiene de dependencias verificable en el build, no por convencion.
+                 banDynamicVersions es el equivalente realista al dependency locking en Maven:
+                 no existe un lockfile, pero si una version declarada deja de ser exacta (un
+                 rango [1.0,2.0), un LATEST, un RELEASE) el arbol resuelto deja de ser
+                 reproducible y el SBOM que se publica en la release describe un artefacto
+                 distinto del que se construyo. requireReleaseDeps cierra la otra mitad: un
+                 SNAPSHOT en el arbol es contenido mutable dentro de una imagen inmutable. -->
             <plugin>
-                <groupId>org.sonarsource.scanner.maven</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-                <version>5.7.0.6970</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-hygiene</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- Recorre el arbol resuelto completo, incluidas las transitivas:
+                                     una version dinamica heredada de un tercero rompe la
+                                     reproducibilidad igual que una declarada aqui. -->
+                                <banDynamicVersions>
+                                    <allowSnapshots>false</allowSnapshots>
+                                    <allowLatest>false</allowLatest>
+                                    <allowRelease>false</allowRelease>
+                                    <allowRanges>false</allowRanges>
+                                </banDynamicVersions>
+                                <requireReleaseDeps>
+                                    <message>Ninguna dependencia SNAPSHOT: la imagen es inmutable y su arbol tambien.</message>
+                                </requireReleaseDeps>
+                                <requireJavaVersion>
+                                    <version>[25,26)</version>
+                                    <message>El proyecto compila con Java 25 (ver java.version).</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- BE-27. SBOM CycloneDX del artefacto REAL (lo que acaba en el jar), no del
+                 tooling de npm. Se genera en 'package', de modo que cualquier 'mvn verify'
+                 -local o de CI- deja target/bom.json listo: el escaneo de vulnerabilidades
+                 del workflow de seguridad consume ese fichero y la release lo publica como
+                 activo. Es la lista de materiales que hoy no existia y sin la cual no se
+                 puede responder "estoy afectado por este CVE" sin reconstruir el proyecto. -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx-maven-plugin.version}</version>
+                <configuration>
+                    <projectType>application</projectType>
+                    <outputFormat>json</outputFormat>
+                    <outputName>bom</outputName>
+                    <!-- Solo lo que se despliega. Las dependencias de test no viajan en el
+                         jar y meterlas produce alertas sobre codigo que nunca corre en
+                         produccion, que es como se muere un gate de seguridad. -->
+                    <includeTestScope>false</includeTestScope>
+                    <!-- El SBOM no es un artefacto Maven que se instale ni se despliegue:
+                         se retiene como artefacto de CI y como activo de la release. -->
+                    <skipAttach>true</skipAttach>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>build-sbom</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

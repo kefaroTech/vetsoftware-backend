@@ -267,6 +267,35 @@ jobs:
             --generate-notes \
             --title "VetSoftware ${{ steps.release.outputs.version }}"
 
+      # BE-27. El SBOM del artefacto que se publica, junto al artefacto que describe.
+      # Lo genera el paso "Verify backend before publication" -cyclonedx va enganchado
+      # a la fase package- sobre ESTE commit, asi que describe exactamente el arbol de
+      # la imagen certificada mas arriba. Sin el, responder "que version de esta
+      # libreria lleva la 1.7.0 que esta en produccion" obliga a reconstruir la
+      # release, y cuando eso se pregunta suele ser el dia de un CVE con nombre.
+      - name: Attach the SBOM to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.release.outputs.version }}"
+          tag="v$version"
+
+          [ -s target/bom.json ] || {
+            echo "::error::No existe target/bom.json; la release quedaria sin lista de materiales." >&2
+            exit 1
+          }
+
+          # Se copia fuera del workspace: el nombre del activo lleva la version y no
+          # tiene por que ensuciar el arbol de trabajo del que cuelga el tag.
+          asset="$RUNNER_TEMP/vetsoftware-${version}-sbom.cdx.json"
+          cp target/bom.json "$asset"
+          # --clobber: reejecutar el workflow sobre la misma release reemplaza el
+          # activo en vez de fallar por nombre duplicado.
+          gh release upload "$tag" "$asset" --clobber
+
       # Este repositorio publica el artefacto y ahi termina su responsabilidad.
       # El despliegue lo solicita VetSoftwareIaC desde su propia rama main, con
       # su propia aprobacion: ningun repositorio de aplicacion puede iniciar un

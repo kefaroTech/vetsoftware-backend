@@ -101,9 +101,17 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
           BASE_REF: ${{ github.base_ref }}
+          # BE-27. Quien ABRIO el pull request, no quien disparo el evento. Con
+          # 'synchronize' en la lista de tipos, github.actor pasa a ser quien empuja
+          # -una persona que anade un commit a la rama de Dependabot-, y la excepcion
+          # de abajo se caeria en el segundo push. El autor del pull request no
+          # cambia nunca y ademas no es falsificable: nadie puede abrir un pull
+          # request firmado como dependabot[bot].
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
-          echo "PR: $HEAD_REF -> $BASE_REF"
+          echo "PR: $HEAD_REF -> $BASE_REF (autor: $PR_USER, actor del evento: $ACTOR)"
 
           fallo=0
 
@@ -114,6 +122,28 @@ jobs:
               if [ "$BASE_REF" != "main" ] && [ "$BASE_REF" != "develop" ]; then
                 echo "::error::'$HEAD_REF' debe apuntar a main (y reintegrarse a develop), no a '$BASE_REF'."
                 fallo=1
+              fi
+              ;;
+            dependabot/*)
+              # BE-27. Dependabot nombra sus ramas dependabot/<ecosistema>/<paquete>-<version>
+              # y ese formato no se puede configurar: o se admite el prefijo, o todos
+              # sus pull requests nacen en rojo y el mecanismo se abandona en una
+              # semana. La excepcion es unicamente para el bot: una rama dependabot/*
+              # abierta por una persona sigue siendo un nombre fuera de GitFlow, y se
+              # rechaza igual que antes.
+              if [ "$PR_USER" != "dependabot[bot]" ]; then
+                echo "::error title=Prefijo reservado::'$HEAD_REF' usa el prefijo de Dependabot pero el pull request lo abrio '$PR_USER'."
+                echo "::error::El prefijo dependabot/ esta reservado al bot. Renombre la rama con un prefijo de GitFlow."
+                fallo=1
+              elif [ "$BASE_REF" != "develop" ]; then
+                # target-branch: develop en .github/dependabot.yml. Si un pull request
+                # de Dependabot apunta a main, esa configuracion se ha movido: main
+                # solo recibe releases.
+                echo "::error::Las actualizaciones de dependencias se integran en develop, no en '$BASE_REF'."
+                echo "::error::Revise target-branch en .github/dependabot.yml."
+                fallo=1
+              else
+                echo "Actualizacion automatica de dependencias; prefijo admitido para dependabot[bot]."
               fi
               ;;
             feature/*|fix/*|perf/*|refactor/*|docs/*|test/*|chore/*|build/*|ci/*|sec/*|style/*)
@@ -138,6 +168,7 @@ jobs:
               feature/  fix/  perf/  refactor/  docs/  test/
               chore/    build/ ci/   sec/       style/     -> integran en develop
               release/  hotfix/                            -> cierran contra main
+              dependabot/                                  -> reservado a dependabot[bot]
 
           Renombrar la rama:
 
