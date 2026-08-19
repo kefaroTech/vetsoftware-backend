@@ -11,12 +11,13 @@ public class ConsultationTypeJpaMapper {
         entity.setName(consultationType.getName());
         entity.setDescription(consultationType.getDescription());
         entity.setCreatedDate(consultationType.getCreatedDate());
+        entity.setVersion(consultationType.getVersion());
         entity.setEnabled(consultationType.isEnabled());
         return entity;
     }
 
     public ConsultationType toDomain(ConsultationTypeJpaEntity entity) {
         return new ConsultationType(entity.getId(), entity.getName(), entity.getDescription(),
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

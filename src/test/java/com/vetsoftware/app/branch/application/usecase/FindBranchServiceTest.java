@@ -34,7 +34,7 @@ class FindBranchServiceTest {
     void devuelve_dto_cuando_pertenece_a_la_empresa() {
         Branch branch = new Branch(3L, "Sede Norte", "NORTE", "addr", "phone",
                 new CityRef(5L, "Bogotá"), new CompanyRef(9L, "Vet SAS", "900123456"),
-                LocalDateTime.of(2020, 1, 1, 10, 0), true);
+                LocalDateTime.of(2020, 1, 1, 10, 0), null, true);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(branch));
 
         BranchDto dto = service.findById(3L, 9L);

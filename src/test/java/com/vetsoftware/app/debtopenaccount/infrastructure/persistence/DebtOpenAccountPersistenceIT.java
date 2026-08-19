@@ -125,7 +125,7 @@ class DebtOpenAccountPersistenceIT extends AbstractDataJpaTest {
     private DebtOpenAccount abono(OpenAccountRef cuenta, String importe, PaymentMethod metodo,
             String clave) {
         return repository.save(new DebtOpenAccount(null, new BigDecimal(importe), metodo, cuenta,
-                CAJERA, COBRADO, true, false, null, null, null, clave));
+                CAJERA, COBRADO, null, true, false, null, null, null, clave));
     }
 
     private DebtOpenAccount abonoEnEfectivo() {

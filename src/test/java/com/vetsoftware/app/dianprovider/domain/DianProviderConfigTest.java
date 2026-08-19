@@ -64,7 +64,7 @@ class DianProviderConfigTest {
         private DianProviderConfig build() {
             return new DianProviderConfig(id, company, provider, baseUrl, clientId, clientSecret,
                     username, password, apiToken, webhookSecret, accessToken, tokenExpiresAt,
-                    numberingProviderRef, createdDate, enabled);
+                    numberingProviderRef, createdDate, null, enabled);
         }
 
         private void applyUpdateTo(DianProviderConfig config) {

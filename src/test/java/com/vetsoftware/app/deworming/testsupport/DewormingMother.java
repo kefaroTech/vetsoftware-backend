@@ -50,19 +50,19 @@ public final class DewormingMother {
     public static Deworming desparasitacionValida(Long id) {
         return new Deworming(id, FECHA, FECHA.minusMonths(3), DewormingType.INTERNAL,
                 "Drontal Plus", "1 tableta / 10kg", FECHA.plusMonths(3), "Sin reacciones adversas",
-                FIRULAIS, CONSULTA, CLINICA, CREADO, true);
+                FIRULAIS, CONSULTA, CLINICA, CREADO, null, true);
     }
 
     /** Desparasitacion sin consulta asociada — el path opcional del agregado. */
     public static Deworming sinConsulta() {
         return new Deworming(DEWORMING_ID, FECHA, null, DewormingType.EXTERNAL, "Frontline",
-                "1 pipeta", null, null, FIRULAIS, null, CLINICA, CREADO, true);
+                "1 pipeta", null, null, FIRULAIS, null, CLINICA, CREADO, null, true);
     }
 
     public static Deworming deshabilitada() {
         return new Deworming(DEWORMING_ID, FECHA, FECHA.minusMonths(3), DewormingType.INTERNAL,
                 "Drontal Plus", "1 tableta / 10kg", FECHA.plusMonths(3), "Sin reacciones adversas",
-                FIRULAIS, CONSULTA, CLINICA, CREADO, false);
+                FIRULAIS, CONSULTA, CLINICA, CREADO, null, false);
     }
 
     /**

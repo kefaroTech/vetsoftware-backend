@@ -6,9 +6,10 @@ public class Specie {
     private Long id;
     private String name;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
-    public Specie(Long id, String name, LocalDateTime createdDate, boolean enabled) {
+    public Specie(Long id, String name, LocalDateTime createdDate, Long version, boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -16,11 +17,12 @@ public class Specie {
         this.id = id;
         this.name = name;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Specie create(String name) {
-        return new Specie(null, name, LocalDateTime.now(), true);
+        return new Specie(null, name, LocalDateTime.now(), null, true);
     }
 
     public void update(String name) {
@@ -41,6 +43,10 @@ public class Specie {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

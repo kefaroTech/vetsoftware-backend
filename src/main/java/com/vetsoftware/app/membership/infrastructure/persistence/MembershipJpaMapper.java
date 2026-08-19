@@ -14,6 +14,7 @@ public class MembershipJpaMapper {
         entity.setStatus(membership.getStatus().name());
         entity.setMandatory(membership.isMandatory());
         entity.setCreatedDate(membership.getCreatedDate());
+        entity.setVersion(membership.getVersion());
         entity.setEnabled(membership.isEnabled());
         return entity;
     }
@@ -22,6 +23,6 @@ public class MembershipJpaMapper {
         return new Membership(entity.getId(), entity.getName(),
                 MembershipStatus.valueOf(entity.getStatus()),
                 Boolean.TRUE.equals(entity.getMandatory()), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

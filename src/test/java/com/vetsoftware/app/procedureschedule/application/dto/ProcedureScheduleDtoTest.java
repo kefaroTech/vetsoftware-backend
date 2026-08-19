@@ -45,7 +45,7 @@ class ProcedureScheduleDtoTest {
     @DisplayName("una toma sin estado aplicado se mapea a appliedStatus null, no a la cadena null")
     void una_toma_sin_estado_se_mapea_a_null() {
         ProcedureSchedule sinEstado = new ProcedureSchedule(SCHEDULE_ID, ORDEN, PRIMERA_TOMA,
-                PRIMERA_TOMA, null, null, false, EMPLEADO, CREADO, true);
+                PRIMERA_TOMA, null, null, false, EMPLEADO, CREADO, null, true);
 
         assertThat(ProcedureScheduleDto.from(sinEstado).appliedStatus()).isNull();
     }
@@ -55,7 +55,7 @@ class ProcedureScheduleDtoTest {
     void una_toma_aplicada_propaga_la_hora_real() {
         ProcedureSchedule aplicada = new ProcedureSchedule(SCHEDULE_ID, ORDEN, PRIMERA_TOMA,
                 PRIMERA_TOMA, PRIMERA_TOMA.plusMinutes(10), AppliedStatus.APPLIED, false, EMPLEADO,
-                CREADO, true);
+                CREADO, null, true);
 
         ProcedureScheduleDto dto = ProcedureScheduleDto.from(aplicada);
 

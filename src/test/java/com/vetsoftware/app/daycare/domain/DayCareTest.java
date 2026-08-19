@@ -87,7 +87,7 @@ class DayCareTest {
 
         private DayCare build() {
             return new DayCare(id, date, startDate, endDate, type, objects, observations, animal,
-                    company, createdDate, enabled);
+                    company, createdDate, null, enabled);
         }
 
         private void applyTo(DayCare dayCare) {

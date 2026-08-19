@@ -37,18 +37,18 @@ public final class LaboratoryTestTypeMother {
 
     public static LaboratoryTestType propioDeEmpresa(Long id) {
         return new LaboratoryTestType(id, "Hemograma", "Hemograma completo", CLINICA, false, CREADO,
-                true);
+                null, true);
     }
 
     public static LaboratoryTestType propioDeEmpresaDeshabilitado() {
         return new LaboratoryTestType(TYPE_ID, "Hemograma", "Hemograma completo", CLINICA, false,
-                CREADO, false);
+                CREADO, null, false);
     }
 
     /** Tipo general, disponible para todas las empresas: sin company. */
     public static LaboratoryTestType general() {
         return new LaboratoryTestType(TYPE_ID, "Perfil renal", "Perfil renal basico", null, true,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     public static CreateLaboratoryTestTypeCommand comandoCrearPropio() {

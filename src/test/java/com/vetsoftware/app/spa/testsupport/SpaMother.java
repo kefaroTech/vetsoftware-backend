@@ -26,6 +26,6 @@ public final class SpaMother {
     public static Spa spaValido() {
         return new Spa(5L, LocalDate.of(2026, 2, 1), BANO_BASICO, "Baño mensual",
                 "Shampoo hipoalergenico", "Sin novedades", SpaStatus.AGENDADA, FIRULAIS, CLINICA,
-                CREADO, true);
+                CREADO, null, true);
     }
 }

@@ -7,20 +7,22 @@ public class SpaType {
     private String name;
     private String description;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public SpaType(Long id, String name, String description, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(name, description);
         this.id = id;
         this.name = name;
         this.description = description;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static SpaType create(String name, String description) {
-        return new SpaType(null, name, description, LocalDateTime.now(), true);
+        return new SpaType(null, name, description, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String description) {
@@ -60,6 +62,10 @@ public class SpaType {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -124,7 +124,7 @@ class AnimalTest {
         private Animal build() {
             return new Animal(id, name, code, specie, breed, owner, gender, weightType, animalType,
                     reproductiveState, color, bod, size, deceased, deceasedDate, company,
-                    AnimalMother.CREADO, true);
+                    AnimalMother.CREADO, null, true);
         }
 
         private void applyTo(Animal animal) {

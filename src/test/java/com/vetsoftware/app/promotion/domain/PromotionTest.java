@@ -97,7 +97,7 @@ class PromotionTest {
         private Promotion build() {
             return new Promotion(id, name, promotionType, applicationType, applicationItem,
                     valueType, value, startDate, endDate, promotionStatus, company,
-                    PromotionMother.CREADA, true);
+                    PromotionMother.CREADA, null, true);
         }
 
         private void applyTo(Promotion promotion) {

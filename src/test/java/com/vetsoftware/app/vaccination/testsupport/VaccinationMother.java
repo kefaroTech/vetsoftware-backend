@@ -48,18 +48,18 @@ public final class VaccinationMother {
 
     public static Vaccination vigente(Long id) {
         return new Vaccination(id, FECHA, RABIA, "L-2026-A", "Sin reaccion", "Subcutanea", "Cuello",
-                PROXIMA, FIRULAIS, CONSULTA, CLINICA, CREADO, true);
+                PROXIMA, FIRULAIS, CONSULTA, CLINICA, CREADO, null, true);
     }
 
     /** Vacuna registrada fuera de consulta: la consulta es opcional. */
     public static Vaccination sinConsulta() {
         return new Vaccination(VACCINATION_ID, FECHA, RABIA, "L-2026-A", "Sin reaccion",
-                "Subcutanea", "Cuello", PROXIMA, FIRULAIS, null, CLINICA, CREADO, true);
+                "Subcutanea", "Cuello", PROXIMA, FIRULAIS, null, CLINICA, CREADO, null, true);
     }
 
     public static Vaccination deshabilitada() {
         return new Vaccination(VACCINATION_ID, FECHA, RABIA, "L-2026-A", "Sin reaccion",
-                "Subcutanea", "Cuello", PROXIMA, FIRULAIS, CONSULTA, CLINICA, CREADO, false);
+                "Subcutanea", "Cuello", PROXIMA, FIRULAIS, CONSULTA, CLINICA, CREADO, null, false);
     }
 
     public static CreateVaccinationCommand comandoCrear() {

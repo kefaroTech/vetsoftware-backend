@@ -8,10 +8,11 @@ public class Role {
     private String code;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Role(Long id, String name, String code, CompanyRef company, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -27,11 +28,12 @@ public class Role {
         this.code = code;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Role create(String name, String code, CompanyRef company) {
-        return new Role(null, name, code, company, LocalDateTime.now(), true);
+        return new Role(null, name, code, company, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String code, CompanyRef company) {
@@ -68,6 +70,10 @@ public class Role {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -60,12 +60,13 @@ class LaboratoryTestTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     private LaboratoryTestType propio(String nombre, CompanyRef empresa) {
-        return new LaboratoryTestType(null, nombre, "Tipo de prueba", empresa, false, CREADO, true);
+        return new LaboratoryTestType(null, nombre, "Tipo de prueba", empresa, false, CREADO, null,
+                true);
     }
 
     private LaboratoryTestType general(String nombre) {
         return new LaboratoryTestType(null, nombre, "Tipo general de prueba", null, true, CREADO,
-                true);
+                null, true);
     }
 
     private LaboratoryTestType guardarPropio(String nombre) {

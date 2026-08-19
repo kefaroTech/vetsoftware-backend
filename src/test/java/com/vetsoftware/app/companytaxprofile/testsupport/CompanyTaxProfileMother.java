@@ -65,20 +65,20 @@ public final class CompanyTaxProfileMother {
     public static CompanyTaxProfile perfilNit(Long id) {
         return new CompanyTaxProfile(id, CLINICA, CompanyDocumentType.NIT, NIT, NIT_DV,
                 RAZON_SOCIAL, TaxRegime.RESPONSABLE_IVA, EMAIL_FISCAL, NOMBRE_COMERCIAL,
-                VETERINARIA, List.of(O13, O15), CREADO, true);
+                VETERINARIA, List.of(O13, O15), CREADO, null, true);
     }
 
     /** Persona natural: sin DV y sin actividad economica ni responsabilidades. */
     public static CompanyTaxProfile perfilCedula() {
         return new CompanyTaxProfile(PROFILE_ID, CLINICA, CompanyDocumentType.CEDULA_CIUDADANIA,
                 CEDULA, null, RAZON_SOCIAL, TaxRegime.NO_RESPONSABLE_IVA, EMAIL_FISCAL, null, null,
-                List.of(), CREADO, true);
+                List.of(), CREADO, null, true);
     }
 
     public static CompanyTaxProfile perfilDeshabilitado() {
         return new CompanyTaxProfile(PROFILE_ID, CLINICA, CompanyDocumentType.NIT, NIT, NIT_DV,
                 RAZON_SOCIAL, TaxRegime.RESPONSABLE_IVA, EMAIL_FISCAL, NOMBRE_COMERCIAL,
-                VETERINARIA, List.of(O13), CREADO, false);
+                VETERINARIA, List.of(O13), CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

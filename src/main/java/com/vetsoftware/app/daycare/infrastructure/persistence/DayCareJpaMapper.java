@@ -23,6 +23,7 @@ public class DayCareJpaMapper {
         entity.setAnimal(animal);
         entity.setCompany(company);
         entity.setCreatedDate(dayCare.getCreatedDate());
+        entity.setVersion(dayCare.getVersion());
         entity.setEnabled(dayCare.isEnabled());
         return entity;
     }
@@ -38,6 +39,6 @@ public class DayCareJpaMapper {
         return new DayCare(entity.getId(), entity.getDate(), entity.getStartDate(),
                 entity.getEndDate(), entity.getType(), entity.getObjects(),
                 entity.getObservations(), animalRef, companyRef, entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

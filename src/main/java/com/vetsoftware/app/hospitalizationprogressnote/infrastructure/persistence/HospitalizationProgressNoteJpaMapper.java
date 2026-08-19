@@ -18,6 +18,7 @@ public class HospitalizationProgressNoteJpaMapper {
         entity.setHospitalization(hospitalization);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(progressNote.getCreatedDate());
+        entity.setVersion(progressNote.getVersion());
         entity.setEnabled(progressNote.isEnabled());
         return entity;
     }
@@ -35,6 +36,7 @@ public class HospitalizationProgressNoteJpaMapper {
     public HospitalizationProgressNote toDomain(HospitalizationProgressNoteJpaEntity entity,
             HospitalizationRef hospitalizationRef, EmployeeRef createdByRef) {
         return new HospitalizationProgressNote(entity.getId(), entity.getDescription(),
-                hospitalizationRef, createdByRef, entity.getCreatedDate(), entity.isEnabled());
+                hospitalizationRef, createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

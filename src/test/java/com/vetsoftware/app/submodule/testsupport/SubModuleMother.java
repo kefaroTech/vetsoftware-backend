@@ -32,11 +32,11 @@ public final class SubModuleMother {
     }
 
     public static SubModule reportes(Long id) {
-        return new SubModule(id, "Reportes", "REP", FACTURACION, CREADO, true);
+        return new SubModule(id, "Reportes", "REP", FACTURACION, CREADO, null, true);
     }
 
     public static SubModule deshabilitado() {
-        return new SubModule(SUB_MODULE_ID, "Reportes", "REP", FACTURACION, CREADO, false);
+        return new SubModule(SUB_MODULE_ID, "Reportes", "REP", FACTURACION, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

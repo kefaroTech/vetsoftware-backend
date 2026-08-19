@@ -57,17 +57,17 @@ public final class ConsultationMother {
     public static Consultation consultaValida(Long id) {
         return new Consultation(id, FECHA, CONTROL, "Anamnesis del paciente", "Diagnostico",
                 "Pronostico reservado", examenCompleto(), FECHA.plusDays(15), FIRULAIS, CLINICA,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     public static Consultation sinExamen() {
         return new Consultation(CONSULTATION_ID, FECHA, CONTROL, "Anamnesis del paciente", null,
-                null, null, null, FIRULAIS, CLINICA, CREADO, true);
+                null, null, null, FIRULAIS, CLINICA, CREADO, null, true);
     }
 
     public static Consultation deshabilitada() {
         return new Consultation(CONSULTATION_ID, FECHA, CONTROL, "Anamnesis del paciente", null,
-                null, PhysicalExam.empty(), null, FIRULAIS, CLINICA, CREADO, false);
+                null, PhysicalExam.empty(), null, FIRULAIS, CLINICA, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. Sin peso inicial. */

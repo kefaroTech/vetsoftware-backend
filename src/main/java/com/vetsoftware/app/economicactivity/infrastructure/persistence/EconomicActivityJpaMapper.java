@@ -11,12 +11,13 @@ public class EconomicActivityJpaMapper {
         entity.setCode(economicActivity.getCode());
         entity.setName(economicActivity.getName());
         entity.setCreatedDate(economicActivity.getCreatedDate());
+        entity.setVersion(economicActivity.getVersion());
         entity.setEnabled(economicActivity.isEnabled());
         return entity;
     }
 
     public EconomicActivity toDomain(EconomicActivityJpaEntity entity) {
         return new EconomicActivity(entity.getId(), entity.getCode(), entity.getName(),
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

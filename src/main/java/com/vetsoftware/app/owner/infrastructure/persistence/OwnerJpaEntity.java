@@ -15,7 +15,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(name = "owners", uniqueConstraints = {
         @UniqueConstraint(name = "uq_owners_company_document", columnNames = {"company_id",
                 "document"})})
-@SQLDelete(sql = "UPDATE owners SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE owners SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class OwnerJpaEntity {
     @Id
@@ -80,6 +80,10 @@ public class OwnerJpaEntity {
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
@@ -213,6 +217,14 @@ public class OwnerJpaEntity {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public boolean isEnabled() {

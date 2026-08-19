@@ -51,7 +51,8 @@ class CreateBasePermissionServiceTest {
             when(repository.save(any())).thenAnswer(inv -> {
                 BasePermission arg = inv.getArgument(0);
                 return new BasePermission(BasePermissionMother.BASE_PERMISSION_ID, arg.getName(),
-                        arg.getCode(), arg.getSubModule(), arg.getCreatedDate(), arg.isEnabled());
+                        arg.getCode(), arg.getSubModule(), arg.getCreatedDate(), arg.getVersion(),
+                        arg.isEnabled());
             });
 
             BasePermissionDto dto = service.execute(BasePermissionMother.comandoCrear());

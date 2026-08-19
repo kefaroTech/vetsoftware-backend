@@ -51,7 +51,7 @@ class ElectronicDocumentDtoTest {
                 "10:15:00-05:00", "CUFE-1", "CUDE-1", "uuid-1", "qr-data", "https://qr/1", "<xml/>",
                 "invoices/9/55/SETP990.pdf", DianStatus.VALIDADO, VALIDACION, issuer(), customer(),
                 bd("1000.00"), bd("1000.00"), bd("1190.00"), bd("1190.00"), PaymentForm.CONTADO,
-                lines, payments, CREACION, true, reference, reasonCode, reasonText, reversed,
+                lines, payments, CREACION, null, true, reference, reasonCode, reasonText, reversed,
                 bd("25.00"), bd("28.50"), bd("9.66"), "req-1", 4L, 7L);
     }
 

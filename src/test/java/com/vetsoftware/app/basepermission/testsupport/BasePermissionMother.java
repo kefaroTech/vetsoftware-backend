@@ -33,12 +33,13 @@ public final class BasePermissionMother {
     }
 
     public static BasePermission crearFactura(Long id) {
-        return new BasePermission(id, "Crear factura", "INVOICE_CREATE", VENTAS, CREADO, true);
+        return new BasePermission(id, "Crear factura", "INVOICE_CREATE", VENTAS, CREADO, null,
+                true);
     }
 
     public static BasePermission deshabilitado() {
         return new BasePermission(BASE_PERMISSION_ID, "Crear factura", "INVOICE_CREATE", VENTAS,
-                CREADO, false);
+                CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

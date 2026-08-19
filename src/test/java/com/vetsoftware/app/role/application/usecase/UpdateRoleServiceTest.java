@@ -48,7 +48,7 @@ class UpdateRoleServiceTest {
 
     private static Role roleExistente() {
         return new Role(ROLE_ID, "Veterinario", "VET", CLINICA,
-                LocalDateTime.of(2026, 1, 15, 10, 30), true);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, true);
     }
 
     @Nested

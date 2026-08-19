@@ -32,7 +32,7 @@ class CreateSpecieServiceTest {
         when(repository.save(any())).thenAnswer(inv -> {
             Specie specie = inv.getArgument(0);
             return new Specie(SpecieMother.SPECIE_ID, specie.getName(), specie.getCreatedDate(),
-                    specie.isEnabled());
+                    specie.getVersion(), specie.isEnabled());
         });
 
         SpecieDto dto = service.execute(SpecieMother.comandoCrear());

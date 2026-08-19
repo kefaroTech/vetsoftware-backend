@@ -9,10 +9,11 @@ public class SurgeryType {
     private CompanyRef company;
     private boolean general;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public SurgeryType(Long id, String name, String description, CompanyRef company,
-            boolean general, LocalDateTime createdDate, boolean enabled) {
+            boolean general, LocalDateTime createdDate, Long version, boolean enabled) {
         validate(name, description, company, general);
         this.id = id;
         this.name = name;
@@ -20,12 +21,13 @@ public class SurgeryType {
         this.company = company;
         this.general = general;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static SurgeryType create(String name, String description, CompanyRef company,
             boolean general) {
-        return new SurgeryType(null, name, description, company, general, LocalDateTime.now(),
+        return new SurgeryType(null, name, description, company, general, LocalDateTime.now(), null,
                 true);
     }
 
@@ -73,6 +75,10 @@ public class SurgeryType {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -49,7 +49,7 @@ class DianProviderConfigDtoTest {
                     DianProviderConfigMother.CLINICA, ProviderType.MATIAS,
                     "https://api.matias.test", "client-id", "client-secret", "user@test.com",
                     "secret-pass", null, "webhook-secret", null, null, "RES-001",
-                    DianProviderConfigMother.CREADO, true);
+                    DianProviderConfigMother.CREADO, null, true);
             // No hay forma de construir un DianProviderConfig con company null (invariante
             // de dominio), asi que el unico camino a "companyId null" es leyendo un config
             // valido: el ternario se prueba desde el lado alcanzable.
@@ -97,7 +97,7 @@ class DianProviderConfigDtoTest {
                     DianProviderConfigMother.CLINICA, ProviderType.MATIAS,
                     "https://api.matias.test", "client-id", valorSecreto, valorSecreto,
                     valorSecreto, valorSecreto, valorSecreto, null, null, "RES-001",
-                    DianProviderConfigMother.CREADO, true);
+                    DianProviderConfigMother.CREADO, null, true);
 
             DianProviderConfigDto dto = DianProviderConfigDto.from(config);
 

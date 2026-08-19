@@ -17,7 +17,7 @@ class RoleDtoTest {
     private static final LocalDateTime CREADO = LocalDateTime.of(2026, 1, 15, 10, 30);
 
     private static Role role() {
-        return new Role(1L, "Veterinario", "VET", CLINICA, CREADO, true);
+        return new Role(1L, "Veterinario", "VET", CLINICA, CREADO, null, true);
     }
 
     @Nested
@@ -57,7 +57,7 @@ class RoleDtoTest {
         @Test
         @DisplayName("un rol deshabilitado tambien se refleja en el dto")
         void un_rol_deshabilitado_se_refleja_en_el_dto() {
-            Role deshabilitado = new Role(1L, "Veterinario", "VET", CLINICA, CREADO, false);
+            Role deshabilitado = new Role(1L, "Veterinario", "VET", CLINICA, CREADO, null, false);
 
             RoleDto dto = RoleDto.from(deshabilitado, List.of());
 

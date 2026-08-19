@@ -28,6 +28,7 @@ public class OwnerJpaMapper {
         entity.setTaxRegime(owner.getTaxRegime());
         entity.setFiscalResponsibility(owner.getFiscalResponsibility());
         entity.setCreatedDate(owner.getCreatedDate());
+        entity.setVersion(owner.getVersion());
         entity.setEnabled(owner.isEnabled());
         return entity;
     }
@@ -44,6 +45,7 @@ public class OwnerJpaMapper {
                 entity.getDocumentType(), entity.getPersonType(), entity.getVerificationDigit(),
                 entity.getLegalName(), entity.getAddress(), entity.getPhone(), cityRef, companyRef,
                 entity.isWithholdingAgent(), entity.getTaxRegime(),
-                entity.getFiscalResponsibility(), entity.getCreatedDate(), entity.isEnabled());
+                entity.getFiscalResponsibility(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

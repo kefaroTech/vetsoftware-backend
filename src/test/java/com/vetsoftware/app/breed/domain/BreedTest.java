@@ -52,7 +52,7 @@ class BreedTest {
         }
 
         private Breed build() {
-            return new Breed(id, name, specie, createdDate, enabled);
+            return new Breed(id, name, specie, createdDate, null, enabled);
         }
     }
 

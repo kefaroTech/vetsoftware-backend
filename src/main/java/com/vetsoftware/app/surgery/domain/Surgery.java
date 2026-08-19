@@ -16,12 +16,13 @@ public class Surgery {
     private ConsultationRef consultation;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Surgery(Long id, LocalDate date, SurgeryTypeRef surgeryType, String description,
             String medicament, String observations, String complications, SurgeryStatus status,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(date, surgeryType, description, medicament, observations, complications, status,
                 animal, company);
         this.id = id;
@@ -36,6 +37,7 @@ public class Surgery {
         this.consultation = consultation;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -44,7 +46,7 @@ public class Surgery {
             ConsultationRef consultation, CompanyRef company) {
         return new Surgery(null, date, surgeryType, description, medicament, observations,
                 complications, SurgeryStatus.PROGRAMADA, animal, consultation, company,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, SurgeryTypeRef surgeryType, String description,
@@ -140,6 +142,10 @@ public class Surgery {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

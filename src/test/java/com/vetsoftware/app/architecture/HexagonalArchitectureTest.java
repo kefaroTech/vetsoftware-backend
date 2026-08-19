@@ -7,6 +7,12 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E1_APPEND_ONLY;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E2_TABLA_PUENTE;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E3_TOKEN;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E4_VISTA;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E5_SEMILLA;
+import static com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion.E6_YA_PROTEGIDO;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
@@ -15,7 +21,12 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import com.vetsoftware.app.architecture.VetSoftwareConditions.CodigoDeExencion;
+import com.vetsoftware.app.architecture.VetSoftwareConditions.ExencionDeVersion;
 import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
+import jakarta.persistence.Entity;
+import java.util.List;
+import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -320,6 +331,213 @@ class HexagonalArchitectureTest {
             .areAnnotatedWith(Transactional.class)
             .should(VetSoftwareConditions.alcanzarUnClienteHttp(RestClient.class))
             .because("una llamada HTTP retiene la conexion y los locks hasta el commit");
+
+    // ── BE-26: quién no lleva @Version, y por qué ────────────────────────────
+
+    /**
+     * Las entidades que <b>no</b> llevan bloqueo optimista, con el código que lo
+     * justifica y el motivo escrito al lado del nombre. No es una lista de
+     * pendientes: es la decisión, y por eso vive aquí y no en un comentario dentro
+     * de cada entidad —así el diff de un PR enseña de un vistazo a quién se le está
+     * perdonando y con qué argumento.
+     *
+     * <p>
+     * <b>La cuenta cierra al dígito, y esa es la prueba de que la lista es
+     * exhaustiva y no una muestra</b>: 104 clases {@code @Entity} = 71 versionadas
+     * (las 16 que ya lo estaban + 55 de la campaña de BE-26) + estas 33 exentas.
+     * Cualquier entidad nueva desequilibra la suma y
+     * {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA} la caza el mismo día.
+     *
+     * <p>
+     * <b>Cómo se añade una entrada.</b> Nunca «para que pase el test». El código
+     * dice qué clase de razón se está invocando ({@link CodigoDeExencion}) y el
+     * motivo dice por qué esa razón aplica <em>a esta entidad</em>: qué la escribe,
+     * qué la reescribe y quién gana si dos operadores llegan a la vez. Un motivo
+     * que valdría igual para cualquier otra fila no es un motivo.
+     *
+     * <p>
+     * <b>Cómo se quita.</b> Sola no se va: ponerle {@code @Version} a una entidad
+     * exenta y olvidar su línea rompe {@link #EXENCIONES_DE_VERSION_AL_DIA}, que
+     * está precisamente para eso.
+     */
+    private static final List<ExencionDeVersion> ENTIDADES_EXENTAS_DE_VERSION = List.of(
+
+            // E1 — se insertan y no se vuelven a modificar.
+            exenta("WeightRecordJpaEntity", E1_APPEND_ONLY,
+                    "serie temporal de pesos: el dominio no expone ningún update()"),
+            exenta("CashMovementJpaEntity", E1_APPEND_ONLY,
+                    "asiento de libro mayor: se escribe una vez y no se corrige"),
+            exenta("CashSessionCountJpaEntity", E1_APPEND_ONLY,
+                    "conteo de arqueo: se inserta al cerrar la sesión y ahí acaba"),
+            exenta("StockMovementJpaEntity", E1_APPEND_ONLY,
+                    "asiento del kardex: la reversa emite un movimiento inverso nuevo"),
+            exenta("SaleInventoryAllocationJpaEntity", E1_APPEND_ONLY,
+                    "su repositorio no declara ninguna escritura sobre fila existente"),
+            exenta("InventoryCountJpaEntity", E1_APPEND_ONLY,
+                    "la sesión se construye entera y se guarda una vez; campos final"),
+            exenta("InventoryCountLineJpaEntity", E1_APPEND_ONLY,
+                    "línea de esa misma sesión, escrita en el mismo insert; campos final"),
+            exenta("GoodsReceiptLineJpaEntity", E1_APPEND_ONLY,
+                    "línea inmutable, reemplazada en bloque con orphanRemoval;"
+                            + " el bloqueo vive en la cabecera goods_receipts, ya versionada"),
+            exenta("SupplierInvoicePaymentJpaEntity", E1_APPEND_ONLY,
+                    "pago inmutable; la cabecera supplier_invoices ya va versionada"),
+            exenta("ProductBundleItemJpaEntity", E1_APPEND_ONLY,
+                    "patrón borrar-todas-y-reinsertar; el bloqueo vive en product_bundles"),
+            exenta("ElectronicDocumentLineJpaEntity", E1_APPEND_ONLY,
+                    "documento electrónico ya emitido: inmutable por ley"),
+            exenta("ElectronicDocumentPaymentJpaEntity", E1_APPEND_ONLY,
+                    "documento electrónico ya emitido: inmutable por ley"),
+            exenta("ElectronicDocumentTransmissionJpaEntity", E1_APPEND_ONLY,
+                    "cada intento de transmisión es una fila nueva con attempt = count + 1"),
+            exenta("LaboratoryTestFileJpaEntity", E1_APPEND_ONLY,
+                    "adjunto: el dominio tiene los diez campos final y ningún mutador, no hay"
+                            + " update ni reactivación, y el borrado es físico junto al objeto"
+                            + " en S3 (por eso ni siquiera lleva @SQLDelete)"),
+
+            // E2 — relación N:M pura: solo dos FK, insert + delete, par único en BD.
+            exenta("RolePermissionJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("BaseRolePermissionJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("SystemUserPermissionJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("EmployeeRoleJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("EmployeeBranchJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("MembershipSubModuleJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("CompanyTaxProfileResponsibilityJpaEntity", E2_TABLA_PUENTE,
+                    "responsabilidades DIAN del perfil, reemplazadas en bloque"),
+
+            // E3 — un solo uso o vida corta: se emite, se consume y caduca.
+            exenta("RefreshTokenJpaEntity", E3_TOKEN,
+                    "token de sesión: se emite, se rota y se revoca; nadie lo edita"),
+            exenta("PasswordResetTokenJpaEntity", E3_TOKEN,
+                    "token de un solo uso con caducidad corta"),
+            exenta("EmailVerificationTokenJpaEntity", E3_TOKEN,
+                    "token de un solo uso con caducidad corta"),
+
+            // E4 — no hay fila que actualizar.
+            exenta("ClinicalEventViewJpaEntity", E4_VISTA,
+                    "entidad @Immutable sobre la vista v_clinical_event: no se escribe"),
+
+            // E5 — dato de referencia sembrado. Ojo: el motivo NO es que sean
+            // inmutables —la versión anterior de esta justificación decía eso y era
+            // falsa—, sino que no hay pantalla desde la que dos operadores editen la
+            // misma fila a la vez.
+            exenta("PermissionJpaEntity", E5_SEMILLA,
+                    "catálogo sembrado: ningún front ofrece pantalla para editarlo"),
+            exenta("SystemPermissionJpaEntity", E5_SEMILLA,
+                    "catálogo sembrado: ningún front ofrece pantalla para editarlo"),
+            exenta("CountryJpaEntity", E5_SEMILLA,
+                    "geografía DIVIPOLA sembrada: ningún front la edita en concurrencia"),
+            exenta("StateJpaEntity", E5_SEMILLA,
+                    "geografía DIVIPOLA sembrada: ningún front la edita en concurrencia"),
+            exenta("CityJpaEntity", E5_SEMILLA,
+                    "geografía DIVIPOLA sembrada: ningún front la edita en concurrencia"),
+            exenta("UnitMeasureCatalogJpaEntity", E5_SEMILLA,
+                    "catálogo de unidades DIAN sembrado; no tiene controller siquiera"),
+
+            // E6 — la concurrencia ya la resuelve algo más fuerte, nombrado aquí.
+            exenta("PurchaseOrderLineJpaEntity", E6_YA_PROTEGIDO,
+                    "quantityReceived sí muta, pero receiveLine/revertLine van siempre"
+                            + " seguidos de un touch(updatedBy) sobre la cabecera"
+                            + " purchase_orders, ya versionada, que fuerza el incremento"),
+            exenta("NumberingResolutionJpaEntity", E6_YA_PROTEGIDO,
+                    "el consecutivo fiscal se serializa con SELECT … FOR UPDATE en"
+                            + " lockActiveForUpdate, dentro de un REQUIRES_NEW; añadirle"
+                            + " @Version arriesgaría un 409 en mitad de una emisión"));
+
+    private static ExencionDeVersion exenta(String entidad, CodigoDeExencion codigo,
+            String motivo) {
+        return new ExencionDeVersion(entidad, codigo, motivo);
+    }
+
+    /**
+     * El cierre de BE-26. La auditoría encontró 104 {@code @Entity} y 16 con
+     * {@code @Version}, y su conclusión no fue «póngaselo a las 88»: fue que la
+     * ausencia de bloqueo optimista tiene que ser una <b>decisión escrita</b>. En
+     * una entidad que dos operadores editan a la vez, sin {@code @Version} el
+     * segundo {@code UPDATE} pisa al primero y nadie se entera —no hay excepción,
+     * no hay log, solo un dato que desapareció—; en una tabla puente o en un
+     * asiento contable, ponerlo es ruido y un 409 que el usuario no sabe resolver.
+     * Las dos cosas son ciertas, y la que hacía falta no era el criterio sino el
+     * registro de qué criterio se aplicó a cada una.
+     *
+     * <p>
+     * De ahí la forma de la regla: o la entidad declara un campo {@code @Version},
+     * o aparece en {@link #ENTIDADES_EXENTAS_DE_VERSION} con uno de los seis
+     * códigos y el motivo <em>al lado del nombre</em>, no en un comentario suelto.
+     * Así el diff de un PR enseña a quién se le está perdonando y por qué, que es
+     * exactamente lo que no existía cuando el hallazgo se abrió.
+     *
+     * @see #EXENCIONES_DE_VERSION_AL_DIA para lo que impide que la lista se pudra
+     */
+    @ArchTest
+    static final ArchRule ENTIDADES_CON_BLOQUEO_OPTIMISTA = classes().that()
+            .areAnnotatedWith(Entity.class)
+            .should(VetSoftwareConditions
+                    .declararBloqueoOptimistaOEstarExenta(ENTIDADES_EXENTAS_DE_VERSION))
+            .because("sin @Version dos ediciones simultáneas se pisan sin ruido:"
+                    + " si no lo lleva, que sea porque alguien lo escribió");
+
+    /**
+     * La trampa de los dos parámetros, y la razón por la que esta regla existe
+     * aparte de la anterior. En cuanto una entidad lleva {@code @Version},
+     * Hibernate liga <b>dos</b> parámetros al SQL de su {@code @SQLDelete} —primero
+     * el {@code id}, después la {@code version}—, así que el
+     * {@code UPDATE … WHERE id = ?} que era correcto ayer se convierte hoy en un
+     * borrado lógico roto en tiempo de ejecución. Ninguna revisión humana lo ve: la
+     * anotación se lee perfecta y el error solo aparece al borrar.
+     *
+     * <p>
+     * Es un riesgo real y no teórico: 62 entidades borran en lógico con
+     * {@code @SQLDelete}, y versionar cualquiera de ellas sin tocar su SQL arma la
+     * bomba. Las 16 que ya estaban versionadas lo reflejan —llevan
+     * {@code AND version = ?}—, y el resto se acaba de versionar en bloque; esta
+     * regla es lo que impide que la próxima entre sin él.
+     *
+     * <p>
+     * El predicado mira la condición dentro del {@code WHERE}, no una subcadena
+     * sobre el SQL entero: {@code employees} y {@code system_users} llevan
+     * {@code auth_version = auth_version + 1} en el {@code SET} —invalidación de
+     * sesión, nada que ver con el bloqueo optimista— y una comprobación ingenua las
+     * daría por buenas sin comprobar nada. Ver
+     * {@code VetSoftwareConditions.ligarLaVersionEnElBorradoLogico()}.
+     */
+    @ArchTest
+    static final ArchRule BORRADO_LOGICO_RESPETA_LA_VERSION = classes().that()
+            .areAnnotatedWith(Entity.class).and().areAnnotatedWith(SQLDelete.class)
+            .should(VetSoftwareConditions.ligarLaVersionEnElBorradoLogico())
+            .because("con @Version, Hibernate liga id y version al @SQLDelete:"
+                    + " un WHERE con un solo ? deja el borrado logico roto en ejecucion");
+
+    /**
+     * La tercera pieza de BE-26, y la que decide si las otras dos siguen valiendo
+     * algo dentro de un año. Una lista de exenciones que nadie limpia acaba
+     * mintiendo por escrito, y de las dos formas de podrirse la peor es silenciosa:
+     * si alguien versiona una entidad exenta y no borra su línea, el repositorio
+     * sigue afirmando que esa entidad no necesita bloqueo optimista mientras el
+     * código dice lo contrario. La otra —una entrada que ya no corresponde a
+     * ninguna clase— es solo ruido, pero ruido que enseña a no leer la lista.
+     *
+     * <p>
+     * Va como {@code ArchRule} y no como {@code @Test} suelto porque necesita
+     * exactamente lo mismo que las otras dos: el censo de {@code @Entity} del árbol
+     * de producción que ya importa este {@code @AnalyzeClasses}. Lo que cambia es
+     * el sujeto —se juzga la lista, no cada entidad—, y por eso la condición
+     * levanta el censo en {@code init(…)} y emite una violación por entrada podrida
+     * en {@code finish(…)}.
+     */
+    @ArchTest
+    static final ArchRule EXENCIONES_DE_VERSION_AL_DIA = classes().that()
+            .areAnnotatedWith(Entity.class)
+            .should(VetSoftwareConditions
+                    .mantenerLaListaDeExencionesAlDia(ENTIDADES_EXENTAS_DE_VERSION))
+            .because("una exencion que nadie limpia deja de ser una decision y pasa a ser"
+                    + " una mentira firmada");
 
     // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
 

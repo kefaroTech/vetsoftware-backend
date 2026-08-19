@@ -34,9 +34,9 @@ class ListBranchesServiceTest {
     @Test
     void mapea_todas_las_sucursales_incluyendo_inactivas_en_orden() {
         Branch activa = new Branch(1L, "Principal", "PRINCIPAL", null, null, city, company,
-                LocalDateTime.of(2020, 1, 1, 10, 0), true);
+                LocalDateTime.of(2020, 1, 1, 10, 0), null, true);
         Branch inactiva = new Branch(2L, "Sede Sur", "SUR", null, null, city, company,
-                LocalDateTime.of(2020, 1, 2, 10, 0), false);
+                LocalDateTime.of(2020, 1, 2, 10, 0), null, false);
         when(repository.findAllByCompanyId(9L)).thenReturn(List.of(activa, inactiva));
 
         List<BranchDto> result = service.listAll(9L);

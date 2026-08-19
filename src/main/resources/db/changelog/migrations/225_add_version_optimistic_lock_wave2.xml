@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Optimistic locking (@Version) para BE-26: columna `version` BIGINT NOT NULL DEFAULT 0.
+         Hibernate la incrementa en cada UPDATE; una edición con versión desactualizada dispara
+         ObjectOptimisticLockingFailureException -> 409 CONCURRENT_MODIFICATION (ya mapeado en el
+         handler). Las filas existentes arrancan en 0.
+
+         Fichero completo: cubre las 33 tablas del primer bloque (clinico, comercial e inventario,
+         fiscal/DIAN, identidad y plataforma) mas las 22 del bloque de procedimientos clinicos
+         (hospitalizaciones y sus tablas hijas, laboratorio, cirugias, vacunaciones, desparasitaciones,
+         imagenes diagnosticas, spas, medicaciones, prescripciones, agendas de medicacion y
+         procedimiento, y sus catalogos de tipo) — 55 changeSets en total. `laboratory_test_files`
+         queda exenta a propósito: dominio con los 10 campos `final`, sin mutadores, borrado físico.
+         Junto con las 16 tablas ya versionadas en `101`/`157`/`174`/`189`/`195`/`197`/`200`/`201`/
+         `203`/`212`, la campaña BE-26 deja 71 de 104 entidades con bloqueo optimista. No reordenar
+         ni renumerar los changeSets existentes al ampliar: solo anadir al final. -->
+
+    <!-- ===== Clinico ===== -->
+    <changeSet id="225_add_version_to_animals" author="orlando">
+        <addColumn tableName="animals">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="animals" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_animal_alerts" author="orlando">
+        <addColumn tableName="animal_alerts">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="animal_alerts" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_animal_colors" author="orlando">
+        <addColumn tableName="animal_colors">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="animal_colors" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_breeds" author="orlando">
+        <addColumn tableName="breeds">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="breeds" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_species" author="orlando">
+        <addColumn tableName="species">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="species" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_owners" author="orlando">
+        <addColumn tableName="owners">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="owners" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_consultations" author="orlando">
+        <addColumn tableName="consultations">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="consultations" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_consultation_types" author="orlando">
+        <addColumn tableName="consultation_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="consultation_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_problems" author="orlando">
+        <addColumn tableName="problems">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="problems" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ===== Comercial e inventario ===== -->
+    <changeSet id="225_add_version_to_stock_lot" author="orlando">
+        <addColumn tableName="stock_lot">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="stock_lot" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_cash_terminals" author="orlando">
+        <addColumn tableName="cash_terminals">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="cash_terminals" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_promotions" author="orlando">
+        <addColumn tableName="promotions">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="promotions" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_debt_open_accounts" author="orlando">
+        <addColumn tableName="debt_open_accounts">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="debt_open_accounts" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_general_charge_open_accounts" author="orlando">
+        <addColumn tableName="general_charge_open_accounts">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="general_charge_open_accounts" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_product_charge_open_accounts" author="orlando">
+        <addColumn tableName="product_charge_open_accounts">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="product_charge_open_accounts" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_service_charge_open_accounts" author="orlando">
+        <addColumn tableName="service_charge_open_accounts">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="service_charge_open_accounts" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ===== Fiscal y DIAN ===== -->
+    <changeSet id="225_add_version_to_electronic_documents" author="orlando">
+        <addColumn tableName="electronic_documents">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="electronic_documents" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_dian_provider_configs" author="orlando">
+        <addColumn tableName="dian_provider_configs">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="dian_provider_configs" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_withholding_configs" author="orlando">
+        <addColumn tableName="withholding_configs">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="withholding_configs" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_company_tax_profiles" author="orlando">
+        <addColumn tableName="company_tax_profiles">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="company_tax_profiles" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_economic_activities" author="orlando">
+        <addColumn tableName="economic_activities">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="economic_activities" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ===== Identidad y plataforma ===== -->
+    <changeSet id="225_add_version_to_employees" author="orlando">
+        <addColumn tableName="employees">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="employees" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_system_users" author="orlando">
+        <addColumn tableName="system_users">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="system_users" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_roles" author="orlando">
+        <addColumn tableName="roles">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="roles" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_base_roles" author="orlando">
+        <addColumn tableName="base_roles">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="base_roles" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_base_permissions" author="orlando">
+        <addColumn tableName="base_permissions">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="base_permissions" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_modules" author="orlando">
+        <addColumn tableName="modules">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="modules" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_sub_modules" author="orlando">
+        <addColumn tableName="sub_modules">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sub_modules" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_memberships" author="orlando">
+        <addColumn tableName="memberships">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="memberships" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_system_configurations" author="orlando">
+        <addColumn tableName="system_configurations">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="system_configurations" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_companies" author="orlando">
+        <addColumn tableName="companies">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="companies" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_company_settings" author="orlando">
+        <addColumn tableName="company_settings">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="company_settings" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_branches" author="orlando">
+        <addColumn tableName="branches">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="branches" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ===== Procedimientos clinicos ===== -->
+    <changeSet id="225_add_version_to_hospitalizations" author="orlando">
+        <addColumn tableName="hospitalizations">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospitalizations" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_hospitalization_medications" author="orlando">
+        <addColumn tableName="hospitalization_medications">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospitalization_medications" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_hospitalization_observations" author="orlando">
+        <addColumn tableName="hospitalization_observations">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospitalization_observations" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_hospitalization_procedures" author="orlando">
+        <addColumn tableName="hospitalization_procedures">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospitalization_procedures" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_hospitalization_progress_notes" author="orlando">
+        <addColumn tableName="hospitalization_progress_notes">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospitalization_progress_notes" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_laboratory_tests" author="orlando">
+        <addColumn tableName="laboratory_tests">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="laboratory_tests" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_laboratory_test_types" author="orlando">
+        <addColumn tableName="laboratory_test_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="laboratory_test_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_surgeries" author="orlando">
+        <addColumn tableName="surgeries">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="surgeries" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_surgery_types" author="orlando">
+        <addColumn tableName="surgery_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="surgery_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_diagnostic_imagings" author="orlando">
+        <addColumn tableName="diagnostic_imagings">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="diagnostic_imagings" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_diagnostic_imaging_types" author="orlando">
+        <addColumn tableName="diagnostic_imaging_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="diagnostic_imaging_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_vaccinations" author="orlando">
+        <addColumn tableName="vaccinations">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="vaccinations" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_vaccination_types" author="orlando">
+        <addColumn tableName="vaccination_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="vaccination_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_dewormings" author="orlando">
+        <addColumn tableName="dewormings">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="dewormings" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_prescriptions" author="orlando">
+        <addColumn tableName="prescriptions">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="prescriptions" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_medicament_prescriptions" author="orlando">
+        <addColumn tableName="medicament_prescriptions">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="medicament_prescriptions" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_medicaments" author="orlando">
+        <addColumn tableName="medicaments">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="medicaments" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_medication_schedules" author="orlando">
+        <addColumn tableName="medication_schedules">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="medication_schedules" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_procedure_schedules" author="orlando">
+        <addColumn tableName="procedure_schedules">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="procedure_schedules" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_daycares" author="orlando">
+        <addColumn tableName="daycares">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="daycares" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_spas" author="orlando">
+        <addColumn tableName="spas">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="spas" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="225_add_version_to_spa_types" author="orlando">
+        <addColumn tableName="spa_types">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="spa_types" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

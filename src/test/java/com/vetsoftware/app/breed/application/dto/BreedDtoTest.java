@@ -15,7 +15,7 @@ class BreedDtoTest {
     @DisplayName("from() copia cada campo, incluida la especie resumida")
     void from_copia_cada_campo() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
-        Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"), creado, true);
+        Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"), creado, null, true);
 
         BreedDto dto = BreedDto.from(breed);
 
@@ -30,7 +30,7 @@ class BreedDtoTest {
     @DisplayName("from() conserva enabled=false de una raza deshabilitada")
     void from_conserva_enabled_false_de_una_raza_deshabilitada() {
         Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), false);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, false);
 
         assertThat(BreedDto.from(breed).enabled()).isFalse();
     }

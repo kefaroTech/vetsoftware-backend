@@ -18,13 +18,14 @@ public class LaboratoryTest {
     private EmployeeRef processedBy;
     private LocalDateTime processedDate;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public LaboratoryTest(Long id, LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
             String diagnosis, LaboratoryTestStatus status, LaboratoryTestPriority prioridad,
             AnimalRef animal, ConsultationRef consultation, CompanyRef company, Long branchId,
             EmployeeRef processedBy, LocalDateTime processedDate, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(date, testType, quantity, diagnosis, status, prioridad, animal, consultation,
                 company, branchId);
         this.id = id;
@@ -41,6 +42,7 @@ public class LaboratoryTest {
         this.processedBy = processedBy;
         this.processedDate = processedDate;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -63,7 +65,7 @@ public class LaboratoryTest {
         }
         return new LaboratoryTest(null, date, testType, quantity, diagnosis, initialStatus,
                 prioridad, animal, consultation, company, branchId, processedBy, processedDate,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(LocalDate date, LaboratoryTestTypeRef testType, Integer quantity,
@@ -180,6 +182,10 @@ public class LaboratoryTest {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

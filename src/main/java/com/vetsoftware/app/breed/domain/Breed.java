@@ -7,9 +7,10 @@ public class Breed {
     private String name;
     private SpecieRef specie;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
-    public Breed(Long id, String name, SpecieRef specie, LocalDateTime createdDate,
+    public Breed(Long id, String name, SpecieRef specie, LocalDateTime createdDate, Long version,
             boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
@@ -21,11 +22,12 @@ public class Breed {
         this.name = name;
         this.specie = specie;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Breed create(String name, SpecieRef specie) {
-        return new Breed(null, name, specie, LocalDateTime.now(), true);
+        return new Breed(null, name, specie, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, SpecieRef specie) {
@@ -53,6 +55,10 @@ public class Breed {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

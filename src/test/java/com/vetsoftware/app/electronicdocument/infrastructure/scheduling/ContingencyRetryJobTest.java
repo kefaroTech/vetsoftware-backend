@@ -202,8 +202,8 @@ class ContingencyRetryJobTest {
                 new java.math.BigDecimal("1190.00"),
                 com.vetsoftware.app.electronicdocument.domain.PaymentForm.CONTADO,
                 ElectronicDocumentMother.unaLineaGravada(),
-                ElectronicDocumentMother.efectivo("1190.00"), java.time.LocalDateTime.now(), true,
-                null, null, null, false, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO,
+                ElectronicDocumentMother.efectivo("1190.00"), java.time.LocalDateTime.now(), null,
+                true, null, null, null, false, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO,
                 java.math.BigDecimal.ZERO, null, ElectronicDocumentMother.EMPLOYEE_ID,
                 ElectronicDocumentMother.BRANCH_ID);
     }

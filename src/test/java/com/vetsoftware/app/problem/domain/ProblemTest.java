@@ -79,7 +79,7 @@ class ProblemTest {
 
         private Problem build() {
             return new Problem(id, animal, company, description, status, onsetDate, resolvedDate,
-                    notes, ProblemMother.CREADO, enabled);
+                    notes, ProblemMother.CREADO, null, enabled);
         }
 
         private void applyTo(Problem problem) {

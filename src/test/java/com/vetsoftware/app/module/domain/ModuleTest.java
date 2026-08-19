@@ -29,7 +29,7 @@ class ModuleTest {
         @Test
         @DisplayName("el constructor conserva cada campo en su sitio")
         void el_constructor_conserva_cada_campo_en_su_sitio() {
-            Module module = new Module(1L, "Inventario", "INV", CREADO, true);
+            Module module = new Module(1L, "Inventario", "INV", CREADO, null, true);
 
             assertThat(module.getId()).isEqualTo(1L);
             assertThat(module.getName()).isEqualTo("Inventario");
@@ -55,8 +55,10 @@ class ModuleTest {
         @Test
         @DisplayName("name de 100 chars y code de 50 chars exactos se aceptan")
         void name_y_code_en_el_limite_se_aceptan() {
-            assertThatCode(() -> new Module(1L, "x".repeat(100), "y".repeat(50), CREADO, true))
-                    .doesNotThrowAnyException();
+            ThrowingCallable enElLimite = () -> new Module(1L, "x".repeat(100), "y".repeat(50),
+                    CREADO, null, true);
+
+            assertThatCode(enElLimite).doesNotThrowAnyException();
         }
     }
 
@@ -67,32 +69,35 @@ class ModuleTest {
         static Stream<Arguments> casosInvalidos() {
             return Stream.of(
                     arguments("name null",
-                            (ThrowingCallable) () -> new Module(1L, null, "INV", CREADO, true),
+                            (ThrowingCallable) () -> new Module(1L, null, "INV", CREADO, null,
+                                    true),
                             "name is required"),
                     arguments("name vacio",
-                            (ThrowingCallable) () -> new Module(1L, "", "INV", CREADO, true),
+                            (ThrowingCallable) () -> new Module(1L, "", "INV", CREADO, null, true),
                             "name is required"),
                     arguments("name en blanco",
-                            (ThrowingCallable) () -> new Module(1L, "   ", "INV", CREADO, true),
+                            (ThrowingCallable) () -> new Module(1L, "   ", "INV", CREADO, null,
+                                    true),
                             "name is required"),
                     arguments("name de 101 chars",
                             (ThrowingCallable) () -> new Module(1L, "x".repeat(101), "INV", CREADO,
-                                    true),
+                                    null, true),
                             "name must be 100 chars or less"),
                     arguments("code null",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", null, CREADO,
-                                    true),
+                                    null, true),
                             "code is required"),
                     arguments("code vacio",
-                            (ThrowingCallable) () -> new Module(1L, "Inventario", "", CREADO, true),
+                            (ThrowingCallable) () -> new Module(1L, "Inventario", "", CREADO, null,
+                                    true),
                             "code is required"),
                     arguments("code en blanco",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", "   ", CREADO,
-                                    true),
+                                    null, true),
                             "code is required"),
                     arguments(
                             "code de 51 chars", (ThrowingCallable) () -> new Module(1L,
-                                    "Inventario", "x".repeat(51), CREADO, true),
+                                    "Inventario", "x".repeat(51), CREADO, null, true),
                             "code must be 50 chars or less"));
         }
 
@@ -112,7 +117,7 @@ class ModuleTest {
         @Test
         @DisplayName("reemplaza name y code y conserva id, createdDate y enabled")
         void reemplaza_name_y_code_y_conserva_el_resto() {
-            Module module = new Module(1L, "Inventario", "INV", CREADO, true);
+            Module module = new Module(1L, "Inventario", "INV", CREADO, null, true);
 
             module.update("Caja", "CAJA");
 
@@ -126,19 +131,19 @@ class ModuleTest {
             return Stream.of(
                     arguments("name null",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", "INV", CREADO,
-                                    true).update(null, "CAJA"),
+                                    null, true).update(null, "CAJA"),
                             "name is required"),
                     arguments("name de 101 chars",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", "INV", CREADO,
-                                    true).update("x".repeat(101), "CAJA"),
+                                    null, true).update("x".repeat(101), "CAJA"),
                             "name must be 100 chars or less"),
                     arguments("code null",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", "INV", CREADO,
-                                    true).update("Caja", null),
+                                    null, true).update("Caja", null),
                             "code is required"),
                     arguments("code de 51 chars",
                             (ThrowingCallable) () -> new Module(1L, "Inventario", "INV", CREADO,
-                                    true).update("Caja", "x".repeat(51)),
+                                    null, true).update("Caja", "x".repeat(51)),
                             "code must be 50 chars or less"));
         }
 
@@ -153,7 +158,7 @@ class ModuleTest {
         @Test
         @DisplayName("un update invalido no deja el agregado a medias")
         void un_update_invalido_no_deja_el_agregado_a_medias() {
-            Module module = new Module(1L, "Inventario", "INV", CREADO, true);
+            Module module = new Module(1L, "Inventario", "INV", CREADO, null, true);
 
             assertThatThrownBy(() -> module.update("Caja", null))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -170,7 +175,7 @@ class ModuleTest {
         @Test
         @DisplayName("disable y enable alternan el estado y son idempotentes")
         void disable_y_enable_alternan_el_estado_y_son_idempotentes() {
-            Module module = new Module(1L, "Inventario", "INV", CREADO, true);
+            Module module = new Module(1L, "Inventario", "INV", CREADO, null, true);
 
             module.disable();
             assertThat(module.isEnabled()).isFalse();

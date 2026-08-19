@@ -23,6 +23,7 @@ public class PrescriptionJpaMapper {
         entity.setConsultation(consultation);
         entity.setCompany(company);
         entity.setCreatedDate(prescription.getCreatedDate());
+        entity.setVersion(prescription.getVersion());
         entity.setEnabled(prescription.isEnabled());
         return entity;
     }
@@ -40,6 +41,6 @@ public class PrescriptionJpaMapper {
             ConsultationRef consultationRef, CompanyRef companyRef) {
         return new Prescription(entity.getId(), entity.getDate(), entity.getDiagnosis(),
                 entity.getObservations(), animalRef, consultationRef, companyRef,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

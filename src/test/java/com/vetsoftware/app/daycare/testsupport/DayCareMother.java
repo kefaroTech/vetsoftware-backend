@@ -23,12 +23,12 @@ public final class DayCareMother {
     public static DayCare guarderiaValida() {
         return new DayCare(5L, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 1),
                 LocalDate.of(2026, 2, 3), DayCareType.DAYCARE, "Correa, plato", "Sin novedades",
-                FIRULAIS, CLINICA, CREADO, true);
+                FIRULAIS, CLINICA, CREADO, null, true);
     }
 
     public static DayCare hotelValido() {
         return new DayCare(6L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 1),
                 LocalDate.of(2026, 3, 10), DayCareType.HOTEL, null, null, MICHI, CLINICA, CREADO,
-                true);
+                null, true);
     }
 }

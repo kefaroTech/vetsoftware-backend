@@ -31,6 +31,10 @@ public class CashTerminalJpaEntity {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     public CashTerminalJpaEntity() {
     }
 
@@ -88,5 +92,13 @@ public class CashTerminalJpaEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

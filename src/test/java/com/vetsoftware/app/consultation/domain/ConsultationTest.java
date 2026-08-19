@@ -86,7 +86,8 @@ class ConsultationTest {
 
         private Consultation build() {
             return new Consultation(id, date, consultationType, anamnesis, diagnosis, prognosis,
-                    physicalExam, nextControl, animal, company, ConsultationMother.CREADO, true);
+                    physicalExam, nextControl, animal, company, ConsultationMother.CREADO, null,
+                    true);
         }
 
         private void applyTo(Consultation consultation) {

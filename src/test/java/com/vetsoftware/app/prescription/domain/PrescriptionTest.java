@@ -64,7 +64,7 @@ class PrescriptionTest {
 
         private Prescription build() {
             return new Prescription(id, date, diagnosis, observations, animal, consultation,
-                    company, PrescriptionMother.CREADO, true);
+                    company, PrescriptionMother.CREADO, null, true);
         }
 
         private void applyTo(Prescription prescription) {

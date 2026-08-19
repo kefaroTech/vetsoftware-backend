@@ -44,7 +44,8 @@ class CreateBaseRoleServiceTest {
             when(repository.save(any())).thenAnswer(inv -> {
                 BaseRole created = inv.getArgument(0);
                 return new BaseRole(3L, created.getName(), created.getCode(),
-                        created.getMandatory(), created.getCreatedDate(), created.isEnabled());
+                        created.getMandatory(), created.getCreatedDate(), created.getVersion(),
+                        created.isEnabled());
             });
 
             BaseRoleDto result = service.execute(command);
@@ -66,7 +67,8 @@ class CreateBaseRoleServiceTest {
             when(repository.save(any())).thenAnswer(inv -> {
                 BaseRole created = inv.getArgument(0);
                 return new BaseRole(1L, created.getName(), created.getCode(),
-                        created.getMandatory(), created.getCreatedDate(), created.isEnabled());
+                        created.getMandatory(), created.getCreatedDate(), created.getVersion(),
+                        created.isEnabled());
             });
 
             BaseRoleDto result = service.execute(command);

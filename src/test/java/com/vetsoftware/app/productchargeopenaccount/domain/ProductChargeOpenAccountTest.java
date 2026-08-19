@@ -67,7 +67,7 @@ class ProductChargeOpenAccountTest {
                     "IVA", "GRAVADO", new BigDecimal("10000.00"), new BigDecimal("1900.00"),
                     new BigDecimal("11900.00"), openAccount,
                     ProductChargeOpenAccountMother.EMPLEADO, ProductChargeOpenAccountMother.CREADO,
-                    true, false, null, null, null, "req-1");
+                    null, true, false, null, null, null, "req-1");
         }
 
         private void applyTo(ProductChargeOpenAccount charge) {

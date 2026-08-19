@@ -54,7 +54,7 @@ public final class HospitalizationProcedureMother {
         return new HospitalizationProcedure(id, "Curacion de herida", "Solucion salina 0.9%",
                 Frequency.EVERY_8H, GuidelineType.INTERVAL, DurationMeasure.DAYS, 5,
                 LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Cambiar el vendaje cada turno",
-                HOSPITALIZACION, CREADO_POR, CREADO, true, null, null);
+                HOSPITALIZACION, CREADO_POR, CREADO, null, true, null, null);
     }
 
     /** Orden ya suspendida por un segundo empleado. */
@@ -62,7 +62,7 @@ public final class HospitalizationProcedureMother {
         return new HospitalizationProcedure(PROCEDURE_ID, "Curacion de herida",
                 "Solucion salina 0.9%", Frequency.EVERY_8H, GuidelineType.INTERVAL,
                 DurationMeasure.DAYS, 5, LocalDate.of(2026, 3, 1), LocalTime.of(8, 0),
-                "Cambiar el vendaje cada turno", HOSPITALIZACION, CREADO_POR, CREADO, true,
+                "Cambiar el vendaje cada turno", HOSPITALIZACION, CREADO_POR, CREADO, null, true,
                 SUSPENDIDO_EL, SUSPENDIDO_POR);
     }
 
@@ -70,8 +70,8 @@ public final class HospitalizationProcedureMother {
         return new HospitalizationProcedure(PROCEDURE_ID, "Curacion de herida",
                 "Solucion salina 0.9%", Frequency.EVERY_8H, GuidelineType.INTERVAL,
                 DurationMeasure.DAYS, 5, LocalDate.of(2026, 3, 1), LocalTime.of(8, 0),
-                "Cambiar el vendaje cada turno", HOSPITALIZACION, CREADO_POR, CREADO, false, null,
-                null);
+                "Cambiar el vendaje cada turno", HOSPITALIZACION, CREADO_POR, CREADO, null, false,
+                null, null);
     }
 
     /**
@@ -79,7 +79,7 @@ public final class HospitalizationProcedureMother {
      */
     public static HospitalizationProcedure sinDetallesOpcionales() {
         return new HospitalizationProcedure(PROCEDURE_ID, "Curacion de herida", null, null, null,
-                null, null, null, null, null, HOSPITALIZACION, CREADO_POR, CREADO, true, null,
+                null, null, null, null, null, HOSPITALIZACION, CREADO_POR, CREADO, null, true, null,
                 null);
     }
 

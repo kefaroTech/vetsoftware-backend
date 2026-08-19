@@ -44,12 +44,12 @@ public final class HospitalizationProgressNoteMother {
 
     public static HospitalizationProgressNote notaEvolucion(Long id) {
         return new HospitalizationProgressNote(id, DESCRIPCION, HOSPITALIZACION, VETERINARIO,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     public static HospitalizationProgressNote deshabilitada() {
         return new HospitalizationProgressNote(NOTE_ID, "Nota deshabilitada", HOSPITALIZACION,
-                VETERINARIO, CREADO, false);
+                VETERINARIO, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

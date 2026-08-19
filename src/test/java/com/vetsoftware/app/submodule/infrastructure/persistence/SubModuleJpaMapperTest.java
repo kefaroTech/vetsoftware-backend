@@ -36,7 +36,7 @@ class SubModuleJpaMapperTest {
     void to_jpa_copia_cada_campo_del_dominio() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
-                new ModuleRef(1L, "Facturacion", "FACT"), creado, true);
+                new ModuleRef(1L, "Facturacion", "FACT"), creado, null, true);
 
         SubModuleJpaEntity entity = mapper.toJpa(subModule, moduleEntity);
 
@@ -53,7 +53,7 @@ class SubModuleJpaMapperTest {
     void to_jpa_conserva_enabled_false() {
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
                 new ModuleRef(1L, "Facturacion", "FACT"), LocalDateTime.of(2026, 1, 15, 10, 30),
-                false);
+                null, false);
 
         SubModuleJpaEntity entity = mapper.toJpa(subModule, moduleEntity);
 

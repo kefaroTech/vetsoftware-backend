@@ -38,7 +38,7 @@ public final class MedicationScheduleMother {
     /** Toma pendiente a la hora prevista. */
     public static MedicationSchedule tomaPendiente() {
         return new MedicationSchedule(SCHEDULE_ID, ORDEN, PRIMERA_TOMA, PRIMERA_TOMA, null,
-                AppliedStatus.PENDING, false, EMPLEADO, CREADO, true);
+                AppliedStatus.PENDING, false, EMPLEADO, CREADO, null, true);
     }
 
     /** Cada 8 horas durante 3 dias: nueve tomas. */
@@ -69,13 +69,13 @@ public final class MedicationScheduleMother {
      */
     public static MedicationSchedule toma(Long id, LocalDateTime cuando, AppliedStatus status) {
         return new MedicationSchedule(id, ORDEN, cuando, cuando, null, status, false, EMPLEADO,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     /** Toma ya aplicada, con su hora real. */
     public static MedicationSchedule tomaAplicada(Long id, LocalDateTime cuando,
             LocalDateTime horaReal) {
         return new MedicationSchedule(id, ORDEN, cuando, cuando, horaReal, AppliedStatus.APPLIED,
-                false, EMPLEADO, CREADO, true);
+                false, EMPLEADO, CREADO, null, true);
     }
 }

@@ -333,16 +333,16 @@ class EmployeeTest {
 
         @Test
         void un_status_nulo_se_normaliza_a_active() {
-            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, true,
-                    true, false, null, 0L);
+            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, null,
+                    true, true, false, null, 0L);
 
             assertThat(employee.getStatus()).isEqualTo(EmployeeStatus.ACTIVE);
         }
 
         @Test
         void un_auth_version_nulo_se_normaliza_a_cero() {
-            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, true,
-                    true, false, EmployeeStatus.ACTIVE, null);
+            Employee employee = new Employee(1L, "C", "h", "n", "e@e.co", company(), null, null,
+                    true, true, false, EmployeeStatus.ACTIVE, null);
 
             assertThat(employee.getAuthVersion()).isZero();
         }

@@ -300,7 +300,7 @@ class LaboratoryTestPersistenceIT extends AbstractDataJpaTest {
                     1, "Anemia regenerativa", LaboratoryTestStatus.COMPLETED,
                     LaboratoryTestPriority.URGENTE, animalRef(), consultationRef(), companyRef(),
                     SchemaSeed.BRANCH_ID, employeeRef(), LocalDateTime.of(2026, 3, 16, 9, 0),
-                    LocalDateTime.of(2026, 3, 15, 8, 0), true);
+                    LocalDateTime.of(2026, 3, 15, 8, 0), null, true);
 
             LaboratoryTest guardada = repository.save(firmada);
             releerDesdeLaBase();

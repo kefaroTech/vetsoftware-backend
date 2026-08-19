@@ -218,8 +218,8 @@ class MatiasInvoiceProviderTest {
                 consecutive, resolutionNumber, LocalDate.of(2026, 3, 10), "10:15:00-05:00", null,
                 null, null, null, null, null, null, DianStatus.PENDIENTE, null,
                 ElectronicDocumentMother.issuer(), customer, base, base, total, total,
-                PaymentForm.CONTADO, lines, payments, LocalDateTime.of(2026, 3, 10, 10, 15), true,
-                reference, noteReasonCode, noteReasonCode == null ? null : "Anulacion", false,
+                PaymentForm.CONTADO, lines, payments, LocalDateTime.of(2026, 3, 10, 10, 15), null,
+                true, reference, noteReasonCode, noteReasonCode == null ? null : "Anulacion", false,
                 reteFuente, reteIva, reteIca, null, ElectronicDocumentMother.EMPLOYEE_ID, branchId);
     }
 

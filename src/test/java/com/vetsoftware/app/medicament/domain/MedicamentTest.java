@@ -193,7 +193,7 @@ class MedicamentTest {
     void el_constructor_completo_respeta_id_y_fecha() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 1, 0, 0);
 
-        Medicament medicamento = new Medicament(42L, "Amoxicilina", null, null, true, creado,
+        Medicament medicamento = new Medicament(42L, "Amoxicilina", null, null, true, creado, null,
                 false);
 
         assertThat(medicamento.getId()).isEqualTo(42L);

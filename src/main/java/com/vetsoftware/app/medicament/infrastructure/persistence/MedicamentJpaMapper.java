@@ -15,6 +15,7 @@ public class MedicamentJpaMapper {
         entity.setCompany(company);
         entity.setGeneral(medicament.isGeneral());
         entity.setCreatedDate(medicament.getCreatedDate());
+        entity.setVersion(medicament.getVersion());
         entity.setEnabled(medicament.isEnabled());
         return entity;
     }
@@ -28,6 +29,6 @@ public class MedicamentJpaMapper {
     public Medicament toDomain(MedicamentJpaEntity entity, CompanyRef companyRef) {
         return new Medicament(entity.getId(), entity.getName(), entity.getDescription(), companyRef,
                 Boolean.TRUE.equals(entity.getGeneral()), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

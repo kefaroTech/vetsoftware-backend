@@ -31,7 +31,7 @@ public final class EconomicActivityMother {
     }
 
     public static EconomicActivity nueva(String code, String name) {
-        return new EconomicActivity(null, code, name, CREADO, true);
+        return new EconomicActivity(null, code, name, CREADO, null, true);
     }
 
     /** Actividad ya persistida, habilitada. */
@@ -40,11 +40,11 @@ public final class EconomicActivityMother {
     }
 
     public static EconomicActivity existente(Long id) {
-        return new EconomicActivity(id, CODIGO, NOMBRE, CREADO, true);
+        return new EconomicActivity(id, CODIGO, NOMBRE, CREADO, null, true);
     }
 
     public static EconomicActivity deshabilitada() {
-        return new EconomicActivity(ECONOMIC_ACTIVITY_ID, CODIGO, NOMBRE, CREADO, false);
+        return new EconomicActivity(ECONOMIC_ACTIVITY_ID, CODIGO, NOMBRE, CREADO, null, false);
     }
 
     public static CreateEconomicActivityCommand comandoCrear() {

@@ -11,11 +11,12 @@ public class MedicamentPrescription {
     private String observation;
     private PrescriptionRef prescription;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public MedicamentPrescription(Long id, MedicamentRef medicament, String presentation,
             Double quantity, String posology, String observation, PrescriptionRef prescription,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(medicament, presentation, quantity, posology, observation, prescription);
         this.id = id;
         this.medicament = medicament;
@@ -25,13 +26,14 @@ public class MedicamentPrescription {
         this.observation = blankToNull(observation);
         this.prescription = prescription;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static MedicamentPrescription create(MedicamentRef medicament, String presentation,
             Double quantity, String posology, String observation, PrescriptionRef prescription) {
         return new MedicamentPrescription(null, medicament, presentation, quantity, posology,
-                observation, prescription, LocalDateTime.now(), true);
+                observation, prescription, LocalDateTime.now(), null, true);
     }
 
     public void update(MedicamentRef medicament, String presentation, Double quantity,
@@ -119,6 +121,10 @@ public class MedicamentPrescription {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

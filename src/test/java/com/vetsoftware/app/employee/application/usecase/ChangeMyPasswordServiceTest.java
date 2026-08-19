@@ -42,7 +42,7 @@ class ChangeMyPasswordServiceTest {
 
     private static Employee employee(boolean mustChangePassword) {
         return new Employee(55L, "VV-MARIANA", "$2a$10$old", "Mariana Rojas", "mariana@vetrina.co",
-                new CompanyRef(9L, "Vetrina", "900123456"), LocalDateTime.now(), true, true,
+                new CompanyRef(9L, "Vetrina", "900123456"), LocalDateTime.now(), null, true, true,
                 mustChangePassword, EmployeeStatus.INVITED, 3L);
     }
 

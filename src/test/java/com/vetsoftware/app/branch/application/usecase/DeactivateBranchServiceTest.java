@@ -41,7 +41,7 @@ class DeactivateBranchServiceTest {
 
     private Branch branch(boolean active) {
         return new Branch(3L, "Sede", "S", null, null, city, company,
-                LocalDateTime.of(2020, 1, 1, 10, 0), active);
+                LocalDateTime.of(2020, 1, 1, 10, 0), null, active);
     }
 
     @Test

@@ -55,7 +55,7 @@ class MembershipTest {
         }
 
         private Membership build() {
-            return new Membership(id, name, status, mandatory, createdDate, enabled);
+            return new Membership(id, name, status, mandatory, createdDate, null, enabled);
         }
 
         private void applyTo(Membership membership) {

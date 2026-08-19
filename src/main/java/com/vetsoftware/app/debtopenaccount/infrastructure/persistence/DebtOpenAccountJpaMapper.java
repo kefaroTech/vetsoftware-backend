@@ -20,6 +20,7 @@ public class DebtOpenAccountJpaMapper {
         entity.setOpenAccount(openAccount);
         entity.setCreatedBy(createdBy);
         entity.setCreatedDate(debtOpenAccount.getCreatedDate());
+        entity.setVersion(debtOpenAccount.getVersion());
         entity.setEnabled(debtOpenAccount.isEnabled());
         entity.setVoided(debtOpenAccount.isVoided());
         entity.setVoidedBy(voidedBy);
@@ -41,8 +42,8 @@ public class DebtOpenAccountJpaMapper {
     public DebtOpenAccount toDomain(DebtOpenAccountJpaEntity entity, OpenAccountRef openAccountRef,
             EmployeeRef createdByRef, EmployeeRef voidedByRef) {
         return new DebtOpenAccount(entity.getId(), entity.getAmount(), entity.getPaymentMethod(),
-                openAccountRef, createdByRef, entity.getCreatedDate(), entity.isEnabled(),
-                entity.isVoided(), voidedByRef, entity.getVoidedAt(), entity.getVoidReason(),
-                entity.getClientRequestId());
+                openAccountRef, createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled(), entity.isVoided(), voidedByRef, entity.getVoidedAt(),
+                entity.getVoidReason(), entity.getClientRequestId());
     }
 }

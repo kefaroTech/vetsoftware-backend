@@ -16,6 +16,7 @@ public class WithholdingConfigJpaMapper {
         entity.setReteIvaRate(config.getReteIvaRate());
         entity.setReteIcaRate(config.getReteIcaRate());
         entity.setCreatedDate(config.getCreatedDate());
+        entity.setVersion(config.getVersion());
         entity.setEnabled(config.isEnabled());
         return entity;
     }
@@ -31,6 +32,6 @@ public class WithholdingConfigJpaMapper {
     public WithholdingConfig toDomain(WithholdingConfigJpaEntity entity, CompanyRef ref) {
         return new WithholdingConfig(entity.getId(), ref, entity.getReteFuenteRate(),
                 entity.getReteIvaRate(), entity.getReteIcaRate(), entity.getCreatedDate(),
-                entity.isEnabled());
+                entity.getVersion(), entity.isEnabled());
     }
 }

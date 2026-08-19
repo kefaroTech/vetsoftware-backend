@@ -26,6 +26,7 @@ public class MedicationScheduleJpaMapper {
                 : null);
         entity.setRescheduled(medicationSchedule.getRescheduled());
         entity.setCreatedDate(medicationSchedule.getCreatedDate());
+        entity.setVersion(medicationSchedule.getVersion());
         entity.setEnabled(medicationSchedule.isEnabled());
         return entity;
     }
@@ -47,6 +48,7 @@ public class MedicationScheduleJpaMapper {
                 entity.getAppliedStatus() != null
                         ? AppliedStatus.valueOf(entity.getAppliedStatus())
                         : null,
-                entity.getRescheduled(), createdByRef, entity.getCreatedDate(), entity.isEnabled());
+                entity.getRescheduled(), createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

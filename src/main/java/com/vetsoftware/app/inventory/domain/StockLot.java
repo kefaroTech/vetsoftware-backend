@@ -22,11 +22,12 @@ public class StockLot {
     private final BigDecimal unitCost;
     private final LocalDateTime receivedDate;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public StockLot(Long id, Long companyId, Long branchId, Long productId, String lotNumber,
             LocalDate expireDate, int quantityAvailable, BigDecimal unitCost,
-            LocalDateTime receivedDate, LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime receivedDate, LocalDateTime createdDate, Long version, boolean enabled) {
         if (companyId == null)
             throw new IllegalArgumentException("companyId is required");
         if (branchId == null)
@@ -45,6 +46,7 @@ public class StockLot {
         this.unitCost = unitCost;
         this.receivedDate = receivedDate;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -52,7 +54,7 @@ public class StockLot {
             LocalDate expireDate, int quantity, BigDecimal unitCost) {
         LocalDateTime now = LocalDateTime.now();
         return new StockLot(null, companyId, branchId, productId, lotNumber, expireDate, quantity,
-                unitCost, now, now, true);
+                unitCost, now, now, null, true);
     }
 
     /** Suma unidades al lote (entrada). */
@@ -110,6 +112,10 @@ public class StockLot {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

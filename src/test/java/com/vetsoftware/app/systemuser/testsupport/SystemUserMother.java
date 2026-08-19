@@ -29,15 +29,15 @@ public final class SystemUserMother {
     }
 
     public static SystemUser activo(Long id) {
-        return new SystemUser(id, CODE, HASH_PASSWORD, CREADO, true, 0L);
+        return new SystemUser(id, CODE, HASH_PASSWORD, CREADO, null, true, 0L);
     }
 
     public static SystemUser deshabilitado() {
-        return new SystemUser(SYSTEM_USER_ID, CODE, HASH_PASSWORD, CREADO, false, 0L);
+        return new SystemUser(SYSTEM_USER_ID, CODE, HASH_PASSWORD, CREADO, null, false, 0L);
     }
 
     public static SystemUser conAuthVersion(long authVersion) {
-        return new SystemUser(SYSTEM_USER_ID, CODE, HASH_PASSWORD, CREADO, true, authVersion);
+        return new SystemUser(SYSTEM_USER_ID, CODE, HASH_PASSWORD, CREADO, null, true, authVersion);
     }
 
     /** Comando de creacion coherente con las constantes de arriba. */

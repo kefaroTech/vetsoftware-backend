@@ -36,7 +36,7 @@ class BasePermissionJpaMapperTest {
     void to_jpa_copia_cada_campo_del_dominio() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
         BasePermission basePermission = new BasePermission(2L, "Crear factura", "INVOICE_CREATE",
-                new SubModuleRef(1L, "Ventas", "VEN"), creado, true);
+                new SubModuleRef(1L, "Ventas", "VEN"), creado, null, true);
 
         BasePermissionJpaEntity entity = mapper.toJpa(basePermission, subModuleEntity);
 
@@ -52,7 +52,7 @@ class BasePermissionJpaMapperTest {
     @DisplayName("toJpa conserva enabled=false de un permiso base deshabilitado")
     void to_jpa_conserva_enabled_false() {
         BasePermission basePermission = new BasePermission(2L, "Crear factura", "INVOICE_CREATE",
-                new SubModuleRef(1L, "Ventas", "VEN"), LocalDateTime.of(2026, 1, 15, 10, 30),
+                new SubModuleRef(1L, "Ventas", "VEN"), LocalDateTime.of(2026, 1, 15, 10, 30), null,
                 false);
 
         BasePermissionJpaEntity entity = mapper.toJpa(basePermission, subModuleEntity);

@@ -26,6 +26,7 @@ public class ProcedureScheduleJpaMapper {
                 : null);
         entity.setRescheduled(procedureSchedule.getRescheduled());
         entity.setCreatedDate(procedureSchedule.getCreatedDate());
+        entity.setVersion(procedureSchedule.getVersion());
         entity.setEnabled(procedureSchedule.isEnabled());
         return entity;
     }
@@ -47,6 +48,7 @@ public class ProcedureScheduleJpaMapper {
                 entity.getAppliedStatus() != null
                         ? AppliedStatus.valueOf(entity.getAppliedStatus())
                         : null,
-                entity.getRescheduled(), createdByRef, entity.getCreatedDate(), entity.isEnabled());
+                entity.getRescheduled(), createdByRef, entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

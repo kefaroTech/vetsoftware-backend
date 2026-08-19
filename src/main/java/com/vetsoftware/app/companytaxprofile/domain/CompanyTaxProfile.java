@@ -18,6 +18,7 @@ public class CompanyTaxProfile {
     private EconomicActivityRef economicActivity;
     private List<CompanyTaxProfileResponsibility> responsibilities;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public CompanyTaxProfile(Long id, CompanyRef company, CompanyDocumentType companyDocumentType,
@@ -25,7 +26,7 @@ public class CompanyTaxProfile {
             TaxRegime taxRegime, String fiscalEmail, String commercialName,
             EconomicActivityRef economicActivity,
             List<CompanyTaxProfileResponsibility> responsibilities, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(company, companyDocumentType, companyDocumentId, companyDocumentVerificationDigit,
                 legalName, taxRegime, fiscalEmail);
         this.id = id;
@@ -45,6 +46,7 @@ public class CompanyTaxProfile {
                 ? List.of()
                 : List.copyOf(responsibilities);
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -55,7 +57,7 @@ public class CompanyTaxProfile {
             List<CompanyTaxProfileResponsibility> responsibilities) {
         return new CompanyTaxProfile(null, company, companyDocumentType, companyDocumentId,
                 companyDocumentVerificationDigit, legalName, taxRegime, fiscalEmail, commercialName,
-                economicActivity, responsibilities, LocalDateTime.now(), true);
+                economicActivity, responsibilities, LocalDateTime.now(), null, true);
     }
 
     public void update(CompanyDocumentType companyDocumentType, String companyDocumentId,
@@ -168,6 +170,10 @@ public class CompanyTaxProfile {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -22,7 +22,7 @@ class WithholdingConfigTest {
     private static WithholdingConfig configConTasas(BigDecimal reteFuente, BigDecimal reteIva,
             BigDecimal reteIca) {
         return new WithholdingConfig(10L, COMPANY, reteFuente, reteIva, reteIca,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     @Nested
@@ -60,7 +60,7 @@ class WithholdingConfigTest {
         @DisplayName("company nulo se rechaza")
         void company_nulo_se_rechaza() {
             assertThatThrownBy(() -> new WithholdingConfig(10L, null, RATE, RATE, RATE,
-                    LocalDateTime.now(), true)).isInstanceOf(IllegalArgumentException.class)
+                    LocalDateTime.now(), null, true)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("company is required");
         }
 

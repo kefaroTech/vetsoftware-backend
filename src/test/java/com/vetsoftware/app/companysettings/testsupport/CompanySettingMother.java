@@ -32,7 +32,7 @@ public final class CompanySettingMother {
 
     public static CompanySetting ajusteExistente(Long id, Long companyId, String propertyName,
             String value) {
-        return new CompanySetting(id, companyId, propertyName, value, CREADO, true);
+        return new CompanySetting(id, companyId, propertyName, value, CREADO, null, true);
     }
 
     public static SetCompanySettingCommand comandoValido() {

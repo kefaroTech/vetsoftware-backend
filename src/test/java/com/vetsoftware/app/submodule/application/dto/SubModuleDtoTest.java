@@ -16,7 +16,7 @@ class SubModuleDtoTest {
     void from_copia_cada_campo() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
-                new ModuleRef(1L, "Facturacion", "FACT"), creado, true);
+                new ModuleRef(1L, "Facturacion", "FACT"), creado, null, true);
 
         SubModuleDto dto = SubModuleDto.from(subModule);
 
@@ -33,7 +33,7 @@ class SubModuleDtoTest {
     void from_conserva_enabled_false_de_un_submodulo_deshabilitado() {
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
                 new ModuleRef(1L, "Facturacion", "FACT"), LocalDateTime.of(2026, 1, 15, 10, 30),
-                false);
+                null, false);
 
         assertThat(SubModuleDto.from(subModule).enabled()).isFalse();
     }

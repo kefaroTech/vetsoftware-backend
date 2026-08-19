@@ -16,13 +16,14 @@ public class Promotion {
     private PromotionStatus promotionStatus;
     private CompanyRef company;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Promotion(Long id, String name, PromotionType promotionType,
             ApplicationType applicationType, Long applicationItem, ValueType valueType,
             BigDecimal value, LocalDateTime startDate, LocalDateTime endDate,
             PromotionStatus promotionStatus, CompanyRef company, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         validate(name, promotionType, applicationType, applicationItem, valueType, value, startDate,
                 endDate, promotionStatus, company);
         this.id = id;
@@ -37,6 +38,7 @@ public class Promotion {
         this.promotionStatus = promotionStatus;
         this.company = company;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -45,7 +47,8 @@ public class Promotion {
             BigDecimal value, LocalDateTime startDate, LocalDateTime endDate,
             PromotionStatus promotionStatus, CompanyRef company) {
         return new Promotion(null, name, promotionType, applicationType, applicationItem, valueType,
-                value, startDate, endDate, promotionStatus, company, LocalDateTime.now(), true);
+                value, startDate, endDate, promotionStatus, company, LocalDateTime.now(), null,
+                true);
     }
 
     public void update(String name, PromotionType promotionType, ApplicationType applicationType,
@@ -145,6 +148,10 @@ public class Promotion {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

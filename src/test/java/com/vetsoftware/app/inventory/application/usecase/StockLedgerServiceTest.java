@@ -95,7 +95,7 @@ class StockLedgerServiceTest {
     private StockLot seedLotFor(long product, long branch, int qty, String cost, LocalDate expire,
             String lotNumber) {
         StockLot lot = lots.save(new StockLot(null, CO, branch, product, lotNumber, expire, qty,
-                bd(cost), null, null, true));
+                bd(cost), null, null, null, true));
         StockBalance bal = balances.find(product, branch)
                 .orElseGet(() -> balances.save(StockBalance.create(CO, branch, product, 0)));
         bal.add(qty);
@@ -448,9 +448,9 @@ class StockLedgerServiceTest {
             // consumeFefo. El saldo materializado (10) es el que decide si la venta se
             // permite; los lotes son la fuente real del descuento.
             StockLot agotado = new StockLot(1L, CO, A, P, "L-CERO", LocalDate.of(2027, 1, 1), 0,
-                    bd("30"), null, null, true);
+                    bd("30"), null, null, null, true);
             StockLot conStock = new StockLot(2L, CO, A, P, "L-CON-STOCK", LocalDate.of(2027, 2, 1),
-                    10, bd("30"), null, null, true);
+                    10, bd("30"), null, null, null, true);
             FakeLotRepositoryFefoFijo lotsFijo = new FakeLotRepositoryFefoFijo(
                     List.of(agotado, conStock));
             StockBalance balance = balances.save(StockBalance.create(CO, A, P, 0));
@@ -806,9 +806,9 @@ class StockLedgerServiceTest {
             // Misma rama defensiva `take <= 0 => continue`, ahora dentro del bucle FEFO
             // propio de transfer().
             StockLot agotado = new StockLot(1L, CO, A, P, "L-CERO", LocalDate.of(2027, 1, 1), 0,
-                    bd("30"), null, null, true);
+                    bd("30"), null, null, null, true);
             StockLot conStock = new StockLot(2L, CO, A, P, "L-CON-STOCK", LocalDate.of(2027, 2, 1),
-                    10, bd("30"), null, null, true);
+                    10, bd("30"), null, null, null, true);
             FakeLotRepositoryFefoFijo lotsFijo = new FakeLotRepositoryFefoFijo(
                     List.of(agotado, conStock));
             StockBalance balance = balances.save(StockBalance.create(CO, A, P, 0));

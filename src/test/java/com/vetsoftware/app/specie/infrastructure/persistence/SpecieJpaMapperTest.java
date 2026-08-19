@@ -17,7 +17,7 @@ class SpecieJpaMapperTest {
     @Test
     @DisplayName("toJpa copia cada campo del dominio a la entidad")
     void to_jpa_copia_cada_campo() {
-        Specie specie = new Specie(1L, "Perro", CREADO, true);
+        Specie specie = new Specie(1L, "Perro", CREADO, null, true);
 
         SpecieJpaEntity entity = mapper.toJpa(specie);
 
@@ -47,7 +47,7 @@ class SpecieJpaMapperTest {
     @Test
     @DisplayName("ida y vuelta conserva cada campo del agregado")
     void ida_y_vuelta_conserva_cada_campo() {
-        Specie original = new Specie(3L, "Ave", CREADO, true);
+        Specie original = new Specie(3L, "Ave", CREADO, null, true);
 
         Specie reconstruida = mapper.toDomain(mapper.toJpa(original));
 

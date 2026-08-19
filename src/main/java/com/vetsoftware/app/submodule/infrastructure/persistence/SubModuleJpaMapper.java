@@ -15,6 +15,7 @@ public class SubModuleJpaMapper {
         entity.setCode(subModule.getCode());
         entity.setModule(module);
         entity.setCreatedDate(subModule.getCreatedDate());
+        entity.setVersion(subModule.getVersion());
         entity.setEnabled(subModule.isEnabled());
         return entity;
     }
@@ -26,6 +27,6 @@ public class SubModuleJpaMapper {
 
     public SubModule toDomain(SubModuleJpaEntity entity, ModuleRef ref) {
         return new SubModule(entity.getId(), entity.getName(), entity.getCode(), ref,
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

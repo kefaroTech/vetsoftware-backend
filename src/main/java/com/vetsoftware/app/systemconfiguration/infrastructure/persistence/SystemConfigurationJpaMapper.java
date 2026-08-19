@@ -12,12 +12,13 @@ public class SystemConfigurationJpaMapper {
         entity.setPropertyName(config.getPropertyName());
         entity.setValue(config.getValue());
         entity.setCreatedDate(config.getCreatedDate());
+        entity.setVersion(config.getVersion());
         entity.setEnabled(config.isEnabled());
         return entity;
     }
 
     public SystemConfiguration toDomain(SystemConfigurationJpaEntity entity) {
         return new SystemConfiguration(entity.getId(), entity.getPropertyName(), entity.getValue(),
-                entity.getCreatedDate(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
     }
 }

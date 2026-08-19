@@ -74,7 +74,7 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
 
     private Company nueva(String nombre) {
         return new Company(null, nombre, "NIT-" + nitConsecutivo.getAndIncrement(),
-                "Calle 123 #45-67", "3001234567", bogota, premium, CREADO, true);
+                "Calle 123 #45-67", "3001234567", bogota, premium, CREADO, null, true);
     }
 
     private Company guardar(String nombre) {
@@ -115,7 +115,7 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
         void direccion_y_telefono_nulos_se_conservan_nulos() {
             Company guardada = repository.save(
                     new Company(null, "Clinica Norte", "NIT-" + nitConsecutivo.getAndIncrement(),
-                            null, null, bogota, premium, CREADO, true));
+                            null, null, bogota, premium, CREADO, null, true));
 
             Company leida = repository.findById(guardada.getId()).orElseThrow();
 
@@ -133,10 +133,10 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
         void dos_empresas_con_el_mismo_nit_violan_el_indice_unico() {
             String nitCompartido = "NIT-DUPLICADO";
             repository.save(new Company(null, "Clinica Norte", nitCompartido, null, null, bogota,
-                    premium, CREADO, true));
+                    premium, CREADO, null, true));
 
             assertThatThrownBy(() -> repository.save(new Company(null, "Clinica Sur", nitCompartido,
-                    null, null, bogota, premium, CREADO, true)))
+                    null, null, bogota, premium, CREADO, null, true)))
                     .isInstanceOf(RuntimeException.class);
         }
     }

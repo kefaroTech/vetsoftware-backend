@@ -7,9 +7,11 @@ public class Module {
     private String name;
     private String code;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
-    public Module(Long id, String name, String code, LocalDateTime createdDate, boolean enabled) {
+    public Module(Long id, String name, String code, LocalDateTime createdDate, Long version,
+            boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -22,11 +24,12 @@ public class Module {
         this.name = name;
         this.code = code;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Module create(String name, String code) {
-        return new Module(null, name, code, LocalDateTime.now(), true);
+        return new Module(null, name, code, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String code) {
@@ -68,5 +71,9 @@ public class Module {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

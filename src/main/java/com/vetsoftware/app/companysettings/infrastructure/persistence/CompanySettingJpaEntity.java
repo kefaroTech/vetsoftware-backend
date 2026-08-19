@@ -26,6 +26,10 @@ public class CompanySettingJpaEntity {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -70,6 +74,14 @@ public class CompanySettingJpaEntity {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public boolean isEnabled() {

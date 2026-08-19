@@ -36,21 +36,23 @@ public final class VaccinationTypeMother {
     }
 
     public static VaccinationType propia(Long id) {
-        return new VaccinationType(id, "Rabia", "Vacuna antirrabica", CLINICA, false, CREADO, true);
+        return new VaccinationType(id, "Rabia", "Vacuna antirrabica", CLINICA, false, CREADO, null,
+                true);
     }
 
     public static VaccinationType propia(Long id, CompanyRef empresa) {
-        return new VaccinationType(id, "Rabia", "Vacuna antirrabica", empresa, false, CREADO, true);
+        return new VaccinationType(id, "Rabia", "Vacuna antirrabica", empresa, false, CREADO, null,
+                true);
     }
 
     public static VaccinationType deshabilitada() {
         return new VaccinationType(TYPE_ID, "Rabia", "Vacuna antirrabica", CLINICA, false, CREADO,
-                false);
+                null, false);
     }
 
     /** Tipo general, disponible para todas las empresas y sin compania. */
     public static VaccinationType general() {
-        return new VaccinationType(TYPE_ID, "Rabia", "Vacuna antirrabica", null, true, CREADO,
+        return new VaccinationType(TYPE_ID, "Rabia", "Vacuna antirrabica", null, true, CREADO, null,
                 true);
     }
 

@@ -49,7 +49,7 @@ class CreateBranchServiceTest {
 
     private static Branch withId(Long id, Branch b) {
         return new Branch(id, b.getName(), b.getCode(), b.getAddress(), b.getPhone(), b.getCity(),
-                b.getCompany(), b.getCreatedDate(), b.isActive());
+                b.getCompany(), b.getCreatedDate(), b.getVersion(), b.isActive());
     }
 
     @Test

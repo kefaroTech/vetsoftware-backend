@@ -28,7 +28,7 @@ class ListSpeciesServiceTest {
     @Test
     @DisplayName("mapea cada especie del repositorio a su dto, en el mismo orden")
     void mapea_cada_especie_del_repositorio_a_su_dto() {
-        Specie gato = new Specie(2L, "Gato", LocalDateTime.of(2026, 1, 15, 10, 30), true);
+        Specie gato = new Specie(2L, "Gato", LocalDateTime.of(2026, 1, 15, 10, 30), null, true);
         when(repository.findAll()).thenReturn(List.of(SpecieMother.perro(), gato));
 
         List<SpecieDto> dtos = service.listAll();

@@ -59,7 +59,7 @@ class SubModuleTest {
         }
 
         private SubModule build() {
-            return new SubModule(id, name, code, module, createdDate, enabled);
+            return new SubModule(id, name, code, module, createdDate, null, enabled);
         }
     }
 

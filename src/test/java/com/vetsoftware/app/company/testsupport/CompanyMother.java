@@ -37,19 +37,19 @@ public final class CompanyMother {
 
     public static Company clinicaNorte(Long id) {
         return new Company(id, "Clinica Norte", "NIT-900", "Calle 123 #45-67", "3001234567", BOGOTA,
-                PREMIUM, CREADO, true);
+                PREMIUM, CREADO, null, true);
     }
 
     /** Misma empresa ya desactivada por el borrado logico. */
     public static Company deshabilitada() {
         return new Company(COMPANY_ID, "Clinica Norte", "NIT-900", "Calle 123 #45-67", "3001234567",
-                BOGOTA, PREMIUM, CREADO, false);
+                BOGOTA, PREMIUM, CREADO, null, false);
     }
 
     /** Empresa sin direccion ni telefono: ambos campos son opcionales. */
     public static Company sinDatosOpcionales() {
         return new Company(COMPANY_ID, "Clinica Norte", "NIT-900", null, null, BOGOTA, PREMIUM,
-                CREADO, true);
+                CREADO, null, true);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

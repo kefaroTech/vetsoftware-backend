@@ -47,7 +47,7 @@ class LaboratoryTestTest {
             CompanyRef company, Long branchId) {
         return new LaboratoryTest(LaboratoryTestMother.ID, date, testType, quantity, diagnosis,
                 status, prioridad, animal, consultation, company, branchId, null, null, CREADO,
-                true);
+                null, true);
     }
 
     @Nested

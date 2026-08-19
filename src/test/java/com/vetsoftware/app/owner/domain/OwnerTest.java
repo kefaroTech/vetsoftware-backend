@@ -121,7 +121,7 @@ class OwnerTest {
         private Owner build() {
             return new Owner(id, name, email, document, documentType, personType, verificationDigit,
                     legalName, address, phone, city, company, withholdingAgent, taxRegime,
-                    fiscalResponsibility, CREADO, true);
+                    fiscalResponsibility, CREADO, null, true);
         }
 
         private void applyTo(Owner owner) {

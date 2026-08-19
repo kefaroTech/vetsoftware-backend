@@ -24,7 +24,7 @@ class EconomicActivityTest {
     private static final LocalDateTime CREADO = LocalDateTime.of(2026, 1, 15, 10, 30);
 
     private static EconomicActivity nueva(String code, String name) {
-        return new EconomicActivity(1L, code, name, CREADO, true);
+        return new EconomicActivity(1L, code, name, CREADO, null, true);
     }
 
     @Nested
@@ -214,7 +214,7 @@ class EconomicActivityTest {
         @DisplayName("enable prende el estado habilitado")
         void enable_prende_el_estado() {
             EconomicActivity actividad = new EconomicActivity(1L, "0111", "Cultivo de cereales",
-                    CREADO, false);
+                    CREADO, null, false);
 
             actividad.enable();
 

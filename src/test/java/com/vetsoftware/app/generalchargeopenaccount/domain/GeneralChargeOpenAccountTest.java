@@ -70,8 +70,8 @@ class GeneralChargeOpenAccountTest {
                     tax == null ? null : tax.percentage(), tax == null ? null : tax.name(),
                     tax == null ? null : tax.scheme(), GeneralChargeOpenAccountMother.BASE,
                     GeneralChargeOpenAccountMother.IMPUESTO, GeneralChargeOpenAccountMother.TOTAL,
-                    openAccount, createdBy, GeneralChargeOpenAccountMother.CREADO, true, false,
-                    null, null, null, null);
+                    openAccount, createdBy, GeneralChargeOpenAccountMother.CREADO, null, true,
+                    false, null, null, null, null);
         }
 
         private void applyTo(GeneralChargeOpenAccount charge) {

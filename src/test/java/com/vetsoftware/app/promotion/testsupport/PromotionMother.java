@@ -36,7 +36,7 @@ public final class PromotionMother {
     public static Promotion activa(Long id) {
         return new Promotion(id, "Enero perruno", PromotionType.DISCOUNT, ApplicationType.CATEGORY,
                 CATEGORY_ID, ValueType.PERCENTAGE, new BigDecimal("15.00"), INICIO, FIN,
-                PromotionStatus.ACTIVE, CLINICA, CREADA, true);
+                PromotionStatus.ACTIVE, CLINICA, CREADA, null, true);
     }
 
     public static Promotion activa() {

@@ -32,11 +32,11 @@ public final class BreedMother {
     }
 
     public static Breed labrador(Long id) {
-        return new Breed(id, "Labrador", PERRO, CREADO, true);
+        return new Breed(id, "Labrador", PERRO, CREADO, null, true);
     }
 
     public static Breed deshabilitado() {
-        return new Breed(BREED_ID, "Labrador", PERRO, CREADO, false);
+        return new Breed(BREED_ID, "Labrador", PERRO, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

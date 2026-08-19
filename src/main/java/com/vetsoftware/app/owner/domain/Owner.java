@@ -28,13 +28,15 @@ public class Owner {
     // DIAN.
     private FiscalResponsibility fiscalResponsibility;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Owner(Long id, String name, String email, String document,
             OwnerDocumentType documentType, PersonType personType, String verificationDigit,
             String legalName, String address, String phone, CityRef city, CompanyRef company,
             boolean withholdingAgent, TaxRegime taxRegime,
-            FiscalResponsibility fiscalResponsibility, LocalDateTime createdDate, boolean enabled) {
+            FiscalResponsibility fiscalResponsibility, LocalDateTime createdDate, Long version,
+            boolean enabled) {
         validate(name, email, document, documentType, personType, verificationDigit, legalName,
                 address, phone, city, company, taxRegime, fiscalResponsibility);
         this.id = id;
@@ -53,6 +55,7 @@ public class Owner {
         this.taxRegime = taxRegime;
         this.fiscalResponsibility = fiscalResponsibility;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -63,7 +66,7 @@ public class Owner {
             FiscalResponsibility fiscalResponsibility) {
         return new Owner(null, name, email, document, documentType, personType, verificationDigit,
                 legalName, address, phone, city, company, withholdingAgent, taxRegime,
-                fiscalResponsibility, LocalDateTime.now(), true);
+                fiscalResponsibility, LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String email, String document, OwnerDocumentType documentType,
@@ -212,6 +215,10 @@ public class Owner {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

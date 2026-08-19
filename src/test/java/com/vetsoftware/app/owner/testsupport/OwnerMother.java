@@ -48,7 +48,7 @@ public final class OwnerMother {
         return new Owner(id, "Ana Ruiz", "ana@vet.com", "1020304050",
                 OwnerDocumentType.CEDULA_CIUDADANIA, PersonType.NATURAL, null, null,
                 "Calle 1 # 2-3", "3001112233", BOGOTA, CLINICA, false, TaxRegime.NO_RESPONSABLE_IVA,
-                FiscalResponsibility.NO_APLICA, CREADO, true);
+                FiscalResponsibility.NO_APLICA, CREADO, null, true);
     }
 
     /**
@@ -58,14 +58,14 @@ public final class OwnerMother {
         return new Owner(JURIDICA_ID, "Veterinaria Sur", "contacto@sur.com", "900123456",
                 OwnerDocumentType.NIT, PersonType.JURIDICA, "7", "Veterinaria Sur S.A.S.",
                 "Avenida 3 # 40-50", "6041234567", BOGOTA, CLINICA, true, TaxRegime.RESPONSABLE_IVA,
-                FiscalResponsibility.GRAN_CONTRIBUYENTE, CREADO, true);
+                FiscalResponsibility.GRAN_CONTRIBUYENTE, CREADO, null, true);
     }
 
     public static Owner deshabilitado() {
         return new Owner(OWNER_ID, "Ana Ruiz", "ana@vet.com", "1020304050",
                 OwnerDocumentType.CEDULA_CIUDADANIA, PersonType.NATURAL, null, null,
                 "Calle 1 # 2-3", "3001112233", BOGOTA, CLINICA, false, TaxRegime.NO_RESPONSABLE_IVA,
-                FiscalResponsibility.NO_APLICA, CREADO, false);
+                FiscalResponsibility.NO_APLICA, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con la persona natural de arriba. */

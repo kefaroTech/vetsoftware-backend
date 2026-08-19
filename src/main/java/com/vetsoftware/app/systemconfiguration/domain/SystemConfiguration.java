@@ -18,20 +18,22 @@ public class SystemConfiguration {
     private final String propertyName;
     private String value;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public SystemConfiguration(Long id, String propertyName, String value,
-            LocalDateTime createdDate, boolean enabled) {
+            LocalDateTime createdDate, Long version, boolean enabled) {
         validate(propertyName, value);
         this.id = id;
         this.propertyName = propertyName;
         this.value = value;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static SystemConfiguration create(String propertyName, String value) {
-        return new SystemConfiguration(null, propertyName, value, LocalDateTime.now(), true);
+        return new SystemConfiguration(null, propertyName, value, LocalDateTime.now(), null, true);
     }
 
     public void update(String value) {
@@ -64,6 +66,10 @@ public class SystemConfiguration {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

@@ -7,10 +7,11 @@ public class EconomicActivity {
     private String code;
     private String name;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public EconomicActivity(Long id, String code, String name, LocalDateTime createdDate,
-            boolean enabled) {
+            Long version, boolean enabled) {
         if (code == null || code.isBlank())
             throw new IllegalArgumentException("code is required");
         if (code.length() > 20)
@@ -23,11 +24,12 @@ public class EconomicActivity {
         this.code = code;
         this.name = name;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static EconomicActivity create(String code, String name) {
-        return new EconomicActivity(null, code, name, LocalDateTime.now(), true);
+        return new EconomicActivity(null, code, name, LocalDateTime.now(), null, true);
     }
 
     public void update(String code, String name) {
@@ -57,6 +59,10 @@ public class EconomicActivity {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

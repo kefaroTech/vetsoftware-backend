@@ -76,7 +76,7 @@ class MedicamentPrescriptionTest {
 
         private MedicamentPrescription build() {
             return new MedicamentPrescription(id, medicament, presentation, quantity, posology,
-                    observation, prescription, CREADO, true);
+                    observation, prescription, CREADO, null, true);
         }
 
         private void applyTo(MedicamentPrescription line) {

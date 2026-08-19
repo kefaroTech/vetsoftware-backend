@@ -12,6 +12,7 @@ public class SystemUserJpaMapper {
         entity.setCode(systemUser.getCode());
         entity.setHashPassword(systemUser.getHashPassword());
         entity.setCreatedDate(systemUser.getCreatedDate());
+        entity.setVersion(systemUser.getVersion());
         entity.setEnabled(systemUser.isEnabled());
         entity.setAuthVersion(systemUser.getAuthVersion());
         return entity;
@@ -19,6 +20,7 @@ public class SystemUserJpaMapper {
 
     public SystemUser toDomain(SystemUserJpaEntity entity) {
         return new SystemUser(entity.getId(), entity.getCode(), entity.getHashPassword(),
-                entity.getCreatedDate(), entity.isEnabled(), entity.getAuthVersion());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled(),
+                entity.getAuthVersion());
     }
 }

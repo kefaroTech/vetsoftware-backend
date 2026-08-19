@@ -48,7 +48,7 @@ class BaseRoleTest {
         }
 
         private BaseRole build() {
-            return new BaseRole(id, name, code, mandatory, createdDate, enabled);
+            return new BaseRole(id, name, code, mandatory, createdDate, null, enabled);
         }
 
         private void applyTo(BaseRole baseRole) {

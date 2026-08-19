@@ -42,12 +42,12 @@ public final class AnimalAlertMother {
 
     public static AnimalAlert alergia(Long id) {
         return new AnimalAlert(id, FIRULAIS, CLINICA, AlertType.ALLERGY, "Alergia a la penicilina",
-                AlertSeverity.HIGH, CREADO, true);
+                AlertSeverity.HIGH, CREADO, null, true);
     }
 
     public static AnimalAlert deshabilitada() {
         return new AnimalAlert(ALERT_ID, FIRULAIS, CLINICA, AlertType.ALLERGY,
-                "Alergia a la penicilina", AlertSeverity.HIGH, CREADO, false);
+                "Alergia a la penicilina", AlertSeverity.HIGH, CREADO, null, false);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */

@@ -35,7 +35,7 @@ class BreedJpaMapperTest {
     @DisplayName("toJpa copia cada campo del dominio, incluida la especie dada")
     void to_jpa_copia_cada_campo_del_dominio() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
-        Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"), creado, true);
+        Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"), creado, null, true);
 
         BreedJpaEntity entity = mapper.toJpa(breed, specieEntity);
 
@@ -50,7 +50,7 @@ class BreedJpaMapperTest {
     @DisplayName("toJpa conserva enabled=false de una raza deshabilitada")
     void to_jpa_conserva_enabled_false() {
         Breed breed = new Breed(2L, "Labrador", new SpecieRef(1L, "Perro"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), false);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, false);
 
         BreedJpaEntity entity = mapper.toJpa(breed, specieEntity);
 

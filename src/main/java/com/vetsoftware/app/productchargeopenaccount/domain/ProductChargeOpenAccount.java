@@ -52,6 +52,7 @@ public class ProductChargeOpenAccount {
     private OpenAccountRef openAccount;
     private EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
     private boolean voided;
     private EmployeeRef voidedBy;
@@ -69,8 +70,8 @@ public class ProductChargeOpenAccount {
             BigDecimal taxPercentage, String taxName, String taxScheme, String taxTreatment,
             BigDecimal baseAmount, BigDecimal taxAmount, BigDecimal totalAmount,
             OpenAccountRef openAccount, EmployeeRef createdBy, LocalDateTime createdDate,
-            boolean enabled, boolean voided, EmployeeRef voidedBy, LocalDateTime voidedAt,
-            String voidReason, String clientRequestId) {
+            Long version, boolean enabled, boolean voided, EmployeeRef voidedBy,
+            LocalDateTime voidedAt, String voidReason, String clientRequestId) {
         validate(animal, product, openAccount, unitPrice);
         if (quantity < 1)
             throw new IllegalArgumentException("quantity must be at least 1");
@@ -91,6 +92,7 @@ public class ProductChargeOpenAccount {
         this.openAccount = openAccount;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
         this.voided = voided;
         this.voidedBy = voidedBy;
@@ -106,7 +108,8 @@ public class ProductChargeOpenAccount {
             LocalDateTime voidedAt, String voidReason) {
         this(id, animal, product, unitPrice, 1, null, false, null, null, null, null,
                 Money.scaled(unitPrice), Money.zero(), Money.scaled(unitPrice), openAccount,
-                createdBy, createdDate, enabled, voided, voidedBy, voidedAt, voidReason, null);
+                createdBy, createdDate, null, enabled, voided, voidedBy, voidedAt, voidReason,
+                null);
     }
 
     /** Compat (cargo activo sin anular ni impuesto). */
@@ -144,7 +147,8 @@ public class ProductChargeOpenAccount {
         BigDecimal taxAmount = total.subtract(base);
         return new ProductChargeOpenAccount(null, animal, product, unitPrice, quantity, tax, hasTax,
                 percentage, taxName, taxScheme, taxTreatment, base, taxAmount, total, openAccount,
-                createdBy, LocalDateTime.now(), true, false, null, null, null, clientRequestId);
+                createdBy, LocalDateTime.now(), null, true, false, null, null, null,
+                clientRequestId);
     }
 
     public void update(AnimalRef animal, ProductRef product, OpenAccountRef openAccount) {
@@ -253,6 +257,10 @@ public class ProductChargeOpenAccount {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

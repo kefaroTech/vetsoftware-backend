@@ -71,6 +71,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setReteIcaAmount(doc.getReteIcaAmount());
         entity.setPaymentForm(doc.getPaymentForm());
         entity.setCreatedDate(doc.getCreatedDate());
+        entity.setVersion(doc.getVersion());
         entity.setEnabled(doc.isEnabled());
 
         DocumentReference ref = doc.getReference();
@@ -150,10 +151,11 @@ public class ElectronicDocumentJpaMapper {
                 entity.getDianStatus(), entity.getDianValidationDate(), issuer, customer,
                 entity.getLineExtensionAmount(), entity.getTaxExclusiveAmount(),
                 entity.getTaxInclusiveAmount(), entity.getPayableAmount(), entity.getPaymentForm(),
-                lines, payments, entity.getCreatedDate(), entity.isEnabled(), reference,
-                entity.getNoteReasonCode(), entity.getNoteReasonText(), entity.isReversed(),
-                entity.getReteFuenteAmount(), entity.getReteIvaAmount(), entity.getReteIcaAmount(),
-                entity.getClientRequestId(), entity.getIssuedByEmployeeId(), entity.getBranchId());
+                lines, payments, entity.getCreatedDate(), entity.getVersion(), entity.isEnabled(),
+                reference, entity.getNoteReasonCode(), entity.getNoteReasonText(),
+                entity.isReversed(), entity.getReteFuenteAmount(), entity.getReteIvaAmount(),
+                entity.getReteIcaAmount(), entity.getClientRequestId(),
+                entity.getIssuedByEmployeeId(), entity.getBranchId());
     }
 
     /**

@@ -54,7 +54,7 @@ public final class HospitalizationMedicationMother {
         return new HospitalizationMedication(id, "Amoxicilina 500mg", "1 tableta",
                 Frequency.EVERY_8H, GuidelineType.INTERVAL, DurationMeasure.DAYS, 5,
                 LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Administrar con alimento",
-                HOSPITALIZACION, CREADO_POR, CREADO, true, null, null);
+                HOSPITALIZACION, CREADO_POR, CREADO, null, true, null, null);
     }
 
     /** Orden ya suspendida por un segundo empleado. */
@@ -62,14 +62,14 @@ public final class HospitalizationMedicationMother {
         return new HospitalizationMedication(MEDICATION_ID, "Amoxicilina 500mg", "1 tableta",
                 Frequency.EVERY_8H, GuidelineType.INTERVAL, DurationMeasure.DAYS, 5,
                 LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Administrar con alimento",
-                HOSPITALIZACION, CREADO_POR, CREADO, true, SUSPENDIDO_EL, SUSPENDIDO_POR);
+                HOSPITALIZACION, CREADO_POR, CREADO, null, true, SUSPENDIDO_EL, SUSPENDIDO_POR);
     }
 
     public static HospitalizationMedication deshabilitado() {
         return new HospitalizationMedication(MEDICATION_ID, "Amoxicilina 500mg", "1 tableta",
                 Frequency.EVERY_8H, GuidelineType.INTERVAL, DurationMeasure.DAYS, 5,
                 LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Administrar con alimento",
-                HOSPITALIZACION, CREADO_POR, CREADO, false, null, null);
+                HOSPITALIZACION, CREADO_POR, CREADO, null, false, null, null);
     }
 
     /**
@@ -77,7 +77,7 @@ public final class HospitalizationMedicationMother {
      */
     public static HospitalizationMedication sinDetallesOpcionales() {
         return new HospitalizationMedication(MEDICATION_ID, "Amoxicilina 500mg", null, null, null,
-                null, null, null, null, null, HOSPITALIZACION, CREADO_POR, CREADO, true, null,
+                null, null, null, null, null, HOSPITALIZACION, CREADO_POR, CREADO, null, true, null,
                 null);
     }
 

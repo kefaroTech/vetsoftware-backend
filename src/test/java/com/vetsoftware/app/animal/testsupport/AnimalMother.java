@@ -54,19 +54,19 @@ public final class AnimalMother {
     public static Animal perroSano(Long id) {
         return new Animal(id, "Firulais", "A-001", PERRO, LABRADOR, DUENO, Gender.MALE,
                 WeightType.KILOGRAMS, AnimalType.NONE, ReproductiveState.STERILIZED, NEGRO,
-                NACIMIENTO, 30, false, null, CLINICA, CREADO, true);
+                NACIMIENTO, 30, false, null, CLINICA, CREADO, null, true);
     }
 
     public static Animal fallecido(LocalDate fecha) {
         return new Animal(ANIMAL_ID, "Firulais", "A-001", PERRO, LABRADOR, DUENO, Gender.MALE,
                 WeightType.KILOGRAMS, AnimalType.NONE, ReproductiveState.STERILIZED, NEGRO,
-                NACIMIENTO, 30, true, fecha, CLINICA, CREADO, true);
+                NACIMIENTO, 30, true, fecha, CLINICA, CREADO, null, true);
     }
 
     public static Animal deshabilitado() {
         return new Animal(ANIMAL_ID, "Firulais", "A-001", PERRO, LABRADOR, DUENO, Gender.MALE,
                 WeightType.KILOGRAMS, AnimalType.NONE, ReproductiveState.STERILIZED, NEGRO,
-                NACIMIENTO, 30, false, null, CLINICA, CREADO, false);
+                NACIMIENTO, 30, false, null, CLINICA, CREADO, null, false);
     }
 
     /** Perro con el peso actual ya hidratado por la capa de persistencia. */

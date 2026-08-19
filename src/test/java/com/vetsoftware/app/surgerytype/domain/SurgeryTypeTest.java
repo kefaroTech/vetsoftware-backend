@@ -60,7 +60,7 @@ class SurgeryTypeTest {
         void el_constructor_acepta_todos_los_campos() {
             SurgeryType tipo = new SurgeryType(SurgeryTypeMother.SURGERY_TYPE_ID, "Castracion",
                     "Cirugia de esterilizacion", SurgeryTypeMother.EMPRESA, false,
-                    SurgeryTypeMother.CREADO, false);
+                    SurgeryTypeMother.CREADO, null, false);
 
             assertThat(tipo.getId()).isEqualTo(SurgeryTypeMother.SURGERY_TYPE_ID);
             assertThat(tipo.getCreatedDate()).isEqualTo(SurgeryTypeMother.CREADO);
@@ -71,7 +71,7 @@ class SurgeryTypeTest {
         @DisplayName("description es opcional: un tipo sin descripcion es valido")
         void description_es_opcional() {
             assertThatCode(() -> new SurgeryType(null, "Castracion", null,
-                    SurgeryTypeMother.EMPRESA, false, LocalDateTime.now(), true))
+                    SurgeryTypeMother.EMPRESA, false, LocalDateTime.now(), null, true))
                     .doesNotThrowAnyException();
         }
     }
@@ -165,7 +165,7 @@ class SurgeryTypeTest {
         private static SurgeryType construir(String name, String description, CompanyRef company,
                 boolean general) {
             return new SurgeryType(null, name, description, company, general, LocalDateTime.now(),
-                    true);
+                    null, true);
         }
 
         static Stream<Arguments> casosInvalidos() {

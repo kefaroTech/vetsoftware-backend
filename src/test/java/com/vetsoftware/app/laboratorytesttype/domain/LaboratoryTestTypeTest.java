@@ -26,7 +26,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("un tipo propio de una empresa exige company y queda habilitado")
         void un_tipo_propio_de_empresa_exige_company() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
 
             assertThat(tipo.getId()).isEqualTo(70L);
             assertThat(tipo.getName()).isEqualTo("Hemograma");
@@ -41,7 +41,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("un tipo general no lleva company")
         void un_tipo_general_no_lleva_company() {
             LaboratoryTestType tipo = new LaboratoryTestType(71L, "Perfil renal",
-                    "Perfil renal basico", null, true, CREADO, true);
+                    "Perfil renal basico", null, true, CREADO, null, true);
 
             assertThat(tipo.getCompany()).isNull();
             assertThat(tipo.isGeneral()).isTrue();
@@ -62,7 +62,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("la descripcion es opcional")
         void la_descripcion_es_opcional() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", null, CLINICA, false,
-                    CREADO, true);
+                    CREADO, null, true);
 
             assertThat(tipo.getDescription()).isNull();
         }
@@ -91,7 +91,7 @@ class LaboratoryTestTypeTest {
         void cada_invariante_rechaza_su_combinacion_invalida(String name, String description,
                 CompanyRef company, boolean general, String mensajeEsperado) {
             assertThatThrownBy(() -> new LaboratoryTestType(70L, name, description, company,
-                    general, CREADO, true)).isInstanceOf(IllegalArgumentException.class)
+                    general, CREADO, null, true)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining(mensajeEsperado);
         }
 
@@ -101,7 +101,7 @@ class LaboratoryTestTypeTest {
             String limite = "x".repeat(100);
 
             LaboratoryTestType tipo = new LaboratoryTestType(70L, limite, "d", CLINICA, false,
-                    CREADO, true);
+                    CREADO, null, true);
 
             assertThat(tipo.getName()).isEqualTo(limite);
         }
@@ -112,7 +112,7 @@ class LaboratoryTestTypeTest {
             String limite = "x".repeat(500);
 
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", limite, CLINICA,
-                    false, CREADO, true);
+                    false, CREADO, null, true);
 
             assertThat(tipo.getDescription()).isEqualTo(limite);
         }
@@ -126,7 +126,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("update() reemplaza nombre, descripcion, company y general")
         void update_reemplaza_los_campos_editables() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
 
             tipo.update("Hemograma completo", "Hemograma con formula", CLINICA, false);
 
@@ -138,7 +138,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("update() vuelve a validar las invariantes")
         void update_vuelve_a_validar_las_invariantes() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
 
             assertThatThrownBy(() -> tipo.update("", "d", CLINICA, false))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -149,7 +149,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("update() no cambia id, createdDate ni enabled")
         void update_no_toca_id_createdDate_ni_enabled() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
 
             tipo.update("Hemograma completo", "d", CLINICA, false);
 
@@ -167,7 +167,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("disable() deshabilita un tipo activo")
         void disable_deshabilita_un_tipo_activo() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, true);
+                    CLINICA, false, CREADO, null, true);
 
             tipo.disable();
 
@@ -178,7 +178,7 @@ class LaboratoryTestTypeTest {
         @DisplayName("enable() vuelve a habilitar un tipo deshabilitado")
         void enable_vuelve_a_habilitar_un_tipo_deshabilitado() {
             LaboratoryTestType tipo = new LaboratoryTestType(70L, "Hemograma", "Hemograma completo",
-                    CLINICA, false, CREADO, false);
+                    CLINICA, false, CREADO, null, false);
 
             tipo.enable();
 

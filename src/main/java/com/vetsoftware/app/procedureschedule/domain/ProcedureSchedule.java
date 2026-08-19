@@ -12,12 +12,13 @@ public class ProcedureSchedule {
     private Boolean rescheduled;
     private final EmployeeRef createdBy;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public ProcedureSchedule(Long id, HospitalizationProcedureRef hospitalizationProcedure,
             LocalDateTime originalDateTime, LocalDateTime currentDateTime,
             LocalDateTime realDateTime, AppliedStatus appliedStatus, Boolean rescheduled,
-            EmployeeRef createdBy, LocalDateTime createdDate, boolean enabled) {
+            EmployeeRef createdBy, LocalDateTime createdDate, Long version, boolean enabled) {
         validate(hospitalizationProcedure, originalDateTime, createdBy);
         this.id = id;
         this.hospitalizationProcedure = hospitalizationProcedure;
@@ -28,6 +29,7 @@ public class ProcedureSchedule {
         this.rescheduled = rescheduled;
         this.createdBy = createdBy;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
@@ -36,7 +38,7 @@ public class ProcedureSchedule {
             AppliedStatus appliedStatus, Boolean rescheduled, EmployeeRef createdBy) {
         return new ProcedureSchedule(null, hospitalizationProcedure, originalDateTime,
                 currentDateTime, null, appliedStatus, rescheduled, createdBy, LocalDateTime.now(),
-                true);
+                null, true);
     }
 
     public void enable() {
@@ -107,6 +109,10 @@ public class ProcedureSchedule {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public boolean isEnabled() {

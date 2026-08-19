@@ -100,7 +100,7 @@ class AnimalAlertPersistenceIT extends AbstractDataJpaTest {
 
     private AnimalAlert nuevaAlerta(AnimalRef animal, String descripcion, LocalDateTime creada) {
         return new AnimalAlert(null, animal, CLINICA, AlertType.ALLERGY, descripcion,
-                AlertSeverity.HIGH, creada, true);
+                AlertSeverity.HIGH, creada, null, true);
     }
 
     @Nested

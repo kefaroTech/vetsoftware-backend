@@ -20,14 +20,14 @@ public final class RoleMother {
     }
 
     public static Role veterinario() {
-        return new Role(ROLE_ID, "Veterinario", "VET", CLINICA_NORTE, CREADO, true);
+        return new Role(ROLE_ID, "Veterinario", "VET", CLINICA_NORTE, CREADO, null, true);
     }
 
     public static Role administrador() {
-        return new Role(2L, "Administrador", "ADMIN", CLINICA_NORTE, CREADO, true);
+        return new Role(2L, "Administrador", "ADMIN", CLINICA_NORTE, CREADO, null, true);
     }
 
     public static Role deshabilitado() {
-        return new Role(ROLE_ID, "Veterinario", "VET", CLINICA_NORTE, CREADO, false);
+        return new Role(ROLE_ID, "Veterinario", "VET", CLINICA_NORTE, CREADO, null, false);
     }
 }

@@ -46,7 +46,8 @@ class BranchTest {
 
     @Test
     void update_cambia_campos_mutables_pero_conserva_company_fecha_id_y_estado() {
-        Branch b = new Branch(3L, "Old", "OLD", "addr", "phone", CITY, COMPANY, CREATED, false);
+        Branch b = new Branch(3L, "Old", "OLD", "addr", "phone", CITY, COMPANY, CREATED, null,
+                false);
         CityRef nuevaCiudad = new CityRef(7L, "Medellín");
 
         b.update("New", "NEW", "addr2", "phone2", nuevaCiudad);
@@ -66,7 +67,8 @@ class BranchTest {
 
     @Test
     void update_invalido_es_atomico_no_muta_estado_previo() {
-        Branch b = new Branch(3L, "Old", "OLD", "addr", "phone", CITY, COMPANY, CREATED, true);
+        Branch b = new Branch(3L, "Old", "OLD", "addr", "phone", CITY, COMPANY, CREATED, null,
+                true);
 
         assertThatThrownBy(() -> b.update("  ", "NEW", "addr2", "phone2", CITY))
                 .isInstanceOf(IllegalArgumentException.class);

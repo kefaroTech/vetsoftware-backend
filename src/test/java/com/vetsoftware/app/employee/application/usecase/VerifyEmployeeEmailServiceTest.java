@@ -37,8 +37,8 @@ class VerifyEmployeeEmailServiceTest {
                 "orlando@vetrina.co",
                 new com.vetsoftware.app.employee.domain.CompanyRef(9L, "Veterinaria Vetrina",
                         "900123456"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), true, false, false, EmployeeStatus.ACTIVE,
-                0L);
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, true, false, false,
+                EmployeeStatus.ACTIVE, 0L);
     }
 
     @Nested

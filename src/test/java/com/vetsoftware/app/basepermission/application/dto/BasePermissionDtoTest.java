@@ -16,7 +16,7 @@ class BasePermissionDtoTest {
     void from_copia_cada_campo() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
         BasePermission basePermission = new BasePermission(2L, "Crear factura", "INVOICE_CREATE",
-                new SubModuleRef(1L, "Ventas", "VEN"), creado, true);
+                new SubModuleRef(1L, "Ventas", "VEN"), creado, null, true);
 
         BasePermissionDto dto = BasePermissionDto.from(basePermission);
 
@@ -32,7 +32,7 @@ class BasePermissionDtoTest {
     @DisplayName("from() conserva enabled=false de un permiso base deshabilitado")
     void from_conserva_enabled_false_de_un_permiso_deshabilitado() {
         BasePermission basePermission = new BasePermission(2L, "Crear factura", "INVOICE_CREATE",
-                new SubModuleRef(1L, "Ventas", "VEN"), LocalDateTime.of(2026, 1, 15, 10, 30),
+                new SubModuleRef(1L, "Ventas", "VEN"), LocalDateTime.of(2026, 1, 15, 10, 30), null,
                 false);
 
         assertThat(BasePermissionDto.from(basePermission).enabled()).isFalse();

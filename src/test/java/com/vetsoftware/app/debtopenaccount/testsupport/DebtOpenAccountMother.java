@@ -54,25 +54,25 @@ public final class DebtOpenAccountMother {
     }
 
     public static DebtOpenAccount abono(Long id) {
-        return new DebtOpenAccount(id, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO, true,
-                false, null, null, null, null);
+        return new DebtOpenAccount(id, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO, null,
+                true, false, null, null, null, null);
     }
 
     /** Abono con la idempotency key ya usada por un intento anterior. */
     public static DebtOpenAccount abonoConClave(String clientRequestId) {
         return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
-                true, false, null, null, null, clientRequestId);
+                null, true, false, null, null, null, clientRequestId);
     }
 
     public static DebtOpenAccount abonoAnulado() {
         return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
-                true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
+                null, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
     }
 
     /** Abono cuya cuenta pertenece a OTRA empresa: dispara el guard de tenancy. */
     public static DebtOpenAccount abonoDeOtraEmpresa() {
         return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA_AJENA, EMPLEADO,
-                CREADO, true, false, null, null, null, null);
+                CREADO, null, true, false, null, null, null, null);
     }
 
     public static CreateDebtOpenAccountCommand comandoCrear() {

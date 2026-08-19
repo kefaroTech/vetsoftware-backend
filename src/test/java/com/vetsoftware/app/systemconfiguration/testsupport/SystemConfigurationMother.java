@@ -30,7 +30,7 @@ public final class SystemConfigurationMother {
 
     public static SystemConfiguration configuracionExistente(Long id, String propertyName,
             String value) {
-        return new SystemConfiguration(id, propertyName, value, CREADO, true);
+        return new SystemConfiguration(id, propertyName, value, CREADO, null, true);
     }
 
     public static SetSystemConfigurationCommand comandoValido() {

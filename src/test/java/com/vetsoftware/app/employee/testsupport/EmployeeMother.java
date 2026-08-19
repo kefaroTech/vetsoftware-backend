@@ -66,25 +66,25 @@ public final class EmployeeMother {
 
     public static Employee activo(Long id) {
         return new Employee(id, "VV-MARIANA", HASH, "Mariana Rojas", "mariana@vetrina.co", VETRINA,
-                CREADO, true, true, false, EmployeeStatus.ACTIVE, 0L);
+                CREADO, null, true, true, false, EmployeeStatus.ACTIVE, 0L);
     }
 
     /** Staff recien invitado: aun no inicia sesion y debe cambiar la clave. */
     public static Employee invitado() {
         return new Employee(EMPLOYEE_ID, "VV-MARIANA", HASH, "Mariana Rojas", "mariana@vetrina.co",
-                VETRINA, CREADO, true, true, true, EmployeeStatus.INVITED, 0L);
+                VETRINA, CREADO, null, true, true, true, EmployeeStatus.INVITED, 0L);
     }
 
     /** Empleado desactivado (soft-delete) que conserva su historia. */
     public static Employee deshabilitado() {
         return new Employee(EMPLOYEE_ID, "VV-MARIANA", HASH, "Mariana Rojas", "mariana@vetrina.co",
-                VETRINA, CREADO, false, true, false, EmployeeStatus.ACTIVE, 4L);
+                VETRINA, CREADO, null, false, true, false, EmployeeStatus.ACTIVE, 4L);
     }
 
     /** Empleado que pertenece a otro tenant: sirve para probar el aislamiento. */
     public static Employee deOtraEmpresa() {
         return new Employee(EMPLOYEE_ID, "CN-PEDRO", HASH, "Pedro Diaz", "pedro@norte.co",
-                OTRA_CLINICA, CREADO, true, true, false, EmployeeStatus.ACTIVE, 0L);
+                OTRA_CLINICA, CREADO, null, true, true, false, EmployeeStatus.ACTIVE, 0L);
     }
 
     /**
@@ -94,7 +94,7 @@ public final class EmployeeMother {
      */
     public static Employee invitadoDeOtraEmpresa() {
         return new Employee(EMPLOYEE_ID, "CN-PEDRO", HASH, "Pedro Diaz", "pedro@norte.co",
-                OTRA_CLINICA, CREADO, true, true, true, EmployeeStatus.INVITED, 0L);
+                OTRA_CLINICA, CREADO, null, true, true, true, EmployeeStatus.INVITED, 0L);
     }
 
     public static CreateEmployeeCommand comandoCrear() {

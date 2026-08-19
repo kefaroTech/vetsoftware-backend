@@ -11,10 +11,12 @@ public class Company {
     private CityRef city;
     private MembershipRef membership;
     private final LocalDateTime createdDate;
+    private Long version;
     private boolean enabled;
 
     public Company(Long id, String name, String identifier, String address, String contactNumber,
-            CityRef city, MembershipRef membership, LocalDateTime createdDate, boolean enabled) {
+            CityRef city, MembershipRef membership, LocalDateTime createdDate, Long version,
+            boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -35,13 +37,14 @@ public class Company {
         this.city = city;
         this.membership = membership;
         this.createdDate = createdDate;
+        this.version = version;
         this.enabled = enabled;
     }
 
     public static Company create(String name, String identifier, String address,
             String contactNumber, CityRef city, MembershipRef membership) {
         return new Company(null, name, identifier, address, contactNumber, city, membership,
-                LocalDateTime.now(), true);
+                LocalDateTime.now(), null, true);
     }
 
     public void update(String name, String identifier, String address, String contactNumber,
@@ -108,5 +111,9 @@ public class Company {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

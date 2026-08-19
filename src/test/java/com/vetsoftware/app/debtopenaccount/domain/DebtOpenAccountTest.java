@@ -56,7 +56,7 @@ class DebtOpenAccountTest {
 
         private DebtOpenAccount build() {
             return new DebtOpenAccount(id, amount, paymentMethod, openAccount, createdBy,
-                    DebtOpenAccountMother.CREADO, true, false, null, null, null, null);
+                    DebtOpenAccountMother.CREADO, null, true, false, null, null, null, null);
         }
 
         private void applyTo(DebtOpenAccount abono) {

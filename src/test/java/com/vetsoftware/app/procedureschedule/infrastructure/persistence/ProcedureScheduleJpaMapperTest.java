@@ -88,7 +88,7 @@ class ProcedureScheduleJpaMapperTest {
         @DisplayName("una toma sin estado aplicado guarda la columna en null, no la cadena \"null\"")
         void una_toma_sin_estado_guarda_null() {
             ProcedureSchedule sinEstado = new ProcedureSchedule(SCHEDULE_ID, ORDEN, PRIMERA_TOMA,
-                    PRIMERA_TOMA, null, null, false, EMPLEADO, CREADO, true);
+                    PRIMERA_TOMA, null, null, false, EMPLEADO, CREADO, null, true);
 
             ProcedureScheduleJpaEntity entity = mapper.toJpa(sinEstado,
                     hospitalizationProcedureEntity, employeeEntity);

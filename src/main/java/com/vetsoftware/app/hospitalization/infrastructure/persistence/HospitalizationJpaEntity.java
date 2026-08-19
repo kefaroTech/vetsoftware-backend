@@ -13,7 +13,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "hospitalizations")
-@SQLDelete(sql = "UPDATE hospitalizations SET enabled = false WHERE id = ?")
+@SQLDelete(sql = "UPDATE hospitalizations SET enabled = false WHERE id = ? AND version = ?")
 @SQLRestriction("enabled = true")
 public class HospitalizationJpaEntity {
     @Id
@@ -57,6 +57,10 @@ public class HospitalizationJpaEntity {
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
@@ -158,6 +162,14 @@ public class HospitalizationJpaEntity {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public boolean isEnabled() {

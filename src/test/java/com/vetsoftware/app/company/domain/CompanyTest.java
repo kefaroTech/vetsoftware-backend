@@ -32,7 +32,7 @@ class CompanyTest {
     private static Company nueva(String name, String identifier, CityRef city,
             MembershipRef membership) {
         return new Company(1L, name, identifier, "Calle 123", "3001234567", city, membership,
-                CompanyMother.CREADO, true);
+                CompanyMother.CREADO, null, true);
     }
 
     private static void actualizar(Company company, String name, String identifier, CityRef city,
@@ -49,7 +49,7 @@ class CompanyTest {
         void acepta_los_campos_validos() {
             Company company = new Company(7L, "Clinica Norte", "NIT-900", "Calle 123 #45-67",
                     "3001234567", CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO,
-                    true);
+                    null, true);
 
             assertThat(company.getId()).isEqualTo(7L);
             assertThat(company.getName()).isEqualTo("Clinica Norte");
@@ -66,7 +66,7 @@ class CompanyTest {
         @DisplayName("direccion y telefono son opcionales: admite null en ambos")
         void direccion_y_telefono_son_opcionales() {
             Company company = new Company(7L, "Clinica Norte", "NIT-900", null, null,
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, true);
+                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, null, true);
 
             assertThat(company.getAddress()).isNull();
             assertThat(company.getContactNumber()).isNull();
@@ -76,7 +76,7 @@ class CompanyTest {
         @DisplayName("admite id nulo: la empresa aun no persistida es valida")
         void admite_id_nulo() {
             Company company = new Company(null, "Clinica Norte", "NIT-900", null, null,
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, true);
+                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, null, true);
 
             assertThat(company.getId()).isNull();
             assertThat(company.getName()).isEqualTo("Clinica Norte");

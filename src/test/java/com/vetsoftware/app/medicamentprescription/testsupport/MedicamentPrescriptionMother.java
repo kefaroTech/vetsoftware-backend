@@ -45,17 +45,17 @@ public final class MedicamentPrescriptionMother {
     /** Linea ya persistida, con id y fecha de creacion fijos. */
     public static MedicamentPrescription persistida() {
         return new MedicamentPrescription(ID, MEDICAMENTO, "Tableta", 2.0,
-                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, true);
+                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, null, true);
     }
 
     public static MedicamentPrescription persistida(Long id) {
         return new MedicamentPrescription(id, MEDICAMENTO, "Tableta", 2.0,
-                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, true);
+                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, null, true);
     }
 
     public static MedicamentPrescription deshabilitada() {
         return new MedicamentPrescription(ID, MEDICAMENTO, "Tableta", 2.0,
-                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, false);
+                "Cada 12 horas por 7 dias", "Con alimento", RECETA, CREADO, null, false);
     }
 
     public static CreateMedicamentPrescriptionCommand comandoCrear() {

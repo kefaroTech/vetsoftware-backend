@@ -24,7 +24,7 @@ class SpecieTest {
     private static final LocalDateTime CREADO = LocalDateTime.of(2026, 1, 15, 10, 30);
 
     private static Specie nuevaSpecie() {
-        return new Specie(1L, "Perro", CREADO, true);
+        return new Specie(1L, "Perro", CREADO, null, true);
     }
 
     @Nested
@@ -64,16 +64,17 @@ class SpecieTest {
 
         static Stream<Arguments> nombresInvalidos() {
             return Stream.of(
-                    arguments("null", (ThrowingCallable) () -> new Specie(1L, null, CREADO, true),
+                    arguments("null",
+                            (ThrowingCallable) () -> new Specie(1L, null, CREADO, null, true),
                             "name is required"),
-                    arguments("vacio", (ThrowingCallable) () -> new Specie(1L, "", CREADO, true),
+                    arguments("vacio",
+                            (ThrowingCallable) () -> new Specie(1L, "", CREADO, null, true),
                             "name is required"),
                     arguments("en blanco",
-                            (ThrowingCallable) () -> new Specie(1L, "   ", CREADO, true),
+                            (ThrowingCallable) () -> new Specie(1L, "   ", CREADO, null, true),
                             "name is required"),
-                    arguments("101 chars",
-                            (ThrowingCallable) () -> new Specie(1L, "x".repeat(101), CREADO, true),
-                            "name must be 100 chars or less"));
+                    arguments("101 chars", (ThrowingCallable) () -> new Specie(1L, "x".repeat(101),
+                            CREADO, null, true), "name must be 100 chars or less"));
         }
 
         @ParameterizedTest(name = "name {0}")
@@ -88,7 +89,7 @@ class SpecieTest {
         @ValueSource(ints = {1, 100})
         @DisplayName("name en el limite exacto se acepta")
         void name_en_el_limite_exacto_se_acepta(int longitud) {
-            assertThatCode(() -> new Specie(1L, "x".repeat(longitud), CREADO, true))
+            assertThatCode(() -> new Specie(1L, "x".repeat(longitud), CREADO, null, true))
                     .doesNotThrowAnyException();
         }
     }
