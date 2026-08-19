@@ -34,13 +34,13 @@ dos fronts.
 
 1. Cambia el `record` de `infrastructure/web/request` o `web/response` en el backend.
 2. Regenera el contrato — **no se edita a mano**, requiere Docker (Testcontainers):
-   ```bash
+```bash
    mvn verify -Dit.test=OpenApiContractIT -Dopenapi.write=true
    ```
    `OpenApiContractIT` levanta la aplicación entera y compara: `mvn verify` falla si
    `api/openapi.json` se quedó atrás.
 3. En **cada** front, en paralelo:
-   ```bash
+```bash
    npm run api:sync    # copia el contrato desde el backend
    npm run api:types   # openapi-typescript
    npm run api:check   # forma parte de `npm run quality`, y por tanto del CI
@@ -65,6 +65,62 @@ dos fronts.
 - Un campo que solo usa uno de los fronts sigue siendo del contrato: no lo tipes a mano en
   ese front "para no tocar el otro".
 
+## Cierre obligatorio — nada abierto sin issue
+
+**Regla dura del proyecto, sin excepciones y sin pedir permiso.** Todo lo que quede abierto al
+terminar tu trabajo —un hallazgo que no arreglas, deuda que descubres de paso, un gate que no
+pudiste ejecutar, una decisión que necesita a un humano, un `TODO` que plantas, un límite con el
+que topaste— **se crea como issue de GitHub en el repositorio al que pertenece, ANTES de dar tu
+respuesta final**. Tu sesión se cierra y se lleva el contexto por delante; el issue no. Lo que
+solo vive en tu informe se pierde: si no está en GitHub, no existe.
+
+Tus tres repos y su destino en GitHub:
+
+| Directorio | Repositorio |
+|---|---|
+| `VetSoftware/` | `kefaroTech/vetsoftware-backend` |
+| `VetSoftwareFront/` | `kefaroTech/vetsoftware-admin-web` |
+| `VetSoftwarePublicFront/` | `kefaroTech/vetsoftware-public-web` |
+
+Una deriva de contrato tiene **una** causa: el issue va al repo que se salió del contrato
+—casi siempre el backend— y nombra en el cuerpo los fronts que rompe.
+
+**Estás en una sesión abierta dentro de este repo**, no en la raíz del monorepo: pasa **siempre**
+`--repo <owner/repo>` explícito. Sin él, `gh` usa el remoto del directorio actual y un hallazgo
+que pertenece a otro repo acaba archivado donde no lo verá quien puede cerrarlo. Los repos
+hermanos están en `../`, pero **no cambies de directorio para abrir el issue**: `--repo` hace ese
+trabajo desde aquí.
+
+Procedimiento:
+
+1. **Busca antes de crear**, para no duplicar:
+   `gh issue list --repo <owner/repo> --state all --search "<palabras clave>"`.
+   Si ya existe uno equivalente, añade lo nuevo con `gh issue comment <n>` y reporta ese número.
+2. **Crea pasando el cuerpo por stdin.** Las comillas de PowerShell destrozan los cuerpos largos;
+   `--body-file -` no:
+
+```bash
+gh issue create --repo kefaroTech/<repo> --title "<el problema, en una frase>" --body-file - <<'EOF'
+<cuerpo en markdown>
+EOF
+```
+3. **El título nombra el problema, no la tarea**: «El front tipa a mano una respuesta que el
+   contrato ya no declara así», no «Actualizar los tipos». En español, como el resto de issues
+   del repo.
+4. **El cuerpo lleva siempre**: qué encontraste · la evidencia en `archivo:línea` · por qué
+   importa, con el escenario concreto de fallo (si no sabes decir qué se rompe y a quién, es una
+   preferencia de estilo y no merece issue) · qué haría falta para cerrarlo · qué **no**
+   comprobaste. Cierra el cuerpo con la línea
+   `🤖 Generated with [Claude Code](https://claude.com/claude-code)`, que es la convención viva
+   del repo.
+5. **Un hallazgo, un issue.** Nada de issues paraguas que mezclan cosas sin relación. Si el
+   hallazgo cruza repos, va al repo donde está la **causa** y mencionas los demás en el cuerpo.
+6. Lo que **sí** dejaste arreglado y verificado en esta misma sesión no lleva issue. Esto es
+   para lo que queda vivo.
+
+Enumera después en tu salida cada issue con su número y su URL. Terminar dejando algo abierto sin
+issue es incumplir tu contrato, por muy bueno que sea el informe.
+
 ## Contrato de salida
 
 ```
@@ -74,4 +130,5 @@ FRONT (consola): <archivos de types/ y api/ tocados> — api:check → <resultad
 FRONT (tenant):  <archivos de types/ y api/ tocados> — api:check → <resultado>
 ROMPIMIENTOS: <qué deja de compilar en cada front y dónde>
 ORDEN DE MERGE: <secuencia obligatoria de PRs>
+ISSUES ABIERTOS: #<n> <título> — <url>   |   ninguno: no quedó nada sin resolver
 ```

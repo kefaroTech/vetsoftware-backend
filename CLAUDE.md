@@ -48,6 +48,53 @@ Ojo con la palabra «duras»: catorce de las dieciocho lo son porque el código 
 - **Congelar una regla nueva**: no hace falta tocar nada. `allowStoreCreation=false` solo impide **crear el directorio** del store; con el directorio ya versionado, una regla nueva envuelta en `freeze(...)` registra su foto sola en la primera ejecución. Eso es cómodo y es una trampa: **la deuda entra al repo en silencio**, así que revisa el diff de `config/archunit/violation-store` y cuenta las líneas antes de commitear. Solo se pone en `true` —y se devuelve a `false` en el mismo commit— si el directorio del store no existe.
 - **No toques la descripción de una regla congelada.** El store indexa por el texto completo (`stored.rules`): cambiar un predicado o el `because` huérfana la foto y la deuda reaparece entera.
 
+## Cierre obligatorio — nada abierto sin issue
+
+**Regla dura del proyecto, sin excepciones y sin pedir permiso.** Todo lo que quede abierto al
+terminar un trabajo en este repo —un hallazgo que no arreglas, deuda que descubres de paso, un
+gate que no pudiste ejecutar, una decisión que necesita a un humano, un `TODO` que plantas, un
+límite con el que topaste— **se crea como issue de GitHub antes de dar la respuesta final**.
+Aplica igual a la sesión principal y a cualquier subagente. La sesión se cierra y se lleva el
+contexto por delante; el issue no. Lo que solo vive en el informe se pierde: **si no está en
+GitHub, no existe.**
+
+Este repo es **`kefaroTech/vetsoftware-backend`**. Si la causa del hallazgo está en otro repo, el
+issue va allí: `kefaroTech/vetsoftware-admin-web` (consola de plataforma),
+`kefaroTech/vetsoftware-public-web` (app del tenant) y
+`kefaroTech/vetsoftware-infrastructure` (infraestructura).
+
+1. **Busca antes de crear**, para no duplicar:
+   `gh issue list --repo <owner/repo> --state all --search "<palabras clave>"`.
+   Si ya existe uno equivalente, añade lo nuevo con `gh issue comment <n>` y reporta ese número.
+2. **Crea pasando el cuerpo por stdin.** Las comillas de PowerShell destrozan los cuerpos largos;
+   `--body-file -` no:
+
+```bash
+gh issue create --repo kefaroTech/vetsoftware-backend --title "<el problema, en una frase>" --body-file - <<'EOF'
+<cuerpo en markdown>
+EOF
+```
+
+3. **El título nombra el problema, no la tarea**, en español, como el resto de issues del repo:
+   «El SQL crudo por JdbcTemplate es invisible a las reglas de arquitectura», no «Arreglar lo de
+   JdbcTemplate».
+4. **El cuerpo lleva siempre**: qué encontraste · la evidencia en `archivo:línea` · por qué
+   importa, con el escenario concreto de fallo (si no sabes decir qué se rompe y a quién, es una
+   preferencia de estilo y no merece issue) · qué haría falta para cerrarlo · qué **no**
+   comprobaste. Cierra el cuerpo con la línea
+   `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+5. **Un hallazgo, un issue.** Nada de issues paraguas que mezclan cosas sin relación.
+6. Lo que **sí** dejaste arreglado y verificado en esta misma sesión no lleva issue. Esto es para
+   lo que queda vivo.
+
+**Abrir un issue no es un commit ni un push**: no entra en la aprobación humana escrita que exige
+`AGENTS.md` antes de tocar una rama. Créalo sin preguntar. Después enumera en tu salida cada
+issue con su número y su URL.
+
+A diferencia del resto de reglas de este documento, **esta no la verifica ArchUnit**: no hay forma
+de comprobar desde el build que lo que quedó en tu cabeza acabara en GitHub. La sostiene la
+disciplina, y por eso está escrita aquí en vez de en una regla de test.
+
 ## Commands
 
 ```bash
