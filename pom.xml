@@ -30,12 +30,12 @@
         <jjwt.version>0.13.0</jjwt.version>
         <openhtmltopdf.version>1.1.65</openhtmltopdf.version>
         <zxing.version>3.5.4</zxing.version>
-        <spotless-maven-plugin.version>3.6.0</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
         <eclipse-jdt-formatter.version>4.39</eclipse-jdt-formatter.version>
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
         <checkstyle.version>13.9.0</checkstyle.version>
-        <archunit.version>1.4.1</archunit.version>
-        <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
+        <archunit.version>1.5.0</archunit.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
 
