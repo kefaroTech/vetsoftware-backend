@@ -268,26 +268,6 @@ total: hay fallos y **cero** éxitos durante media hora — determinista y sist�
 4. Tras corregir, confirmar que aparecen envíos con `email_outcome="success"` y que la
    variante critical se resuelve sola.
 
-## VetSoftwareBackendRestartLoop
-
-Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
-El proceso se reinició tres o más veces en una hora. Sustituye por otra vía lo que el stack
-local cubría con `VetSoftwareBackendDown`: con ingesta push por OTLP no existe `up`, así que
-la señal no es «el scrape falla» sino «el arranque se repite».
-
-**Un crash loop no se parece a una caída, se parece a lentitud.** Entre reinicio y reinicio el
-backend sí responde y sí emite telemetría, de modo que el heartbeat no lo detecta y las
-peticiones que caen en la ventana de arranque fallan sin patrón claro.
-
-1. Revisar los eventos de la task de ECS: motivo de parada (`OutOfMemoryError`, exit code,
-   health check fallido) antes que cualquier hipótesis de código.
-2. Contrastar `jvm_memory_used_bytes{area="heap"}` contra su máximo en la hora previa: un OOM
-   kill deja el heap subiendo hasta el corte.
-3. Si el reinicio coincide con un despliegue, comparar `service_version`: puede ser una imagen
-   que no arranca, no una fuga de memoria.
-4. El umbral (3 en una hora) descarta por construcción el arranque legítimo de dev tras el
-   apagado programado de las 20:00, que produce un único cambio diario.
-
 ## VetSoftwareAuthFailureSpike
 
 Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
