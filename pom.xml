@@ -23,17 +23,17 @@
         <!-- Mismo motivo que argLine: la reescribe jacoco:prepare-agent-integration, y
              declararla vacia evita que @{failsafeArgLine} quede literal si jacoco no corre. -->
         <failsafeArgLine></failsafeArgLine>
-        <aws.sdk.version>2.49.3</aws.sdk.version>
+        <aws.sdk.version>2.53.1</aws.sdk.version>
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version>
-        <opentelemetry.instrumentation.version>2.28.1-alpha</opentelemetry.instrumentation.version>
+        <opentelemetry.instrumentation.version>2.30.0-alpha</opentelemetry.instrumentation.version>
         <bucket4j.version>8.19.0</bucket4j.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <openhtmltopdf.version>1.1.65</openhtmltopdf.version>
+        <openhtmltopdf.version>1.1.73</openhtmltopdf.version>
         <zxing.version>3.5.4</zxing.version>
         <spotless-maven-plugin.version>3.6.0</spotless-maven-plugin.version>
         <eclipse-jdt-formatter.version>4.39</eclipse-jdt-formatter.version>
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-        <checkstyle.version>13.9.0</checkstyle.version>
+        <checkstyle.version>13.10.0</checkstyle.version>
         <archunit.version>1.4.1</archunit.version>
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
@@ -216,7 +216,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.3</version>
+            <version>3.1.0</version>
         </dependency>
 
         <!-- Observabilidad: métricas + tracing -->
