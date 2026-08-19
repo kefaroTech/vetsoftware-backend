@@ -1,7 +1,15 @@
-# GEMELO CLOUD: este fichero tiene un gemelo en VetSoftwareIaC/observability/mimir-rules/ con
-# unidades y labels traducidos (timers en ms, job="mainvet/vetsoftware", bordes `le` enteros),
-# porque el scrape local y el push OTLP a Grafana Cloud son dos mundos de métricas distintos.
-# Un cambio aquí debe evaluarse también allí; el porqué completo, en el README de ese directorio.
+# SIN GEMELO CLOUD, por decisión documentada. Estas cuatro alertas son portables —sus métricas
+# existen en cloud y el gemelo llegó a escribirse— pero el dueño de producto decidió no
+# vigilarlas en dev ni en prod, así que se retiraron enteras de VetSoftwareIaC: no queda
+# fichero ni namespace `vetsoftware-business`. El motivo está en el README de
+# VetSoftwareIaC/observability/mimir-rules/. No "repares" esa ausencia sin pedirlo.
+#
+# En consecuencia, este fichero solo se evalúa en el stack local: es el único plano donde
+# estas cuatro alertas existen.
+#
+# La anotación `runbook` es una ruta relativa a ESTE repositorio: apunta a
+# docs/ALERTAS_STACK_LOCAL.md, y el job observability-rules de CI comprueba encabezado por
+# encabezado que cada ancla resuelve.
 groups:
   - name: vetsoftware-business
     interval: 30s
@@ -22,6 +30,7 @@ groups:
         annotations:
           summary: "La tasa de contingencia DIAN supera el 5 %"
           description: "Al menos 10 transmisiones ocurrieron en 15 minutos y más del 5 % terminó en contingencia."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarediancontingencyratehigh"
 
       - alert: VetSoftwareDianBacklogOlderThanOneHour
         expr: sum(vetsoftware_business_dian_backlog_documents{age="gt_1h"}) > 0
@@ -32,6 +41,7 @@ groups:
         annotations:
           summary: "Existen documentos DIAN sin resolver por más de una hora"
           description: "El backlog de documentos pendientes o en contingencia requiere revisión."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaredianbacklogolderthanonehour"
 
       - alert: VetSoftwareInventoryInsufficientStockRateHigh
         expr: |
@@ -49,6 +59,7 @@ groups:
         annotations:
           summary: "Aumentaron los rechazos por inventario insuficiente"
           description: "Más del 5 % de los movimientos de inventario fueron rechazados durante una ventana con volumen suficiente."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareinventoryinsufficientstockratehigh"
 
       - alert: VetSoftwareBusinessMetricsSnapshotStale
         expr: vetsoftware_business_metrics_snapshot_age_seconds > 180
@@ -59,3 +70,4 @@ groups:
         annotations:
           summary: "El snapshot de métricas de negocio está desactualizado"
           description: "Las métricas de backlog e inventario no se actualizan desde hace más de tres minutos."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarebusinessmetricssnapshotstale"

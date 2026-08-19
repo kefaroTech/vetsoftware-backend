@@ -47,7 +47,7 @@ tests:
             exp_annotations:
               summary: "El SLO api-availability (availability) agota su presupuesto en ~2 días"
               description: "El burn rate supera 14.4 en las ventanas de 1 hora y 5 minutos. A este ritmo el presupuesto de error de 30 días se consume en poco más de dos días."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareslofastburn"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareslofastburn"
 
   # 8 % de respuestas por encima de 1 s contra un objetivo de 99 % => burn rate 8:
   # supera el nivel sostenido (6) pero no el rápido (14.4).
@@ -74,7 +74,7 @@ tests:
             exp_annotations:
               summary: "El SLO api-latency (latency) agota su presupuesto en ~5 días"
               description: "El burn rate supera 6 en las ventanas de 6 horas y 30 minutos. La degradación es sostenida, no un pico."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloslowburn"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloslowburn"
       # El mismo escenario no debe alcanzar el nivel rápido.
       - eval_time: 390m
         alertname: VetSoftwareSloFastBurn
@@ -135,7 +135,7 @@ tests:
             exp_annotations:
               summary: "El SLO auth-login (availability) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -146,7 +146,7 @@ tests:
             exp_annotations:
               summary: "El SLO clinical-write (availability) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -157,7 +157,7 @@ tests:
             exp_annotations:
               summary: "El SLO clinical-write (latency) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -168,7 +168,7 @@ tests:
             exp_annotations:
               summary: "El SLO dian-transmission (availability) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -179,7 +179,7 @@ tests:
             exp_annotations:
               summary: "El SLO dian-transmission (latency) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -190,7 +190,7 @@ tests:
             exp_annotations:
               summary: "El SLO inventory-movement (availability) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -201,7 +201,7 @@ tests:
             exp_annotations:
               summary: "El SLO pos-checkout (availability) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"
           - exp_labels:
               alertname: VetSoftwareSloSeriesAbsent
               domain: slo
@@ -212,4 +212,4 @@ tests:
             exp_annotations:
               summary: "El SLO pos-checkout (latency) no está produciendo datos"
               description: "El objetivo está declarado pero no existe serie de eventos en las últimas 24 horas. Revisar el selector de la regla de grabación antes que el objetivo. En un entorno local o de desarrollo, una operación que nunca se ejecutó dispara esta alerta de forma legítima."
-              runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresloseriesabsent"
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresloseriesabsent"

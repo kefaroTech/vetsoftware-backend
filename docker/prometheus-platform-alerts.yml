@@ -1,7 +1,13 @@
-# GEMELO CLOUD: este fichero tiene un gemelo en VetSoftwareIaC/observability/mimir-rules/ con
+# GEMELO CLOUD: el gemelo de este fichero es
+# VetSoftwareIaC/observability/grafana-managed/vetsoftware-platform-alerts-managed.yml, con
 # unidades y labels traducidos (timers en ms, job="mainvet/vetsoftware", bordes `le` enteros),
 # porque el scrape local y el push OTLP a Grafana Cloud son dos mundos de métricas distintos.
 # Un cambio aquí debe evaluarse también allí; el porqué completo, en el README de ese directorio.
+#
+# La anotación `runbook` de este fichero es una ruta relativa a ESTE repositorio y solo vale en el
+# plano local: apunta a docs/ALERTAS_STACK_LOCAL.md, que el job observability-rules de CI verifica
+# encabezado por encabezado. El gemelo Cloud NO la copia tal cual — allí el runbook es la URL
+# absoluta de VetSoftwareIaC/docs/ALERTAMIENTO_OPERATIVO.md.
 groups:
   - name: vetsoftware-availability
     interval: 30s
@@ -16,7 +22,7 @@ groups:
         annotations:
           summary: "El backend de VetSoftware no responde"
           description: "Prometheus no puede extraer las métricas del backend desde hace al menos dos minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarebackenddown"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarebackenddown"
 
       - alert: VetSoftwareObservabilityTargetDown
         expr: up{job=~"alertmanager|grafana|loki|otel-collector|redis|tempo"} == 0
@@ -28,7 +34,7 @@ groups:
         annotations:
           summary: "Un componente de observabilidad no responde"
           description: "El target indicado por las etiquetas job e instance no puede ser consultado por Prometheus."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareobservabilitytargetdown"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareobservabilitytargetdown"
 
   - name: vetsoftware-http
     interval: 30s
@@ -50,7 +56,7 @@ groups:
         annotations:
           summary: "La tasa HTTP 5xx supera el 5 %"
           description: "El backend superó el 5 % de respuestas 5xx con al menos 20 solicitudes en cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttp5xxratehigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarehttp5xxratehigh"
 
       - alert: VetSoftwareHttpP95LatencyHigh
         expr: |
@@ -70,7 +76,7 @@ groups:
         annotations:
           summary: "La latencia HTTP p95 supera un segundo"
           description: "La latencia p95 agregada permaneció por encima de un segundo con volumen suficiente."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttpp95latencyhigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarehttpp95latencyhigh"
 
       - alert: VetSoftwareHttpP99LatencyCritical
         expr: |
@@ -90,7 +96,7 @@ groups:
         annotations:
           summary: "La latencia HTTP p99 supera dos segundos"
           description: "La latencia p99 agregada permaneció por encima de dos segundos con volumen suficiente."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarehttpp99latencycritical"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarehttpp99latencycritical"
 
   - name: vetsoftware-runtime
     interval: 30s
@@ -110,7 +116,7 @@ groups:
         annotations:
           summary: "El uso de heap de la JVM supera el 85 %"
           description: "El heap se mantuvo por encima del 85 % durante diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmheaphigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarejvmheaphigh"
 
       - alert: VetSoftwareProcessCpuHigh
         expr: process_cpu_usage{job="vetsoftware"} > 0.85
@@ -122,7 +128,7 @@ groups:
         annotations:
           summary: "El proceso Java supera el 85 % de CPU"
           description: "El uso de CPU del proceso se mantuvo por encima del 85 % durante diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprocesscpuhigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareprocesscpuhigh"
 
       - alert: VetSoftwareJvmGcOverheadHigh
         expr: jvm_gc_overhead{job="vetsoftware"} > 0.20
@@ -134,7 +140,7 @@ groups:
         annotations:
           summary: "La JVM dedica demasiado tiempo al recolector de basura"
           description: "El overhead de GC superó el 20 % durante diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmgcoverheadhigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarejvmgcoverheadhigh"
 
       - alert: VetSoftwareJvmThreadCountHigh
         expr: jvm_threads_live_threads{job="vetsoftware"} > 200
@@ -146,7 +152,7 @@ groups:
         annotations:
           summary: "La JVM mantiene más de 200 hilos vivos"
           description: "El número de hilos vivos se mantuvo por encima del umbral durante diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarejvmthreadcounthigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarejvmthreadcounthigh"
 
   - name: vetsoftware-dependencies
     interval: 30s
@@ -166,7 +172,7 @@ groups:
         annotations:
           summary: "El pool de conexiones está saturado"
           description: "Más del 85 % de las conexiones HikariCP permanecen activas desde hace cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabasepoolsaturated"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaredatabasepoolsaturated"
 
       - alert: VetSoftwareDatabaseConnectionPending
         expr: hikaricp_connections_pending{job="vetsoftware"} > 0
@@ -178,7 +184,7 @@ groups:
         annotations:
           summary: "Hay solicitudes esperando conexión a la base de datos"
           description: "HikariCP mantiene solicitudes pendientes desde hace al menos tres minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectionpending"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaredatabaseconnectionpending"
 
       - alert: VetSoftwareDatabaseConnectionTimeouts
         expr: increase(hikaricp_connections_timeout_total{job="vetsoftware"}[5m]) > 0
@@ -190,7 +196,7 @@ groups:
         annotations:
           summary: "Se agotó el tiempo esperando una conexión"
           description: "HikariCP registró al menos un timeout de conexión durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaredatabaseconnectiontimeouts"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaredatabaseconnectiontimeouts"
 
       - alert: VetSoftwareRedisDown
         expr: redis_up{job="redis"} == 0
@@ -202,7 +208,7 @@ groups:
         annotations:
           summary: "Redis no responde"
           description: "El exporter no puede ejecutar comandos contra Redis desde hace al menos dos minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredisdown"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareredisdown"
 
       - alert: VetSoftwareRedisMemoryHigh
         expr: |
@@ -221,7 +227,7 @@ groups:
         annotations:
           summary: "Redis supera el 85 % de su memoria configurada"
           description: "El uso de memoria de Redis se mantuvo por encima del 85 % durante diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredismemoryhigh"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareredismemoryhigh"
 
       - alert: VetSoftwareRedisRejectedConnections
         expr: increase(redis_rejected_connections_total{job="redis"}[5m]) > 0
@@ -233,7 +239,7 @@ groups:
         annotations:
           summary: "Redis rechazó conexiones"
           description: "Redis rechazó al menos una conexión durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareredisrejectedconnections"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareredisrejectedconnections"
 
   - name: vetsoftware-telemetry-pipeline
     interval: 30s
@@ -252,7 +258,7 @@ groups:
         annotations:
           summary: "El Collector lleva minutos sin poder exportar logs"
           description: "Los envíos a Loki fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo; si se llena, empezará a descartar."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotellogexportfailing"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotellogexportfailing"
 
       - alert: VetSoftwareOtelTraceExportFailing
         expr: increase(otelcol_exporter_send_failed_spans[5m]) > 0
@@ -264,7 +270,7 @@ groups:
         annotations:
           summary: "El Collector lleva minutos sin poder exportar trazas"
           description: "Los envíos a Tempo fallan de forma sostenida. Los reintentos siguen en curso y la cola en disco está creciendo."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareoteltraceexportfailing"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareoteltraceexportfailing"
 
       # Estas sí son pérdida consumada: la cola estaba llena y el dato se descartó.
       - alert: VetSoftwareOtelQueueDroppingTelemetry
@@ -280,7 +286,7 @@ groups:
         annotations:
           summary: "El Collector está descartando telemetría por cola llena"
           description: "La cola de envío se llenó y se perdieron datos. Es pérdida consumada, no un reintento pendiente."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuedroppingtelemetry"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotelqueuedroppingtelemetry"
 
       # Indicador adelantado: avisa antes de que la cola se llene y empiece a descartar.
       - alert: VetSoftwareOtelQueueNearCapacity
@@ -297,7 +303,7 @@ groups:
         annotations:
           summary: "La cola de envío del Collector supera el 80 %"
           description: "El destino no drena al ritmo de entrada. Si la cola se llena, la telemetría se descartará."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelqueuenearcapacity"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotelqueuenearcapacity"
 
       - alert: VetSoftwareOtelReceiverRefusedTelemetry
         expr: |
@@ -316,7 +322,7 @@ groups:
         annotations:
           summary: "El Collector rechazó telemetría entrante"
           description: "El Collector rechazó logs o spans durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareotelreceiverrefusedtelemetry"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareotelreceiverrefusedtelemetry"
 
       - alert: VetSoftwareLokiDiscardingLogs
         expr: sum(increase(loki_discarded_samples_total[5m])) > 0
@@ -328,7 +334,7 @@ groups:
         annotations:
           summary: "Loki está descartando logs"
           description: "Loki descartó al menos una entrada durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarelokidiscardinglogs"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarelokidiscardinglogs"
 
       - alert: VetSoftwareLokiPanics
         expr: sum(increase(loki_panic_total[10m])) > 0
@@ -340,7 +346,7 @@ groups:
         annotations:
           summary: "Loki registró un panic"
           description: "Loki registró al menos un panic durante los últimos diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarelokipanics"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarelokipanics"
 
       - alert: VetSoftwareTempoDiscardingSpans
         expr: |
@@ -355,15 +361,21 @@ groups:
         annotations:
           summary: "Tempo está descartando spans"
           description: "Tempo descartó al menos un span durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaretempodiscardingspans"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaretempodiscardingspans"
 
   - name: vetsoftware-security-token-retention
     interval: 30s
     rules:
+      # `group_left()` no es decorativo. El umbral es una serie por instancia y las filas son
+      # una serie por `token_type`: sin el modificador, (1) PromQL descarta `token_type` del
+      # resultado —la etiqueta que el runbook manda mirar y que nombra la descripcion—, y (2)
+      # en cuanto hay dos tipos de token el emparejamiento pasa a ser muchos-a-uno y la regla
+      # falla al evaluar, asi que la alerta no salta: solo salta
+      # VetSoftwarePrometheusRuleEvaluationFailures, que no dice que tabla crecio.
       - alert: VetSoftwareSecurityTokenTableGrowth
         expr: |
           vetsoftware_security_tokens_rows{job="vetsoftware"}
-          > on(job, instance)
+          > on(job, instance) group_left()
           vetsoftware_security_tokens_growth_threshold{job="vetsoftware"}
         for: 30m
         labels:
@@ -373,7 +385,7 @@ groups:
         annotations:
           summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
           description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwaresecuritytokentablegrowth"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresecuritytokentablegrowth"
 
   - name: vetsoftware-alert-delivery
     interval: 30s
@@ -388,7 +400,7 @@ groups:
         annotations:
           summary: "Alertmanager no puede entregar notificaciones"
           description: "Alertmanager registró fallos de entrega durante los últimos diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwarealertmanagernotificationfailures"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarealertmanagernotificationfailures"
 
       - alert: VetSoftwarePrometheusRuleEvaluationFailures
         expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
@@ -400,7 +412,7 @@ groups:
         annotations:
           summary: "Prometheus no puede evaluar una regla"
           description: "Prometheus registró fallos de evaluación durante los últimos cinco minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprometheusruleevaluationfailures"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareprometheusruleevaluationfailures"
 
       - alert: VetSoftwarePrometheusNotificationFailures
         expr: increase(prometheus_notifications_errors_total[10m]) > 0
@@ -412,4 +424,4 @@ groups:
         annotations:
           summary: "Prometheus no puede enviar alertas a Alertmanager"
           description: "Prometheus registró errores al entregar alertas durante los últimos diez minutos."
-          runbook: "docs/ALERTAMIENTO_OPERATIVO.md#vetsoftwareprometheusnotificationfailures"
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareprometheusnotificationfailures"
