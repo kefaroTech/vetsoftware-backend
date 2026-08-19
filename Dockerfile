@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM maven:3.9.16-eclipse-temurin-25-alpine@sha256:72e2d64836e659d053a573ac9ebab05b78ae78fa7bb69b7452a7cb877b465fc7 AS build
+FROM --platform=$BUILDPLATFORM maven:3-eclipse-temurin-24-alpine@sha256:1e5a24dab38f3160d404439891ad4fd9b7e14b9e3c5bf65e3a953ba7d6ab4e8e AS build
 
 WORKDIR /workspace
 
@@ -8,7 +8,7 @@ RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
 COPY src ./src
 RUN mvn --batch-mode --no-transfer-progress -DskipTests package
 
-FROM eclipse-temurin:25.0.3_9-jre-noble@sha256:fbcf915c585659b30eb766ada4d6d7cfc9ec1040bf521e95bf61b10a25af73db AS runtime
+FROM eclipse-temurin:26_35-jre-noble@sha256:280784b83edd2f8c3e70d90a9dcd0b1f08137f0f64db3b5bde5ee1ec1807d384 AS runtime
 
 ARG APP_UID=10001
 ARG APP_GID=10001
