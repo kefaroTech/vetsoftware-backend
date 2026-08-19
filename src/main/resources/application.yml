@@ -167,6 +167,44 @@ management:
       slo:
         http.server.requests: 250ms,500ms,1s,2s,5s
         vetsoftware.business.dian.transmission.duration: 2s,5s,15s,60s
+        # Cliente Valkey/Lettuce. El medidor se llama `lettuce`: es el Timer de la observación
+        # que crea io.lettuce.core.tracing.MicrometerTracing en CacheConfig, y sale por el
+        # registro OTLP, cuya unidad base es el milisegundo. Estos bordes se publican por tanto
+        # como le="1","5","25","50","100" (no como fracciones de segundo).
+        #
+        # Sin bordes intermedios `lettuce_milliseconds_bucket` solo publicaba le="+Inf",
+        # histogram_quantile devolvía NaN y `VetSoftwareValkeyLatencyHigh` no podía dispararse
+        # nunca. Añadir los bordes es el requisito previo del que habla docs/SLO_VETSOFTWARE.md §5.
+        #
+        # Bordes SLO y NO `percentiles-histogram: true`, a propósito y con la medida delante:
+        # `percentiles-histogram` genera 74 bordes en http.server.requests (medido en Grafana
+        # Cloud), así que activarlo aquí serían 5 combinaciones de etiquetas x 74 = 370 series
+        # frente a las 5 actuales. Con estos cinco bordes son 5 x 6 = 30. El plan admite 15.000
+        # series activas y el uso medido ronda 1.150; `VetSoftwareIngestionNearLimit` existe
+        # porque al 100 % Grafana Cloud rechaza la ingesta y se pierde TODA la telemetría en
+        # silencio. Con ~45 comandos cada 7 días, la resolución extra de un histograma completo
+        # no responde ninguna pregunta que estos bordes no respondan.
+        #
+        # Por qué exactamente estos cinco valores:
+        #  - 50ms es el umbral de VetSoftwareValkeyLatencyHigh. docs/SLO_VETSOFTWARE.md §5: un
+        #    umbral que no coincide con un borde publicado obliga a interpolar y el indicador
+        #    deja de ser una cuenta de eventos.
+        #  - 100ms es obligatorio, no decorativo. histogram_quantile devuelve el borde finito
+        #    más alto cuando el cuantil cae en el bucket `+Inf`: si 50ms fuese el techo, el p99
+        #    valdría siempre 50 exactos y `> 50` seguiría sin poder dispararse jamás. Cambiar
+        #    NaN por un techo de 50 sería cambiar una alerta muerta por otra alerta muerta.
+        #  - 1ms y 5ms dan resolución a las operaciones de datos: GET/EVAL/UNLINK miden 1-5 ms
+        #    medidos, y sin estos bordes su p99 se interpolaría dentro de un bucket enorme.
+        #  - 25ms es el escalón entre esa población y la del saludo de conexión (CLIENT/HELLO,
+        #    máximos observados de 60-77 ms), que son dos poblaciones distintas.
+        #
+        # Efecto colateral asumido: PropertiesMeterFilter resuelve el nombre por jerarquía, así
+        # que estos bordes se aplican también al LongTaskTimer `lettuce.active` (+25 series que
+        # nadie consulta). Comprobado en vivo: http_server_requests_active_milliseconds_bucket
+        # publica los mismos 250/500/1000/2000/5000 declarados para http.server.requests. Se
+        # acepta porque evitarlo exige un MeterFilter en Java con su bean y su test para ahorrar
+        # 25 series de 15.000. Coste total del cambio: +50 series por instancia del backend.
+        lettuce: 1ms,5ms,25ms,50ms,100ms
 
 vetsoftware:
   observability:

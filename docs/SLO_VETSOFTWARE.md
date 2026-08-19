@@ -6,7 +6,7 @@
 **Implementación:**
 
 - Reglas de grabación: `docker/prometheus-slo-rules.yml`
-- Alertas: `docker/prometheus-slo-alerts.yml` — runbooks en `docs/ALERTAMIENTO_OPERATIVO.md`
+- Alertas: `docker/prometheus-slo-alerts.yml` — runbooks en `docs/ALERTAS_STACK_LOCAL.md`
 - Pruebas: `docker/tests/prometheus-slo.test.yml`
 - Dashboard: `docker/grafana/dashboards/slo-overview.json` (`uid: vetsoftware-slo`)
 
@@ -153,6 +153,17 @@ contra Prometheus:
 |---|---|---|
 | `http.server.requests` | 250 ms, 500 ms, 1 s, 2 s, 5 s | 1 s, 2 s |
 | `vetsoftware.business.dian.transmission.duration` | 2 s, 5 s, 15 s, 60 s | 15 s |
+| `lettuce` (cliente Valkey) † | 1 ms, 5 ms, 25 ms, 50 ms, 100 ms | 50 ms |
+
+† `lettuce` **no es un SLI**: no entra en ningún error budget ni en la cadena de burn rate. Está
+en esta tabla porque sus bordes se declaran en el mismo sitio y por el mismo motivo — la alerta
+técnica `VetSoftwareValkeyLatencyHigh` compara un p99 contra 50 ms y hasta agosto de 2026 esa
+comparación era imposible: el medidor solo publicaba `le="+Inf"`, `histogram_quantile` devolvía
+`NaN` y `NaN` nunca supera un umbral. El borde de 100 ms no es opcional: `histogram_quantile`
+devuelve el borde finito más alto cuando el cuantil cae en `+Inf`, así que sin él el p99 quedaría
+clavado en 50 exactos y la alerta seguiría sin poder dispararse. Unidad: el medidor sale por el
+registro OTLP, cuya unidad base es el milisegundo, así que los bordes se publican como
+`le="1"`…`le="100"`, no como fracciones de segundo.
 
 **Consecuencia operativa:** cambiar el umbral de un SLO a un valor que no esté en esta tabla
 exige añadir primero el borde en `application.yml`. Si no se añade, la serie del bucket no existe,
@@ -205,7 +216,7 @@ consume el presupuesto en esa ventana. `1` significa que se agotaría exactament
 ## 7. Alertamiento
 
 Definido en `docker/prometheus-slo-alerts.yml`, con runbooks en
-`docs/ALERTAMIENTO_OPERATIVO.md`. Las alertas consumen únicamente series grabadas, por lo que
+`docs/ALERTAS_STACK_LOCAL.md`. Las alertas consumen únicamente series grabadas, por lo que
 cubren automáticamente cualquier SLO que se declare después.
 
 | Alerta | Condición | Severidad | Respuesta |
