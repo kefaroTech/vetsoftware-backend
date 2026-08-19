@@ -1,6 +1,7 @@
 package com.vetsoftware.app.hospitalizationprocedure.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.hospitalization.domain.AnimalRef;
 import com.vetsoftware.app.hospitalization.domain.CompanyRef;
@@ -22,12 +23,14 @@ import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Rodaja de persistencia de las ordenes de procedimiento contra MySQL real
@@ -135,6 +138,34 @@ class HospitalizationProcedurePersistenceIT extends AbstractDataJpaTest {
                 """).setParameter("id", ANIMAL).setParameter("specie", SPECIE)
                 .setParameter("breed", BREED).setParameter("owner", OWNER)
                 .setParameter("color", COLOR).setParameter("empresa", EMPRESA).executeUpdate();
+    }
+
+    /**
+     * Vacia el contexto de persistencia para que la siguiente lectura venga del
+     * motor y no de la cache de primer nivel.
+     */
+    private void releerDesdeLaBase() {
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    /** Cuenta la fila por SQL nativo: el {@code @SQLRestriction} no la taparia. */
+    private long filasDeshabilitadasEnLaBase(Long id) {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM hospitalization_procedures"
+                        + " WHERE id = :id AND enabled = false")
+                .setParameter("id", id).getSingleResult()).longValue();
+    }
+
+    /**
+     * Todas las ordenes de la hospitalizacion de la prueba, vistas por fuera de
+     * Hibernate.
+     */
+    private List<?> idsDeLasOrdenesDeLaPrueba() {
+        return entityManager
+                .createNativeQuery("SELECT id FROM hospitalization_procedures"
+                        + " WHERE hospitalization_id = :id")
+                .setParameter("id", hospitalizacionId).getResultList();
     }
 
     private HospitalizationProcedure orden(EmployeeRef creadoPor) {
@@ -274,6 +305,115 @@ class HospitalizationProcedurePersistenceIT extends AbstractDataJpaTest {
 
             assertThat(actualizadas).isZero();
             assertThat(repository.findById(guardado.getId())).isEmpty();
+        }
+    }
+
+    /**
+     * BE-26 — bloqueo optimista contra el motor.
+     *
+     * <p>
+     * {@code GlobalExceptionHandlerUnitTest.bloqueo_optimista} fabrica la excepcion
+     * a mano y nunca ve una entidad real. Aqui se ejercita el {@code @Version} de
+     * {@code hospitalization_procedures} de punta a punta.
+     *
+     * <p>
+     * <b>Por que esta tabla en concreto.</b> Su {@code @SQLDelete} es uno de los
+     * cuatro cuyo literal esta partido en dos lineas con {@code +}, asi que
+     * cualquier verificacion por {@code grep} del {@code AND version = ?} se le
+     * escapa. La unica comprobacion honesta de que el SQL concatenado liga los
+     * <b>dos</b> parametros que Hibernate le pasa es ejecutarlo contra MySQL.
+     */
+    @Nested
+    @DisplayName("bloqueo optimista (BE-26)")
+    class BloqueoOptimista {
+
+        @Test
+        @DisplayName("una orden recien insertada nace con version 0")
+        void una_orden_recien_insertada_nace_con_version_cero() {
+            HospitalizationProcedure guardado = repository.save(orden(CREADO_POR));
+            releerDesdeLaBase();
+
+            assertThat(repository.findById(guardado.getId()))
+                    .map(HospitalizationProcedure::getVersion).contains(0L);
+        }
+
+        /**
+         * El caso que faltaba: dos copias de la misma fila, la segunda escribe con la
+         * version que ya quedo obsoleta.
+         */
+        @Test
+        @DisplayName("guardar una copia obsoleta sobre una orden ya modificada lanza el conflicto optimista")
+        void guardar_una_copia_obsoleta_lanza_el_conflicto_optimista() {
+            Long id = repository.save(orden(CREADO_POR)).getId();
+            releerDesdeLaBase();
+
+            HospitalizationProcedure copiaQueGana = repository.findById(id).orElseThrow();
+            HospitalizationProcedure copiaQueQuedaraObsoleta = repository.findById(id)
+                    .orElseThrow();
+            assertThat(copiaQueQuedaraObsoleta.getVersion()).isEqualTo(0L);
+
+            copiaQueGana.update("Curacion actualizada", "Suero fisiologico", Frequency.EVERY_12H,
+                    GuidelineType.INTERVAL, DurationMeasure.DAYS, 3, LocalDate.of(2026, 3, 2),
+                    LocalTime.of(9, 0), "Notas de la copia que gana");
+            repository.save(copiaQueGana);
+            releerDesdeLaBase();
+
+            copiaQueQuedaraObsoleta.update("Cambio que se perderia", "Solucion salina 0.9%",
+                    Frequency.EVERY_8H, GuidelineType.INTERVAL, DurationMeasure.DAYS, 5,
+                    LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Notas de la copia obsoleta");
+
+            assertThatThrownBy(() -> {
+                repository.save(copiaQueQuedaraObsoleta);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("HospitalizationProcedureJpaEntity");
+        }
+
+        /**
+         * La trampa que motivo la campaña, sobre el literal partido en dos lineas: con
+         * {@code @Version}, Hibernate liga {@code id} y {@code version} al SQL del
+         * {@code @SQLDelete}. Un {@code WHERE id = ?} con un solo {@code ?} compila
+         * igual y revienta aqui.
+         */
+        @Test
+        @DisplayName("el borrado logico versionado se ejecuta, deja enabled = false y la fila deja de verse")
+        void el_borrado_logico_versionado_deshabilita_la_fila_sin_reventar() {
+            Long id = repository.save(orden(CREADO_POR)).getId();
+            releerDesdeLaBase();
+
+            repository.delete(id);
+            releerDesdeLaBase();
+
+            assertThat(filasDeshabilitadasEnLaBase(id)).isOne();
+            assertThat(repository.findById(id)).isEmpty();
+            assertThat(repository.findByIdAndCompanyId(id, EMPRESA)).isEmpty();
+            assertThat(repository
+                    .findAllByHospitalizationIdAndCompanyId(hospitalizacionId, EMPRESA, 0, 20)
+                    .content()).isEmpty();
+        }
+
+        /**
+         * Si la version no viaja de vuelta por dominio y mapper, llega {@code null} al
+         * {@code merge}, Hibernate concluye que la fila es nueva e inserta un duplicado
+         * en lugar de actualizar. El {@code hasSize(1)} es quien lo delata.
+         */
+        @Test
+        @DisplayName("guardar una orden ya existente actualiza la fila y sube la version, no inserta otra")
+        void guardar_una_orden_existente_actualiza_y_no_inserta_una_segunda_fila() {
+            Long id = repository.save(orden(CREADO_POR)).getId();
+            releerDesdeLaBase();
+
+            HospitalizationProcedure cargada = repository.findById(id).orElseThrow();
+            cargada.update("Curacion actualizada", "Suero fisiologico", Frequency.EVERY_12H,
+                    GuidelineType.INTERVAL, DurationMeasure.DAYS, 3, LocalDate.of(2026, 3, 2),
+                    LocalTime.of(9, 0), "Notas actualizadas");
+            repository.save(cargada);
+            releerDesdeLaBase();
+
+            assertThat(idsDeLasOrdenesDeLaPrueba()).hasSize(1);
+            HospitalizationProcedure releida = repository.findById(id).orElseThrow();
+            assertThat(releida.getName()).isEqualTo("Curacion actualizada");
+            assertThat(releida.getVersion()).isEqualTo(1L);
         }
     }
 }

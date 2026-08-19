@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Rodaja de persistencia de los ajustes por empresa contra MySQL real.
@@ -44,6 +45,37 @@ class CompanySettingPersistenceIT extends AbstractDataJpaTest {
 
     private CompanySetting guardar(Long companyId, String propertyName, String value) {
         return repository.save(CompanySetting.create(companyId, propertyName, value));
+    }
+
+    private void releerDesdeLaBase() {
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    /**
+     * Cuenta filas crudas. El {@code find} del adaptador devuelve un
+     * {@code Optional}, asi que una segunda fila insertada por error se veria como
+     * "todo bien" desde el dominio hasta que el indice unico o un
+     * {@code NonUniqueResult} la delatara. Este COUNT es lo que la ve.
+     */
+    private long filas(Long companyId, String propertyName) {
+        return ((Number) entityManager.createNativeQuery("""
+                SELECT COUNT(*)
+                FROM company_settings
+                WHERE company_id = :companyId
+                  AND property_name = :propertyName
+                """).setParameter("companyId", companyId).setParameter("propertyName", propertyName)
+                .getSingleResult()).longValue();
+    }
+
+    private long versionCruda(Long companyId, String propertyName) {
+        return ((Number) entityManager.createNativeQuery("""
+                SELECT CAST(version AS SIGNED)
+                FROM company_settings
+                WHERE company_id = :companyId
+                  AND property_name = :propertyName
+                """).setParameter("companyId", companyId).setParameter("propertyName", propertyName)
+                .getSingleResult()).longValue();
     }
 
     @Nested
@@ -134,6 +166,89 @@ class CompanySettingPersistenceIT extends AbstractDataJpaTest {
         @DisplayName("una empresa sin ajustes devuelve una lista vacia")
         void una_empresa_sin_ajustes_devuelve_una_lista_vacia() {
             assertThat(repository.findByCompany(OTRA_COMPANY)).isEmpty();
+        }
+    }
+
+    /**
+     * BE-26. Esta feature es el caso raro del repo: no hay clase {@code *JpaMapper}
+     * —el mapeo es privado y estatico dentro de
+     * {@link JpaCompanySettingRepository}— y {@code SetCompanySettingService} hace
+     * leer-modificar-escribir sobre una entidad desligada. Es el patron exacto
+     * donde una {@code version} que no viaja de vuelta al dominio convierte el
+     * {@code merge} en un {@code persist} y duplica la fila en silencio. Por eso
+     * las aserciones cuentan filas crudas.
+     */
+    @Nested
+    @DisplayName("bloqueo optimista")
+    class BloqueoOptimista {
+
+        @Test
+        @DisplayName("un ajuste recien creado nace con version cero")
+        void un_ajuste_recien_creado_nace_con_version_cero() {
+            guardar(COMPANY, "k", "1");
+            releerDesdeLaBase();
+
+            assertThat(versionCruda(COMPANY, "k")).isZero();
+            assertThat(repository.find(COMPANY, "k")).map(CompanySetting::getVersion).contains(0L);
+        }
+
+        @Test
+        @DisplayName("dos copias del mismo ajuste: la segunda en guardar choca por version obsoleta")
+        void la_segunda_copia_choca_por_version_obsoleta() {
+            guardar(COMPANY, "k", "1");
+            releerDesdeLaBase();
+
+            CompanySetting primeraCopia = repository.find(COMPANY, "k").orElseThrow();
+            CompanySetting segundaCopia = repository.find(COMPANY, "k").orElseThrow();
+
+            primeraCopia.updateValue("2");
+            repository.save(primeraCopia);
+            releerDesdeLaBase();
+
+            segundaCopia.updateValue("3");
+
+            assertThatThrownBy(() -> repository.save(segundaCopia))
+                    .isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("CompanySettingJpaEntity");
+        }
+
+        @Test
+        @DisplayName("guardar un ajuste existente actualiza la unica fila y le sube la version")
+        void guardar_un_ajuste_existente_actualiza_la_unica_fila() {
+            CompanySetting creado = guardar(COMPANY, "k", "1");
+            releerDesdeLaBase();
+
+            CompanySetting leido = repository.find(COMPANY, "k").orElseThrow();
+            leido.updateValue("2");
+            repository.save(leido);
+            releerDesdeLaBase();
+
+            assertThat(filas(COMPANY, "k")).as("un INSERT duplicado se veria aqui").isEqualTo(1L);
+            assertThat(repository.findByCompany(COMPANY)).hasSize(1);
+            assertThat(versionCruda(COMPANY, "k")).isEqualTo(1L);
+            assertThat(repository.find(COMPANY, "k")).map(CompanySetting::getId)
+                    .contains(creado.getId());
+        }
+
+        @Test
+        @DisplayName("dos ediciones encadenadas releyendo entre medias suben la version a dos")
+        void dos_ediciones_encadenadas_suben_la_version_a_dos() {
+            guardar(COMPANY, "k", "1");
+            releerDesdeLaBase();
+
+            CompanySetting primera = repository.find(COMPANY, "k").orElseThrow();
+            primera.updateValue("2");
+            repository.save(primera);
+            releerDesdeLaBase();
+
+            CompanySetting segunda = repository.find(COMPANY, "k").orElseThrow();
+            segunda.updateValue("3");
+            repository.save(segunda);
+            releerDesdeLaBase();
+
+            assertThat(filas(COMPANY, "k")).isEqualTo(1L);
+            assertThat(versionCruda(COMPANY, "k")).isEqualTo(2L);
+            assertThat(repository.find(COMPANY, "k")).map(CompanySetting::getValue).contains("3");
         }
     }
 }

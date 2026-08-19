@@ -150,11 +150,23 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             """)
     Optional<EmployeeJpaEntity> findActiveWithCompanyByIdForUpdate(@Param("id") Long id);
 
+    // El UPDATE mueve tambien `version`, la del bloqueo
+    // optimista, a proposito: sin eso, un save cargado antes
+    // del bump reescribe auth_version con su valor viejo
+    // —el mapper la copia desde el dominio— y su
+    // WHERE version = ? casa igual, con lo que una edicion
+    // concurrente revalida en silencio las sesiones que la
+    // reactivacion acababa de tumbar. Movida la version, ese
+    // save ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE:
+    // dar de baja o reactivar es una operacion administrativa
+    // deliberada y debe ejecutarse siempre.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET enabled = true, auth_version = auth_version + 1
+            SET enabled = true, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
@@ -165,12 +177,24 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
      * afectadas—, asi que este {@code AND company_id} es la unica barrera: sin el,
      * un empleado podia devolverle el login (y subirle la {@code auth_version}) a
      * alguien a quien otra empresa habia despedido.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes del bump reescribe
+     * {@code auth_version} con su valor viejo —el mapper la copia desde el dominio—
+     * y su {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * revalida en silencio las sesiones que la reactivacion acababa de tumbar.
+     * Movida la version, ese save ya no encuentra fila y salta
+     * {@code ObjectOptimisticLockingFailureException} -> 409
+     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
+     * dar de baja o reactivar es una operacion administrativa deliberada y debe
+     * ejecutarse siempre, no competir con una edicion.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET enabled = true, auth_version = auth_version + 1
+            SET enabled = true, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)
@@ -185,11 +209,25 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // deleteById provocaría un TransientObjectException al flushear.
     // clearAutomatically evicta esos
     // hijos.
+    //
+    // El UPDATE mueve tambien `version`, la del bloqueo
+    // optimista, a proposito: sin eso, un save cargado antes
+    // del bump reescribe auth_version con su valor viejo
+    // —el mapper la copia desde el dominio— y su
+    // WHERE version = ? casa igual, con lo que una edicion
+    // concurrente revalida en silencio las sesiones que la
+    // baja acababa de tumbar: los tokens del despedido
+    // vuelven a pasar el filtro. Movida la version, ese save
+    // ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE:
+    // dar de baja o reactivar es una operacion administrativa
+    // deliberada y debe ejecutarse siempre.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET enabled = false, auth_version = auth_version + 1
+            SET enabled = false, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
             """, nativeQuery = true)
     int deactivate(@Param("id") Long id);
@@ -201,12 +239,25 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
      * las dos, un empleado con {@code employee.delete} dejaba sin acceso al
      * personal de otra empresa —y le subia la {@code auth_version}, tumbandole las
      * sesiones vivas— con solo conocer un id.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes del bump reescribe
+     * {@code auth_version} con su valor viejo —el mapper la copia desde el dominio—
+     * y su {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * revalida en silencio las sesiones que la baja acababa de tumbar: basta con
+     * que un administrador tuviera la ficha cargada y guarde un cambio para que los
+     * tokens del despedido vuelvan a pasar el filtro. Movida la version, ese save
+     * ya no encuentra fila y salta {@code ObjectOptimisticLockingFailureException}
+     * -> 409 {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el
+     * {@code WHERE}: dar de baja o reactivar es una operacion administrativa
+     * deliberada y debe ejecutarse siempre, no competir con una edicion.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET enabled = false, auth_version = auth_version + 1
+            SET enabled = false, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)
@@ -217,11 +268,22 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
     // Sin acotar: es el camino del refresh (RefreshTokenUseCase, que es
     // @NoAuthorizationRequired), donde el sujeto sale del refresh token ya validado
     // y no hay empresa en el contexto. El logout usa la sobrecarga acotada.
+    //
+    // El UPDATE mueve tambien `version`, la del bloqueo
+    // optimista, a proposito: sin eso, un save cargado antes
+    // del bump reescribe auth_version con su valor viejo
+    // —el mapper la copia desde el dominio— y su
+    // WHERE version = ? casa igual, con lo que una edicion
+    // concurrente revalida en silencio una sesion ya revocada.
+    // Movida la version, ese save ya no encuentra fila y salta
+    // ObjectOptimisticLockingFailureException -> 409
+    // CONCURRENT_MODIFICATION. `version` NO va en el WHERE:
+    // revocar es deliberado y debe ejecutarse siempre.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET auth_version = auth_version + 1
+            SET auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
             """, nativeQuery = true)
     int bumpAuthVersion(@Param("id") Long id);
@@ -233,12 +295,23 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
      * hay alguien autenticado. El {@code companyId} sale del
      * {@code EmployeeContext} del principal, asi que el {@code AND} exige que el
      * empleado cuyas sesiones se tumban sea de la empresa de quien pide el logout.
+     *
+     * <p>
+     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
+     * proposito: sin eso, un save cargado antes del bump reescribe
+     * {@code auth_version} con su valor viejo —el mapper la copia desde el dominio—
+     * y su {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
+     * revalida en silencio una sesion ya revocada. Movida la version, ese save ya
+     * no encuentra fila y salta {@code ObjectOptimisticLockingFailureException} ->
+     * 409 {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el
+     * {@code WHERE}: revocar es deliberado y debe ejecutarse siempre, no competir
+     * con una edicion.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query(value = """
             UPDATE employees
-            SET auth_version = auth_version + 1
+            SET auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
             """, nativeQuery = true)

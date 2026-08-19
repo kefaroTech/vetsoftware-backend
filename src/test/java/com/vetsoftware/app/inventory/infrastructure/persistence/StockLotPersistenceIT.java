@@ -1,8 +1,13 @@
 package com.vetsoftware.app.inventory.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.inventory.domain.StockLot;
+import com.vetsoftware.app.inventory.domain.StockMovement;
+import com.vetsoftware.app.inventory.domain.StockMovementType;
+import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
@@ -18,6 +23,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 /**
  * Rodaja de persistencia de los lotes contra MySQL real.
@@ -29,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * compara MySQL un {@code NULL} contra un parametro. Justo el tipo de detalle
  * donde vivio BE-01.
  */
-@Import(JpaStockLotRepository.class)
+@Import({JpaStockLotRepository.class, JpaStockMovementRepository.class})
 @DisplayName("JpaStockLotRepository — FEFO e identidad de lote contra MySQL real")
 class StockLotPersistenceIT extends AbstractDataJpaTest {
 
@@ -39,8 +45,13 @@ class StockLotPersistenceIT extends AbstractDataJpaTest {
     private static final Long PRODUCT = SchemaSeed.PRODUCT_ID;
     private static final BigDecimal COSTO = new BigDecimal("1500.0000");
 
+    private static final LocalDateTime AHORA = LocalDateTime.of(2026, 1, 15, 10, 30);
+
     @Autowired
     private JpaStockLotRepository repository;
+
+    @Autowired
+    private JpaStockMovementRepository movementRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -56,9 +67,37 @@ class StockLotPersistenceIT extends AbstractDataJpaTest {
 
     private StockLot lote(String numero, LocalDate vence, int disponible, BigDecimal costo,
             Long branchId, boolean habilitado) {
-        LocalDateTime ahora = LocalDateTime.of(2026, 1, 15, 10, 30);
         return repository.save(new StockLot(null, COMPANY, branchId, PRODUCT, numero, vence,
-                disponible, costo, ahora, ahora, null, habilitado));
+                disponible, costo, AHORA, AHORA, null, habilitado));
+    }
+
+    /**
+     * Vacia el contexto de persistencia para que la siguiente lectura venga del
+     * motor y no de la cache de primer nivel. Sin esto, media rodaja de bloqueo
+     * optimista se responderia sola sin llegar a MySQL.
+     */
+    private void releerDesdeLaBase() {
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    /** Cuenta las filas por SQL nativo, por fuera de Hibernate y de su cache. */
+    private long filasDeLoteEnLaBase() {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM stock_lot WHERE product_id = :id")
+                .setParameter("id", PRODUCT).getSingleResult()).longValue();
+    }
+
+    /**
+     * El asiento de kardex que {@code consumeFefo} intercala entre sus dos
+     * {@code save} del lote. No es decorado: es un INSERT real en medio de la
+     * transaccion, y es lo que forzaria un flush intermedio —y con el, un conflicto
+     * optimista falso— el dia que deje de ser un {@code persist} con id IDENTITY.
+     */
+    private void asentarEnElKardex(StockLot lote, int cantidad) {
+        movementRepository.save(new StockMovement(null, COMPANY, BRANCH, PRODUCT, lote.getId(),
+                StockMovementType.SALE, -cantidad, lote.getUnitCost(),
+                StockReferenceType.POS_DOCUMENT, 7001L, "prueba", SchemaSeed.EMPLOYEE_ID, AHORA));
     }
 
     @Nested
@@ -256,6 +295,202 @@ class StockLotPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(repository.findById(guardado.getId()).orElseThrow().getUnitCost())
                     .isEqualByComparingTo("1234.5678");
+        }
+    }
+
+    /**
+     * BE-26 — el bloqueo optimista de {@code stock_lot} contra el motor.
+     *
+     * <p>
+     * <b>Que camino protege el {@code @Version} aqui.</b> La hipotesis de partida
+     * —dos ventas simultaneas del mismo lote se pisan— es <b>falsa</b>: todas las
+     * salidas ({@code recordSale}, {@code recordClinicalUse},
+     * {@code recordAdjustment}, {@code transfer}, {@code reverse}) pasan antes por
+     * {@code balanceForUpdate}, que es un {@code SELECT ... FOR UPDATE} sobre
+     * {@code stock_balance} y ya serializa por (producto, sede) —exactamente el
+     * ambito de un lote—. El hueco real esta en {@code recordPurchase}:
+     * {@code findByIdentity} → {@code lot.add(qty)} → {@code save(lot)} ocurren
+     * <b>antes</b> de tomar ese lock, asi que una compra intercalada con una salida
+     * del mismo lote es la unica operacion que puede pisar el descuento. Ese es el
+     * escenario de {@link CompraQueLlegaTarde}.
+     *
+     * <p>
+     * <b>Hasta donde llega esta rodaja — y hasta donde no.</b> Un
+     * {@code @DataJpaTest} corre en UNA transaccion con rollback: montar dos
+     * transacciones que se vean entre si exigiria commitear filas en el contenedor
+     * que comparte toda la suite. Lo que si se reproduce exacto es el mecanismo que
+     * decide el resultado, porque {@code JpaStockLotRepository} nunca trabaja con
+     * entidades gestionadas: reconstruye una <b>desligada</b> desde el objeto de
+     * dominio en cada {@code save}, asi que la version que llega al {@code merge}
+     * es la que ese objeto leyo, y esa es la unica pieza que separa el conflicto
+     * del pisoton silencioso. Lo que NO cubre esta rodaja es el entrelazado real de
+     * dos conexiones ni el orden de sus commits: eso lo fija el motor, no el mapeo.
+     */
+    @Nested
+    @DisplayName("bloqueo optimista de stock_lot (BE-26)")
+    class BloqueoOptimista {
+
+        @Test
+        @DisplayName("un lote recien insertado nace con version 0")
+        void un_lote_recien_insertado_nace_con_version_cero() {
+            StockLot guardado = lote("L-2026-01", LocalDate.of(2027, 1, 31), 10);
+            releerDesdeLaBase();
+
+            assertThat(repository.findById(guardado.getId())).map(StockLot::getVersion)
+                    .contains(0L);
+        }
+
+        @Test
+        @DisplayName("guardar una copia obsoleta del lote sobre una fila ya modificada lanza el conflicto optimista")
+        void guardar_una_copia_obsoleta_del_lote_lanza_el_conflicto_optimista() {
+            Long id = lote("L-2026-01", LocalDate.of(2027, 1, 31), 10).getId();
+            releerDesdeLaBase();
+
+            StockLot copiaQueGana = repository.findById(id).orElseThrow();
+            StockLot copiaQueQuedaraObsoleta = repository.findById(id).orElseThrow();
+            assertThat(copiaQueQuedaraObsoleta.getVersion()).isZero();
+
+            copiaQueGana.add(4);
+            repository.save(copiaQueGana);
+            releerDesdeLaBase();
+
+            copiaQueQuedaraObsoleta.consume(2);
+
+            assertThatThrownBy(() -> {
+                repository.save(copiaQueQuedaraObsoleta);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("StockLotJpaEntity");
+        }
+
+        /**
+         * {@code stock_lot} no tiene un {@code *JpaMapper}: el mapeo son dos
+         * {@code toJpa}/{@code toDomain} privados dentro del propio adaptador, y el
+         * {@code save} entrega una entidad <b>desligada</b>. Si la version no viajara
+         * de vuelta por dominio y mapeo, llegaria {@code null} al {@code merge},
+         * Hibernate concluiria que la fila es nueva e insertaria un duplicado en vez de
+         * actualizar. El {@code isOne()} es quien lo delata.
+         */
+        @Test
+        @DisplayName("guardar un lote ya existente actualiza la fila y sube la version, no inserta otra")
+        void guardar_un_lote_existente_actualiza_y_no_inserta_una_segunda_fila() {
+            Long id = lote("L-2026-01", LocalDate.of(2027, 1, 31), 10).getId();
+            releerDesdeLaBase();
+
+            StockLot cargado = repository.findById(id).orElseThrow();
+            cargado.add(5);
+            repository.save(cargado);
+            releerDesdeLaBase();
+
+            assertThat(filasDeLoteEnLaBase()).isOne();
+            StockLot releido = repository.findById(id).orElseThrow();
+            assertThat(releido.getQuantityAvailable()).isEqualTo(15);
+            assertThat(releido.getVersion()).isEqualTo(1L);
+        }
+    }
+
+    /**
+     * El camino que motiva el {@code @Version} de {@code stock_lot}: la compra que
+     * cargo el lote antes de que otra operacion lo moviera y llega tarde a
+     * guardarlo.
+     *
+     * <p>
+     * Los tres hechos se leen en orden dentro de cada caso: <b>quien cargo
+     * primero</b> (la compra, por {@code findByIdentity}), <b>quien guardo
+     * primero</b> (la salida, que ademas es la que si esta protegida por el lock
+     * pesimista del saldo) y <b>quien llega tarde</b> (la compra, con su copia de
+     * version obsoleta). Sin {@code @Version} el ultimo {@code UPDATE} escribiria
+     * la suma calculada sobre la cantidad vieja y el descuento desapareceria sin un
+     * solo error.
+     */
+    @Nested
+    @DisplayName("recordPurchase — la compra que llega tarde no pisa el descuento (BE-26)")
+    class CompraQueLlegaTarde {
+
+        @Test
+        @DisplayName("la compra que cargo el lote antes de la salida choca al guardar en vez de pisar la cantidad")
+        void la_compra_que_llega_tarde_choca_en_vez_de_pisar_la_cantidad() {
+            Long id = lote("L-2026-01", LocalDate.of(2027, 1, 31), 10).getId();
+            releerDesdeLaBase();
+
+            // 1. Carga primero la COMPRA: recordPurchase resuelve el lote por identidad y
+            // se queda con una copia de version 0 y 10 unidades. Todavia no ha escrito
+            // nada, y el lock del saldo lo tomara DESPUES de guardar el lote.
+            StockLot loteQueVeLaCompra = repository.findByIdentity(COMPANY, BRANCH, PRODUCT,
+                    "L-2026-01", LocalDate.of(2027, 1, 31), COSTO).orElseThrow();
+            assertThat(loteQueVeLaCompra.getVersion()).isZero();
+            assertThat(loteQueVeLaCompra.getQuantityAvailable()).isEqualTo(10);
+
+            // 2. Guarda primero la SALIDA: descuenta 4 sobre el mismo lote y confirma.
+            StockLot loteQueVeLaVenta = repository.findById(id).orElseThrow();
+            loteQueVeLaVenta.consume(4);
+            repository.save(loteQueVeLaVenta);
+            releerDesdeLaBase();
+
+            StockLot enLaBase = repository.findById(id).orElseThrow();
+            assertThat(enLaBase.getQuantityAvailable()).isEqualTo(6);
+            assertThat(enLaBase.getVersion()).isEqualTo(1L);
+
+            // 3. Llega tarde la COMPRA: suma sus 5 sobre las 10 que leyo, no sobre las 6
+            // que hay. Sin @Version el UPDATE dejaria 15 en la fila y las 4 unidades
+            // vendidas se habrian esfumado del inventario sin ruido.
+            loteQueVeLaCompra.add(5);
+            assertThat(loteQueVeLaCompra.getQuantityAvailable()).isEqualTo(15);
+
+            assertThatThrownBy(() -> {
+                repository.save(loteQueVeLaCompra);
+                entityManager.flush();
+            }).isInstanceOf(ObjectOptimisticLockingFailureException.class)
+                    .hasMessageContaining("StockLotJpaEntity");
+        }
+    }
+
+    /**
+     * El doble {@code save} de {@code consumeFefo}, fijado como comportamiento
+     * esperado.
+     *
+     * <p>
+     * Ese metodo puede guardar <b>dos veces el mismo lote</b> en una sola
+     * transaccion: una en el bucle FEFO y otra al llevar el sobrante al ultimo lote
+     * de la lista, que con un unico lote disponible es la misma instancia. Es el
+     * punto exacto donde apareceria un {@code OptimisticLockException} <i>falso</i>
+     * —un conflicto contra uno mismo— si entre los dos {@code merge} llegara a
+     * colarse un flush.
+     */
+    @Nested
+    @DisplayName("consumeFefo — el doble save del mismo lote no debe chocar (BE-26)")
+    class DobleSaveDelFefo {
+
+        @Test
+        @DisplayName("consumir FEFO con sobrante guarda dos veces el mismo lote sin conflicto y sube la version una sola vez")
+        void consumir_fefo_con_sobrante_no_lanza_conflicto() {
+            Long id = lote("L-UNICO", LocalDate.of(2027, 1, 31), 5).getId();
+            releerDesdeLaBase();
+
+            // Bucle FEFO: se lleva las 5 unidades que hay y guarda. consumeFefo descarta
+            // el StockLot que devuelve el save, asi que sigue trabajando sobre ESTA
+            // instancia, que conserva la version que leyo.
+            StockLot unico = repository.findAvailableFefo(PRODUCT, BRANCH).getFirst();
+            assertThat(unico.getVersion()).isZero();
+            unico.consume(5);
+            repository.save(unico);
+            asentarEnElKardex(unico, 5);
+
+            // Sobrante: faltan 3 y no hay mas lotes, asi que van contra el ultimo de la
+            // lista —el mismo objeto— y se guarda por segunda vez en la misma
+            // transaccion, todavia con version 0 en la mano.
+            unico.consume(3);
+            assertThat(unico.getVersion()).isZero();
+            repository.save(unico);
+            asentarEnElKardex(unico, 3);
+
+            // El flush es donde saltaria el conflicto falso.
+            assertThatCode(() -> releerDesdeLaBase()).doesNotThrowAnyException();
+
+            StockLot releido = repository.findById(id).orElseThrow();
+            assertThat(releido.getQuantityAvailable()).isEqualTo(-3);
+            assertThat(releido.getVersion()).isEqualTo(1L);
+            assertThat(filasDeLoteEnLaBase()).isOne();
         }
     }
 }
