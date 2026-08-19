@@ -33,6 +33,20 @@ otro receptor soportado. No se deben guardar tokens, contraseñas ni webhooks en
 Los secretos deben referenciarse mediante archivos o el gestor de secretos del
 entorno de despliegue.
 
+## Alertas en Grafana Cloud
+
+El stack local descrito arriba evalúa los ficheros `docker/prometheus-*.yml`. Los ambientes
+`dev` y `prod` evalúan además sus propias reglas en el **ruler de Mimir** del stack de
+Grafana Cloud de cada ambiente, sincronizadas con `mimirtool` desde
+`VetSoftwareIaC/observability/mimir-rules/`. Esos ficheros son **gemelos traducidos** de los
+locales, no copias: las métricas llegan por OTLP push y no por scrape, así que los timers van
+en milisegundos, el selector es `job="mainvet/vetsoftware"` y los bordes `le` son enteros. Un
+cambio en un fichero local debe evaluarse también en su gemelo (y viceversa); el detalle de la
+traducción, lo que no se portó y por qué, está en el README de ese directorio. Producción
+añade un heartbeat de ingesta (`VetSoftwareBackendTelemetryAbsent`) que sustituye a
+`VetSoftwareBackendDown` en un mundo sin scrape; no se sincroniza a dev porque el apagado
+programado del ambiente lo haría sonar cada noche.
+
 ## Validación
 
 ```powershell
@@ -217,6 +231,125 @@ La tabla indicada por `token_type` superó durante treinta minutos el umbral pub
 ajuste con prudencia `TOKEN_CLEANUP_BATCH_SIZE` o `TOKEN_CLEANUP_MAX_BATCHES_PER_RUN`; si no hay
 filas elegibles, el crecimiento corresponde a sesiones o solicitudes todavía vigentes y debe
 investigarse antes de reducir la retención.
+
+## VetSoftwareScheduledJobFailing
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+Un job programado acumula ejecuciones con `job_outcome` en `failure` o `error`: la variante
+warning exige fallos sostenidos durante treinta minutos; la critical, que **todas** las
+ejecuciones de las últimas dos horas hayan fallado sin un solo éxito — fallo determinista que
+ningún ciclo posterior va a recuperar.
+
+1. Identificar el trabajo con la etiqueta `job_name` de la alerta.
+2. Buscar en Loki los logs del job y seguir el `trace_id` de una ejecución fallida en Tempo.
+3. Distinguir fallo transitorio (dependencia caída, timeout puntual) de determinista (dato
+   atascado, configuración inválida). Si la variante critical está activa, asumir determinista.
+4. Un job que falla no tiene usuario delante que reintente: el trabajo pendiente se acumula en
+   silencio mientras la alerta siga activa.
+
+Caso conocido: `dian.pending.reconciliation` falla de forma sostenida por un documento
+atascado (el documento 44). Ese patrón — mismo `job_name`, mismo error, cada ciclo — es un
+dato envenenado, no un problema de infraestructura: se corrige el dato, no el job.
+
+## VetSoftwareEmailSendFailing
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+El envío de correo es fire-and-forget: cada `email_outcome="failure"` es un correo que el
+destinatario no recibió, aunque la petición HTTP del usuario respondiera 200. La variante
+warning es tasa parcial (más del 10 % de fallos con volumen mínimo); la critical es fallo
+total: hay fallos y **cero** éxitos durante media hora — determinista y sistémico.
+
+1. Buscar en Loki el error del cliente de correo y el código de respuesta del proveedor.
+2. Un 4xx del proveedor (401/403/422) es determinista: fallará el 100 % de los envíos hasta
+   que alguien cambie configuración. Un 429/5xx/timeout es transitorio y aislado.
+3. Caso vivo que motivó la alerta: Resend responde `403` porque el dominio remitente no está
+   verificado. El arreglo es **verificar el dominio `kefaro.tech` en Resend** (o cambiar el
+   remitente a un dominio ya verificado), no reintentar.
+4. Tras corregir, confirmar que aparecen envíos con `email_outcome="success"` y que la
+   variante critical se resuelve sola.
+
+## VetSoftwareBackendRestartLoop
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+El proceso se reinició tres o más veces en una hora. Sustituye por otra vía lo que el stack
+local cubría con `VetSoftwareBackendDown`: con ingesta push por OTLP no existe `up`, así que
+la señal no es «el scrape falla» sino «el arranque se repite».
+
+**Un crash loop no se parece a una caída, se parece a lentitud.** Entre reinicio y reinicio el
+backend sí responde y sí emite telemetría, de modo que el heartbeat no lo detecta y las
+peticiones que caen en la ventana de arranque fallan sin patrón claro.
+
+1. Revisar los eventos de la task de ECS: motivo de parada (`OutOfMemoryError`, exit code,
+   health check fallido) antes que cualquier hipótesis de código.
+2. Contrastar `jvm_memory_used_bytes{area="heap"}` contra su máximo en la hora previa: un OOM
+   kill deja el heap subiendo hasta el corte.
+3. Si el reinicio coincide con un despliegue, comparar `service_version`: puede ser una imagen
+   que no arranca, no una fuga de memoria.
+4. El umbral (3 en una hora) descarta por construcción el arranque legítimo de dev tras el
+   apagado programado de las 20:00, que produce un único cambio diario.
+
+## VetSoftwareAuthFailureSpike
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+Más de 0,5 rechazos por segundo sostenidos diez minutos en `/auth/login/*`. El selector es
+preciso a propósito: en este backend los 401/403 solo aparecen en esas dos rutas, así que la
+alerta no arrastra el ruido de los tokens de acceso caducados del ciclo de refresco del front.
+
+1. Agrupar en Loki los eventos `event="login_failure"` del canal AUDIT por `client.ip` y
+   `user_agent.original`.
+2. **Una sola IP con muchos identificadores distintos** es enumeración de códigos de empleado.
+   **Muchas IP contra un solo identificador** es fuerza bruta dirigida. **Una IP con un solo
+   identificador repetido** suele ser un cliente mal configurado en bucle, no un ataque.
+3. Comprobar si el rate limiting está actuando (respuestas 429). Si no aparece ninguna,
+   verificar la salud de Valkey: bucket4j se apoya en él y una caché degradada puede dejar el
+   control abierto — ver `VetSoftwareValkeyCommandsFailing`.
+4. No bloquear una IP sin el paso 2: un NAT corporativo concentra usuarios legítimos.
+
+## VetSoftwareValkeyCommandsFailing
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+El cliente Lettuce registra comandos con `error` distinto de `none` durante cinco minutos.
+
+**Valkey no es solo caché.** Sostiene la caché de permisos y sedes *y* el rate limiting de
+bucket4j. Degradado, el control de fuerza bruta deja de ser fiable justo cuando más falta hace.
+
+1. Estado de la instancia ElastiCache: CPU, memoria, evictions, conexiones.
+2. Conectividad desde la task de ECS (grupos de seguridad, cambio de endpoint).
+3. Revisar el valor concreto de la etiqueta `error` en la serie
+   `lettuce_milliseconds_count{error!="none"}`: distingue timeout de conexión rechazada.
+4. Mientras dure, asumir que la autorización responde más lento y que el rate limiting puede
+   no estar aplicándose.
+
+## VetSoftwareValkeyLatencyHigh
+
+Solo existe en Grafana Cloud (`VetSoftwareIaC/observability/mimir-rules/vetsoftware-cloud-additions.yml`).
+El p99 de los comandos Lettuce supera 50 ms durante diez minutos. Valkey está en el camino
+caliente de la autorización: su latencia se suma a la de **cada** petición autenticada.
+
+Revisar CPU y memoria de ElastiCache, la tasa de eviction y el tamaño de las entradas
+cacheadas. Correlacionar con `VetSoftwareHttpP95LatencyHigh`: si ambas están activas, la causa
+raíz probable es la caché, no la aplicación.
+
+## VetSoftwareIngestionNearLimit
+
+**No es una regla del ruler**: es una alerta Grafana-managed
+(`VetSoftwareIaC/observability/grafana-managed/vetsoftware-cost-guard.yml`), porque consulta
+métricas de uso que viven en otro tenant. Ver el README de ese directorio.
+
+Las series activas del stack superan el 80 % del límite del plan. **Al llegar al 100 %,
+Grafana Cloud rechaza la ingesta**: se pierde telemetría en silencio y con ella la capacidad de
+ver cualquier otro incidente — incluidas todas las demás alertas, que se quedan sin datos que
+evaluar.
+
+1. Identificar la familia culpable:
+   `topk(10, count by (__name__) ({__name__=~".+"}))`.
+2. Dentro de esa familia, buscar la etiqueta que explotó:
+   `count by (<etiqueta>) (<metrica>)`.
+3. Causa más probable: una etiqueta sin acotar. `BusinessMetricCardinalityFilter` solo cubre el
+   prefijo `vetsoftware.business.`; las familias `email.*` y `lettuce.*` quedan fuera de esa
+   allowlist y llevan una etiqueta `error` derivada del nombre de la excepción.
+4. El arreglo es acotar la etiqueta en el código (allowlist o `error.type` normalizado), no
+   subir el plan.
 
 ## Alertas de SLO
 
