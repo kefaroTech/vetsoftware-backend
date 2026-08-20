@@ -32,12 +32,34 @@ name: CodeQL
 # proyecto no usa caracteristicas preview ni incubator, que son lo unico que el
 # extractor no admite. build-mode: none analiza el arbol de fuentes sin compilar, con
 # lo que no arrastra los minutos de un `mvn package` ni necesita Docker.
+#
+# ALINEACION DE LOS TRES REPOSITORIOS. Este fichero se mantiene funcionalmente
+# equivalente al `codeql.yml` de vetsoftware-admin-web y vetsoftware-public-web:
+# mismos disparadores (pull_request a develop/main con el mismo paths-ignore,
+# barrido semanal los lunes a las 08:00 UTC y workflow_dispatch), misma condicion
+# (`vars.CODE_SECURITY_ENABLED == 'true'`), mismos permisos y mismos pasos.
+# Las unicas divergencias son deliberadas:
+#   - `languages:` y `category:`, que nombran el lenguaje real de cada repositorio.
+#   - el paso `Set up Java`, que solo tiene sentido en un repositorio Java.
+#   - el prefijo de `concurrency.group`, que sigue la convencion de cada repo.
+#   - el texto de los comentarios, que nombra el repositorio.
+# NO hay disparador `push`: lo que se mezcla a develop llega siempre por un pull
+# request que este mismo workflow ya analizo, asi que un segundo analisis del mismo
+# arbol es pagar dos veces por el mismo resultado.
 
 on:
   pull_request:
     branches:
       - develop
       - main
+    # Un cambio de documentacion no puede introducir una vulnerabilidad en el codigo
+    # Java: el analisis no aportaria nada y consume minutos. Mismo criterio que
+    # ci.yml, y la misma lista que los dos fronts.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
   # Las consultas de CodeQL se actualizan aunque el codigo no cambie.
   schedule:
     - cron: "0 8 * * 1"
@@ -52,7 +74,7 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze Java
+    name: Analyze (java-kotlin)
     # El interruptor descrito arriba. Mientras no exista la variable, el trabajo no
     # arranca; el dia que exista, corre completo sin tocar este fichero.
     if: vars.CODE_SECURITY_ENABLED == 'true'
