@@ -125,7 +125,7 @@ public class AppointmentController {
 
     @PatchMapping("/{id}/cancel")
     public AppointmentResponse cancel(@PathVariable Long id,
-            @RequestBody(required = false) CancelAppointmentRequest request) {
+            @Valid @RequestBody(required = false) CancelAppointmentRequest request) {
         String reason = request == null ? null : request.reason();
         return toResponse(cancelUseCase
                 .execute(new CancelAppointmentCommand(id, reason, authz.currentCompanyId())));
