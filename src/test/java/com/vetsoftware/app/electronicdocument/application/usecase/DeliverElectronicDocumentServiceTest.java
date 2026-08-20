@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceFileStoragePort;
+import com.vetsoftware.app.electronicdocument.application.port.out.DocumentDeliveryMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceMailPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoicePdfPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.QrGeneratorPort;
@@ -41,13 +42,15 @@ class DeliverElectronicDocumentServiceTest {
     private InvoiceFileStoragePort fileStorage;
     @Mock
     private InvoiceMailPort mail;
+    @Mock
+    private DocumentDeliveryMetrics deliveryMetrics;
 
     private DeliverElectronicDocumentService service;
 
     @BeforeEach
     void montar() {
         service = new DeliverElectronicDocumentService(repository, qrGenerator, invoicePdf,
-                fileStorage, mail,
+                fileStorage, mail, deliveryMetrics,
                 "https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=");
     }
 
