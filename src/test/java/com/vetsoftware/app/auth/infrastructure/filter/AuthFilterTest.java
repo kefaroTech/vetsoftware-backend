@@ -22,6 +22,8 @@ import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.tracing.Tracer;
 import jakarta.servlet.FilterChain;
 import java.util.Set;
@@ -63,13 +65,15 @@ class AuthFilterTest {
     private FilterChain filterChain;
 
     private AuthFilter filter;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void construirFiltro() {
         // Se construye aquí, no en un inicializador de campo: éste correría antes de
         // que MockitoExtension inyecte los @Mock y el filtro quedaría con null.
+        meterRegistry = new SimpleMeterRegistry();
         filter = new AuthFilter(resolveAuthContextUseCase, resolveSystemAuthContextUseCase,
-                jwtProvider, new ObjectMapper(), auditLogger, tracer);
+                jwtProvider, new ObjectMapper(), auditLogger, tracer, meterRegistry);
     }
 
     private static MockHttpServletRequest request(String method, String path) {
@@ -340,6 +344,92 @@ class AuthFilterTest {
             assertThat(autoridades[0]).extracting(GrantedAuthority::getAuthority)
                     .containsExactly("ROLE_SYSTEM");
             verifyNoInteractions(resolveAuthContextUseCase);
+        }
+    }
+
+    /**
+     * Red del arreglo de #137: antes, el {@code catch (Exception e)} que rodea las
+     * extracciones de claims descartaba la excepción, así que un pico de 401
+     * {@code TOKEN_INVALID} era indistinguible entre «tokens caducados de siempre»
+     * —normal— y «el parser se rompió y todas las clínicas están fuera a la vez».
+     * Lo que hace visible esa diferencia es la <b>etiqueta</b>, no el contador: por
+     * eso aquí se afirma el valor de {@code exception.type} y no solo que subió.
+     * <p>
+     * El nombre de la métrica se referencia desde la constante y nunca como
+     * literal: renombrarla en producción tiene que romper este test, que es el
+     * contrato con el panel y con la alerta.
+     * <p>
+     * La línea de {@code log.debug} no se afirma a propósito: montar un appender de
+     * Logback para comprobar un texto acopla el test a la redacción del mensaje y
+     * el contador ya cubre la señal que importa.
+     */
+    @Nested
+    @DisplayName("rastro observable del rechazo de token")
+    class RastroDelRechazo {
+
+        @Test
+        @DisplayName("una excepción inesperada al extraer los claims cuenta un rechazo etiquetado con su clase")
+        void excepcion_inesperada_cuenta_un_rechazo_con_su_clase() throws Exception {
+            // El escenario real del issue: un claim con un tipo distinto al esperado.
+            when(jwtProvider.extractType(anyString()))
+                    .thenThrow(new ClassCastException("authVersion no es un Long"));
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(requestConToken("claim-de-tipo-raro"), response, filterChain);
+
+            Counter contador = meterRegistry.find(AuthFilter.TOKEN_REJECTIONS_METRIC).counter();
+            assertThat(contador).isNotNull();
+            assertThat(contador.getId().getTag("exception.type")).isEqualTo("ClassCastException");
+            assertThat(contador.count()).isEqualTo(1.0d);
+        }
+
+        @Test
+        @DisplayName("dos clases de excepción distintas quedan en series separadas por la etiqueta")
+        void dos_excepciones_distintas_quedan_en_series_separadas() throws Exception {
+            // Sin este caso la etiqueta podría ser una constante y el test anterior
+            // pasaría igual: lo que se prueba aquí es que discrimina de verdad.
+            when(jwtProvider.extractType(anyString()))
+                    .thenThrow(new ClassCastException("authVersion no es un Long"))
+                    .thenThrow(new IllegalArgumentException("token vacío"));
+
+            filter.doFilterInternal(requestConToken("uno"), new MockHttpServletResponse(),
+                    filterChain);
+            filter.doFilterInternal(requestConToken("dos"), new MockHttpServletResponse(),
+                    filterChain);
+
+            assertThat(meterRegistry.find(AuthFilter.TOKEN_REJECTIONS_METRIC).counters())
+                    .extracting(c -> c.getId().getTag("exception.type"))
+                    .containsExactlyInAnyOrder("ClassCastException", "IllegalArgumentException");
+        }
+
+        @Test
+        @DisplayName("la respuesta al cliente sigue siendo 401 TOKEN_INVALID: el arreglo es observabilidad, no semántica")
+        void excepcion_inesperada_sigue_respondiendo_401_invalid() throws Exception {
+            when(jwtProvider.extractType(anyString()))
+                    .thenThrow(new IllegalArgumentException("claim ausente"));
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(requestConToken("claim-ausente"), response, filterChain);
+
+            assertThat(response.getStatus()).isEqualTo(401);
+            assertThat(response.getContentAsString()).contains("TOKEN_INVALID");
+            verify(auditLogger).unauthenticated("GET", "/animals", "Invalid token");
+            verifyNoInteractions(filterChain);
+        }
+
+        @Test
+        @DisplayName("un token caducado NO cuenta como rechazo: va por su propia rama a TOKEN_EXPIRED")
+        void token_caducado_no_incrementa_el_contador() throws Exception {
+            // El caso negativo es el que hace que el contador signifique algo: si contara
+            // también los caducados volvería a ser indistinguible de un lunes normal, que
+            // es exactamente el defecto original de #137.
+            when(jwtProvider.extractType(anyString())).thenThrow(mock(ExpiredJwtException.class));
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(requestConToken("vencido"), response, filterChain);
+
+            assertThat(response.getContentAsString()).contains("TOKEN_EXPIRED");
+            assertThat(meterRegistry.find(AuthFilter.TOKEN_REJECTIONS_METRIC).counters()).isEmpty();
         }
     }
 }

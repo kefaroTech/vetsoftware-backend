@@ -332,6 +332,53 @@ class HexagonalArchitectureTest {
             .should(VetSoftwareConditions.alcanzarUnClienteHttp(RestClient.class))
             .because("una llamada HTTP retiene la conexion y los locks hasta el commit");
 
+    /**
+     * El cierre de la incidencia #135. Un {@code @RequestBody} sin {@code @Valid}
+     * delante no se valida: el binder de Spring no dispara el validador, así que
+     * las restricciones que el DTO declara están escritas y <b>no se evalúan
+     * nunca</b>.
+     *
+     * <p>
+     * Lo que hace al defecto invisible es que las tres señales que mira un humano
+     * dicen que la validación existe. El compilador calla; la anotación se lee
+     * perfecta en el diff; y el {@code api/openapi.json} sigue anunciando el
+     * {@code maxLength} al front, porque springdoc lo deriva del {@code @Size} con
+     * {@code @Valid} o sin él. Solo se nota en ejecución, y de una forma que parece
+     * otro problema.
+     *
+     * <p>
+     * El caso real: {@code PATCH /appointments/{id}/cancel} recibía
+     * {@code CancelAppointmentRequest(@Size(max = 300) String reason)} sin
+     * {@code @Valid}. A la base no entraba basura —{@code Appointment} vuelve a
+     * medir la longitud y la columna es de 300—, así que el daño no era corrupción
+     * sino <b>la forma del error</b>: en lugar del error de campo sobre
+     * {@code reason} que el front sabe pintar bajo el textarea, salía una excepción
+     * de dominio con otro {@code errorCode} y otra forma, y quien cancelaba la cita
+     * leía un mensaje genérico sin saber qué corregir. El endpoint de la línea de
+     * arriba, {@code changeStatus}, sí lo llevaba: era una omisión, no una
+     * decisión.
+     *
+     * <p>
+     * <b>Nace dura y no congelada</b> porque el predicado mira el tipo del
+     * parámetro y no su nombre: de los tres {@code @RequestBody} sin {@code @Valid}
+     * que quedaban en {@code src/main}, dos no declaran ninguna restricción —el
+     * {@code String} crudo del webhook de la DIAN y el {@code RefreshTokenRequest},
+     * que dejó de exigir su campo por escrito— y quedan legítimamente fuera. Con el
+     * {@code @Valid} de {@code cancel} puesto, la cuenta queda en cero.
+     *
+     * <p>
+     * <b>No lleva {@code .that(...)}</b>: el filtro es la propia condición, que
+     * ignora todo método sin un parámetro {@code @RequestBody}. Acotarla a
+     * {@code ..infrastructure.web..} habría dejado el hueco de un controller
+     * escrito fuera de su paquete, que es justo el caso que nadie revisaría.
+     */
+    @ArchTest
+    static final ArchRule CUERPO_CON_RESTRICCIONES_SE_VALIDA = methods()
+            .should(VetSoftwareConditions.validarElCuerpoQueDeclaraRestricciones())
+            .because("un @Size sin @Valid delante no lo evalua nadie: la peticion entra entera"
+                    + " y el error sale del dominio con otra forma y otro errorCode,"
+                    + " no como el error de campo que el front sabe pintar");
+
     // ── BE-26: quién no lleva @Version, y por qué ────────────────────────────
 
     /**

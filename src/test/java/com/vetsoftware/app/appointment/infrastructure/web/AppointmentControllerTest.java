@@ -119,6 +119,17 @@ class AppointmentControllerTest {
              "forceOverlap":false}
             """;
 
+    /**
+     * Motivo de cancelacion justo en el limite del {@code @Size(max = 300)} de
+     * {@code CancelAppointmentRequest}. Se fija a proposito el valor exacto y no
+     * uno holgado: el limite es inclusivo y un {@code <} donde va un {@code <=} es
+     * el error clasico que ninguna otra asercion de este fichero atraparia.
+     */
+    private static final String MOTIVO_EN_EL_LIMITE = "M".repeat(300);
+
+    /** Motivo pasado de largo: 350 caracteres, 50 por encima del maximo. */
+    private static final String MOTIVO_PASADO_DE_LARGO = "M".repeat(350);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -167,6 +178,11 @@ class AppointmentControllerTest {
                 new EmployeeSummaryDto(4L, "Dra. Vet"),
                 new BranchSummaryDto(SEDE_RESUELTA, "Principal", "PRINCIPAL"), 3L, true, CREADA,
                 solapes);
+    }
+
+    /** Cuerpo del PATCH /cancel con el motivo dado. */
+    private static String cancelarJson(String motivo) {
+        return "{\"reason\":\"" + motivo + "\"}";
     }
 
     private static AppointmentOverlapException solapeCon(List<Long> ids) {
@@ -631,7 +647,7 @@ class AppointmentControllerTest {
     }
 
     @Nested
-    @DisplayName("PATCH /appointments/{id}/status y /cancel")
+    @DisplayName("PATCH /appointments/{id}/status")
     class CambiarEstado {
 
         @Test
@@ -671,8 +687,30 @@ class AppointmentControllerTest {
             verifyNoInteractions(changeStatusUseCase);
         }
 
+    }
+
+    /**
+     * Cancelacion (issue #135). El {@code @Size(max = 300)} de
+     * {@code CancelAppointmentRequest} estaba escrito y no se evaluaba: al
+     * parametro le faltaba el {@code @Valid}. El daño no era basura en la base
+     * —{@code Appointment.cancel} revalida y la columna es {@code length = 300}—
+     * sino <b>la forma del error</b>: un motivo pasado de largo salia como
+     * excepcion de dominio, con otro {@code errorCode} y otra forma, en vez de como
+     * error de campo sobre {@code reason}, que es lo que el contrato promete y lo
+     * unico que el front sabe pintar bajo el textarea.
+     *
+     * <p>
+     * Por eso el caso del motivo largo no se conforma con el 400: afirma tambien
+     * que el caso de uso <b>no se invoca</b>. Esa segunda mitad es la que prueba
+     * que quien corta es la capa web y no el dominio un piso mas abajo, que es
+     * exactamente lo que distinguia el antes del despues.
+     */
+    @Nested
+    @DisplayName("PATCH /appointments/{id}/cancel")
+    class Cancelar {
+
         @Test
-        @DisplayName("cancel con motivo lo pasa al command")
+        @DisplayName("con motivo lo pasa al command")
         void cancel_con_motivo_lo_pasa_al_command() throws Exception {
             when(cancelUseCase.execute(any())).thenReturn(cita());
 
@@ -686,7 +724,7 @@ class AppointmentControllerTest {
         }
 
         @Test
-        @DisplayName("cancel sin cuerpo es valido y el motivo viaja como null")
+        @DisplayName("sin cuerpo es valido y el motivo viaja como null")
         void cancel_sin_cuerpo_es_valido() throws Exception {
             when(cancelUseCase.execute(any())).thenReturn(cita());
 
@@ -694,6 +732,46 @@ class AppointmentControllerTest {
 
             verify(cancelUseCase)
                     .execute(new CancelAppointmentCommand(APPOINTMENT_ID, null, COMPANY_ID));
+        }
+
+        @Test
+        @DisplayName("con el motivo explicitamente nulo es valido: @Size no aplica a null")
+        void cancel_con_motivo_nulo_explicito_es_valido() throws Exception {
+            when(cancelUseCase.execute(any())).thenReturn(cita());
+
+            mockMvc.perform(patch("/appointments/55/cancel").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"reason":null}
+                            """)).andExpect(status().isOk());
+
+            verify(cancelUseCase)
+                    .execute(new CancelAppointmentCommand(APPOINTMENT_ID, null, COMPANY_ID));
+        }
+
+        @Test
+        @DisplayName("un motivo de exactamente 300 caracteres se acepta: el limite es inclusivo")
+        void motivo_en_el_limite_se_acepta() throws Exception {
+            when(cancelUseCase.execute(any())).thenReturn(cita());
+
+            mockMvc.perform(patch("/appointments/55/cancel").contentType(MediaType.APPLICATION_JSON)
+                    .content(cancelarJson(MOTIVO_EN_EL_LIMITE))).andExpect(status().isOk());
+
+            verify(cancelUseCase).execute(
+                    new CancelAppointmentCommand(APPOINTMENT_ID, MOTIVO_EN_EL_LIMITE, COMPANY_ID));
+        }
+
+        @Test
+        @DisplayName("un motivo de 350 caracteres responde 400 con error de campo sobre reason y no llega al caso de uso")
+        void motivo_pasado_de_largo_responde_400_con_error_de_campo() throws Exception {
+            mockMvc.perform(patch("/appointments/55/cancel").contentType(MediaType.APPLICATION_JSON)
+                    .content(cancelarJson(MOTIVO_PASADO_DE_LARGO)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                    .andExpect(jsonPath("$.errors[0].field").value("reason"));
+
+            // La mitad que distingue el arreglo: sin @Valid la peticion llegaba al
+            // dominio y el 400 lo producia Appointment.cancel, con otra forma.
+            verifyNoInteractions(cancelUseCase);
         }
     }
 

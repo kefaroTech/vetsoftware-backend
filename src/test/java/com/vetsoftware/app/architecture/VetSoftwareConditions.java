@@ -1,11 +1,13 @@
 package com.vetsoftware.app.architecture;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaPackage;
+import com.tngtech.archunit.core.domain.JavaParameter;
 import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.lang.ArchCondition;
@@ -16,6 +18,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import jakarta.validation.Constraint;
+import jakarta.validation.Valid;
 import java.lang.reflect.Parameter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -42,6 +46,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * Condiciones de arquitectura propias del proyecto, las que no se expresan con
@@ -1520,6 +1526,150 @@ final class VetSoftwareConditions {
         steps.add(finalCall.getTargetOwner().getSimpleName() + "." + finalCall.getTarget().getName()
                 + "()");
         return steps;
+    }
+
+    // ── #135: el @Valid que falta delante del cuerpo ─────────────────────────
+
+    /** Paquete de las restricciones estandar de Bean Validation. */
+    private static final String PAQUETE_DE_RESTRICCIONES = "jakarta.validation.constraints";
+
+    /**
+     * Exige {@code @Valid} en todo {@code @RequestBody} cuyo tipo declare alguna
+     * restricción de Bean Validation.
+     *
+     * <p>
+     * Sin {@code @Valid} delante, el binder de Spring <b>no dispara el
+     * validador</b>: la restricción está escrita y no se evalúa nunca. No falla
+     * nada al compilar, la anotación se lee perfecta en una revisión y el contrato
+     * que genera springdoc sigue anunciando el {@code maxLength} — porque springdoc
+     * lo deriva del {@code @Size}, con {@code @Valid} o sin él. Es decir: las tres
+     * señales que un humano mira dicen que la validación existe.
+     *
+     * <p>
+     * El caso que la motivó (#135) es
+     * {@code CancelAppointmentRequest(@Size(max = 300) String reason)}, y enseña
+     * bien por qué el daño no se ve: el dominio vuelve a medir la longitud en
+     * {@code Appointment}, así que a la base no entra basura. Lo que se rompe es la
+     * <b>forma del error</b> — en vez del error de campo que el front sabe pintar
+     * junto al textarea sale una excepción de dominio, con otro {@code errorCode} y
+     * otra forma, y quien cancela la cita lee un mensaje genérico que no le dice
+     * qué corregir. Que era omisión y no decisión lo demuestra el endpoint de la
+     * línea de arriba, {@code changeStatus}, que sí lo llevaba.
+     *
+     * <p>
+     * <b>El predicado mira el tipo, nunca el nombre.</b> Un {@code XxxRequest} sin
+     * una sola restricción no tiene nada que validar y queda fuera a propósito: de
+     * los tres {@code @RequestBody} sin {@code @Valid} que había al escribirla, dos
+     * son legítimos —el {@code String} crudo del webhook de la DIAN y el
+     * {@code RefreshTokenRequest}, que dejó de exigir su campo por escrito— y la
+     * regla no los toca. Por eso nace dura y en cero, sin {@code freeze(...)}.
+     *
+     * <p>
+     * <b>Acepta {@code @Validated} además de {@code @Valid}</b> porque Spring
+     * acepta las dos: {@code RequestResponseBodyMethodProcessor} delega en
+     * {@code ValidationAnnotationUtils}, que reconoce cualquier anotación cuyo
+     * nombre empiece por «Valid».
+     *
+     * <p>
+     * <b>Y baja a los tipos anidados</b> —los campos del cuerpo y los argumentos
+     * genéricos de sus colecciones, que es donde vive el tipo interesante de una
+     * {@code List<LineaRequest>}—, porque un {@code @NotBlank} en una línea de
+     * detalle tampoco se evalúa si el cuerpo que la transporta no lleva
+     * {@code @Valid}. El recorrido se acota con {@link #MAX_DEPTH} y con el
+     * conjunto de visitados: un DTO que se referencia a sí mismo no lo cuelga.
+     */
+    static ArchCondition<JavaMethod> validarElCuerpoQueDeclaraRestricciones() {
+        return new ArchCondition<>("llevar @Valid en el @RequestBody que declara restricciones") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                for (JavaParameter parametro : method.getParameters()) {
+                    if (!parametro.isAnnotatedWith(RequestBody.class)
+                            || disparaLaValidacion(parametro)) {
+                        continue;
+                    }
+                    primeraRestriccion(parametro.getRawType(), new HashSet<>(), 0).ifPresent(
+                            restriccion -> events.add(SimpleConditionEvent.violated(method,
+                                    method.getFullName() + " recibe un @RequestBody sin @Valid que "
+                                            + restriccion + ": el binder no dispara el validador,"
+                                            + " asi que esa restriccion no se evalua nunca")));
+                }
+            }
+        };
+    }
+
+    /** {@code true} si el parametro lleva la anotacion que dispara el validador. */
+    private static boolean disparaLaValidacion(JavaParameter parametro) {
+        return parametro.isAnnotatedWith(Valid.class) || parametro.isAnnotatedWith(Validated.class);
+    }
+
+    /**
+     * La primera restricción que declara el tipo y dónde vive, o vacío si no
+     * declara ninguna. Mira los campos y los accesores —en un {@code record}, el
+     * compilador propaga la anotación del componente a los dos—, y después baja a
+     * los tipos anidados del proyecto.
+     */
+    private static Optional<String> primeraRestriccion(JavaClass tipo, Set<String> visitados,
+            int profundidad) {
+        if (profundidad > MAX_DEPTH || !isOwnCode(tipo) || !visitados.add(tipo.getFullName())) {
+            return Optional.empty();
+        }
+        for (JavaField campo : tipo.getAllFields()) {
+            Optional<String> restriccion = nombreDeRestriccion(campo.getAnnotations());
+            if (restriccion.isPresent()) {
+                return Optional.of("declara " + restriccion.get() + " en " + tipo.getSimpleName()
+                        + "." + campo.getName());
+            }
+        }
+        for (JavaMethod accesor : tipo.getMethods()) {
+            Optional<String> restriccion = nombreDeRestriccion(accesor.getAnnotations());
+            if (restriccion.isPresent()) {
+                return Optional.of("declara " + restriccion.get() + " en " + tipo.getSimpleName()
+                        + "." + accesor.getName() + "()");
+            }
+        }
+        for (JavaField campo : tipo.getAllFields()) {
+            for (JavaClass anidado : tiposQueTransporta(campo)) {
+                Optional<String> restriccion = primeraRestriccion(anidado, visitados,
+                        profundidad + 1);
+                if (restriccion.isPresent()) {
+                    return restriccion;
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<String> nombreDeRestriccion(
+            Set<? extends JavaAnnotation<?>> anotaciones) {
+        return anotaciones.stream().map(JavaAnnotation::getRawType)
+                .filter(VetSoftwareConditions::esUnaRestriccion)
+                .map(anotacion -> "@" + anotacion.getSimpleName()).findFirst();
+    }
+
+    /**
+     * Restricción estándar o propia. Lo segundo hoy no existe en el repositorio,
+     * pero la comprobación por la meta-anotación {@code @Constraint} es lo que
+     * evita que la regla se quede corta el día que alguien escriba la primera.
+     */
+    private static boolean esUnaRestriccion(JavaClass anotacion) {
+        return anotacion.getPackageName().equals(PAQUETE_DE_RESTRICCIONES)
+                || anotacion.isAnnotatedWith(Constraint.class)
+                || anotacion.isMetaAnnotatedWith(Constraint.class);
+    }
+
+    /**
+     * Los tipos que un campo transporta: el suyo y los argumentos genéricos que
+     * declare. Sin lo segundo, una {@code List<LineaRequest>} se quedaría en
+     * {@code List} y la línea de detalle no se miraría jamás.
+     */
+    private static List<JavaClass> tiposQueTransporta(JavaField campo) {
+        List<JavaClass> tipos = new ArrayList<>();
+        tipos.add(campo.getRawType());
+        if (campo.getType() instanceof JavaParameterizedType parametrizado) {
+            parametrizado.getActualTypeArguments().stream().map(JavaType::toErasure)
+                    .forEach(tipos::add);
+        }
+        return tipos;
     }
 
     // ── BE-10: cada adaptador con su rodaja ──────────────────────────────────

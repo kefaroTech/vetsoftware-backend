@@ -9,6 +9,8 @@ import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.web.GlobalExceptionHandler;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.tracing.Tracer;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -87,6 +89,19 @@ public class WebMvcSliceConfig {
     @Bean
     Tracer tracer() {
         return mock(Tracer.class);
+    }
+
+    /**
+     * Registro de metricas real y en memoria, no un doble: {@code AuthFilter}
+     * construye su contador en el constructor
+     * ({@code Counter.builder(...).withRegistry(...)}), asi que un mock devolveria
+     * null donde el filtro espera un registro y la rodaja fallaria al arrancar.
+     * {@code SimpleMeterRegistry} no exporta a ningun sitio y no tiene estado
+     * compartido entre contextos.
+     */
+    @Bean
+    MeterRegistry meterRegistry() {
+        return new SimpleMeterRegistry();
     }
 
     @SuppressWarnings("unchecked")
