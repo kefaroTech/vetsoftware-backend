@@ -34,3 +34,59 @@ condition = "AND"
 regexTarget = "line"
 paths = ['''^src/main/resources/application-dev\.yml$''']
 regexes = ['''(?:Site key para el front|RECAPTCHA_SECRET):?\s*\$?\{?6LeIxAcT''']
+
+# ---------------------------------------------------------------------------
+# Reglas propias. Origen: INF-34 / kefaroTech/vetsoftware-infrastructure#123.
+#
+# Las reglas por defecto de Gitleaks NO detectaron `cronos2026*`: no es un token
+# de proveedor conocido y su entropia es la de una palabra con un anyo, muy por
+# debajo del umbral de generic-api-key. Estuvo versionado en
+# src/main/resources/application-local.yml desde el inicio del repositorio.
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id          = "vetsoftware-legacy-local-password"
+description = "Contrasena local historica de VetSoftware (familia cronos20XX)"
+regex       = '''(?i)cronos[-_]?20\d{2}[*!@#$%&]?'''
+tags        = ["password", "legacy", "INF-34"]
+
+# La regla que aporta valor a futuro: prohibe el PATRON, no una cadena concreta.
+# `${VAR:valor}` es exactamente como se colaron DB_PASSWORD y, en su dia, JWT_SECRET:
+# el override por entorno da la sensacion de estar bien, pero el default embebido es
+# una credencial funcional que conoce cualquiera con acceso de lectura.
+#
+# Cubre YAML (`clave: ${VAR:x}`) y .properties/.env (`clave=${VAR:x}`).
+# El primer caracter tras los dos puntos no puede ser `?`: `${VAR:?mensaje}` es la
+# forma fail-closed de docker compose y es justo lo que queremos fomentar.
+[[rules]]
+id          = "spring-inline-secret-default"
+description = "Valor por defecto embebido en un placeholder de Spring para una propiedad sensible"
+regex       = '''(?i)(?:password|secret|token|api[-_]?key)["']?\s*[:=]\s*["']?\$\{[A-Za-z0-9_]+:[^}\s?][^}\s]{7,}\}'''
+tags        = ["spring", "default-secret", "INF-34"]
+
+# Plantillas y documentacion. Sin esto el propio application-local.yml.example
+# -cuyos marcadores fail-closed usan a proposito el patron ${VAR:valor}- dispararia
+# la regla en cada commit, y el hallazgo citado en docs/AUDITORIA_BACKEND_2026-05-31.md
+# tambien. El alcance se limita a estas dos reglas: las reglas por defecto de Gitleaks
+# siguen analizando los .example y los docs.
+[[allowlists]]
+description = "Plantillas .example y documentacion: marcadores y citas, no credenciales vivas."
+targetRules = ["spring-inline-secret-default", "vetsoftware-legacy-local-password"]
+paths = [
+  '''\.example$''',
+  '''(^|/)docs/''',
+]
+
+# Excepcion acotada y deliberada, NO un descuido: docker-compose.yml documenta en su
+# propio comentario por que las credenciales del MySQL local conservan un default
+# -MySQL solo las aplica al inicializar el volumen, asi que exigirlas sobre un volumen
+# existente rompe el arranque sin cambiar la contrasena real; el control efectivo es
+# que el puerto no salga de 127.0.0.1-.
+# Esta excepcion debe RETIRARSE cuando se rote la credencial (paso 4 de INF-34).
+[[allowlists]]
+description = "Default deliberado del MySQL de desarrollo en docker-compose (ver comentario en docker-compose.yml)."
+targetRules = ["vetsoftware-legacy-local-password", "spring-inline-secret-default"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^docker-compose(\.override)?\.yml$''']
+regexes = ['''(?:MYSQL_ROOT_PASSWORD|MYSQL_PASSWORD|DB_PASSWORD):\s*\$\{LOCAL_[A-Z_]+:-''']

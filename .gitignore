@@ -28,9 +28,17 @@ target/
 .env.*
 !.env.example
 !*.env.example
+# Estas tres reglas existen desde hace tiempo, pero .gitignore NO tiene ningun efecto
+# sobre un fichero YA rastreado: application-local.yml siguio versionado con la
+# contrasena de MySQL en claro hasta agosto de 2026 (INF-34) pese a estar listado aqui.
+# El fichero real se crea copiando src/main/resources/application-local.yml.example.
 application-local.properties
 application-local.yml
 application-local.yaml
+# Las plantillas SI se versionan: no llevan credenciales, solo marcadores fail-closed.
+!application-local.properties.example
+!application-local.yml.example
+!application-local.yaml.example
 
 # Private keys, credential stores and secret files
 *.pem
