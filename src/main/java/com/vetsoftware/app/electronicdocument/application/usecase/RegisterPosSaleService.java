@@ -98,10 +98,16 @@ public class RegisterPosSaleService implements RegisterPosSaleUseCase {
             ElectronicDocument document = saleRegistrar.registerPending(command);
             // Tiempo 2 — sin transaccion abierta: numeracion + HTTP al proveedor.
             ElectronicDocument emitted = emitter.emit(document);
-            // Tiempo 3 — sin transaccion: PDF, QR y S3.
-            deliverService.deliverIfValidated(emitted);
+            // La venta se completo aqui: al emitirse, no al entregarse el PDF. Publicar la
+            // metrica ANTES del tiempo 3 evita que un fallo de QR, render, S3 o del
+            // guardado
+            // del resultado DIAN salte al catch de abajo y contabilice como ERROR una venta
+            // ya facturada y validada en la DIAN. La entrega tiene sus propios contadores
+            // (document.delivery), que son los que deben registrar ese fallo.
             salesMetrics.completed(Channel.POS, emitted.getDocumentType(),
                     emitted.getPayableAmount(), emitted.getLines().size());
+            // Tiempo 3 — sin transaccion: PDF, QR y S3.
+            deliverService.deliverIfValidated(emitted);
             return ElectronicDocumentDto.from(emitted);
         } catch (IllegalArgumentException exception) {
             salesMetrics.failed(Channel.POS, command.documentType(), Result.REJECTED);

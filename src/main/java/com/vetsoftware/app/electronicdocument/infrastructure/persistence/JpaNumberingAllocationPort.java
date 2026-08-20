@@ -2,6 +2,8 @@ package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.NumberingAllocationPort;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.numberingresolution.infrastructure.persistence.NumberingResolutionJpaEntity;
 import com.vetsoftware.app.numberingresolution.infrastructure.persistence.NumberingResolutionJpaRepository;
 import java.time.LocalDate;
@@ -15,6 +17,20 @@ import org.springframework.stereotype.Component;
  * transacción de emisión (el caso de uso es {@code @Transactional}), así que el
  * lock se mantiene hasta el commit. Único cruce permitido de vertical slicing:
  * usa la persistencia de numberingresolution.
+ *
+ * <p>
+ * <b>Sus dos fallos tienen tipo propio</b> (#125):
+ * {@link NumberingResolutionNotEffectiveException} y
+ * {@link NumberingResolutionRangeExhaustedException}. Antes eran
+ * {@code IllegalStateException} desnudas y salían por HTTP con el mismo
+ * {@code INVALID_STATE} que otros veinte guardas de estado del backend, así que
+ * ni el front podía decir qué hacer ni el operador contarlos por separado.
+ * Distinguirlos importa porque la acción es distinta: uno se corrige ampliando
+ * la vigencia y el otro pidiendo rango nuevo a la DIAN.
+ *
+ * <p>
+ * La ausencia de resolución activa <b>no</b> es un fallo de este adaptador: se
+ * devuelve como {@code Optional.empty()} y la decide el caso de uso.
  */
 @Component
 public class JpaNumberingAllocationPort implements NumberingAllocationPort {
@@ -34,13 +50,13 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
 
         LocalDate today = LocalDate.now();
         if (today.isBefore(r.getValidFrom()) || today.isAfter(r.getValidTo())) {
-            throw new IllegalStateException("La resolución de numeración " + r.getResolutionNumber()
-                    + " no está vigente (" + r.getValidFrom() + " a " + r.getValidTo() + ").");
+            throw new NumberingResolutionNotEffectiveException(r.getResolutionNumber(),
+                    r.getValidFrom(), r.getValidTo());
         }
         Long consecutive = r.getCurrentNumber();
         if (consecutive == null || consecutive > r.getRangeTo()) {
-            throw new IllegalStateException("La resolución de numeración " + r.getResolutionNumber()
-                    + " agotó su rango (hasta " + r.getRangeTo() + ").");
+            throw new NumberingResolutionRangeExhaustedException(r.getResolutionNumber(),
+                    r.getRangeTo());
         }
 
         r.setCurrentNumber(consecutive + 1);
@@ -59,8 +75,8 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
 
         LocalDate today = LocalDate.now();
         if (today.isBefore(r.getValidFrom()) || today.isAfter(r.getValidTo())) {
-            throw new IllegalStateException("La resolución de numeración " + r.getResolutionNumber()
-                    + " no está vigente (" + r.getValidFrom() + " a " + r.getValidTo() + ").");
+            throw new NumberingResolutionNotEffectiveException(r.getResolutionNumber(),
+                    r.getValidFrom(), r.getValidTo());
         }
         // Sin consumir consecutivo: el proveedor (POS auto-increment) lo asigna. Solo
         // resolución +

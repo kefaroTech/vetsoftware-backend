@@ -3,10 +3,12 @@ package com.vetsoftware.app.electronicdocument.application.usecase;
 import static com.vetsoftware.app.electronicdocument.testsupport.ElectronicDocumentMother.facturaPendienteConId;
 import static com.vetsoftware.app.electronicdocument.testsupport.ElectronicDocumentMother.facturaValidada;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -173,6 +175,88 @@ class DeliverElectronicDocumentServiceTest {
             ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
             verify(fileStorage).store(keyCaptor.capture(), any(byte[].class), anyString());
             assertThat(keyCaptor.getValue()).isEqualTo("invoices/9/66/66.pdf");
+        }
+    }
+
+    /**
+     * Issue #203. Entre el {@code store} en S3 y el {@code updateDianResult} hay
+     * una ventana en la que el PDF existe y ninguna fila lo apunta: si la escritura
+     * falla, el objeto queda huerfano en el bucket, invisible para la retencion, el
+     * borrado y la reexpedicion, que parten todos de la fila.
+     *
+     * <p>
+     * El {@code catch} que compensa no altera el camino feliz, asi que sin estos
+     * casos se puede borrar entero y la suite sigue verde. Eso es exactamente lo
+     * que estos tres impiden.
+     */
+    @Nested
+    @DisplayName("compensacion del PDF ya subido a S3")
+    class Compensacion {
+
+        private static final String CLAVE = "invoices/9/70/SETP990.pdf";
+
+        private ElectronicDocument stubHastaLaSubida(Long id) {
+            ElectronicDocument validada = facturaValidada(id);
+            when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
+            when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            return validada;
+        }
+
+        @Test
+        @DisplayName("un fallo al grabar la referencia borra del bucket el PDF recien subido")
+        void un_fallo_al_grabar_la_referencia_borra_el_pdf() {
+            ElectronicDocument validada = stubHastaLaSubida(70L);
+            when(repository.updateDianResult(validada)).thenThrow(
+                    new IllegalStateException("OptimisticLock contra el job de contingencia"));
+
+            assertThatThrownBy(() -> service.deliverIfValidated(validada))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("OptimisticLock");
+
+            ArgumentCaptor<String> subida = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> borrada = ArgumentCaptor.forClass(String.class);
+            verify(fileStorage).store(subida.capture(), any(byte[].class), anyString());
+            verify(fileStorage).delete(borrada.capture());
+            // Lo que importa no es que se borre algo, sino que se borre EXACTAMENTE el
+            // objeto que se acaba de subir: con otra clave el huerfano sigue ahi y ademas
+            // se destruye el PDF de otra factura.
+            assertThat(borrada.getValue()).isEqualTo(subida.getValue()).isEqualTo(CLAVE);
+            // El documento no llego a entregarse: ni correo ni contador de entregado.
+            verifyNoInteractions(mail, deliveryMetrics);
+        }
+
+        @Test
+        @DisplayName("se propaga la excepcion original, no la del borrado, con la secundaria como suppressed")
+        void se_propaga_la_original_con_la_del_borrado_como_suppressed() {
+            ElectronicDocument validada = stubHastaLaSubida(70L);
+            RuntimeException original = new IllegalStateException(
+                    "no se pudo grabar la referencia del PDF");
+            when(repository.updateDianResult(validada)).thenThrow(original);
+            doThrow(new IllegalStateException("S3 rechazo el DELETE")).when(fileStorage)
+                    .delete(anyString());
+
+            // La original es la que explica por que fallo la entrega; taparla con el
+            // fallo del borrado dejaria al operador diagnosticando el sintoma equivocado.
+            assertThatThrownBy(() -> service.deliverIfValidated(validada)).isSameAs(original)
+                    .hasMessageContaining("no se pudo grabar la referencia");
+
+            assertThat(original.getSuppressed()).hasSize(1);
+            assertThat(original.getSuppressed()[0]).hasMessageContaining("S3 rechazo el DELETE");
+        }
+
+        @Test
+        @DisplayName("con la referencia ya grabada no se borra nada, ni siquiera si el correo falla")
+        void con_la_referencia_grabada_no_se_borra_nada() {
+            ElectronicDocument validada = stubHastaLaSubida(70L);
+            doThrow(new IllegalStateException("SMTP caido")).when(mail).send(anyString(),
+                    anyString(), anyString(), anyString(), anyString(), any(byte[].class));
+
+            service.deliverIfValidated(validada);
+
+            // El correo es posterior a la referencia: el PDF ya esta inventariado y
+            // borrarlo dejaria la fila apuntando a un objeto inexistente.
+            verify(fileStorage, never()).delete(anyString());
+            verify(deliveryMetrics).deliveryFailed();
         }
     }
 }

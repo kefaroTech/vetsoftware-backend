@@ -22,4 +22,9 @@ public class S3InvoiceFileStorage implements InvoiceFileStoragePort {
         s3StorageClient.putObject(key, content, contentType);
         return key;
     }
+
+    @Override
+    public void delete(String key) {
+        s3StorageClient.deleteObject(key);
+    }
 }

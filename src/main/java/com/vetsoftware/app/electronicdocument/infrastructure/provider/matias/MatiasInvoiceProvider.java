@@ -165,6 +165,14 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
      */
     private static final long TOKEN_TTL_SECONDS = 50 * 60L;
 
+    /**
+     * TTL del catálogo de ciudades cacheado. El DIVIPOLA es estable, así que
+     * recargarlo una vez al día basta: el TTL no está para seguir altas de
+     * municipios, sino para que un catálogo cargado a medias no se quede fijo hasta
+     * el reinicio del pod, como pasaba antes.
+     */
+    private static final long CITIES_TTL_SECONDS = 24 * 60 * 60L;
+
     private final RestClient restClient;
     private final TechnicalKeyQueryPort technicalKeyQueryPort;
     private final EmployeeNameQueryPort employeeNameQueryPort;
@@ -172,9 +180,9 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
     private final MatiasPosConfig posConfig;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
     // Cache del catálogo de ciudades por base URL: DANE (city_code 5 díg.) →
-    // city_id interno de
-    // MATIAS.
-    private final Map<String, Map<String, String>> cityCacheByBase = new ConcurrentHashMap<>();
+    // city_id interno de MATIAS. Solo entra aquí una carga CON contenido y con
+    // caducidad; un fallo de carga no se cachea nunca (ver cities()).
+    private final Map<String, CachedCities> cityCacheByBase = new ConcurrentHashMap<>();
 
     public MatiasInvoiceProvider(@Qualifier("dianRestClient") RestClient restClient,
             TechnicalKeyQueryPort technicalKeyQueryPort,
@@ -362,19 +370,56 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
 
     /**
      * Traduce el código DANE del adquiriente al city_id interno de MATIAS (GET
-     * /cities, cacheado). Fallback al default.
+     * /cities, cacheado con caducidad). Fallback al default solo si el catálogo no
+     * trae ese DANE o si no se pudo cargar todavía.
      */
     private String resolveCityId(ProviderConfigSnapshot config, String daneCode) {
         if (daneCode == null || daneCode.isBlank())
             return EX_CITY_ID;
-        Map<String, String> cities = cityCacheByBase.computeIfAbsent(base(config),
-                b -> loadCities(config));
-        return cities.getOrDefault(daneCode, EX_CITY_ID);
+        return cities(config).getOrDefault(daneCode, EX_CITY_ID);
     }
 
     /**
-     * Carga el catálogo de ciudades de MATIAS una vez por base URL: {@code
-     * dataRecords.data[].{city_code,id}}.
+     * Catálogo vigente para la base URL de la config: lo recarga si nunca se cargó
+     * o si el cacheado ya caducó.
+     *
+     * <p>
+     * Deliberadamente NO usa {@code computeIfAbsent}: eso cacheaba también el
+     * fallo. Un mapa vacío cacheado no se reintenta jamás, así que un único error
+     * de red contra {@code GET /cities} dejaba al pod emitiendo TODAS las facturas
+     * siguientes con {@link #EX_CITY_ID} hasta que alguien lo reiniciaba. Aquí solo
+     * se guarda una carga con contenido.
+     *
+     * <p>
+     * Si la recarga falla y había un catálogo caducado, se sigue sirviendo ese: un
+     * dato viejo del adquiriente es mejor en el documento DIAN que el default de la
+     * empresa. Dos hilos pueden cargar a la vez la primera vez; es un GET
+     * idempotente y evita retener el bin del mapa durante una llamada HTTP.
+     */
+    private Map<String, String> cities(ProviderConfigSnapshot config) {
+        String base = base(config);
+        CachedCities cached = cityCacheByBase.get(base);
+        if (cached != null && cached.isFresh())
+            return cached.byDaneCode();
+        Map<String, String> loaded = loadCities(config);
+        if (loaded.isEmpty())
+            return cached != null ? cached.byDaneCode() : Map.of();
+        cityCacheByBase.put(base,
+                new CachedCities(loaded, LocalDateTime.now().plusSeconds(CITIES_TTL_SECONDS)));
+        return loaded;
+    }
+
+    private record CachedCities(Map<String, String> byDaneCode, LocalDateTime expiresAt) {
+        boolean isFresh() {
+            return LocalDateTime.now().isBefore(expiresAt);
+        }
+    }
+
+    /**
+     * Trae el catálogo de ciudades de MATIAS: {@code
+     * dataRecords.data[].{city_code,id}}. Devuelve un mapa vacío si la carga falla,
+     * y quien llama decide qué hacer con él: aquí NO se cachea nada, para que un
+     * fallo puntual no se convierta en permanente. Ver {@link #cities}.
      */
     private Map<String, String> loadCities(ProviderConfigSnapshot config) {
         try {
@@ -396,7 +441,18 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
             }
             return map;
         } catch (RuntimeException e) {
-            return Map.of(); // si el catálogo no carga, todo cae al city_id por defecto
+            // El cuerpo crudo NO se registra, como en el resto de la clase. El
+            // throwable sí: este endpoint devuelve el catálogo público de ciudades
+            // de MATIAS, no el eco del documento, así que su mensaje no arrastra
+            // datos del contribuyente ni del adquiriente. Nunca el token ni las
+            // cabeceras de autorización.
+            log.error(
+                    "MATIAS no devolvió el catálogo de ciudades (GET /cities) en {}. Mientras"
+                            + " no cargue, el city_id del adquiriente cae al valor por defecto"
+                            + " {} en el documento fiscal que se envía a la DIAN. El fallo NO"
+                            + " se cachea: el siguiente documento reintenta la carga.",
+                    base(config), EX_CITY_ID, e);
+            return Map.of();
         }
     }
 
