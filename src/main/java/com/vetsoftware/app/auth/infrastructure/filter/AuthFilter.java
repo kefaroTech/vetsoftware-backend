@@ -12,6 +12,9 @@ import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import jakarta.servlet.FilterChain;
@@ -21,6 +24,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,7 +42,15 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class AuthFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
+
     private static final String SYSTEM_ROLE = "ROLE_SYSTEM";
+
+    /**
+     * Rechazos de token con su clase de excepción. Convive con
+     * {@code vetsoftware.security.tokens.*} de la limpieza de tokens.
+     */
+    static final String TOKEN_REJECTIONS_METRIC = "vetsoftware.security.tokens.rejected";
 
     private final ResolveAuthContextUseCase resolveAuthContextUseCase;
     private final ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase;
@@ -45,17 +58,21 @@ public class AuthFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
     private final AuditLogger auditLogger;
     private final Tracer tracer;
+    private final Meter.MeterProvider<Counter> tokenRejections;
 
     public AuthFilter(ResolveAuthContextUseCase resolveAuthContextUseCase,
             ResolveSystemAuthContextUseCase resolveSystemAuthContextUseCase,
             JwtProvider jwtProvider, ObjectMapper objectMapper, AuditLogger auditLogger,
-            Tracer tracer) {
+            Tracer tracer, MeterRegistry meterRegistry) {
         this.resolveAuthContextUseCase = resolveAuthContextUseCase;
         this.resolveSystemAuthContextUseCase = resolveSystemAuthContextUseCase;
         this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
         this.auditLogger = auditLogger;
         this.tracer = tracer;
+        this.tokenRejections = Counter.builder(TOKEN_REJECTIONS_METRIC)
+                .description("Tokens rechazados al extraer los claims, por clase de excepción")
+                .withRegistry(meterRegistry);
     }
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
@@ -100,6 +117,23 @@ public class AuthFilter extends OncePerRequestFilter {
             writeUnauthorized(request, response, "TOKEN_EXPIRED", "Token expired");
             return;
         } catch (Exception e) {
+            // Sin este rastro, un pico de 401 TOKEN_INVALID es indistinguible entre
+            // «usuarios con tokens caducados» —normal— y «el parser se rompió y todas
+            // las clínicas están fuera a la vez». Tres decisiones deliberadas:
+            //
+            // debug y no warn: cualquiera puede provocar un 401 a voluntad, así que un
+            // nivel más alto es una vía de ruido gratuita. En un incidente se sube el
+            // nivel de este logger y se ve, sin desplegar código nuevo.
+            //
+            // e.toString() y no e.getMessage(): la CLASE de la excepción es justo el
+            // dato que separa las dos causas, y getMessage() la pierde.
+            //
+            // El token no se vuelca jamás: es una credencial viva.
+            log.debug("Token rechazado: {}", e.toString());
+            // El contador hace la diferencia visible y alertable sin leer logs. La
+            // etiqueta es el getSimpleName() de la excepción, un conjunto acotado por
+            // el classpath: ni el mensaje ni la URI, que dispararían la cardinalidad.
+            tokenRejections.withTags("exception.type", e.getClass().getSimpleName()).increment();
             writeUnauthorized(request, response, "TOKEN_INVALID", "Invalid token");
             return;
         }
