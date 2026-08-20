@@ -20,8 +20,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # La puerta. Antes no existia: este workflow arrancaba con el push a develop y se
+  # ponia a construir, mientras `Backend CI` -que es `on: pull_request`- ni siquiera
+  # llegaba a dispararse sobre ese evento. No era una carrera que la publicacion
+  # ganaba: es que sobre el push no corria nadie. La unica verificacion vivia en el
+  # pull request anterior y nada la ataba al commit que se publicaba, asi que un CI
+  # en rojo -o directamente en startup_failure, que fue lo que paso con el PR #175- no
+  # impedia que la imagen llegara a ECR. Y el `Dockerfile` compila con
+  # `-DskipTests`, de modo que el build tampoco iba a encontrar el fallo.
+  #
+  # Se verifica invocando `ci.yml` en vez de copiar aqui sus pasos: si "verificado"
+  # tuviera dos definiciones, la de este fichero se quedaria atras el primer dia que
+  # alguien anada un gate al CI y nadie se enteraria hasta que la imagen rota
+  # estuviera desplegada.
+  verify:
+    name: Verify before publishing
+    if: github.ref == 'refs/heads/develop' && github.actor != 'github-actions[bot]'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   publish:
     name: Build and publish dev image
+    # `needs` es lo que sustituye al `if` sobre una conclusion: un job dependiente no
+    # arranca si el que le precede falla o se cancela. No hay forma de escribir mal la
+    # condicion ni de publicar con el CI en rojo.
+    needs: verify
     # El guard de actor rompe cualquier realimentacion: el commit de version no
     # vuelve a entrar aca. Hoy es redundante -un push hecho con GITHUB_TOKEN no
     # dispara workflows- y deja de serlo el dia que se cambie a una GitHub App.
@@ -36,10 +60,16 @@ jobs:
       ECR_REPOSITORY: vetsoftware-dev-backend
 
     steps:
-      - name: Check out develop
+      - name: Check out the verified commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: develop
+          # El commit que acaba de verificar el job `verify`, no `develop` a secas.
+          # Es el mismo detalle que obligaria a usar `head_sha` con `workflow_run`:
+          # entre la verificacion y este checkout puede haber entrado otro merge, y
+          # construir el tip de la rama seria publicar un arbol que nadie verifico.
+          # En un push `github.sha` es el commit empujado; en un workflow_dispatch,
+          # el tip de la referencia elegida.
+          ref: ${{ github.sha }}
           # El bump necesita historia completa para leer los commits del merge y
           # credenciales persistidas para empujar el commit de version.
           fetch-depth: 0
