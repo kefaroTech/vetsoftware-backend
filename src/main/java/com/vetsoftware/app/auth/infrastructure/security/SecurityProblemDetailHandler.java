@@ -6,6 +6,7 @@ import io.micrometer.tracing.Tracer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -41,13 +42,26 @@ public class SecurityProblemDetailHandler implements AuthenticationEntryPoint, A
         this.tracer = tracer;
     }
 
-    /** Request sin principal sobre una ruta que exige autenticación. */
+    /**
+     * Request sin principal sobre una ruta que exige autenticación.
+     *
+     * <p>
+     * A la auditoría va el {@code code} en snake_case y no el {@code detail}: el
+     * campo {@code reason} del canal AUDIT es vocabulario cerrado
+     * —{@code token_missing}, {@code token_expired}, {@code token_invalid},
+     * {@code session_replaced}—, mismo criterio que {@code AuthFilter}. Antes se
+     * auditaba la prosa {@code "Authentication required"} mientras el front recibía
+     * {@code TOKEN_MISSING}: dos nombres para el mismo hecho, y el filtro de
+     * Grafana que agrupara por {@code reason} dejaba fuera este camino sin dar
+     * ningún error.
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException authenticationException) throws IOException {
-        String detail = "Authentication required";
-        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), detail);
-        write(response, HttpStatus.UNAUTHORIZED, "TOKEN_MISSING", detail);
+        String code = "TOKEN_MISSING";
+        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(),
+                code.toLowerCase(Locale.ROOT));
+        write(response, HttpStatus.UNAUTHORIZED, code, "Authentication required");
     }
 
     /** Request autenticada pero sin autorización sobre el recurso. */

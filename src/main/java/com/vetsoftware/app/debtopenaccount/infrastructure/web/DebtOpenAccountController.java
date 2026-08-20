@@ -2,6 +2,7 @@ package com.vetsoftware.app.debtopenaccount.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
@@ -17,6 +18,7 @@ import com.vetsoftware.app.debtopenaccount.application.port.in.ReactivateDebtOpe
 import com.vetsoftware.app.debtopenaccount.application.port.in.UpdateDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.VoidDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.CreateDebtOpenAccountRequest;
+import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.DeleteDebtOpenAccountRequest;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.UpdateDebtOpenAccountRequest;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.request.VoidDebtOpenAccountRequest;
 import com.vetsoftware.app.debtopenaccount.infrastructure.web.response.DebtOpenAccountResponse;
@@ -93,10 +95,17 @@ public class DebtOpenAccountController {
                 authz.currentCompanyId(), request.expectedVersion())));
     }
 
+    /**
+     * Da de baja un abono. Lleva cuerpo con motivo obligatorio porque la baja mueve
+     * dinero: sube el saldo pendiente de la cuenta y compensa la caja del actor,
+     * igual que la anulacion. El empleado y la empresa los sella el backend.
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyId());
+    public void delete(@PathVariable Long id,
+            @Valid @RequestBody DeleteDebtOpenAccountRequest request) {
+        deleteUseCase.execute(new DeleteDebtOpenAccountCommand(id, authz.currentCompanyId(),
+                authz.currentEmployeeId(), request.reason(), request.expectedVersion()));
     }
 
     @PatchMapping("/{id}/enable")

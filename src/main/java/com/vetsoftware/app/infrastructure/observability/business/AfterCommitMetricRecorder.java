@@ -42,7 +42,10 @@ public class AfterCommitMetricRecorder {
         try {
             action.run();
         } catch (RuntimeException exception) {
-            log.warn("No se pudo registrar una métrica de negocio: {}", exception.getMessage());
+            // El throwable como último argumento y no getMessage(): una NPE trae
+            // mensaje null y getMessage() se lleva por delante la cadena de causas
+            // y el stacktrace, que es lo único que identifica al llamador.
+            log.warn("No se pudo registrar una métrica de negocio", exception);
         }
     }
 }

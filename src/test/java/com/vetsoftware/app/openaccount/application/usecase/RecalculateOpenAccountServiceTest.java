@@ -77,5 +77,28 @@ class RecalculateOpenAccountServiceTest {
             verifyNoInteractions(totalsPort);
             verify(repository, never()).save(any());
         }
+
+        @Test
+        @DisplayName("unos totales con mas cobrado que facturado no se persisten")
+        void unos_totales_con_mas_cobrado_que_facturado_no_se_persisten() {
+            // El recalculo es la ruta por la que un saldo negativo llegaria a la fila
+            // aunque el caso de uso que lo dispara no tenga guard de sobrepago
+            // —reactivar un abono deshabilitado, por ejemplo—. La entidad lo rechaza y
+            // aqui se comprueba lo que importa: que no se escribe la cuenta corrupta.
+            OpenAccount cuenta = OpenAccountMother.abierta();
+            when(repository.findByIdForUpdateAndCompanyId(OpenAccountMother.OPEN_ACCOUNT_ID,
+                    OpenAccountMother.COMPANY_ID)).thenReturn(Optional.of(cuenta));
+            when(totalsPort.totalCharges(OpenAccountMother.OPEN_ACCOUNT_ID))
+                    .thenReturn(new BigDecimal("1000.00"));
+            when(totalsPort.totalPayments(OpenAccountMother.OPEN_ACCOUNT_ID))
+                    .thenReturn(new BigDecimal("1500.00"));
+
+            assertThatThrownBy(() -> service.recalculate(OpenAccountMother.COMPANY_ID,
+                    OpenAccountMother.OPEN_ACCOUNT_ID)).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("no puede superar el total facturado");
+
+            verify(repository, never()).save(any());
+            assertThat(cuenta.getOutstandingAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        }
     }
 }

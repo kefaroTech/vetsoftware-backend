@@ -201,16 +201,30 @@ class AuditLoggerTest {
                     .isEqualTo("access denied DELETE /api/v1/animals/1");
         }
 
+        /**
+         * El motivo de ejemplo es uno de los cuatro del vocabulario cerrado real
+         * —{@code token_missing}, {@code token_expired}, {@code token_invalid},
+         * {@code session_replaced}— y no un literal inventado: quien lea este test como
+         * documentación del campo {@code reason} tiene que ver el valor que sale en
+         * producción.
+         *
+         * <p>
+         * El nivel es <b>INFO y no WARN</b>: un 401 por token ausente o caducado es el
+         * desenlace de diseño de una API con sesiones —cualquiera puede provocarlo a
+         * voluntad—, y emitirlo a WARN enterraba bajo su volumen los eventos del canal
+         * que sí piden revisión humana ({@code access_denied}, {@code rate_limited},
+         * {@code refresh_token_reuse_detected}).
+         */
         @Test
-        @DisplayName("unauthenticated emite el motivo y deja metodo y ruta en el mensaje")
+        @DisplayName("unauthenticated emite el motivo a nivel INFO y deja metodo y ruta en el mensaje")
         void unauthenticated_emite_motivo() {
-            logger.unauthenticated("GET", "/api/v1/animals", "missing_token");
+            logger.unauthenticated("GET", "/api/v1/animals", "token_missing");
 
-            assertThat(emitted().getLevel()).isEqualTo(Level.WARN);
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
             assertThat(fields()).isEqualTo(Map.of("event", "unauthenticated", "outcome", "DENIED",
-                    "reason", "missing_token"));
+                    "reason", "token_missing"));
             assertThat(emitted().getFormattedMessage())
-                    .isEqualTo("unauthenticated GET /api/v1/animals reason=missing_token");
+                    .isEqualTo("unauthenticated GET /api/v1/animals reason=token_missing");
         }
     }
 

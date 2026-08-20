@@ -83,9 +83,25 @@ public class PendingReconciliationJob {
             attempted++;
             try {
                 transmitter.reconcile(document);
+            } catch (IllegalStateException e) {
+                failures++;
+                // Población DETERMINISTA, separada a proposito de la transitoria: es la
+                // familia de fallos que la pasada siguiente volveria a producir identica.
+                // La lanza DocumentTransmitter cuando la empresa no tiene proveedor DIAN
+                // configurado o no hay adaptador para el proveedor configurado, y el
+                // adaptador MATIAS cuando el login no devuelve token. Ninguna se arregla
+                // reintentando: fallan el 100% de los documentos de la empresa hasta que
+                // alguien cambia configuracion, asi que es ERROR y no WARN. Mezclarla con
+                // el WARN de abajo esconde un fallo total detras del ruido del aislado.
+                log.error("Reconciliación DIAN imposible para el documento {}: configuración o"
+                        + " estado inválidos. El reintento automático de la próxima"
+                        + " pasada NO lo resuelve; requiere intervención.", documentId, e);
             } catch (Exception e) {
                 failures++;
-                log.warn("Reconciliación falló para documento {}: {}", documentId, e.getMessage());
+                // Población TRANSITORIA: la vuelve a intentar la pasada siguiente.
+                // La excepción va como último argumento, no e.getMessage(): una NPE
+                // trae null y el mensaje suelto tira la cadena de causas y la traza.
+                log.warn("Reconciliación falló para documento {}", documentId, e);
             }
         }
         Outcome outcome = Outcome.from(attempted, failures);

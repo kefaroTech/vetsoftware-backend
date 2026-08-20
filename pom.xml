@@ -175,11 +175,15 @@
             <artifactId>s3</artifactId>
         </dependency>
 
-        <!-- Envío de correo (representación gráfica factura electrónica F4) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
+        <!-- #111. Aqui vivia spring-boot-starter-mail, "envio de correo (F4)". Nunca
+             se uso: cero referencias a org.springframework.mail, jakarta.mail,
+             JavaMailSender o MimeMessage, y ni una propiedad spring.mail.*. Todo el
+             correo sale por HTTP contra Resend. Lo que arrastraba al jar
+             -spring-boot-mail, jakarta.mail-api, angus-mail, angus-activation,
+             jakarta.activation-api- entraba tambien al SBOM de CycloneDX y lo
+             escaneaba Trivy, asi que cada CVE de SMTP habia que triarlo sobre codigo
+             que jamas se ejecuta. La ejecucion analyze-only de mas abajo es lo que
+             impide que vuelva a pasar. -->
 
         <!-- Generación de códigos QR (CUFE/CUDE + URL DIAN en el PDF) -->
         <dependency>
@@ -313,6 +317,48 @@
                             <goal>properties</goal>
                         </goals>
                     </execution>
+                    <!-- #111. La causa raiz de que spring-boot-starter-mail viviera meses
+                         en el jar y en el SBOM sin una sola linea de codigo detras: este
+                         plugin estaba declarado SOLO con el goal `properties` (que existe
+                         para exponer ${org.mockito:mockito-core:jar} al argLine de
+                         surefire), y ningun perfil corria `analyze` ni `analyze-only`. Es
+                         decir, nada comparaba nunca lo declarado arriba con lo que el
+                         bytecode usa de verdad.
+
+                         REPORTA, NO ROMPE — y es deliberado, escrito aqui para que se vea.
+                         En un proyecto Spring Boot este analisis nace con decenas de
+                         hallazgos que NO son defectos: los ~18 starters son POM agregadores
+                         sin una sola clase propia, asi que el bytecode nunca los referencia
+                         y salen todos como "Unused declared"; y al reves, cada import de
+                         spring-web, hibernate-core, jackson o spring-security-web sale como
+                         "Used undeclared" porque llega transitivamente por su starter.
+                         Arrancar con failOnWarning=true deja el build rojo por ruido, y un
+                         gate que nadie puede poner en verde acaba desactivado — es
+                         exactamente el error que ya se cometio con jacoco.line.minimum en
+                         0.90 y que el comentario de esa propiedad documenta.
+
+                         COMO SE CIERRA (issue abierto): correr `mvn verify` una vez, leer
+                         la lista real, enumerar los starters legitimos UNO A UNO en
+                         <ignoredUnusedDeclaredDependencies> y solo entonces subir
+                         failOnWarning a true. Nunca con un comodin
+                         org.springframework.boot:spring-boot-starter-*: ese comodin habria
+                         tapado tambien a spring-boot-starter-mail, o sea al unico caso que
+                         este gate existe para atrapar. -->
+                    <execution>
+                        <id>analyze-declared-dependencies</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <configuration>
+                            <failOnWarning>false</failOnWarning>
+                            <!-- Los scopes runtime/test/provided no los ve el analisis de
+                                 bytecode de compilacion por definicion: sin esto,
+                                 mysql-connector-j, jjwt-impl, jjwt-jackson y todo el arbol
+                                 de test saldrian como "no usadas" siendo correctas. -->
+                            <ignoreNonCompile>true</ignoreNonCompile>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -407,7 +453,41 @@
                              exclusion declarada no se aplicaba. -->
                         <exclude>**/VetSoftwareApplication.class</exclude>
                         <exclude>**/*JpaEntity.class</exclude>
-                        <exclude>**/config/**</exclude>
+                        <!-- #126. Aqui habia un `**/config/**` que se llevaba las ONCE
+                             clases de */config/* -760 lineas- de un tiron, incumpliendo el
+                             criterio escrito justo arriba: bastaba con leerlas para
+                             rechazarlo. SecurityConfig decide quien entra sin autenticarse
+                             y tiene rama y throw; PublicRoutes ES la lista de rutas
+                             abiertas, con un throw en el constructor compacto de Route; y
+                             ActuatorSecurityProperties.validate lanza tres veces. Medir en
+                             cero la clase que declara que rutas no piden JWT es justo lo
+                             contrario de lo que el suelo protege.
+
+                             Aplicado el criterio clase a clase, quedan fuera SOLO estas
+                             cuatro y vuelven al denominador las otras siete
+                             (SecurityConfig, PublicRoutes, ActuatorSecurityConfig,
+                             ActuatorSecurityProperties, AsyncConfig, ObservabilityConfig y
+                             RemoteConnectionValidator).
+
+                             CacheConfig, ClockConfig y SchedulingConfig son cableado puro:
+                             ni una rama, ni un throw, ni una traduccion. Un @Bean que
+                             devuelve Clock.systemDefaultZone(), o una clase vacia con
+                             @EnableScheduling, solo se pueden "probar" con un isNotNull()
+                             — cobertura sin señal, que es la forma de enterrar la de
+                             verdad.
+
+                             RateLimitConfig es el caso incomodo y se deja escrito en vez de
+                             disimulado: SI tiene una rama —el ternario url-vacia vs
+                             host+port de rateLimitRedisClient— pero RedisClient no expone
+                             la RedisURI con la que se construyo, asi que el ternario no se
+                             puede afirmar desde fuera, y sus otros dos beans abren conexion
+                             real contra Redis. Cubrirlo pide extraer la resolucion de la
+                             URI a un metodo propio; eso es un cambio de src/main y va en su
+                             issue, no en un exclude silencioso. -->
+                        <exclude>**/infrastructure/config/CacheConfig.class</exclude>
+                        <exclude>**/infrastructure/config/RateLimitConfig.class</exclude>
+                        <exclude>**/infrastructure/config/ClockConfig.class</exclude>
+                        <exclude>**/infrastructure/config/SchedulingConfig.class</exclude>
                         <exclude>**/*Request.class</exclude>
                         <!-- La forma del JSON de salida. El paquete entero, no solo el
                              sufijo *Response: dentro solo viven *Response y los 136

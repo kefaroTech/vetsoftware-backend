@@ -1,12 +1,17 @@
 name: Backend CI
 
-# Solo pull_request. El evento evalua refs/pull/N/merge, que es exactamente el
-# arbol que queda en develop despues del merge: revalidarlo en el push posterior
-# es correr dos veces la misma verificacion sobre el mismo codigo.
+# pull_request evalua refs/pull/N/merge, que es exactamente el arbol que queda en
+# develop despues del merge. Eso alcanzaba mientras nadie publicara nada desde
+# develop; con `publish-dev-image.yml` subiendo una imagen a ECR en cada push, ese
+# razonamiento dejo un agujero: el PR verificaba un arbol y la imagen salia de otro
+# evento, sin nada que atara los dos. Por eso este workflow es ahora ademas
+# `workflow_call`: la publicacion lo invoca y solo construye si termina en verde, de
+# modo que "verificado" tiene una sola definicion y vive en este fichero.
+#
 # Aqui se ignoraban "**/*.md" y "docs/**". Eso dejaba fuera del CI exactamente el cambio
 # que observability-rules existe para atrapar: renombrar o borrar un encabezado de
 # docs/ALERTAS_STACK_LOCAL.md al que apunta una anotacion runbook. El workflow arranca
-# ahora siempre y es el trabajo caro (Maven) el que se salta cuando el pull request solo
+# ahora siempre y es el trabajo caro (Maven) el que se salta cuando el cambio solo
 # toca documentacion.
 on:
   pull_request:
@@ -16,14 +21,19 @@ on:
     paths-ignore:
       - ".gitignore"
       - "LICENSE"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
+  # Cuando lo llama la publicacion, `github.workflow` es el del llamador, asi que
+  # este grupo no colisiona con el de los pull requests. Y solo se cancela lo que
+  # es descartable: una verificacion que esta actuando de puerta de una imagen no
+  # se cancela nunca, porque cancelarla equivale a publicar sin verificar.
   group: backend-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -49,15 +59,21 @@ jobs:
       - name: Detect container image changes
         id: changes
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # En pull_request la base es la del PR. Cuando la publicacion de develop
+          # invoca este workflow (workflow_call sobre un push) la base es el tip
+          # anterior de develop, que ya paso por su propia verificacion: comparar
+          # contra el es lo que permite saltarse Maven en un push que solo toca
+          # documentacion sin dejar codigo sin verificar.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # Un workflow_dispatch no trae base contra la que comparar. Se construye
-          # la imagen: equivocarse hacia el lado caro es preferible a no verificar
-          # un Dockerfile roto en una ejecucion manual.
-          if [ -z "$BASE_SHA" ]; then
+          # Un workflow_dispatch no trae base contra la que comparar, y un push que
+          # crea la rama trae la sha de ceros. Se construye la imagen: equivocarse
+          # hacia el lado caro es preferible a no verificar un Dockerfile roto en una
+          # ejecucion manual.
+          if [ -z "$BASE_SHA" ] || [ -z "${BASE_SHA//0/}" ]; then
             echo "docker=true" >> "$GITHUB_OUTPUT"
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "Ejecucion sin base de comparacion; se construye la imagen y se verifica todo."
@@ -67,21 +83,21 @@ jobs:
           touched="$(git diff --name-only "$BASE_SHA" HEAD -- Dockerfile .dockerignore)"
           if [ -n "$touched" ]; then
             echo "docker=true" >> "$GITHUB_OUTPUT"
-            echo "El pull request toca la imagen: $touched"
+            echo "El cambio toca la imagen: $touched"
           else
             echo "docker=false" >> "$GITHUB_OUTPUT"
             echo "Ni Dockerfile ni .dockerignore cambian; no se construye la imagen."
           fi
 
-          # Un pull request que solo toca documentacion no compila ni ejecuta pruebas, pero
+          # Un cambio que solo toca documentacion no compila ni ejecuta pruebas, pero
           # sigue pasando por observability-rules, que es el gate que le corresponde.
           nondoc="$(git diff --name-only "$BASE_SHA" HEAD | grep -Ev '^docs/|\.md$' || true)"
           if [ -n "$nondoc" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "El pull request toca codigo; se verifica con Maven."
+            echo "El cambio toca codigo; se verifica con Maven."
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
-            echo "El pull request solo toca documentacion; se omite la verificacion con Maven."
+            echo "El cambio solo toca documentacion; se omite la verificacion con Maven."
           fi
 
       - name: Set up Java
@@ -295,13 +311,18 @@ jobs:
           fi
           echo "$RUNBOOK usa una sola familia de unidades."
 
-  # Solo cuando el pull request toca la imagen. Fuera de ese caso este job
-  # reconstruia lo mismo que publish-dev-image publica minutos despues sobre el
-  # mismo commit, y el Dockerfile es identico en ambos.
+  # Solo cuando el cambio toca la imagen. Fuera de ese caso este job reconstruia lo
+  # mismo que publish-dev-image publica minutos despues sobre el mismo commit, y el
+  # Dockerfile es identico en ambos.
+  #
+  # Y nunca sobre un push: ahi el llamador es publish-dev-image, que a continuacion
+  # construye la imagen de verdad y la sube a ECR desde este mismo commit. Repetir
+  # aqui una compilacion ARM64 emulada con QEMU seria pagar dos veces el job mas caro
+  # del repositorio para tirar el resultado.
   container-image:
     name: Build ARM64 container image
     needs: verify
-    if: needs.verify.outputs.container-image == 'true'
+    if: github.event_name != 'push' && needs.verify.outputs.container-image == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 

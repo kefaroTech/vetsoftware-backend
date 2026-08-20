@@ -28,6 +28,7 @@ import jakarta.persistence.Entity;
 import java.util.List;
 import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -698,6 +699,106 @@ class HexagonalArchitectureTest {
                     + " @Version, y el save concurrente que llega con la version vieja casa"
                     + " igual y pisa el cambio sin dejar rastro");
 
+    /**
+     * Cierre de la incidencia #209, y el hueco complementario de BE-COV: en una
+     * feature cuyos puertos están todos cerrados a {@code ROLE_SYSTEM}, ninguno
+     * puede abrirse por {@code hasAuthority} sin acotar la empresa.
+     *
+     * <p>
+     * <b>El hallazgo.</b> Catorce {@code Reactivate…UseCase} de catálogos maestros
+     * declaraban {@code hasRole('SYSTEM') or hasAuthority('X.update')} mientras
+     * todos sus hermanos eran {@code hasRole('SYSTEM')} a secas. Bastaba sembrar
+     * esa authority en un rol de empresa para reactivar filas de un catálogo
+     * global: no es leer dato ajeno, es <em>escribir</em> en el dato que comparten
+     * todos los tenants.
+     *
+     * <p>
+     * <b>Por qué las cuatro reglas de BE-COV no lo cazan, y no por descuido.</b>
+     * Todas llevan la guarda antifalsos positivos que excluye las features cuya
+     * entidad no alcanza {@code CompanyJpaEntity} —es lo que las mantiene sin
+     * ruido— y un catálogo maestro es exactamente lo que esa guarda excluye.
+     * Aquellas preguntan <em>de quién es la fila</em>; esta pregunta <em>si el gate
+     * desentona de sus hermanos</em>, que es una señal que no necesita saber nada
+     * del esquema.
+     *
+     * <p>
+     * <b>Nace dura y en cero</b>, sobre el árbol ya alineado: la campaña de los
+     * catorce puertos cerró antes de escribirla, que es el criterio normal del
+     * repositorio para no congelar. La barrida de comprobación sobre los 556
+     * puertos de las 87 features da cero, y deja fuera los dos casos que tenían que
+     * quedar fuera: {@code permission/ListPermissionsByCompanyUseCase} —que recibe
+     * la empresa y la valida, el patrón que el {@code CLAUDE.md} prescribe— y
+     * {@code company/ReactivateCompanyUseCase}, que no se alineó a propósito porque
+     * sus cinco hermanos sí declaran {@code hasAuthority}. Vigila 19 features de
+     * entre 4 y 6 puertos: los catálogos maestros, los {@code base_*} y los
+     * {@code system_*}.
+     *
+     * <p>
+     * Ver
+     * {@code VetSoftwareConditions.noAbrirPorAuthorityLoQueLaFeatureCierraASystem()}
+     * para las cuatro condiciones y el falso positivo concreto que paga cada una. Y
+     * ojo con no mezclarla con la incidencia #208 —nadie comprueba de quién es la
+     * empresa que señala el {@code id} en {@code company}—, que es un problema
+     * distinto, peor, y que esta regla no cubre.
+     */
+    @ArchTest
+    static final ArchRule GATE_COHERENTE_EN_FEATURE_DE_SYSTEM = methods().that()
+            .areDeclaredInClassesThat().resideInAPackage("..application.port.in..").and()
+            .areDeclaredInClassesThat().areInterfaces().and().areDeclaredInClassesThat()
+            .areNotAnnotatedWith(NoAuthorizationRequired.class)
+            .should(VetSoftwareConditions.noAbrirPorAuthorityLoQueLaFeatureCierraASystem())
+            .because("en una feature cerrada a SYSTEM, una authority suelta es un endpoint que"
+                    + " se abre sembrando un permiso, sobre un catalogo que comparten todos"
+                    + " los tenants");
+
+    /**
+     * Cierre de la incidencia #196, y la red que le faltaba a #185: ninguna
+     * {@code @Query} puede proyectar un literal booleano.
+     *
+     * <p>
+     * <b>Nace dura y en cero.</b> No hay hoy ninguna violación —la última se
+     * arregló al cerrar #185, sustituyendo el JPQL por una consulta derivada—, así
+     * que congelarla sería fotografiar un store vacío. Las seis apariciones de
+     * {@code CASE WHEN} que quedan en {@code src/main} son legítimas y la regla las
+     * distingue por construcción, no por lista: dos {@code ORDER BY} de
+     * {@code StockLotJpaRepository} —que van detrás del {@code FROM} y no son
+     * columna de salida—, tres agregados de {@code OpenAccountJpaRepository}
+     * —{@code COUNT(CASE WHEN …)} y {@code SUM(CASE WHEN …)}, que proyectan
+     * números— y una mención en javadoc, que ArchUnit no ve.
+     *
+     * <p>
+     * <b>Por qué el defecto sobrevivió.</b>
+     * {@code SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END} compila, se
+     * lee perfecto en un diff y con Hibernate 6 funcionaba. Con Hibernate 7 la
+     * expresión se tipa como {@code Integer} al extraer el resultado y la coerción
+     * del {@code Boolean} lanza siempre. Esa consulta era el cuerpo entero de
+     * {@code JpaBillingEntitlementQueryPort.isElectronicInvoicingEnabled}, la
+     * <b>primera</b> lectura a base de datos de toda emisión, transmisión,
+     * reconciliación y webhook DIAN: facturación electrónica caída al 100 %, y
+     * ningún test lo vio porque su único uso en el árbol de test era un mock.
+     *
+     * <p>
+     * <b>La regla y la rodaja son complementarias, no alternativas.</b>
+     * {@code MembershipSubModulePersistenceIT} ejecuta ya esa consulta contra MySQL
+     * real —y {@code ADAPTADORES_JPA_CON_RODAJA} de {@code PiramideDeTestsTest}
+     * exige que cada adaptador tenga la suya—, pero una rodaja solo cubre lo que
+     * alguien se acordó de ejecutar; el defecto vivió meses justo porque nadie la
+     * había escrito. Esta mira todas las {@code @Query} que existan, se ejecuten o
+     * no.
+     *
+     * <p>
+     * Ver {@code VetSoftwareConditions.proyectarSinLiteralBooleano()} para el
+     * troceado de la lista de proyección —la profundidad de paréntesis, el salto de
+     * los literales de texto y la exclusión de los argumentos de agregado—, que es
+     * lo que separa el {@code THEN true} roto del {@code COUNT(CASE WHEN …)} bueno.
+     */
+    @ArchTest
+    static final ArchRule PROYECCION_SIN_LITERAL_BOOLEANO = methods().that()
+            .areAnnotatedWith(Query.class)
+            .should(VetSoftwareConditions.proyectarSinLiteralBooleano())
+            .because("un THEN true en la proyeccion revienta al extraer el resultado con"
+                    + " Hibernate 7 y tuvo la facturacion electronica caida al 100%");
+
     // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
 
     @ArchTest
@@ -748,4 +849,82 @@ class HexagonalArchitectureTest {
                     .areDeclaredInClassesThat().areAnnotatedWith(Transactional.class)
                     .should(VetSoftwareConditions.alcanzarUnEfectoAsincrono())
                     .because("lo que cruza de hilo antes del commit no vuelve si hay rollback"));
+
+    /**
+     * Las fábricas de {@code java.time} que leen el reloj del sistema. La lista es
+     * cerrada porque el paquete lo es: son todas las clases de {@code java.time}
+     * que declaran un {@code now()}.
+     */
+    private static final List<String> FABRICAS_DE_TIEMPO = List.of("java.time.Instant",
+            "java.time.LocalDate", "java.time.LocalDateTime", "java.time.LocalTime",
+            "java.time.OffsetDateTime", "java.time.OffsetTime", "java.time.ZonedDateTime",
+            "java.time.Year", "java.time.YearMonth", "java.time.MonthDay");
+
+    /**
+     * Un {@code now()} que lee el reloj de la máquina. La sobrecarga
+     * {@code now(Clock)} queda fuera <b>a propósito</b>: es exactamente la forma
+     * correcta, la que un test puede fijar con {@code Clock.fixed(…)}, y marcarla
+     * sería pedir que se deshaga la migración. {@code now(ZoneId)} sí entra: cambia
+     * la zona, no la fuente del instante.
+     */
+    private static final DescribedPredicate<JavaMethodCall> RELOJ_DEL_SISTEMA = DescribedPredicate
+            .describe("es un now() de java.time sin Clock inyectado",
+                    call -> "now".equals(call.getTarget().getName())
+                            && FABRICAS_DE_TIEMPO.contains(call.getTargetOwner().getFullName())
+                            && call.getTarget().getRawParameterTypes().stream().noneMatch(
+                                    tipo -> "java.time.Clock".equals(tipo.getFullName())));
+
+    /**
+     * Cierre de la incidencia #119: el código de producción no lee el reloj de la
+     * máquina, lo recibe.
+     *
+     * <p>
+     * <b>La regla primero, la migración después</b>, y en ese orden a propósito. La
+     * sección «Determinismo» del {@code CLAUDE.md} lleva meses diciendo que se
+     * inyecte {@code Clock} y nombra siete sitios concretos; ninguno estaba migrado
+     * al escribirse esta regla, y la razón es que nada vigilaba la frontera:
+     * mientras la deuda crece sola, migrarla es achicar agua. Congelada, la deuda
+     * que hay se tolera y la 166.ª rompe el build, así que la campaña de migración
+     * puede ir a su ritmo sin que el problema siga creciendo por debajo.
+     *
+     * <p>
+     * <b>Qué se rompe cuando falta.</b> No es estética: un test que compara contra
+     * {@code LocalDate.now()} se cae solo el día que el reloj cruza medianoche
+     * entre dos líneas, y un caso de uso que llama a {@code LocalDateTime.now()}
+     * por dentro no tiene forma de probar el vencimiento, la ventana por defecto ni
+     * el borde de fin de mes: hay que aceptar el instante que salga. Por eso la
+     * cobertura de estos servicios se queda siempre en el camino feliz.
+     *
+     * <p>
+     * <b>Cómo se baja una violación</b>: se inyecta {@code java.time.Clock} por
+     * constructor y se llama a {@code LocalDate.now(clock)}. El bean ya existe
+     * —{@code ClockConfig}— y hay dos referencias vivas,
+     * {@code ListAppointmentsService} y {@code ListCompanyClinicalEventsService}.
+     * Al arreglar una, ArchUnit la quita del store sola.
+     *
+     * <p>
+     * <b>Aviso sobre el store, que es donde está la trampa.</b> Esta regla se
+     * añadió sin poder ejecutar Maven, así que su foto <b>no</b> se ha registrado
+     * todavía: la escribirá sola la primera ejecución, tal como advierte
+     * {@code archunit.properties}. Al revisar ese primer diff hay que contar las
+     * líneas del fichero nuevo del store y contrastarlas con el censo del día en
+     * que se escribió — <b>165</b> llamadas sin {@code Clock} (168 apariciones
+     * textuales de {@code .now()} en {@code src/main} menos 3 que están en
+     * comentario), repartidas en 134 ficheros. Un número mucho mayor significa que
+     * el predicado muerde de más y hay que corregirlo <em>antes</em> de commitear
+     * el store, no después.
+     *
+     * <p>
+     * <b>Lo que esta regla no ve.</b> Solo mira {@code java.time}: un
+     * {@code System.currentTimeMillis()}, un {@code new java.util.Date()} o un
+     * {@code CURRENT_TIMESTAMP} dentro de una {@code @Query} pasan sin que nadie
+     * los toque. Se dejó fuera para que el censo congelado coincida exactamente con
+     * el que documenta la incidencia; ampliarlo después es sumar violaciones
+     * nuevas, y eso sí rompería el build a propósito y con un diff legible.
+     */
+    @ArchTest
+    static final ArchRule RELOJ_INYECTADO_EN_VEZ_DE_NOW = FreezingArchRule.freeze(noClasses().that()
+            .resideInAPackage("com.vetsoftware.app..").should().callMethodWhere(RELOJ_DEL_SISTEMA)
+            .because("un now() que lee el reloj de la maquina no se puede fijar desde un"
+                    + " test: el caso que cruza medianoche solo aparece en CI y de noche"));
 }

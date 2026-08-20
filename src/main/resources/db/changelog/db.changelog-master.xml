@@ -227,5 +227,6 @@
     <include file="db/changelog/migrations/223_seed_appointment_overlap_force_permission.xml"/>
     <include file="db/changelog/migrations/224_drop_audit_outbox.xml"/>
     <include file="db/changelog/migrations/225_add_version_optimistic_lock_wave2.xml"/>
+    <include file="db/changelog/migrations/226_add_unique_active_appointment_slot.xml"/>
 
 </databaseChangeLog>

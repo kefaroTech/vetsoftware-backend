@@ -177,9 +177,34 @@ public class AuditLogger {
     /**
      * Acceso a un recurso protegido sin autenticación válida (token
      * ausente/inválido → 401). http.method/http.path vía MDC.
+     *
+     * <p>
+     * <b>INFO y no WARN, deliberadamente.</b> El criterio del repo para la
+     * severidad es quién debe actuar, no cuán grave suena el hecho: un 401 por
+     * token caducado es el desenlace más rutinario que tiene una API con sesiones
+     * —el front lo trata refrescando el token— y cualquier anónimo puede provocarlo
+     * a voluntad. El sistema funcionó exactamente como debía, así que no hay nada
+     * que un operador tenga que hacer. A nivel WARN este evento es la población
+     * dominante del canal AUDIT y entierra los WARN que sí piden revisión humana
+     * ({@code refresh_token_reuse_detected},
+     * {@code login_blocked_email_not_verified}, {@code rate_limited}). El hecho
+     * sigue registrado y consultable; lo que cambia es que deja de pedir atención.
+     *
+     * <p>
+     * Un pico de 401 no se vigila leyendo este log: se vigila con la tasa de 401 y
+     * con el contador {@code vetsoftware.security.tokens.rejected} de
+     * {@code AuthFilter}, que separa el fallo aislado del fallo sistémico. La
+     * severidad no es el mecanismo de alerta.
+     *
+     * <p>
+     * {@code reason} es <b>vocabulario cerrado en snake_case</b>, alineado con el
+     * {@code code} del ProblemDetail que ve el front: {@code token_missing},
+     * {@code token_expired}, {@code token_invalid}, {@code session_replaced}. Nunca
+     * un mensaje de excepción ni texto libre: {@code reason} se agrupa y se filtra
+     * en Grafana, y un valor no acotado lo vuelve inagrupable.
      */
     public void unauthenticated(String method, String path, String reason) {
-        audit.atWarn().addKeyValue("event", "unauthenticated").addKeyValue("outcome", "DENIED")
+        audit.atInfo().addKeyValue("event", "unauthenticated").addKeyValue("outcome", "DENIED")
                 .addKeyValue("reason", reason)
                 .log("unauthenticated {} {} reason={}", method, path, reason);
     }

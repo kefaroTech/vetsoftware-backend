@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
@@ -78,6 +79,14 @@ class DebtOpenAccountControllerTest {
 
     private static final String EDITAR_JSON = """
             {"amount":45000,"paymentMethod":"CARD","openAccountId":50,"expectedVersion":3}
+            """;
+
+    /**
+     * El DELETE lleva cuerpo desde los issues #110/#123: quitar un abono mueve
+     * dinero, asi que exige motivo y admite la version esperada de la cuenta.
+     */
+    private static final String BORRAR_JSON = """
+            {"reason":"Abono cargado a la cuenta equivocada","expectedVersion":3}
             """;
 
     @Autowired
@@ -368,20 +377,48 @@ class DebtOpenAccountControllerTest {
     class Borrar {
 
         @Test
-        @DisplayName("responde 204 sin cuerpo y acota el borrado a la company del contexto")
+        @DisplayName("responde 204 sin cuerpo de respuesta")
         void responde_204_sin_cuerpo() throws Exception {
-            mockMvc.perform(delete("/debt-open-accounts/100")).andExpect(status().isNoContent());
+            mockMvc.perform(delete("/debt-open-accounts/100")
+                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
+                    .andExpect(status().isNoContent());
 
-            verify(deleteUseCase).execute(PAYMENT_ID, COMPANY_ID);
+            verify(deleteUseCase).execute(any());
+        }
+
+        @Test
+        @DisplayName("arma el command con la company, el empleado y el motivo; el id sale de la ruta")
+        void arma_el_command_con_la_company_el_empleado_y_el_motivo() throws Exception {
+            mockMvc.perform(delete("/debt-open-accounts/100")
+                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
+                    .andExpect(status().isNoContent());
+
+            // La empresa y el empleado los sella el backend desde el contexto: el
+            // cliente no puede dar de baja el abono de otro tenant ni firmar la baja con
+            // el nombre de otro.
+            verify(deleteUseCase).execute(new DeleteDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID,
+                    EMPLOYEE_ID, "Abono cargado a la cuenta equivocada", 3L));
+        }
+
+        @Test
+        @DisplayName("sin motivo responde 400 y no llega al caso de uso")
+        void sin_motivo_responde_400() throws Exception {
+            mockMvc.perform(delete("/debt-open-accounts/100")
+                    .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(deleteUseCase);
         }
 
         @Test
         @DisplayName("de un abono inexistente responde 404")
         void de_un_abono_inexistente_responde_404() throws Exception {
             org.mockito.Mockito.doThrow(new DebtOpenAccountNotFoundException(999L))
-                    .when(deleteUseCase).execute(999L, COMPANY_ID);
+                    .when(deleteUseCase).execute(any());
 
-            mockMvc.perform(delete("/debt-open-accounts/999")).andExpect(status().isNotFound());
+            mockMvc.perform(delete("/debt-open-accounts/999")
+                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
+                    .andExpect(status().isNotFound());
         }
     }
 

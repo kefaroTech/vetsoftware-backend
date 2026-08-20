@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -176,6 +178,55 @@ class CreateAppointmentServiceTest {
             service.execute(contactoLibre(null));
 
             verify(appointmentMetrics).transitioned(AppointmentStatus.REQUESTED, Channel.STAFF);
+        }
+    }
+
+    /**
+     * Issue #114. La carrera: dos peticiones concurrentes para el mismo veterinario
+     * llegan a {@code findOverlapping} antes de que ninguna haya guardado, las dos
+     * ven el hueco libre y se agendan encima. El lock pesimista por empleado
+     * serializa ese leer-y-escribir, y solo sirve si se toma ANTES de la lectura:
+     * detras de ella la ventana vuelve a abrirse entera y ningun otro test del
+     * repositorio se entera, porque las llamadas siguen ahi.
+     *
+     * <p>
+     * El indice unico {@code uq_appointments_active_employee_start} (changeset 226)
+     * es la otra mitad y solo cubre el solape EXACTO de {@code start_at}; los
+     * parciales —10:00-10:30 contra 10:15-10:45— dependen solo de este orden.
+     */
+    @Nested
+    @DisplayName("Serializacion contra la carrera")
+    class Serializacion {
+
+        @Test
+        @DisplayName("toma el lock del veterinario antes de leer los solapes y de guardar")
+        void toma_el_lock_antes_de_leer_los_solapes() {
+            stubEmpleadoYSede();
+            stubGuardadoSinSolapes();
+
+            service.execute(contactoLibre(null));
+
+            InOrder orden = inOrder(employeeQueryPort, repository);
+            orden.verify(employeeQueryPort).lockForOverlapCheck(EMPLOYEE, COMPANY);
+            orden.verify(repository).findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(),
+                    eq(DEFECTO), isNull());
+            orden.verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("el lock es la primera sentencia: se toma incluso antes de resolver al veterinario")
+        void el_lock_se_toma_antes_de_resolver_al_veterinario() {
+            when(employeeQueryPort.findByIdAndCompanyId(EMPLOYEE, COMPANY))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(contactoLibre(null)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Employee not found");
+
+            InOrder orden = inOrder(employeeQueryPort);
+            orden.verify(employeeQueryPort).lockForOverlapCheck(EMPLOYEE, COMPANY);
+            orden.verify(employeeQueryPort).findByIdAndCompanyId(EMPLOYEE, COMPANY);
+            verifyNoInteractions(repository, animalQueryPort, ownerQueryPort, branchQueryPort);
         }
     }
 

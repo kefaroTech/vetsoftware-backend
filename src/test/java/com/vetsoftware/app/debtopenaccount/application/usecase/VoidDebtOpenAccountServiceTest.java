@@ -65,6 +65,8 @@ class VoidDebtOpenAccountServiceTest {
 
     /** Abono vivo, cuenta abierta y el empleado que anula resuelto. */
     private void todoEnOrden() {
+        when(repository.lockAndFindOpenAccountId(PAYMENT_ID))
+                .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
         when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                 .thenReturn(Optional.of(abono()));
         when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
@@ -104,6 +106,26 @@ class VoidDebtOpenAccountServiceTest {
             verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
             verify(versionGuard).assertVersion(COMPANY_ID, OPEN_ACCOUNT_ID, null);
             verify(refresher).refresh(COMPANY_ID, OPEN_ACCOUNT_ID);
+        }
+
+        @Test
+        @DisplayName("el lock del abono es la PRIMERA sentencia, antes de la carga plana")
+        void el_lock_del_abono_es_la_primera_sentencia() {
+            todoEnOrden();
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.execute(comandoAnular());
+
+            // Este orden se invirtio en el issue #123: antes se cargaba el abono en
+            // plano —que trae la cuenta por @EntityGraph— y el lock llegaba despues, con
+            // el snapshot REPEATABLE READ ya fijado y la cuenta vieja metida en el
+            // contexto de persistencia. Resultado: isOpen y la suma de abonos del
+            // recalculo leian lo de ANTES de esperar al lock.
+            InOrder orden = Mockito.inOrder(repository, openAccountQueryPort);
+            orden.verify(repository).lockAndFindOpenAccountId(PAYMENT_ID);
+            orden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            orden.verify(repository).findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID);
+            orden.verify(openAccountQueryPort).isOpen(OPEN_ACCOUNT_ID);
         }
     }
 
@@ -152,19 +174,23 @@ class VoidDebtOpenAccountServiceTest {
         @Test
         @DisplayName("abono inexistente")
         void abono_inexistente() {
-            when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
-                    .thenReturn(Optional.empty());
+            // El lock del abono no devuelve fila, asi que la transaccion muere antes de
+            // tocar ninguna cuenta: por eso el verifyNoInteractions sigue valiendo.
+            when(repository.lockAndFindOpenAccountId(PAYMENT_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comandoAnular()))
                     .isInstanceOf(DebtOpenAccountNotFoundException.class);
 
             verify(repository, never()).save(any());
-            verifyNoInteractions(refresher, openAccountQueryPort, employeeQueryPort, cashPort);
+            verifyNoInteractions(refresher, openAccountQueryPort, employeeQueryPort, cashPort,
+                    versionGuard);
         }
 
         @Test
         @DisplayName("abono de una cuenta de otra empresa")
         void abono_de_una_cuenta_de_otra_empresa() {
+            when(repository.lockAndFindOpenAccountId(PAYMENT_ID))
+                    .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abonoDeOtraEmpresa()));
 
@@ -173,12 +199,15 @@ class VoidDebtOpenAccountServiceTest {
                     .hasMessageContaining("debt open account does not belong to company");
 
             verify(repository, never()).save(any());
-            verifyNoInteractions(refresher, openAccountQueryPort, cashPort);
+            verify(openAccountQueryPort, never()).isOpen(any());
+            verifyNoInteractions(refresher, cashPort, employeeQueryPort, versionGuard);
         }
 
         @Test
         @DisplayName("cuenta que ya no esta abierta")
         void cuenta_que_ya_no_esta_abierta() {
+            when(repository.lockAndFindOpenAccountId(PAYMENT_ID))
+                    .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(false);
@@ -194,6 +223,8 @@ class VoidDebtOpenAccountServiceTest {
         @Test
         @DisplayName("empleado que anula inexistente")
         void empleado_que_anula_inexistente() {
+            when(repository.lockAndFindOpenAccountId(PAYMENT_ID))
+                    .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abono()));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
@@ -211,6 +242,8 @@ class VoidDebtOpenAccountServiceTest {
         @Test
         @DisplayName("un abono ya anulado no se anula dos veces ni se compensa dos veces")
         void un_abono_ya_anulado_no_se_anula_dos_veces() {
+            when(repository.lockAndFindOpenAccountId(PAYMENT_ID))
+                    .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
             when(repository.findByIdAndCompanyId(PAYMENT_ID, COMPANY_ID))
                     .thenReturn(Optional.of(abonoAnulado()));
             when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);

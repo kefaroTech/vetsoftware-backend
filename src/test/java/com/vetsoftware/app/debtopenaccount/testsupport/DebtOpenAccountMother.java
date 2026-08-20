@@ -1,6 +1,7 @@
 package com.vetsoftware.app.debtopenaccount.testsupport;
 
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
@@ -42,6 +43,18 @@ public final class DebtOpenAccountMother {
     public static final BigDecimal MONTO = new BigDecimal("30000");
     public static final String SALDO_PENDIENTE = "50000";
 
+    /**
+     * Saldo pendiente ESTRECHO: menor que el importe del abono. Es el que separa la
+     * formula corregida del guard de sobrepago ("outstanding + lo que este abono ya
+     * aporta a esta cuenta") de la ingenua ("outstanding" a secas): con 10.000 de
+     * saldo, subir el abono de 30.000 a 35.000 es legitimo —el margen real es
+     * 40.000— y la formula ingenua lo rechazaria.
+     */
+    public static final String SALDO_ESTRECHO = "10000";
+
+    /** Motivo obligatorio de la baja: se persiste como motivo de anulacion. */
+    public static final String MOTIVO_BAJA = "Abono cargado a la cuenta equivocada";
+
     public static final LocalDateTime CREADO = LocalDateTime.of(2026, 1, 15, 10, 30);
     public static final LocalDateTime ANULADO = LocalDateTime.of(2026, 2, 1, 8, 0);
 
@@ -58,6 +71,16 @@ public final class DebtOpenAccountMother {
                 true, false, null, null, null, null);
     }
 
+    /**
+     * Abono que hoy vive en OTRA_CUENTA (id 51). Sirve para el traslado en sentido
+     * inverso (51 hacia 50), que es el unico caso donde se distingue "bloquear
+     * primero la cuenta de origen" de "bloquear por id ascendente".
+     */
+    public static DebtOpenAccount abonoEnOtraCuenta() {
+        return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, OTRA_CUENTA, EMPLEADO,
+                CREADO, null, true, false, null, null, null, null);
+    }
+
     /** Abono con la idempotency key ya usada por un intento anterior. */
     public static DebtOpenAccount abonoConClave(String clientRequestId) {
         return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
@@ -67,6 +90,15 @@ public final class DebtOpenAccountMother {
     public static DebtOpenAccount abonoAnulado() {
         return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
                 null, true, true, OTRO_EMPLEADO, ANULADO, "Cobrado por error", null);
+    }
+
+    /**
+     * Abono dado de baja (enabled = false). No entra en la suma de abonos de la
+     * cuenta, asi que tampoco aporta margen al guard de sobrepago.
+     */
+    public static DebtOpenAccount abonoDeshabilitado() {
+        return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
+                null, false, false, null, null, null, null);
     }
 
     /** Abono cuya cuenta pertenece a OTRA empresa: dispara el guard de tenancy. */
@@ -95,14 +127,45 @@ public final class DebtOpenAccountMother {
                 OPEN_ACCOUNT_ID, COMPANY_ID, null);
     }
 
+    /** Edicion por un monto arbitrario sobre la MISMA cuenta (no es traslado). */
+    public static UpdateDebtOpenAccountCommand comandoActualizarPor(String monto) {
+        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, new BigDecimal(monto), "CASH",
+                OPEN_ACCOUNT_ID, COMPANY_ID, null);
+    }
+
     /** Actualizacion que traslada el abono a OTRA cuenta de la misma empresa. */
     public static UpdateDebtOpenAccountCommand comandoTrasladar() {
         return new UpdateDebtOpenAccountCommand(PAYMENT_ID, MONTO, "CASH", OTRA_CUENTA_ID,
                 COMPANY_ID, null);
     }
 
+    /**
+     * Traslado en sentido inverso: lleva el abono a la cuenta 50. Combinado con
+     * {@link #abonoEnOtraCuenta()} el origen es la 51 y el destino la 50.
+     */
+    public static UpdateDebtOpenAccountCommand comandoTrasladarALaCuentaPrincipal() {
+        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, MONTO, "CASH", OPEN_ACCOUNT_ID,
+                COMPANY_ID, null);
+    }
+
     public static VoidDebtOpenAccountCommand comandoAnular() {
         return new VoidDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id(),
                 "Cobrado por error", null);
+    }
+
+    public static DeleteDebtOpenAccountCommand comandoBorrar() {
+        return comandoBorrarPor(MOTIVO_BAJA);
+    }
+
+    /** Baja con un motivo arbitrario (o en blanco, para el guard del motivo). */
+    public static DeleteDebtOpenAccountCommand comandoBorrarPor(String motivo) {
+        return new DeleteDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id(), motivo,
+                null);
+    }
+
+    /** Baja pedida desde OTRA empresa sobre el mismo id de abono. */
+    public static DeleteDebtOpenAccountCommand comandoBorrarDesdeOtraEmpresa() {
+        return new DeleteDebtOpenAccountCommand(PAYMENT_ID, OTRA_COMPANY_ID, OTRO_EMPLEADO.id(),
+                MOTIVO_BAJA, null);
     }
 }

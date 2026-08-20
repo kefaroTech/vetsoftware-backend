@@ -21,10 +21,33 @@ datasources:
     url: http://loki:3100
     editable: false
     jsonData:
+      # Dos campos derivados porque hay DOS formas de que el trace_id llegue a Loki, y ninguna
+      # cubre a la otra:
+      #
+      #  1. Ingesta OTLP — la del stack local. El backend exporta por OTLP y el collector escribe
+      #     en http://loki:3100/otlp (docker/otel-collector.yml). Ahí el cuerpo del registro es
+      #     SOLO el mensaje: Loki guarda TraceID y SpanID como structured metadata bajo las
+      #     claves `trace_id` y `span_id`. Ningún regex sobre la línea puede encontrarlos porque
+      #     no están en la línea; la única forma de que aparezca el botón es `matcherType: label`.
+      #  2. Ingesta de la línea JSON completa como cuerpo — perfiles `prod|dev`, donde el `<root>`
+      #     usa el encoder de StructuredConsoleLogFormatter, o cualquier recolector de ficheros.
+      #     Ahí sí hace falta el regex, y la clave que emite el encoder es `trace_id`, no
+      #     `traceId`: ese desajuste dejó el salto log→traza muerto desde que se escribió.
+      #
+      # El nombre de la clave es el mismo en los tres vértices del contrato de correlación
+      # (`exemplarTraceIdDestinations` de Prometheus, structured metadata de Loki, `trace_id` del
+      # MDC): si divergen, el salto no da error — simplemente el botón no aparece.
       derivedFields:
         - name: TraceID
           datasourceUid: tempo
-          matcherRegex: '"traceId"\s*:\s*"([0-9a-f]{32})"'
+          matcherType: label
+          matcherRegex: trace_id
+          url: '$${__value.raw}'
+          urlDisplayLabel: Ver traza
+        - name: TraceIDEnLinea
+          datasourceUid: tempo
+          matcherType: regex
+          matcherRegex: '"trace_id"\s*:\s*"([0-9a-f]{32})"'
           url: '$${__value.raw}'
           urlDisplayLabel: Ver traza
 

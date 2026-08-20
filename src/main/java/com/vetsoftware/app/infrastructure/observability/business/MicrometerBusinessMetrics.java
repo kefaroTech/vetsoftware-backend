@@ -103,12 +103,38 @@ public class MicrometerBusinessMetrics
                 .withRegistry(registry);
     }
 
+    /**
+     * El canal decide el momento de publicación, igual que el resultado lo decide
+     * en {@link #movement}:
+     *
+     * <ul>
+     * <li><b>POS</b> va con {@code recordAfterCommit}: es la regla general de no
+     * publicar un éxito de negocio que un rollback podría deshacer.</li>
+     * <li><b>OPEN_ACCOUNT</b> va con {@code recordNow} y NO es una excepción
+     * caprichosa. Ese canal se publica desde
+     * {@code ClosedAccountEmissionCompleter}, que corre dentro del callback
+     * {@code afterCommit} del cierre de cuenta (A1). Ahí no queda ningún commit por
+     * esperar —el documento y el desenlace DIAN ya están persistidos, cada uno en
+     * su propia transacción corta— pero, y esto es lo que obliga al cambio, Spring
+     * todavía NO ha limpiado el {@code TransactionSynchronizationManager}:
+     * {@code cleanupAfterCompletion()} corre en el {@code finally} externo de
+     * {@code processCommit}, después de {@code triggerAfterCommit()}. Es decir,
+     * {@code isActualTransactionActive()} sigue devolviendo {@code true} durante el
+     * callback, así que {@code recordAfterCommit} tomaría la rama de
+     * {@code registerSynchronization} en vez de caer a {@code recordNow} como
+     * podría parecer. Y una sincronización registrada en ese instante ya no recibe
+     * {@code afterCommit}: {@code triggerAfterCommit} itera sobre el snapshot que
+     * devolvió {@code getSynchronizations()} antes de empezar. La métrica se
+     * perdería en silencio — exactamente el defecto que este canal viene a
+     * cerrar.</li>
+     * </ul>
+     */
     @Override
     public void completed(SalesMetrics.Channel channel, ElectronicDocumentType documentType,
             BigDecimal amount, int lineCount) {
         BigDecimal immutableAmount = nonNegative(amount);
         int immutableLineCount = Math.max(0, lineCount);
-        recorder.recordAfterCommit(() -> {
+        Runnable action = () -> {
             String documentTypeValue = documentType(documentType);
             salesOperations.withTags("result", "completed", "channel", channel.value(),
                     "document.type", documentTypeValue).increment();
@@ -116,7 +142,12 @@ public class MicrometerBusinessMetrics
                     .record(immutableAmount.doubleValue());
             salesLines.withTags("channel", channel.value(), "document.type", documentTypeValue)
                     .record(immutableLineCount);
-        });
+        };
+        if (channel == SalesMetrics.Channel.OPEN_ACCOUNT) {
+            recorder.recordNow(action);
+        } else {
+            recorder.recordAfterCommit(action);
+        }
     }
 
     @Override

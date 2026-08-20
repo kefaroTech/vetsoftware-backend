@@ -54,16 +54,35 @@ public interface MembershipSubModuleJpaRepository
      * enabled=true de forma explícita en ambos lados (el enlace y el submódulo) —
      * no depende solo de @SQLRestriction. Base del gating de facturación
      * electrónica por membresía.
+     *
+     * <p>
+     * <b>Por qué es una consulta derivada y no una {@code @Query}.</b> Hasta la
+     * incidencia #185 esto era un JPQL con la forma
+     * {@code SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END}. Con Hibernate
+     * 7 esa expresión se tipa como {@code Integer} al extraer el resultado, así que
+     * la coerción del literal {@code Boolean} lanza
+     * {@code Cannot coerce value 'true' [java.lang.Boolean] to Integer} — el 100 %
+     * de las veces, no un porcentaje.
+     *
+     * <p>
+     * El daño no se quedaba aquí: esta consulta es el cuerpo entero de
+     * {@code JpaBillingEntitlementQueryPort.isElectronicInvoicingEnabled}, que es
+     * la <b>primera</b> lectura a base de datos de toda emisión, transmisión,
+     * reconciliación y webhook DIAN. La facturación electrónica quedó caída al 100
+     * % sin que ninguna prueba lo viera, porque su único uso en el árbol de test
+     * era un mock. La derivada la traduce Spring Data a una proyección de
+     * existencia y no depende de ninguna inferencia de tipos sobre un literal;
+     * {@code MembershipSubModulePersistenceIT} la ejecuta contra MySQL real.
      */
-    @org.springframework.data.jpa.repository.Query("""
-            SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END
-            FROM MembershipSubModuleJpaEntity m
-            WHERE m.membership.id = :membershipId
-              AND m.subModule.code = :code
-              AND m.enabled = true
-              AND m.subModule.enabled = true
-            """)
-    boolean hasEnabledSubModuleCode(
-            @org.springframework.data.repository.query.Param("membershipId") Long membershipId,
-            @org.springframework.data.repository.query.Param("code") String code);
+    boolean existsByMembership_IdAndSubModule_CodeAndEnabledTrueAndSubModule_EnabledTrue(
+            Long membershipId, String code);
+
+    /**
+     * Nombre de negocio del gating de facturación electrónica: delega en la
+     * derivada de arriba para que los llamadores no arrastren su nombre generado.
+     */
+    default boolean hasEnabledSubModuleCode(Long membershipId, String code) {
+        return existsByMembership_IdAndSubModule_CodeAndEnabledTrueAndSubModule_EnabledTrue(
+                membershipId, code);
+    }
 }

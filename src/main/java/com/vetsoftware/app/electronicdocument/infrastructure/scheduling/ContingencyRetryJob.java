@@ -138,8 +138,27 @@ public class ContingencyRetryJob {
             attempted++;
             try {
                 transmitter.transmit(document, Origin.RETRY);
+            } catch (IllegalStateException e) {
+                failures++;
+                // Población DETERMINISTA, separada a proposito de la transitoria: es la
+                // familia de fallos que la pasada siguiente volveria a producir identica.
+                // La lanza DocumentTransmitter cuando la empresa no tiene proveedor DIAN
+                // configurado o no hay adaptador para el proveedor configurado, y el
+                // adaptador MATIAS cuando el login no devuelve token. Ninguna se arregla
+                // reintentando: fallan el 100% de los documentos de la empresa hasta que
+                // alguien cambia configuracion, asi que es ERROR y no WARN. Mezclarla con
+                // el WARN de abajo esconde un fallo total detras del ruido del aislado.
+                // Ademas cada pasada consume uno de los 4 intentos del cap: cuatro ciclos
+                // despues el documento queda agotado por un motivo que nunca fue el suyo.
+                log.error(
+                        "Reintento de contingencia DIAN imposible para el documento {}:"
+                                + " configuración o estado inválidos. El reintento automático"
+                                + " de la próxima pasada NO lo resuelve; requiere intervención.",
+                        documentId, e);
             } catch (Exception e) {
                 failures++;
+                // Población TRANSITORIA: la vuelve a intentar la pasada siguiente, hasta
+                // el cap de intentos.
                 // La excepción va como último argumento, no e.getMessage(): una NPE
                 // trae null y el mensaje suelto tira la cadena de causas y la traza.
                 log.warn("Reintento de contingencia falló para documento {}", documentId, e);

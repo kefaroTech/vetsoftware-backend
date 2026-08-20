@@ -54,8 +54,15 @@ class SecurityProblemDetailHandlerTest {
     @DisplayName("commence — sin autenticación")
     class Commence {
 
+        /**
+         * Dos contratos distintos sobre el mismo rechazo, y por eso las dos aserciones:
+         * al cliente sigue yendo la prosa {@code "Authentication
+         * required"} —cambiarla rompería al front—, mientras que a la auditoría va el
+         * código en snake_case {@code token_missing}, que es vocabulario cerrado y
+         * agrupable en Grafana.
+         */
         @Test
-        @DisplayName("responde 401 con code TOKEN_MISSING y audita el intento")
+        @DisplayName("responde 401 con code TOKEN_MISSING y audita el motivo token_missing")
         void responde_401_y_audita() throws Exception {
             MockHttpServletResponse response = new MockHttpServletResponse();
             AuthenticationException exception = org.mockito.Mockito
@@ -66,7 +73,7 @@ class SecurityProblemDetailHandlerTest {
             assertThat(response.getStatus()).isEqualTo(401);
             assertThat(response.getContentAsString()).contains("TOKEN_MISSING")
                     .contains("Authentication required");
-            verify(auditLogger).unauthenticated("GET", "/animals", "Authentication required");
+            verify(auditLogger).unauthenticated("GET", "/animals", "token_missing");
         }
 
         @Test

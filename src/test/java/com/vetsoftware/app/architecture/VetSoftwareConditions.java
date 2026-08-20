@@ -2286,6 +2286,382 @@ final class VetSoftwareConditions {
         }).filter(objetivo -> !objetivo.isEmpty()).toList();
     }
 
+    // ── #209: la authority que desentona en una feature de SYSTEM ────────────
+
+    /** El disyunto que abre la puerta a un empleado con permiso sembrado. */
+    private static final String AUTHORITY = "hasAuthority";
+
+    /**
+     * Cuántos hermanos hacen falta para que «la norma de la feature» sea una norma
+     * y no una coincidencia. Con uno solo, el conjunto de dos gates iguales no dice
+     * nada; a partir de dos, la excepción destaca.
+     */
+    private static final int HERMANOS_MINIMOS = 2;
+
+    /**
+     * Cierre de la incidencia #209: en una feature cuyos puertos están todos
+     * cerrados a {@code ROLE_SYSTEM}, ninguno puede abrirse por
+     * {@code hasAuthority} sin acotar la empresa.
+     *
+     * <p>
+     * <b>El hallazgo.</b> Catorce {@code Reactivate…UseCase} de catálogos maestros
+     * declaraban {@code hasRole('SYSTEM') or hasAuthority('X.update')} mientras
+     * <em>todos</em> sus hermanos —crear, leer, listar, actualizar, borrar— eran
+     * {@code hasRole('SYSTEM')} a secas. Bastaba sembrar esa authority en un rol de
+     * empresa para reactivar filas de un catálogo global, que es dato compartido
+     * por todos los tenants. No es una fuga de lectura: es escritura en el catálogo
+     * que usan las demás empresas.
+     *
+     * <p>
+     * <b>Por qué ninguna regla de BE-COV lo caza, y no por descuido.</b> Las cuatro
+     * llevan una guarda antifalsos positivos —{@code laFeatureTieneDatosDeEmpresa}—
+     * que excluye las features cuya entidad no alcanza {@code CompanyJpaEntity}.
+     * Esa guarda es correcta y es lo que las mantiene sin ruido, pero un catálogo
+     * maestro es exactamente lo que excluye. Este es el hueco complementario:
+     * aquellas miran <em>a quién pertenece la fila</em>; esta mira <em>si el gate
+     * desentona de sus hermanos</em>.
+     *
+     * <p>
+     * <b>Las cuatro condiciones, y qué falso positivo paga cada una.</b> Un método
+     * incumple solo si se cumplen todas:
+     * <ol>
+     * <li>su {@code @PreAuthorize} menciona {@code hasAuthority};</li>
+     * <li>ni su firma recibe {@code companyId} ni su SpEL invoca
+     * {@code @authz.isMyCompany}. Esta salva
+     * {@code permission/ListPermissionsByCompanyUseCase}, que es precisamente el
+     * «caso de uso hermano que sí recibe {@code companyId}» que prescribe la
+     * sección de autorización del {@code CLAUDE.md}: sus cinco hermanos son
+     * {@code hasRole('SYSTEM')} exacto y sin esta condición sería el primer falso
+     * positivo;</li>
+     * <li><b>todos</b> los demás puertos de la feature que llevan
+     * {@code @PreAuthorize} son {@code hasRole('SYSTEM')} exacto, sin disyuntos.
+     * Esta es la que decide: salva {@code company} —cuyos cinco hermanos declaran
+     * {@code hasAuthority}, así que ahí la authority <em>es</em> la norma y
+     * {@code ReactivateCompanyUseCase} no se alineó a propósito— y las ~24 features
+     * clínicas donde pasa lo mismo. Un predicado ingenuo sin ella dispara en las 24
+     * y la regla se muere de ruido el primer día;</li>
+     * <li>hay al menos {@value #HERMANOS_MINIMOS} de esos hermanos, para que «la
+     * norma de la feature» sea una norma y no una coincidencia de dos.</li>
+     * </ol>
+     *
+     * <p>
+     * <b>Los {@code @NoAuthorizationRequired} no cuentan como hermanos.</b> Un
+     * puerto que declara por escrito que su autorización no es un JWT —el token de
+     * un solo uso, la firma HMAC de un webhook— no dice nada sobre cuál es la norma
+     * de la feature, y contarlo la falsearía en las dos direcciones.
+     *
+     * <p>
+     * <b>Nace dura y en cero</b>, sobre el árbol ya alineado, que es el criterio
+     * normal del repositorio para no congelar: la campaña de los catorce puertos se
+     * cerró antes de escribirla. Hoy vigila <b>19</b> features —los catálogos
+     * maestros, los {@code base_*} y los {@code system_*}— con entre 4 y 6 puertos
+     * cada una.
+     *
+     * <p>
+     * <b>Lo que no ve.</b> Una feature cuya norma ya está mezclada queda fuera por
+     * construcción: {@code permission} tiene un hermano con {@code hasAuthority}
+     * —el legítimo, el que recibe la empresa— y eso basta para que la condición (3)
+     * la excluya entera. Es el precio de no tener falsos positivos, y es
+     * consciente: la regla detecta al que <b>rompe</b> una norma unánime, no al que
+     * está mal en una feature que ya era heterogénea. Y tampoco mira de quién es la
+     * empresa que señala el {@code id} —ese es un problema distinto y peor, el de
+     * la incidencia #208, y mezclarlos aquí volvería esta regla imposible de
+     * mantener.
+     */
+    static ArchCondition<JavaMethod> noAbrirPorAuthorityLoQueLaFeatureCierraASystem() {
+        return new ArchCondition<>("no abrirse por hasAuthority cuando todos los demas puertos"
+                + " de la feature son hasRole('SYSTEM') exacto") {
+            private final Map<String, List<JavaMethod>> gatesPorFeature = new LinkedHashMap<>();
+
+            @Override
+            public void init(Collection<JavaMethod> puertos) {
+                gatesPorFeature.clear();
+                for (JavaMethod puerto : puertos) {
+                    if (puerto.tryGetAnnotationOfType(PreAuthorize.class).isEmpty()) {
+                        continue;
+                    }
+                    paqueteDeLaFeature(puerto.getOwner()).ifPresent(feature -> gatesPorFeature
+                            .computeIfAbsent(feature.getName(), clave -> new ArrayList<>())
+                            .add(puerto));
+                }
+            }
+
+            @Override
+            public void check(JavaMethod puerto, ConditionEvents events) {
+                Optional<PreAuthorize> gate = puerto.tryGetAnnotationOfType(PreAuthorize.class);
+                if (gate.isEmpty()) {
+                    return;
+                }
+                String expresion = gate.get().value();
+                if (!expresion.contains(AUTHORITY)) {
+                    return;
+                }
+                if (transportaCompanyId(puerto) || ISMYCOMPANY_REF.matcher(expresion).find()) {
+                    return;
+                }
+                List<JavaMethod> hermanos = hermanosDeLaFeature(puerto, gatesPorFeature);
+                if (hermanos.size() < HERMANOS_MINIMOS || !todosCerradosASystem(hermanos)) {
+                    return;
+                }
+                events.add(new SimpleConditionEvent(puerto, false, puerto.getFullName()
+                        + " se abre con " + expresion.strip() + " mientras sus " + hermanos.size()
+                        + " puertos hermanos son hasRole('SYSTEM') exacto. Basta sembrar esa"
+                        + " authority en un rol de empresa para alcanzar el endpoint, y la fila"
+                        + " es de un catalogo global que comparten todos los tenants: no es una"
+                        + " lectura ajena, es una escritura en el dato de los demas. Salidas:"
+                        + " alinear el gate a hasRole('SYSTEM'), o acotar la empresa —recibir"
+                        + " companyId y validarlo con @authz.isMyCompany— si de verdad este"
+                        + " puerto tiene que servir a un empleado"));
+            }
+        };
+    }
+
+    /** Los demás puertos con gate de la misma feature; el candidato queda fuera. */
+    private static List<JavaMethod> hermanosDeLaFeature(JavaMethod puerto,
+            Map<String, List<JavaMethod>> gatesPorFeature) {
+        return paqueteDeLaFeature(puerto.getOwner())
+                .map(feature -> gatesPorFeature.getOrDefault(feature.getName(), List.of()).stream()
+                        .filter(hermano -> !hermano.equals(puerto)).toList())
+                .orElse(List.of());
+    }
+
+    private static boolean todosCerradosASystem(List<JavaMethod> hermanos) {
+        return hermanos.stream().map(hermano -> hermano.getAnnotationOfType(PreAuthorize.class))
+                .allMatch(gate -> soloAlcanzablePorSystem(gate.value()));
+    }
+
+    // ── #196: el literal booleano en la proyección ───────────────────────────
+
+    /**
+     * Las funciones de agregación. Lo que hay <em>dentro</em> de sus paréntesis no
+     * es una columna de salida sino un argumento, y lo que la función proyecta es
+     * un número: {@code COUNT(CASE WHEN … THEN 1 END)} y
+     * {@code SUM(CASE WHEN … THEN x END)} son legítimos y están hoy en
+     * {@code OpenAccountJpaRepository}. Sin esta exclusión la regla nacería con
+     * falsos positivos y se moriría de ruido el primer día.
+     */
+    private static final Set<String> AGREGADOS = Set.of("count", "sum", "avg", "min", "max");
+
+    /** Las dos palabras que abren y cierran una lista de proyección. */
+    private static final String PALABRA_SELECT = "select";
+
+    private static final String PALABRA_FROM = "from";
+
+    private static final Set<String> LITERALES_BOOLEANOS = Set.of("true", "false");
+
+    /**
+     * Solo se juzga la sentencia que <b>devuelve filas al programa</b>. La coerción
+     * que revienta ocurre al <em>extraer</em> el resultado, así que un literal
+     * booleano que va a parar a una columna nunca la sufre.
+     *
+     * <p>
+     * El caso real que lo obliga: {@code EmployeeBranchJpaRepository} hace
+     * {@code INSERT INTO employee_branches (…, enabled)}
+     * {@code SELECT e.id, b.id, CURRENT_TIMESTAMP, true FROM employees e …}. Ese
+     * {@code true} está sintácticamente en una lista de proyección y es
+     * perfectamente correcto —alimenta la columna {@code enabled} y Hibernate no lo
+     * extrae jamás—. Sin este filtro la regla nacería con una violación legítima,
+     * que es la forma en que muere una regla nueva. Por lo mismo quedan fuera las
+     * subconsultas del {@code SET} de un {@code UPDATE}.
+     */
+    private static final Pattern SENTENCIA_QUE_CONSULTA = Pattern.compile("^select\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Cierre de la incidencia #196: ninguna {@code @Query} puede llevar un literal
+     * booleano en su <b>lista de proyección</b>.
+     *
+     * <p>
+     * <b>El defecto que la justifica tuvo la facturación electrónica caída al 100
+     * %</b> (#185). {@code MembershipSubModuleJpaRepository} preguntaba si una
+     * membresía tenía habilitado un submódulo con
+     * {@code SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END}. Con Hibernate
+     * 7 esa expresión se tipa como {@code Integer} al extraer el resultado, así que
+     * la coerción del literal {@code Boolean} lanza
+     * {@code Cannot coerce value 'true' [java.lang.Boolean] to Integer} — el 100 %
+     * de las veces, no un porcentaje. Y esa consulta es la <b>primera</b> lectura a
+     * base de datos de toda emisión, transmisión, reconciliación y webhook DIAN, de
+     * modo que el módulo entero quedó caído sin que ninguna prueba lo viera: su
+     * único uso en el árbol de test era un mock.
+     *
+     * <p>
+     * <b>Por qué una regla y no solo la rodaja de integración.</b> Un
+     * {@code @DataJpaTest} contra MySQL real caza <em>esa</em> consulta —y
+     * {@code MembershipSubModulePersistenceIT} ya la ejecuta—, pero solo esa: el
+     * defecto sobrevivió meses precisamente porque nadie había escrito la rodaja.
+     * Esta regla no depende de que exista rodaja; mira todas las {@code @Query} que
+     * haya.
+     *
+     * <p>
+     * <b>Qué cuenta como proyección.</b> Lo que va entre un {@code SELECT} y su
+     * {@code FROM} <em>a la misma profundidad de paréntesis</em>. Eso deja fuera,
+     * sin enumerarlas, las tres formas legítimas que hoy existen en el repositorio:
+     * el {@code ORDER BY CASE WHEN l.expireDate IS NULL THEN 1 ELSE 0 END} de
+     * {@code StockLotJpaRepository}, que va detrás del {@code FROM} y ni siquiera
+     * es columna de salida; los {@code COUNT(CASE WHEN …)} y
+     * {@code SUM(CASE WHEN …)} de {@code OpenAccountJpaRepository}, que proyectan
+     * números —ver {@link #AGREGADOS}—; y cualquier {@code WHERE enabled = false},
+     * que es un filtro y no una proyección.
+     *
+     * <p>
+     * <b>Y baja a las subconsultas.</b> Un
+     * {@code (SELECT CASE WHEN … THEN true END …)} dentro de la lista de columnas
+     * tiene exactamente el mismo problema de tipado, así que cada {@code SELECT}
+     * lleva su propio estado de proyección en su propio nivel de paréntesis.
+     *
+     * <p>
+     * <b>Los literales de texto se saltan enteros.</b> Un
+     * {@code WHERE estado = 'true'} es una cadena, no el literal booleano del
+     * lenguaje de consulta, y una búsqueda por subcadena lo daría por violación.
+     *
+     * <p>
+     * <b>Lo que esta regla no ve</b>, por la misma limitación del modelo de
+     * ArchUnit que documenta {@code UPDATE_MASIVO_MUEVE_LA_VERSION}: el SQL crudo
+     * por {@code JdbcTemplate}, cuyo literal vive en el pool de constantes del
+     * llamador y no en el valor de una anotación. Hoy ese hueco está vacío —el
+     * único {@code JdbcTemplate} que consulta es {@code JdbcDianJobLeasePort}, que
+     * actualiza, y {@code TokenCleanupRepository} solo borra—; si dejara de
+     * estarlo, la herramienta sería un {@code RegexpMultiline} de Checkstyle y no
+     * esta regla.
+     */
+    static ArchCondition<JavaMethod> proyectarSinLiteralBooleano() {
+        return new ArchCondition<>("no proyectar literales booleanos: Hibernate 7 tipa la"
+                + " expresion como Integer y la coercion del Boolean falla el 100%% de las veces") {
+            @Override
+            public void check(JavaMethod metodo, ConditionEvents events) {
+                Optional<String> consulta = metodo.tryGetAnnotationOfType(Query.class)
+                        .map(Query::value).map(String::strip)
+                        .filter(sql -> SENTENCIA_QUE_CONSULTA.matcher(sql).find());
+                if (consulta.isEmpty()) {
+                    return;
+                }
+                List<String> literales = literalesEnLaProyeccion(consulta.get());
+                events.add(new SimpleConditionEvent(metodo, literales.isEmpty(),
+                        metodo.getOwner().getSimpleName() + "." + metodo.getName() + "():"
+                                + " proyecta el literal booleano " + String.join(", ", literales)
+                                + ". Con Hibernate 7 la expresion se tipa como Integer al extraer"
+                                + " el resultado y la coercion del Boolean falla siempre, no a"
+                                + " ratos: asi cayo la facturacion electronica entera en #185."
+                                + " Salidas: una consulta derivada (existsBy..., countBy...) o"
+                                + " proyectar el numero y comparar en Java." + " SQL actual: "
+                                + unaLinea(consulta.get())));
+            }
+        };
+    }
+
+    /**
+     * Los literales booleanos que una consulta pone en su lista de proyección.
+     * Lista vacía = la consulta cumple.
+     *
+     * <p>
+     * Un solo barrido de caracteres, porque las tres cosas que hay que distinguir
+     * —la profundidad de paréntesis, si el paréntesis lo abrió un agregado y si el
+     * {@code SELECT} de esta profundidad ya vio su {@code FROM}— son estado que una
+     * expresión regular no puede llevar.
+     *
+     * <p>
+     * Un paréntesis <b>hereda</b> el estado de proyección del nivel de fuera, y no
+     * lo reinicia: un {@code NEW com.x.Dto(…, CASE WHEN … THEN true END)} o un
+     * {@code CASE} entre paréntesis siguen siendo la misma lista de columnas, y su
+     * literal se extrae igual. Lo que sí cambia el estado es una subconsulta, que
+     * trae su propio {@code SELECT} y su propio {@code FROM} y los aplica a su
+     * nivel.
+     */
+    private static List<String> literalesEnLaProyeccion(String consulta) {
+        String sql = unaLinea(consulta).toLowerCase(Locale.ROOT);
+        List<String> hallazgos = new ArrayList<>();
+        // Un flag por nivel de parentesis: cada subconsulta proyecta por su cuenta.
+        List<Boolean> proyectando = new ArrayList<>();
+        proyectando.add(Boolean.FALSE);
+        // Un flag por parentesis abierto: lo abrio una funcion de agregacion?
+        Deque<Boolean> argumentoDeAgregado = new ArrayDeque<>();
+        String palabraAnterior = "";
+        int i = 0;
+        while (i < sql.length()) {
+            char c = sql.charAt(i);
+            if (c == '\'') {
+                i = finDelLiteralDeTexto(sql, i);
+                palabraAnterior = "";
+                continue;
+            }
+            if (c == '(') {
+                argumentoDeAgregado.push(AGREGADOS.contains(palabraAnterior));
+                // Hereda el estado del nivel de fuera: un parentesis que NO abre
+                // subconsulta —una llamada a funcion, un NEW Dto(...), un CASE
+                // entre parentesis— sigue formando parte de la misma proyeccion.
+                // Si lo que abre es una subconsulta, su propio SELECT/FROM lo
+                // corrige acto seguido.
+                proyectando.add(proyectando.get(proyectando.size() - 1));
+                palabraAnterior = "";
+                i++;
+                continue;
+            }
+            if (c == ')') {
+                if (!argumentoDeAgregado.isEmpty()) {
+                    argumentoDeAgregado.pop();
+                }
+                if (proyectando.size() > 1) {
+                    proyectando.remove(proyectando.size() - 1);
+                }
+                palabraAnterior = "";
+                i++;
+                continue;
+            }
+            if (!esCaracterDePalabra(c)) {
+                palabraAnterior = "";
+                i++;
+                continue;
+            }
+            int fin = i;
+            while (fin < sql.length() && esCaracterDePalabra(sql.charAt(fin))) {
+                fin++;
+            }
+            String palabra = sql.substring(i, fin);
+            int nivel = proyectando.size() - 1;
+            if (PALABRA_SELECT.equals(palabra)) {
+                proyectando.set(nivel, Boolean.TRUE);
+            } else if (PALABRA_FROM.equals(palabra)) {
+                proyectando.set(nivel, Boolean.FALSE);
+            } else if (LITERALES_BOOLEANOS.contains(palabra)
+                    && Boolean.TRUE.equals(proyectando.get(nivel))
+                    && !argumentoDeAgregado.contains(Boolean.TRUE)) {
+                hallazgos.add(palabra);
+            }
+            palabraAnterior = palabra;
+            i = fin;
+        }
+        return hallazgos;
+    }
+
+    /**
+     * Un identificador o palabra clave del lenguaje de consulta. El punto <b>no</b>
+     * entra a propósito: así {@code l.trueValue} se parte en dos palabras y ninguna
+     * de las dos es {@code true}.
+     */
+    private static boolean esCaracterDePalabra(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '$';
+    }
+
+    /**
+     * Índice justo detrás de la comilla que cierra un literal de texto, saltando
+     * las comillas escapadas por duplicación. Sin esto, un {@code = 'true'} en el
+     * {@code WHERE} contaría como literal booleano.
+     */
+    private static int finDelLiteralDeTexto(String sql, int comillaInicial) {
+        int i = comillaInicial + 1;
+        while (i < sql.length()) {
+            if (sql.charAt(i) == '\'') {
+                if (i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                    i += 2;
+                    continue;
+                }
+                return i + 1;
+            }
+            i++;
+        }
+        return sql.length();
+    }
+
     /** El paquete raíz de la aplicación, desde cualquier clase suya. */
     private static Optional<JavaPackage> paqueteRaiz(JavaClass clazz) {
         JavaPackage paquete = clazz.getPackage();

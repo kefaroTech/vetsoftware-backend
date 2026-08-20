@@ -1,6 +1,8 @@
 package com.vetsoftware.app.appointment.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.domain.Appointment;
@@ -449,6 +451,108 @@ class AppointmentPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(delDia).extracting(Appointment::getId).containsExactly(guardada.getId());
             assertThat(delDia).first().extracting(Appointment::getDurationMinutes).isEqualTo(45);
+        }
+    }
+
+    /**
+     * Issue #114, changeset 226. La ultima linea de defensa del solape EXACTO: dos
+     * transacciones que pasan las dos por {@code findOverlapping} sin verse no
+     * pueden acabar las dos insertadas. Como MySQL no tiene indices unicos
+     * filtrados, el alcance se emula con la columna generada
+     * {@code active_slot_employee_id}, que vale NULL —y por tanto no reserva nada—
+     * cuando la cita no ocupa agenda.
+     *
+     * <p>
+     * <b>Lo que estos casos protegen es esa columna generada, no el indice.</b> Un
+     * indice unico sobre {@code (employee_id, start_at)} a secas se lee igual de
+     * bien en el diff y rechazaria con un 409 la cita nueva que ocupa el hueco de
+     * una CANCELADA — es decir, dejaria de poder reagendarse una cita anulada, que
+     * es la operacion mas normal de una recepcion. Esa diferencia solo se ve contra
+     * una base real.
+     */
+    @Nested
+    @DisplayName("Slot unico de la cita activa (uq_appointments_active_employee_start)")
+    class SlotUnico {
+
+        private void darDeBaja(Long id) {
+            entityManager
+                    .createNativeQuery("UPDATE appointments SET enabled = false WHERE id = :id")
+                    .setParameter("id", id).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+        }
+
+        @Test
+        @DisplayName("dos citas activas del mismo veterinario a la misma hora no caben las dos")
+        void dos_citas_activas_a_la_misma_hora_no_caben() {
+            cita("10:00", 30);
+
+            assertThatThrownBy(() -> cita("10:00", 30))
+                    .hasStackTraceContaining("uq_appointments_active_employee_start");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @DisplayName("una cita que no ocupa agenda deja el hueco libre: se puede reagendar encima")
+        @EnumSource(value = AppointmentStatus.class, names = {"CANCELLED", "NO_SHOW"})
+        void una_cita_que_no_ocupa_agenda_deja_el_hueco_libre(AppointmentStatus estado) {
+            cita("10:00", 30, estado, EMPRESA, VETERINARIA, SEDE);
+
+            Long reagendada = cita("10:00", 30);
+
+            assertThat(filas("appointments", reagendada)).as("la cita que ocupa el hueco liberado")
+                    .isOne();
+        }
+
+        @Test
+        @DisplayName("una cita dada de baja tampoco reserva el hueco")
+        void una_cita_dada_de_baja_tampoco_reserva_el_hueco() {
+            darDeBaja(cita("10:00", 30));
+
+            Long nueva = cita("10:00", 30);
+
+            assertThat(filas("appointments", nueva)).isOne();
+        }
+
+        @Test
+        @DisplayName("cancelar una cita libera su hueco en el acto, sin borrarla")
+        void cancelar_una_cita_libera_su_hueco_en_el_acto() {
+            Long ocupada = cita("10:00", 30);
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE appointments SET status = 'CANCELLED' WHERE id = :id")
+                    .setParameter("id", ocupada).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            // La columna es STORED: si no se recalculara en el UPDATE, el hueco quedaria
+            // reservado por una cita cancelada y nadie podria reagendar esa hora.
+            assertThatCode(() -> cita("10:00", 30)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("el alcance es por veterinario: otro profesional a la misma hora si cabe")
+        void otro_veterinario_a_la_misma_hora_si_cabe() {
+            cita("10:00", 30);
+
+            Long delOtro = cita("10:00", 30, AppointmentStatus.CONFIRMED, EMPRESA, OTRO_VETERINARIO,
+                    SEDE);
+
+            assertThat(filas("appointments", delOtro)).isOne();
+        }
+
+        @Test
+        @DisplayName("la misma hora en otro minuto no la ve la constraint: ese caso lo cubre el lock")
+        void la_misma_hora_en_otro_minuto_no_la_ve_la_constraint() {
+            cita("10:00", 30);
+
+            // 10:15 se pisa con 10:00-10:30 pero tiene otro start_at, asi que el indice
+            // no la toca. Esta es la mitad del problema que sostiene
+            // CreateAppointmentService.lockForOverlapCheck, y dejarlo escrito aqui evita
+            // que alguien lea el changeset 226 como "el solape ya esta cerrado en la BD".
+            Long parcial = cita("10:15", 30);
+
+            assertThat(filas("appointments", parcial)).isOne();
+            assertThat(solapes("10:15", 30)).isNotEmpty();
         }
     }
 }

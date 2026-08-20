@@ -4502,6 +4502,16 @@
             "format" : "int64"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeleteDebtOpenAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "204" : {
             "description" : "No Content"
@@ -11612,10 +11622,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/MedicationScheduleResponse"
-                  }
+                  "$ref" : "#/components/schemas/RescheduleMedicationScheduleResponse"
                 }
               }
             }
@@ -25813,10 +25820,33 @@
             "format" : "date-time"
           },
           "mode" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "ONE", "CASCADE" ]
           }
         },
-        "required" : [ "newDateTime" ]
+        "required" : [ "mode", "newDateTime" ]
+      },
+      "RescheduleMedicationScheduleResponse" : {
+        "type" : "object",
+        "properties" : {
+          "schedules" : {
+            "type" : "array",
+            "description" : "Plan completo de la medicacion, ordenado por hora vigente",
+            "items" : {
+              "$ref" : "#/components/schemas/MedicationScheduleResponse"
+            }
+          },
+          "cascadeApplied" : {
+            "type" : "boolean",
+            "description" : "true si se pidio cascada y se aplico a las tomas siguientes"
+          },
+          "cascadeSkippedReason" : {
+            "type" : "string",
+            "description" : "Por que la cascada pedida no se aplico; nulo si no se pidio o si se aplico",
+            "enum" : [ "MEDICATION_ORDER_NOT_FOUND", "GUIDELINE_NOT_INTERVAL", "FREQUENCY_NOT_DISCRETE" ]
+          }
+        },
+        "required" : [ "cascadeApplied", "schedules" ]
       },
       "ChangeLaboratoryTestStatusRequest" : {
         "type" : "object",
@@ -27662,6 +27692,20 @@
             "format" : "int64"
           }
         }
+      },
+      "DeleteDebtOpenAccountRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "expectedVersion" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "reason" ]
       }
     }
   }

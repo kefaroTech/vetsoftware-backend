@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -352,6 +353,42 @@ class OpenAccountTest {
             cuenta.recalculate(new BigDecimal("500.00"), new BigDecimal("500.00"));
 
             assertThat(cuenta.getOutstandingAmount()).isEqualByComparingTo("0.00");
+        }
+
+        @ParameterizedTest(name = "cobrado {1} sobre un facturado de {0}")
+        @CsvSource({"500.00, 500.01", "1000.00, 1500.00", "0.00, 0.01"})
+        @DisplayName("un cobrado mayor que el facturado es un estado imposible y se rechaza")
+        void un_cobrado_mayor_que_el_facturado_se_rechaza(String total, String pagado) {
+            // Ultima linea de defensa del saldo: cobrado > facturado no es un saldo
+            // negativo legitimo sino un estado IMPOSIBLE. Desde la fila corrupta el
+            // numero rojo se propaga a la cartera, al cierre de caja y a cualquier
+            // agregado de cuentas por cobrar, donde ya no se sabe de donde salio.
+            OpenAccount cuenta = valida().build();
+
+            assertThatThrownBy(
+                    () -> cuenta.recalculate(new BigDecimal(total), new BigDecimal(pagado)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("no puede superar el total facturado");
+        }
+
+        @Test
+        @DisplayName("un recalculo rechazado no deja la cuenta a medio mutar")
+        void un_recalculo_rechazado_no_deja_la_cuenta_a_medio_mutar() {
+            // La comprobacion va ANTES de las tres asignaciones. Si fuera al reves, la
+            // cuenta se quedaria con el total y el pagado nuevos y el saldo viejo —una
+            // fila que no cuadra consigo misma— y la excepcion solo la haria menos
+            // visible.
+            OpenAccount cuenta = valida().totalAmount(new BigDecimal("1000.00"))
+                    .paidAmount(new BigDecimal("400.00"))
+                    .outstandingAmount(new BigDecimal("600.00")).build();
+
+            assertThatThrownBy(
+                    () -> cuenta.recalculate(new BigDecimal("500.00"), new BigDecimal("900.00")))
+                    .isInstanceOf(IllegalStateException.class);
+
+            assertThat(cuenta.getTotalAmount()).isEqualByComparingTo("1000.00");
+            assertThat(cuenta.getPaidAmount()).isEqualByComparingTo("400.00");
+            assertThat(cuenta.getOutstandingAmount()).isEqualByComparingTo("600.00");
         }
 
         static Stream<Arguments> casosInvalidos() {

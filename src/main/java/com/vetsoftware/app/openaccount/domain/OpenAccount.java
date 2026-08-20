@@ -140,9 +140,27 @@ public class OpenAccount {
             throw new IllegalArgumentException("paidAmount is required");
         if (paid.compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("paidAmount cannot be negative");
+        BigDecimal recalculated = total.subtract(paid);
+        // ULTIMA LINEA DE DEFENSA DEL SALDO. Aqui se validaban los dos sumandos y NO
+        // el signo de la resta, asi que un cobrado mayor que el facturado se
+        // persistia tal cual: total 100.000 y un abono editado a 150.000 dejaban el
+        // outstanding en -50.000 con HTTP 200, sin concurrencia ninguna. Cobrado >
+        // facturado no es un saldo negativo legitimo sino un estado IMPOSIBLE, y
+        // desde la fila corrupta el numero rojo se propaga a la cartera, al cierre de
+        // caja y a cualquier agregado de cuentas por cobrar, donde ya no se sabe de
+        // donde salio. Las guardas de sobrepago viven en los casos de uso que
+        // registran o editan el abono, que es donde se puede dar un mensaje util;
+        // esta cierra las rutas que hoy no la tienen —reactivar un abono
+        // deshabilitado recalcula sin guard— y las que se escriban manana. La
+        // mutacion va DESPUES de la comprobacion: una cuenta rechazada no puede
+        // quedar a medio actualizar.
+        if (recalculated.compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalStateException(
+                    "El total cobrado (" + paid + ") no puede superar el total facturado (" + total
+                            + "): dejaria la cuenta con saldo negativo.");
         this.totalAmount = total;
         this.paidAmount = paid;
-        this.outstandingAmount = total.subtract(paid);
+        this.outstandingAmount = recalculated;
     }
 
     private static void validate(OwnerRef owner, BigDecimal totalAmount, BigDecimal paidAmount,

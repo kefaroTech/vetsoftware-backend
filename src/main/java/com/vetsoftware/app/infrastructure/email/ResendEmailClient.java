@@ -8,6 +8,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,8 +35,22 @@ import org.springframework.web.client.RestClientResponseException;
  * <b>Asíncrono y no bloqueante:</b> ambos métodos son {@code @Async} (pool
  * {@code
  * emailTaskExecutor}) y NUNCA lanzan: si el envío está deshabilitado, falta el
- * destinatario o la API key, o Resend/la red fallan, se registra un
- * {@code warning} y se continúa. Aplica a todos los usos.
+ * destinatario o la API key, o Resend/la red fallan, se registra el fallo y se
+ * continúa. Aplica a todos los usos.
+ *
+ * <p>
+ * <b>Aquí se pierde el correo, y por eso el fallo se ramifica.</b> Al cruzar el
+ * salto {@code @Async} el llamador ya recibió su respuesta: nadie está
+ * escuchando, no hay reintento y no hay cola de salida, así que el mensaje que
+ * no sale de {@link #dispatch} no sale nunca. Este es el punto común de los
+ * cinco flujos de correo —confirmación de cita, factura, recuperación de
+ * código, invitación y restablecimiento—, así que lo que aquí se registre mal
+ * se registra mal cinco veces. El fallo se separa en dos familias
+ * ({@link EmailErrorType}): la transitoria se registra como {@code WARN} —puede
+ * salir el envío siguiente— y la determinista como {@code ERROR} —nadie la
+ * arregla salvo una persona cambiando configuración—. Las dos adjuntan la
+ * excepción, no su {@code getMessage()}: sin la traza el diagnóstico se queda
+ * en «falló la red».
  *
  * <p>
  * Configuración: {@code vetsoftware.email.enabled},
@@ -46,6 +61,16 @@ import org.springframework.web.client.RestClientResponseException;
 public class ResendEmailClient {
 
     private static final Logger log = LoggerFactory.getLogger(ResendEmailClient.class);
+
+    /**
+     * Tope del cuerpo de error que se copia al registro. Resend devuelve un JSON
+     * corto, pero un error de un proxy intermedio puede devolver una página entera:
+     * volcarla cruda mete kilobytes por línea en un pipeline de logs facturado por
+     * volumen y arrastra a los recortes lo que sí importaba.
+     */
+    private static final int MAX_BODY_CHARS = 512;
+
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     private final boolean enabled;
     private final String from;
@@ -174,28 +199,74 @@ public class ResendEmailClient {
                     .contentType(MediaType.APPLICATION_JSON).body(body).retrieve()
                     .toBodilessEntity();
             recordOutcome("success");
-        } catch (RestClientResponseException e) {
-            recordFailure(e);
-            log.warn("No se pudo enviar el correo a {} (Resend respondió {}): {}", to,
-                    e.getStatusCode().value(), e.getResponseBodyAsString());
-        } catch (Exception e) {
-            recordFailure(e);
-            log.warn("No se pudo enviar el correo a {} por Resend: {}", to, e.getMessage());
+        } catch (RestClientResponseException exception) {
+            EmailErrorType errorType = EmailErrorType.of(exception);
+            recordFailure(exception, errorType);
+            int status = exception.getStatusCode().value();
+            String detail = summarize(exception.getResponseBodyAsString());
+            if (errorType.transitory()) {
+                log.warn("Resend rechazó de forma pasajera el correo a {} (HTTP {},"
+                        + " error.type={}); no hay reintento, así que este mensaje se pierde: {}",
+                        to, status, errorType.tag(), detail, exception);
+            } else {
+                log.error("Resend rechazó de forma permanente el correo a {} (HTTP {},"
+                        + " error.type={}); reintentar no cambiaría nada y el mensaje se pierde"
+                        + " hasta que alguien corrija la configuración: {}", to, status,
+                        errorType.tag(), detail, exception);
+            }
+        } catch (Exception exception) {
+            EmailErrorType errorType = EmailErrorType.of(exception);
+            recordFailure(exception, errorType);
+            if (errorType.transitory()) {
+                log.warn("No se pudo entregar el correo a {}: fallo de transporte contra Resend"
+                        + " (error.type={}). No hay reintento, así que este mensaje se pierde.", to,
+                        errorType.tag(), exception);
+            } else {
+                log.error("Fallo sin clasificar al enviar el correo a {} (error.type={}). El"
+                        + " mensaje se pierde y la clasificación necesita una rama nueva en"
+                        + " EmailErrorType.", to, errorType.tag(), exception);
+            }
         }
+    }
+
+    /**
+     * Deja el cuerpo de error en una sola línea y acotado. Es el único sitio donde
+     * se ve el motivo real que da Resend, así que no se puede omitir, pero tampoco
+     * volcarse crudo.
+     */
+    private static String summarize(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "(sin cuerpo de respuesta)";
+        }
+        String flattened = WHITESPACE.matcher(responseBody).replaceAll(" ").trim();
+        if (flattened.length() <= MAX_BODY_CHARS) {
+            return flattened;
+        }
+        return flattened.substring(0, MAX_BODY_CHARS) + "… (truncado)";
     }
 
     private void recordOutcome(String outcome) {
+        recordOutcome(outcome, EmailErrorType.NONE);
+    }
+
+    /**
+     * {@code error.type} se emite <b>siempre</b>, también en el camino feliz. Una
+     * etiqueta que solo aparece al fallar parte el medidor en dos juegos de
+     * etiquetas distintos y las series dejan de sumarse entre sí.
+     */
+    private void recordOutcome(String outcome, EmailErrorType errorType) {
         Observation current = observationRegistry.getCurrentObservation();
         if (current != null) {
             current.lowCardinalityKeyValue("email.outcome", outcome);
+            current.lowCardinalityKeyValue("error.type", errorType.tag());
         }
     }
 
-    private void recordFailure(Throwable error) {
+    private void recordFailure(Throwable error, EmailErrorType errorType) {
         Observation current = observationRegistry.getCurrentObservation();
         if (current != null) {
             current.error(error);
         }
-        recordOutcome("failure");
+        recordOutcome("failure", errorType);
     }
 }

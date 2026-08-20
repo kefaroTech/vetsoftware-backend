@@ -1,11 +1,13 @@
 package com.vetsoftware.app.medicationschedule.application.command;
 
+import com.vetsoftware.app.medicationschedule.domain.RescheduleMode;
 import java.time.LocalDateTime;
 
 /**
- * mode: "one" (solo esta toma) | "cascade" (recalcula las siguientes en pauta
- * INTERVALO).
+ * {@code mode}: {@link RescheduleMode#ONE} mueve solo esta toma;
+ * {@link RescheduleMode#CASCADE} recalcula ademas las siguientes pendientes
+ * cuando la pauta es de INTERVALO.
  */
 public record RescheduleMedicationScheduleCommand(Long scheduleId, LocalDateTime newDateTime,
-        String mode, Long companyId) {
+        RescheduleMode mode, Long companyId) {
 }

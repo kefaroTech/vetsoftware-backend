@@ -51,6 +51,8 @@ import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundExcep
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentNotFoundException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
 import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
@@ -65,6 +67,7 @@ import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObse
 import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationProcedureNotFoundException;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNoteNotFoundException;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import com.vetsoftware.app.infrastructure.logging.LogRedactor;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
 import com.vetsoftware.app.inventory.domain.InsufficientStockException;
@@ -111,6 +114,8 @@ import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
+import com.vetsoftware.app.registration.infrastructure.security.CaptchaConfigurationException;
+import com.vetsoftware.app.registration.infrastructure.security.CaptchaProviderUnavailableException;
 import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
@@ -234,6 +239,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Severidad de los 4xx de dominio: INFO. (#89)
+    //
+    // Es el mismo criterio ya escrito en handleExceptionInternal para los 4xx de
+    // Spring —arriba, con su justificación— aplicado ahora también a los de
+    // negocio,
+    // que son la otra mitad del mismo hecho. Un 404 porque el id no existe o un 409
+    // porque la caja ya está abierta no son un fallo del sistema: son el sistema
+    // funcionando y rechazando lo que debe rechazar. La cuenta era de 36 WARN
+    // contra
+    // 1 INFO en este archivo, así que el nivel WARN describía «lo normal» y el
+    // operador no tenía forma de distinguirlo de lo que sí exige mirar.
+    //
+    // Lo que NO baja, y por qué:
+    // - los cuatro log.error (5xx: PDF, S3, inesperado, y el 5xx de
+    // handleExceptionInternal) son fallos del servidor y siguen en ERROR;
+    // - el WARN de «Unmapped data integrity violation» se queda en WARN a
+    // propósito:
+    // ahí la respuesta al cliente es genérica y ese evento es el único rastro para
+    // poder mapear la constraint nueva, así que sí pide acción humana;
+    // - los eventos de seguridad no pierden severidad: access_denied,
+    // unauthenticated, login_failure y login_blocked_email_not_verified los emite
+    // AuditLogger por el canal AUDIT con actor, ip y motivo. Las líneas de aquí
+    // solo los duplicaban sin ese contexto.
+    // ---------------------------------------------------------------------------------------------
+
     @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class,
             MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class,
             ModuleNotFoundException.class, PermissionNotFoundException.class,
@@ -277,7 +308,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
             SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
-        log.warn("Resource not found: {}", ex.getMessage());
+        log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
     }
 
@@ -303,21 +334,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             TaxHasActiveChildrenException.class, ProductCategoryHasActiveChildrenException.class,
             ServiceCategoryHasActiveChildrenException.class})
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
-        log.warn("Cannot delete entity with active children: {}", ex.getMessage());
+        log.info("Cannot delete entity with active children: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
     }
 
     @ExceptionHandler(AdminEmployeeCannotBeDisabledException.class)
     public ProblemDetail handleAdminEmployeeCannotBeDisabled(
             AdminEmployeeCannotBeDisabledException ex) {
-        log.warn("Cannot disable admin employee: {}", ex.getMessage());
+        log.info("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidAppointmentTransitionException.class)
     public ProblemDetail handleInvalidAppointmentTransition(
             InvalidAppointmentTransitionException ex) {
-        log.warn("Invalid appointment status transition: {}", ex.getMessage());
+        log.info("Invalid appointment status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_APPOINTMENT_TRANSITION", ex.getMessage());
     }
 
@@ -337,7 +368,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // dicen lo mismo sin PII.
     @ExceptionHandler(AppointmentOverlapException.class)
     public ProblemDetail handleAppointmentOverlap(AppointmentOverlapException ex) {
-        log.warn("Appointment overlap: employeeId={} overlapCount={}", ex.getEmployeeId(),
+        log.info("Appointment overlap: employeeId={} overlapCount={}", ex.getEmployeeId(),
                 ex.getOverlapCount());
         ProblemDetail pd = problem(HttpStatus.CONFLICT, "APPOINTMENT_OVERLAP", ex.getMessage());
         pd.setProperty("overlappingAppointmentIds", ex.getOverlappingAppointmentIds());
@@ -356,7 +387,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({InvalidPurchaseOrderStatusTransitionException.class,
             InvalidGoodsReceiptStatusTransitionException.class})
     public ProblemDetail handlePurchaseStatusTransition(RuntimeException ex) {
-        log.warn("Invalid purchase status transition: {}", ex.getMessage());
+        log.info("Invalid purchase status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
@@ -368,20 +399,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InvalidSupplierInvoiceStateException.class)
     public ProblemDetail handleInvalidSupplierInvoiceState(
             InvalidSupplierInvoiceStateException ex) {
-        log.warn("Invalid supplier invoice state: {}", ex.getMessage());
+        log.info("Invalid supplier invoice state: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_SUPPLIER_INVOICE_STATE", ex.getMessage());
     }
 
     @ExceptionHandler(CompanyTaxProfileAlreadyExistsException.class)
     public ProblemDetail handleCompanyTaxProfileAlreadyExists(
             CompanyTaxProfileAlreadyExistsException ex) {
-        log.warn("Company tax profile already exists: {}", ex.getMessage());
+        log.info("Company tax profile already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "COMPANY_TAX_PROFILE_ALREADY_EXISTS", ex.getMessage());
     }
 
     @ExceptionHandler(ProductCodeAlreadyExistsException.class)
     public ProblemDetail handleProductCodeAlreadyExists(ProductCodeAlreadyExistsException ex) {
-        log.warn("Product code already exists: {}", ex.getMessage());
+        log.info("Product code already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS", ex.getMessage());
     }
 
@@ -396,27 +427,80 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             SupplierNameAlreadyExistsException.class,
             SupplierInvoiceNumberAlreadyExistsException.class})
     public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
-        log.warn("Name already exists: {}", ex.getMessage());
+        log.info("Name already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
     @ExceptionHandler(OwnerAlreadyHasOpenAccountException.class)
     public ProblemDetail handleOwnerAlreadyHasOpenAccount(OwnerAlreadyHasOpenAccountException ex) {
-        log.warn("Owner already has an open account: {}", ex.getMessage());
+        log.info("Owner already has an open account: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "OWNER_ALREADY_HAS_OPEN_ACCOUNT", ex.getMessage());
     }
 
     @ExceptionHandler(NumberingResolutionAlreadyActiveException.class)
     public ProblemDetail handleNumberingResolutionAlreadyActive(
             NumberingResolutionAlreadyActiveException ex) {
-        log.warn("Numbering resolution already active: {}", ex.getMessage());
+        log.info("Numbering resolution already active: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE", ex.getMessage());
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Numeración DIAN agotada o vencida: dos códigos propios, no INVALID_STATE.
+    // (#125)
+    //
+    // Los dos casos los detecta JpaNumberingAllocationPort al pedir el consecutivo,
+    // y
+    // los dos lanzaban IllegalStateException pelada, así que salían por el handler
+    // genérico como INVALID_STATE — el mismo código con el que sale «la cuenta no
+    // está
+    // abierta» y otra veintena de guardas de estado. Consecuencias medidas: el
+    // front no
+    // podía decirle al cajero qué hacer (son acciones distintas: ampliar la
+    // vigencia o
+    // pedir rango nuevo a la DIAN), y el operador no podía contar en Grafana
+    // cuántas
+    // empresas se estaban quedando sin numeración, porque el hecho no tenía nombre.
+    //
+    // El detail es constante y los datos van como propiedades del ProblemDetail
+    // —mismo
+    // patrón que APPOINTMENT_OVERLAP—, así que el mensaje de la excepción no llega
+    // nunca al cliente (#118). Lo que se publica es de la propia empresa del
+    // caller: el
+    // puerto resuelve la resolución por el companyId del contexto, no por uno que
+    // venga
+    // en el request.
+    // ---------------------------------------------------------------------------------------------
+
+    @ExceptionHandler(NumberingResolutionNotEffectiveException.class)
+    public ProblemDetail handleNumberingResolutionNotEffective(
+            NumberingResolutionNotEffectiveException ex) {
+        log.info("Numbering resolution not effective: validFrom={} validTo={}", ex.getValidFrom(),
+                ex.getValidTo());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_NOT_EFFECTIVE",
+                "La resolución de numeración no está vigente. Revisa sus fechas de vigencia"
+                        + " o activa una resolución nueva antes de emitir.");
+        setIfPresent(pd, "resolutionNumber", ex.getResolutionNumber());
+        setIfPresent(pd, "validFrom", ex.getValidFrom());
+        setIfPresent(pd, "validTo", ex.getValidTo());
+        return pd;
+    }
+
+    @ExceptionHandler(NumberingResolutionRangeExhaustedException.class)
+    public ProblemDetail handleNumberingResolutionRangeExhausted(
+            NumberingResolutionRangeExhaustedException ex) {
+        log.info("Numbering resolution range exhausted: rangeTo={}", ex.getRangeTo());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_RANGE_EXHAUSTED",
+                "La resolución de numeración agotó su rango de consecutivos. Solicita un rango"
+                        + " nuevo a la DIAN y actívalo antes de emitir.");
+        setIfPresent(pd, "resolutionNumber", ex.getResolutionNumber());
+        setIfPresent(pd, "rangeTo", ex.getRangeTo());
+        return pd;
     }
 
     @ExceptionHandler(InvalidOpenAccountStatusTransitionException.class)
     public ProblemDetail handleInvalidOpenAccountStatusTransition(
             InvalidOpenAccountStatusTransitionException ex) {
-        log.warn("Invalid open account status transition: {}", ex.getMessage());
+        log.info("Invalid open account status transition: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INVALID_OPEN_ACCOUNT_STATUS_TRANSITION",
                 ex.getMessage());
     }
@@ -424,7 +508,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DebtOpenAccountAlreadyVoidedException.class)
     public ProblemDetail handleDebtOpenAccountAlreadyVoided(
             DebtOpenAccountAlreadyVoidedException ex) {
-        log.warn("Debt open account payment already voided: {}", ex.getMessage());
+        log.info("Debt open account payment already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DEBT_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
     }
 
@@ -432,7 +516,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             ServiceChargeOpenAccountAlreadyVoidedException.class,
             GeneralChargeOpenAccountAlreadyVoidedException.class})
     public ProblemDetail handleChargeOpenAccountAlreadyVoided(RuntimeException ex) {
-        log.warn("Charge open account already voided: {}", ex.getMessage());
+        log.info("Charge open account already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CHARGE_OPEN_ACCOUNT_ALREADY_VOIDED", ex.getMessage());
     }
 
@@ -441,13 +525,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // reversado).
     @ExceptionHandler(DocumentNotValidatedException.class)
     public ProblemDetail handleDocumentNotValidated(DocumentNotValidatedException ex) {
-        log.warn("Document not validated for correction: {}", ex.getMessage());
+        log.info("Document not validated for correction: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DOCUMENT_NOT_VALIDATED", ex.getMessage());
     }
 
     @ExceptionHandler(DocumentAlreadyReversedException.class)
     public ProblemDetail handleDocumentAlreadyReversed(DocumentAlreadyReversedException ex) {
-        log.warn("Document already reversed: {}", ex.getMessage());
+        log.info("Document already reversed: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_REVERSED", ex.getMessage());
     }
 
@@ -458,7 +542,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // al usuario.
     @ExceptionHandler(InsufficientStockException.class)
     public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
-        log.warn("Insufficient stock: {}", ex.getMessage());
+        log.info("Insufficient stock: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", ex.getMessage());
     }
 
@@ -472,30 +556,55 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             EmployeeCashSessionRequiredException.class, CashSessionClosedException.class,
             NoOpenCashSessionException.class})
     public ProblemDetail handleCashSessionConflict(RuntimeException ex) {
-        log.warn("Cash session conflict: {}", ex.getMessage());
+        log.info("Cash session conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
-    // Cubre el guard de inmutabilidad de cargos/abonos sobre cuentas no-OPEN
-    // (IllegalStateException).
+    // Red de seguridad de los guards de estado que todavía lanzan
+    // IllegalStateException
+    // pelada (el de inmutabilidad de cargos/abonos sobre cuentas no-OPEN, entre
+    // otros).
+    //
+    // El detail es CONSTANTE y no ex.getMessage() (#118). Este handler es el
+    // desagüe de
+    // ~70 `new IllegalStateException(` de src/main escritas por decenas de manos y
+    // sin
+    // ningún contrato sobre qué llevan dentro: el mensaje se redactó para un
+    // operador,
+    // no para un cliente, y devolverlo tal cual convertía cada uno de esos
+    // literales en
+    // superficie de API no revisada —nombres de columna, ids de otras entidades,
+    // estados
+    // internos— (ASVS V7.4.1). El diagnóstico no se pierde: sigue entero en el log,
+    // que
+    // pasa por RedactingAppender.
+    //
+    // Que el detail sea constante es además lo que permite que INVALID_STATE
+    // signifique
+    // algo: cuando un caso concreto necesita decirle al usuario qué hacer, la
+    // salida es
+    // darle su excepción de dominio y su handler —como se hizo con la numeración
+    // DIAN en
+    // #125—, no reabrir el paso del mensaje crudo.
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleConflictState(IllegalStateException ex) {
-        log.warn("Illegal state: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "INVALID_STATE", ex.getMessage());
+        log.info("Illegal state: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_STATE",
+                "La operación no es válida para el estado actual del registro.");
     }
 
     // Concurrencia: dos transacciones tocaron la misma entidad versionada
     // (optimistic lock).
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
-        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+        log.info("Optimistic lock conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
                 "El registro fue modificado por otra operación. Reintenta.");
     }
 
     @ExceptionHandler(PetshopCatalogConflictException.class)
     public ProblemDetail handlePetshopCatalogConflict(PetshopCatalogConflictException ex) {
-        log.warn("Petshop catalog conflict: {}", ex.getMessage());
+        log.info("Petshop catalog conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, ex.getCode(), ex.getMessage());
     }
 
@@ -506,7 +615,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // lo trate igual.
     @ExceptionHandler(OpenAccountVersionConflictException.class)
     public ProblemDetail handleOpenAccountVersionConflict(OpenAccountVersionConflictException ex) {
-        log.warn("Open account version conflict: {}", ex.getMessage());
+        log.info("Open account version conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
                 "La cuenta fue modificada por otra operación. Reintenta.");
     }
@@ -514,14 +623,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ProblemDetail handleUnauthorized(InvalidCredentialsException ex,
             HttpServletRequest request) {
-        log.warn("Unauthorized: {}", ex.getMessage());
+        log.info("Unauthorized: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
     }
 
     @ExceptionHandler(SessionReplacedException.class)
     public ProblemDetail handleSessionReplaced(SessionReplacedException ex) {
-        log.warn("Authentication session replaced");
+        log.info("Authentication session replaced");
         return problem(HttpStatus.UNAUTHORIZED, "SESSION_REPLACED", ex.getMessage());
     }
 
@@ -529,18 +638,103 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // código propio para
     // que el front distinga de credenciales inválidas y ofrezca reenviar la
     // verificación.
+    // El identificador se enmascara AQUÍ, antes de entregarlo (#180). En el
+    // auto-registro el código de empleado ES el correo del dueño, y
+    // AuditLogger.loginBlockedEmailNotVerified lo pone en dos sitios de la misma
+    // línea:
+    // en el texto del mensaje y en el campo estructurado actor.identifier. Solo el
+    // primero quedaba protegido — RedactingAppender redacta el mensaje formateado
+    // por
+    // patrones, pero actor.identifier está en la allowlist VERBATIM de
+    // LogFieldPolicy y
+    // sale tal cual—, así que la línea se leía "id=***@clinica.com" y traía el
+    // correo
+    // entero en el campo de al lado. Enmascarado y en claro, en el mismo evento,
+    // hasta
+    // Loki.
+    //
+    // La redacción se delega en LogRedactor y no se reimplementa aquí para que
+    // exista
+    // una sola definición de "correo enmascarado"; es idempotente, así que el
+    // appender
+    // volviendo a pasar por encima no cambia nada. Un código de empleado que no sea
+    // un
+    // correo no casa con ningún patrón y sigue saliendo entero, que es lo que
+    // documenta
+    // AuditLogger y lo que necesita quien investiga.
     @ExceptionHandler(EmailNotVerifiedException.class)
     public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
-        log.warn("Login blocked, email not verified: {}", ex.getIdentifier());
-        auditLogger.loginBlockedEmailNotVerified(ex.getIdentifier());
+        String identifier = LogRedactor.redact(ex.getIdentifier());
+        log.info("Login blocked, email not verified: {}", identifier);
+        auditLogger.loginBlockedEmailNotVerified(identifier);
         return problem(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED",
                 "Debes verificar tu correo antes de iniciar sesión.");
     }
 
-    // Captcha del registro no superado (o mal configurado).
+    // ---------------------------------------------------------------------------------------------
+    // Captcha del registro: tres poblaciones, tres severidades, UN solo punto de
+    // registro cada una. (#99)
+    //
+    // Antes el fallo se registraba dos veces y en desacuerdo consigo mismo: el
+    // adapter
+    // hacía log.error y a continuación lanzaba, y este handler volvía a registrarlo
+    // en
+    // log.warn. Dos líneas del mismo hecho con severidades contradictorias, y la
+    // que
+    // llevaba el diagnóstico era la del adapter, porque la excepción se construía
+    // sin
+    // causa: al handler no le llegaba nada que registrar. Ahora el adapter no
+    // registra
+    // —solo clasifica y lanza con causa— y quien registra es el handler, que es el
+    // único
+    // que sabe además con qué respuesta terminó el request.
+    //
+    // La respuesta HTTP es la misma en los tres casos (400 CAPTCHA_FAILED, detalle
+    // neutro): quien envía el formulario no debe poder distinguir "fallaste el
+    // captcha"
+    // de "el servidor lo tiene mal configurado", porque lo segundo es un dato de
+    // reconocimiento. Lo que cambia es a quién despierta cada uno.
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Captcha mal configurado: sin secreto, o el proveedor rechaza la credencial
+     * con un 4xx. ERROR y con la causa, porque no falla para un usuario sino para
+     * todos — ningún registro se completa mientras dure— y solo lo arregla un
+     * operador tocando la configuración del despliegue. Marca la observación como
+     * error para que el request salga como fallido en las métricas pese a responder
+     * 400.
+     */
+    @ExceptionHandler(CaptchaConfigurationException.class)
+    public ProblemDetail handleCaptchaMisconfigured(CaptchaConfigurationException ex,
+            HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Captcha is misconfigured; every registration is being rejected", ex);
+        return problem(HttpStatus.BAD_REQUEST, "CAPTCHA_FAILED",
+                "No pudimos verificar el captcha. Inténtalo de nuevo.");
+    }
+
+    /**
+     * El proveedor de captcha no contesta (timeout, corte de red, 5xx suyo). WARN:
+     * hay que enterarse si se sostiene, pero no hay nada que arreglar en este
+     * despliegue y se resuelve solo. Con la causa, que es lo único que separa un
+     * read timeout de un 503.
+     */
+    @ExceptionHandler(CaptchaProviderUnavailableException.class)
+    public ProblemDetail handleCaptchaProviderUnavailable(CaptchaProviderUnavailableException ex) {
+        log.warn("Captcha provider unavailable", ex);
+        return problem(HttpStatus.BAD_REQUEST, "CAPTCHA_FAILED",
+                "No pudimos verificar el captcha. Inténtalo de nuevo.");
+    }
+
+    /**
+     * Captcha no superado por quien envió el formulario: token ausente, caducado,
+     * ya usado o score por debajo del mínimo. INFO — es un 4xx atribuible al
+     * cliente, el mismo criterio del resto del archivo, y es además la población
+     * dominante.
+     */
     @ExceptionHandler(CaptchaVerificationException.class)
     public ProblemDetail handleCaptchaFailed(CaptchaVerificationException ex) {
-        log.warn("Captcha verification failed: {}", ex.getMessage());
+        log.info("Captcha verification failed: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "CAPTCHA_FAILED",
                 "No pudimos verificar el captcha. Inténtalo de nuevo.");
     }
@@ -548,7 +742,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Token de verificación de correo inválido, expirado o ya usado.
     @ExceptionHandler(InvalidVerificationTokenException.class)
     public ProblemDetail handleInvalidVerificationToken(InvalidVerificationTokenException ex) {
-        log.warn("Invalid email verification token: {}", ex.getMessage());
+        log.info("Invalid email verification token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_VERIFICATION_TOKEN",
                 "El enlace de verificación no es válido o expiró.");
     }
@@ -556,7 +750,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Token de restablecimiento de contraseña inválido, expirado o ya usado.
     @ExceptionHandler(InvalidPasswordResetTokenException.class)
     public ProblemDetail handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
-        log.warn("Invalid password reset token: {}", ex.getMessage());
+        log.info("Invalid password reset token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_RESET_TOKEN",
                 "El enlace de restablecimiento no es válido o expiró.");
     }
@@ -565,7 +759,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // registrado.
     @ExceptionHandler(EmployeeCodeAlreadyExistsException.class)
     public ProblemDetail handleEmailAlreadyRegistered(EmployeeCodeAlreadyExistsException ex) {
-        log.warn("Email already registered: {}", ex.getMessage());
+        log.info("Email already registered: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED",
                 "Ese correo ya está registrado. Inicia sesión o usa otro correo.");
     }
@@ -579,14 +773,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BranchAccessDeniedException.class)
     public ProblemDetail handleBranchAccessDenied(BranchAccessDeniedException ex,
             HttpServletRequest request) {
-        log.warn("Branch access denied: {}", ex.getMessage());
+        log.info("Branch access denied: {}", ex.getMessage());
         auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
         return problem(HttpStatus.FORBIDDEN, "BRANCH_NOT_ALLOWED", ex.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        log.warn("Access denied: {}", ex.getMessage());
+        log.info("Access denied: {}", ex.getMessage());
         auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
         return problem(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
     }
@@ -594,15 +788,36 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthenticationFailure(AuthenticationException ex,
             HttpServletRequest request) {
-        log.warn("Authentication failed: {}", ex.getMessage());
+        log.info("Authentication failed: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "authentication_failed");
         return problem(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication required");
     }
 
+    // Mismo criterio que handleConflictState, y aquí el volumen lo hace más grave:
+    // alimentan este handler ~1.500 `new IllegalArgumentException(` de src/main
+    // —las
+    // invariantes de constructor de dominio que exige el CLAUDE.md, más las FK no
+    // resueltas de los servicios—. Ninguna de esas 1.500 cadenas se escribió
+    // pensando
+    // en un cliente HTTP, y varias interpolan datos internos: el caso testigo es
+    // CreateAppointmentService, que lanza "Employee not found: " + employeeId y con
+    // eso
+    // convertía el endpoint de crear cita en un oráculo para enumerar empleados de
+    // otras
+    // empresas probando ids (#118).
+    //
+    // El detail constante es lo correcto también de cara al front: la validación
+    // que el
+    // usuario puede corregir campo a campo NO llega por aquí, llega por
+    // handleMethodArgumentNotValid con VALIDATION_FAILED y su lista de errores por
+    // campo. Lo que cae en este handler es una invariante de dominio, que el front
+    // no
+    // sabe atribuir a ningún campo concreto.
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
-        log.warn("Bad request: {}", ex.getMessage());
-        return problem(HttpStatus.BAD_REQUEST, "INVALID_INPUT", ex.getMessage());
+        log.info("Bad request: {}", ex.getMessage());
+        return problem(HttpStatus.BAD_REQUEST, "INVALID_INPUT",
+                "Los datos enviados no son válidos.");
     }
 
     @Override
@@ -645,7 +860,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             // nombre de un propietario real— y la redacción por patrones no reconoce
             // nombres propios ni prosa (ASVS V7.1.1). La constraint es un identificador del
             // esquema, y es además lo único que este handler usa.
-            log.warn("Data integrity violation: constraint={} type={}", constraintName,
+            log.info("Data integrity violation: constraint={} type={}", constraintName,
                     ex.getClass().getSimpleName());
             return mapped;
         }
@@ -668,6 +883,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * no hay ninguna que le corresponda.
      */
     private ProblemDetail mapConstraint(String cause) {
+        // Carrera en "un veterinario no puede tener dos citas activas a la misma hora"
+        // (issue #114). Hasta que existió el índice, la detección de solape era un
+        // SELECT
+        // y un filtro en Java: dos peticiones simultáneas sobre el mismo hueco pasaban
+        // las dos el check, se guardaban las dos y salían las dos confirmaciones por
+        // correo. El índice cierra la carrera; este mapeo es lo que convierte su error
+        // de integridad en el mismo 409 que ya emite el check síncrono.
+        //
+        // MISMO código que AppointmentOverlapException, a propósito: al front le da
+        // igual
+        // si el cruce lo detectó Java o lo detectó la base, y un código distinto le
+        // obligaría a escribir dos veces el mismo tratamiento.
+        //
+        // Lo que NO puede llevar esta rama es overlappingAppointmentIds. Aquí lo único
+        // que hay es el nombre de la constraint —del documento que chocó no se sabe ni
+        // con qué chocó— y el front tiene que tolerar su ausencia: por eso el detail
+        // habla del cruce sin prometer citas concretas que enlazar.
+        //
+        // Se mapea por NOMBRE de constraint, así que la columna generada
+        // active_slot_employee_id —el truco para simular un índice parcial en MySQL,
+        // que
+        // vale NULL en las citas canceladas o no compareció— no afecta a este código
+        // aunque el driver la nombre en el mensaje.
+        if (cause != null && cause.contains("uq_appointments_active_employee_start")) {
+            return problem(HttpStatus.CONFLICT, "APPOINTMENT_OVERLAP",
+                    "El veterinario seleccionado acaba de quedar ocupado en ese horario."
+                            + " Elige otra hora o vuelve a intentarlo.");
+        }
         // Carrera en "1 cuenta abierta por propietario y sede": la constraint única
         // atrapa
         // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo
@@ -862,6 +1105,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             pd.setProperty("traceId", currentSpan.context().traceId());
         }
         return pd;
+    }
+
+    /**
+     * Añade una propiedad al ProblemDetail solo si tiene valor. Un
+     * {@code setProperty(k, null)} deja la clave presente con {@code null} en el
+     * JSON, y el front no distingue "no aplica" de "vino vacío".
+     */
+    private static void setIfPresent(ProblemDetail pd, String name, Object value) {
+        if (value != null) {
+            pd.setProperty(name, value);
+        }
     }
 
     private static void markObservationError(HttpServletRequest request, Throwable error) {

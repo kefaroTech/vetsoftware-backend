@@ -3,7 +3,19 @@ package com.vetsoftware.app.consultationtype.application.port.in;
 import com.vetsoftware.app.consultationtype.application.dto.ConsultationTypeDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+/**
+ * Alineado con sus hermanos —{@code CreateConsultationTypeUseCase},
+ * {@code UpdateConsultationTypeUseCase}, {@code DeleteConsultationTypeUseCase}
+ * y {@code FindConsultationTypeUseCase} son {@code hasRole('SYSTEM')} a secas—,
+ * que es lo que este puerto debio ser siempre: llevaba
+ * {@code hasAuthority('consultationtype.update')} por copia del patron CRUD del
+ * tenant, y ese disyunto era una mina armada. No abria nada hoy —la authority
+ * no esta sembrada—, pero el dia que alguien la creara le entregaria este
+ * catalogo maestro a un administrador de empresa. Quien no puede crear, editar
+ * ni desactivar una fila tampoco tiene por que reactivarla: de hecho no podia
+ * llegar a ese estado, porque desactivarla ya era SYSTEM.
+ */
 public interface ReactivateConsultationTypeUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('consultationtype.update')")
+    @PreAuthorize("hasRole('SYSTEM')")
     ConsultationTypeDto execute(Long id);
 }

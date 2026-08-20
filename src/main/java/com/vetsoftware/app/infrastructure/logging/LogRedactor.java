@@ -27,15 +27,25 @@ import org.slf4j.event.KeyValuePair;
  * en profundidad de mejor esfuerzo: detecta las formas de alta confianza
  * (credenciales por clave, JWT, {@code
  *       Bearer}, correos, teléfonos internacionales, tarjetas válidas por Luhn,
- * documentos y campos clínicos nombrados). No pretende detectar prosa clínica
- * sin clave — para eso la regla sigue siendo no registrar entidades ni payloads
- * completos.
+ * documentos y campos clínicos nombrados, y el valor duplicado de los mensajes
+ * de violación de constraint). No pretende detectar prosa clínica sin clave —
+ * para eso la regla sigue siendo no registrar entidades ni payloads completos.
  * </ol>
  *
  * <p>
+ * <b>Barrido de banderas:</b> antes de aplicar nada se recorre el texto una vez
+ * para decidir qué reglas <em>pueden</em> casar, y así ahorrar ocho pasadas de
+ * regex sobre la inmensa mayoría de mensajes. Esa optimización tiene un filo:
+ * una regla colgada de una bandera equivocada no se evalúa nunca. Toda regla
+ * cuyo valor sensible pueda ser <em>texto</em> —un nombre propio no tiene
+ * dígitos, ni {@code @}, ni separadores— debe llevar su propio discriminador
+ * barato ({@code indexOf} de una subcadena estable), no una bandera de
+ * carácter.
+ *
+ * <p>
  * <b>Orden de las reglas de texto:</b> importa y no debe alterarse a la ligera.
- * Las de forma (JWT, {@code Bearer}, Luhn) van <em>antes</em> que la de
- * clave-valor, porque {@code
+ * Las de forma (constraint, JWT, {@code Bearer}, Luhn) van <em>antes</em> que
+ * la de clave-valor, porque {@code
  * Authorization: Bearer eyJ...} tiene un valor con espacios: si la regla de
  * clave-valor corriera primero, cortaría en el espacio y solo enmascararía la
  * palabra {@code Bearer}, dejando el token intacto.
@@ -160,6 +170,45 @@ public final class LogRedactor {
     private static final Pattern LONG_DIGIT_RUN = Pattern
             .compile("(?<![0-9A-Za-z])[0-9]{10,}(?![0-9A-Za-z])");
 
+    /**
+     * Valor duplicado en el mensaje de MySQL
+     * {@code Duplicate entry '<valor>' for key '<constraint>'}. Se suprime el
+     * <b>valor</b> —que es una fila real: el nombre de un propietario, su documento
+     * o su correo— y se conserva la <b>constraint</b>, que es un identificador del
+     * esquema y lo único que se necesita para diagnosticar y mapear el conflicto
+     * (ASVS V7.1.1).
+     *
+     * <p>
+     * Es una regla de <em>forma</em>, no de contenido: no intenta reconocer qué hay
+     * dentro de las comillas. Eso es deliberado — el valor duplicado puede ser un
+     * nombre propio, y ninguna regla basada en dígitos, {@code @} o separadores
+     * llega a verlo.
+     *
+     * <p>
+     * La primera rama de la alternación corta en la comilla que precede a
+     * {@code for key}, de modo que un apóstrofo dentro del propio valor
+     * ({@code O'Brien}) no trunca la sustitución ni deja escapar la cola del
+     * nombre. La segunda cubre la forma sin sufijo {@code for key}.
+     */
+    private static final Pattern MYSQL_DUPLICATE_ENTRY = Pattern.compile(
+            "(Duplicate entry ')(?:.*?(?=' for key )|[^'\\r\\n]*)(')", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Valor de clave en el detalle de PostgreSQL:
+     * {@code Key (<columna>)=(<valor>) already exists}. Se conserva la columna y se
+     * suprime el valor. La regla termina en el paréntesis de cierre del valor y no
+     * en el texto que le sigue, así que el mismo molde cubre las demás variantes
+     * del detalle ({@code is not present in table},
+     * {@code is still referenced from table}) sin enumerarlas.
+     *
+     * <p>
+     * Limitación conocida: un valor que contenga paréntesis corta antes de tiempo.
+     * Es la forma que emite el servidor para valores compuestos separados por coma,
+     * y el fallo se degrada a sobre-enmascarado del prefijo, no a fuga del resto.
+     */
+    private static final Pattern POSTGRES_CONSTRAINT_KEY = Pattern
+            .compile("(Key \\([^()\\r\\n]*\\)=\\()[^()\\r\\n]*(\\))", Pattern.CASE_INSENSITIVE);
+
     // ---------------------------------------------------------------------------------------------
     // Texto libre
     // ---------------------------------------------------------------------------------------------
@@ -200,6 +249,26 @@ public final class LogRedactor {
         }
 
         String result = text;
+        // Violación de constraint. Va primero —para que el valor desaparezca antes de
+        // que ninguna otra regla lo toque— y es la única que NO cuelga de una bandera
+        // del barrido: su valor sensible puede ser un nombre propio, sin dígitos, sin
+        // '@', sin ':' ni '='. Colgarla de una bandera la dejaría sin evaluar
+        // exactamente en el caso que motiva la regla.
+        //
+        // El discriminador es un indexOf sobre una subcadena estable del mensaje del
+        // driver: una búsqueda vectorizada de una constante, más barata que la pasada
+        // de regex que evita, y del mismo tipo que el "eyJ" que ya filtra el JWT. Solo
+        // esta primera búsqueda se paga en toda línea de log; la de PostgreSQL va
+        // detrás de una bandera.
+        if (result.indexOf("uplicate entry '") >= 0) {
+            result = replaceAll(result, MYSQL_DUPLICATE_ENTRY, "$1" + MASK + "$2");
+        }
+        // Colgar esta de 'separator' es seguro y no reintroduce el defecto: la
+        // subcadena ")=(" contiene un '=', así que la bandera está puesta siempre que
+        // el detalle de PostgreSQL esté presente.
+        if (separator && result.indexOf(")=(") >= 0) {
+            result = replaceAll(result, POSTGRES_CONSTRAINT_KEY, "$1" + MASK + "$2");
+        }
         if (separator && slash) {
             result = replaceAll(result, URL_CREDENTIALS, "://" + MASK + ":" + MASK + "@");
         }

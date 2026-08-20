@@ -59,6 +59,14 @@ class MembershipSubModulePersistenceIT extends AbstractDataJpaTest {
     @Autowired
     private JpaMembershipSubModuleRepository repository;
 
+    /**
+     * El repositorio de Spring Data, a pelo: {@code hasEnabledSubModuleCode} no
+     * pasa por el adaptador de dominio y hasta la incidencia #185 nadie lo
+     * ejecutaba contra un motor real.
+     */
+    @Autowired
+    private MembershipSubModuleJpaRepository jpaRepository;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -214,6 +222,100 @@ class MembershipSubModulePersistenceIT extends AbstractDataJpaTest {
             assertThat(
                     repository.findDisabledIdByMembershipAndSubModule(MEMBERSHIP_ID, SUB_MODULE_ID))
                     .contains(guardado.getId());
+        }
+    }
+
+    /**
+     * <b>El gate de facturacion electronica, ejecutado contra el motor.</b>
+     *
+     * <p>
+     * {@code hasEnabledSubModuleCode} es el cuerpo entero de
+     * {@code JpaBillingEntitlementQueryPort.isElectronicInvoicingEnabled}, y esa es
+     * la <b>primera</b> lectura a base de datos de toda emision, transmision,
+     * reconciliacion y webhook DIAN. Estuvo caida al 100 % (#185) porque su JPQL
+     * decia {@code SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END} y con
+     * Hibernate 7 esa expresion se tipa {@code Integer}, asi que la coercion del
+     * literal booleano lanzaba
+     * {@code Cannot coerce value 'true' [java.lang.Boolean] to Integer}.
+     *
+     * <p>
+     * <b>Ningun doble puede detectar eso</b>: el defecto vive en la traduccion de
+     * la consulta y en la extraccion del resultado, no en el codigo Java. El unico
+     * uso que tenia en {@code src/test} era un mock, y por eso el fallo llego a
+     * produccion. Estos casos existen para que la consulta se ejecute de verdad.
+     */
+    @Nested
+    @DisplayName("hasEnabledSubModuleCode — el gate de facturacion electronica (#185)")
+    class GateDeFacturacionElectronica {
+
+        private static final String CODIGO_FACTURACION = "FACT-IT";
+        private static final String CODIGO_INVENTARIO = "INV-IT";
+
+        private void deshabilitarSubModulo(Long subModuleId) {
+            entityManager.createNativeQuery("""
+                    UPDATE sub_modules SET enabled = false WHERE id = :id
+                    """).setParameter("id", subModuleId).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+        }
+
+        @Test
+        @DisplayName("con el enlace y el submodulo activos devuelve true sin reventar en la coercion")
+        void con_el_enlace_activo_devuelve_true() {
+            guardar(FACTURACION);
+
+            // Este es el caso exacto que lanzaba Cannot coerce value 'true' a Integer:
+            // el resultado positivo, que es el que habilita la facturacion.
+            assertThat(jpaRepository.hasEnabledSubModuleCode(MEMBERSHIP_ID, CODIGO_FACTURACION))
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("sin enlace para ese codigo devuelve false")
+        void sin_enlace_para_ese_codigo_devuelve_false() {
+            guardar(FACTURACION);
+
+            assertThat(jpaRepository.hasEnabledSubModuleCode(MEMBERSHIP_ID, CODIGO_INVENTARIO))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("un codigo que no existe en ningun submodulo devuelve false")
+        void un_codigo_inexistente_devuelve_false() {
+            guardar(FACTURACION);
+
+            assertThat(jpaRepository.hasEnabledSubModuleCode(MEMBERSHIP_ID, "NO-EXISTE")).isFalse();
+        }
+
+        @Test
+        @DisplayName("con el enlace deshabilitado (soft delete) devuelve false")
+        void con_el_enlace_deshabilitado_devuelve_false() {
+            MembershipSubModule guardado = guardar(FACTURACION);
+
+            deshabilitar(guardado.getId());
+
+            assertThat(jpaRepository.hasEnabledSubModuleCode(MEMBERSHIP_ID, CODIGO_FACTURACION))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("con el submodulo deshabilitado devuelve false aunque el enlace siga activo")
+        void con_el_submodulo_deshabilitado_devuelve_false() {
+            guardar(INVENTARIO);
+
+            deshabilitarSubModulo(OTRO_SUB_MODULE_ID);
+
+            assertThat(jpaRepository.hasEnabledSubModuleCode(MEMBERSHIP_ID, CODIGO_INVENTARIO))
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("otra membresia no hereda el submodulo de esta")
+        void otra_membresia_no_hereda_el_submodulo() {
+            guardar(FACTURACION);
+
+            assertThat(jpaRepository.hasEnabledSubModuleCode(999999L, CODIGO_FACTURACION))
+                    .isFalse();
         }
     }
 }

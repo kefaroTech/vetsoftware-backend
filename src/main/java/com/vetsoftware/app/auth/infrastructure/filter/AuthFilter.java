@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -218,10 +219,22 @@ public class AuthFilter extends OncePerRequestFilter {
      * TOKEN_EXPIRED} → intentar refrescar; {@code SESSION_REPLACED},
      * {@code TOKEN_INVALID} o {@code
      * TOKEN_MISSING} → desloguear.
+     *
+     * <p>
+     * A la auditoría va el {@code code} en snake_case, <b>nunca el
+     * {@code detail}</b>. El {@code detail} es prosa para el humano que lee la
+     * respuesta y en la rama {@code SESSION_REPLACED} es directamente el mensaje de
+     * una excepción: un valor no acotado que, puesto en el campo {@code reason} del
+     * canal AUDIT, lo vuelve inagrupable y abre la puerta a meter datos del sujeto
+     * en un log. El {@code code} es un conjunto cerrado —{@code token_missing},
+     * {@code token_expired}, {@code token_invalid}, {@code session_replaced}—, y
+     * derivarlo aquí en vez de pasarlo aparte impide que el motivo auditado y el
+     * que ve el front lleguen a divergir.
      */
     private void writeUnauthorized(HttpServletRequest request, HttpServletResponse response,
             String code, String detail) throws IOException {
-        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(), detail);
+        auditLogger.unauthenticated(request.getMethod(), request.getRequestURI(),
+                code.toLowerCase(Locale.ROOT));
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
         problem.setTitle(HttpStatus.UNAUTHORIZED.getReasonPhrase());
         problem.setProperty("code", code);

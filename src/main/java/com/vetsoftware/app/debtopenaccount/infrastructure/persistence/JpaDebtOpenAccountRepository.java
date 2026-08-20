@@ -57,6 +57,14 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     }
 
     @Override
+    public Optional<Long> lockAndFindOpenAccountId(Long id) {
+        // getOpenAccount() devuelve el proxy perezoso y getId() lee su identificador
+        // sin inicializarlo: ni una consulta mas, y la cuenta NO entra al contexto de
+        // persistencia con valores anteriores al lock.
+        return jpaRepository.findByIdForUpdate(id).map(e -> e.getOpenAccount().getId());
+    }
+
+    @Override
     public Optional<DebtOpenAccount> findByOpenAccountIdAndClientRequestId(Long openAccountId,
             String clientRequestId) {
         return jpaRepository.findByOpenAccount_IdAndClientRequestId(openAccountId, clientRequestId)

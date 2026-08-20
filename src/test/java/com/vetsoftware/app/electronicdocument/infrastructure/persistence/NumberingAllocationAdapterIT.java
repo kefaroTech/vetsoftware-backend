@@ -1,10 +1,12 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.vetsoftware.app.electronicdocument.application.port.out.NumberingAllocationPort.AllocatedNumber;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
@@ -245,13 +247,23 @@ class NumberingAllocationAdapterIT extends AbstractDataJpaTest {
     class Guardas {
 
         @Test
-        @DisplayName("una resolucion caducada no numera: falla en vez de emitir")
+        @DisplayName("una resolucion caducada no numera: falla con el hecho en campos, no en prosa")
         void una_resolucion_caducada_no_numera() {
             resolucion(COMPANY, null, "FE_VENTA", "18760000005", "OLD", 100L, 199L, 100L,
                     LocalDate.of(2020, 1, 1), LocalDate.of(2020, 12, 31), true);
 
-            assertThatThrownBy(() -> port.allocate(COMPANY, BRANCH, FE))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("vigente");
+            NumberingResolutionNotEffectiveException fallo = catchThrowableOfType(
+                    NumberingResolutionNotEffectiveException.class,
+                    () -> port.allocate(COMPANY, BRANCH, FE));
+
+            // Se afirma por CAMPOS y no por el mensaje (#125/#118): el detalle que ve el
+            // cajero lo compone GlobalExceptionHandler a partir de estos tres valores, y
+            // el texto de la excepcion no sale nunca del servidor. Afirmar el mensaje
+            // ataria este test a una cadena que ya nadie lee.
+            assertThat(fallo).isNotNull();
+            assertThat(fallo.getResolutionNumber()).isEqualTo("18760000005");
+            assertThat(fallo.getValidFrom()).isEqualTo(LocalDate.of(2020, 1, 1));
+            assertThat(fallo.getValidTo()).isEqualTo(LocalDate.of(2020, 12, 31));
             assertThat(consecutivoEnBase("18760000005")).isEqualTo(100L);
         }
 
@@ -261,12 +273,19 @@ class NumberingAllocationAdapterIT extends AbstractDataJpaTest {
             resolucion(COMPANY, null, "FE_VENTA", "18760000006", "FUT", 100L, 199L, 100L,
                     LocalDate.of(2099, 1, 1), LocalDate.of(2099, 12, 31), true);
 
-            assertThatThrownBy(() -> port.allocate(COMPANY, BRANCH, FE))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("vigente");
+            NumberingResolutionNotEffectiveException fallo = catchThrowableOfType(
+                    NumberingResolutionNotEffectiveException.class,
+                    () -> port.allocate(COMPANY, BRANCH, FE));
+
+            assertThat(fallo).isNotNull();
+            assertThat(fallo.getResolutionNumber()).isEqualTo("18760000006");
+            assertThat(fallo.getValidFrom()).isEqualTo(LocalDate.of(2099, 1, 1));
+            assertThat(fallo.getValidTo()).isEqualTo(LocalDate.of(2099, 12, 31));
+            assertThat(consecutivoEnBase("18760000006")).isEqualTo(100L);
         }
 
         @Test
-        @DisplayName("al pasarse del rango autorizado deja de numerar")
+        @DisplayName("al pasarse del rango autorizado deja de numerar, con un tipo distinto del de vigencia")
         void al_pasarse_del_rango_autorizado_deja_de_numerar() {
             // Rango de un solo numero: la primera emision lo consume y la siguiente ya
             // estaria fuera del rango que autorizo la DIAN.
@@ -276,8 +295,17 @@ class NumberingAllocationAdapterIT extends AbstractDataJpaTest {
             assertThat(port.allocate(COMPANY, BRANCH, FE).orElseThrow().consecutive())
                     .isEqualTo(100L);
 
-            assertThatThrownBy(() -> port.allocate(COMPANY, BRANCH, FE))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("su rango");
+            NumberingResolutionRangeExhaustedException fallo = catchThrowableOfType(
+                    NumberingResolutionRangeExhaustedException.class,
+                    () -> port.allocate(COMPANY, BRANCH, FE));
+
+            // Que sea una clase distinta de la de vigencia es el punto de #125: las dos
+            // bloquean la facturacion, pero una se corrige ampliando fechas y la otra
+            // pidiendo rango nuevo a la DIAN. Con IllegalStateException salian las dos
+            // como INVALID_STATE y no habia forma de contarlas por separado.
+            assertThat(fallo).isNotNull();
+            assertThat(fallo.getResolutionNumber()).isEqualTo("18760000007");
+            assertThat(fallo.getRangeTo()).isEqualTo(100L);
         }
     }
 
@@ -311,13 +339,19 @@ class NumberingAllocationAdapterIT extends AbstractDataJpaTest {
         }
 
         @Test
-        @DisplayName("tambien exige vigencia")
+        @DisplayName("tambien exige vigencia, y falla con el mismo tipo que allocate")
         void tambien_exige_vigencia() {
             resolucion(COMPANY, null, "FE_VENTA", "18760000008", "OLD", 100L, 199L, 100L,
                     LocalDate.of(2020, 1, 1), LocalDate.of(2020, 12, 31), true);
 
-            assertThatThrownBy(() -> port.peekActive(COMPANY, BRANCH, FE))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("vigente");
+            NumberingResolutionNotEffectiveException fallo = catchThrowableOfType(
+                    NumberingResolutionNotEffectiveException.class,
+                    () -> port.peekActive(COMPANY, BRANCH, FE));
+
+            assertThat(fallo).isNotNull();
+            assertThat(fallo.getResolutionNumber()).isEqualTo("18760000008");
+            assertThat(fallo.getValidFrom()).isEqualTo(LocalDate.of(2020, 1, 1));
+            assertThat(fallo.getValidTo()).isEqualTo(LocalDate.of(2020, 12, 31));
         }
 
         @Test

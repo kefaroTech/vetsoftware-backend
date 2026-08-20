@@ -27,6 +27,12 @@ class LogRedactorTest {
     private static final String DECOY_PHONE = "+57 320 555 7788";
     private static final String DECOY_DOCUMENT = "1032456789";
     private static final String DECOY_CARD = "4111111111111111";
+    /**
+     * Nombre propio: sin dígitos, sin {@code @}, sin {@code :} ni {@code =}. Ningún
+     * flag del barrido lo delata, y por eso es el señuelo que prueba que la regla
+     * de constraint no está colgada de uno.
+     */
+    private static final String DECOY_OWNER_NAME = "María Restrepo-Senuelo";
 
     // -------------------------------------------------------------------------------------------
     // Secretos
@@ -284,5 +290,107 @@ class LogRedactorTest {
     void masksKeyedValueAtTheEndOfTheString() {
         assertThat(LogRedactor.redact("clave=" + DECOY_PASSWORD))
                 .isEqualTo("clave=" + LogRedactor.MASK);
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Violación de constraint: el mensaje del driver arrastra una fila real
+    // -------------------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("el nombre propio duplicado no sale del proceso, y la constraint sí: es lo único "
+            + "que sirve para diagnosticar")
+    void masksDuplicateEntryValueThatIsAProperName() {
+        // Regresión del defecto de fondo: el barrido de banderas de redact() solo
+        // enciende digit/at/separator/plus/slash, y un nombre propio no enciende
+        // ninguna. Si esta regla colgara de una bandera, no se evaluaría siquiera y el
+        // nombre saldría intacto a Loki.
+        String redacted = LogRedactor.redact("Duplicate entry '" + DECOY_OWNER_NAME
+                + "' for key 'owner.uq_owners_company_active_name'");
+
+        assertThat(redacted).doesNotContain(DECOY_OWNER_NAME).doesNotContain("Restrepo")
+                .isEqualTo("Duplicate entry '***' for key 'owner.uq_owners_company_active_name'");
+    }
+
+    @Test
+    @DisplayName("el documento duplicado se enmascara por la regla de forma, no por azar de tener "
+            + "dígitos")
+    void masksDuplicateEntryValueThatIsADocumentNumber() {
+        String redacted = LogRedactor.redact(
+                "Duplicate entry '" + DECOY_DOCUMENT + "' for key 'owner.uq_owners_document'");
+
+        assertThat(redacted).doesNotContain(DECOY_DOCUMENT)
+                .isEqualTo("Duplicate entry '***' for key 'owner.uq_owners_document'");
+    }
+
+    @Test
+    @DisplayName("un apóstrofo dentro del valor no trunca la sustitución ni deja escapar la cola "
+            + "del nombre")
+    void masksDuplicateEntryValueContainingAnApostrophe() {
+        String redacted = LogRedactor
+                .redact("Duplicate entry 'O'Brien-Senuelo' for key 'owner.uq_owners_name'");
+
+        assertThat(redacted).doesNotContain("Brien")
+                .isEqualTo("Duplicate entry '***' for key 'owner.uq_owners_name'");
+    }
+
+    @Test
+    @DisplayName("la forma sin sufijo 'for key' también se enmascara")
+    void masksDuplicateEntryWithoutTheForKeySuffix() {
+        String redacted = LogRedactor
+                .redact("SQLIntegrityConstraintViolationException: Duplicate entry '"
+                        + DECOY_OWNER_NAME + "'");
+
+        assertThat(redacted).doesNotContain(DECOY_OWNER_NAME)
+                .isEqualTo("SQLIntegrityConstraintViolationException: Duplicate entry '***'");
+    }
+
+    @Test
+    @DisplayName("PostgreSQL: se conserva la columna y la constraint, se suprime el valor")
+    void masksPostgresDuplicateKeyValueKeepingTheColumn() {
+        String redacted = LogRedactor
+                .redact("ERROR: duplicate key value violates unique constraint "
+                        + "\"uq_owners_company_active_name\"\n  Detail: Key (name)=("
+                        + DECOY_OWNER_NAME + ") already exists.");
+
+        assertThat(redacted).doesNotContain(DECOY_OWNER_NAME).doesNotContain("Restrepo")
+                .contains("uq_owners_company_active_name")
+                .contains("Key (name)=(***) already exists.");
+    }
+
+    @Test
+    @DisplayName("PostgreSQL: una clave compuesta con dígitos se suprime entera, no valor a valor")
+    void masksPostgresCompositeKeyValue() {
+        String redacted = LogRedactor
+                .redact("Key (company_id, document)=(17, " + DECOY_DOCUMENT + ") already exists.");
+
+        assertThat(redacted).doesNotContain(DECOY_DOCUMENT)
+                .isEqualTo("Key (company_id, document)=(***) already exists.");
+    }
+
+    @Test
+    @DisplayName("PostgreSQL: la cola del detalle sobrevive, sea cual sea la variante")
+    void keepsThePostgresDetailTailReadable() {
+        assertThat(LogRedactor.redact("Key (owner_id)=(42) is not present in table \"owners\"."))
+                .isEqualTo("Key (owner_id)=(***) is not present in table \"owners\".");
+    }
+
+    @Test
+    void isIdempotentOnConstraintViolationMessages() {
+        String mysql = LogRedactor.redact("Duplicate entry '" + DECOY_OWNER_NAME
+                + "' for key 'owner.uq_owners_company_active_name'");
+        String postgres = LogRedactor
+                .redact("Key (name)=(" + DECOY_OWNER_NAME + ") already exists.");
+
+        assertThat(LogRedactor.redact(mysql)).isEqualTo(mysql);
+        assertThat(LogRedactor.redact(postgres)).isEqualTo(postgres);
+    }
+
+    @Test
+    @DisplayName("un mensaje operativo con paréntesis y '=' no se confunde con el detalle de "
+            + "PostgreSQL")
+    void leavesParenthesizedOperationalCountersUntouched() {
+        String message = "Reconciliación DIAN finalizada: intentado(s)=3, fallido(s)=0";
+
+        assertThat(LogRedactor.redact(message)).isEqualTo(message);
     }
 }

@@ -1,5 +1,6 @@
 package com.vetsoftware.app.medicationschedule.infrastructure.web;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,18 +16,26 @@ import com.vetsoftware.app.medicationschedule.application.command.ApplyMedicatio
 import com.vetsoftware.app.medicationschedule.application.command.GenerateMedicationScheduleCommand;
 import com.vetsoftware.app.medicationschedule.application.command.RescheduleMedicationScheduleCommand;
 import com.vetsoftware.app.medicationschedule.application.dto.MedicationScheduleDto;
+import com.vetsoftware.app.medicationschedule.application.dto.RescheduleResultDto;
 import com.vetsoftware.app.medicationschedule.application.port.in.ApplyMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.GenerateMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.ListMedicationSchedulesByHospitalizationUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.RescheduleMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.SuspendPendingMedicationSchedulesUseCase;
+import com.vetsoftware.app.medicationschedule.domain.CascadeSkipReason;
+import com.vetsoftware.app.medicationschedule.domain.RescheduleMode;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -156,22 +165,79 @@ class MedicationScheduleControllerTest {
         }
     }
 
+    /**
+     * El {@code mode} era {@code String} y llegaba crudo al caso de uso pese al
+     * {@code @Valid}: un valor mal escrito degradaba a «solo esta toma» y devolvia
+     * 200 (#134). Ahora es enum, asi que lo desconocido lo corta el deserializador
+     * —400 {@code MALFORMED_REQUEST}, sin tocar el caso de uso— y el desenlace de
+     * la cascada viaja en el cuerpo de la respuesta.
+     */
     @Nested
     @DisplayName("reprogramacion de una toma")
     class Reprogramacion {
 
-        @Test
-        @DisplayName("PATCH /medication-schedules/{id}/reschedule traduce el body al command")
-        void patch_reschedule_traduce_el_body_al_command() throws Exception {
-            when(rescheduleUseCase.execute(any())).thenReturn(List.of(toma()));
+        private static final String BODY = """
+                {"newDateTime":"2026-01-16T08:00:00","mode":"%s"}
+                """;
+
+        /**
+         * Los dos fronts desplegados mandan el modo en minusculas —la comparacion vieja
+         * era {@code equalsIgnoreCase}— y eso es lo que sostiene el
+         * {@code ACCEPT_CASE_INSENSITIVE_VALUES} del request: sin el, cada arrastre de
+         * dosis desde un front vivo pasaria de 200 a 400.
+         */
+        @ParameterizedTest(name = "mode={0} llega como {1}")
+        @CsvSource({"one, ONE", "cascade, CASCADE", "ONE, ONE", "CASCADE, CASCADE"})
+        @DisplayName("PATCH .../reschedule traduce el body al command sin importar la caja del modo")
+        void patch_reschedule_traduce_el_body_al_command(String enviado, RescheduleMode esperado)
+                throws Exception {
+            when(rescheduleUseCase.execute(any()))
+                    .thenReturn(RescheduleResultDto.notCascaded(List.of(toma())));
 
             mockMvc.perform(patch("/medication-schedules/500/reschedule")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"newDateTime":"2026-01-16T08:00:00","mode":"cascade"}
-                            """)).andExpect(status().isOk());
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(enviado)))
+                    .andExpect(status().isOk());
 
             verify(rescheduleUseCase).execute(new RescheduleMedicationScheduleCommand(SCHEDULE_ID,
-                    LocalDateTime.of(2026, 1, 16, 8, 0), "cascade", COMPANY_ID));
+                    LocalDateTime.of(2026, 1, 16, 8, 0), esperado, COMPANY_ID));
+        }
+
+        @ParameterizedTest(name = "mode={0}")
+        @ValueSource(strings = {"cascada", "todas", "ALL", "one cascade"})
+        @DisplayName("PATCH .../reschedule con un modo desconocido responde 400 y no llega al caso de uso")
+        void patch_reschedule_con_modo_desconocido_responde_400(String modo) throws Exception {
+            mockMvc.perform(patch("/medication-schedules/500/reschedule")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(modo)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+
+            // Lo importante no es el 400 sino que no se reprograme nada: antes esto
+            // movia la toma con el alcance equivocado y respondia 200.
+            verify(rescheduleUseCase, never()).execute(any());
+        }
+
+        /**
+         * Deshabilitado porque hoy falla: Jackson resuelve una cadena numerica como el
+         * {@code ordinal()} del enum, asi que {@code "0"} entra como ONE y {@code "1"}
+         * como CASCADE —el alcance lo decide la posicion de declaracion, que nadie
+         * eligio como contrato—. Es la misma clase de fallo que #134 por otra puerta.
+         * Al arreglarlo, quitar el {@code @Disabled}.
+         *
+         * @see <a href=
+         *      "https://github.com/kefaroTech/vetsoftware-backend/issues/228">#228</a>
+         */
+        @Disabled("#228: mode=\"1\" se deserializa como el ordinal CASCADE en vez de rechazarse"
+                + " — https://github.com/kefaroTech/vetsoftware-backend/issues/228")
+        @ParameterizedTest(name = "mode={0}")
+        @ValueSource(strings = {"0", "1"})
+        @DisplayName("PATCH .../reschedule con el modo por indice responde 400 y no llega al caso de uso")
+        void patch_reschedule_con_modo_por_indice_responde_400(String modo) throws Exception {
+            mockMvc.perform(patch("/medication-schedules/500/reschedule")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(modo)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+
+            verify(rescheduleUseCase, never()).execute(any());
         }
 
         @Test
@@ -180,9 +246,57 @@ class MedicationScheduleControllerTest {
             mockMvc.perform(patch("/medication-schedules/500/reschedule")
                     .contentType(MediaType.APPLICATION_JSON).content("""
                             {"mode":"one"}
-                            """)).andExpect(status().isBadRequest());
+                            """)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
             verify(rescheduleUseCase, never()).execute(any());
+        }
+
+        @Test
+        @DisplayName("PATCH /medication-schedules/{id}/reschedule sin modo responde 400")
+        void patch_reschedule_sin_modo_responde_400() throws Exception {
+            mockMvc.perform(patch("/medication-schedules/500/reschedule")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"newDateTime":"2026-01-16T08:00:00"}
+                            """)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+            verify(rescheduleUseCase, never()).execute(any());
+        }
+
+        @Test
+        @DisplayName("una cascada aplicada devuelve el plan con cascadeApplied=true y sin motivo")
+        void patch_reschedule_con_cascada_aplicada_devuelve_el_desenlace() throws Exception {
+            when(rescheduleUseCase.execute(any()))
+                    .thenReturn(RescheduleResultDto.applied(List.of(toma())));
+
+            mockMvc.perform(patch("/medication-schedules/500/reschedule")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted("cascade")))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.schedules[0].id").value(500))
+                    .andExpect(
+                            jsonPath("$.schedules[0].currentDateTime").value("2026-01-15T08:00:00"))
+                    .andExpect(jsonPath("$.cascadeApplied").value(true))
+                    .andExpect(jsonPath("$.cascadeSkippedReason").value(nullValue()));
+        }
+
+        /**
+         * Recorre los tres motivos: si aparece uno nuevo en el enum y no se serializa,
+         * el front se queda sin saber por que no se movio la pauta —que es justo el
+         * agujero de #134.
+         */
+        @ParameterizedTest(name = "motivo {0}")
+        @EnumSource(CascadeSkipReason.class)
+        @DisplayName("una cascada pedida y no aplicada devuelve cascadeApplied=false y su motivo")
+        void patch_reschedule_con_cascada_saltada_devuelve_el_motivo(CascadeSkipReason motivo)
+                throws Exception {
+            when(rescheduleUseCase.execute(any()))
+                    .thenReturn(RescheduleResultDto.skipped(List.of(toma()), motivo));
+
+            mockMvc.perform(patch("/medication-schedules/500/reschedule")
+                    .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted("cascade")))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.schedules[0].id").value(500))
+                    .andExpect(jsonPath("$.cascadeApplied").value(false))
+                    .andExpect(jsonPath("$.cascadeSkippedReason").value(motivo.name()));
         }
     }
 

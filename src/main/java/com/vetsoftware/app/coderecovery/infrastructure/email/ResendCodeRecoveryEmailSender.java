@@ -20,8 +20,18 @@ import org.springframework.stereotype.Component;
  * es variable y Resend limita cada variable a 2.000 caracteres, el listado se
  * rompería. En su lugar renderizamos el HTML completo aquí (plantilla en
  * {@code resources/email-templates/recover-code.html}) y lo enviamos como
- * cuerpo HTML — sin ese límite. Async/best-effort (nunca lanza; si algo falla,
- * se registra un warning y el flujo continúa).
+ * cuerpo HTML — sin ese límite.
+ *
+ * <p>
+ * La plantilla se carga <b>al construir el bean</b>: si el recurso no está en
+ * el classpath (empaquetado roto) el contexto de Spring no arranca. Un
+ * despliegue que no levanta es preferible a uno que acepta peticiones y
+ * descarta el 100 % de los correos en silencio — el endpoint responde 204
+ * siempre por anti-enumeración, así que el usuario nunca vería el fallo.
+ *
+ * <p>
+ * Una vez construido, el envío es async/best-effort (nunca lanza; si Resend
+ * falla, se registra un warning y el flujo continúa).
  */
 @Component
 public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
@@ -40,12 +50,13 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
 
     private final ResendEmailClient email;
     private final String loginUrl;
-    private volatile String templateCache;
+    private final String template;
 
     public ResendCodeRecoveryEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.code-recovery.login-url:}") String loginUrl) {
         this.email = email;
         this.loginUrl = loginUrl;
+        this.template = loadTemplate();
     }
 
     @Override
@@ -56,10 +67,6 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
             DevEmailPreview.show(toEmail, "Códigos de usuario", preview);
             return;
         }
-        String template = loadTemplate();
-        if (template == null)
-            return; // best-effort: sin plantilla no enviamos, pero no rompemos el flujo
-
         String html = template.replace("{{{EMPLOYEE_NAME}}}", htmlEscape(nz(employeeName)))
                 .replace("{{{ACCOUNTS_HTML}}}", buildAccountsHtml(accounts))
                 .replace("{{{LOGIN_URL}}}", htmlEscape(nz(loginUrl)))
@@ -68,18 +75,20 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
         email.send(toEmail, null, SUBJECT, html, null);
     }
 
-    private String loadTemplate() {
-        String cached = templateCache;
-        if (cached != null)
-            return cached;
+    /**
+     * Lee la plantilla del classpath una sola vez, al construir el bean. Si el
+     * recurso falta o no se puede leer, se registra a nivel ERROR con la excepción
+     * (para distinguir "ausente del jar" de "fallo de lectura") y se propaga: el
+     * arranque falla en vez de descartar cada correo en silencio.
+     */
+    private static String loadTemplate() {
         try {
-            cached = new ClassPathResource(TEMPLATE_PATH)
-                    .getContentAsString(StandardCharsets.UTF_8);
-            templateCache = cached;
-            return cached;
+            return new ClassPathResource(TEMPLATE_PATH).getContentAsString(StandardCharsets.UTF_8);
         } catch (IOException e) {
-            log.warn("No se pudo cargar la plantilla {}: {}", TEMPLATE_PATH, e.getMessage());
-            return null;
+            log.error("No se pudo cargar la plantilla de correo {}; la aplicación no arrancará",
+                    TEMPLATE_PATH, e);
+            throw new IllegalStateException(
+                    "Plantilla de correo ausente o ilegible en el classpath: " + TEMPLATE_PATH, e);
         }
     }
 

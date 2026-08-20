@@ -20,6 +20,20 @@ import org.springframework.stereotype.Component;
  * Idempotente: no reprocesa si el documento ya tiene PDF o no está VALIDADO.
  * Reutilizable por la emisión y por el cierre async de MATIAS
  * (webhook/polling).
+ *
+ * <p>
+ * <b>Esta clase NO lleva {@code @Transactional}, y es deliberado.</b> Sube a S3
+ * y manda un correo, y la regla dura {@code SIN_IO_EXTERNO_EN_TRANSACCION} de
+ * {@code HexagonalArchitectureTest} prohíbe hacer I/O externo dentro de una
+ * transacción — sus cinco llamadores ya lo dejan escrito. No lo "arregles"
+ * envolviéndolo en una: rompería el build y el pool de conexiones.
+ *
+ * <p>
+ * La otra mitad de ese patrón es la compensación, que sí vive aquí: si la
+ * escritura de la referencia falla después de que el PDF ya subió, se borra el
+ * objeto del bucket y se relanza el fallo original. Ver
+ * {@link #compensarSubida} para lo que ese <i>best effort</i> no alcanza a
+ * cubrir.
  */
 @Observed(name = "electronic.document.deliver")
 @Component
@@ -72,8 +86,23 @@ public class DeliverElectronicDocumentService {
                 + ".pdf";
         fileStorage.store(key, pdf, "application/pdf");
 
-        document.attachRepresentation(key);
-        repository.updateDianResult(document);
+        // El PDF YA está en S3. Si la escritura de la referencia falla, el objeto se
+        // queda en el bucket sin ninguna fila que lo apunte. Y updateDianResult puede
+        // fallar de verdad, no en teoría: relee el documento (y lanza
+        // ElectronicDocumentNotFoundException si desapareció) y después guarda sobre
+        // una
+        // entidad con @Version, así que un OptimisticLockException contra el job de
+        // contingencia de la DIAN es un caso real. Lo que queda tirado no es un byte
+        // cualquiera: es la representación gráfica de una factura fiscal fuera de todo
+        // inventario, invisible para la retención, el borrado y la reexpedición, porque
+        // todos esos procesos parten de la fila. Por eso se compensa aquí mismo.
+        try {
+            document.attachRepresentation(key);
+            repository.updateDianResult(document);
+        } catch (RuntimeException e) {
+            compensarSubida(key, e);
+            throw e;
+        }
 
         sendEmail(document, number, pdf);
     }
@@ -104,6 +133,37 @@ public class DeliverElectronicDocumentService {
             // diagnostica un caso, la métrica responde «¿a cuántos clientes no les llegó
             // su factura la semana pasada?».
             deliveryMetrics.deliveryFailed();
+        }
+    }
+
+    /**
+     * Borra el PDF recién subido tras un fallo al grabar su referencia. Nunca
+     * lanza: el fallo del borrado es secundario y no puede tapar la excepción
+     * original, que es la que explica por qué falló la entrega. Si el borrado
+     * falla, se adjunta como {@code suppressed} de la original y se registra la
+     * clave del objeto, que es el único rastro con el que después se puede
+     * encontrar el huérfano en el bucket.
+     *
+     * <p>
+     * Es <i>best effort</i>, y conviene no venderlo como otra cosa: solo cubre el
+     * fallo de la escritura. Si el proceso muere entre el {@code store} y este
+     * {@code catch} —un kill del contenedor, un OOM, una parada del despliegue— el
+     * huérfano queda igual y nadie lo borra. Cerrar ese hueco de verdad exigiría
+     * una tabla de pendientes y un job de barrido, que están fuera de alcance aquí.
+     */
+    private void compensarSubida(String key, RuntimeException falloOriginal) {
+        try {
+            fileStorage.delete(key);
+            // WARN y no INFO: no es el curso normal, y su frecuencia es el dato que decide
+            // si algún día hace falta la tabla de pendientes + job de barrido.
+            log.warn("Se borró el PDF de factura {} tras fallar la escritura de su referencia"
+                    + " en base de datos", key);
+        } catch (RuntimeException falloDelBorrado) {
+            falloOriginal.addSuppressed(falloDelBorrado);
+            log.error("PDF de factura huérfano en el bucket: falló el borrado compensatorio"
+                    + " de {}. Es la representación gráfica de un documento fiscal que ninguna"
+                    + " fila referencia, así que ningún proceso lo alcanza; hay que eliminarlo"
+                    + " a mano.", key, falloDelBorrado);
         }
     }
 

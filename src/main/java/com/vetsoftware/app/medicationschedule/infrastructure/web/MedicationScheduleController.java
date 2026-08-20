@@ -5,6 +5,7 @@ import com.vetsoftware.app.medicationschedule.application.command.ApplyMedicatio
 import com.vetsoftware.app.medicationschedule.application.command.GenerateMedicationScheduleCommand;
 import com.vetsoftware.app.medicationschedule.application.command.RescheduleMedicationScheduleCommand;
 import com.vetsoftware.app.medicationschedule.application.dto.MedicationScheduleDto;
+import com.vetsoftware.app.medicationschedule.application.dto.RescheduleResultDto;
 import com.vetsoftware.app.medicationschedule.application.port.in.ApplyMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.GenerateMedicationScheduleUseCase;
 import com.vetsoftware.app.medicationschedule.application.port.in.ListMedicationSchedulesByHospitalizationUseCase;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.medicationschedule.infrastructure.web.request.Resched
 import com.vetsoftware.app.medicationschedule.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.medicationschedule.infrastructure.web.response.HospitalizationMedicationSummary;
 import com.vetsoftware.app.medicationschedule.infrastructure.web.response.MedicationScheduleResponse;
+import com.vetsoftware.app.medicationschedule.infrastructure.web.response.RescheduleMedicationScheduleResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -72,15 +74,19 @@ public class MedicationScheduleController {
     }
 
     /**
-     * Reprograma una toma (mode=one|cascade). Devuelve el plan de esa medicación.
+     * Reprograma una toma (mode=ONE|CASCADE). Devuelve el plan de esa medicación
+     * —reordenado por hora vigente— junto con el desenlace de la cascada: pedirla
+     * no garantiza aplicarla, y antes eso no se distinguía de haberla aplicado.
      */
     @PatchMapping("/{id}/reschedule")
-    public List<MedicationScheduleResponse> reschedule(@PathVariable Long id,
+    public RescheduleMedicationScheduleResponse reschedule(@PathVariable Long id,
             @Valid @RequestBody RescheduleMedicationScheduleRequest request) {
-        return rescheduleUseCase
+        RescheduleResultDto result = rescheduleUseCase
                 .execute(new RescheduleMedicationScheduleCommand(id, request.newDateTime(),
-                        request.mode(), authz.currentCompanyIdOrNull()))
-                .stream().map(this::toResponse).toList();
+                        request.mode(), authz.currentCompanyIdOrNull()));
+        return new RescheduleMedicationScheduleResponse(
+                result.schedules().stream().map(this::toResponse).toList(), result.cascadeApplied(),
+                result.cascadeSkippedReason());
     }
 
     /**

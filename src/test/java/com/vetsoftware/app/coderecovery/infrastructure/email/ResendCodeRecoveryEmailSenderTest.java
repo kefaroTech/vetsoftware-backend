@@ -1,6 +1,8 @@
 package com.vetsoftware.app.coderecovery.infrastructure.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
@@ -10,7 +12,10 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.coderecovery.application.port.out.EmployeeAccountsByEmailPort.EmployeeAccount;
 import com.vetsoftware.app.coderecovery.testsupport.CodeRecoveryMother;
 import com.vetsoftware.app.infrastructure.email.ResendEmailClient;
+import java.net.URL;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -163,6 +168,82 @@ class ResendCodeRecoveryEmailSenderTest {
             verify(email).send(eq("empleado@vetrina.co"), isNull(), eq(SUBJECT),
                     htmlCaptor.capture(), isNull());
             assertThat(htmlCaptor.getValue()).doesNotContain("null").contains("EMP001");
+        }
+    }
+
+    /**
+     * Issue #184 (cierra #87). La plantilla se carga en el <b>constructor</b> y su
+     * ausencia propaga: el contexto de Spring no arranca. Un despliegue que no
+     * levanta es preferible a uno que acepta peticiones y descarta el 100 % de los
+     * correos en silencio, porque el endpoint responde 204 siempre por
+     * anti-enumeracion y nadie ve el fallo.
+     *
+     * <p>
+     * <b>Sin este caso la garantia no esta protegida por nada.</b> Los otros seis
+     * tests pasan por el camino feliz con la plantilla real del classpath, asi que
+     * volver a la carga perezosa con {@code return null} —el defecto original de
+     * #87— los dejaria a todos en verde, y JaCoCo tampoco protestaria porque la
+     * rama del {@code catch} nunca estuvo cubierta.
+     *
+     * <p>
+     * El recurso se esconde cambiando el <i>context class loader</i>, que es de
+     * donde {@code ClassPathResource} saca el suyo por defecto
+     * ({@code ClassUtils.getDefaultClassLoader}). No hace falta tocar produccion ni
+     * mover ficheros del classpath.
+     */
+    @Nested
+    @DisplayName("arranque sin la plantilla en el classpath")
+    class ArranqueSinPlantilla {
+
+        private static final String RUTA = "email-templates/recover-code.html";
+
+        private ClassLoader original;
+
+        /** Delega en el real salvo para la plantilla, que da por inexistente. */
+        private static final class SinPlantilla extends ClassLoader {
+            private SinPlantilla(ClassLoader padre) {
+                super(padre);
+            }
+
+            @Override
+            public URL getResource(String name) {
+                return RUTA.equals(name) ? null : super.getResource(name);
+            }
+        }
+
+        @BeforeEach
+        void esconderLaPlantilla() {
+            original = Thread.currentThread().getContextClassLoader();
+            Thread.currentThread().setContextClassLoader(new SinPlantilla(original));
+        }
+
+        @AfterEach
+        void devolverLaPlantilla() {
+            Thread.currentThread().setContextClassLoader(original);
+        }
+
+        @Test
+        @DisplayName("sin la plantilla el bean no se construye: el arranque falla en vez de callar")
+        void sin_la_plantilla_el_bean_no_se_construye() {
+            assertThatThrownBy(
+                    () -> new ResendCodeRecoveryEmailSender(email, "https://app.vetrina.co/login"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Plantilla de correo ausente").hasMessageContaining(RUTA)
+                    // La causa distingue "ausente del jar" de "fallo de lectura", y es lo
+                    // unico que el operador tiene para saber cual de las dos le paso.
+                    .hasCauseInstanceOf(java.io.IOException.class);
+        }
+
+        @Test
+        @DisplayName("con la plantilla de vuelta en el classpath el bean se construye")
+        void con_la_plantilla_de_vuelta_el_bean_se_construye() {
+            Thread.currentThread().setContextClassLoader(original);
+
+            // La otra mitad del caso anterior: prueba que lo que rompe el arranque es la
+            // plantilla ausente y no el montaje del test.
+            assertThatCode(
+                    () -> new ResendCodeRecoveryEmailSender(email, "https://app.vetrina.co/login"))
+                    .doesNotThrowAnyException();
         }
     }
 }
