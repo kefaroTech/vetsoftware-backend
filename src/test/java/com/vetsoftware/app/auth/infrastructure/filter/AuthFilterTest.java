@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.MDC;
@@ -125,8 +126,7 @@ class AuthFilterTest {
             assertThat(response.getStatus()).isEqualTo(401);
             assertThat(response.getContentAsString()).contains("TOKEN_MISSING");
             verifyNoInteractions(filterChain);
-            verify(auditLogger).unauthenticated("GET", "/animals",
-                    "Missing or invalid Authorization header");
+            verify(auditLogger).unauthenticated("GET", "/animals", "token_missing");
         }
 
         @Test
@@ -153,6 +153,10 @@ class AuthFilterTest {
             assertThat(response.getStatus()).isEqualTo(401);
             assertThat(response.getContentAsString()).contains("TOKEN_EXPIRED");
             verifyNoInteractions(filterChain);
+            // Con esta línea, las cuatro ramas de rechazo del filtro afirman su motivo
+            // auditado y entre las cuatro fijan el vocabulario cerrado completo:
+            // token_missing, token_expired, token_invalid y session_replaced.
+            verify(auditLogger).unauthenticated("GET", "/animals", "token_expired");
         }
 
         @Test
@@ -220,6 +224,41 @@ class AuthFilterTest {
             assertThat(response.getStatus()).isEqualTo(401);
             assertThat(response.getContentAsString()).contains("SESSION_REPLACED");
             verifyNoInteractions(filterChain);
+        }
+
+        /**
+         * La contra-prueba del arreglo de #108. Esta rama es la única del filtro cuyo
+         * {@code detail} no es un literal sino {@code e.getMessage()} de la
+         * {@link SessionReplacedException}: cuando ese valor era también lo que se
+         * auditaba, el campo {@code reason} —vocabulario cerrado que Grafana agrupa con
+         * {@code sum by (reason)}— recibía prosa desde el dominio. Nadie recibía un
+         * error: simplemente aparecía una serie nueva por cada mensaje distinto y el
+         * panel dejaba de cuadrar en silencio.
+         *
+         * <p>
+         * Por eso se captura el argumento en vez de comprobar solo el cuerpo HTTP — que
+         * sigue llevando la prosa a propósito, para el humano— y se afirma además que
+         * el motivo auditado <b>no</b> es el mensaje de la excepción: sin esa segunda
+         * aserción, volver a pasar {@code e.getMessage()} deja la suite en verde el día
+         * que el mensaje del dominio cambie.
+         */
+        @Test
+        @DisplayName("una sesión reemplazada audita el motivo cerrado session_replaced y nunca el mensaje de la excepción")
+        void sesion_reemplazada_audita_motivo_cerrado_y_no_el_mensaje_de_la_excepcion()
+                throws Exception {
+            when(jwtProvider.extractType(anyString())).thenReturn("EMPLOYEE");
+            when(jwtProvider.extractId(anyString())).thenReturn(AuthMother.EMPLOYEE_ID);
+            when(jwtProvider.extractAuthVersion(anyString())).thenReturn(AuthMother.AUTH_VERSION);
+            when(resolveAuthContextUseCase.execute(AuthMother.EMPLOYEE_ID, AuthMother.AUTH_VERSION))
+                    .thenThrow(new SessionReplacedException());
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(requestConToken("reemplazado"), response, filterChain);
+
+            ArgumentCaptor<String> motivo = ArgumentCaptor.forClass(String.class);
+            verify(auditLogger).unauthenticated(eq("GET"), eq("/animals"), motivo.capture());
+            assertThat(motivo.getValue()).isEqualTo("session_replaced")
+                    .isNotEqualTo(new SessionReplacedException().getMessage());
         }
 
         @Test
@@ -313,6 +352,10 @@ class AuthFilterTest {
             assertThat(response.getStatus()).isEqualTo(401);
             verify(resolveAuthContextUseCase, never()).execute(
                     org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
+            // Segunda entrada a la misma rama SESSION_REPLACED, por otro caso de uso:
+            // el motivo auditado tiene que ser el mismo término cerrado que en la de
+            // empleado, o el panel partiría un mismo hecho en dos series.
+            verify(auditLogger).unauthenticated("GET", "/animals", "session_replaced");
         }
 
         @Test
@@ -413,7 +456,7 @@ class AuthFilterTest {
 
             assertThat(response.getStatus()).isEqualTo(401);
             assertThat(response.getContentAsString()).contains("TOKEN_INVALID");
-            verify(auditLogger).unauthenticated("GET", "/animals", "Invalid token");
+            verify(auditLogger).unauthenticated("GET", "/animals", "token_invalid");
             verifyNoInteractions(filterChain);
         }
 

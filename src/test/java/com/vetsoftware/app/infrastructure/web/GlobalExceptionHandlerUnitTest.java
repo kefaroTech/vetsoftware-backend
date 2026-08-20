@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.animal.domain.AnimalHasActiveChildrenException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionAlreadyOpenException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
@@ -11,6 +16,8 @@ import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedEx
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
+import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
@@ -29,12 +36,17 @@ import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderStatus;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
+import com.vetsoftware.app.registration.infrastructure.security.CaptchaConfigurationException;
+import com.vetsoftware.app.registration.infrastructure.security.CaptchaProviderUnavailableException;
 import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -255,14 +267,20 @@ class GlobalExceptionHandlerUnitTest {
         }
 
         @Test
-        @DisplayName("estado ilegal (guard de inmutabilidad de cuentas no-OPEN)")
-        void estado_ilegal() {
-            ProblemDetail pd = handler
-                    .handleConflictState(new IllegalStateException("cuenta no esta abierta"));
+        @DisplayName("estado ilegal: el detail es fijo y el mensaje de dominio NO llega al cliente")
+        void estado_ilegal_no_devuelve_el_mensaje_de_dominio() {
+            // Este handler es el desague de ~70 `new IllegalStateException(` de src/main,
+            // escritas para un operador y sin ningun contrato sobre lo que llevan dentro
+            // (#118). El mensaje de ejemplo interpola dos datos internos a proposito: si
+            // alguien reabre el paso del mensaje crudo, esa fuga tiene que romper aqui.
+            ProblemDetail pd = handler.handleConflictState(
+                    new IllegalStateException("la cuenta 4210 de la sede NORTE no esta abierta"));
 
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
             assertThat(pd.getProperties()).containsEntry("code", "INVALID_STATE");
-            assertThat(pd.getDetail()).isEqualTo("cuenta no esta abierta");
+            assertThat(pd.getDetail())
+                    .isEqualTo("La operación no es válida para el estado actual del registro.")
+                    .doesNotContain("4210", "NORTE", "no esta abierta");
         }
 
         @Test
@@ -319,31 +337,138 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getProperties()).containsEntry("overlappingAppointmentIds",
                     List.of(101L, 102L));
         }
+
+        @Test
+        @DisplayName("cuando el cruce lo caza la constraint, mismo codigo pero SIN lista de citas")
+        void la_constraint_da_el_mismo_codigo_sin_lista_de_citas() {
+            // Carrera que el check sincrono no ve: dos peticiones simultaneas sobre el
+            // mismo hueco pasaban las dos el SELECT y se guardaban las dos (#114). El
+            // indice unico cierra la carrera y esta rama traduce su error de integridad
+            // al MISMO codigo que emite el check, para que el front no escriba dos veces
+            // el mismo tratamiento.
+            ProblemDetail pd = handler.handleDataIntegrity(new DataIntegrityViolationException(
+                    "could not execute statement [Duplicate entry '7-2026-08-17 10:00:00'"
+                            + " for key 'uq_appointments_active_employee_start']"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "APPOINTMENT_OVERLAP");
+            // Por construccion NO puede llevarla: aqui lo unico que hay es el nombre de
+            // la constraint, no se sabe ni con que choco. El front tiene que tolerar su
+            // ausencia, y si algun dia alguien la rellena con una lista inventada, esto
+            // rompe.
+            assertThat(pd.getProperties()).doesNotContainKey("overlappingAppointmentIds");
+            assertThat(pd.getDetail()).contains("ocupado")
+                    .doesNotContain("uq_appointments_active_employee_start", "Duplicate entry");
+        }
     }
 
     @Nested
-    @DisplayName("400 / 401 / 403 con efecto de auditoria")
+    @DisplayName("numeracion DIAN (#125): codigo propio por hecho y los datos en propiedades")
+    class NumeracionDian {
+
+        @Test
+        @DisplayName("resolucion fuera de vigencia: 409 con su codigo y las fechas de vigencia")
+        void resolucion_fuera_de_vigencia() {
+            ProblemDetail pd = handler.handleNumberingResolutionNotEffective(
+                    new NumberingResolutionNotEffectiveException("18760000005",
+                            LocalDate.of(2020, 1, 1), LocalDate.of(2020, 12, 31)));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties())
+                    .containsEntry("code", "NUMBERING_RESOLUTION_NOT_EFFECTIVE")
+                    .containsEntry("resolutionNumber", "18760000005")
+                    .containsEntry("validFrom", LocalDate.of(2020, 1, 1))
+                    .containsEntry("validTo", LocalDate.of(2020, 12, 31));
+            // El detail lo compone el handler; el mensaje de la excepcion no sale (#118).
+            assertThat(pd.getDetail()).contains("no está vigente")
+                    .doesNotContain("Numbering resolution is not effective");
+        }
+
+        @Test
+        @DisplayName("rango agotado: OTRO codigo distinto, porque la accion del operador es otra")
+        void rango_agotado() {
+            ProblemDetail pd = handler.handleNumberingResolutionRangeExhausted(
+                    new NumberingResolutionRangeExhaustedException("18760000007", 100L));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties())
+                    .containsEntry("code", "NUMBERING_RESOLUTION_RANGE_EXHAUSTED")
+                    .containsEntry("resolutionNumber", "18760000007")
+                    .containsEntry("rangeTo", 100L);
+            assertThat(pd.getDetail()).contains("rango")
+                    .doesNotContain("Numbering resolution range is exhausted");
+        }
+
+        @Test
+        @DisplayName("ninguno de los dos sale ya como INVALID_STATE")
+        void ninguno_sale_como_invalid_state() {
+            ProblemDetail vigencia = handler.handleNumberingResolutionNotEffective(
+                    new NumberingResolutionNotEffectiveException("1", LocalDate.of(2020, 1, 1),
+                            LocalDate.of(2020, 12, 31)));
+            ProblemDetail rango = handler.handleNumberingResolutionRangeExhausted(
+                    new NumberingResolutionRangeExhaustedException("1", 9L));
+
+            // La regresion que #125 tiene que impedir: volver a colapsar los dos hechos
+            // en el codigo generico con el que salian «la cuenta no esta abierta» y otra
+            // veintena de guardas de estado.
+            assertThat(vigencia.getProperties().get("code")).isNotEqualTo("INVALID_STATE")
+                    .isNotEqualTo(rango.getProperties().get("code"));
+        }
+
+        @Test
+        @DisplayName("un campo nulo no se publica como propiedad nula")
+        void un_campo_nulo_no_se_publica() {
+            ProblemDetail vigencia = handler.handleNumberingResolutionNotEffective(
+                    new NumberingResolutionNotEffectiveException(null, LocalDate.of(2020, 1, 1),
+                            LocalDate.of(2020, 12, 31)));
+            ProblemDetail rango = handler.handleNumberingResolutionRangeExhausted(
+                    new NumberingResolutionRangeExhaustedException(null, null));
+
+            assertThat(vigencia.getProperties()).doesNotContainKey("resolutionNumber")
+                    .containsKey("validFrom");
+            assertThat(rango.getProperties()).doesNotContainKey("resolutionNumber")
+                    .doesNotContainKey("rangeTo");
+        }
+    }
+
+    @Nested
+    @DisplayName("400 / 401 / 403: efecto de auditoria y detail constante")
     class AutenticacionYRegistro {
 
         @Test
-        @DisplayName("correo no verificado: audita con el identificador y responde 403")
+        @DisplayName("correo no verificado: un identificador que no es correo se audita entero")
         void correo_no_verificado_audita_y_responde_403() {
             ProblemDetail pd = handler
                     .handleEmailNotVerified(new EmailNotVerifiedException("ana01"));
 
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
             assertThat(pd.getProperties()).containsEntry("code", "EMAIL_NOT_VERIFIED");
+            // Un codigo de empleado que no es un correo no casa con ningun patron y sale
+            // tal cual: es lo que documenta AuditLogger y lo que necesita quien investiga.
             verify(auditLogger).loginBlockedEmailNotVerified("ana01");
         }
 
         @Test
-        @DisplayName("captcha fallido responde 400 con detail fijo")
-        void captcha_fallido_responde_400() {
-            ProblemDetail pd = handler
-                    .handleCaptchaFailed(new CaptchaVerificationException("score bajo"));
+        @DisplayName("correo no verificado: si el identificador ES un correo, se enmascara antes de auditar")
+        void correo_no_verificado_enmascara_el_identificador_que_es_un_correo() {
+            // En el auto-registro el codigo de empleado ES el correo del dueño, que es el
+            // caso mayoritario y el que el test viejo con "ana01" no ejercitaba (#180).
+            // AuditLogger lo pone en dos sitios de la misma linea, y actor.identifier
+            // esta en la allowlist VERBATIM de LogFieldPolicy: sin enmascarar AQUI, el
+            // correo entero llegaba a Loki al lado de su propia version redactada.
+            ProblemDetail pd = handler.handleEmailNotVerified(
+                    new EmailNotVerifiedException("ana.gomez@clinicanorte.com"));
 
-            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
-            assertThat(pd.getProperties()).containsEntry("code", "CAPTCHA_FAILED");
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+            assertThat(pd.getProperties()).containsEntry("code", "EMAIL_NOT_VERIFIED");
+            assertThat(pd.getDetail()).doesNotContain("ana.gomez");
+
+            ArgumentCaptor<String> auditado = ArgumentCaptor.forClass(String.class);
+            verify(auditLogger).loginBlockedEmailNotVerified(auditado.capture());
+            // El dominio se conserva a proposito: no es dato personal y sirve para
+            // diagnosticar. Lo que no puede sobrevivir es la parte local.
+            assertThat(auditado.getValue()).isEqualTo("***@clinicanorte.com")
+                    .doesNotContain("ana.gomez");
         }
 
         @Test
@@ -409,6 +534,124 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getProperties()).containsEntry("code", "UNAUTHENTICATED");
             assertThat(pd.getDetail()).isEqualTo("Authentication required");
             verify(auditLogger).loginFailure(eq("/auth/login"), eq("authentication_failed"));
+        }
+
+        @Test
+        @DisplayName("argumento ilegal: el detail es fijo, no el mensaje que enumeraba empleados")
+        void argumento_ilegal_no_devuelve_el_mensaje_de_dominio() {
+            // Caso testigo de #118: CreateAppointmentService lanzaba
+            // "Employee not found: " + employeeId, y devolverlo convertia el endpoint de
+            // crear cita en un oraculo para enumerar empleados de otras empresas
+            // probando ids. Alimentan este handler ~1.500 IllegalArgumentException de
+            // src/main, asi que el volumen lo hace mas grave que su hermano de 409.
+            ProblemDetail pd = handler
+                    .handleBadRequest(new IllegalArgumentException("Employee not found: 4210"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+            assertThat(pd.getProperties()).containsEntry("code", "INVALID_INPUT");
+            assertThat(pd.getDetail()).isEqualTo("Los datos enviados no son válidos.")
+                    .doesNotContain("4210", "Employee not found");
+        }
+    }
+
+    /**
+     * Las tres poblaciones del captcha (#99). Lo que se afirma aquí y no en la
+     * rodaja web es la <b>severidad</b>: las tres responden el mismo 400 con el
+     * mismo código, así que la respuesta HTTP no distingue una caída total de la
+     * configuración de un token caducado. Lo único que las separa es el nivel del
+     * evento, y por eso el {@code ListAppender} cuelga del logger de la clase.
+     */
+    @Nested
+    @DisplayName("captcha (#99): tres poblaciones, tres severidades, un solo punto de registro")
+    class CaptchaTresPoblaciones {
+
+        private static final String DETAIL_FIJO = "No pudimos verificar el captcha. Inténtalo de nuevo.";
+
+        private Logger canal;
+        private ListAppender<ILoggingEvent> sumidero;
+        private Level nivelPrevio;
+
+        @BeforeEach
+        void engancharElCanal() {
+            LoggerContext context = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+            sumidero = new ListAppender<>();
+            sumidero.setContext(context);
+            sumidero.start();
+
+            canal = context.getLogger(GlobalExceptionHandler.class);
+            nivelPrevio = canal.getLevel();
+            canal.setLevel(Level.INFO);
+            canal.addAppender(sumidero);
+        }
+
+        @AfterEach
+        void soltarElCanal() {
+            canal.detachAppender(sumidero);
+            canal.setLevel(nivelPrevio);
+            sumidero.stop();
+        }
+
+        private ILoggingEvent emitido() {
+            assertThat(sumidero.list).as("el handler no emitio ningun evento de log").hasSize(1);
+            return sumidero.list.getFirst();
+        }
+
+        @Test
+        @DisplayName("mal configurado: ERROR con la causa adjunta y la observacion marcada")
+        void mal_configurado_se_registra_en_error() {
+            MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+            var observation = new org.springframework.http.server.observation.ServerRequestObservationContext(
+                    servletRequest, new org.springframework.mock.web.MockHttpServletResponse());
+            servletRequest.setAttribute(
+                    org.springframework.web.filter.ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE,
+                    observation);
+            var ex = new CaptchaConfigurationException(
+                    "reCAPTCHA siteverify rejected the request with 403 FORBIDDEN;"
+                            + " check 'vetsoftware.recaptcha.secret'",
+                    new RuntimeException("403 Forbidden"));
+
+            ProblemDetail pd = handler.handleCaptchaMisconfigured(ex, servletRequest);
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+            assertThat(pd.getProperties()).containsEntry("code", "CAPTCHA_FAILED");
+            assertThat(pd.getDetail()).isEqualTo(DETAIL_FIJO)
+                    .doesNotContain("vetsoftware.recaptcha.secret");
+            // La observacion se marca aunque la respuesta sea 400: el request salio
+            // fallido de verdad y en las metricas tiene que contarse como tal.
+            assertThat(observation.getError()).isSameAs(ex);
+            assertThat(emitido().getLevel()).isEqualTo(Level.ERROR);
+            assertThat(emitido().getThrowableProxy())
+                    .as("sin la causa no hay nada que diagnosticar").isNotNull();
+        }
+
+        @Test
+        @DisplayName("proveedor caido: WARN con la causa, que es lo unico que separa un timeout de un 503")
+        void proveedor_caido_se_registra_en_warn() {
+            var ex = new CaptchaProviderUnavailableException(
+                    "reCAPTCHA siteverify call failed: ResourceAccessException",
+                    new RuntimeException("read timed out"));
+
+            ProblemDetail pd = handler.handleCaptchaProviderUnavailable(ex);
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+            assertThat(pd.getProperties()).containsEntry("code", "CAPTCHA_FAILED");
+            assertThat(pd.getDetail()).isEqualTo(DETAIL_FIJO);
+            assertThat(emitido().getLevel()).isEqualTo(Level.WARN);
+            assertThat(emitido().getThrowableProxy()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("captcha no superado por el usuario: INFO, que es la poblacion dominante")
+        void captcha_no_superado_se_registra_en_info() {
+            ProblemDetail pd = handler
+                    .handleCaptchaFailed(new CaptchaVerificationException("Captcha score too low"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+            assertThat(pd.getProperties()).containsEntry("code", "CAPTCHA_FAILED");
+            assertThat(pd.getDetail()).isEqualTo(DETAIL_FIJO).doesNotContain("score too low");
+            // Un 4xx atribuible al cliente no puede copar el nivel: en WARN estas lineas
+            // enterraban lo que si exige mirar (#89).
+            assertThat(emitido().getLevel()).isEqualTo(Level.INFO);
         }
     }
 

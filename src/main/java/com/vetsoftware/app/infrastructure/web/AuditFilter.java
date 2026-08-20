@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -33,14 +34,20 @@ public class AuditFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        long start = System.currentTimeMillis();
+        // nanoTime y no currentTimeMillis: el reloj de pared lo mueven NTP y los
+        // saltos de horario, así que restarlo produce duraciones negativas o
+        // absurdas justo en el momento en que el rastro de auditoría tiene que ser
+        // creíble. nanoTime es monótono y es lo único válido para medir un
+        // intervalo; mismo patrón que DocumentTransmitter.
+        long startedAt = System.nanoTime();
         try {
             chain.doFilter(request, response);
         } finally {
             if (MUTATING.contains(request.getMethod().toUpperCase())) {
                 int status = response.getStatus();
                 auditLogger.mutation(request.getMethod(), request.getRequestURI(), status,
-                        outcome(status), System.currentTimeMillis() - start);
+                        outcome(status),
+                        Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
             }
         }
     }
