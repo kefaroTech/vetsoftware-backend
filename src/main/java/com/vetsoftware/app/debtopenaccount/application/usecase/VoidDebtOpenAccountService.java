@@ -41,22 +41,30 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
     @Override
     @Transactional
     public DebtOpenAccountDto execute(VoidDebtOpenAccountCommand command) {
-        DebtOpenAccount debtOpenAccount = repository
-                .findByIdAndCompanyId(command.id(), command.companyId())
+        // PRIMERA SENTENCIA: lectura de bloqueo del abono, que ademas revela su cuenta.
+        // Antes esto era una carga plana del abono y el lock de la cuenta venia
+        // DESPUES; como esa carga trae la cuenta por @EntityGraph, fijaba el snapshot
+        // REPEATABLE READ y metia la cuenta con valores viejos en el contexto de
+        // persistencia, asi que el lock llegaba tarde: isOpen y la suma de abonos del
+        // recalculo seguian leyendo lo de antes de esperar al lock. Una lectura de
+        // bloqueo no abre snapshot, y por eso va primero.
+        Long openAccountId = repository.lockAndFindOpenAccountId(command.id())
                 .orElseThrow(() -> new DebtOpenAccountNotFoundException(command.id()));
-        Long openAccountId = debtOpenAccount.getOpenAccount().id();
-        if (!debtOpenAccount.getOpenAccount().companyId().equals(command.companyId())) {
-            throw new IllegalArgumentException("debt open account does not belong to company");
-        }
         // Lock pesimista de la cuenta antes de leer su estado: serializa la anulación
         // del abono frente
         // a
         // cargos/abonos/cierre concurrentes (cierra el TOCTOU del isOpen), no solo en
         // el recálculo.
-        // Acotado por empresa como en el alta: aqui la cuenta ya se demostro propia (el
-        // abono se cargo acotado), asi que el companyId no cambia el resultado, pero el
-        // puerto no ofrece variante ancha para que no vuelva a colarse una.
+        // Acotado por empresa como en el alta: si la cuenta es de otro tenant no
+        // devuelve fila y no se bloquea nada, y la carga acotada de la linea siguiente
+        // lo remata con un 404 y rollback.
         openAccountQueryPort.lockForUpdate(openAccountId, command.companyId());
+        DebtOpenAccount debtOpenAccount = repository
+                .findByIdAndCompanyId(command.id(), command.companyId())
+                .orElseThrow(() -> new DebtOpenAccountNotFoundException(command.id()));
+        if (!debtOpenAccount.getOpenAccount().companyId().equals(command.companyId())) {
+            throw new IllegalArgumentException("debt open account does not belong to company");
+        }
         // Detección temprana de conflicto sobre la cuenta del abono.
         versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
