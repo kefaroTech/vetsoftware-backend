@@ -3,9 +3,11 @@ package com.vetsoftware.app.laboratorytestfile.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestFileDto;
@@ -25,6 +27,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CreateLaboratoryTestFileService")
@@ -179,6 +182,130 @@ class CreateLaboratoryTestFileServiceTest {
                             + LaboratoryTestFileMother.LABORATORY_TEST_ID);
 
             verifyNoInteractions(fileStoragePort, repository);
+        }
+    }
+
+    /**
+     * El objeto sube a S3 ANTES de que exista la fila que lo referencia, y eso es
+     * deliberado (ver el javadoc del servicio: meter la subida en la transaccion
+     * romperia SIN_IO_EXTERNO_EN_TRANSACCION y el pool). La contrapartida es la
+     * compensacion: si la fila no llega a grabarse, lo que queda en el bucket no es
+     * un fichero de mas, son datos clinicos de un paciente fuera de todo inventario
+     * — ninguna fila los nombra, asi que ningun proceso de borrado los alcanza,
+     * incluido el borrado a peticion del titular.
+     */
+    @Nested
+    @DisplayName("compensacion cuando la fila no llega a grabarse")
+    class CompensacionDeLaSubida {
+
+        /**
+         * El escenario del issue #136: borraron el examen mientras se subia el fichero.
+         */
+        private DataIntegrityViolationException examenBorradoMientrasSubia() {
+            return new DataIntegrityViolationException(
+                    "Cannot add or update a child row: a foreign key constraint fails"
+                            + " (`laboratory_test_file`.`fk_lab_test_file_lab_test`)");
+        }
+
+        private void subidaCompletada() {
+            referenciasResueltas();
+            when(fileStoragePort.store(any(), any(), any()))
+                    .thenReturn(new FileStoragePort.StoredFile(LaboratoryTestFileMother.BUCKET,
+                            LaboratoryTestFileMother.STORAGE_KEY, LaboratoryTestFileMother.E_TAG));
+        }
+
+        @Test
+        @DisplayName("si falla el save, borra de S3 el objeto recien subido con la clave que devolvio el store")
+        void borra_de_s3_el_objeto_recien_subido() {
+            subidaCompletada();
+            when(repository.save(any())).thenThrow(examenBorradoMientrasSubia());
+
+            assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+
+            ArgumentCaptor<String> borradaCaptor = ArgumentCaptor.forClass(String.class);
+            verify(fileStoragePort).delete(borradaCaptor.capture());
+            assertThat(borradaCaptor.getValue()).isEqualTo(LaboratoryTestFileMother.STORAGE_KEY);
+        }
+
+        /**
+         * La clave con la que se borra es la que devolvio el {@code store}, no la que
+         * se le paso: el contrato del puerto permite que el almacenamiento normalice la
+         * clave, y borrar la calculada dejaria vivo el objeto real.
+         */
+        @Test
+        @DisplayName("borra la clave que devolvio el almacenamiento, no la que se calculo para subir")
+        void borra_la_clave_devuelta_y_no_la_calculada() {
+            subidaCompletada();
+            when(repository.save(any())).thenThrow(examenBorradoMientrasSubia());
+
+            assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+
+            ArgumentCaptor<String> subidaCaptor = ArgumentCaptor.forClass(String.class);
+            verify(fileStoragePort).store(subidaCaptor.capture(), any(), any());
+            ArgumentCaptor<String> borradaCaptor = ArgumentCaptor.forClass(String.class);
+            verify(fileStoragePort).delete(borradaCaptor.capture());
+            assertThat(borradaCaptor.getValue()).isEqualTo(LaboratoryTestFileMother.STORAGE_KEY)
+                    .isNotEqualTo(subidaCaptor.getValue());
+        }
+
+        /**
+         * Sin envolver: el cliente tiene que ver el error que explica que paso (aqui,
+         * el 409 que da {@code GlobalExceptionHandler} a una violacion de integridad),
+         * y no un error de la compensacion.
+         */
+        @Test
+        @DisplayName("relanza la excepcion original del save, sin envolverla y sin suprimidas")
+        void relanza_la_excepcion_original_sin_envolverla() {
+            subidaCompletada();
+            DataIntegrityViolationException falloAlGuardar = examenBorradoMientrasSubia();
+            when(repository.save(any())).thenThrow(falloAlGuardar);
+
+            assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
+                    .isSameAs(falloAlGuardar).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("foreign key constraint fails")
+                    .hasNoSuppressedExceptions();
+        }
+
+        /**
+         * El peor caso: el objeto se queda huerfano igualmente. Lo unico que no puede
+         * pasar es que el fallo del borrado tape la causa real, porque entonces el
+         * cliente veria un error de S3 en vez del motivo por el que fallo su operacion.
+         * El fallo secundario viaja como {@code suppressed} para que quede en el
+         * rastro.
+         */
+        @Test
+        @DisplayName("si el borrado tambien falla, sale la excepcion original con el fallo del borrado como suprimido")
+        void el_fallo_del_borrado_no_tapa_la_causa_real() {
+            subidaCompletada();
+            DataIntegrityViolationException falloAlGuardar = examenBorradoMientrasSubia();
+            when(repository.save(any())).thenThrow(falloAlGuardar);
+            IllegalStateException falloDelBorrado = new IllegalStateException(
+                    "S3 no disponible: connection reset");
+            doThrow(falloDelBorrado).when(fileStoragePort)
+                    .delete(LaboratoryTestFileMother.STORAGE_KEY);
+
+            assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
+                    .isSameAs(falloAlGuardar).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("foreign key constraint fails")
+                    .hasSuppressedException(falloDelBorrado);
+        }
+
+        /**
+         * Un {@code delete} de mas borraria un adjunto que si se guardo bien: la fila
+         * apuntaria a un objeto que ya no esta y el informe seria indescargable.
+         */
+        @Test
+        @DisplayName("cuando el save va bien no se borra nada del almacenamiento")
+        void el_camino_feliz_no_borra_nada() {
+            subidaCompletada();
+            when(repository.save(any())).thenReturn(LaboratoryTestFileMother.archivoValido());
+
+            service.execute(LaboratoryTestFileMother.comandoCrear());
+
+            verify(fileStoragePort).store(any(), any(), any());
+            verifyNoMoreInteractions(fileStoragePort);
         }
     }
 }
