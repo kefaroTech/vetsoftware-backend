@@ -51,7 +51,11 @@ public final class LogFieldPolicy {
      * propósito), no el documento de una persona. {@code
      * actor.identifier} y {@code employee.identifier} son códigos de acceso de
      * empleado, que {@code
-     * AuditLogger} documenta explícitamente como no secretos.
+     * AuditLogger} documenta explícitamente como no secretos. {@code actor.id} y
+     * {@code seconds_since_revocation} son el id numérico del actor y una duración
+     * en segundos: misma forma acotada, y someterlos al enmascarado de texto solo
+     * podría mutilarlos — un id largo se confundiría con un documento personal,
+     * igual que el NIT.
      */
     private static final Set<String> VERBATIM = Set.of(
             // Correlación — Micrometer Tracing
@@ -61,7 +65,8 @@ public final class LogFieldPolicy {
             MdcKeys.ACTOR_SYSTEM_USER_ID, MdcKeys.CLIENT_IP, MdcKeys.HTTP_METHOD,
             // Campos propios de los eventos AUDIT
             "event", "outcome", "reason", "code", "http.status", "http.durationMs", "company.id",
-            "company.identifier", "employee.id", "employee.identifier", "actor.identifier");
+            "company.identifier", "employee.id", "employee.identifier", "actor.identifier",
+            "actor.id", "seconds_since_revocation");
 
     /** Claves permitidas cuyo valor sí se somete al enmascarado de texto. */
     private static final Set<String> SCANNED = Set.of(MdcKeys.HTTP_PATH, MdcKeys.USER_AGENT,
