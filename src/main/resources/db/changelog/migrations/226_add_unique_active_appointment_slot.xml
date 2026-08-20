@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #114: cierra el solape EXACTO de horario a nivel de base de datos. Dos
+         transacciones concurrentes que pasan el mismo findOverlapping (BE-17,
+         JpaAppointmentRepository:89-105 -el solape se decide en Java, no en SQL-) y
+         llegan las dos al INSERT con el mismo (employee_id, start_at) ya no pueden
+         guardarse las dos: la segunda revienta con una violación de índice único.
+         CreateAppointmentService debe traducirla a 409 APPOINTMENT_OVERLAP en
+         GlobalExceptionHandler.mapConstraint -precedente: uq_open_accounts_active_owner_branch,
+         GlobalExceptionHandler.java:676-.
+
+         ALCANCE — lo que este índice NO cubre, y no se vende como cerrado: el solape
+         de horario es semiabierto (ver el javadoc de
+         JpaAppointmentRepository#findOverlapping), así que dos citas que empiezan en
+         minutos DISTINTOS pero se pisan en el tiempo (10:00-10:30 vs 10:15-10:45)
+         tienen start_at distinto y esta constraint no las ve. Ese caso sigue
+         dependiendo de la lectura findOverlapping + el lock pesimista añadido en
+         CreateAppointmentService (JpaEmployeeQueryPort.lockForOverlapCheck) para
+         serializar el read-then-write. Este índice es la última línea de defensa del
+         caso exacto; el lock es la primera línea para todo lo demás.
+
+         CRITERIO DE "VIGENTE" — no es solo enabled = true (borrado lógico; ver
+         @SQLDelete/@SQLRestriction de AppointmentJpaEntity). AppointmentStatus.
+         NOT_OCCUPYING_SCHEDULE excluye también CANCELLED y NO_SHOW del cruce de
+         horarios (BE-17): una cita cancelada sigue enabled = true pero no debe
+         bloquear el hueco. El marcador generado exige las dos condiciones -enabled Y
+         status no ocupante-, igual que el filtro real de negocio, para no rechazar
+         con un 409 una cita nueva que en realidad no choca con nada.
+
+         MySQL no soporta índices únicos filtrados (partial/filtered index); se emula
+         con una columna GENERATED ALWAYS ... STORED que vale NULL fuera de alcance
+         -MySQL permite múltiples NULL en un índice único-, mismo patrón que
+         210_scope_open_accounts_by_branch.
+
+         DATOS EXISTENTES: la precondición siguiente hace de guardia en el propio
+         despliegue -mismo patrón que 206_unique_open_cash_session_per_employee-. No
+         se tuvo acceso a la base de datos de dev/prod desde este agente para
+         verificarlo de antemano (herramienta de BD deliberadamente fuera de alcance);
+         si la precondición HALT, hace falta decidir con un humano cómo resolver las
+         filas duplicadas (¿cuál de las dos citas activas con el mismo horario es la
+         válida?) antes de reintentar este changeset. -->
+    <changeSet id="226_add_unique_active_appointment_slot" author="orlando">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                  FROM (
+                    SELECT employee_id, start_at
+                      FROM appointments
+                     WHERE enabled = TRUE
+                       AND status NOT IN ('CANCELLED', 'NO_SHOW')
+                     GROUP BY employee_id, start_at
+                    HAVING COUNT(*) &gt; 1
+                  ) duplicate_active_slots
+            </sqlCheck>
+        </preConditions>
+
+        <sql>
+            ALTER TABLE appointments
+                ADD COLUMN active_slot_employee_id BIGINT
+                GENERATED ALWAYS AS (
+                    CASE
+                        WHEN enabled = TRUE AND status NOT IN ('CANCELLED', 'NO_SHOW')
+                        THEN employee_id
+                        ELSE NULL
+                    END
+                ) STORED,
+                ADD CONSTRAINT uq_appointments_active_employee_start
+                    UNIQUE (active_slot_employee_id, start_at)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE appointments
+                    DROP INDEX uq_appointments_active_employee_start,
+                    DROP COLUMN active_slot_employee_id
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

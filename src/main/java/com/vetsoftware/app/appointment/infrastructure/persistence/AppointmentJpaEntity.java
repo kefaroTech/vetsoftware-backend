@@ -10,6 +10,14 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * Cita. La columna generada {@code active_slot_employee_id} (changeset 226; =
+ * employee_id solo cuando enabled=true y status no está en CANCELLED/NO_SHOW,
+ * NULL en otro caso) vive en la BD para el índice único
+ * {@code uq_appointments_active_employee_start} -issue #114, el solape EXACTO
+ * de horario-; no se mapea aquí (ddl-auto: validate ignora columnas no
+ * mapeadas), mismo patrón que {@code CashSessionJpaEntity.open_marker}.
+ */
 @Entity
 @Table(name = "appointments")
 @SQLDelete(sql = "UPDATE appointments SET enabled = false WHERE id = ? AND version = ?")

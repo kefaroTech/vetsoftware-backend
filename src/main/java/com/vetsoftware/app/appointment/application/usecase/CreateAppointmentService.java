@@ -68,6 +68,19 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     @Override
     @Transactional
     public AppointmentDto execute(CreateAppointmentCommand command) {
+        // Issue #114: lock pesimista ACOTADO por empresa como PRIMERA sentencia,
+        // antes de CUALQUIER lectura -incluida la resolución del empleado que sigue
+        // dos líneas más abajo-. Serializa contra otra creación concurrente sobre el
+        // mismo empleado: la segunda transacción espera aquí hasta que la primera
+        // confirma o revierte, y entonces el findOverlapping de más abajo SÍ ve la
+        // cita que la primera acaba de guardar. Cubre los solapes PARCIALES -horas de
+        // inicio distintas que se pisan en el tiempo- que la constraint única
+        // uq_appointments_active_employee_start (changeset 226) no alcanza, porque
+        // esa solo atrapa el solape EXACTO de start_at. Ver el javadoc de
+        // JpaEmployeeQueryPort.lockForOverlapCheck para el porqué de la granularidad
+        // por empleado y no por (empleado, día).
+        employeeQueryPort.lockForOverlapCheck(command.employeeId(), command.companyId());
+
         EmployeeRef employee = employeeQueryPort
                 .findByIdAndCompanyId(command.employeeId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
