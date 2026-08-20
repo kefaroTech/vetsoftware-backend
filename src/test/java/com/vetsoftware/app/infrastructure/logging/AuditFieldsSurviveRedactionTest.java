@@ -8,12 +8,19 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
@@ -31,9 +38,82 @@ import org.slf4j.event.KeyValuePair;
  * addKeyValue(...)} nuevo sin declararlo en {@link LogFieldPolicy} rompe esta
  * prueba.
  *
+ * <p>
+ * <b>Cómo se impide la recaída.</b> Durante meses esta prueba llevó una lista
+ * escrita a mano de invocaciones, y el fallo que tenía era el propio de toda
+ * lista a mano: <em>no se queja de lo que le falta</em>. Dos eventos —entre
+ * ellos {@code refresh_token_reuse_detected}, el único que describe un ataque
+ * en curso— nunca se ejercitaron, así que sus campos podían salir enmascarados
+ * en producción con la suite entera en verde. Por eso los casos viven ahora en
+ * {@link #auditCases()}, una única fuente de verdad donde cada entrada declara
+ * explícitamente <b>qué método de {@link AuditLogger} ejercita</b>, y
+ * {@link #everyAuditMethodIsExercisedByACase()} cruza ese conjunto de nombres
+ * contra el que devuelve la reflexión sobre la clase de producción. Un evento
+ * nuevo en {@code AuditLogger} sin su entrada aquí ya no pasa desapercibido: la
+ * paridad falla nombrando el método huérfano.
+ *
  * @see LogRedactionPipelineTest
  */
 class AuditFieldsSurviveRedactionTest {
+
+    /**
+     * Un evento de auditoría a ejercitar. {@code method} es el nombre del método de
+     * {@link AuditLogger} que invoca {@code emit} — no es decorativo: es la clave
+     * con la que {@link #everyAuditMethodIsExercisedByACase()} compara contra la
+     * reflexión, y un nombre mal escrito convierte la paridad en un falso verde (de
+     * ahí que esa prueba compruebe también el sentido contrario).
+     */
+    private record AuditCase(String method, String event, Consumer<AuditLogger> emit) {
+
+        @Override
+        public String toString() {
+            return method + " → " + event;
+        }
+    }
+
+    /**
+     * Única fuente de verdad de esta prueba: la batería de casos sobre la que itera
+     * {@link #everyAuditFieldIsAllowlisted(AuditCase)} y contra la que se verifica
+     * la paridad. Antes había dos listas —la de invocaciones y la mental del que
+     * revisaba—; aquí solo hay una.
+     *
+     * <p>
+     * {@code loginRateLimited} y {@code rateLimited} llevan entrada propia aunque
+     * el primero no sea más que una delegación en el segundo: la paridad razona por
+     * método declarado, y cubrir uno solo dejaría al otro sin ejercitar. El código
+     * de {@code rateLimited} es uno real de {@code LoginRateLimitFilter}, no un
+     * literal inventado, para que la prueba ejercite la forma que sale en
+     * producción.
+     */
+    private static List<AuditCase> auditCases() {
+        return List.of(
+                new AuditCase("mutation", "http_mutation",
+                        audit -> audit.mutation("PATCH", "/api/v1/animals/9", 200, "SUCCESS", 37)),
+                new AuditCase("companyRegistered", "company_registered",
+                        audit -> audit.companyRegistered(3L, "Clinica Vetrina", "900123456", 77L,
+                                "OWNER01")),
+                new AuditCase("employeeInvited", "employee_invited",
+                        audit -> audit.employeeInvited(88L, "EMP0042", 3L)),
+                new AuditCase("employeeInvitationResent", "employee_invitation_resent",
+                        audit -> audit.employeeInvitationResent(88L, "EMP0042", 3L)),
+                new AuditCase("invitationAccepted", "invitation_accepted",
+                        audit -> audit.invitationAccepted(88L, 3L)),
+                new AuditCase("loginSuccess", "login_success",
+                        audit -> audit.loginSuccess("EMPLOYEE", "EMP0042")),
+                new AuditCase("loginFailure", "login_failure",
+                        audit -> audit.loginFailure("/auth/login/employee", "bad_credentials")),
+                new AuditCase("loginBlockedEmailNotVerified", "login_blocked_email_not_verified",
+                        audit -> audit.loginBlockedEmailNotVerified("EMP0042")),
+                new AuditCase("refreshTokenReuseDetected", "refresh_token_reuse_detected",
+                        audit -> audit.refreshTokenReuseDetected(77L, "EMPLOYEE", 12L)),
+                new AuditCase("accessDenied", "access_denied",
+                        audit -> audit.accessDenied("DELETE", "/api/v1/owners/5")),
+                new AuditCase("unauthenticated", "unauthenticated",
+                        audit -> audit.unauthenticated("GET", "/api/v1/owners", "invalid_token")),
+                new AuditCase("loginRateLimited", "rate_limited", AuditLogger::loginRateLimited),
+                new AuditCase("rateLimited", "rate_limited",
+                        audit -> audit.rateLimited("REGISTER_RATE_LIMITED")));
+    }
 
     private final AuditLogger auditLogger = new AuditLogger();
 
@@ -102,27 +182,47 @@ class AuditFieldsSurviveRedactionTest {
         assertThat(emitted.getFormattedMessage()).doesNotContain(LogRedactor.MASK);
     }
 
-    @Test
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("auditCases")
     @DisplayName("ningún campo de los eventos AUDIT queda enmascarado por la allowlist")
-    void everyAuditFieldIsAllowlisted() {
-        assertNothingMasked("http_mutation",
-                audit -> audit.mutation("PATCH", "/api/v1/animals/9", 200, "SUCCESS", 37));
-        assertNothingMasked("company_registered", audit -> audit.companyRegistered(3L,
-                "Clinica Vetrina", "900123456", 77L, "OWNER01"));
-        assertNothingMasked("employee_invited", audit -> audit.employeeInvited(88L, "EMP0042", 3L));
-        assertNothingMasked("employee_invitation_resent",
-                audit -> audit.employeeInvitationResent(88L, "EMP0042", 3L));
-        assertNothingMasked("invitation_accepted", audit -> audit.invitationAccepted(88L, 3L));
-        assertNothingMasked("login_success", audit -> audit.loginSuccess("EMPLOYEE", "EMP0042"));
-        assertNothingMasked("login_failure",
-                audit -> audit.loginFailure("/auth/login/employee", "bad_credentials"));
-        assertNothingMasked("login_blocked_email_not_verified",
-                audit -> audit.loginBlockedEmailNotVerified("EMP0042"));
-        assertNothingMasked("access_denied",
-                audit -> audit.accessDenied("DELETE", "/api/v1/owners/5"));
-        assertNothingMasked("unauthenticated",
-                audit -> audit.unauthenticated("GET", "/api/v1/owners", "invalid_token"));
-        assertNothingMasked("rate_limited", audit -> audit.loginRateLimited());
+    void everyAuditFieldIsAllowlisted(AuditCase testCase) {
+        assertNothingMasked(testCase.event(), testCase.emit());
+    }
+
+    /**
+     * El antirrecaída. Sin esta prueba, añadir un evento a {@link AuditLogger} y
+     * olvidar su caso aquí deja la suite en verde y el campo enmascarado en Loki —
+     * que es exactamente como {@code refresh_token_reuse_detected} y
+     * {@code rateLimited} estuvieron sin red.
+     */
+    @Test
+    @DisplayName("todo método público de AuditLogger queda ejercitado por algún caso")
+    void everyAuditMethodIsExercisedByACase() {
+        // isSynthetic() descarta el puente que mete la instrumentación de JaCoCo y
+        // cualquier método generado por el compilador: solo interesa lo que un humano
+        // escribió en AuditLogger.
+        Set<String> declaredByProduction = Arrays.stream(AuditLogger.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .filter(method -> !method.isSynthetic()).map(Method::getName)
+                .collect(Collectors.toUnmodifiableSet());
+        Set<String> exercisedByCases = auditCases().stream().map(AuditCase::method)
+                .collect(Collectors.toUnmodifiableSet());
+
+        assertThat(exercisedByCases)
+                .as("AuditLogger expone métodos públicos que ninguna entrada de auditCases() "
+                        + "ejercita: sus campos nunca pasan por la allowlist, así que pueden "
+                        + "salir como '%s' en producción sin que nada falle aquí. Añade una "
+                        + "entrada por cada método listado abajo", LogRedactor.MASK)
+                .containsAll(declaredByProduction);
+
+        // El sentido contrario: el nombre de cada entrada es un String escrito a mano y
+        // el compilador no lo valida. Una errata o un rename dejarían un método real
+        // sin cubrir mientras la comprobación de arriba pasa por casualidad.
+        assertThat(declaredByProduction)
+                .as("auditCases() declara nombres de método que AuditLogger ya no expone: "
+                        + "errata al escribirlos, o un rename/borrado en producción que dejó la "
+                        + "entrada apuntando a la nada")
+                .containsAll(exercisedByCases);
     }
 
     @Test
