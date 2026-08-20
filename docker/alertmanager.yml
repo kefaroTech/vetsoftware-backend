@@ -41,11 +41,34 @@ receivers:
           Subject: '[VetSoftware][{{ .Status | toUpper }}][{{ .CommonLabels.severity }}] {{ .CommonLabels.alertname }}'
 
 inhibit_rules:
+  # Regla genérica de escalón: un critical silencia al warning DEL MISMO SÍNTOMA. `alertname` es
+  # lo que define «el mismo síntoma»; sin él la regla emparejaba por dominio y silenciaba alertas
+  # que no tienen nada que ver entre sí.
+  #
+  # El defecto que corrige, porque no es evidente: Alertmanager considera que `equal` se cumple
+  # cuando la etiqueta VALE LO MISMO EN AMBAS ALERTAS, y «ausente en las dos» cuenta como valor
+  # igual. Las alertas agregadas de este repositorio —las seis de SLO, las diez de observability,
+  # las cuatro de database, las cuatro de runtime, las tres de alerting, las tres de backend y las
+  # dos de billing— no llevan `instance`, porque sus `expr` parten de reglas de grabación ya
+  # agregadas o de sumas globales. Con `equal: [domain, instance]`, el par (domain igual,
+  # instance ausente en ambas) se satisfacía siempre, así que un `VetSoftwareSloFastBurn` critical
+  # inhibía el `VetSoftwareSloSlowBurn` warning de OTRO SLO, y un `VetSoftwareLokiDiscardingLogs`
+  # critical tapaba un `VetSoftwareOtelQueueNearCapacity` warning que señala otra cosa. El
+  # silencio no deja rastro: la alerta simplemente no llega y nadie sabe que existió.
+  #
+  # `domain` e `instance` se conservan como defensa en profundidad. Hoy `alertname` los implica
+  # —ningún alertname de este repositorio se emite con dos dominios— pero cuando una misma alerta
+  # se escale por instancia (heap al 80 % warning / al 95 % critical del mismo backend:8080),
+  # `instance` es lo que impide que el critical de una instancia silencie el warning de otra.
+  #
+  # Consecuencia deliberada: hoy esta regla no inhibe nada, porque ningún alertname se emite con
+  # dos severidades. Eso es lo correcto — antes «funcionaba» silenciando lo que no debía.
   - source_matchers:
       - severity="critical"
     target_matchers:
       - severity="warning"
     equal:
+      - alertname
       - domain
       - instance
 

@@ -326,11 +326,17 @@ conserva deliberadamente el último valor conocido en lugar de dejar la serie au
 sería indistinguible de la normalidad.
 
 1. Buscar en Loki el `WARN` de `BusinessGaugeMetrics` ("No se pudo actualizar el snapshot de
-   métricas de negocio"): trae la causa del fallo.
-2. La causa habitual es la base de datos: indisponibilidad, saturación del pool o una consulta de
+   métricas de negocio"): trae la causa del fallo **con su stacktrace y su cadena de causas**, no
+   solo el mensaje.
+2. Cuantificar cuántos ciclos fallan con `tasks_scheduled_execution_*` filtrada por
+   `job_name="business.metrics.snapshot"` y desglosada por `job_outcome`. El trabajo abre su
+   transacción **dentro** de la observación a propósito: si el pool no da conexión, el
+   `CannotCreateTransactionException` sale con `job_outcome="error"` y no como una ejecución
+   anónima sin `job_name`.
+3. La causa habitual es la base de datos: indisponibilidad, saturación del pool o una consulta de
    conteo que se ha vuelto lenta. Correlacionar con `VetSoftwareDatabasePoolSaturated` y
    `VetSoftwareDatabaseConnectionTimeouts`.
-3. **Mientras esta alerta esté activa, tratar como no fiables** el estado de
+4. **Mientras esta alerta esté activa, tratar como no fiables** el estado de
    `VetSoftwareDianBacklogOlderThanOneHour` y las series de inventario. Resolverla antes de sacar
    conclusiones de ellas.
 
