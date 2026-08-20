@@ -152,6 +152,13 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
                                                          // (2=Anulación); ideal:
                                                          // mapear desde noteReasonCode
 
+    // Estados 4xx que NO significan "documento rechazado": fallo de autenticacion
+    // (nuestro, afecta a toda la empresa) y rate limit (transitorio). Ver el catch
+    // de transmit.
+    private static final int HTTP_UNAUTHORIZED = 401;
+    private static final int HTTP_FORBIDDEN = 403;
+    private static final int HTTP_TOO_MANY_REQUESTS = 429;
+
     /**
      * Fallback de TTL del token si el login no devuelve {@code expires_at}
      * (normalmente sí lo hace).
@@ -204,11 +211,54 @@ public class MatiasInvoiceProvider implements ElectronicInvoiceProviderPort {
         } catch (RestClientResponseException e) {
             HttpStatusCode status = e.getStatusCode();
             String responseBody = e.getResponseBodyAsString();
+            int httpStatus = status.value();
             if (status.is5xxServerError()) {
-                return contingency(status.value(), responseBody); // DIAN caída (500/503/504) →
-                                                                  // reintentar
+                return contingency(httpStatus, responseBody); // DIAN caída (500/503/504) →
+                                                              // reintentar
             }
-            return rejected(status.value(), responseBody); // 4xx: 422 validación, 400 duplicado
+            // No todo 4xx es "el documento fue rechazado". 401/403 (token caducado o mal
+            // configurado) y 429 (rate limit) son fallos NUESTROS o transitorios del
+            // proveedor que afectan a TODAS las emisiones de la empresa, no a este
+            // documento. Marcarlos RECHAZADO los da por terminales y ademas LIBERA su
+            // consecutivo fiscal (TransmissionResultPersister.applyResult llama a
+            // numberAssigner.release en el caso RECHAZADO), asi que una noche con el token
+            // vencido dejaria cientos de documentos rechazados en firme y con su numeracion
+            // reutilizada. Van a CONTINGENCIA, que no es terminal, conserva la numeracion y
+            // lo reintenta ContingencyRetryJob.
+            if (httpStatus == HTTP_UNAUTHORIZED || httpStatus == HTTP_FORBIDDEN) {
+                // El cuerpo crudo NO se registra: puede arrastrar datos del contribuyente.
+                // El throwable si, porque aqui su mensaje es el error de autenticacion del
+                // proveedor. Nunca el token ni las cabeceras de autorizacion.
+                log.error(
+                        "MATIAS rechazó la AUTENTICACIÓN (HTTP {}) al transmitir el documento {}"
+                                + " ({}) de la empresa {}. NO es un rechazo de este documento:"
+                                + " afecta a todas las emisiones de la empresa. Se deja en"
+                                + " CONTINGENCIA (numeración intacta) para reintentar; revisar"
+                                + " credenciales/token del proveedor DIAN.",
+                        httpStatus, document.getId(), document.getDocumentType(),
+                        document.getCompanyId(), e);
+                return contingency(httpStatus, responseBody);
+            }
+            if (httpStatus == HTTP_TOO_MANY_REQUESTS) {
+                log.warn(
+                        "MATIAS aplicó rate limit (HTTP 429) al transmitir el documento {} de la"
+                                + " empresa {}. Fallo transitorio: se deja en CONTINGENCIA"
+                                + " (numeración intacta) para reintentar.",
+                        document.getId(), document.getCompanyId(), e);
+                return contingency(httpStatus, responseBody);
+            }
+            // Resto de 4xx (422 validación, 400 duplicado): rechazo determinista de ESTE
+            // documento. Sin el throwable a proposito — su mensaje incluye el cuerpo de la
+            // respuesta, que aqui es el eco del documento (datos del contribuyente y del
+            // cliente). El motivo del proveedor ya queda en la bitácora de transmisión.
+            log.warn(
+                    "MATIAS rechazó el documento {} ({}) de la empresa {} con HTTP {}: rechazo"
+                            + " determinista del documento. Se marca RECHAZADO y se libera su"
+                            + " numeración; el motivo del proveedor queda en la bitácora de"
+                            + " transmisión.",
+                    document.getId(), document.getDocumentType(), document.getCompanyId(),
+                    httpStatus);
+            return rejected(httpStatus, responseBody);
         } catch (ResourceAccessException e) {
             return contingency(null, e.getMessage()); // timeout/conexión
         }
