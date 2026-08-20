@@ -16,3 +16,18 @@ target
 *.jks
 *.keystore
 docker-compose*.yml
+
+# El build es multi-stage y compila DENTRO de la imagen: el `COPY src ./src` del
+# Dockerfile mete todo src/main/resources en el contexto y Maven lo empaqueta en
+# BOOT-INF/classes. Sin estas exclusiones el perfil local -y su contrasena de MySQL-
+# viajaba en el jar publicado en ECR (INF-34). El .dockerignore es aqui la palanca
+# correcta precisamente porque el jar se construye desde el contexto.
+src/main/resources/application-local.yml
+src/main/resources/application-local.yaml
+src/main/resources/application-local.properties
+src/main/resources/application-local.yml.example
+src/main/resources/application-local.yaml.example
+src/main/resources/application-local.properties.example
+
+# Contratos de entorno: no los necesita ninguna etapa del build y llevan credenciales.
+deploy/env

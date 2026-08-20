@@ -6,3 +6,9 @@ config/archunit/violation-store/** text eol=lf
 # Los workflows corren en Linux: un CRLF rompe el terminador de un heredoc.
 *.yml  text eol=lf
 *.yaml text eol=lf
+
+# Las plantillas .example son YAML igual que los .yml: sin esta regla caen en el
+# autocrlf de Windows y el fichero que el desarrollador copia a application-local.yml
+# nace con CRLF, distinto del resto de perfiles.
+*.yml.example  text eol=lf
+*.yaml.example text eol=lf

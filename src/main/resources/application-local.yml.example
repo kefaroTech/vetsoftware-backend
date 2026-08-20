@@ -1,14 +1,35 @@
+# PLANTILLA del perfil `local`. NO es el fichero que lee Spring.
+#
+# Uso:
+#   cp src/main/resources/application-local.yml.example \
+#      src/main/resources/application-local.yml
+#   # y sustituya los marcadores REEMPLAZAR_* por los valores de su maquina.
+#
+# `application-local.yml` esta en .gitignore y NO debe versionarse. Hasta agosto de
+# 2026 lo estuvo pese a la regla, y con el viajaba la contrasena de la base de datos
+# en claro dentro del jar y de la imagen publicada en ECR (hallazgo INF-34).
+#
+# Todos los defaults sensibles de esta plantilla son marcadores que NO arrancan, igual
+# que ya hacia `jwt.secret`: si olvida rellenar uno, el arranque falla de forma visible
+# en vez de funcionar con una credencial que conoce todo el que lea el repositorio.
+#
 # Entorno individual: dependencias levantadas por docker-compose.yml.
 spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/vetsoftware_db}
     username: ${DB_USERNAME:cronos}
-    password: ${DB_PASSWORD:cronos2026*}
+    # Fail-closed: este default no autentica contra MySQL, asi que Hikari aborta el
+    # arranque en vez de conectar con una contrasena publicada. Ponga la de su volumen
+    # local (LOCAL_DB_PASSWORD de .env.local) o exporte DB_PASSWORD.
+    password: ${DB_PASSWORD:REEMPLAZAR_POR_LA_CONTRASENA_LOCAL_DE_MYSQL}
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
 
 jwt:
+  # Fail-closed ya existente y deliberado: Keys.hmacShaKeyFor rechaza claves de menos de
+  # 32 bytes (JwtProvider.java:23), y este marcador tiene 23. Genere el secreto real con
+  # `openssl rand -base64 48` y exportelo como JWT_SECRET.
   secret: ${JWT_SECRET:REMOVED_SENSITIVE_VALUE}
   refresh-cookie:
     # En local el front habla por http://localhost. Una cookie Secure sobre http
@@ -79,6 +100,8 @@ vetsoftware:
       bucket: ${S3_BUCKET:vetsoftware-local}
       region: ${AWS_REGION:us-east-1}
       endpoint: ${S3_ENDPOINT:http://localhost:4566}
+      # `test`/`test` son las credenciales ficticias que LocalStack acepta por diseno:
+      # no son un secreto y se conservan para que el stack local funcione sin configurar nada.
       access-key: ${AWS_ACCESS_KEY_ID:test}
       secret-key: ${AWS_SECRET_ACCESS_KEY:test}
       path-style-access: true
