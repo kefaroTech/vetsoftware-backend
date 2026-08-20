@@ -4,6 +4,7 @@ import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.domain.AppointmentStatus;
 import com.vetsoftware.app.cashregister.application.port.out.CashMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics;
+import com.vetsoftware.app.electronicdocument.application.port.out.DocumentDeliveryMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalesMetrics;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
@@ -30,6 +31,7 @@ public class MicrometerBusinessMetrics
         implements
             SalesMetrics,
             BillingMetrics,
+            DocumentDeliveryMetrics,
             InventoryMetrics,
             AppointmentMetrics,
             CashMetrics {
@@ -41,6 +43,7 @@ public class MicrometerBusinessMetrics
     private final Meter.MeterProvider<DistributionSummary> salesLines;
     private final Meter.MeterProvider<Counter> dianTransmissions;
     private final Meter.MeterProvider<Timer> dianTransmissionDuration;
+    private final Meter.MeterProvider<Counter> documentDeliveries;
     private final Meter.MeterProvider<Counter> inventoryMovements;
     private final Meter.MeterProvider<DistributionSummary> inventoryUnits;
     private final Meter.MeterProvider<Counter> appointmentTransitions;
@@ -66,6 +69,20 @@ public class MicrometerBusinessMetrics
                 .withRegistry(registry);
         dianTransmissionDuration = Timer.builder(BusinessMetricNames.DIAN_TRANSMISSION_DURATION)
                 .description("Duración extremo a extremo del intento de comunicación con la DIAN")
+                .withRegistry(registry);
+        // Sin baseUnit, a diferencia del resto de contadores de este adaptador. En
+        // ellos el nombre ya termina en la unidad («dian.transmissions» + unidad
+        // «transmissions») y el exportador de Prometheus no la duplica. Aquí el nombre
+        // publicado es singular —«document.delivery», constante ya fijada en
+        // BusinessMetricNames— así que declarar «deliveries» produciría
+        // vetsoftware_business_document_delivery_deliveries_total: un nombre que nadie
+        // adivina al escribir la alerta. Omitirla deja el esperado
+        // vetsoftware_business_document_delivery_total. La unidad de un contador de
+        // entregas es adimensional, así que no se pierde información.
+        documentDeliveries = Counter.builder(BusinessMetricNames.DOCUMENT_DELIVERY)
+                .description(
+                        "Entregas por correo de la representación gráfica, por resultado; un fallo"
+                                + " es pérdida definitiva porque no hay reintento")
                 .withRegistry(registry);
         inventoryMovements = Counter.builder(BusinessMetricNames.INVENTORY_MOVEMENTS)
                 .baseUnit("movements")
@@ -132,6 +149,34 @@ public class MicrometerBusinessMetrics
             dianTransmissionDuration.withTags("result", "error", "origin", origin.value())
                     .record(immutableDuration);
         });
+    }
+
+    /**
+     * Ambos resultados de la entrega se publican con {@code recordNow} —y no con
+     * {@code recordAfterCommit} como los hechos de venta— por dos razones:
+     *
+     * <ol>
+     * <li><b>El fallo no puede quedar condicionado a un commit.</b> Es justo el
+     * escenario en el que la transacción puede no confirmarse, y una métrica de
+     * fallo que se pierde con el rollback deja el incidente invisible: exactamente
+     * el defecto que este contador viene a cerrar.</li>
+     * <li><b>El éxito tiene que compartir ciclo de vida con el fallo.</b> Los dos
+     * brazos alimentan la misma razón {@code failed / (failed + success)}. Si el
+     * numerador se publicara siempre y el denominador solo tras commit, la tasa de
+     * error saldría inflada sin que nada fallara. Además el hecho medido —el
+     * proveedor de correo aceptó el envío— es un efecto externo que ningún rollback
+     * deshace, así que no aplica la regla de «no publicar éxitos antes del
+     * commit».</li>
+     * </ol>
+     */
+    @Override
+    public void delivered() {
+        recorder.recordNow(() -> documentDeliveries.withTags("result", "success").increment());
+    }
+
+    @Override
+    public void deliveryFailed() {
+        recorder.recordNow(() -> documentDeliveries.withTags("result", "failed").increment());
     }
 
     @Override

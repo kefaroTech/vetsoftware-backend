@@ -149,11 +149,20 @@ mvn test -Dtest='LogRedactor*,LogRedaction*,LogbackRedaction*,AuditFieldsSurvive
 | `ResendCodeRecoveryEmailSender` | Registraba el correo y el listado de códigos de acceso. | Igual. |
 | `ResendEmailClient` | Registra el correo del destinatario en 5 sitios. | La parte local se enmascara (`***@gmail.com`); el dominio se conserva para diagnóstico. |
 | `GlobalExceptionHandler` | ~30 `log.warn("…: {}", ex.getMessage())` y el stacktrace de errores 500. | Mensajes y cadena de excepciones redactados centralmente. |
+| `GlobalExceptionHandler.handleDataIntegrity` | `log.warn("Data integrity violation: {}", ex.getMessage())` volcaba el mensaje de Hibernate entero —la sentencia y el valor duplicado: documento, correo o nombre del propietario— en **cada alta duplicada** (#81). | Se registran solo `constraint=` y `type=`. El throwable completo queda para la rama de constraint sin mapear, la única que necesita diagnóstico, y ahí sí pasa por `RedactedThrowable`. |
+| `GlobalExceptionHandler.handleExceptionInternal` (4xx) | El detalle salía de `ex.getMessage()`, y el de `MethodArgumentNotValidException` lleva los **valores rechazados** del formulario dentro. | `clientErrorDetail(ex)`: de las excepciones de binding y de deserialización se registra el tipo y los **nombres de campo** (esquema, no dato); el resto de mensajes de Spring MVC son constantes del framework y se conservan. |
 
 ## 7. Alcance y limitaciones conocidas
 
 - **No cubre lo que ya salió.** La política aplica a eventos nuevos; los logs históricos en Loki no
   se reescriben.
+- **El texto libre es de mejor esfuerzo, y «redactado centralmente» no equivale a «seguro».** Las
+  reglas de texto reconocen formas (JWT, `Bearer`, correo, tarjeta con Luhn, corridas de 10+
+  dígitos, clave-valor sensible); **no** reconocen nombres propios ni prosa. Por eso la regla de
+  fondo sigue siendo **no registrar entidades ni mensajes de driver**, y no «déjalo, ya lo redacta
+  el appender»: fue exactamente esa confusión la que dejó viva la fuga de #81 durante meses. El
+  residuo conocido —el valor entre comillas de un `Duplicate entry` cuando es un nombre propio—
+  está abierto en #170.
 - **No cubre otros destinos de datos.** Solo logs. Las respuestas HTTP y los correos tienen sus
   propias reglas.
 - **La auditoría depende hoy por completo de esta política.** Desde que se retiró el outbox, el

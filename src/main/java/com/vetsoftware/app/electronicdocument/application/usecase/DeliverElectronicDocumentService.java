@@ -1,5 +1,6 @@
 package com.vetsoftware.app.electronicdocument.application.usecase;
 
+import com.vetsoftware.app.electronicdocument.application.port.out.DocumentDeliveryMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceFileStoragePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceMailPort;
@@ -31,17 +32,20 @@ public class DeliverElectronicDocumentService {
     private final InvoicePdfPort invoicePdf;
     private final InvoiceFileStoragePort fileStorage;
     private final InvoiceMailPort mail;
+    private final DocumentDeliveryMetrics deliveryMetrics;
     private final String qrBaseUrl;
 
     public DeliverElectronicDocumentService(ElectronicDocumentRepository repository,
             QrGeneratorPort qrGenerator, InvoicePdfPort invoicePdf,
             InvoiceFileStoragePort fileStorage, InvoiceMailPort mail,
+            DocumentDeliveryMetrics deliveryMetrics,
             @Value("${vetsoftware.dian.qr-base-url:}") String qrBaseUrl) {
         this.repository = repository;
         this.qrGenerator = qrGenerator;
         this.invoicePdf = invoicePdf;
         this.fileStorage = fileStorage;
         this.mail = mail;
+        this.deliveryMetrics = deliveryMetrics;
         this.qrBaseUrl = qrBaseUrl;
     }
 
@@ -81,10 +85,25 @@ public class DeliverElectronicDocumentService {
             mail.send(to, cc, "Factura electrónica " + number,
                     "<p>Adjuntamos su factura electrónica <strong>" + number + "</strong>.</p>",
                     number + ".pdf", pdf);
+            deliveryMetrics.delivered();
         } catch (Exception e) {
-            // El correo no es bloqueante: el documento ya está validado y su PDF guardado.
-            log.warn("No se pudo enviar el correo de la factura {}: {}", document.getId(),
-                    e.getMessage());
+            // ERROR y no WARN: no existe camino de recuperación. No hay reintento ni
+            // outbox, y el guard de idempotencia de deliverIfValidated dará el documento
+            // por entregado en la siguiente pasada porque el PDF ya quedó adjunto. El
+            // correo se pierde de forma definitiva aunque la petición del usuario
+            // responda 200 — la severidad codifica la accionabilidad, no el código de
+            // estado. Cuando exista la cola de reintento (issue del outbox) esto pasará a
+            // ser WARN, porque entonces sí habrá recuperación.
+            //
+            // La excepción va como último argumento y NO como e.getMessage(): así
+            // conserva tipo, causa y stacktrace, pasa por la redacción de
+            // RedactedThrowable en RedactingAppender y llega entera a Loki. Con
+            // getMessage() una NullPointerException escribía literalmente ": null".
+            log.error("No se pudo enviar el correo de la factura {}", document.getId(), e);
+            // El contador es lo que hace la pérdida contable y alertable: el log
+            // diagnostica un caso, la métrica responde «¿a cuántos clientes no les llegó
+            // su factura la semana pasada?».
+            deliveryMetrics.deliveryFailed();
         }
     }
 

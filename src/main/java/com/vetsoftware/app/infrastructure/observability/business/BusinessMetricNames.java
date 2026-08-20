@@ -12,6 +12,9 @@ public final class BusinessMetricNames {
     public static final String DIAN_TRANSMISSIONS = PREFIX + "dian.transmissions";
     public static final String DIAN_TRANSMISSION_DURATION = PREFIX + "dian.transmission.duration";
     public static final String DIAN_BACKLOG = PREFIX + "dian.backlog";
+    public static final String DIAN_CONTINGENCY_EXHAUSTED = PREFIX + "dian.contingency.exhausted";
+
+    public static final String DOCUMENT_DELIVERY = PREFIX + "document.delivery";
 
     public static final String INVENTORY_MOVEMENTS = PREFIX + "inventory.movements";
     public static final String INVENTORY_UNITS = PREFIX + "inventory.units";

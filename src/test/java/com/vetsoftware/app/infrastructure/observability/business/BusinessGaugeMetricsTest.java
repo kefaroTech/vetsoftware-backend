@@ -84,7 +84,7 @@ class BusinessGaugeMetricsTest {
         when(balances.countLowStock()).thenReturn(3L);
         BusinessGaugeMetrics metrics = new BusinessGaugeMetrics(
                 mock(ElectronicDocumentJpaRepository.class), balances,
-                mock(StockLotJpaRepository.class));
+                mock(StockLotJpaRepository.class), 4, 48);
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         registry.config().meterFilter(new BusinessMetricCardinalityFilter());
         metrics.bindTo(registry);

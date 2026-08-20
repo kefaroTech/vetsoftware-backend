@@ -741,19 +741,54 @@ class MatiasInvoiceProviderTest {
                     """);
         }
 
-        @Test
-        @DisplayName("un 4xx del proveedor se interpreta como RECHAZADO con el cuerpo de error")
-        void error_4xx_rechazado() {
-            stubTransmitThrows(HttpClientErrorException.create(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "Unprocessable Entity", HttpHeaders.EMPTY,
+        @ParameterizedTest
+        @CsvSource({"400", "422"})
+        @DisplayName("un 4xx determinista del proveedor (400/422) se interpreta como RECHAZADO con el cuerpo de error")
+        void error_4xx_rechazado(int httpStatus) {
+            stubTransmitThrows(HttpClientErrorException.create(HttpStatus.valueOf(httpStatus),
+                    "Client Error", HttpHeaders.EMPTY,
                     "{\"error\":\"invalido\"}".getBytes(StandardCharsets.UTF_8),
                     StandardCharsets.UTF_8));
 
             ProviderResult result = provider.transmit(facturaBasica(), configConLogin());
 
             assertThat(result.status()).isEqualTo(DianStatus.RECHAZADO);
-            assertThat(result.httpStatus()).isEqualTo(422);
+            assertThat(result.httpStatus()).isEqualTo(httpStatus);
             assertThat(result.rejectionReason()).contains("invalido");
+        }
+
+        /**
+         * Regresion del issue #83. RECHAZADO no solo es terminal: ademas LIBERA la
+         * numeracion fiscal del documento, porque
+         * {@code TransmissionResultPersister.applyResult} llama a
+         * {@code numberAssigner.release(...)} unicamente dentro de su
+         * {@code case RECHAZADO} (TransmissionResultPersister.java:117). Que
+         * CONTINGENCIA no libere nada esta fijado aparte, en
+         * {@code TransmissionResultPersisterTest} con
+         * {@code verify(numberAssigner, never()).release(any())}.
+         *
+         * <p>
+         * A este nivel —adaptador HTTP— lo unico observable es el estado devuelto, asi
+         * que la red contra la regresion es exigir que 401/403 (credenciales, fallo
+         * NUESTRO que afecta a toda la empresa) y 429 (rate limit, transitorio) NO
+         * salgan como RECHAZADO. Sin esto, una noche con el token vencido dejaba
+         * cientos de facturas rechazadas en firme y con su consecutivo reutilizado.
+         */
+        @ParameterizedTest
+        @CsvSource({"401", "403", "429"})
+        @DisplayName("un 401/403/429 no es un rechazo del documento: va a CONTINGENCIA y conserva la numeracion")
+        void error_4xx_no_terminal_contingencia(int httpStatus) {
+            stubTransmitThrows(HttpClientErrorException.create(HttpStatus.valueOf(httpStatus),
+                    "Client Error", HttpHeaders.EMPTY,
+                    "{\"message\":\"credenciales\"}".getBytes(StandardCharsets.UTF_8),
+                    StandardCharsets.UTF_8));
+
+            ProviderResult result = provider.transmit(facturaBasica(), configConLogin());
+
+            assertThat(result.status()).isEqualTo(DianStatus.CONTINGENCIA);
+            assertThat(result.status()).isNotEqualTo(DianStatus.RECHAZADO);
+            assertThat(result.httpStatus()).isEqualTo(httpStatus);
+            assertThat(result.rawResponse()).contains("credenciales");
         }
 
         @Test

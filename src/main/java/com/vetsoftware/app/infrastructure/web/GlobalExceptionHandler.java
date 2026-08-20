@@ -154,6 +154,9 @@ import io.micrometer.tracing.Tracer;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -168,6 +171,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -186,6 +191,10 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** Nombre de la constraint en el mensaje del driver: MySQL y PostgreSQL. */
+    private static final Pattern CONSTRAINT_NAME = Pattern
+            .compile("(?i)(?:for key|constraint)\\s*[\"'\\[]?([A-Za-z0-9_$.]{1,128})");
 
     private final AuditLogger auditLogger;
     private final Tracer tracer;
@@ -214,8 +223,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             // No se pierde señal de seguridad: los eventos que la llevan —access_denied,
             // unauthenticated, login_failure— los emite AuditLogger en WARN y con contexto
             // (actor, ip, motivo). Esta línea solo los duplicaba sin ese contexto.
+            //
+            // El detalle sale por clientErrorDetail y no de ex.getMessage(): el de una
+            // excepción de binding lleva los valores rechazados —el nombre, el documento o
+            // el correo que el cliente tecleó— y la redacción por patrones no cubre nombres
+            // propios (ASVS V7.1.1).
             log.info("Client error {} on {}: {}", statusCode.value(), request.getDescription(false),
-                    ex.getMessage());
+                    clientErrorDetail(ex));
         }
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
@@ -619,10 +633,41 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
-        // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no
-        // ERROR.
-        log.warn("Data integrity violation: {}", ex.getMessage());
         String cause = ex.getMostSpecificCause().getMessage();
+        String constraintName = constraintNameOf(ex, cause);
+        ProblemDetail mapped = mapConstraint(cause);
+        if (mapped != null) {
+            // 409 = conflicto atribuible al cliente (p.ej. valor duplicado) → WARN, no
+            // ERROR.
+            //
+            // Se registra el nombre de la constraint y jamás el mensaje: el de Hibernate
+            // arrastra la sentencia y el valor duplicado —el documento, el correo o el
+            // nombre de un propietario real— y la redacción por patrones no reconoce
+            // nombres propios ni prosa (ASVS V7.1.1). La constraint es un identificador del
+            // esquema, y es además lo único que este handler usa.
+            log.warn("Data integrity violation: constraint={} type={}", constraintName,
+                    ex.getClass().getSimpleName());
+            return mapped;
+        }
+        // Constraint sin mapeo de negocio: la respuesta es genérica, así que el único
+        // rastro para poder mapearla después es este evento. Aquí sí va el throwable,
+        // porque en esta ruta lo redacta RedactedThrowable — RedactingAppender envuelve
+        // a TODOS los appenders de la raíz en logback-spring.xml, y redacta el mensaje
+        // de cada excepción de la cadena antes de que salga del proceso. Es redacción
+        // por patrones, no una garantía: un nombre propio dentro del Duplicate entry
+        // sobrevive. Se acepta porque esta rama es la cola rara y sin ella la
+        // constraint nueva no se puede diagnosticar.
+        log.warn("Unmapped data integrity violation: constraint={} type={}", constraintName,
+                ex.getClass().getSimpleName(), ex);
+        return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
+                "Database constraint violation");
+    }
+
+    /**
+     * Traduce la constraint violada a un conflicto de negocio, o devuelve null si
+     * no hay ninguna que le corresponda.
+     */
+    private ProblemDetail mapConstraint(String cause) {
         // Carrera en "1 cuenta abierta por propietario y sede": la constraint única
         // atrapa
         // la 2ª inserción concurrente que pasó el check del service. Se mapea al mismo
@@ -737,8 +782,52 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return problem(HttpStatus.CONFLICT, "CASH_SESSION_ALREADY_OPEN",
                     "La terminal seleccionada ya tiene una caja abierta.");
         }
-        return problem(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
-                "Database constraint violation");
+        return null;
+    }
+
+    /**
+     * Nombre de la constraint violada, o unknown si no se puede determinar. No
+     * devuelve nunca texto del mensaje del driver: solo el identificador de
+     * esquema, que describe la estructura y no la fila.
+     */
+    private static String constraintNameOf(Throwable ex, String causeMessage) {
+        // Hibernate lo expone estructurado cuando reconoce el error del driver; esa
+        // vía no analiza texto y no puede arrastrar datos de la fila.
+        Throwable current = ex;
+        for (int depth = 0; current != null && depth < 10; depth++) {
+            if (current instanceof ConstraintViolationException violation
+                    && violation.getConstraintName() != null
+                    && !violation.getConstraintName().isBlank()) {
+                return violation.getConstraintName();
+            }
+            current = current.getCause() == current ? null : current.getCause();
+        }
+        if (causeMessage != null) {
+            Matcher matcher = CONSTRAINT_NAME.matcher(causeMessage);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        return "unknown";
+    }
+
+    /**
+     * Detalle publicable de un 4xx. El mensaje de una excepción de binding o de
+     * deserialización lleva dentro el payload del cliente, así que de esas se
+     * registra el tipo y —cuando los hay— los nombres de campo, que son esquema. El
+     * resto de mensajes de Spring MVC son constantes del framework y se conservan
+     * tal cual.
+     */
+    private static String clientErrorDetail(Exception ex) {
+        if (ex instanceof BindException binding) {
+            List<String> fields = binding.getBindingResult().getFieldErrors().stream()
+                    .map(FieldError::getField).distinct().toList();
+            return ex.getClass().getSimpleName() + " fields=" + fields;
+        }
+        if (ex instanceof HttpMessageNotReadableException) {
+            return ex.getClass().getSimpleName();
+        }
+        return ex.getMessage();
     }
 
     @ExceptionHandler(PdfRenderException.class)
