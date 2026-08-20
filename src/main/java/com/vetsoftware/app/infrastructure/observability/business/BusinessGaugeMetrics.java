@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,29 +37,54 @@ public class BusinessGaugeMetrics implements MeterBinder {
     private static final Logger log = LoggerFactory.getLogger(BusinessGaugeMetrics.class);
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Bogota");
 
+    /**
+     * Mismos valores por defecto que {@code dian.contingency.*} en application.yml:
+     * la métrica de agotados tiene que decidir con los mismos límites que el job, o
+     * contaría documentos distintos de los que el job descarta.
+     */
+    private static final int DEFAULT_MAX_ATTEMPTS = 4;
+    private static final long DEFAULT_DEADLINE_HOURS = 48;
+
     private final ElectronicDocumentJpaRepository electronicDocuments;
     private final StockBalanceJpaRepository stockBalances;
     private final StockLotJpaRepository stockLots;
     private final Clock clock;
+    private final int contingencyMaxAttempts;
+    private final long contingencyDeadlineHours;
     private final Map<DianStatus, BacklogValues> backlog = new EnumMap<>(DianStatus.class);
     private final AtomicLong lowStock = new AtomicLong();
     private final AtomicLong expiredLots = new AtomicLong();
     private final AtomicLong expiringSevenDays = new AtomicLong();
     private final AtomicLong expiringThirtyDays = new AtomicLong();
+    private final AtomicLong contingencyExhausted = new AtomicLong();
     private final AtomicLong lastSuccessfulRefreshEpochSecond = new AtomicLong();
 
     @Autowired
     public BusinessGaugeMetrics(ElectronicDocumentJpaRepository electronicDocuments,
-            StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots) {
-        this(electronicDocuments, stockBalances, stockLots, Clock.systemUTC());
+            StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots,
+            @Value("${dian.contingency.max-attempts:" + DEFAULT_MAX_ATTEMPTS
+                    + "}") int contingencyMaxAttempts,
+            @Value("${dian.contingency.deadline-hours:" + DEFAULT_DEADLINE_HOURS
+                    + "}") long contingencyDeadlineHours) {
+        this(electronicDocuments, stockBalances, stockLots, Clock.systemUTC(),
+                contingencyMaxAttempts, contingencyDeadlineHours);
     }
 
     BusinessGaugeMetrics(ElectronicDocumentJpaRepository electronicDocuments,
             StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots, Clock clock) {
+        this(electronicDocuments, stockBalances, stockLots, clock, DEFAULT_MAX_ATTEMPTS,
+                DEFAULT_DEADLINE_HOURS);
+    }
+
+    BusinessGaugeMetrics(ElectronicDocumentJpaRepository electronicDocuments,
+            StockBalanceJpaRepository stockBalances, StockLotJpaRepository stockLots, Clock clock,
+            int contingencyMaxAttempts, long contingencyDeadlineHours) {
         this.electronicDocuments = electronicDocuments;
         this.stockBalances = stockBalances;
         this.stockLots = stockLots;
         this.clock = clock;
+        this.contingencyMaxAttempts = contingencyMaxAttempts;
+        this.contingencyDeadlineHours = contingencyDeadlineHours;
         backlog.put(DianStatus.PENDIENTE, new BacklogValues());
         backlog.put(DianStatus.CONTINGENCIA, new BacklogValues());
     }
@@ -74,6 +100,15 @@ public class BusinessGaugeMetrics implements MeterBinder {
         bindLotGauge(registry, expiredLots, "expired");
         bindLotGauge(registry, expiringSevenDays, "from_0_to_7d");
         bindLotGauge(registry, expiringThirtyDays, "from_8_to_30d");
+        // Sin etiquetas a propósito: una sola serie. El identificador de empresa
+        // aquí multiplicaría series por tenant sin responder ninguna pregunta que
+        // la traza o el log del job no respondan ya.
+        Gauge.builder(BusinessMetricNames.DIAN_CONTINGENCY_EXHAUSTED, contingencyExhausted,
+                AtomicLong::doubleValue).baseUnit("documents")
+                .description(
+                        "Documentos en contingencia DIAN cuyos reintentos automáticos se agotaron"
+                                + " y esperan reemisión manual")
+                .register(registry);
         Gauge.builder(BusinessMetricNames.SNAPSHOT_AGE, this,
                 BusinessGaugeMetrics::snapshotAgeSeconds).baseUnit("seconds")
                 .description("Edad del último snapshot exitoso de métricas de estado de negocio")
@@ -92,6 +127,7 @@ public class BusinessGaugeMetrics implements MeterBinder {
                     oneHourAgo);
             BacklogSnapshot contingency = loadBacklog(DianStatus.CONTINGENCIA, fifteenMinutesAgo,
                     oneHourAgo);
+            long newContingencyExhausted = loadContingencyExhausted(now);
 
             LocalDate today = LocalDate.ofInstant(now, BUSINESS_ZONE);
             long newLowStock = stockBalances.countLowStock();
@@ -107,6 +143,7 @@ public class BusinessGaugeMetrics implements MeterBinder {
             expiredLots.set(newExpiredLots);
             expiringSevenDays.set(newExpiringSevenDays);
             expiringThirtyDays.set(newExpiringThirtyDays);
+            contingencyExhausted.set(newContingencyExhausted);
             lastSuccessfulRefreshEpochSecond.set(now.getEpochSecond());
         } catch (RuntimeException exception) {
             log.warn(
@@ -126,6 +163,23 @@ public class BusinessGaugeMetrics implements MeterBinder {
         return new BacklogSnapshot(electronicDocuments.countBacklogSince(status, fifteenMinutesAgo),
                 electronicDocuments.countBacklogBetween(status, oneHourAgo, fifteenMinutesAgo),
                 electronicDocuments.countBacklogBefore(status, oneHourAgo));
+    }
+
+    /**
+     * Conteo de documentos en contingencia que el job ya no reintenta.
+     *
+     * <p>
+     * El umbral de plazo se calcula en la <b>zona por defecto del proceso</b>, no
+     * en {@link #BUSINESS_ZONE}, porque {@code ContingencyRetryJob} decide con
+     * {@code LocalDateTime.now()} y {@code created_date} se persiste con esa misma
+     * zona. Usar aquí America/Bogota desplazaría el umbral cinco horas y la métrica
+     * contaría una población distinta de la que el job descarta.
+     */
+    private long loadContingencyExhausted(Instant now) {
+        LocalDateTime deadlineThreshold = LocalDateTime.ofInstant(now, ZoneId.systemDefault())
+                .minusHours(contingencyDeadlineHours);
+        return electronicDocuments.countRetriesExhausted(DianStatus.CONTINGENCIA, deadlineThreshold,
+                contingencyMaxAttempts);
     }
 
     private void bindBacklog(MeterRegistry registry, DianStatus status, String statusValue) {

@@ -112,6 +112,38 @@ public interface ElectronicDocumentJpaRepository
     long countBacklogBefore(@Param("status") DianStatus status,
             @Param("before") LocalDateTime before);
 
+    /**
+     * Documentos que el job de contingencia ya NO reintenta porque agotaron el cap
+     * de intentos o la ventana de plazo. Son facturas fiscales muertas esperando
+     * reemisión manual.
+     *
+     * <p>
+     * La condición replica la de
+     * {@code ContingencyRetryJob#isExhausted(ElectronicDocument, LocalDateTime)}:
+     * intentos registrados {@code >= maxAttempts} <b>o</b> creación anterior al
+     * umbral de plazo. <b>Si allí cambia, aquí también</b>, o la métrica dejará de
+     * contar lo mismo que el job decide. La duplicación es deliberada: el job mira
+     * un documento por vez sobre el lote arrendado y esta consulta agrega sobre
+     * todos, incluidos los que ningún lote alcanza.
+     *
+     * <p>
+     * {@code createdDate} nulo no cuenta como fuera de plazo — la comparación con
+     * null es desconocida en SQL —, igual que el job, que exige
+     * {@code getCreatedDate() != null}.
+     */
+    @Query("""
+            SELECT COUNT(e)
+            FROM ElectronicDocumentJpaEntity e
+            WHERE e.dianStatus = :status
+              AND (e.createdDate < :deadlineThreshold
+                   OR (SELECT COUNT(t)
+                       FROM ElectronicDocumentTransmissionJpaEntity t
+                       WHERE t.electronicDocumentId = e.id) >= :maxAttempts)
+            """)
+    long countRetriesExhausted(@Param("status") DianStatus status,
+            @Param("deadlineThreshold") LocalDateTime deadlineThreshold,
+            @Param("maxAttempts") long maxAttempts);
+
     boolean existsByOpenAccountId(Long openAccountId);
 
     boolean existsByOpenAccountIdAndDocumentType(Long openAccountId,

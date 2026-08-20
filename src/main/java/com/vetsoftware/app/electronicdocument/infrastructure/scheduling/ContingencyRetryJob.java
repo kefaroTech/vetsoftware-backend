@@ -9,9 +9,12 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
+import com.vetsoftware.app.infrastructure.observability.business.BusinessMetricNames;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +46,25 @@ import org.springframework.stereotype.Component;
  * {@code POST /electronic-documents/{id}/transmit} o corrección por nota).
  *
  * <p>
+ * <b>Señal de los documentos agotados.</b> Un documento agotado no cuenta como
+ * intentado, así que un lote entero de agotados devuelve {@code NO_WORK}: en la
+ * métrica del job es indistinguible de un día tranquilo. Quien vigila esa
+ * población es el gauge {@code vetsoftware.business.dian.contingency.exhausted}
+ * (sin etiquetas, una sola serie), que {@code BusinessGaugeMetrics} calcula por
+ * SQL con estos mismos dos límites. El {@code ERROR} por documento se emite
+ * <b>una sola vez, en la transición</b> a agotado.
+ *
+ * <p>
+ * <b>Esa unicidad NO es idempotente entre reinicios ni entre réplicas</b>: se
+ * sostiene sobre un conjunto en memoria de este bean, que se pierde en cada
+ * despliegue o reinicio y no se comparte entre réplicas. Tras un reinicio, la
+ * primera pasada vuelve a emitir un {@code ERROR} por cada documento agotado
+ * que reclame; con N réplicas, cada una lo emite una vez. Es una mejora frente
+ * a repetirlo cada 12 h, no una solución: la solución es marcar el agotamiento
+ * en persistencia y dejar de arrendar esos documentos (issue #84, punto 3), y
+ * mientras tanto la fuente de verdad para alertar es el gauge, no el log.
+ *
+ * <p>
  * El lote se reclama con {@link DianJobLeasePort}. Este job corre en todas las
  * réplicas del backend a la vez: sin reparto, N réplicas retransmitirían el
  * mismo documento a la DIAN en el mismo ciclo, y con un proveedor que no
@@ -52,6 +74,8 @@ import org.springframework.stereotype.Component;
 public class ContingencyRetryJob {
     private static final Logger log = LoggerFactory.getLogger(ContingencyRetryJob.class);
     private static final String JOB_NAME = "dian.contingency.retry";
+    /** Techo del recuerdo en memoria de documentos ya reportados como agotados. */
+    private static final int REPORTED_EXHAUSTED_CAPACITY = 5_000;
 
     private final ElectronicDocumentRepository repository;
     private final DianJobLeasePort leasePort;
@@ -62,6 +86,11 @@ public class ContingencyRetryJob {
     private final long deadlineHours;
     private final int batchSize;
     private final Duration lease;
+    /**
+     * Documentos por los que ya se emitió el {@code ERROR} de agotamiento.
+     * <b>Estado en memoria y por réplica</b>: ver la nota de la clase.
+     */
+    private final Set<Long> reportedExhausted = new LinkedHashSet<>();
 
     public ContingencyRetryJob(ElectronicDocumentRepository repository, DianJobLeasePort leasePort,
             DocumentTransmitter transmitter, TransmissionLogPort transmissionLog,
@@ -94,47 +123,101 @@ public class ContingencyRetryJob {
         log.info("Reintentando documento(s) en contingencia DIAN: {} reclamado(s)", leased.size());
         int attempted = 0;
         int failures = 0;
+        int exhausted = 0;
         for (Long documentId : leased) {
             ElectronicDocument document = repository.findById(documentId).orElse(null);
-            if (document == null || isExhausted(document, deadlineThreshold))
+            if (document == null)
                 continue;
+            if (isExhausted(document, deadlineThreshold)) {
+                exhausted++;
+                continue;
+            }
+            // Volvió a ser reintentable (reemisión manual, cambio de límites): se
+            // olvida para que un agotamiento posterior vuelva a registrarse.
+            forgetExhausted(documentId);
             attempted++;
             try {
                 transmitter.transmit(document, Origin.RETRY);
             } catch (Exception e) {
                 failures++;
-                log.warn("Reintento de contingencia falló para documento {}: {}", documentId,
-                        e.getMessage());
+                // La excepción va como último argumento, no e.getMessage(): una NPE
+                // trae null y el mensaje suelto tira la cadena de causas y la traza.
+                log.warn("Reintento de contingencia falló para documento {}", documentId, e);
             }
         }
         Outcome outcome = Outcome.from(attempted, failures);
         log.info(
-                "Reintento de contingencias DIAN finalizado: intentado(s)={}, fallido(s)={}, resultado={}",
-                attempted, failures, outcome.value());
+                "Reintento de contingencias DIAN finalizado: intentado(s)={}, fallido(s)={},"
+                        + " agotado(s)={}, resultado={}",
+                attempted, failures, exhausted, outcome.value());
         return outcome;
     }
 
     /**
      * Un documento ya no se reintenta si superó el cap de intentos o la ventana de
      * plazo.
+     *
+     * <p>
+     * El {@code ERROR} se emite en la <b>transición</b> a agotado, no en cada
+     * pasada: repetirlo cada ciclo sobre los mismos documentos convierte el nivel
+     * {@code ERROR} en ruido de fondo y tapa los errores reales.
      */
     private boolean isExhausted(ElectronicDocument document, LocalDateTime deadlineThreshold) {
         int attempts = transmissionLog.countAttempts(document.getId());
         if (attempts >= maxAttempts) {
-            log.error(
-                    "Documento {} agotó el cap de {} reintentos de contingencia DIAN; "
-                            + "requiere atención manual (reemitir o corregir por nota).",
-                    document.getId(), maxAttempts);
+            if (markExhaustedReported(document.getId())) {
+                log.error(
+                        "Documento {} agotó el cap de {} reintentos de contingencia DIAN; "
+                                + "requiere atención manual (reemitir o corregir por nota). "
+                                + "Se registra una sola vez por proceso: el conteo vivo está en "
+                                + "la métrica {}.",
+                        document.getId(), maxAttempts,
+                        BusinessMetricNames.DIAN_CONTINGENCY_EXHAUSTED);
+            }
             return true;
         }
         if (document.getCreatedDate() != null
                 && document.getCreatedDate().isBefore(deadlineThreshold)) {
-            log.error(
-                    "Documento {} superó la ventana de {}h del plazo de contingencia DIAN; "
-                            + "requiere atención manual (reemitir o corregir por nota).",
-                    document.getId(), deadlineHours);
+            if (markExhaustedReported(document.getId())) {
+                log.error(
+                        "Documento {} superó la ventana de {}h del plazo de contingencia DIAN; "
+                                + "requiere atención manual (reemitir o corregir por nota). "
+                                + "Se registra una sola vez por proceso: el conteo vivo está en "
+                                + "la métrica {}.",
+                        document.getId(), deadlineHours,
+                        BusinessMetricNames.DIAN_CONTINGENCY_EXHAUSTED);
+            }
             return true;
         }
         return false;
+    }
+
+    /**
+     * Marca el documento como ya reportado y responde si esta es la primera vez.
+     *
+     * <p>
+     * El conjunto está acotado a {@link #REPORTED_EXHAUSTED_CAPACITY} entradas y
+     * descarta las más antiguas por orden de inserción: un documento desalojado
+     * volvería a registrar su {@code ERROR}, que es preferible a que la memoria
+     * crezca sin límite.
+     */
+    private boolean markExhaustedReported(Long documentId) {
+        synchronized (reportedExhausted) {
+            if (!reportedExhausted.add(documentId)) {
+                return false;
+            }
+            if (reportedExhausted.size() > REPORTED_EXHAUSTED_CAPACITY) {
+                var oldest = reportedExhausted.iterator();
+                oldest.next();
+                oldest.remove();
+            }
+            return true;
+        }
+    }
+
+    private void forgetExhausted(Long documentId) {
+        synchronized (reportedExhausted) {
+            reportedExhausted.remove(documentId);
+        }
     }
 }
