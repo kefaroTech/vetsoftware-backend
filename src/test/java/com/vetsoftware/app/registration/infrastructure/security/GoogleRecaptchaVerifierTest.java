@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -112,9 +116,15 @@ class GoogleRecaptchaVerifierTest {
             GoogleRecaptchaVerifier verifier = new GoogleRecaptchaVerifier(true, "  ", VERIFY_URL,
                     0.5, restClientBuilder);
 
+            // El tipo es lo que se afirma, no el texto (#99): esta poblacion rompe el
+            // 100 % de los registros y solo se arregla tocando el despliegue, asi que
+            // tiene clase propia para que el handler la registre en ERROR. Si alguien
+            // la degradara a CaptchaVerificationException a secas, la caida total
+            // volveria a esconderse entre los rechazos legitimos y este test no lo veria
+            // afirmando solo la superclase.
             assertThatThrownBy(() -> verifier.verify("token", "10.0.0.1"))
-                    .isInstanceOf(CaptchaVerificationException.class)
-                    .hasMessageContaining("not configured");
+                    .isInstanceOf(CaptchaConfigurationException.class)
+                    .hasMessageContaining("vetsoftware.recaptcha.secret");
 
             verifyNoInteractions(restClient);
         }
@@ -190,15 +200,52 @@ class GoogleRecaptchaVerifierTest {
         }
 
         @Test
-        @DisplayName("un fallo de red o timeout se traduce a CaptchaVerificationException")
-        void fallo_de_red_se_traduce() {
+        @DisplayName("un 4xx del proveedor es problema de configuracion, no del usuario")
+        void un_4xx_del_proveedor_es_configuracion() {
             GoogleRecaptchaVerifier verifier = verifierHabilitado(0.5);
-            org.mockito.Mockito.doThrow(new RuntimeException("connect timed out"))
-                    .when(responseSpec).body(any(Class.class));
+            // El cuerpo que manda este adapter es siempre el mismo par (secret,
+            // response): lo unico que Google puede rechazar con un 4xx es la credencial.
+            HttpClientErrorException rechazo = HttpClientErrorException.create(HttpStatus.FORBIDDEN,
+                    "Forbidden", HttpHeaders.EMPTY, new byte[0], null);
+            org.mockito.Mockito.doThrow(rechazo).when(responseSpec).body(any(Class.class));
 
             assertThatThrownBy(() -> verifier.verify("token", "10.0.0.1"))
-                    .isInstanceOf(CaptchaVerificationException.class)
-                    .hasMessageContaining("Could not verify captcha");
+                    .isInstanceOf(CaptchaConfigurationException.class)
+                    .hasMessageContaining("siteverify rejected the request")
+                    .hasMessageContaining("403").cause().isSameAs(rechazo);
+        }
+
+        @Test
+        @DisplayName("un corte de red del proveedor es indisponibilidad transitoria, con la causa")
+        void un_corte_de_red_es_indisponibilidad() {
+            GoogleRecaptchaVerifier verifier = verifierHabilitado(0.5);
+            ResourceAccessException corte = new ResourceAccessException(
+                    "I/O error: read timed out");
+            org.mockito.Mockito.doThrow(corte).when(responseSpec).body(any(Class.class));
+
+            // isNotInstanceOf es la mitad del valor: las dos clases extienden
+            // CaptchaVerificationException, asi que sin esta linea el test pasaria
+            // igual si las dos poblaciones volvieran a colapsar en una sola.
+            assertThatThrownBy(() -> verifier.verify("token", "10.0.0.1"))
+                    .isInstanceOf(CaptchaProviderUnavailableException.class)
+                    .isNotInstanceOf(CaptchaConfigurationException.class)
+                    .hasMessageContaining("siteverify call failed")
+                    .hasMessageContaining("ResourceAccessException").cause().isSameAs(corte);
+        }
+
+        @Test
+        @DisplayName("un fallo inesperado del cliente cae en la cola residual y sigue fallando cerrado")
+        void un_fallo_inesperado_cae_en_la_cola_residual() {
+            GoogleRecaptchaVerifier verifier = verifierHabilitado(0.5);
+            RuntimeException imprevisto = new RuntimeException("connect timed out");
+            org.mockito.Mockito.doThrow(imprevisto).when(responseSpec).body(any(Class.class));
+
+            // Lo que no se previo se trata como transitorio: es lo conservador, porque
+            // no afirma que la configuracion este mal cuando no se sabe. Lo que NO puede
+            // pasar es que escape y se convierta en un 500.
+            assertThatThrownBy(() -> verifier.verify("token", "10.0.0.1"))
+                    .isInstanceOf(CaptchaProviderUnavailableException.class)
+                    .hasMessageContaining("siteverify call failed").cause().isSameAs(imprevisto);
         }
 
         @Test
@@ -208,6 +255,17 @@ class GoogleRecaptchaVerifierTest {
             doReturn(siteVerifyResponse(true, null)).when(responseSpec).body(any(Class.class));
 
             verifier.verify("token-valido", " ");
+        }
+
+        @Test
+        @DisplayName("un remoteIp nulo tampoco: la guarda comprueba el null antes que el blanco")
+        void remote_ip_nulo_no_impide_la_verificacion() {
+            GoogleRecaptchaVerifier verifier = verifierHabilitado(0.5);
+            doReturn(siteVerifyResponse(true, null)).when(responseSpec).body(any(Class.class));
+
+            // Si alguien simplificara la guarda a remoteIp.isBlank(), un registro sin IP
+            // de cliente reventaria con NPE y saldria como 500 en vez de completarse.
+            verifier.verify("token-valido", null);
         }
     }
 }

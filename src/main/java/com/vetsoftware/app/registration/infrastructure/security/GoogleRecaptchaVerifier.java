@@ -4,15 +4,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.application.port.out.CaptchaVerifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * Adapter de reCAPTCHA (Google). Verifica el token server-side contra
@@ -31,8 +31,6 @@ import org.springframework.web.client.RestClient;
  */
 @Component
 public class GoogleRecaptchaVerifier implements CaptchaVerifier {
-
-    private static final Logger log = LoggerFactory.getLogger(GoogleRecaptchaVerifier.class);
 
     private final boolean enabled;
     private final String secret;
@@ -62,9 +60,10 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
 
         if (secret == null || secret.isBlank()) {
             // Config invalida: captcha activo pero sin secreto. Fallar cerrado (no permitir
-            // registro).
-            log.error("reCAPTCHA enabled but 'vetsoftware.recaptcha.secret' is not set");
-            throw new CaptchaVerificationException("Captcha is not configured");
+            // registro). No se registra aqui: el hecho lo registra el handler, que es el
+            // punto unico de registro (#99).
+            throw new CaptchaConfigurationException(
+                    "reCAPTCHA is enabled but 'vetsoftware.recaptcha.secret' is not set");
         }
         if (captchaToken == null || captchaToken.isBlank()) {
             throw new CaptchaVerificationException("Captcha token is required");
@@ -80,9 +79,33 @@ public class GoogleRecaptchaVerifier implements CaptchaVerifier {
             result = restClient.post().uri(verifyUrl)
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED).body(form).retrieve()
                     .body(SiteVerifyResponse.class);
-        } catch (Exception e) {
-            log.error("reCAPTCHA verification call failed: {}", e.getMessage());
-            throw new CaptchaVerificationException("Could not verify captcha");
+        } catch (HttpClientErrorException e) {
+            // Un 4xx de siteverify NO habla del usuario. El cuerpo que manda este adapter
+            // es siempre el mismo par (secret, response), asi que lo unico que Google puede
+            // estar rechazando es la credencial: secreto vacio, de otro proyecto, o de un
+            // tipo de reCAPTCHA distinto al del sitio. Eso no falla para un registro: falla
+            // para todos, y no se arregla reintentando.
+            throw new CaptchaConfigurationException(
+                    "reCAPTCHA siteverify rejected the request with " + e.getStatusCode()
+                            + "; check 'vetsoftware.recaptcha.secret'",
+                    e);
+        } catch (RestClientException e) {
+            // 5xx, timeout de conexion/lectura o corte de red: el proveedor no contesta. Es
+            // transitorio y ajeno a este despliegue, y por eso no comparte ni clase ni
+            // severidad con el caso de arriba (#99). La causa viaja entera: es lo unico que
+            // distingue un read timeout de un 503.
+            throw new CaptchaProviderUnavailableException(
+                    "reCAPTCHA siteverify call failed: " + e.getClass().getSimpleName(), e);
+        } catch (RuntimeException e) {
+            // Cola residual. Separar las dos poblaciones de arriba NO puede estrechar lo
+            // que este metodo atrapa: el catch (Exception) que habia antes garantizaba que
+            // un fallo de la llamada terminara siempre en un 400 que falla cerrado, y
+            // dejarlo escapar ahora lo convertiria en un 500. Todo lo que RestClient lanza
+            // de verdad cae en los catch anteriores; esto cubre lo que no previmos, y lo
+            // trata como transitorio porque es lo conservador: no afirma que la
+            // configuracion este mal cuando no lo sabe.
+            throw new CaptchaProviderUnavailableException(
+                    "reCAPTCHA siteverify call failed: " + e.getClass().getSimpleName(), e);
         }
 
         if (result == null || !result.success()) {
