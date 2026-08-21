@@ -58,8 +58,14 @@ public class CreateLaboratoryTestFileService implements CreateLaboratoryTestFile
 
     @Override
     public LaboratoryTestFileDto execute(CreateLaboratoryTestFileCommand command) {
+        // Referencia acotada: el companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId()), asi que nunca es null aqui. Un examen de otro
+        // tenant no se resuelve y la subida falla con el mismo "not found" que un id
+        // inexistente: quien lo intenta no llega a saber si la fila existe, y —lo que
+        // importa mas— el objeto nunca se sube, porque este orElseThrow corta antes del
+        // store().
         LaboratoryTestRef laboratoryTest = laboratoryTestQueryPort
-                .findById(command.laboratoryTestId())
+                .findByIdAndCompanyId(command.laboratoryTestId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "LaboratoryTest not found: " + command.laboratoryTestId()));
         EmployeeRef uploadedBy = employeeQueryPort.findById(command.uploadedById())
@@ -71,7 +77,7 @@ public class CreateLaboratoryTestFileService implements CreateLaboratoryTestFile
         // animal), no el examen. Reusar el mensaje de "no encontrado" atribuia el
         // fallo a la causa equivocada y mandaba a buscar donde no era.
         LaboratoryTestStoragePathRef storagePath = laboratoryTestQueryPort
-                .findStoragePath(command.laboratoryTestId())
+                .findStoragePath(command.laboratoryTestId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "LaboratoryTest storage path could not be resolved (company, animal or"
                                 + " animal owner missing) for laboratoryTestId: "

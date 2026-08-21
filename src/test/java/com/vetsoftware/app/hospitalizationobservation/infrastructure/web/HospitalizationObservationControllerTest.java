@@ -119,8 +119,12 @@ class HospitalizationObservationControllerTest {
                                     {"description":"Paciente estable, sin novedades","hospitalizationId":600}
                                     """));
 
-            verify(createUseCase).execute(new CreateHospitalizationObservationCommand(
-                    "Paciente estable, sin novedades", 600L, WebMvcSliceConfig.EMPLOYEE_ID));
+            // Ni el createdById ni el companyId viajan en el request: los pone el
+            // backend desde el AuthContext. El JSON de arriba no los trae, y el command
+            // esperado si.
+            verify(createUseCase).execute(
+                    new CreateHospitalizationObservationCommand("Paciente estable, sin novedades",
+                            600L, WebMvcSliceConfig.EMPLOYEE_ID, WebMvcSliceConfig.COMPANY_ID));
         }
 
         @Test

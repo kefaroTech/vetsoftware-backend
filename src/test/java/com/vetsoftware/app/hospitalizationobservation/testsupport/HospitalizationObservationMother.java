@@ -54,8 +54,13 @@ public final class HospitalizationObservationMother {
     }
 
     public static CreateHospitalizationObservationCommand comandoCrear() {
+        return comandoCrear(COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static CreateHospitalizationObservationCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationObservationCommand(DESCRIPCION, HOSPITALIZATION_ID,
-                EMPLOYEE_ID);
+                EMPLOYEE_ID, companyId);
     }
 
     public static UpdateHospitalizationObservationCommand comandoActualizar() {

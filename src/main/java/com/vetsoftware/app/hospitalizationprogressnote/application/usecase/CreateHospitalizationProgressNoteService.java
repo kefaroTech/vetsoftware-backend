@@ -33,8 +33,14 @@ public class CreateHospitalizationProgressNoteService
     @Override
     public HospitalizationProgressNoteDto execute(
             CreateHospitalizationProgressNoteCommand command) {
+        // Referencia acotada: el companyId lo inyecta el controller desde el principal
+        // (authz.currentCompanyId()), asi que nunca es null aqui. Una hospitalizacion
+        // de
+        // otro tenant no se resuelve y la creacion falla con el mismo "not found" que
+        // un
+        // id inexistente: quien lo intenta no llega a saber si la fila existe.
         HospitalizationRef hospitalization = hospitalizationQueryPort
-                .findById(command.hospitalizationId())
+                .findByIdAndCompanyId(command.hospitalizationId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Hospitalization not found: " + command.hospitalizationId()));
         EmployeeRef createdBy = employeeQueryPort.findById(command.createdById()).orElseThrow(

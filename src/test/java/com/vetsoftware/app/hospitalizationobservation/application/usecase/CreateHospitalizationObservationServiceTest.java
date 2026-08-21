@@ -42,7 +42,9 @@ class CreateHospitalizationObservationServiceTest {
     private ArgumentCaptor<HospitalizationObservation> observationCaptor;
 
     private void referenciasResueltas() {
-        when(hospitalizationQueryPort.findById(HospitalizationObservationMother.HOSPITALIZATION_ID))
+        when(hospitalizationQueryPort.findByIdAndCompanyId(
+                HospitalizationObservationMother.HOSPITALIZATION_ID,
+                HospitalizationObservationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationObservationMother.HOSPITALIZACION));
         when(employeeQueryPort.findById(HospitalizationObservationMother.EMPLOYEE_ID))
                 .thenReturn(Optional.of(HospitalizationObservationMother.VETERINARIO));
@@ -94,9 +96,9 @@ class CreateHospitalizationObservationServiceTest {
         @Test
         @DisplayName("hospitalizacion inexistente: no consulta el empleado ni persiste nada")
         void hospitalizacion_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationObservationMother.HOSPITALIZATION_ID))
-                    .thenReturn(Optional.empty());
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationObservationMother.HOSPITALIZATION_ID,
+                    HospitalizationObservationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(
                     () -> service.execute(HospitalizationObservationMother.comandoCrear()))
@@ -110,8 +112,9 @@ class CreateHospitalizationObservationServiceTest {
         @Test
         @DisplayName("empleado inexistente: no persiste nada")
         void empleado_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationObservationMother.HOSPITALIZATION_ID))
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationObservationMother.HOSPITALIZATION_ID,
+                    HospitalizationObservationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationObservationMother.HOSPITALIZACION));
             when(employeeQueryPort.findById(HospitalizationObservationMother.EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
@@ -122,6 +125,51 @@ class CreateHospitalizationObservationServiceTest {
                             "Employee not found: " + HospitalizationObservationMother.EMPLOYEE_ID);
 
             verifyNoInteractions(repository);
+        }
+    }
+
+    /**
+     * La otra mitad del defecto de aislamiento: no se trata de apropiarse de una
+     * observacion ajena —la carga propia ya esta acotada— sino de colgar una
+     * observacion PROPIA de la hospitalizacion de otra empresa, que le mete texto
+     * clinico en el expediente a un paciente que no es suyo.
+     *
+     * <p>
+     * Sin el {@code findByIdAndCompanyId} del puerto, estos dos casos pasaban: el
+     * puerto resolvia la hospitalizacion ajena y el {@code save} la escribia.
+     */
+    @Nested
+    @DisplayName("aislamiento entre empresas")
+    class AislamientoEntreEmpresas {
+
+        @Test
+        @DisplayName("una hospitalizacion de otra empresa no se resuelve y no se persiste nada")
+        void hospitalizacion_de_otra_empresa_no_se_persiste() {
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationObservationMother.HOSPITALIZATION_ID,
+                    HospitalizationObservationMother.OTRA_COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(HospitalizationObservationMother
+                    .comandoCrear(HospitalizationObservationMother.OTRA_COMPANY_ID)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Hospitalization not found: "
+                            + HospitalizationObservationMother.HOSPITALIZATION_ID);
+
+            verifyNoInteractions(employeeQueryPort, repository);
+        }
+
+        @Test
+        @DisplayName("la empresa del comando llega al puerto: la referencia nunca se resuelve sin acotar")
+        void la_empresa_del_comando_llega_al_puerto() {
+            referenciasResueltas();
+            when(repository.save(any()))
+                    .thenReturn(HospitalizationObservationMother.observacionValida());
+
+            service.execute(HospitalizationObservationMother.comandoCrear());
+
+            verify(hospitalizationQueryPort).findByIdAndCompanyId(
+                    HospitalizationObservationMother.HOSPITALIZATION_ID,
+                    HospitalizationObservationMother.COMPANY_ID);
         }
     }
 }

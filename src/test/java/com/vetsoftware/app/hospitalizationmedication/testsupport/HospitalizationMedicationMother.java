@@ -82,9 +82,14 @@ public final class HospitalizationMedicationMother {
     }
 
     public static CreateHospitalizationMedicationCommand comandoCrear() {
+        return comandoCrear(COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static CreateHospitalizationMedicationCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationMedicationCommand("Amoxicilina 500mg", "1 tableta",
                 "EVERY_8H", "INTERVAL", "DAYS", 5, LocalDate.of(2026, 3, 1), LocalTime.of(8, 0),
-                "Administrar con alimento", HOSPITALIZATION_ID, EMPLOYEE_ID);
+                "Administrar con alimento", HOSPITALIZATION_ID, EMPLOYEE_ID, companyId);
     }
 
     public static UpdateHospitalizationMedicationCommand comandoActualizar() {

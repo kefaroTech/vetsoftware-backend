@@ -146,13 +146,31 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
     class Listado {
 
         @Test
-        @DisplayName("findAll trae todas las empresas habilitadas")
-        void find_all_trae_todas_las_habilitadas() {
+        @DisplayName("findAllVisibleTo(null) trae todas las empresas habilitadas")
+        void find_all_visible_to_null_trae_todas_las_habilitadas() {
             Company primera = guardar("Clinica Norte");
             Company segunda = guardar("Clinica Sur");
 
-            assertThat(repository.findAll()).extracting(Company::getId).contains(primera.getId(),
-                    segunda.getId());
+            assertThat(repository.findAllVisibleTo(null)).extracting(Company::getId)
+                    .contains(primera.getId(), segunda.getId());
+        }
+
+        /**
+         * El alcance es la barrera, y aqui se comprueba contra la base: con una empresa
+         * informada el listado trae esa fila y ninguna otra. Mientras el puerto ofrecio
+         * un {@code findAll()} pelado, {@code GET /companies} entregaba el registro de
+         * todos los tenants a cualquier empleado con {@code company.read}.
+         */
+        @Test
+        @DisplayName("findAllVisibleTo con empresa trae solo esa, nunca la de otro tenant")
+        void find_all_visible_to_acota_a_una_sola_empresa() {
+            Company propia = guardar("Clinica Norte");
+            Company ajena = guardar("Clinica Sur");
+
+            assertThat(repository.findAllVisibleTo(propia.getId())).extracting(Company::getId)
+                    .containsExactly(propia.getId());
+            assertThat(repository.findAllVisibleTo(ajena.getId())).extracting(Company::getId)
+                    .doesNotContain(propia.getId());
         }
     }
 
@@ -167,7 +185,7 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
 
             deshabilitar(pausada.getId());
 
-            assertThat(repository.findAll()).extracting(Company::getId)
+            assertThat(repository.findAllVisibleTo(null)).extracting(Company::getId)
                     .doesNotContain(pausada.getId());
             assertThat(repository.findById(pausada.getId())).isEmpty();
         }

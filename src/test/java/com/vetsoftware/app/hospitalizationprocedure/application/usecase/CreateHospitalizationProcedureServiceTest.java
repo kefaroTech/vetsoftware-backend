@@ -49,7 +49,9 @@ class CreateHospitalizationProcedureServiceTest {
     private ArgumentCaptor<HospitalizationProcedure> captor;
 
     private void referenciasResueltas() {
-        when(hospitalizationQueryPort.findById(HospitalizationProcedureMother.HOSPITALIZATION_ID))
+        when(hospitalizationQueryPort.findByIdAndCompanyId(
+                HospitalizationProcedureMother.HOSPITALIZATION_ID,
+                HospitalizationProcedureMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationProcedureMother.HOSPITALIZACION));
         when(employeeQueryPort.findById(HospitalizationProcedureMother.EMPLOYEE_ID))
                 .thenReturn(Optional.of(HospitalizationProcedureMother.CREADO_POR));
@@ -90,7 +92,8 @@ class CreateHospitalizationProcedureServiceTest {
                     "Curacion de herida", "Solucion salina 0.9%", " every_8h ", " interval ",
                     " days ", 5, LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Notas",
                     HospitalizationProcedureMother.HOSPITALIZATION_ID,
-                    HospitalizationProcedureMother.EMPLOYEE_ID);
+                    HospitalizationProcedureMother.EMPLOYEE_ID,
+                    HospitalizationProcedureMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -108,7 +111,8 @@ class CreateHospitalizationProcedureServiceTest {
             CreateHospitalizationProcedureCommand comando = new CreateHospitalizationProcedureCommand(
                     "Curacion de herida", null, null, null, null, null, null, null, null,
                     HospitalizationProcedureMother.HOSPITALIZATION_ID,
-                    HospitalizationProcedureMother.EMPLOYEE_ID);
+                    HospitalizationProcedureMother.EMPLOYEE_ID,
+                    HospitalizationProcedureMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -126,7 +130,8 @@ class CreateHospitalizationProcedureServiceTest {
             CreateHospitalizationProcedureCommand comando = new CreateHospitalizationProcedureCommand(
                     "Curacion de herida", null, "   ", "   ", "   ", null, null, null, null,
                     HospitalizationProcedureMother.HOSPITALIZATION_ID,
-                    HospitalizationProcedureMother.EMPLOYEE_ID);
+                    HospitalizationProcedureMother.EMPLOYEE_ID,
+                    HospitalizationProcedureMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -157,9 +162,9 @@ class CreateHospitalizationProcedureServiceTest {
         @Test
         @DisplayName("hospitalizacion inexistente: no consulta al empleado ni persiste")
         void hospitalizacion_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationProcedureMother.HOSPITALIZATION_ID))
-                    .thenReturn(Optional.empty());
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationProcedureMother.HOSPITALIZATION_ID,
+                    HospitalizationProcedureMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(HospitalizationProcedureMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -172,8 +177,9 @@ class CreateHospitalizationProcedureServiceTest {
         @Test
         @DisplayName("empleado inexistente: no persiste")
         void empleado_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationProcedureMother.HOSPITALIZATION_ID))
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationProcedureMother.HOSPITALIZATION_ID,
+                    HospitalizationProcedureMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationProcedureMother.HOSPITALIZACION));
             when(employeeQueryPort.findById(HospitalizationProcedureMother.EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
@@ -198,13 +204,59 @@ class CreateHospitalizationProcedureServiceTest {
                     "   ", "Solucion salina 0.9%", "EVERY_8H", "INTERVAL", "DAYS", 5,
                     LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Notas",
                     HospitalizationProcedureMother.HOSPITALIZATION_ID,
-                    HospitalizationProcedureMother.EMPLOYEE_ID);
+                    HospitalizationProcedureMother.EMPLOYEE_ID,
+                    HospitalizationProcedureMother.COMPANY_ID);
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("name is required");
 
             verify(repository, never()).save(any());
+        }
+    }
+
+    /**
+     * La otra mitad del defecto de aislamiento: no se trata de apropiarse de una
+     * orden ajena —la carga propia ya esta acotada— sino de colgar una orden PROPIA
+     * de la hospitalizacion de otra empresa. Aqui el efecto no es solo texto en un
+     * expediente ajeno: un procedimiento genera aplicaciones programadas contra un
+     * paciente que no es de esta veterinaria.
+     *
+     * <p>
+     * Sin el {@code findByIdAndCompanyId} del puerto, estos dos casos pasaban: el
+     * puerto resolvia la hospitalizacion ajena y el {@code save} la escribia.
+     */
+    @Nested
+    @DisplayName("aislamiento entre empresas")
+    class AislamientoEntreEmpresas {
+
+        @Test
+        @DisplayName("una hospitalizacion de otra empresa no se resuelve y no se persiste nada")
+        void hospitalizacion_de_otra_empresa_no_se_persiste() {
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationProcedureMother.HOSPITALIZATION_ID,
+                    HospitalizationProcedureMother.OTRA_COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(HospitalizationProcedureMother
+                    .comandoCrear(HospitalizationProcedureMother.OTRA_COMPANY_ID)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Hospitalization not found: "
+                            + HospitalizationProcedureMother.HOSPITALIZATION_ID);
+
+            verifyNoInteractions(employeeQueryPort, repository);
+        }
+
+        @Test
+        @DisplayName("la empresa del comando llega al puerto: la referencia nunca se resuelve sin acotar")
+        void la_empresa_del_comando_llega_al_puerto() {
+            referenciasResueltas();
+            when(repository.save(any())).thenReturn(HospitalizationProcedureMother.activo());
+
+            service.execute(HospitalizationProcedureMother.comandoCrear());
+
+            verify(hospitalizationQueryPort).findByIdAndCompanyId(
+                    HospitalizationProcedureMother.HOSPITALIZATION_ID,
+                    HospitalizationProcedureMother.COMPANY_ID);
         }
     }
 }

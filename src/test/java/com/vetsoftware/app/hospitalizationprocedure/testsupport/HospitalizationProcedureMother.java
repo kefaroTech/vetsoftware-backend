@@ -84,10 +84,15 @@ public final class HospitalizationProcedureMother {
     }
 
     public static CreateHospitalizationProcedureCommand comandoCrear() {
+        return comandoCrear(COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static CreateHospitalizationProcedureCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationProcedureCommand("Curacion de herida",
                 "Solucion salina 0.9%", "EVERY_8H", "INTERVAL", "DAYS", 5, LocalDate.of(2026, 3, 1),
                 LocalTime.of(8, 0), "Cambiar el vendaje cada turno", HOSPITALIZATION_ID,
-                EMPLOYEE_ID);
+                EMPLOYEE_ID, companyId);
     }
 
     public static UpdateHospitalizationProcedureCommand comandoActualizar() {

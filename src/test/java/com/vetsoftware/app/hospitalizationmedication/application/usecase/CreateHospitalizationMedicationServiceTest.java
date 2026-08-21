@@ -49,7 +49,9 @@ class CreateHospitalizationMedicationServiceTest {
     private ArgumentCaptor<HospitalizationMedication> captor;
 
     private void referenciasResueltas() {
-        when(hospitalizationQueryPort.findById(HospitalizationMedicationMother.HOSPITALIZATION_ID))
+        when(hospitalizationQueryPort.findByIdAndCompanyId(
+                HospitalizationMedicationMother.HOSPITALIZATION_ID,
+                HospitalizationMedicationMother.COMPANY_ID))
                 .thenReturn(Optional.of(HospitalizationMedicationMother.HOSPITALIZACION));
         when(employeeQueryPort.findById(HospitalizationMedicationMother.EMPLOYEE_ID))
                 .thenReturn(Optional.of(HospitalizationMedicationMother.CREADO_POR));
@@ -90,7 +92,8 @@ class CreateHospitalizationMedicationServiceTest {
                     "Amoxicilina 500mg", "1 tableta", " every_8h ", " interval ", " days ", 5,
                     LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Notas",
                     HospitalizationMedicationMother.HOSPITALIZATION_ID,
-                    HospitalizationMedicationMother.EMPLOYEE_ID);
+                    HospitalizationMedicationMother.EMPLOYEE_ID,
+                    HospitalizationMedicationMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -108,7 +111,8 @@ class CreateHospitalizationMedicationServiceTest {
             CreateHospitalizationMedicationCommand comando = new CreateHospitalizationMedicationCommand(
                     "Amoxicilina 500mg", null, null, null, null, null, null, null, null,
                     HospitalizationMedicationMother.HOSPITALIZATION_ID,
-                    HospitalizationMedicationMother.EMPLOYEE_ID);
+                    HospitalizationMedicationMother.EMPLOYEE_ID,
+                    HospitalizationMedicationMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -126,7 +130,8 @@ class CreateHospitalizationMedicationServiceTest {
             CreateHospitalizationMedicationCommand comando = new CreateHospitalizationMedicationCommand(
                     "Amoxicilina 500mg", null, "   ", "   ", "   ", null, null, null, null,
                     HospitalizationMedicationMother.HOSPITALIZATION_ID,
-                    HospitalizationMedicationMother.EMPLOYEE_ID);
+                    HospitalizationMedicationMother.EMPLOYEE_ID,
+                    HospitalizationMedicationMother.COMPANY_ID);
 
             service.execute(comando);
 
@@ -157,9 +162,9 @@ class CreateHospitalizationMedicationServiceTest {
         @Test
         @DisplayName("hospitalizacion inexistente: no consulta al empleado ni persiste")
         void hospitalizacion_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationMedicationMother.HOSPITALIZATION_ID))
-                    .thenReturn(Optional.empty());
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationMedicationMother.HOSPITALIZATION_ID,
+                    HospitalizationMedicationMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(
                     () -> service.execute(HospitalizationMedicationMother.comandoCrear()))
@@ -173,8 +178,9 @@ class CreateHospitalizationMedicationServiceTest {
         @Test
         @DisplayName("empleado inexistente: no persiste")
         void empleado_inexistente() {
-            when(hospitalizationQueryPort
-                    .findById(HospitalizationMedicationMother.HOSPITALIZATION_ID))
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationMedicationMother.HOSPITALIZATION_ID,
+                    HospitalizationMedicationMother.COMPANY_ID))
                     .thenReturn(Optional.of(HospitalizationMedicationMother.HOSPITALIZACION));
             when(employeeQueryPort.findById(HospitalizationMedicationMother.EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
@@ -199,13 +205,59 @@ class CreateHospitalizationMedicationServiceTest {
             CreateHospitalizationMedicationCommand comando = new CreateHospitalizationMedicationCommand(
                     "   ", "1 tableta", "EVERY_8H", "INTERVAL", "DAYS", 5, LocalDate.of(2026, 3, 1),
                     LocalTime.of(8, 0), "Notas", HospitalizationMedicationMother.HOSPITALIZATION_ID,
-                    HospitalizationMedicationMother.EMPLOYEE_ID);
+                    HospitalizationMedicationMother.EMPLOYEE_ID,
+                    HospitalizationMedicationMother.COMPANY_ID);
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("name is required");
 
             verify(repository, never()).save(any());
+        }
+    }
+
+    /**
+     * La otra mitad del defecto de aislamiento: no se trata de apropiarse de una
+     * orden ajena —la carga propia ya esta acotada— sino de colgar una orden PROPIA
+     * de la hospitalizacion de otra empresa. Aqui el efecto no es solo texto en un
+     * expediente ajeno: una orden de medicacion genera tomas programadas contra un
+     * paciente que no es de esta veterinaria.
+     *
+     * <p>
+     * Sin el {@code findByIdAndCompanyId} del puerto, estos dos casos pasaban: el
+     * puerto resolvia la hospitalizacion ajena y el {@code save} la escribia.
+     */
+    @Nested
+    @DisplayName("aislamiento entre empresas")
+    class AislamientoEntreEmpresas {
+
+        @Test
+        @DisplayName("una hospitalizacion de otra empresa no se resuelve y no se persiste nada")
+        void hospitalizacion_de_otra_empresa_no_se_persiste() {
+            when(hospitalizationQueryPort.findByIdAndCompanyId(
+                    HospitalizationMedicationMother.HOSPITALIZATION_ID,
+                    HospitalizationMedicationMother.OTRA_COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(HospitalizationMedicationMother
+                    .comandoCrear(HospitalizationMedicationMother.OTRA_COMPANY_ID)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Hospitalization not found: "
+                            + HospitalizationMedicationMother.HOSPITALIZATION_ID);
+
+            verifyNoInteractions(employeeQueryPort, repository);
+        }
+
+        @Test
+        @DisplayName("la empresa del comando llega al puerto: la referencia nunca se resuelve sin acotar")
+        void la_empresa_del_comando_llega_al_puerto() {
+            referenciasResueltas();
+            when(repository.save(any())).thenReturn(HospitalizationMedicationMother.activo());
+
+            service.execute(HospitalizationMedicationMother.comandoCrear());
+
+            verify(hospitalizationQueryPort).findByIdAndCompanyId(
+                    HospitalizationMedicationMother.HOSPITALIZATION_ID,
+                    HospitalizationMedicationMother.COMPANY_ID);
         }
     }
 }

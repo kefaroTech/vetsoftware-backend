@@ -22,6 +22,8 @@ public final class LaboratoryTestFileMother {
     public static final Long FILE_ID = 700L;
     public static final Long OTRO_FILE_ID = 701L;
     public static final Long COMPANY_ID = 9L;
+    /** Empresa ajena: el tenant contra el que se prueba el aislamiento. */
+    public static final Long OTRA_COMPANY_ID = 77L;
     public static final Long LABORATORY_TEST_ID = 500L;
     public static final Long EMPLOYEE_ID = 4L;
     public static final Long OWNER_ID = 3L;
@@ -65,7 +67,18 @@ public final class LaboratoryTestFileMother {
 
     public static CreateLaboratoryTestFileCommand comandoCrear(String originalFileName,
             String contentType) {
+        return comandoCrear(originalFileName, contentType, COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static CreateLaboratoryTestFileCommand comandoCrear(Long companyId) {
+        return comandoCrear(ORIGINAL_FILE_NAME, CONTENT_TYPE, companyId);
+    }
+
+    public static CreateLaboratoryTestFileCommand comandoCrear(String originalFileName,
+            String contentType, Long companyId) {
         return new CreateLaboratoryTestFileCommand(LABORATORY_TEST_ID, originalFileName,
-                contentType, SIZE_BYTES, "contenido-del-archivo".getBytes(), EMPLOYEE_ID);
+                contentType, SIZE_BYTES, "contenido-del-archivo".getBytes(), EMPLOYEE_ID,
+                companyId);
     }
 }
