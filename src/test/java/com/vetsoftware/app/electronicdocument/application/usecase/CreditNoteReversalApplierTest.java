@@ -202,7 +202,10 @@ class CreditNoteReversalApplierTest {
 
             applier.applyIfCreditNoteValidated(nota);
 
-            verify(accountReversalPort).markReversed(nota.getOpenAccountId());
+            // La empresa viaja con la cuenta: es lo que acota la lectura del reverso al
+            // tenant dueño y lo que impide que un openAccountId ajeno se escriba
+            // (incidencia #124).
+            verify(accountReversalPort).markReversed(nota.getOpenAccountId(), nota.getCompanyId());
         }
     }
 }

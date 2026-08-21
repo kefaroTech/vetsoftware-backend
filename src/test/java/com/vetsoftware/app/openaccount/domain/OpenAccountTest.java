@@ -435,7 +435,9 @@ class OpenAccountTest {
             OpenAccount cuenta = cerrada();
             LocalDateTime cuando = LocalDateTime.of(2026, 3, 1, 8, 0);
 
-            cuenta.markReversed(cuando);
+            boolean cambio = cuenta.markReversed(cuando);
+
+            assertThat(cambio).isTrue();
 
             assertThat(cuenta.isReversed()).isTrue();
             assertThat(cuenta.getReversedAt()).isEqualTo(cuando);
@@ -460,7 +462,9 @@ class OpenAccountTest {
             LocalDateTime primeraFecha = LocalDateTime.of(2026, 3, 1, 8, 0);
             cuenta.markReversed(primeraFecha);
 
-            cuenta.markReversed(LocalDateTime.of(2026, 4, 1, 8, 0));
+            boolean cambio = cuenta.markReversed(LocalDateTime.of(2026, 4, 1, 8, 0));
+
+            assertThat(cambio).isFalse();
 
             assertThat(cuenta.getReversedAt()).isEqualTo(primeraFecha);
         }

@@ -69,20 +69,20 @@ public class OpenAccount {
     }
 
     /**
-     * Marca la cuenta como reversada por nota credito validada. Idempotente: si ya
-     * estaba reversada no la vuelve a estampar. Es el efecto en cartera del void
-     * subordinado a la nota electronica.
+     * Marca la cuenta como reversada por nota credito validada. Es el efecto en
+     * cartera del void subordinado a la nota electronica, y la unica via para
+     * estamparlo: el adaptador que escribia la fila a mano reimplementaba media
+     * regla (#124).
      *
      * <p>
-     * Solo aplica a una cuenta CLOSE: el documento electronico se emite unicamente
-     * al cerrar (ver {@code ChangeOpenAccountStatusService}), asi que una cuenta
-     * OPEN todavia no tiene factura que corregir y una CANCEL se dio de baja sin
-     * emitir. Reversar desde cualquiera de las dos seria estampar un reverso
-     * contable sobre algo que nunca se facturo.
+     * Solo aplica a una cuenta CLOSE —una OPEN no tiene todavia factura que
+     * corregir y una CANCEL se dio de baja sin emitir ninguna—, y es idempotente:
+     * una segunda llamada no reescribe la fecha. Devuelve si esta llamada cambio
+     * algo, para que el llamador sepa si tiene que persistir.
      */
-    public void markReversed(LocalDateTime when) {
+    public boolean markReversed(LocalDateTime when) {
         if (this.reversed)
-            return;
+            return false;
         if (this.status != OpenAccountStatus.CLOSE) {
             throw new IllegalStateException(
                     "Solo se puede reversar una cuenta cerrada (facturada); estado actual: "
@@ -90,6 +90,7 @@ public class OpenAccount {
         }
         this.reversed = true;
         this.reversedAt = when != null ? when : LocalDateTime.now();
+        return true;
     }
 
     public void update(OwnerRef owner) {

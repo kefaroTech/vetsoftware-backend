@@ -87,7 +87,7 @@ public class CreditNoteReversalApplier {
                 }
             }
             if (note.getOpenAccountId() != null) {
-                accountReversalPort.markReversed(note.getOpenAccountId());
+                accountReversalPort.markReversed(note.getOpenAccountId(), note.getCompanyId());
             }
         });
     }
