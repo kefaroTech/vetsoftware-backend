@@ -359,6 +359,43 @@ class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findByIdAndCompanyId(guardado.getId(), COMPANY)).isPresent();
         }
 
+        @Test
+        @DisplayName("la cuenta del cargo apagado se resuelve aunque ningun finder lo vea")
+        void la_cuenta_del_cargo_apagado_se_resuelve() {
+            GeneralChargeOpenAccount guardado = cargoConIva();
+            entityManager.flush();
+            repository.delete(guardado.getId());
+            entityManager.flush();
+            entityManager.clear();
+
+            // Esto es lo que la reactivacion necesita saber ANTES de encender la fila:
+            // que cuenta hay que bloquear y comprobar que sigue abierta (#239). El
+            // @SQLRestriction de la entidad esconde el cargo apagado de todo el HQL
+            // —la primera asercion lo demuestra—, asi que la consulta es nativa a
+            // proposito. Con un doble este test no probaria nada: lo que hay que ver
+            // es que el SQL esquiva el filtro.
+            assertThat(repository.findByIdAndCompanyId(guardado.getId(), COMPANY)).isEmpty();
+            assertThat(repository.findOpenAccountIdIncludingDisabled(guardado.getId(), COMPANY))
+                    .contains(CUENTA);
+        }
+
+        @Test
+        @DisplayName("la cuenta de un cargo ajeno no se resuelve")
+        void la_cuenta_de_un_cargo_ajeno_no_se_resuelve() {
+            GeneralChargeOpenAccount guardado = cargoConIva();
+            entityManager.flush();
+            repository.delete(guardado.getId());
+            entityManager.flush();
+            entityManager.clear();
+
+            // Mismo EXISTS que el UPDATE de reactivar. Si esto resolviera con la
+            // empresa ajena, el caso de uso bloquearia y leeria una cuenta de otro
+            // tenant antes de rechazar nada.
+            assertThat(
+                    repository.findOpenAccountIdIncludingDisabled(guardado.getId(), OTRA_COMPANY))
+                    .isEmpty();
+        }
+
         private long filasCrudas(Long id) {
             Number filas = (Number) entityManager
                     .createNativeQuery(

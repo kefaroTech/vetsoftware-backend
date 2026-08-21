@@ -1,22 +1,30 @@
 package com.vetsoftware.app.productchargeopenaccount.application.usecase;
 
+import static com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother.CHARGE_ID;
+import static com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother.COMPANY_ID;
+import static com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID;
+import static com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother.OTRA_COMPANY_ID;
+import static com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother.cargo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.productchargeopenaccount.application.dto.ProductChargeOpenAccountDto;
+import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountQueryPort;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.OpenAccountRefresher;
 import com.vetsoftware.app.productchargeopenaccount.application.port.out.ProductChargeOpenAccountRepository;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountNotFoundException;
-import com.vetsoftware.app.productchargeopenaccount.testsupport.ProductChargeOpenAccountMother;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,56 +36,146 @@ class ReactivateProductChargeOpenAccountServiceTest {
     @Mock
     private ProductChargeOpenAccountRepository repository;
     @Mock
+    private OpenAccountQueryPort openAccountQueryPort;
+    @Mock
     private OpenAccountRefresher refresher;
 
     @InjectMocks
     private ReactivateProductChargeOpenAccountService service;
 
-    @Test
-    @DisplayName("reactiva el cargo y recalcula el total de su cuenta")
-    void reactiva_el_cargo_y_recalcula_su_cuenta() {
-        when(repository.reactivate(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(1);
-        when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID))
-                .thenReturn(Optional.of(ProductChargeOpenAccountMother.cargo()));
-
-        ProductChargeOpenAccountDto dto = service.execute(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID);
-
-        assertThat(dto.id()).isEqualTo(ProductChargeOpenAccountMother.CHARGE_ID);
-        assertThat(dto.enabled()).isTrue();
-        verify(refresher).refresh(ProductChargeOpenAccountMother.COMPANY_ID,
-                ProductChargeOpenAccountMother.OPEN_ACCOUNT_ID);
+    /** El cargo deshabilitado existe y cuelga de una cuenta de esta empresa. */
+    private void elCargoCuelgaDeLaCuenta() {
+        when(repository.findOpenAccountIdIncludingDisabled(CHARGE_ID, COMPANY_ID))
+                .thenReturn(Optional.of(OPEN_ACCOUNT_ID));
     }
 
-    @Test
-    @DisplayName("si el update no toca ninguna fila el cargo no existe para esa empresa")
-    void si_el_update_no_toca_ninguna_fila_el_cargo_no_existe() {
-        when(repository.reactivate(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.OTRA_COMPANY_ID)).thenReturn(0);
+    @Nested
+    @DisplayName("camino feliz")
+    class CaminoFeliz {
 
-        assertThatThrownBy(() -> service.execute(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.OTRA_COMPANY_ID))
-                .isInstanceOf(ProductChargeOpenAccountNotFoundException.class)
-                .hasMessageContaining("ProductChargeOpenAccount not found: "
-                        + ProductChargeOpenAccountMother.CHARGE_ID);
+        @Test
+        @DisplayName("reactiva, recarga el cargo y refresca el total de su cuenta")
+        void reactiva_recarga_y_refresca() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
+            when(repository.reactivate(CHARGE_ID, COMPANY_ID)).thenReturn(1);
+            when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(cargo()));
 
-        verifyNoInteractions(refresher);
+            ProductChargeOpenAccountDto dto = service.execute(CHARGE_ID, COMPANY_ID);
+
+            assertThat(dto.id()).isEqualTo(CHARGE_ID);
+            // Reactivar vuelve a sumar al total de la cuenta: sin refresh, la cuenta
+            // muestra un total que no incluye el cargo que acaba de volver.
+            verify(refresher).refresh(COMPANY_ID, OPEN_ACCOUNT_ID);
+        }
+
+        @Test
+        @DisplayName("bloquea la cuenta ANTES de mirar su estado y de reactivar")
+        void bloquea_la_cuenta_antes_de_mirar_su_estado() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
+            when(repository.reactivate(CHARGE_ID, COMPANY_ID)).thenReturn(1);
+            when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(cargo()));
+
+            service.execute(CHARGE_ID, COMPANY_ID);
+
+            // El orden es la garantia, no las llamadas sueltas: comprobar el estado sin
+            // el lock tomado deja la ventana en la que la cuenta se cierra entre el
+            // isOpen y el UPDATE, y el cargo revive igual sobre una cuenta cerrada.
+            InOrder enOrden = inOrder(openAccountQueryPort, repository);
+            enOrden.verify(openAccountQueryPort).lockForUpdate(OPEN_ACCOUNT_ID, COMPANY_ID);
+            enOrden.verify(openAccountQueryPort).isOpen(OPEN_ACCOUNT_ID);
+            enOrden.verify(repository).reactivate(CHARGE_ID, COMPANY_ID);
+        }
     }
 
-    @Test
-    @DisplayName("si la relectura vuelve vacia se aborta sin recalcular")
-    void si_la_relectura_vuelve_vacia_se_aborta() {
-        when(repository.reactivate(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(1);
-        when(repository.findByIdAndCompanyId(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID)).thenReturn(Optional.empty());
+    @Nested
+    @DisplayName("una cuenta que ya no esta abierta no admite cargos de vuelta (#239)")
+    class CuentaNoAbierta {
 
-        assertThatThrownBy(() -> service.execute(ProductChargeOpenAccountMother.CHARGE_ID,
-                ProductChargeOpenAccountMother.COMPANY_ID))
-                .isInstanceOf(ProductChargeOpenAccountNotFoundException.class);
+        @Test
+        @DisplayName("sobre una cuenta cerrada o cancelada, la reactivacion falla")
+        void sobre_una_cuenta_no_abierta_falla() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(false);
 
-        verify(refresher, never()).refresh(anyLong(), anyLong());
+            assertThatThrownBy(() -> service.execute(CHARGE_ID, COMPANY_ID))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("open account is not OPEN");
+        }
+
+        @Test
+        @DisplayName("y el cargo se queda apagado, asi que el total de la cuenta no sube")
+        void el_total_de_la_cuenta_no_sube() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(false);
+
+            assertThatThrownBy(() -> service.execute(CHARGE_ID, COMPANY_ID))
+                    .isInstanceOf(IllegalStateException.class);
+
+            // El total se calcula sumando los cargos con enabled = true. Mientras el
+            // UPDATE no se ejecute, este cargo sigue fuera de esa suma: por eso basta
+            // con demostrar que no se reactivo. El refresh tampoco corre, asi que la
+            // cuenta cerrada no se reescribe con un saldo pendiente que nadie podria
+            // cobrar, que es exactamente lo que pasaba antes: en silencio y sin dejar
+            // el saldo en negativo, donde la guarda de recalculate no lo veia.
+            verify(repository, never()).reactivate(anyLong(), anyLong());
+            verifyNoInteractions(refresher);
+        }
+    }
+
+    @Nested
+    @DisplayName("caminos de error: nada se escribe")
+    class CaminosDeError {
+
+        @Test
+        @DisplayName("un cargo de otra empresa no resuelve cuenta y no se toca nada")
+        void cargo_de_otra_empresa() {
+            when(repository.findOpenAccountIdIncludingDisabled(CHARGE_ID, OTRA_COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(CHARGE_ID, OTRA_COMPANY_ID))
+                    .isInstanceOf(ProductChargeOpenAccountNotFoundException.class)
+                    .hasMessageContaining(String.valueOf(CHARGE_ID));
+
+            // Ni siquiera se pide el lock: la cuenta ajena no se bloquea nunca.
+            verify(repository, never()).reactivate(anyLong(), anyLong());
+            verifyNoInteractions(openAccountQueryPort, refresher);
+        }
+
+        @Test
+        @DisplayName("si el update no toco ninguna fila, alguien la borro entre medias")
+        void si_no_reactivo_ninguna_fila_falla() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
+            when(repository.reactivate(CHARGE_ID, COMPANY_ID)).thenReturn(0);
+
+            // La consulta que resolvio la cuenta usa el MISMO predicado que el UPDATE,
+            // asi que un cero aqui ya no puede significar que el cargo sea de otra
+            // empresa: solo un borrado concurrente.
+            assertThatThrownBy(() -> service.execute(CHARGE_ID, COMPANY_ID))
+                    .isInstanceOf(ProductChargeOpenAccountNotFoundException.class);
+
+            verifyNoInteractions(refresher);
+        }
+
+        @Test
+        @DisplayName("si el update dice que reactivo pero la recarga no lo encuentra, falla")
+        void si_la_recarga_no_lo_encuentra_falla() {
+            elCargoCuelgaDeLaCuenta();
+            when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
+            when(repository.reactivate(CHARGE_ID, COMPANY_ID)).thenReturn(1);
+            when(repository.findByIdAndCompanyId(CHARGE_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            // Carrera con un borrado concurrente: mejor fallar que refrescar la cuenta
+            // con un cargo que ya no esta.
+            assertThatThrownBy(() -> service.execute(CHARGE_ID, COMPANY_ID))
+                    .isInstanceOf(ProductChargeOpenAccountNotFoundException.class);
+
+            verifyNoInteractions(refresher);
+        }
     }
 }
